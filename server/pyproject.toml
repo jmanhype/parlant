@@ -9,6 +9,8 @@ packages = [{include = "emcie", from = "src"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.109.2"
+nanoid = "^2.0.0"
+python-dateutil = "^2.8.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -20,6 +22,7 @@ flake8 = "^7.0.0"
 pep8-naming = "^0.13.3"
 python-dotenv = "^1.0.1"
 uvicorn = "^0.27.1"
+types-python-dateutil = "^2.8.19.20240106"
 
 [build-system]
 requires = ["poetry-core"]
