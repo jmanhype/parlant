@@ -13,11 +13,6 @@ def client() -> TestClient:
 
 
 @fixture
-def agent_id() -> str:
-    return "test-agent"
-
-
-@fixture
 async def new_thread_id(client: TestClient) -> str:
     return str(client.post("/threads").json()["thread_id"])
 
