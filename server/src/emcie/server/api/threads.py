@@ -10,7 +10,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
     router = APIRouter()
 
     class MessageDTO(BaseModel):
-        role: Literal["user"]
+        role: Literal["user", "assistant"]
         content: str
         creation_utc: datetime
 
@@ -26,7 +26,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
         )
 
     class CreateMessageRequest(BaseModel):
-        role: Literal["user"]
+        role: Literal["user", "assistant"]
         content: str
 
     class CreateMessageResponse(BaseModel):

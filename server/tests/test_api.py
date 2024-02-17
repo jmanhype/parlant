@@ -27,16 +27,18 @@ def test_that_a_thread_can_be_created(
 
 
 @mark.asyncio
+@mark.parametrize("role", ("user", "assistant"))
 async def test_that_a_user_message_can_be_added_to_a_thread(
     client: TestClient,
     new_thread_id: str,
+    role: str,
 ) -> None:
     before_creating_the_message = datetime.utcnow()
 
     response = client.post(
         f"/threads/{new_thread_id}/messages",
         json={
-            "role": "user",
+            "role": role,
             "content": "Hello",
         },
     )
@@ -50,6 +52,6 @@ async def test_that_a_user_message_can_be_added_to_a_thread(
     data = response.json()
 
     assert len(data["messages"]) == 1
-    assert data["messages"][0]["role"] == "user"
+    assert data["messages"][0]["role"] == role
     assert data["messages"][0]["content"] == "Hello"
     assert parser.parse(data["messages"][0]["creation_utc"]) >= before_creating_the_message

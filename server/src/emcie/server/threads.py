@@ -8,7 +8,7 @@ MessageId = NewType("MessageId", str)
 ThreadId = NewType("ThreadId", str)
 
 
-MessageRole = Literal["user"]
+MessageRole = Literal["user", "assistant"]
 
 
 class Message:
