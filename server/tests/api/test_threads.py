@@ -48,9 +48,8 @@ def test_that_a_thread_can_be_created(
     assert "thread_id" in data
 
 
-@mark.asyncio
 @mark.parametrize("role", ("user", "assistant"))
-async def test_that_a_user_message_can_be_added_to_a_thread(
+def test_that_a_user_message_can_be_added_to_a_thread(
     client: TestClient,
     new_thread_id: str,
     role: str,
@@ -79,8 +78,7 @@ async def test_that_a_user_message_can_be_added_to_a_thread(
     assert parser.parse(data["messages"][0]["creation_utc"]) >= before_creating_the_message
 
 
-@mark.asyncio
-async def test_that_an_assistant_message_can_be_updated_with_new_tokens(
+def test_that_an_assistant_message_can_be_updated_with_new_tokens(
     client: TestClient,
     new_thread_id: str,
     new_assistant_message: MessageDTO,
@@ -103,8 +101,7 @@ async def test_that_an_assistant_message_can_be_updated_with_new_tokens(
     assert message.revision == (new_assistant_message.revision + 1)
 
 
-@mark.asyncio
-async def test_that_an_assistant_message_cannot_be_updated_when_the_target_revision_isnt_the_current_one(  # noqa
+def test_that_an_assistant_message_cannot_be_updated_when_the_target_revision_isnt_the_current_one(  # noqa
     client: TestClient,
     new_thread_id: str,
     new_assistant_message: MessageDTO,
