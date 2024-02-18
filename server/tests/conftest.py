@@ -6,8 +6,8 @@ from emcie.server import main
 
 
 @fixture
-def client() -> TestClient:
-    app = main.create_app()
+async def client() -> TestClient:
+    app = await main.create_app()
     return TestClient(app)
 
 
