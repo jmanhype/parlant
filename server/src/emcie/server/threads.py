@@ -17,6 +17,7 @@ class Message:
     id: MessageId
     role: MessageRole
     content: str
+    completed: bool
     creation_utc: datetime
     revision: int = 0
 
@@ -44,12 +45,14 @@ class ThreadStore:
         thread_id: ThreadId,
         role: MessageRole,
         content: str,
+        completed: bool,
         creation_utc: Optional[datetime] = None,
     ) -> Message:
         message = Message(
             id=MessageId(common.generate_id()),
             role=role,
             content=content,
+            completed=completed,
             creation_utc=creation_utc or datetime.utcnow(),
         )
 
@@ -63,6 +66,7 @@ class ThreadStore:
         message_id: MessageId,
         target_revision: int,
         content_delta: str,
+        completed: bool,
     ) -> Message:
         message = self._messages[thread_id][message_id]
 
@@ -73,6 +77,7 @@ class ThreadStore:
             id=message.id,
             role=message.role,
             content=(message.content + content_delta),
+            completed=completed,
             creation_utc=message.creation_utc,
             revision=(message.revision + 1),
         )
@@ -81,3 +86,10 @@ class ThreadStore:
 
     async def list_messages(self, thread_id: ThreadId) -> Iterable[Message]:
         return self._messages[thread_id].values()
+
+    async def read_message(
+        self,
+        thread_id: ThreadId,
+        message_id: MessageId,
+    ) -> Message:
+        return self._messages[thread_id][message_id]

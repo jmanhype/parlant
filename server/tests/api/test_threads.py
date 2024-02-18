@@ -4,19 +4,7 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from pytest import fixture, mark
 
-from emcie.server import main
 from emcie.server.api.threads import MessageDTO
-
-
-@fixture
-def client() -> TestClient:
-    app = main.create_app()
-    return TestClient(app)
-
-
-@fixture
-async def new_thread_id(client: TestClient) -> str:
-    return str(client.post("/threads").json()["thread_id"])
 
 
 @fixture
@@ -88,6 +76,7 @@ def test_that_an_assistant_message_can_be_updated_with_new_tokens(
         json={
             "target_revision": new_assistant_message.revision,
             "content_delta": "Hello",
+            "completed": False,
         },
     )
 
@@ -115,3 +104,17 @@ def test_that_an_assistant_message_cannot_be_updated_when_the_target_revision_is
     )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_that_a_specific_message_can_be_read(
+    client: TestClient,
+    new_thread_id: str,
+    new_assistant_message: MessageDTO,
+) -> None:
+    response = client.get(f"/threads/{new_thread_id}/messages/{new_assistant_message.id}")
+
+    assert response.status_code == status.HTTP_200_OK
+
+    read_message = MessageDTO(**response.json()["message"])
+
+    assert read_message == new_assistant_message

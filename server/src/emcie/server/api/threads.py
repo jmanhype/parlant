@@ -15,6 +15,7 @@ class MessageDTO(BaseModel):
     id: MessageId
     role: MessageRole
     content: str
+    completed: bool
     creation_utc: datetime
     revision: int
 
@@ -36,6 +37,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
     class CreateMessageRequest(BaseModel):
         role: MessageRole
         content: str
+        completed: bool = False
 
     class CreateMessageResponse(BaseModel):
         message: MessageDTO
@@ -49,6 +51,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
             thread_id=thread_id,
             role=request.role,
             content=request.content,
+            completed=request.completed,
         )
 
         return CreateMessageResponse(
@@ -56,6 +59,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                 id=message.id,
                 role=message.role,
                 content=message.content,
+                completed=message.completed,
                 creation_utc=message.creation_utc,
                 revision=message.revision,
             )
@@ -64,6 +68,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
     class PatchMessageRequest(BaseModel):
         target_revision: int
         content_delta: str
+        completed: bool
 
     class PatchMessageResponse(BaseModel):
         patched_message: MessageDTO
@@ -80,6 +85,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                 message_id=message_id,
                 target_revision=request.target_revision,
                 content_delta=request.content_delta,
+                completed=request.completed,
             )
 
             return PatchMessageResponse(
@@ -87,6 +93,7 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                     id=patched_message.id,
                     role=patched_message.role,
                     content=patched_message.content,
+                    completed=patched_message.completed,
                     creation_utc=patched_message.creation_utc,
                     revision=patched_message.revision,
                 )
@@ -112,11 +119,36 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                     id=m.id,
                     role=m.role,
                     content=m.content,
+                    completed=m.completed,
                     creation_utc=m.creation_utc,
                     revision=m.revision,
                 )
                 for m in messages
             ]
+        )
+
+    class ReadMessageResponse(BaseModel):
+        message: MessageDTO
+
+    @router.get("/{thread_id}/messages/{message_id}")
+    async def read_message(
+        thread_id: ThreadId,
+        message_id: MessageId,
+    ) -> ReadMessageResponse:
+        message = await thread_store.read_message(
+            thread_id=thread_id,
+            message_id=message_id,
+        )
+
+        return ReadMessageResponse(
+            message=MessageDTO(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                completed=message.completed,
+                creation_utc=message.creation_utc,
+                revision=message.revision,
+            )
         )
 
     return router
