@@ -14,8 +14,8 @@ async def create_app() -> FastAPI:
     model_registry = ModelRegistry()
 
     models = {
-        "gpt-4-turbo": GPT("gpt-4-turbo-preview"),
-        "gpt-3.5-turbo": GPT("gpt-3.5-turbo"),
+        "openai/gpt-4-turbo": GPT("gpt-4-turbo-preview"),
+        "openai/gpt-3.5-turbo": GPT("gpt-3.5-turbo"),
     }
 
     for model_id, model in models.items():
