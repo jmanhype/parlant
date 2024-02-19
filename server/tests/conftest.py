@@ -8,7 +8,7 @@ from emcie.server import main
 
 @fixture
 def test_config(pytestconfig: Config) -> Dict[str, Any]:
-    return {"patience": int(str(pytestconfig.inicfg["patience"]))}
+    return {"patience": 10}
 
 
 @fixture
