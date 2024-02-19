@@ -1,3 +1,4 @@
+from typing import AsyncIterator
 from fastapi import status
 from fastapi.testclient import TestClient
 from pytest import fixture
@@ -6,9 +7,11 @@ from emcie.server import main
 
 
 @fixture
-async def client() -> TestClient:
+async def client() -> AsyncIterator[TestClient]:
     app = await main.create_app()
-    return TestClient(app)
+
+    with TestClient(app) as client:
+        yield client
 
 
 @fixture

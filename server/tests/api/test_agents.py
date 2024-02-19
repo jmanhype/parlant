@@ -54,12 +54,16 @@ def test_that_an_agent_can_respond_to_a_thread(
     assert reaction.thread_id == user_question_thread_id
     assert reaction.message_id
 
+    message_states = []
+
     for _ in range(5):
         message = get_message(
             client,
             thread_id=user_question_thread_id,
             message_id=reaction.message_id,
         )
+
+        message_states.append(message.content)
 
         if message.completed:
             break

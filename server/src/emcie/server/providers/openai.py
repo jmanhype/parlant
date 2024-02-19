@@ -1,5 +1,5 @@
-from typing import AsyncGenerator, Iterable, List
-from openai import OpenAI
+from typing import AsyncIterator, Iterable, List
+from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 import os
 
@@ -7,25 +7,27 @@ from emcie.server.models import TextGenerationModel
 from emcie.server.threads import Message
 
 
-class GPT4Turbo(TextGenerationModel):
+class GPT(TextGenerationModel):
     def __init__(
         self,
+        model_id: str,
     ) -> None:
-        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        self.client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        self.model_id = model_id
 
     async def generate_text(
         self,
         messages: Iterable[Message],
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncIterator[str]:
         converted_messages = self._convert_messages(messages)
 
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             messages=converted_messages,
-            model="gpt-4-turbo-preview",
+            model=self.model_id,
             stream=True,
         )
 
-        for x in response:
+        async for x in response:
             yield x.choices[0].delta.content or ""
 
     def _convert_messages(self, messages: Iterable[Message]) -> List[ChatCompletionMessageParam]:

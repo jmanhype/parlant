@@ -1,10 +1,9 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, List
+from typing import List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from emcie.server import common
 from emcie.server.agents import AgentId, AgentStore
 from emcie.server.models import ModelId, ModelRegistry
 from emcie.server.threads import MessageId, ThreadId, ThreadStore
@@ -12,6 +11,7 @@ from emcie.server.threads import MessageId, ThreadId, ThreadStore
 
 class AgentDTO(BaseModel):
     id: AgentId
+    llm_id: str
     creation_utc: datetime
 
 
@@ -25,16 +25,22 @@ def create_router(
     thread_store: ThreadStore,
     model_registry: ModelRegistry,
 ) -> APIRouter:
-    background_tasks: Dict[str, asyncio.Task[None]] = {}
-
     router = APIRouter()
+
+    class CreateAgentRequest(BaseModel):
+        llm_id: Optional[ModelId] = None
 
     class CreateAgentResponse(BaseModel):
         agent_id: AgentId
 
     @router.post("/")
-    async def create_agent() -> CreateAgentResponse:
-        agent = await agent_store.create_agent(model_id=ModelId("gpt-4-turbo"))
+    async def create_agent(
+        request: Optional[CreateAgentRequest] = None,
+    ) -> CreateAgentResponse:
+        agent = await agent_store.create_agent(
+            model_id=request and request.llm_id or None,
+        )
+
         return CreateAgentResponse(agent_id=agent.id)
 
     class ListAgentsResponse(BaseModel):
@@ -45,7 +51,9 @@ def create_router(
         agents = await agent_store.list_agents()
 
         return ListAgentsResponse(
-            agents=[AgentDTO(id=a.id, creation_utc=a.creation_utc) for a in agents]
+            agents=[
+                AgentDTO(id=a.id, llm_id=a.model_id, creation_utc=a.creation_utc) for a in agents
+            ]
         )
 
     class CreateReactionRequest(BaseModel):
@@ -60,9 +68,7 @@ def create_router(
         request: CreateReactionRequest,
     ) -> CreateReactionResponse:
         agent = await agent_store.read_agent(agent_id=agent_id)
-
         model = await model_registry.get_text_generation_model(model_id=agent.model_id)
-
         thread_messages = list(await thread_store.list_messages(thread_id=request.thread_id))
 
         message = await thread_store.create_message(
@@ -72,7 +78,7 @@ def create_router(
             completed=False,
         )
 
-        async def text_generation(task_id: str) -> None:
+        async def generate_message_text() -> None:
             revision = message.revision
 
             async for token in model.generate_text(messages=thread_messages):
@@ -94,10 +100,7 @@ def create_router(
                 completed=True,
             )
 
-            background_tasks.pop(task_id)
-
-        task_id = common.generate_id()
-        background_tasks[task_id] = asyncio.create_task(text_generation(task_id))
+        _ = asyncio.create_task(generate_message_text())
 
         return CreateReactionResponse(
             reaction=ReactionDTO(

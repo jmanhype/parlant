@@ -4,7 +4,7 @@ from emcie.server.api import agents
 from emcie.server.api import threads
 from emcie.server.agents import AgentStore
 from emcie.server.models import ModelId, ModelRegistry
-from emcie.server.providers.openai import GPT4Turbo
+from emcie.server.providers.openai import GPT
 from emcie.server.threads import ThreadStore
 
 
@@ -13,7 +13,13 @@ async def create_app() -> FastAPI:
     thread_store = ThreadStore()
     model_registry = ModelRegistry()
 
-    await model_registry.add_text_generation_model(ModelId("gpt-4-turbo"), GPT4Turbo())
+    models = {
+        "gpt-4-turbo": GPT("gpt-4-turbo-preview"),
+        "gpt-3.5-turbo": GPT("gpt-3.5-turbo"),
+    }
+
+    for model_id, model in models.items():
+        await model_registry.add_text_generation_model(ModelId(model_id), model)
 
     app = FastAPI()
 
