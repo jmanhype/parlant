@@ -1,9 +1,14 @@
-from typing import AsyncIterator
+from typing import Any, AsyncIterator, Dict
 from fastapi import status
 from fastapi.testclient import TestClient
-from pytest import fixture
+from pytest import fixture, Config
 
 from emcie.server import main
+
+
+@fixture
+def test_config(pytestconfig: Config) -> Dict[str, Any]:
+    return {"patience": int(str(pytestconfig.inicfg["patience"]))}
 
 
 @fixture

@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from fastapi.testclient import TestClient
 from fastapi import status
 import time
@@ -39,6 +40,7 @@ def test_that_an_agent_can_respond_to_a_thread(
     client: TestClient,
     agent_id: str,
     user_question_thread_id: str,
+    test_config: Dict[str, Any],
 ) -> None:
     response = client.post(
         f"/agents/{agent_id}/reactions",
@@ -56,7 +58,7 @@ def test_that_an_agent_can_respond_to_a_thread(
 
     message_states = []
 
-    for _ in range(5):
+    for _ in range(test_config["patience"]):
         message = get_message(
             client,
             thread_id=user_question_thread_id,
