@@ -20,18 +20,32 @@ class ReactionDTO(BaseModel):
     message_id: MessageId
 
 
+class CreateAgentRequest(BaseModel):
+    llm_id: Optional[ModelId] = None
+
+
+class CreateAgentResponse(BaseModel):
+    agent_id: AgentId
+
+
+class ListAgentsResponse(BaseModel):
+    agents: List[AgentDTO]
+
+
+class CreateReactionRequest(BaseModel):
+    thread_id: ThreadId
+
+
+class CreateReactionResponse(BaseModel):
+    reaction: ReactionDTO
+
+
 def create_router(
     agent_store: AgentStore,
     thread_store: ThreadStore,
     model_registry: ModelRegistry,
 ) -> APIRouter:
     router = APIRouter()
-
-    class CreateAgentRequest(BaseModel):
-        llm_id: Optional[ModelId] = None
-
-    class CreateAgentResponse(BaseModel):
-        agent_id: AgentId
 
     @router.post("/")
     async def create_agent(
@@ -43,9 +57,6 @@ def create_router(
 
         return CreateAgentResponse(agent_id=agent.id)
 
-    class ListAgentsResponse(BaseModel):
-        agents: List[AgentDTO]
-
     @router.get("/")
     async def list_agents() -> ListAgentsResponse:
         agents = await agent_store.list_agents()
@@ -55,12 +66,6 @@ def create_router(
                 AgentDTO(id=a.id, llm_id=a.model_id, creation_utc=a.creation_utc) for a in agents
             ]
         )
-
-    class CreateReactionRequest(BaseModel):
-        thread_id: ThreadId
-
-    class CreateReactionResponse(BaseModel):
-        reaction: ReactionDTO
 
     @router.post("/{agent_id}/reactions")
     async def create_reaction(

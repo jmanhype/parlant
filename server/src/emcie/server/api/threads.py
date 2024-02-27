@@ -20,11 +20,40 @@ class MessageDTO(BaseModel):
     revision: int
 
 
+class CreateThreadResponse(BaseModel):
+    thread_id: ThreadId
+
+
+class CreateMessageRequest(BaseModel):
+    role: MessageRole
+    content: str
+    completed: bool = False
+
+
+class CreateMessageResponse(BaseModel):
+    message: MessageDTO
+
+
+class PatchMessageRequest(BaseModel):
+    target_revision: int
+    content_delta: str
+    completed: bool
+
+
+class PatchMessageResponse(BaseModel):
+    patched_message: MessageDTO
+
+
+class ListMessagesResponse(BaseModel):
+    messages: List[MessageDTO]
+
+
+class ReadMessageResponse(BaseModel):
+    message: MessageDTO
+
+
 def create_router(thread_store: ThreadStore) -> APIRouter:
     router = APIRouter()
-
-    class CreateThreadResponse(BaseModel):
-        thread_id: ThreadId
 
     @router.post("/")
     async def create_thread() -> CreateThreadResponse:
@@ -33,14 +62,6 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
         return CreateThreadResponse(
             thread_id=thread.id,
         )
-
-    class CreateMessageRequest(BaseModel):
-        role: MessageRole
-        content: str
-        completed: bool = False
-
-    class CreateMessageResponse(BaseModel):
-        message: MessageDTO
 
     @router.post("/{thread_id}/messages")
     async def create_message(
@@ -64,14 +85,6 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                 revision=message.revision,
             )
         )
-
-    class PatchMessageRequest(BaseModel):
-        target_revision: int
-        content_delta: str
-        completed: bool
-
-    class PatchMessageResponse(BaseModel):
-        patched_message: MessageDTO
 
     @router.patch("/{thread_id}/messages/{message_id}")
     async def patch_message(
@@ -104,9 +117,6 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                 detail=str(e),
             )
 
-    class ListMessagesResponse(BaseModel):
-        messages: List[MessageDTO]
-
     @router.get("/{thread_id}/messages")
     async def list_messages(
         thread_id: ThreadId,
@@ -126,9 +136,6 @@ def create_router(thread_store: ThreadStore) -> APIRouter:
                 for m in messages
             ]
         )
-
-    class ReadMessageResponse(BaseModel):
-        message: MessageDTO
 
     @router.get("/{thread_id}/messages/{message_id}")
     async def read_message(
