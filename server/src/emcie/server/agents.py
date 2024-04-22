@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from typing import Dict, Iterable, NewType, Optional
 
@@ -30,7 +30,7 @@ class AgentStore:
         agent = Agent(
             id=AgentId(common.generate_id()),
             model_id=model_id or ModelId(os.environ["DEFAULT_AGENT_MODEL"]),
-            creation_utc=creation_utc or datetime.utcnow(),
+            creation_utc=creation_utc or datetime.now(timezone.utc),
         )
 
         self._agents[agent.id] = agent

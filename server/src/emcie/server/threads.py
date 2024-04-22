@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Iterable, Literal, NewType, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from emcie.server import common
 
@@ -53,7 +53,7 @@ class ThreadStore:
             role=role,
             content=content,
             completed=completed,
-            creation_utc=creation_utc or datetime.utcnow(),
+            creation_utc=creation_utc or datetime.now(timezone.utc),
         )
 
         self._messages[thread_id][message.id] = message

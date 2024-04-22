@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil import parser
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -42,7 +42,7 @@ def test_that_a_user_message_can_be_added_to_a_thread(
     new_thread_id: str,
     role: str,
 ) -> None:
-    before_creating_the_message = datetime.utcnow()
+    before_creating_the_message = datetime.now(timezone.utc)
 
     response = client.post(
         f"/threads/{new_thread_id}/messages",
