@@ -1,16 +1,38 @@
 from typing import Any, Dict, Iterable
 from fastapi.testclient import TestClient
 from fastapi import status
-from pytest import fixture
+from pytest import fixture, mark
 from datetime import datetime, timezone
+from itertools import count
 
-from emcie.server.sessions import EventSource
+from emcie.server.sessions import EventSource, SessionId
 
 
 @fixture
-def session_id(client: TestClient) -> str:
-    response = client.post("/sessions")
-    return str(response.json()["session_id"])
+def session_id(client: TestClient) -> SessionId:
+    response = client.post("/sessions", json={"client_id": "my_client"})
+    return SessionId(response.json()["session_id"])
+
+
+@fixture
+def long_session_id(client: TestClient) -> SessionId:
+    response = client.post("/sessions", json={"client_id": "my_client"})
+    session_id = SessionId(response.json()["session_id"])
+
+    populate_session_id(
+        client,
+        session_id,
+        [
+            make_event_params("client"),
+            make_event_params("server"),
+            make_event_params("client"),
+            make_event_params("server"),
+            make_event_params("server"),
+            make_event_params("client"),
+        ],
+    )
+
+    return session_id
 
 
 def make_event_params(
@@ -28,7 +50,7 @@ def make_event_params(
 
 def populate_session_id(
     client: TestClient,
-    session_id: str,
+    session_id: SessionId,
     events: Iterable[Dict[str, Any]],
 ) -> None:
     for e in events:
@@ -46,15 +68,16 @@ def event_is_according_to_params(event: Dict[str, Any], params: Dict[str, Any]) 
 
 
 def test_that_a_session_can_be_created(client: TestClient) -> None:
-    response = client.post("/sessions")
+    response = client.post("/sessions", json={"client_id": "my_client"})
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
+
     assert "session_id" in data
 
 
 def test_that_an_event_can_be_created(
     client: TestClient,
-    session_id: str,
+    session_id: SessionId,
 ) -> None:
     response = client.post(
         f"/sessions/{session_id}/events",
@@ -67,9 +90,12 @@ def test_that_an_event_can_be_created(
 
 def test_that_events_can_be_listed(
     client: TestClient,
-    session_id: str,
+    session_id: SessionId,
 ) -> None:
     session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("server"),
         make_event_params("client"),
         make_event_params("server"),
     ]
@@ -83,13 +109,14 @@ def test_that_events_can_be_listed(
 
     assert len(data["events"]) == len(session_events)
 
-    for event_params, listed_event in zip(session_events, data["events"]):
+    for i, event_params, listed_event in zip(count(), session_events, data["events"]):
+        assert listed_event["offset"] == i
         assert event_is_according_to_params(event=listed_event, params=event_params)
 
 
 def test_that_events_can_be_filtered_by_source(
     client: TestClient,
-    session_id: str,
+    session_id: SessionId,
 ) -> None:
     session_events = [
         make_event_params("client"),
@@ -109,3 +136,41 @@ def test_that_events_can_be_filtered_by_source(
 
     for event_params, listed_event in zip(session_client_events, data["events"]):
         assert event_is_according_to_params(event=listed_event, params=event_params)
+
+
+def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
+    client: TestClient,
+    long_session_id: SessionId,
+) -> None:
+    response = client.get(f"/sessions/{long_session_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert "consumption_offsets" in data
+    assert "server" in data["consumption_offsets"]
+    assert "client" in data["consumption_offsets"]
+    assert data["consumption_offsets"]["server"] == 0
+    assert data["consumption_offsets"]["client"] == 0
+
+
+@mark.parametrize("consumer_id", ("server", "client"))
+def test_that_consumption_offsets_can_be_updated(
+    client: TestClient,
+    long_session_id: SessionId,
+    consumer_id: str,
+) -> None:
+    response = client.patch(
+        f"/sessions/{long_session_id}",
+        json={
+            "consumption_offsets": {
+                consumer_id: 1,
+            }
+        },
+    )
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    response = client.get(f"/sessions/{long_session_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data["consumption_offsets"][consumer_id] == 1
