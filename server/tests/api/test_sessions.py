@@ -126,7 +126,7 @@ def test_that_events_can_be_filtered_by_source(
 
     populate_session_id(client, session_id, session_events)
 
-    response = client.get(f"/sessions/{session_id}/events?source=client")
+    response = client.get(f"/sessions/{session_id}/events", params={"source": "client"})
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 
@@ -174,3 +174,37 @@ def test_that_consumption_offsets_can_be_updated(
     data = response.json()
 
     assert data["consumption_offsets"][consumer_id] == 1
+
+
+def test_that_events_can_be_filtered_by_source_and_offset(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("client"),
+    ]
+
+    populate_session_id(client, session_id, session_events)
+
+    offset = 1
+
+    response = client.get(
+        f"/sessions/{session_id}/events",
+        params={
+            "source": "client",
+            "offset": offset,
+        },
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    session_client_events = [e for e in session_events if e["source"] == "client"][offset:]
+
+    assert len(data["events"]) == len(session_client_events)
+
+    for event_params, listed_event in zip(session_client_events, data["events"]):
+        assert event_is_according_to_params(event=listed_event, params=event_params)
