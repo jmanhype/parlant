@@ -176,9 +176,11 @@ def test_that_consumption_offsets_can_be_updated(
     assert data["consumption_offsets"][consumer_id] == 1
 
 
+@mark.parametrize("offset", (0, 2, 4))
 def test_that_events_can_be_filtered_by_source_and_offset(
     client: TestClient,
     session_id: SessionId,
+    offset: int,
 ) -> None:
     session_events = [
         make_event_params("client"),
@@ -190,8 +192,6 @@ def test_that_events_can_be_filtered_by_source_and_offset(
 
     populate_session_id(client, session_id, session_events)
 
-    offset = 1
-
     response = client.get(
         f"/sessions/{session_id}/events",
         params={
@@ -202,7 +202,9 @@ def test_that_events_can_be_filtered_by_source_and_offset(
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 
-    session_client_events = [e for e in session_events if e["source"] == "client"][offset:]
+    session_client_events = [e for e in session_events if e["source"] == "client"][
+        int(offset / 2) :
+    ]
 
     assert len(data["events"]) == len(session_client_events)
 
