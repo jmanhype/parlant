@@ -87,14 +87,14 @@ class SessionStore:
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
-        offset: Optional[int] = None,
+        min_offset: Optional[int] = None,
     ) -> Iterable[Event]:
         events = list(self._events[session_id].values())
 
         if source:
             events = [e for e in events if e.source == source]
 
-        if offset:
-            events = [e for e in events if e.offset >= offset]
+        if min_offset:
+            events = [e for e in events if e.offset >= min_offset]
 
         return events

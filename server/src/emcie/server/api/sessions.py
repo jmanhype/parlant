@@ -118,12 +118,12 @@ def create_router(session_store: SessionStore) -> APIRouter:
     async def list_events(
         session_id: SessionId,
         source: Optional[EventSource] = None,
-        offset: Optional[int] = None,
+        min_offset: Optional[int] = None,
     ) -> ListEventsResponse:
         events = await session_store.list_events(
             session_id=session_id,
             source=source,
-            offset=offset,
+            min_offset=min_offset,
         )
 
         return ListEventsResponse(

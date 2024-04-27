@@ -196,7 +196,7 @@ def test_that_events_can_be_filtered_by_source_and_offset(
         f"/sessions/{session_id}/events",
         params={
             "source": "client",
-            "offset": offset,
+            "min_offset": offset,
         },
     )
     assert response.status_code == status.HTTP_200_OK
