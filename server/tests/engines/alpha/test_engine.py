@@ -35,7 +35,7 @@ def given_the_alpha_engine(
     return AlphaEngine()
 
 
-@given("an agent", target_fixture="agent_id")
+@given("a vanilla agent", target_fixture="agent_id")
 def given_an_agent(
     sync_await: SyncAwaiter,
     container: Container,
