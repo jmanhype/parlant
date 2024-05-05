@@ -1,13 +1,13 @@
 import asyncio
-from typing import Any, Awaitable, Callable, Generator, List, TypeVar
+from typing import Any, Awaitable, Generator, List, TypeVar
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then
 
 from emcie.server.agents import AgentId, AgentStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.common import Context, Event
-from emcie.server.sessions import SessionId, SessionStore
+from emcie.server.engines.common import Context
+from emcie.server.sessions import Event, SessionId, SessionStore
 
 
 scenarios("engines/alpha/vanilla_configuration.feature")
