@@ -1,9 +1,14 @@
 from typing import Any, AsyncIterator, Dict
 from fastapi import status
 from fastapi.testclient import TestClient
+from lagom import Container
 from pytest import fixture, Config
 
 from emcie.server import main
+from emcie.server.agents import AgentStore
+from emcie.server.models import ModelRegistry
+from emcie.server.sessions import SessionStore
+from emcie.server.threads import ThreadStore
 
 
 @fixture
@@ -12,8 +17,20 @@ def test_config(pytestconfig: Config) -> Dict[str, Any]:
 
 
 @fixture
-async def client() -> AsyncIterator[TestClient]:
-    app = await main.create_app()
+def container() -> Container:
+    container = Container()
+
+    container[AgentStore] = AgentStore()
+    container[ThreadStore] = ThreadStore()
+    container[SessionStore] = SessionStore()
+    container[ModelRegistry] = ModelRegistry()
+
+    return container
+
+
+@fixture
+async def client(container: Container) -> AsyncIterator[TestClient]:
+    app = await main.create_app(container)
 
     with TestClient(app) as client:
         yield client
