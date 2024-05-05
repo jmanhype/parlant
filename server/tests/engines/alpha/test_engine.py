@@ -37,8 +37,8 @@ def given_the_alpha_engine(
 
 @given("an agent", target_fixture="agent_id")
 def given_an_agent(
-    container: Container,
     sync_await: SyncAwaiter,
+    container: Container,
 ) -> AgentId:
     store = container[AgentStore]
     agent = sync_await(store.create_agent())
@@ -47,8 +47,8 @@ def given_an_agent(
 
 @given("an empty session", target_fixture="session_id")
 def given_an_empty_session(
-    container: Container,
     sync_await: SyncAwaiter,
+    container: Container,
 ) -> SessionId:
     store = container[SessionStore]
     session = sync_await(store.create_session("my_client"))
