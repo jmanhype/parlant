@@ -77,6 +77,42 @@ def given_a_session_with_a_single_user_message(
     return session.id
 
 
+@given("a session with a few messages", target_fixture="session_id")
+def given_a_session_with_a_few_messages(
+    sync_await: SyncAwaiter,
+    container: Container,
+) -> SessionId:
+    store = container[SessionStore]
+    session = sync_await(store.create_session(client_id="my_client"))
+
+    messages = [
+        {
+            "source": "client",
+            "message": "hey there",
+        },
+        {
+            "source": "server",
+            "message": "Hi, how can I help you today?",
+        },
+        {
+            "source": "client",
+            "message": "What was the first name of the famous Einstein?",
+        },
+    ]
+
+    for m in messages:
+        sync_await(
+            store.create_event(
+                session_id=session.id,
+                source=m["source"] == "server" and "server" or "client",
+                type=Event.MESSAGE_TYPE,
+                data={"message": m["message"]},
+            )
+        )
+
+    return session.id
+
+
 @when("processing is triggered", target_fixture="generated_events")
 def when_processing_is_triggered(
     sync_await: SyncAwaiter,
