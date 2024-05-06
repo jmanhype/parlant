@@ -13,7 +13,7 @@ class Context:
 
 
 @dataclass(frozen=True)
-class GeneratedEvent:
+class ProducedEvent:
     source: EventSource
     type: str
     data: dict[str, Any]
@@ -24,4 +24,4 @@ class Engine(ABC):
     async def process(
         self,
         context: Context,
-    ) -> Iterable[GeneratedEvent]: ...
+    ) -> Iterable[ProducedEvent]: ...

@@ -4,7 +4,7 @@ from textwrap import dedent
 from typing import Any, Iterable
 from openai import AsyncClient
 
-from emcie.server.engines.common import Context, Engine, GeneratedEvent
+from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.sessions import Event, SessionStore
 
 
@@ -17,14 +17,14 @@ class EventProducer:
     async def produce_events(
         self,
         input_events: Iterable[Event],
-    ) -> Iterable[GeneratedEvent]:
+    ) -> Iterable[ProducedEvent]:
         json_events = self._events_to_json(input_events)
         prompt = self._format_prompt(events=json_events)
         llm_response = await self._generate_llm_response(prompt)
         output_event = json.loads(llm_response)
 
         return [
-            GeneratedEvent(
+            ProducedEvent(
                 source="server",
                 type=Event.MESSAGE_TYPE,
                 data=output_event["data"],
@@ -84,7 +84,7 @@ class AlphaEngine(Engine):
         self.session_store = session_store
         self.event_producer = EventProducer()
 
-    async def process(self, context: Context) -> Iterable[GeneratedEvent]:
+    async def process(self, context: Context) -> Iterable[ProducedEvent]:
         events = await self.session_store.list_events(
             session_id=context.session_id,
         )

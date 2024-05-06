@@ -6,7 +6,7 @@ from pytest_bdd import scenarios, given, when, then
 
 from emcie.server.agents import AgentId, AgentStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.common import Context, GeneratedEvent
+from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.sessions import Event, SessionId, SessionStore
 
 
@@ -83,7 +83,7 @@ def when_processing_is_triggered(
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
-) -> Iterable[GeneratedEvent]:
+) -> Iterable[ProducedEvent]:
     events = sync_await(
         engine.process(
             Context(
@@ -98,13 +98,13 @@ def when_processing_is_triggered(
 
 @then("no events are generated")
 def then_no_events_are_generated(
-    generated_events: List[GeneratedEvent],
+    generated_events: List[ProducedEvent],
 ) -> None:
     assert len(generated_events) == 0
 
 
 @then("one message event is generated")
 def then_a_single_message_event_is_generated(
-    generated_events: List[GeneratedEvent],
+    generated_events: List[ProducedEvent],
 ) -> None:
     assert len(generated_events) == 1
