@@ -10,7 +10,7 @@ from emcie.server.engines.common import Context
 from emcie.server.sessions import Event, SessionId, SessionStore
 
 
-scenarios("engines/alpha/vanilla_configuration.feature")
+scenarios("engines/alpha/vanilla_agent.feature")
 
 T = TypeVar("T")
 
@@ -51,7 +51,17 @@ def given_an_empty_session(
     container: Container,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session("my_client"))
+    session = sync_await(store.create_session(client_id="my_client"))
+    return session.id
+
+
+@given("a session with a single user message", target_fixture="session_id")
+def given_a_session_with_a_single_user_message(
+    sync_await: SyncAwaiter,
+    container: Container,
+) -> SessionId:
+    store = container[SessionStore]
+    session = sync_await(store.create_session(client_id="my_client"))
     return session.id
 
 
@@ -79,3 +89,10 @@ def then_no_events_are_generated(
     generated_events: List[Event],
 ) -> None:
     assert len(generated_events) == 0
+
+
+@then("one message event is generated")
+def then_a_single_message_event_is_generated(
+    generated_events: List[Event],
+) -> None:
+    assert len(generated_events) == 1
