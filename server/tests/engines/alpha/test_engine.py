@@ -26,8 +26,8 @@ def given_the_alpha_engine(
     )
 
 
-@given("a vanilla agent", target_fixture="agent_id")
-def given_a_vanilla_agent(
+@given("an agent", target_fixture="agent_id")
+def given_an_agent(
     sync_await: SyncAwaiter,
     container: Container,
 ) -> AgentId:
@@ -36,24 +36,19 @@ def given_a_vanilla_agent(
     return agent.id
 
 
-@given(
-    parsers.parse("an agent configured to {do_something}"),
-    target_fixture="agent_id",
-)
+@given(parsers.parse("a guide to {do_something}"))
 def given_an_agent_configured_to(
     do_something: str,
     sync_await: SyncAwaiter,
     container: Container,
-) -> AgentId:
-    agent_store = container[AgentStore]
+    agent_id: AgentId,
+) -> None:
     guide_store = container[GuideStore]
-
-    agent = sync_await(agent_store.create_agent())
 
     guides: dict[str, Callable[[], Guide]] = {
         "greet with 'Howdy'": lambda: sync_await(
             guide_store.create_guide(
-                guide_set=agent.id,
+                guide_set=agent_id,
                 predicate="When greeting the user",
                 content="Use the word 'Howdy'",
             )
@@ -61,8 +56,6 @@ def given_an_agent_configured_to(
     }
 
     guides[do_something]()
-
-    return agent.id
 
 
 @given("an empty session", target_fixture="session_id")
