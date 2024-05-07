@@ -42,20 +42,27 @@ def given_an_agent_configured_to(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: AgentId,
-) -> None:
+) -> Guide:
     guide_store = container[GuideStore]
 
     guides: dict[str, Callable[[], Guide]] = {
         "greet with 'Howdy'": lambda: sync_await(
             guide_store.create_guide(
                 guide_set=agent_id,
-                predicate="When greeting the user",
+                predicate="It's time to greet the user",
                 content="Use the word 'Howdy'",
+            )
+        ),
+        "offer thirsty users a Pepsi": lambda: sync_await(
+            guide_store.create_guide(
+                guide_set=agent_id,
+                predicate="The user is thirsty",
+                content="Offer the user a Pepsi",
             )
         ),
     }
 
-    guides[do_something]()
+    return guides[do_something]()
 
 
 @given("an empty session", target_fixture="session_id")
@@ -82,6 +89,26 @@ def given_a_session_with_a_single_user_message(
             source="client",
             type=Event.MESSAGE_TYPE,
             data={"message": "Hey there"},
+        )
+    )
+
+    return session.id
+
+
+@given("a session with a thirsty user", target_fixture="session_id")
+def given_a_session_with_a_thirsty_user(
+    sync_await: SyncAwaiter,
+    container: Container,
+) -> SessionId:
+    store = container[SessionStore]
+    session = sync_await(store.create_session(client_id="my_client"))
+
+    sync_await(
+        store.create_event(
+            session_id=session.id,
+            source="client",
+            type=Event.MESSAGE_TYPE,
+            data={"message": "I'm thirsty"},
         )
     )
 
