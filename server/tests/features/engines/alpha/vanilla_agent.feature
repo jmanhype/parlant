@@ -1,20 +1,21 @@
-    Scenario: No events are generated for an empty session
+    Scenario: A single message is produced for an empty session
         Given the alpha engine
         And a vanilla agent
         And an empty session
         When processing is triggered
-        Then no events are generated
+        # the "How can I assist?" greeting...
+        Then a single message event is produced
 
-    Scenario: A single message event is generated for a session with a user message
+    Scenario: A single message event is produced for a session with a user message
         Given the alpha engine
         And a vanilla agent
         And a session with a single user message
         When processing is triggered
-        Then one message event is generated
+        Then a single message event is produced
 
-    Scenario: A single message event is generated for a session with a few messages
+    Scenario: A single message event is produced for a session with a few messages
         Given the alpha engine
         And a vanilla agent
         And a session with a few messages
         When processing is triggered
-        Then one message event is generated
+        Then a single message event is produced

@@ -1,31 +1,19 @@
-import asyncio
-from typing import Any, Awaitable, Generator, Iterable, List, TypeVar
+from typing import Callable, List
 from lagom import Container
-from pytest import fixture
-from pytest_bdd import scenarios, given, when, then
+from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.agents import AgentId, AgentStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.common import Context, ProducedEvent
+from emcie.server.guides import Guide, GuideStore
 from emcie.server.sessions import Event, SessionId, SessionStore
 
+from tests.test_utilities import SyncAwaiter, nlp_test
 
-scenarios("engines/alpha/vanilla_agent.feature")
-
-T = TypeVar("T")
-
-
-class SyncAwaiter:
-    def __init__(self, event_loop: asyncio.AbstractEventLoop) -> None:
-        self.event_loop = event_loop
-
-    def __call__(self, awaitable: Generator[Any, None, T] | Awaitable[T]) -> T:
-        return self.event_loop.run_until_complete(awaitable)
-
-
-@fixture
-async def sync_await() -> SyncAwaiter:
-    return SyncAwaiter(asyncio.get_event_loop())
+scenarios(
+    "engines/alpha/vanilla_agent.feature",
+    "engines/alpha/message_agent_with_rules.feature",
+)
 
 
 @given("the alpha engine", target_fixture="engine")
@@ -34,16 +22,46 @@ def given_the_alpha_engine(
 ) -> AlphaEngine:
     return AlphaEngine(
         session_store=container[SessionStore],
+        guide_store=container[GuideStore],
     )
 
 
 @given("a vanilla agent", target_fixture="agent_id")
-def given_an_agent(
+def given_a_vanilla_agent(
     sync_await: SyncAwaiter,
     container: Container,
 ) -> AgentId:
     store = container[AgentStore]
     agent = sync_await(store.create_agent())
+    return agent.id
+
+
+@given(
+    parsers.parse("an agent configured to {do_something}"),
+    target_fixture="agent_id",
+)
+def given_an_agent_configured_to(
+    do_something: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+) -> AgentId:
+    agent_store = container[AgentStore]
+    guide_store = container[GuideStore]
+
+    agent = sync_await(agent_store.create_agent())
+
+    guides: dict[str, Callable[[], Guide]] = {
+        "greet with 'Howdy'": lambda: sync_await(
+            guide_store.create_guide(
+                guide_set=agent.id,
+                predicate="When greeting the user",
+                content="Use the word 'Howdy'",
+            )
+        ),
+    }
+
+    guides[do_something]()
+
     return agent.id
 
 
@@ -113,13 +131,13 @@ def given_a_session_with_a_few_messages(
     return session.id
 
 
-@when("processing is triggered", target_fixture="generated_events")
+@when("processing is triggered", target_fixture="produced_events")
 def when_processing_is_triggered(
     sync_await: SyncAwaiter,
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
-) -> Iterable[ProducedEvent]:
+) -> List[ProducedEvent]:
     events = sync_await(
         engine.process(
             Context(
@@ -129,18 +147,31 @@ def when_processing_is_triggered(
         )
     )
 
-    return events
+    return list(events)
 
 
-@then("no events are generated")
-def then_no_events_are_generated(
-    generated_events: List[ProducedEvent],
+@then("no events are produced")
+def then_no_events_are_produced(
+    produced_events: List[ProducedEvent],
 ) -> None:
-    assert len(generated_events) == 0
+    assert len(produced_events) == 0
 
 
-@then("one message event is generated")
-def then_a_single_message_event_is_generated(
-    generated_events: List[ProducedEvent],
+@then("a single message event is produced")
+def then_a_single_message_event_is_produced(
+    produced_events: List[ProducedEvent],
 ) -> None:
-    assert len(generated_events) == 1
+    assert len(produced_events) == 1
+
+
+@then(parsers.parse("the message contains {something}"))
+def then_the_message_contains(
+    produced_events: List[ProducedEvent],
+    something: str,
+) -> None:
+    message = produced_events[0].data["message"]
+
+    assert nlp_test(
+        context=message,
+        predicate=f"the text contains {something}",
+    )
