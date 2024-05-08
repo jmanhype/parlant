@@ -2,7 +2,9 @@ import json
 import os
 from textwrap import dedent
 from typing import Any, Iterable
+
 from openai import AsyncClient
+from pydantic import BaseModel, Field
 
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.guides import Guide, GuideStore
@@ -10,7 +12,10 @@ from emcie.server.sessions import Event, SessionStore
 
 
 def _make_llm_client() -> AsyncClient:
-    return AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
+    return AsyncClient(
+        api_key=os.environ["TOGETHER_API_KEY"],
+        base_url="https://api.together.xyz/v1",
+    )
 
 
 def _events_to_json(events: Iterable[Event]) -> str:
@@ -92,10 +97,20 @@ class EventProducer:
         )
 
     async def _generate_llm_response(self, prompt: str) -> str:
+        class OutputEvent(BaseModel):
+            type: str = Field(
+                description="The event type, which is always 'message'",
+                default="message",
+            )
+            data: str = Field(description="Message content")
+
         response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "system", "content": prompt}],
-            model="gpt-4-0125-preview",
-            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}],
+            model="mistralai/Mistral-7B-Instruct-v0.1",
+            response_format={
+                "type": "json_object",
+                "schema": OutputEvent.model_json_schema(),
+            },  # type: ignore
         )
 
         return response.choices[0].message.content or ""
@@ -111,6 +126,10 @@ class GuideFilter:
         interaction_history: Iterable[Event],
     ) -> Iterable[Guide]:
         guide_list = list(guides)
+
+        if not guide_list:
+            return []
+
         prompt = self._format_prompt(interaction_history, guide_list)
         llm_response = await self._generate_llm_response(prompt)
         predicate_checks = json.loads(llm_response)["checks"]
@@ -118,6 +137,7 @@ class GuideFilter:
             int(p["predicate_number"]) - 1 for p in predicate_checks if p["applies"]
         ]
         relevant_guides = [guide_list[i] for i in relevant_predicate_indices]
+
         return relevant_guides
 
     def _format_prompt(
@@ -165,11 +185,28 @@ class GuideFilter:
         )
 
     async def _generate_llm_response(self, prompt: str) -> str:
+        class PredicateCheck(BaseModel):
+            predicate_number: int = Field(description="the serial number of the predicate")
+            applies: bool = Field(
+                description="Whether the predicate applies in the latest state of the interaction"
+            )
+            rationale: str = Field(
+                description="A few words that explain why it does or doesn't apply"
+            )
+
+        class PredicateChecks(BaseModel):
+            checks: list[PredicateCheck] = Field(
+                description="The list of checks, one for each of the provided predicates"
+            )
+
         response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "system", "content": prompt}],
-            model="gpt-4-0125-preview",
+            messages=[{"role": "user", "content": prompt}],
+            model="mistralai/Mistral-7B-Instruct-v0.1",
             temperature=0.0,
-            response_format={"type": "json_object"},
+            response_format={
+                "type": "json_object",
+                "schema": PredicateChecks.model_json_schema(),
+            },  # type: ignore
         )
 
         return response.choices[0].message.content or ""
