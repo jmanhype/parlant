@@ -25,9 +25,11 @@ class GuideFilter:
         prompt = self._format_prompt(interaction_history, guide_list)
         llm_response = await self._generate_llm_response(prompt)
         predicate_checks = json.loads(llm_response)["checks"]
+
         relevant_predicate_indices = [
-            int(p["predicate_number"]) - 1 for p in predicate_checks if p["applies"]
+            int(p["predicate_number"]) - 1 for p in predicate_checks if p["applies_score"] > 6
         ]
+
         relevant_guides = [guide_list[i] for i in relevant_predicate_indices]
 
         return relevant_guides
@@ -63,13 +65,13 @@ class GuideFilter:
                 {{ "checks": [
                     {{
                         "predicate_number": "1",
-                        "applies": <BOOLEAN>,
+                        "applies_score": <INTEGER FROM 1 TO 10>,
                         "rationale": <A FEW WORDS THAT EXPLAIN WHY IT DOES OR DOESN'T APPLY>",
                     }},
                     ...,
                     {{
                         "predicate_number": "N",
-                        "applies": <BOOLEAN>,
+                        "applies_score": <INTEGER FROM 1 TO 10>
                         "rationale": <A FEW WORDS THAT EXPLAIN WHY IT DOES OR DOESN'T APPLY>",
                     }}
                 ]}}
@@ -79,8 +81,10 @@ class GuideFilter:
     async def _generate_llm_response(self, prompt: str) -> str:
         class PredicateCheck(BaseModel):
             predicate_number: int = Field(description="the serial number of the predicate")
-            applies: bool = Field(
-                description="Whether the predicate applies in the latest state of the interaction"
+            applies_score: int = Field(
+                description="A score from 1 to 10 indicating to what extent the predicate"
+                "applies to the LATEST STATE of the interaction, "
+                "where 1 means 'does not apply' and 10 means 'absolutely applies'"
             )
             rationale: str = Field(
                 description="A few words that explain why it does or doesn't apply"
