@@ -10,7 +10,7 @@ from emcie.server.sessions import Event
 
 class GuideFilter:
     def __init__(self) -> None:
-        self._llm_client = make_llm_client()
+        self._llm_client = make_llm_client("together")
 
     async def find_relevant_guides(
         self,

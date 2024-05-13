@@ -13,7 +13,7 @@ class EventProducer:
     def __init__(
         self,
     ) -> None:
-        self._llm_client = make_llm_client()
+        self._llm_client = make_llm_client("together")
 
     async def produce_events(
         self,
