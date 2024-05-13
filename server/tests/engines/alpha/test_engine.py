@@ -5,7 +5,7 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.agents import AgentId, AgentStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.common import Context, ProducedEvent
-from emcie.server.guides import Guide, GuideStore
+from emcie.server.guidelines import Guideline, GuidelineStore
 from emcie.server.sessions import Event, SessionId, SessionStore
 
 from tests.test_utilities import SyncAwaiter, nlp_test
@@ -22,7 +22,7 @@ def given_the_alpha_engine(
 ) -> AlphaEngine:
     return AlphaEngine(
         session_store=container[SessionStore],
-        guide_store=container[GuideStore],
+        guideline_store=container[GuidelineStore],
     )
 
 
@@ -36,33 +36,33 @@ def given_an_agent(
     return agent.id
 
 
-@given(parsers.parse("a guide to {do_something}"))
-def given_an_agent_configured_to(
+@given(parsers.parse("a guideline to {do_something}"))
+def given_a_guideline_to(
     do_something: str,
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: AgentId,
-) -> Guide:
-    guide_store = container[GuideStore]
+) -> Guideline:
+    guideline_store = container[GuidelineStore]
 
-    guides: dict[str, Callable[[], Guide]] = {
+    guidelines: dict[str, Callable[[], Guideline]] = {
         "greet with 'Howdy'": lambda: sync_await(
-            guide_store.create_guide(
-                guide_set=agent_id,
+            guideline_store.create_guideline(
+                guideline_set=agent_id,
                 predicate="It's time to greet the user",
                 content="Use the word 'Howdy'",
             )
         ),
         "offer thirsty users a Pepsi": lambda: sync_await(
-            guide_store.create_guide(
-                guide_set=agent_id,
+            guideline_store.create_guideline(
+                guideline_set=agent_id,
                 predicate="The user is thirsty",
                 content="Offer the user a Pepsi",
             )
         ),
     }
 
-    return guides[do_something]()
+    return guidelines[do_something]()
 
 
 @given("an empty session", target_fixture="session_id")

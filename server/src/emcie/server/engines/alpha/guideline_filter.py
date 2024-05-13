@@ -4,19 +4,19 @@ from typing import Iterable
 from pydantic import BaseModel, Field
 
 from emcie.server.engines.alpha.utils import events_to_json, make_llm_client
-from emcie.server.guides import Guide
+from emcie.server.guidelines import Guideline
 from emcie.server.sessions import Event
 
 
-class GuideFilter:
+class GuidelineFilter:
     def __init__(self) -> None:
         self._llm_client = make_llm_client("together")
 
     async def find_relevant_guides(
         self,
-        guides: Iterable[Guide],
+        guides: Iterable[Guideline],
         interaction_history: Iterable[Event],
-    ) -> Iterable[Guide]:
+    ) -> Iterable[Guideline]:
         guide_list = list(guides)
 
         if not guide_list:
@@ -37,7 +37,7 @@ class GuideFilter:
     def _format_prompt(
         self,
         interaction_history: Iterable[Event],
-        guides: list[Guide],
+        guides: list[Guideline],
     ) -> str:
         json_events = events_to_json(interaction_history)
         predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guides, start=1))

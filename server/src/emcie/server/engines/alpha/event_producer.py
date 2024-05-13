@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from emcie.server.engines.alpha.utils import events_to_json, make_llm_client
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.guides import Guide
+from emcie.server.guidelines import Guideline
 from emcie.server.sessions import Event
 
 
@@ -18,7 +18,7 @@ class EventProducer:
     async def produce_events(
         self,
         interaction_history: Iterable[Event],
-        guides: Iterable[Guide],
+        guides: Iterable[Guideline],
     ) -> Iterable[ProducedEvent]:
         prompt = self._format_prompt(
             interaction_history=interaction_history,
@@ -39,7 +39,7 @@ class EventProducer:
     def _format_prompt(
         self,
         interaction_history: Iterable[Event],
-        guides: Iterable[Guide],
+        guides: Iterable[Guideline],
     ) -> str:
         json_events = events_to_json(interaction_history)
         instructions = "\n".join(

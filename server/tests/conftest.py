@@ -7,7 +7,7 @@ from pytest import fixture, Config
 
 from emcie.server import main
 from emcie.server.agents import AgentStore
-from emcie.server.guides import GuideStore
+from emcie.server.guidelines import GuidelineStore
 from emcie.server.models import ModelRegistry
 from emcie.server.sessions import SessionStore
 from emcie.server.threads import ThreadStore
@@ -32,7 +32,7 @@ def container() -> Container:
     container[AgentStore] = AgentStore()
     container[ThreadStore] = ThreadStore()
     container[SessionStore] = SessionStore()
-    container[GuideStore] = GuideStore()
+    container[GuidelineStore] = GuidelineStore()
     container[ModelRegistry] = ModelRegistry()
 
     return container
