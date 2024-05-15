@@ -129,9 +129,7 @@ Produce a JSON object of the following format:
             messages=[{"role": "user", "content": prompt}],
             model="gpt-3.5-turbo",
             temperature=0.0,
-            response_format={
-                "type": "json_object",
-            },  # type: ignore
+            response_format={"type": "json_object"},
         )
 
         return response.choices[0].message.content or ""
