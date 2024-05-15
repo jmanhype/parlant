@@ -24,16 +24,16 @@ class AlphaEngine(Engine):
             session_id=context.session_id,
         )
 
-        all_possible_guides = await self.guideline_store.list_guidelines(
+        all_possible_guidelines = await self.guideline_store.list_guidelines(
             guideline_set=context.agent_id,
         )
 
-        relevant_guides = await self.guide_filter.find_relevant_guides(
-            guides=all_possible_guides,
+        relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
+            guidelines=all_possible_guidelines,
             interaction_history=events,
         )
 
         return await self.event_producer.produce_events(
             interaction_history=events,
-            guides=relevant_guides,
+            guidelines=relevant_guidelines,
         )
