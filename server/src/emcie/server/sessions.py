@@ -14,6 +14,8 @@ EventSource = Literal["client", "server"]
 
 @dataclass(frozen=True)
 class Event:
+    MESSAGE_TYPE = "<message>"
+
     id: EventId
     source: EventSource
     type: str
