@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, NewType, Optional
 
-from emcie.server import common
+from emcie.server.core import common
 
 GuidelineId = NewType("GuidelineId", str)
 

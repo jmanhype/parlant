@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import List
 
-from emcie.server.threads import (
+from emcie.server.core.threads import (
     MessageId,
     MessageRole,
     ThreadId,

@@ -4,8 +4,8 @@ from loguru import logger
 
 from emcie.server.engines.alpha.utils import events_to_json, make_llm_client
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.guidelines import Guideline
-from emcie.server.sessions import Event
+from emcie.server.core.guidelines import Guideline
+from emcie.server.core.sessions import Event
 
 
 class EventProducer:

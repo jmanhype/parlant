@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from emcie.server.agents import AgentId
-from emcie.server.sessions import EventSource, SessionId
+from emcie.server.core.agents import AgentId
+from emcie.server.core.sessions import EventSource, SessionId
 
 
 @dataclass(frozen=True)

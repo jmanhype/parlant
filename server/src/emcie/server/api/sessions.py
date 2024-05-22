@@ -3,7 +3,7 @@ from fastapi import APIRouter, Response, status
 from pydantic import BaseModel
 from datetime import datetime
 
-from emcie.server.sessions import EventId, EventSource, SessionId, SessionStore
+from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionStore
 
 
 class CreateSessionRequest(BaseModel):

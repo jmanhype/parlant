@@ -6,7 +6,7 @@ from typing import Any, Iterable, Literal
 from loguru import logger
 from openai import AsyncClient
 
-from emcie.server.sessions import Event
+from emcie.server.core.sessions import Event
 
 
 def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:

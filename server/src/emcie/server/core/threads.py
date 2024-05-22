@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, Literal, NewType, Optional
 from datetime import datetime, timezone
 
-from emcie.server import common
+from emcie.server.core import common
 
 
 MessageId = NewType("MessageId", str)

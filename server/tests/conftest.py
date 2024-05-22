@@ -6,11 +6,11 @@ from lagom import Container
 from pytest import fixture, Config
 
 from emcie.server import main
-from emcie.server.agents import AgentStore
-from emcie.server.guidelines import GuidelineStore
-from emcie.server.models import ModelRegistry
-from emcie.server.sessions import SessionStore
-from emcie.server.threads import ThreadStore
+from emcie.server.core.agents import AgentStore
+from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.models import ModelRegistry
+from emcie.server.core.sessions import SessionStore
+from emcie.server.core.threads import ThreadStore
 
 from .test_utilities import SyncAwaiter
 

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Dict, Iterable, NewType
 
-from emcie.server.threads import Message
+from emcie.server.core.threads import Message
 
 
 ModelId = NewType("ModelId", str)

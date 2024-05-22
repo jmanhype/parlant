@@ -3,8 +3,8 @@ from typing import Iterable
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
 from emcie.server.engines.common import Context, Engine, ProducedEvent
-from emcie.server.guidelines import GuidelineStore
-from emcie.server.sessions import SessionStore
+from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.sessions import SessionStore
 
 
 class AlphaEngine(Engine):

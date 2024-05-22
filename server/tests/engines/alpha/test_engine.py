@@ -2,11 +2,11 @@ from typing import Callable, List
 from lagom import Container
 from pytest_bdd import scenarios, given, when, then, parsers
 
-from emcie.server.agents import AgentId, AgentStore
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.common import Context, ProducedEvent
-from emcie.server.guidelines import Guideline, GuidelineStore
-from emcie.server.sessions import Event, SessionId, SessionStore
+from emcie.server.core.guidelines import Guideline, GuidelineStore
+from emcie.server.core.sessions import Event, SessionId, SessionStore
 
 from tests.test_utilities import SyncAwaiter, nlp_test
 

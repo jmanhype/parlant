@@ -4,11 +4,11 @@ from lagom import Container
 from emcie.server.api import agents
 from emcie.server.api import sessions
 from emcie.server.api import threads
-from emcie.server.agents import AgentStore
-from emcie.server.models import ModelId, ModelRegistry
+from emcie.server.core.agents import AgentStore
+from emcie.server.core.models import ModelId, ModelRegistry
 from emcie.server.providers.openai import GPT
-from emcie.server.sessions import SessionStore
-from emcie.server.threads import ThreadStore
+from emcie.server.core.sessions import SessionStore
+from emcie.server.core.threads import ThreadStore
 
 
 async def create_app(container: Container) -> FastAPI:

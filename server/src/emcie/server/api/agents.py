@@ -4,9 +4,9 @@ from typing import List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from emcie.server.agents import AgentId, AgentStore
-from emcie.server.models import ModelId, ModelRegistry
-from emcie.server.threads import MessageId, ThreadId, ThreadStore
+from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.models import ModelId, ModelRegistry
+from emcie.server.core.threads import MessageId, ThreadId, ThreadStore
 
 
 class AgentDTO(BaseModel):

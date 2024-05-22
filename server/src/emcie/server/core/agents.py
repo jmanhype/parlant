@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 import os
 from typing import Dict, Iterable, NewType, Optional
 
-from emcie.server import common
-from emcie.server.models import ModelId
+from emcie.server.core import common
+from emcie.server.core.models import ModelId
 
 AgentId = NewType("AgentId", str)
 

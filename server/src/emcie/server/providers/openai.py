@@ -3,8 +3,8 @@ from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 import os
 
-from emcie.server.models import TextGenerationModel
-from emcie.server.threads import Message
+from emcie.server.core.models import TextGenerationModel
+from emcie.server.core.threads import Message
 
 
 class GPT(TextGenerationModel):

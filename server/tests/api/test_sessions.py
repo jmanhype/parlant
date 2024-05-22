@@ -5,7 +5,7 @@ from pytest import fixture, mark
 from datetime import datetime, timezone
 from itertools import count
 
-from emcie.server.sessions import EventSource, SessionId
+from emcie.server.core.sessions import EventSource, SessionId
 
 
 @fixture

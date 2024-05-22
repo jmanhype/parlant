@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Literal, NewType, Optional
 
-from emcie.server import common
+from emcie.server.core import common
 
 
 SessionId = NewType("SessionId", str)
