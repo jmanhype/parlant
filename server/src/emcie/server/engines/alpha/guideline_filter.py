@@ -45,7 +45,7 @@ class GuidelineFilter:
         batch_size: int,
     ) -> list[list[Guideline]]:
         batches = []
-        batch_count = int(len(guidelines) / batch_size) + 1
+        batch_count = len(guidelines) // batch_size + 1
 
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
@@ -79,7 +79,7 @@ class GuidelineFilter:
                 "score": relevant_checks_by_index[i]["applies_score"],
                 "rationale": relevant_checks_by_index[i]["rationale"],
             }
-            for i in relevant_checks_by_index.keys()
+            for i in relevant_checks_by_index
         ]
 
     def _format_prompt(
