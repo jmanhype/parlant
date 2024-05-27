@@ -20,7 +20,7 @@ class GuidelineStore:
     def __init__(
         self,
     ) -> None:
-        self._guideline_sets: dict[str, dict[GuidelineId, Guideline]] = defaultdict(lambda: dict())
+        self._guideline_sets: dict[str, dict[GuidelineId, Guideline]] = defaultdict(dict)
 
     async def create_guideline(
         self,

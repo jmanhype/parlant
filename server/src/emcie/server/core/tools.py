@@ -23,7 +23,7 @@ class ToolStore:
     def __init__(
         self,
     ) -> None:
-        self._tool_sets: dict[str, dict[ToolId, Tool]] = defaultdict(lambda: dict())
+        self._tool_sets: dict[str, dict[ToolId, Tool]] = defaultdict(dict)
 
     async def create_tool(
         self,
