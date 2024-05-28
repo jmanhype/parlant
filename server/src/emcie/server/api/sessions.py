@@ -1,49 +1,49 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Response, status
-from pydantic import BaseModel
 from datetime import datetime
 
+from emcie.server.base import EmcieBase
 from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionStore
 
 
-class CreateSessionRequest(BaseModel):
+class CreateSessionRequest(EmcieBase):
     client_id: str
 
 
-class CreateSessionResponse(BaseModel):
+class CreateSessionResponse(EmcieBase):
     session_id: SessionId
 
 
-class CreateEventRequest(BaseModel):
+class CreateEventRequest(EmcieBase):
     source: EventSource
     type: str
     creation_utc: datetime
     data: Dict[str, Any]
 
 
-class CreateEventResponse(BaseModel):
+class CreateEventResponse(EmcieBase):
     event_id: EventId
 
 
-class ConsumptionOffsetsDTO(BaseModel):
+class ConsumptionOffsetsDTO(EmcieBase):
     server: int
     client: int
 
 
-class ReadSessionResponse(BaseModel):
+class ReadSessionResponse(EmcieBase):
     consumption_offsets: ConsumptionOffsetsDTO
 
 
-class ConsumptionOffsetsPatchDTO(BaseModel):
+class ConsumptionOffsetsPatchDTO(EmcieBase):
     server: Optional[int] = None
     client: Optional[int] = None
 
 
-class PatchSessionRequest(BaseModel):
+class PatchSessionRequest(EmcieBase):
     consumption_offsets: Optional[ConsumptionOffsetsPatchDTO] = None
 
 
-class EventDTO(BaseModel):
+class EventDTO(EmcieBase):
     id: EventId
     source: EventSource
     type: str
@@ -52,7 +52,7 @@ class EventDTO(BaseModel):
     data: Dict[str, Any]
 
 
-class ListEventsResponse(BaseModel):
+class ListEventsResponse(EmcieBase):
     events: List[EventDTO]
 
 
