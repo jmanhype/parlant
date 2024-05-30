@@ -127,7 +127,7 @@ Produce a JSON object of the following format:
     async def _generate_llm_response(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             temperature=0.0,
             response_format={"type": "json_object"},
         )

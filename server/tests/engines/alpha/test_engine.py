@@ -3,7 +3,9 @@ from lagom import Container
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.engines.alpha.tools_guidelines import ToolsGuidelineStore
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
@@ -23,6 +25,8 @@ def given_the_alpha_engine(
     return AlphaEngine(
         session_store=container[SessionStore],
         guideline_store=container[GuidelineStore],
+        tool_store=container[ToolStore],
+        tools_guideline_store=container[ToolsGuidelineStore],
     )
 
 
@@ -423,7 +427,7 @@ def then_no_events_are_produced(
 def then_a_single_message_event_is_produced(
     produced_events: List[ProducedEvent],
 ) -> None:
-    assert len(produced_events) == 1
+    assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
 
 
 @then(parsers.parse("the message contains {something}"))
@@ -431,7 +435,7 @@ def then_the_message_contains(
     produced_events: List[ProducedEvent],
     something: str,
 ) -> None:
-    message = produced_events[0].data["message"]
+    message = next(e for e in produced_events if e.type == Event.MESSAGE_TYPE).data["message"]
 
     assert nlp_test(
         context=message,

@@ -18,7 +18,7 @@ class SyncAwaiter:
         self.event_loop = event_loop
 
     def __call__(self, awaitable: Generator[Any, None, T] | Awaitable[T]) -> T:
-        return self.event_loop.run_until_complete(awaitable)
+        return self.event_loop.run_until_complete(awaitable)  # type: ignore
 
 
 def nlp_test(context: str, predicate: str) -> bool:

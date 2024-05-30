@@ -1,14 +1,53 @@
+from itertools import chain
 import json
 from typing import Iterable
 from loguru import logger
 
-from emcie.server.engines.alpha.utils import events_to_json, make_llm_client
-from emcie.server.engines.common import ProducedEvent
+from emcie.server.core.tools import Tool
+from emcie.server.engines.alpha.tool_calls import ToolCaller
+from emcie.server.engines.alpha.utils import (
+    events_to_json,
+    make_llm_client,
+    produced_tools_events_to_json,
+    tools_guidelines_to_string,
+)
+from emcie.server.engines.common import ProducedEvent, ToolResult
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 
 
 class EventProducer:
+
+    def __init__(self) -> None:
+        self.tools_event_producer = ToolsEventProducer()
+        self.messages_event_producer = MessagesEventProducer()
+
+    async def produce_events(
+        self,
+        interaction_history: Iterable[Event],
+        guidelines: Iterable[Guideline],
+        tools: Iterable[Tool],
+        tools_guidelines: dict[Guideline, Iterable[Tool]],
+    ) -> Iterable[ProducedEvent]:
+
+        tools_produced_events = await self.tools_event_producer.produce_events(
+            interaction_history,
+            guidelines,
+            tools,
+            tools_guidelines,
+        )
+
+        messages_event = await self.messages_event_producer.produce_events(
+            interaction_history,
+            guidelines,
+            tools_produced_events,
+            tools_guidelines,
+        )
+
+        return messages_event
+
+
+class MessagesEventProducer:
     def __init__(
         self,
     ) -> None:
@@ -18,28 +57,39 @@ class EventProducer:
         self,
         interaction_history: Iterable[Event],
         guidelines: Iterable[Guideline],
+        tools_produced_events: Iterable[ProducedEvent],
+        tools_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         prompt = self._format_prompt(
             interaction_history=interaction_history,
             guidelines=guidelines,
+            tools_produced_events=tools_produced_events,
+            tools_guidelines=tools_guidelines,
         )
 
         response_message = await self._generate_response_message(prompt)
 
-        return [
-            ProducedEvent(
-                source="server",
-                type=Event.MESSAGE_TYPE,
-                data={"message": response_message},
-            )
-        ]
+        return chain(
+            tools_produced_events,
+            [
+                ProducedEvent(
+                    source="server",
+                    type=Event.MESSAGE_TYPE,
+                    data={"message": response_message},
+                )
+            ],
+        )
 
     def _format_prompt(
         self,
         interaction_history: Iterable[Event],
         guidelines: Iterable[Guideline],
+        tools_produced_events: Iterable[ProducedEvent],
+        tools_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> str:
-        json_events = events_to_json(interaction_history)
+        interaction_events = events_to_json(interaction_history)
+        functions_events = produced_tools_events_to_json(tools_produced_events)
+        rules_related_to_functions = tools_guidelines_to_string(tools_guidelines)
         rules = "\n".join(
             f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
         )
@@ -47,7 +97,15 @@ class EventProducer:
         return f"""\
 The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
-{json_events}
+{interaction_events}
+###
+
+The following is a list of rules related to functions that may or may not have been called before the prompt: ###
+{rules_related_to_functions}
+###
+
+The following is a list of functions called after the interaction: ###
+{functions_events}
 ###
 
 You must generate your response message to the current
@@ -95,7 +153,7 @@ Produce a valid JSON object in the format according to the following example.
         }},
     ]
 }}
-"""
+"""  # noqa
 
     async def _generate_response_message(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(
@@ -115,3 +173,35 @@ Produce a valid JSON object in the format according to the following example.
             logger.warning(f"PROBLEMATIC RESPONSE: {content}")
 
         return str(final_revision["content"])
+
+
+class ToolsEventProducer:
+    # TODO: consequential feature
+    def __init__(
+        self,
+    ) -> None:
+        self._llm_client = make_llm_client("openai")
+        self.tool_caller = ToolCaller()
+
+    async def produce_events(
+        self,
+        interaction_history: Iterable[Event],
+        guidelines: Iterable[Guideline],
+        tools: Iterable[Tool],
+        tools_guidelines: dict[Guideline, Iterable[Tool]],
+    ) -> Iterable[ProducedEvent]:
+
+        tools_result: list[ToolResult] = await self.tool_caller.list_tools_result(
+            interaction_history,
+            guidelines,
+            tools,
+            tools_guidelines,
+        )
+
+        return [
+            ProducedEvent(
+                source="server",
+                type=Event.TOOL_TYPE,
+                data={"tools_result": tools_result},
+            )
+        ]
