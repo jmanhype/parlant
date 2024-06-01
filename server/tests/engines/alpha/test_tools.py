@@ -1,3 +1,4 @@
+import json
 from typing import Any
 from lagom import Container
 from pytest_bdd import scenarios, given, when, then, parsers
@@ -18,7 +19,8 @@ from tests import tools_utilities
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 scenarios(
-    "engines/alpha/message_agent_with_tools.feature",
+    "engines/alpha/tools/singe_tool_result.feature",
+    "engines/alpha/tools/multiple_tools_one_event.feature",
 )
 
 
