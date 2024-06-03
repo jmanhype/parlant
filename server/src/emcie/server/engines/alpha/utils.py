@@ -6,9 +6,10 @@ from typing import Any, Iterable, Literal
 from loguru import logger
 from openai import AsyncClient
 
-from emcie.server.core.guidelines import Guideline
+from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
+from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociation
 from emcie.server.engines.common import ProducedEvent, ToolResult
 
 
@@ -50,9 +51,10 @@ def event_to_dict(event: Event) -> dict[str, Any]:
     }
 
 
-def produced_tools_events_to_json(produced_events: Iterable[ProducedEvent]) -> str:
-    produced_event_dicts = [produced_tools_event_to_dict(e) for e in produced_events]
-    return json.dumps(produced_event_dicts)
+def produced_tools_events_to_json(
+    produced_events: Iterable[ProducedEvent],
+) -> list[dict[str, Any]]:
+    return [produced_tools_event_to_dict(e) for e in produced_events]
 
 
 def produced_tools_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
@@ -74,21 +76,6 @@ def tool_result_to_dict(
     }
 
 
-def tools_guidelines_to_string(
-    tools_guidelines: dict[Guideline, Iterable[Tool]],
-) -> str:
-    def _list_tools_names(
-        tools: Iterable[Tool],
-    ) -> str:
-        return str([t.name for t in tools])
-
-    return "\n\n".join(
-        f"{i}) When {g.predicate}, then {g.content}\n"
-        f"Functions related: {_list_tools_names(tools_guidelines[g])}"
-        for i, g in enumerate(tools_guidelines, start=1)
-    )
-
-
 def tools_to_json(
     tools: Iterable[Tool],
 ) -> list[dict[str, Any]]:
@@ -106,30 +93,39 @@ def tool_to_dict(
     }
 
 
-def format_rules_prompt(
+async def divide_guidelines_by_tool_association(
     guidelines: Iterable[Guideline],
-) -> str:
-    rules = "\n".join(
-        f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
-    )
-    return (
-        f"""\
-In generating the response, you must adhere to the following rules and their related tools: ###
-{rules}
-###
-"""
-        if rules
-        else ""
-    )
+    associations: dict[GuidelineId, set[GuidelineToolAssociation]],
+) -> tuple[Iterable[Guideline], Iterable[Guideline]]:
+    guidelines_without_tools = []
+    guidelines_with_tools = []
+    for guideline in guidelines:
+        if guideline.id in associations:
+            guidelines_with_tools.append(guideline)
+        else:
+            guidelines_without_tools.append(guideline)
+    return guidelines_without_tools, guidelines_with_tools
 
 
-def format_rules_associated_to_functions_prompt(
-    tools_guidelines: dict[Guideline, Iterable[Tool]],
-) -> str:
-    if tools_guidelines:
-        return f"""\
-            
-            {tools_guidelines_to_string(tools_guidelines)}
-            ###
-            """
-    return ""
+async def list_associated_tools(
+    tools: Iterable[Tool],
+    guideline_id: GuidelineId,
+    associations: dict[GuidelineId, set[GuidelineToolAssociation]],
+) -> Iterable[Tool]:
+    """
+    Get the tools associated with a guideline.
+    """
+    tool_ids_associate_to_guideline = (tg.tool_id for tg in associations[guideline_id])
+
+    return [tool for tool in tools if tool.id in tool_ids_associate_to_guideline]
+
+
+async def map_guidelines_to_associated_tools(
+    tools: Iterable[Tool],
+    guidelines: Iterable[Guideline],
+    associations: dict[GuidelineId, set[GuidelineToolAssociation]],
+) -> dict[Guideline, Iterable[Tool]]:
+    return {
+        guideline: await list_associated_tools(tools, guideline.id, associations)
+        for guideline in guidelines
+    }

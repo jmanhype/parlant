@@ -9,9 +9,8 @@ from emcie.server.engines.alpha.utils import (
     events_to_json,
     make_llm_client,
     produced_tools_events_to_json,
-    tools_guidelines_to_string,
 )
-from emcie.server.engines.common import ProducedEvent, ToolResult
+from emcie.server.engines.common import ProducedEvent
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 
@@ -19,32 +18,31 @@ from emcie.server.core.sessions import Event
 class EventProducer:
 
     def __init__(self) -> None:
-        self.tools_event_producer = ToolsEventProducer()
-        self.messages_event_producer = MessagesEventProducer()
+        self.tool_event_producer = ToolsEventProducer()
+        self.message_event_producer = MessagesEventProducer()
 
     async def produce_events(
         self,
         interaction_history: Iterable[Event],
-        guidelines: Iterable[Guideline],
+        guidelines_without_tools: Iterable[Guideline],
+        guidelines_with_tools: dict[Guideline, Iterable[Tool]],
         tools: Iterable[Tool],
-        tools_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
-
-        tools_produced_events = await self.tools_event_producer.produce_events(
+        tool_events = await self.tool_event_producer.produce_events(
             interaction_history,
-            guidelines,
+            guidelines_without_tools,
+            guidelines_with_tools,
             tools,
-            tools_guidelines,
         )
 
-        messages_event = await self.messages_event_producer.produce_events(
+        message_events = await self.message_event_producer.produce_events(
             interaction_history,
-            guidelines,
-            tools_produced_events,
-            tools_guidelines,
+            guidelines_without_tools,
+            guidelines_with_tools,
+            tool_events,
         )
 
-        return messages_event
+        return chain(tool_events, message_events)
 
 
 class MessagesEventProducer:
@@ -56,42 +54,41 @@ class MessagesEventProducer:
     async def produce_events(
         self,
         interaction_history: Iterable[Event],
-        guidelines: Iterable[Guideline],
-        tools_produced_events: Iterable[ProducedEvent],
-        tools_guidelines: dict[Guideline, Iterable[Tool]],
+        guidelines_without_tools: Iterable[Guideline],
+        guidelines_with_tools: dict[Guideline, Iterable[Tool]],
+        staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
         prompt = self._format_prompt(
             interaction_history=interaction_history,
-            guidelines=guidelines,
-            tools_produced_events=tools_produced_events,
-            tools_guidelines=tools_guidelines,
+            guidelines_without_tools=guidelines_without_tools,
+            staged_events=staged_events,
+            guidelines_with_tools=guidelines_with_tools,
         )
 
         response_message = await self._generate_response_message(prompt)
 
-        return chain(
-            tools_produced_events,
-            [
-                ProducedEvent(
-                    source="server",
-                    type=Event.MESSAGE_TYPE,
-                    data={"message": response_message},
-                )
-            ],
-        )
+        return [
+            ProducedEvent(
+                source="server",
+                type=Event.MESSAGE_TYPE,
+                data={"message": response_message},
+            )
+        ]
 
     def _format_prompt(
         self,
         interaction_history: Iterable[Event],
-        guidelines: Iterable[Guideline],
-        tools_produced_events: Iterable[ProducedEvent],
-        tools_guidelines: dict[Guideline, Iterable[Tool]],
+        guidelines_without_tools: Iterable[Guideline],
+        guidelines_with_tools: dict[Guideline, Iterable[Tool]],
+        staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events = events_to_json(interaction_history)
-        functions_events = produced_tools_events_to_json(tools_produced_events)
-        rules_related_to_functions = tools_guidelines_to_string(tools_guidelines)
+        functions_events = produced_tools_events_to_json(staged_events)
+        all_guidelines = chain(guidelines_without_tools, guidelines_with_tools)
+
         rules = "\n".join(
-            f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
+            f"{i}) When {g.predicate}, then {g.content}"
+            for i, g in enumerate(all_guidelines, start=1)
         )
 
         return f"""\
@@ -100,28 +97,25 @@ interaction between you, an AI assistant, and a user: ###
 {interaction_events}
 ###
 
-The following is a list of rules related to functions that may or may not have been called before the prompt: ###
-{rules_related_to_functions}
-###
-
-The following is a list of functions called after the interaction: ###
-{functions_events}
+In generating the response, you must adhere to the following rules: ###
+{rules}
 ###
 
 You must generate your response message to the current
 (latest) state of the interaction.
 
-In generating the response, you must adhere to the following rules: ###
-{rules}
+For your information, here are some staged events, to assist you with
+generating your response message while following the rules above: ###
+{functions_events}
 ###
 
 Propose revisions to the message content until you are
 absolutely sure that your proposed message adheres to
-each and every one of the provided instructions,
+each and every one of the provided rules,
 with regards to the interaction's latest state.
 Check yourself and criticize the last revision
 every time, until you are sure the message
-follows all of the instructions.
+follows all of the rules.
 
 Produce a valid JSON object in the format according to the following example.
 
@@ -187,21 +181,35 @@ class ToolsEventProducer:
         self,
         interaction_history: Iterable[Event],
         guidelines: Iterable[Guideline],
+        guidelines_tools_associations: dict[Guideline, Iterable[Tool]],
         tools: Iterable[Tool],
-        tools_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
 
-        tools_result: list[ToolResult] = await self.tool_caller.list_tools_result(
-            interaction_history,
-            guidelines,
-            tools,
-            tools_guidelines,
-        )
+        produced_tool_events: list[ProducedEvent] = []
+        if not guidelines_tools_associations:
+            return produced_tool_events
 
-        return [
-            ProducedEvent(
-                source="server",
-                type=Event.TOOL_TYPE,
-                data={"tools_result": tools_result},
+        max_tools_steps_count_down = 2
+
+        while max_tools_steps_count_down:
+            tools_result = await self.tool_caller.list_tools_result(
+                interaction_history,
+                guidelines,
+                tools,
+                guidelines_tools_associations,
+                produced_tool_events,
             )
-        ]
+
+            if not tools_result:
+                break
+
+            produced_tool_events.append(
+                ProducedEvent(
+                    source="server",
+                    type=Event.TOOL_TYPE,
+                    data={"tools_result": tools_result},
+                )
+            )
+            max_tools_steps_count_down -= 1
+
+        return produced_tool_events

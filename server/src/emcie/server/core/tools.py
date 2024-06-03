@@ -31,7 +31,7 @@ class ToolStore:
     ) -> None:
         self._tool_sets: dict[str, dict[ToolId, Tool]] = defaultdict(dict)
 
-    async def is_tool_name_unique(
+    async def _is_tool_name_unique(
         self,
         tool_set: str,
         name: str,
@@ -50,7 +50,7 @@ class ToolStore:
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
     ) -> Tool:
-        if not await self.is_tool_name_unique(tool_set, name):
+        if not await self._is_tool_name_unique(tool_set, name):
             raise ValidationError("Tool name must be unique")
 
         tool = Tool(

@@ -3,7 +3,11 @@ from typing import Iterable
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
-from emcie.server.engines.alpha.tools_guidelines import ToolsGuidelineStore
+from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociationStore
+from emcie.server.engines.alpha.utils import (
+    divide_guidelines_by_tool_association,
+    map_guidelines_to_associated_tools,
+)
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionStore
@@ -15,12 +19,12 @@ class AlphaEngine(Engine):
         session_store: SessionStore,
         guideline_store: GuidelineStore,
         tool_store: ToolStore,
-        tools_guideline_store: ToolsGuidelineStore,
+        guideline_tool_association_store: GuidelineToolAssociationStore,
     ) -> None:
         self.session_store = session_store
         self.guideline_store = guideline_store
         self.tool_store = tool_store
-        self.tools_guideline_store = tools_guideline_store
+        self.guideline_tool_association_store = guideline_tool_association_store
 
         self.event_producer = EventProducer()
         self.guide_filter = GuidelineFilter()
@@ -38,25 +42,31 @@ class AlphaEngine(Engine):
             tool_set=context.agent_id,
         )
 
-        relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
+        relevant_guideline = await self.guide_filter.find_relevant_guidelines(
             guidelines=all_possible_guidelines,
             interaction_history=events,
         )
 
-        relevant_guidelines, relevant_guidelines_associated_to_tools = (
-            await self.tools_guideline_store.split_guidelins_and_tools_guidelines(
-                guidelines=relevant_guidelines,
+        guideline_tool_associations = (
+            await self.guideline_tool_association_store.list_associations()
+        )
+
+        guidelines_without_tools, guidelines_with_tools = (
+            await divide_guidelines_by_tool_association(
+                guidelines=relevant_guideline,
+                associations=guideline_tool_associations,
             )
         )
 
-        relevant_tools_guidelines = await self.tools_guideline_store.get_tools_guidelines(
-            all_possible_tools,
-            relevant_guidelines_associated_to_tools,
+        relevant_guidelines_with_tools = await map_guidelines_to_associated_tools(
+            tools=all_possible_tools,
+            guidelines=guidelines_with_tools,
+            associations=guideline_tool_associations,
         )
 
         return await self.event_producer.produce_events(
             interaction_history=events,
-            guidelines=relevant_guidelines,
+            guidelines_without_tools=guidelines_without_tools,
+            guidelines_with_tools=relevant_guidelines_with_tools,
             tools=all_possible_tools,
-            tools_guidelines=relevant_tools_guidelines,
         )

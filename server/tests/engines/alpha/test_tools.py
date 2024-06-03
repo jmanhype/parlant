@@ -6,9 +6,9 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.tools_guidelines import (
-    ToolGuidelineAssociation,
-    ToolsGuidelineStore,
+from emcie.server.engines.alpha.guideline_tool_association import (
+    GuidelineToolAssociation,
+    GuidelineToolAssociationStore,
 )
 from emcie.server.engines.alpha.utils import produced_tools_event_to_dict
 from emcie.server.engines.common import Context, ProducedEvent
@@ -19,8 +19,8 @@ from tests import tools_utilities
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 scenarios(
-    "engines/alpha/tools/singe_tool_result.feature",
-    "engines/alpha/tools/multiple_tools_one_event.feature",
+    "engines/alpha/tools/single_tool_event.feature",
+    "engines/alpha/tools/multiple_tool_events.feature",
 )
 
 
@@ -32,7 +32,7 @@ def given_the_alpha_engine(
         session_store=container[SessionStore],
         guideline_store=container[GuidelineStore],
         tool_store=container[ToolStore],
-        tools_guideline_store=container[ToolsGuidelineStore],
+        guideline_tool_association_store=container[GuidelineToolAssociationStore],
     )
 
 
@@ -261,21 +261,21 @@ def given_a_tool(
 
 
 @given(parsers.parse("connection between {tool_name} and {guideline_name}"))
-def given_tools_guidelines(
+def given_guideline_tool_association(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: AgentId,
     guidelines: dict[str, dict[str, str]],
     tool_name: str,
     guideline_name: str,
-) -> ToolGuidelineAssociation:
-    tool_guideline_store = container[ToolsGuidelineStore]
+) -> GuidelineToolAssociation:
+    guideline_tool_association_store = container[GuidelineToolAssociationStore]
 
-    async def create_tool_guideline(
+    async def create_guideline_tool_association(
         guideline_id: GuidelineId,
         tool_id: ToolId,
-    ) -> ToolGuidelineAssociation:
-        return await tool_guideline_store.create_tool_guideline(
+    ) -> GuidelineToolAssociation:
+        return await guideline_tool_association_store.create_guideline_tool_association(
             guideline_id=guideline_id,
             tool_id=tool_id,
         )
@@ -304,7 +304,7 @@ def given_tools_guidelines(
     tool = sync_await(get_tool(tool_name))
     guideline = sync_await(get_guideline(**guidelines[guideline_name]))
 
-    return sync_await(create_tool_guideline(guideline.id, tool.id))
+    return sync_await(create_guideline_tool_association(guideline.id, tool.id))
 
 
 @given(parsers.parse("a user message of {user_message}"), target_fixture="session_id")
@@ -354,6 +354,31 @@ def given_a_session_with_server_message(
     return session.id
 
 
+@given(
+    parsers.parse("a tool event with data of {tool_event_data}"),
+    target_fixture="session_id",
+)
+def given_a_session_with_tool_event(
+    sync_await: SyncAwaiter,
+    container: Container,
+    session_id: SessionId,
+    tool_event_data: str,
+) -> SessionId:
+    store = container[SessionStore]
+    session = sync_await(store.read_session(session_id=session_id))
+
+    sync_await(
+        store.create_event(
+            session_id=session.id,
+            source="server",
+            type=Event.TOOL_TYPE,
+            data=json.loads(tool_event_data),
+        )
+    )
+
+    return session.id
+
+
 @when("processing is triggered", target_fixture="produced_events")
 def when_processing_is_triggered(
     sync_await: SyncAwaiter,
@@ -395,46 +420,41 @@ def then_verify_correct_number_of_tool_events_produced(
 def then_a_single_tool_event_is_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
+    assert len(list(filter(lambda e: e.type == Event.TOOL_TYPE, produced_events))) == 1
 
 
 @then(
     parsers.parse(
-        "a drinks-available-in-stock tool event is produced in tool event number {tool_event_number:d}"
+        "a {tool_event_name} tool event is produced in tool event number {tool_event_number:d}"
     )
 )
 def then_drinks_available_in_stock_tool_event_is_produced(
     produced_events: list[ProducedEvent],
+    tool_event_name: str,
     tool_event_number: int,
 ) -> None:
     results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+
+    tools_names = {
+        "drinks-available-in-stock": "get_available_drinks",
+        "toppings-available-in-stock": "get_available_toppings",
+    }
+
+    tool_event_functions = {
+        "drinks-available-in-stock": tools_utilities.get_available_drinks,
+        "toppings-available-in-stock": tools_utilities.get_available_toppings,
+    }
+
     assert {
-        "tool_name": "get_available_drinks",
+        "tool_name": tools_names[tool_event_name],
         "parameters": {},
-        "result": tools_utilities.get_available_drinks(),
+        "result": tool_event_functions[tool_event_name](),
     } in results
 
 
 @then(
     parsers.parse(
-        "a toppings-available-in-stock tool event is produced in tool event number {tool_event_number:d}"
-    )
-)
-def then_toppings_available_in_stocks_tool_event_is_produced(
-    produced_events: list[ProducedEvent],
-    tool_event_number: int,
-) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
-    assert {
-        "tool_name": "get_available_toppings",
-        "parameters": {},
-        "result": tools_utilities.get_available_toppings(),
-    } in results
-
-
-@then(
-    parsers.parse(
-        "a product availability for {product_type} tool event is produced in tool event number {tool_event_number:d}"
+        "a tool event for product availability of {product_type} is generated at tool event number {tool_event_number:d}"
     )
 )
 def then_product_availability_for_toppings_and_drinks_tools_event_is_produced(

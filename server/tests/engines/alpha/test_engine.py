@@ -5,7 +5,7 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.tools_guidelines import ToolsGuidelineStore
+from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociationStore
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
@@ -26,7 +26,7 @@ def given_the_alpha_engine(
         session_store=container[SessionStore],
         guideline_store=container[GuidelineStore],
         tool_store=container[ToolStore],
-        tools_guideline_store=container[ToolsGuidelineStore],
+        guideline_tool_association_store=container[GuidelineToolAssociationStore],
     )
 
 
