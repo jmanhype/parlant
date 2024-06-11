@@ -454,7 +454,8 @@ def then_drinks_available_in_stock_tool_event_is_produced(
 
 @then(
     parsers.parse(
-        "a tool event for product availability of {product_type} is generated at tool event number {tool_event_number:d}"
+        "a tool event for product availability of {product_type} is generated "
+        "at tool event number {tool_event_number:d}"
     )
 )
 def then_product_availability_for_toppings_and_drinks_tools_event_is_produced(
@@ -476,7 +477,8 @@ def then_product_availability_for_toppings_and_drinks_tools_event_is_produced(
 
 @then(
     parsers.parse(
-        "an add tool event is produced with {first_num:d}, {second_num:d} numbers in tool event number {tool_event_number:d}"
+        "an add tool event is produced with {first_num:d}, {second_num:d} numbers in "
+        "tool event number {tool_event_number:d}"
     )
 )
 def then_add_tool_event_is_produced(
@@ -499,7 +501,8 @@ def then_add_tool_event_is_produced(
 
 @then(
     parsers.parse(
-        "a multiply tool event is produced with {first_num:d}, {second_num:d} numbers in tool event number {tool_event_number:d}"
+        "a multiply tool event is produced with {first_num:d}, {second_num:d} "
+        "numbers in tool event number {tool_event_number:d}"
     )
 )
 def then_multiply_tool_event_is_produced(
@@ -522,7 +525,8 @@ def then_multiply_tool_event_is_produced(
 
 @then(
     parsers.parse(
-        "a get balance account tool event is produced for the {name} account in tool event number {tool_event_number:d}"
+        "a get balance account tool event is produced for the {name} account "
+        "in tool event number {tool_event_number:d}"
     )
 )
 def then_get_balance_account_tool_event_is_produced(
@@ -542,7 +546,8 @@ def then_get_balance_account_tool_event_is_produced(
 
 
 @then(
-    "a get account loans tool event is produced for {name} in tool event number {tool_event_number:d}"
+    "a get account loans tool event is produced for {name} "
+    "in tool event number {tool_event_number:d}"
 )
 def then_get_account_loans_tool_event_is_produced(
     produced_events: list[ProducedEvent],
