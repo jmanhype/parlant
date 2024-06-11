@@ -56,7 +56,7 @@ def given_an_empty_session(
     return session.id
 
 
-@given("guidelines", target_fixture="guidelines")
+@given("a diverse selection of guidelines", target_fixture="guidelines")
 def given_guidelines() -> dict[str, dict[str, str]]:
     return {
         "check_drinks_in_stock": {
@@ -115,7 +115,7 @@ def given_guidelines() -> dict[str, dict[str, str]]:
     }
 
 
-@given("tools", target_fixture="tools")
+@given("a diverse selection of tools", target_fixture="tools")
 def given_tools() -> dict[str, Any]:
     return {
         "get_available_drinks": {
@@ -260,7 +260,7 @@ def given_a_tool(
     return sync_await(create_tool(**tools[tool_name]))
 
 
-@given(parsers.parse("connection between {tool_name} and {guideline_name}"))
+@given(parsers.parse("an association between {tool_name} and {guideline_name}"))
 def given_guideline_tool_association(
     sync_await: SyncAwaiter,
     container: Container,

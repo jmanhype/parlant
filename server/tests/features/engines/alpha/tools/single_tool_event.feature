@@ -3,31 +3,31 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And <guideline_name> guideline
         And <tool_name> tool
-        And connection between <tool_name> and <guideline_name>
+        And an association between <guideline_name> and <tool_name>
         And an empty session
         And a server message of You are a salesperson of pizza place
         And a user message of Hey, Can I order large pepperoni pizza with Sprite?
         When processing is triggered
         Then a single tool event is produced
         And a <tool_event_name> tool event is produced in tool event number 1
-        Examples:  
-            | tool_name                 | guideline_name            | tool_event_name               |
-            | get_available_drinks      | check_drinks_in_stock     | drinks-available-in-stock     |
-            | get_available_toppings    | check_toppings_in_stock   | toppings-available-in-stock   |
+        Examples:
+            | guideline_name          | tool_name              | tool_event_name             |
+            | check_drinks_in_stock   | get_available_drinks   | drinks-available-in-stock   |
+            | check_toppings_in_stock | get_available_toppings | toppings-available-in-stock |
 
     Scenario: Single tool is being called multiple times
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And check_toppings_or_drinks_in_stock guideline
         And get_available_product_by_type tool
-        And connection between get_available_product_by_type and check_toppings_or_drinks_in_stock
+        And an association between check_toppings_or_drinks_in_stock and get_available_product_by_type
         And an empty session
         And a server message of You are a salesperson of pizza place
         And a user message of Hey, Can I order large pepperoni pizza with Sprite?
@@ -40,11 +40,11 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And calculate_sum guideline
         And add tool
-        And connection between add and calculate_sum
+        And an association between calculate_sum and add
         And an empty session
         And a user message of What is 8+2 and 4+6?
         When processing is triggered
@@ -56,13 +56,13 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And check_drinks_or_toppings_in_stock guideline
         And get_available_drinks tool
         And get_available_toppings tool
-        And connection between get_available_drinks and check_drinks_or_toppings_in_stock
-        And connection between get_available_toppings and check_drinks_or_toppings_in_stock
+        And an association between check_drinks_or_toppings_in_stock and get_available_drinks
+        And an association between check_drinks_in_stock and get_available_toppings
         And an empty session
         And a server message of You are a salesperson of pizza place
         And a user message of Hey, Can I order large pepperoni pizza with Sprite?
@@ -75,14 +75,14 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And check_drinks_in_stock guideline
         And check_toppings_in_stock guideline
         And get_available_drinks tool
         And get_available_toppings tool
-        And connection between get_available_drinks and check_drinks_in_stock
-        And connection between get_available_toppings and check_toppings_in_stock
+        And an association between check_drinks_in_stock and get_available_drinks
+        And an association between check_toppings_in_stock and get_available_toppings
         And an empty session
         And a server message of You are a salesperson of pizza place
         And a user message of Hey, Can I order large pepperoni pizza with Sprite?
@@ -94,13 +94,13 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And calculate_addition_or_multiplication guideline
         And add tool
         And multiply tool
-        And connection between add and calculate_addition_or_multiplication
-        And connection between multiply and calculate_addition_or_multiplication
+        And an association between calculate_addition_or_multiplication and add
+        And an association between calculate_addition_or_multiplication and multiply
         And an empty session
         And a user message of what is 8+2 and 4*6?
         When processing is triggered
@@ -112,13 +112,13 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And calculate_addition_or_multiplication guideline
         And add tool
         And multiply tool
-        And connection between add and calculate_addition_or_multiplication
-        And connection between multiply and calculate_addition_or_multiplication
+        And an association between calculate_addition_or_multiplication and add
+        And an association between calculate_addition_or_multiplication and multiply
         And an empty session
         And a user message of what is 8+2 and 4*6? also, 9+5 and 10+2 and 3*5
         When processing is triggered
@@ -132,11 +132,11 @@ Feature: Single Tool Event
         Given the alpha engine
         And an agent
         And an empty session
-        And guidelines
-        And tools
+        And a diverse selection of guidelines
+        And a diverse selection of tools
         And retrieve_account_information guideline
         And get_account_balance tool
-        And connection between get_account_balance and retrieve_account_information
+        And an association between retrieve_account_information and get_account_balance
         And an empty session
         And a user message of What is the balance of Larry David account?
         And a tool event with data of [{ "tool_calls": { "tool_name": "get_account_balance", "parameters": { "account_name": "Larry David"}, "result": 450000000}}]
