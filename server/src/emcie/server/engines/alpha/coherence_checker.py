@@ -27,7 +27,7 @@ class CoherenceContradiction(BaseModel):
     coherence_contradiction_type: CoherenceContradictionType
     reference_guideline_id: GuidelineId
     candidate_guideline_id: GuidelineId
-    contradiction_level: int
+    severity_level: int
     rationale: str
 
 
@@ -89,7 +89,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 2. **Process**:
    - For each guideline in the foundational set, compare it with the candidate guideline.
    - Determine if there is a hierarchical contradiction, where the candidate guideline is more specific and directly contradicts a more general guideline from the foundational set.
-   - If no contradiction is detected, set the contradiction_level to 1 to indicate minimal or no contradiction.
+   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 3. **Output**:
    - A list of results, each item detailing a potential contradiction, structured as follows:
@@ -99,7 +99,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
              {{
                  "reference_guideline_id": "<ID of the reference guideline in the contradiction>",
                  "candidate_guideline_id": "<ID of the candidate guideline in the contradiction>",
-                 "contradiction_level": "<Contradiction Level (1-10): Measures the degree of contradiction between the guidelines>",
+                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>"
                  "rationale": "<Brief explanation of why the two guidelines have a hierarchical contradiction>"
              }}
          ]
@@ -118,7 +118,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
              {{
                  "reference_guideline_id": "3",
                  "candidate_guideline_id": "4",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "The guideline to immediately ship high-demand items directly contradicts the broader policy of prioritizing based on loyalty, leading to a situation where the specific scenario of high-demand items undermines the general loyalty prioritization."
              }}
          ]
@@ -135,7 +135,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
              {{
                  "reference_guideline_id": "1",
                  "candidate_guideline_id": "2",
-                 "contradiction_level": 8,
+                 "severity_level": 8,
                  "rationale": "The policy to give additional rewards for critical project performance contradicts the general policy of standard performance metrics, creating a Contradiction where a specific achievement overlaps and supersedes the general reward system."
              }}
          ]
@@ -152,7 +152,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
              {{
                  "reference_guideline_id": "5",
                  "candidate_guideline_id": "6",
-                 "contradiction_level": 1,
+                 "severity_level": 1,
                  "rationale": "The policies to offer discounts for yearly subscriptions and additional discounts during promotional periods complement each other rather than contradict. Both discounts can be applied simultaneously without undermining one another, enhancing the overall attractiveness of the subscription offers during promotions."
              }}
          ]
@@ -169,7 +169,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
              {{
                  "reference_guideline_id": "7",
                  "candidate_guideline_id": "8",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "The requirement for additional training for major UI changes contradicts the general guideline of rapid deployment for security updates, showing how a specific feature of an update (UI changes) can override a general security protocol."
              }}
          ]
@@ -196,7 +196,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
                 coherence_contradiction_type=CoherenceContradictionType.HIERARCHICAL,
                 reference_guideline_id=json_contradiction["reference_guideline_id"],
                 candidate_guideline_id=json_contradiction["candidate_guideline_id"],
-                contradiction_level=json_contradiction["contradiction_level"],
+                severity_level=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
             )
             for json_contradiction in json_content
@@ -251,7 +251,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
 2. **Process**:
    - For each guideline in the foundational set, compare it with the candidate guideline.
    - Determine if there is a parallel priority contradiction, where both guidelines apply under the same conditions and directly Contradiction without a clear way to resolve the priority.
-   - If no contradiction is detected, set the contradiction_level to 1 to indicate minimal or no contradiction.
+   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 3. **Output**:
    - A list of results, each item detailing a potential contradiction, structured as follows:
@@ -261,7 +261,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "reference_guideline_id": "<ID of the reference guideline in the contradiction>",
                  "candidate_guideline_id": "<ID of the candidate guideline in the contradiction>",
-                 "contradiction_level": "<Contradiction Level (1-10): Measures the degree of contradiction between the guidelines>",
+                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>"
                  "rationale": "<Brief explanation of why the two guidelines are in parallel priority Contradiction>"
              }}
          ]
@@ -280,7 +280,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "reference_guideline_id": "1",
                  "candidate_guideline_id": "2",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "Both guidelines apply when a special order item is returned within 30 days, leading to confusion over whether to issue a refund or deny it based on the special order status."
              }}
          ]
@@ -297,7 +297,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "reference_guideline_id": "3",
                  "candidate_guideline_id": "4",
-                 "contradiction_level": 8,
+                 "severity_level": 8,
                  "rationale": "The requirement to focus all resources on a single project Contradictions with the need to distribute resources equally when multiple projects are due, creating a decision-making deadlock without a clear priority directive."
              }}
          ]
@@ -314,7 +314,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "reference_guideline_id": "5",
                  "candidate_guideline_id": "6",
-                 "contradiction_level": 7,
+                 "severity_level": 7,
                  "rationale": "The policy to accommodate flexible working hours Contradictions with the requirement for standard hours to enhance team collaboration, creating a scenario where both policies are justified but contradictory."
              }}
          ]
@@ -331,7 +331,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "reference_guideline_id": "7",
                  "candidate_guideline_id": "8",
-                 "contradiction_level": 1,
+                 "severity_level": 1,
                  "rationale": "The guidelines address different aspects of customer inquiries without Contradictioning. One provides general product information, while the other focuses specifically on compatibility issues, allowing both guidelines to operate simultaneously without contradiction."
              }}
          ]
@@ -358,7 +358,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
                 coherence_contradiction_type=CoherenceContradictionType.PARALLEL,
                 reference_guideline_id=json_contradiction["reference_guideline_id"],
                 candidate_guideline_id=json_contradiction["candidate_guideline_id"],
-                contradiction_level=json_contradiction["contradiction_level"],
+                severity_level=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
             )
             for json_contradiction in json_content
@@ -423,7 +423,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "reference_guideline_id": "<ID of the reference guideline in the contradiction>",
                  "candidate_guideline_id": "<ID of the candidate guideline in the contradiction>",
-                 "contradiction_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to timing overlap>",
+                 "severity_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to timing overlap>",
                  "rationale": "<Brief explanation of why the two guidelines are in temporal contradiction or why they are not>"
              }}
          ]
@@ -442,7 +442,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "reference_guideline_id": "1",
                  "candidate_guideline_id": "2",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "The guideline to apply discounts during the holiday season contradicts the guideline to withhold discounts during the end-of-year sales period, even though these periods can overlap, leading to contradictory pricing strategies."
              }}
          ]
@@ -459,7 +459,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "reference_guideline_id": "3",
                  "candidate_guideline_id": "4",
-                 "contradiction_level": 8,
+                 "severity_level": 8,
                  "rationale": "The need to sell expiring products at reduced prices contradicts the strategy to maintain standard pricing during active promotional campaigns, especially problematic when both circumstances coincide."
              }}
          ]
@@ -476,7 +476,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "reference_guideline_id": "5",
                  "candidate_guideline_id": "6",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "The protocol to reduce operations due to severe weather directly opposes the requirement to maximize operational capacity during a major sales event, creating a significant management challenge when both occur at the same time."
              }}
          ]
@@ -493,7 +493,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "reference_guideline_id": "7",
                  "candidate_guideline_id": "8",
-                 "contradiction_level": 1,
+                 "severity_level": 1,
                  "rationale": "Both guidelines aim to enhance customer service readiness under different but complementary circumstances, with no direct timing contradiction between them."
              }}
          ]
@@ -520,7 +520,7 @@ This arises from a lack of clear prioritization or differentiation between actio
                 coherence_contradiction_type=CoherenceContradictionType.TEMPORAL,
                 reference_guideline_id=json_contradiction["reference_guideline_id"],
                 candidate_guideline_id=json_contradiction["candidate_guideline_id"],
-                contradiction_level=json_contradiction["contradiction_level"],
+                severity_level=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
             )
             for json_contradiction in json_content
@@ -585,7 +585,7 @@ These conflicts arise from different but potentially overlapping circumstances r
              {{
                  "reference_guideline_id": "<ID of the reference guideline in the contradiction>",
                  "candidate_guideline_id": "<ID of the candidate guideline in the contradiction>",
-                 "contradiction_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to conflicting contexts>",
+                 "severity_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to conflicting contexts>",
                  "rationale": "<Brief explanation of why the two guidelines are in contextual contradiction or why they are not>"
              }}
          ]
@@ -604,7 +604,7 @@ These conflicts arise from different but potentially overlapping circumstances r
              {{
                  "reference_guideline_id": "1",
                  "candidate_guideline_id": "2",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "The guideline to offer free shipping in urban areas contradicts the need to minimize operational costs, especially problematic when both conditions are relevant, leading to conflicting shipping policies."
              }}
          ]
@@ -621,7 +621,7 @@ These conflicts arise from different but potentially overlapping circumstances r
              {{
                  "reference_guideline_id": "3",
                  "candidate_guideline_id": "4",
-                 "contradiction_level": 8,
+                 "severity_level": 8,
                  "rationale": "Customer data supporting the preference for eco-friendly products contradicts cost-driven strategies to use cheaper, less sustainable materials, creating a dilemma when both customer preference and cost reduction are priorities."
              }}
          ]
@@ -638,7 +638,7 @@ These conflicts arise from different but potentially overlapping circumstances r
              {{
                  "reference_guideline_id": "5",
                  "candidate_guideline_id": "6",
-                 "contradiction_level": 9,
+                 "severity_level": 9,
                  "rationale": "Market data indicating a preference for premium products contradicts internal strategies aimed at expanding the mass market with lower-cost items, especially when both market data and strategic goals are concurrently actionable."
              }}
          ]
@@ -654,7 +654,7 @@ These conflicts arise from different but potentially overlapping circumstances r
              {{
                  "reference_guideline_id": "7",
                  "candidate_guideline_id": "8",
-                 "contradiction_level": 1,
+                 "severity_level": 1,
                  "rationale": "Both guidelines aim to promote new developments (product or software) without overlapping contexts or conflicting actions. The marketing campaign targets potential buyers, while the notification process targets existing users, ensuring both actions complement each other without contradiction."
              }}
          ]
@@ -682,7 +682,7 @@ These conflicts arise from different but potentially overlapping circumstances r
                 coherence_contradiction_type=CoherenceContradictionType.CONTEXTUAL,
                 reference_guideline_id=json_contradiction["reference_guideline_id"],
                 candidate_guideline_id=json_contradiction["candidate_guideline_id"],
-                contradiction_level=json_contradiction["contradiction_level"],
+                severity_level=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
             )
             for json_contradiction in json_content

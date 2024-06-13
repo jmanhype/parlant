@@ -22,11 +22,11 @@ from tests.test_utilities import SyncAwaiter, nlp_test
     ),
     [
         (
-            "Any customer requests a feature not available in the current version",
-            "Inform them about the product roadmap and upcoming features",
             "A VIP customer requests a specific feature that aligns with their business needs but"
             " is not on the current product roadmap",
             "Escalate the request to product management for special consideration",
+            "Any customer requests a feature not available in the current version",
+            "Inform them about the product roadmap and upcoming features",
             True,
         ),
         (
@@ -86,7 +86,7 @@ def test_hierarchical_contradiction(
         contradiction_result.coherence_contradiction_type == CoherenceContradictionType.HIERARCHICAL
     )
     if expected_contradiction:
-        assert contradiction_result.contradiction_level >= 8
+        assert contradiction_result.severity_level >= 8
         assert nlp_test(
             "Given the following two rules:\n"
             f"1. {contradiction_result.reference_guideline_id}\n"
@@ -97,7 +97,7 @@ def test_hierarchical_contradiction(
             "hierarchical contradiction",
         )
     else:
-        assert contradiction_result.contradiction_level < 8
+        assert contradiction_result.severity_level < 8
         assert nlp_test(
             contradiction_result.rationale, "No significant contradiction has been found."
         )
@@ -174,7 +174,7 @@ def test_parallel_contradiction(
     )[0]
     assert contradiction_result.coherence_contradiction_type == CoherenceContradictionType.PARALLEL
     if expected_contradiction:
-        assert contradiction_result.contradiction_level >= 8
+        assert contradiction_result.severity_level >= 8
         assert nlp_test(
             "Given the following two rules:\n"
             f"1. {contradiction_result.reference_guideline_id}\n"
@@ -185,7 +185,7 @@ def test_parallel_contradiction(
             "provided as to why it is a parallel contradiction",
         )
     else:
-        assert contradiction_result.contradiction_level < 8
+        assert contradiction_result.severity_level < 8
         assert nlp_test(
             contradiction_result.rationale, "No significant contradiction has been found."
         )
@@ -262,7 +262,7 @@ def test_temporal_contradiction(
     )[0]
     assert contradiction_result.coherence_contradiction_type == CoherenceContradictionType.TEMPORAL
     if expected_contradiction:
-        assert contradiction_result.contradiction_level >= 8
+        assert contradiction_result.severity_level >= 8
         assert nlp_test(
             "Given the following two rules:\n"
             f"1. {contradiction_result.reference_guideline_id}\n"
@@ -273,7 +273,7 @@ def test_temporal_contradiction(
             "is provided as to why it is a temporal contradiction",
         )
     else:
-        assert contradiction_result.contradiction_level < 8
+        assert contradiction_result.severity_level < 8
         assert nlp_test(
             contradiction_result.rationale, "No significant contradiction has been found."
         )
@@ -352,7 +352,7 @@ def test_contexual_contradiction(
         contradiction_result.coherence_contradiction_type == CoherenceContradictionType.CONTEXTUAL
     )
     if expected_contradiction:
-        assert contradiction_result.contradiction_level >= 8
+        assert contradiction_result.severity_level >= 8
         assert nlp_test(
             "Given the following two rules:\n"
             f"1. {contradiction_result.reference_guideline_id}\n"
@@ -362,7 +362,7 @@ def test_contexual_contradiction(
             "Contradiction has been found and an explanation is provided as to why it is a contexutal contradiction",  # noqa
         )
     else:
-        assert contradiction_result.contradiction_level < 8
+        assert contradiction_result.severity_level < 8
         assert nlp_test(
             "Rationale provided for the contextual coherence check between two rules:"
             f"\n{contradiction_result.rationale}",
