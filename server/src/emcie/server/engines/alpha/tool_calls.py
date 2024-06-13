@@ -133,7 +133,9 @@ The following are the tool function definitions: ###
 ###
 
 The following is a list of ordered invoked tool functions after the interaction's latest state.
-You can use this information to avoid redundant calls and inform your response: ###
+You can use this information to avoid redundant calls and inform your response.
+For example, if the data you need already exists in one of these calls, then you DO NOT
+need to ask for this tool function to be run again, because its information is fresh here!: ###
 {invoked_functions}
 ###
 

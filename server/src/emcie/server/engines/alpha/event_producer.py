@@ -184,31 +184,28 @@ class ToolsEventProducer:
         guidelines_tools_associations: dict[Guideline, Iterable[Tool]],
         tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
-        produced_tool_events: list[ProducedEvent] = []
         if not guidelines_tools_associations:
-            return produced_tool_events
+            return []
 
-        max_tools_steps_count_down = 2
+        produced_tool_events: list[ProducedEvent] = []
 
-        while max_tools_steps_count_down:
-            tools_result = await self.tool_caller.list_tools_result(
-                interaction_history,
-                guidelines,
-                tools,
-                guidelines_tools_associations,
-                produced_tool_events,
+        tools_result = await self.tool_caller.list_tools_result(
+            interaction_history,
+            guidelines,
+            tools,
+            guidelines_tools_associations,
+            produced_tool_events,
+        )
+
+        if not tools_result:
+            return []
+
+        produced_tool_events.append(
+            ProducedEvent(
+                source="server",
+                type=Event.TOOL_TYPE,
+                data={"tools_result": tools_result},
             )
-
-            if not tools_result:
-                break
-
-            produced_tool_events.append(
-                ProducedEvent(
-                    source="server",
-                    type=Event.TOOL_TYPE,
-                    data={"tools_result": tools_result},
-                )
-            )
-            max_tools_steps_count_down -= 1
+        )
 
         return produced_tool_events
