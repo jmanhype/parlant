@@ -184,7 +184,6 @@ class ToolsEventProducer:
         guidelines_tools_associations: dict[Guideline, Iterable[Tool]],
         tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
-
         produced_tool_events: list[ProducedEvent] = []
         if not guidelines_tools_associations:
             return produced_tool_events

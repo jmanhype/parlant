@@ -1,27 +1,42 @@
+from dataclasses import dataclass
 import json
 from typing import Any
 from lagom import Container
+from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.guideline_tool_association import (
+from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.alpha.utils import produced_tools_event_to_dict
 from emcie.server.engines.common import Context, ProducedEvent
-from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
 
-from tests import tools_utilities
+from tests import tool_utilities
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 scenarios(
     "engines/alpha/tools/single_tool_event.feature",
-    "engines/alpha/tools/multiple_tool_events.feature",
 )
+
+
+@dataclass
+class TestState:
+    guidelines: dict[str, Guideline]
+    tools: dict[str, Tool]
+
+
+@fixture
+def state() -> TestState:
+    return TestState(
+        guidelines=dict(),
+        tools=dict(),
+    )
 
 
 @given("the alpha engine", target_fixture="engine")
@@ -56,9 +71,44 @@ def given_an_empty_session(
     return session.id
 
 
-@given("a diverse selection of guidelines", target_fixture="guidelines")
-def given_guidelines() -> dict[str, dict[str, str]]:
-    return {
+@given(parsers.parse('a guideline "{guideline_name}", to {do_something} when {a_condition_holds}'))
+def given_a_guideline_to_when(
+    guideline_name: str,
+    do_something: str,
+    a_condition_holds: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+    state: TestState,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    state.guidelines[guideline_name] = sync_await(
+        guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=a_condition_holds,
+            content=do_something,
+        )
+    )
+
+
+@given(parsers.parse('the guideline called "{guideline_id}"'))
+def given_a_guideline(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+    guideline_id: str,
+) -> Guideline:
+    guideline_store = container[GuidelineStore]
+
+    async def create_guideline(predicate: str, content: str) -> Guideline:
+        return await guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=predicate,
+            content=content,
+        )
+
+    guidelines = {
         "check_drinks_in_stock": {
             "predicate": "a client asks for a drink",
             "content": "check if the drink is available in stock",
@@ -114,131 +164,17 @@ def given_guidelines() -> dict[str, dict[str, str]]:
         },
     }
 
-
-@given("a diverse selection of tools", target_fixture="tools")
-def given_tools() -> dict[str, Any]:
-    return {
-        "get_available_drinks": {
-            "name": "get_available_drinks",
-            "description": "Get the drinks available in stock",
-            "module_path": "tests.tools_utilities",
-            "parameters": {},
-            "required": [],
-        },
-        "get_available_toppings": {
-            "name": "get_available_toppings",
-            "description": "Get the toppings available in stock",
-            "module_path": "tests.tools_utilities",
-            "parameters": {},
-            "required": [],
-        },
-        "expert_answer": {
-            "name": "expert_answer",
-            "description": "Get answers to questions by consulting documentation",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "user_query": {"type": "string", "description": "The query from the user"}
-            },
-            "required": ["user_query"],
-        },
-        "get_available_product_by_type": {
-            "name": "get_available_product_by_type",
-            "description": "Get the products available in stock by type",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "product_type": {
-                    "product_type": "string",
-                    "description": "The type of product (either 'drinks' or 'toppings')",
-                    "enum": ["drinks", "toppings"],
-                }
-            },
-            "required": ["product_type"],
-        },
-        "add": {
-            "name": "add",
-            "description": "Getting the addition calculation between two numbers",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "first_number": {"type": "number", "description": "The first number"},
-                "second_number": {"type": "number", "description": "The second number"},
-            },
-            "required": ["first_number", "second_number"],
-        },
-        "multiply": {
-            "name": "multiply",
-            "description": "Getting the multiplication calculation between two numbers",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "first_number": {"type": "number", "description": "The first number"},
-                "second_number": {"type": "number", "description": "The second number"},
-            },
-            "required": ["first_number", "second_number"],
-        },
-        "get_account_balance": {
-            "name": "get_account_balance",
-            "description": "Get the account balance by given name",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "account_name": {"type": "string", "description": "The name of the account"}
-            },
-            "required": ["account_name"],
-        },
-        "get_account_loans": {
-            "name": "get_account_loans",
-            "description": "Get the account loans by given name",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "account_name": {"type": "string", "description": "The name of the account"}
-            },
-            "required": ["account_name"],
-        },
-        "transfer_money": {
-            "name": "transfer_money",
-            "description": "Transfer money from one account to another",
-            "module_path": "tests.tools_utilities",
-            "parameters": {
-                "from_account": {
-                    "type": "string",
-                    "description": "The account from which money will be transferred",
-                },
-                "to_account": {
-                    "type": "string",
-                    "description": "The account to which money will be transferred",
-                },
-            },
-            "required": ["from_account", "to_account"],
-        },
-    }
+    return sync_await(create_guideline(**guidelines[guideline_id]))
 
 
-@given(parsers.parse("{guideline_name} guideline"))
-def given_a_guideline(
-    sync_await: SyncAwaiter,
-    container: Container,
-    guidelines: dict[str, dict[str, str]],
-    agent_id: AgentId,
-    guideline_name: str,
-) -> Guideline:
-    guideline_store = container[GuidelineStore]
-
-    async def create_guideline(predicate: str, content: str) -> Guideline:
-        return await guideline_store.create_guideline(
-            guideline_set=agent_id,
-            predicate=predicate,
-            content=content,
-        )
-
-    return sync_await(create_guideline(**guidelines[guideline_name]))
-
-
-@given(parsers.parse("{tool_name} tool"))
+@given(parsers.parse('the tool "{tool_name}"'))
 def given_a_tool(
     sync_await: SyncAwaiter,
     container: Container,
-    tools: dict[str, Any],
     agent_id: AgentId,
     tool_name: str,
-) -> Tool:
+    state: TestState,
+) -> None:
     tool_store = container[ToolStore]
 
     async def create_tool(
@@ -257,57 +193,123 @@ def given_a_tool(
             required=required,
         )
 
-    return sync_await(create_tool(**tools[tool_name]))
+    tools: dict[str, dict[str, Any]] = {
+        "get_available_drinks": {
+            "name": "get_available_drinks",
+            "description": "Get the drinks available in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
+        "get_available_toppings": {
+            "name": "get_available_toppings",
+            "description": "Get the toppings available in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
+        "expert_answer": {
+            "name": "expert_answer",
+            "description": "Get answers to questions by consulting documentation",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "user_query": {"type": "string", "description": "The query from the user"}
+            },
+            "required": ["user_query"],
+        },
+        "get_available_product_by_type": {
+            "name": "get_available_product_by_type",
+            "description": "Get the products available in stock by type",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "product_type": {
+                    "product_type": "string",
+                    "description": "The type of product (either 'drinks' or 'toppings')",
+                    "enum": ["drinks", "toppings"],
+                }
+            },
+            "required": ["product_type"],
+        },
+        "add": {
+            "name": "add",
+            "description": "Getting the addition calculation between two numbers",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "first_number": {"type": "number", "description": "The first number"},
+                "second_number": {"type": "number", "description": "The second number"},
+            },
+            "required": ["first_number", "second_number"],
+        },
+        "multiply": {
+            "name": "multiply",
+            "description": "Getting the multiplication calculation between two numbers",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "first_number": {"type": "number", "description": "The first number"},
+                "second_number": {"type": "number", "description": "The second number"},
+            },
+            "required": ["first_number", "second_number"],
+        },
+        "get_account_balance": {
+            "name": "get_account_balance",
+            "description": "Get the account balance by given name",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "account_name": {"type": "string", "description": "The name of the account"}
+            },
+            "required": ["account_name"],
+        },
+        "get_account_loans": {
+            "name": "get_account_loans",
+            "description": "Get the account loans by given name",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "account_name": {"type": "string", "description": "The name of the account"}
+            },
+            "required": ["account_name"],
+        },
+        "transfer_money": {
+            "name": "transfer_money",
+            "description": "Transfer money from one account to another",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "from_account": {
+                    "type": "string",
+                    "description": "The account from which money will be transferred",
+                },
+                "to_account": {
+                    "type": "string",
+                    "description": "The account to which money will be transferred",
+                },
+            },
+            "required": ["from_account", "to_account"],
+        },
+    }
+
+    tool = sync_await(create_tool(**tools[tool_name]))
+
+    state.tools[tool_name] = tool
 
 
-@given(parsers.parse("an association between {tool_name} and {guideline_name}"))
+@given(parsers.parse('an association between "{guideline_name}" and "{tool_name}"'))
 def given_guideline_tool_association(
     sync_await: SyncAwaiter,
     container: Container,
-    agent_id: AgentId,
-    guidelines: dict[str, dict[str, str]],
     tool_name: str,
     guideline_name: str,
+    state: TestState,
 ) -> GuidelineToolAssociation:
     guideline_tool_association_store = container[GuidelineToolAssociationStore]
 
-    async def create_guideline_tool_association(
-        guideline_id: GuidelineId,
-        tool_id: ToolId,
-    ) -> GuidelineToolAssociation:
-        return await guideline_tool_association_store.create_guideline_tool_association(
-            guideline_id=guideline_id,
-            tool_id=tool_id,
+    return sync_await(
+        guideline_tool_association_store.create_association(
+            guideline_id=state.guidelines[guideline_name].id,
+            tool_id=state.tools[tool_name].id,
         )
-
-    async def get_guideline(
-        predicate: str,
-        content: str,
-    ) -> Guideline:
-        guidelines_store = container[GuidelineStore]
-        guidelines_objects = await guidelines_store.list_guidelines(agent_id)
-        for guideline in guidelines_objects:
-            if guideline.predicate == predicate and guideline.content == content:
-                return guideline
-        raise ValueError
-
-    async def get_tool(
-        tool_name: str,
-    ) -> Tool:
-        tools_store = container[ToolStore]
-        tools = await tools_store.list_tools(agent_id)
-        for tool in tools:
-            if tool.name == tool_name:
-                return tool
-        raise ValueError
-
-    tool = sync_await(get_tool(tool_name))
-    guideline = sync_await(get_guideline(**guidelines[guideline_name]))
-
-    return sync_await(create_guideline_tool_association(guideline.id, tool.id))
+    )
 
 
-@given(parsers.parse("a user message of {user_message}"), target_fixture="session_id")
+@given(parsers.parse('a user message, "{user_message}"'), target_fixture="session_id")
 def given_a_session_user_message(
     sync_await: SyncAwaiter,
     container: Container,
@@ -330,7 +332,7 @@ def given_a_session_user_message(
 
 
 @given(
-    parsers.parse("a server message of {server_message}"),
+    parsers.parse('a server message, "{server_message}"'),
     target_fixture="session_id",
 )
 def given_a_session_with_server_message(
@@ -355,7 +357,7 @@ def given_a_session_with_server_message(
 
 
 @given(
-    parsers.parse("a tool event with data of {tool_event_data}"),
+    parsers.parse("a tool event with data, {tool_event_data}"),
     target_fixture="session_id",
 )
 def given_a_session_with_tool_event(
@@ -398,57 +400,65 @@ def when_processing_is_triggered(
     return list(events)
 
 
-@then("no tool events are produced")
+@then("no tool calls event is produced")
 def then_no_tools_events_are_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert produced_events[0].type == Event.MESSAGE_TYPE
+    assert 0 == len([e for e in produced_events if e.type == Event.TOOL_TYPE])
 
 
-@then(parsers.parse("{tool_events_expeceted:d} tool events got produced"))
-def then_verify_correct_number_of_tool_events_produced(
-    produced_events: list[ProducedEvent],
-    tool_events_expeceted: int,
-) -> None:
-    assert (
-        len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events)))
-        == tool_events_expeceted
-    )
-
-
-@then("a single tool event is produced")
+@then("a single tool calls event is produced")
 def then_a_single_tool_event_is_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert len(list(filter(lambda e: e.type == Event.TOOL_TYPE, produced_events))) == 1
+    assert 1 == len([e for e in produced_events if e.type == Event.TOOL_TYPE])
+
+
+@then(parsers.parse("the tool calls event contains {number_of_tool_calls:d} tool call(s)"))
+def then_the_tool_calls_event_contains_n_tool_calls(
+    number_of_tool_calls: int,
+    produced_events: list[ProducedEvent],
+) -> None:
+    tool_calls_event = next(e for e in produced_events if e.type == Event.TOOL_TYPE)
+    assert number_of_tool_calls == len(tool_calls_event.data["tools_result"])
+
+
+@then(parsers.parse("the tool calls event contains {expected_content}"))
+def then_the_tool_calls_event_contains_expected_content(
+    expected_content: str,
+    produced_events: list[ProducedEvent],
+) -> None:
+    tool_calls_event = next(e for e in produced_events if e.type == Event.TOOL_TYPE)
+    tool_calls = tool_calls_event.data["tools_result"]
+
+    assert nlp_test(
+        context=f"The following is the result of tool (function) calls: {tool_calls}",
+        predicate=f"The calls contain {expected_content}",
+    )
 
 
 @then(
     parsers.parse(
-        "a {tool_event_name} tool event is produced in tool event number {tool_event_number:d}"
+        "the execution result of {tool_id} is produced in the "
+        "{tool_event_number:d}{ordinal_indicator:s} tool event"
     )
 )
 def then_drinks_available_in_stock_tool_event_is_produced(
     produced_events: list[ProducedEvent],
-    tool_event_name: str,
+    tool_id: ToolId,
     tool_event_number: int,
 ) -> None:
     results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
-    tools_names = {
-        "drinks-available-in-stock": "get_available_drinks",
-        "toppings-available-in-stock": "get_available_toppings",
-    }
-
     tool_event_functions = {
-        "drinks-available-in-stock": tools_utilities.get_available_drinks,
-        "toppings-available-in-stock": tools_utilities.get_available_toppings,
+        "tool_id": tool_utilities.get_available_drinks,
+        "tool_id1": tool_utilities.get_available_toppings,
     }
 
     assert {
-        "tool_name": tools_names[tool_event_name],
+        "tool_name": tool_id,
         "parameters": {},
-        "result": tool_event_functions[tool_event_name](),
+        "result": tool_event_functions[tool_id](),
     } in results
 
 
@@ -464,8 +474,8 @@ def then_product_availability_for_toppings_and_drinks_tools_event_is_produced(
     tool_event_number: int,
 ) -> None:
     types_functions = {
-        "drinks": tools_utilities.get_available_drinks,
-        "toppings": tools_utilities.get_available_toppings,
+        "drinks": tool_utilities.get_available_drinks,
+        "toppings": tool_utilities.get_available_toppings,
     }
     results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
     assert {
@@ -495,7 +505,7 @@ def then_add_tool_event_is_produced(
             "first_number": first_num,
             "second_number": second_num,
         },
-        "result": tools_utilities.add(first_num, second_num),
+        "result": tool_utilities.add(first_num, second_num),
     } in results
 
 
@@ -519,7 +529,7 @@ def then_multiply_tool_event_is_produced(
             "first_number": first_num,
             "second_number": second_num,
         },
-        "result": tools_utilities.multiply(first_num, second_num),
+        "result": tool_utilities.multiply(first_num, second_num),
     } in results
 
 
@@ -541,7 +551,7 @@ def then_get_balance_account_tool_event_is_produced(
         "parameters": {
             "account_name": name,
         },
-        "result": tools_utilities.get_account_balance(name),
+        "result": tool_utilities.get_account_balance(name),
     } in results
 
 
@@ -561,7 +571,7 @@ def then_get_account_loans_tool_event_is_produced(
         "parameters": {
             "account_name": name,
         },
-        "result": tools_utilities.get_account_loans(name),
+        "result": tool_utilities.get_account_loans(name),
     } in results
 
 

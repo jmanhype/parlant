@@ -2,7 +2,7 @@ from typing import Literal
 
 
 def get_available_drinks() -> list[str]:
-    return ["Sprite", "Coke Cola"]
+    return ["Sprite", "Coca Cola"]
 
 
 def get_available_toppings() -> list[str]:

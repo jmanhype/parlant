@@ -26,7 +26,7 @@ class GuidelineToolAssociationStore:
     ) -> None:
         self._associations: dict[GuidelineId, set[GuidelineToolAssociation]] = defaultdict(set)
 
-    async def create_guideline_tool_association(
+    async def create_association(
         self,
         guideline_id: GuidelineId,
         tool_id: ToolId,

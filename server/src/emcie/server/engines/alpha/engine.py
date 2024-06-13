@@ -3,7 +3,7 @@ from typing import Iterable
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
-from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociationStore
+from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.alpha.utils import (
     divide_guidelines_by_tool_association,
     map_guidelines_to_associated_tools,
@@ -42,7 +42,7 @@ class AlphaEngine(Engine):
             tool_set=context.agent_id,
         )
 
-        relevant_guideline = await self.guide_filter.find_relevant_guidelines(
+        relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
             guidelines=all_possible_guidelines,
             interaction_history=events,
         )
@@ -53,12 +53,12 @@ class AlphaEngine(Engine):
 
         guidelines_without_tools, guidelines_with_tools = (
             await divide_guidelines_by_tool_association(
-                guidelines=relevant_guideline,
+                guidelines=relevant_guidelines,
                 associations=guideline_tool_associations,
             )
         )
 
-        relevant_guidelines_with_tools = await map_guidelines_to_associated_tools(
+        guidelines_with_tools = await map_guidelines_to_associated_tools(
             tools=all_possible_tools,
             guidelines=guidelines_with_tools,
             associations=guideline_tool_associations,
@@ -67,6 +67,6 @@ class AlphaEngine(Engine):
         return await self.event_producer.produce_events(
             interaction_history=events,
             guidelines_without_tools=guidelines_without_tools,
-            guidelines_with_tools=relevant_guidelines_with_tools,
+            guidelines_with_tools=guidelines_with_tools,
             tools=all_possible_tools,
         )

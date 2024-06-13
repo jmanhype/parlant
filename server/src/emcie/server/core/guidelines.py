@@ -45,3 +45,10 @@ class GuidelineStore:
         guideline_set: str,
     ) -> Iterable[Guideline]:
         return self._guideline_sets[guideline_set].values()
+
+    async def read_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> Guideline:
+        return self._guideline_sets[guideline_set][guideline_id]

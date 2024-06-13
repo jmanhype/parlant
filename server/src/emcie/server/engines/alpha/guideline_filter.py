@@ -1,6 +1,8 @@
 import asyncio
 import json
+import jsonfinder  # type: ignore
 from typing import Iterable, TypedDict
+from loguru import logger
 
 from emcie.server.engines.alpha.utils import (
     duration_logger,
@@ -67,6 +69,8 @@ class GuidelineFilter:
 
         predicate_checks = json.loads(llm_response)["checks"]
 
+        logger.debug(f"Guideline filter batch result: {predicate_checks}")
+
         checks_by_index = {(int(c["predicate_number"]) - 1): c for c in predicate_checks}
 
         relevant_checks_by_index = {
@@ -128,8 +132,9 @@ Produce a JSON object of the following format:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",
-            temperature=0.0,
+            temperature=0.3,
             response_format={"type": "json_object"},
         )
 
-        return response.choices[0].message.content or ""
+        content = response.choices[0].message.content or "{}"
+        return json.dumps(jsonfinder.only_json(content)[2])  # type: ignore

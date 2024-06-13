@@ -12,7 +12,7 @@ from emcie.server.core.models import ModelRegistry
 from emcie.server.core.sessions import SessionStore
 from emcie.server.core.threads import ThreadStore
 from emcie.server.core.tools import ToolStore
-from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociationStore
+from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 
 from .test_utilities import SyncAwaiter
 

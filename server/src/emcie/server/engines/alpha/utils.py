@@ -9,7 +9,7 @@ from openai import AsyncClient
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
-from emcie.server.engines.alpha.guideline_tool_association import GuidelineToolAssociation
+from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociation
 from emcie.server.engines.common import ProducedEvent, ToolResult
 
 
@@ -115,7 +115,7 @@ async def list_associated_tools(
     """
     Get the tools associated with a guideline.
     """
-    tool_ids_associate_to_guideline = (tg.tool_id for tg in associations[guideline_id])
+    tool_ids_associate_to_guideline = [a.tool_id for a in associations[guideline_id]]
 
     return [tool for tool in tools if tool.id in tool_ids_associate_to_guideline]
 

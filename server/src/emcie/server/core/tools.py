@@ -73,3 +73,6 @@ class ToolStore:
         tool_set: str,
     ) -> Iterable[Tool]:
         return self._tool_sets[tool_set].values()
+
+    async def read_tool(self, tool_set: str, tool_id: ToolId) -> Tool:
+        return self._tool_sets[tool_set][tool_id]

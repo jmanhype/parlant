@@ -9,7 +9,7 @@ import tiktoken
 T = TypeVar("T")
 
 llm_client = Client(api_key=os.environ["OPENAI_API_KEY"])
-llm_name = "gpt-3.5-turbo"
+llm_name = "gpt-4o"
 tokenizer = tiktoken.encoding_for_model(llm_name)
 
 
