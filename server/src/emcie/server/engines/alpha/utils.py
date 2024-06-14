@@ -10,7 +10,8 @@ from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociation
-from emcie.server.engines.common import ProducedEvent, ToolResult
+from emcie.server.engines.common import ProducedEvent
+from emcie.server.engines.alpha.tool_calls import ToolResult
 
 
 def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:

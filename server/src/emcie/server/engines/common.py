@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Iterable, NewType
+from typing import Any, Iterable
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.sessions import EventSource, SessionId
@@ -25,21 +25,3 @@ class Engine(ABC):
         self,
         context: Context,
     ) -> Iterable[ProducedEvent]: ...
-
-
-ToolCallId = NewType("ToolCallId", str)
-ToolResultId = NewType("ToolResultId", str)
-
-
-@dataclass(frozen=True)
-class ToolCall:
-    id: ToolCallId
-    name: str
-    parameters: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class ToolResult:
-    id: ToolResultId
-    tool_call: ToolCall
-    result: Any

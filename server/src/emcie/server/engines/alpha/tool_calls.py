@@ -1,9 +1,11 @@
 import asyncio
+from dataclasses import dataclass
 import importlib
 import itertools
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, TypedDict
+from typing import Any, Iterable, NewType, TypedDict
+
 from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
@@ -18,11 +20,24 @@ from emcie.server.engines.alpha.utils import (
 )
 from emcie.server.engines.common import (
     ProducedEvent,
-    ToolCall,
-    ToolCallId,
-    ToolResult,
-    ToolResultId,
 )
+
+ToolCallId = NewType("ToolCallId", str)
+ToolResultId = NewType("ToolResultId", str)
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    id: ToolCallId
+    name: str
+    parameters: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    id: ToolResultId
+    tool_call: ToolCall
+    result: Any
 
 
 class ToolCaller:
