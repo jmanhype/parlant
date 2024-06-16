@@ -46,19 +46,34 @@ class ContradictionEvaluator(ABC):
     ) -> Iterable[Contradiction]: ...
 
     @staticmethod
-    def _filter_unique_contradictions(
+    def _remove_duplicate_contradictions(
         contradictions: Iterable[Contradiction],
     ) -> Iterable[Contradiction]:
-        def generate_key(g1_id: str, g2_id: str) -> str:
-            return g1_id + g2_id if g1_id > g2_id else g2_id + g1_id
+        """
+        Filter unique contradictions based on the combination of reference and checked guidelines.
 
-        unique_contradictions = {
-            generate_key(
+        Args:
+            contradictions: Iterable of Contradiction objects to filter.
+
+        Returns:
+            Iterable of unique Contradiction objects.
+        """
+
+        def _generate_key(
+            g1_id: GuidelineId, g2_id: GuidelineId
+        ) -> tuple[GuidelineId, GuidelineId]:
+            return (g1_id, g2_id) if g1_id > g2_id else (g2_id, g1_id)
+
+        seen_keys = set()
+        unique_contradictions = []
+        for contradiction in contradictions:
+            key = _generate_key(
                 contradiction.reference_guideline_id, contradiction.checked_guideline_id
-            ): contradiction
-            for contradiction in contradictions
-        }
-        return unique_contradictions.values()
+            )
+            if key not in seen_keys:
+                seen_keys.add(key)
+                unique_contradictions.append(contradiction)
+        return unique_contradictions
 
 
 class HierarchicalContradictionEvaluator(ContradictionEvaluator):
@@ -94,7 +109,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
                 await asyncio.gather(*tasks)
             )
 
-        distinct_contradictions = self._filter_unique_contradictions(contradictions)
+        distinct_contradictions = self._remove_duplicate_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_candidate(
@@ -294,7 +309,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluator):
             contradictions: Iterable[Contradiction] = chain.from_iterable(
                 await asyncio.gather(*tasks)
             )
-        distinct_contradictions = self._filter_unique_contradictions(contradictions)
+        distinct_contradictions = self._remove_duplicate_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_candidate(
@@ -492,7 +507,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluator):
                 await asyncio.gather(*tasks)
             )
 
-        distinct_contradictions = self._filter_unique_contradictions(contradictions)
+        distinct_contradictions = self._remove_duplicate_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_candidate(
@@ -690,7 +705,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluator):
                 await asyncio.gather(*tasks)
             )
 
-        distinct_contradictions = self._filter_unique_contradictions(contradictions)
+        distinct_contradictions = self._remove_duplicate_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_candidate(
@@ -907,11 +922,13 @@ class CoherenceChecker:
     ) -> list[list[Contradiction]]:
         same_guidelines_contradictions = defaultdict(list)
 
-        def generate_key(g1_id: str, g2_id: str) -> str:
-            return g1_id + g2_id if g1_id > g2_id else g2_id + g1_id
+        def _generate_key(
+            g1_id: GuidelineId, g2_id: GuidelineId
+        ) -> tuple[GuidelineId, GuidelineId]:
+            return (g1_id, g2_id) if g1_id > g2_id else (g2_id, g1_id)
 
         for contradiction in contradictions:
-            key = generate_key(
+            key = _generate_key(
                 contradiction.reference_guideline_id, contradiction.checked_guideline_id
             )
             same_guidelines_contradictions[key].append(contradiction)
