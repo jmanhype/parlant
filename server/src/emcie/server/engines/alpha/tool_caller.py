@@ -1,10 +1,13 @@
 import asyncio
 from dataclasses import dataclass
 import importlib
-import itertools
+import inspect
+from itertools import chain
 import json
 import jsonfinder  # type: ignore
 from typing import Any, Iterable, NewType, TypedDict
+
+from loguru import logger
 
 from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import Guideline
@@ -15,8 +18,6 @@ from emcie.server.engines.alpha.utils import (
     duration_logger,
     events_to_json,
     make_llm_client,
-    produced_tools_events_to_json,
-    tools_to_json,
 )
 from emcie.server.engines.common import (
     ProducedEvent,
@@ -40,6 +41,48 @@ class ToolResult:
     result: Any
 
 
+def produced_tools_events_to_dict(
+    produced_events: Iterable[ProducedEvent],
+) -> list[dict[str, Any]]:
+    return [produced_tools_event_to_dict(e) for e in produced_events]
+
+
+def produced_tools_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
+    return {
+        "type": produced_event.type,
+        "data": [
+            tool_result_to_dict(tool_result) for tool_result in produced_event.data["tools_result"]
+        ],
+    }
+
+
+def tool_result_to_dict(
+    tool_result: ToolResult,
+) -> dict[str, Any]:
+    return {
+        "tool_name": tool_result.tool_call.name,
+        "parameters": tool_result.tool_call.parameters,
+        "result": tool_result.result,
+    }
+
+
+def tool_to_dict(
+    tool: Tool,
+) -> dict[str, Any]:
+    return {
+        "name": tool.name,
+        "description": tool.description,
+        "parameters": tool.parameters,
+        "required": tool.required,
+    }
+
+
+def tools_to_json(
+    tools: Iterable[Tool],
+) -> list[dict[str, Any]]:
+    return [tool_to_dict(t) for t in tools]
+
+
 class ToolCaller:
     class ToolCallRequest(TypedDict):
         name: str
@@ -52,15 +95,14 @@ class ToolCaller:
     ) -> None:
         self._llm_client = make_llm_client("openai")
 
-    async def list_tools_result(
+    async def infer_tool_calls(
         self,
         interaction_history: Iterable[Event],
         guidelines: Iterable[Guideline],
-        tools: Iterable[Tool],
         guideline_tools_associations: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
-    ) -> list[ToolResult]:  # sourcery skip: default-mutable-arg
-        tools_requests_prompt = self._format_tools_requests_prompt(
+    ) -> Iterable[ToolCall]:
+        inference_prompt = self._format_tool_call_inference_prompt(
             interaction_history,
             guidelines,
             guideline_tools_associations,
@@ -68,31 +110,39 @@ class ToolCaller:
         )
 
         with duration_logger("Tools classification"):
-            tools_requests_calls = await self._propose_tool_calls(tools_requests_prompt)
+            inference_output = await self._run_inference(inference_prompt)
 
-        tools_requests_checks_prompt = self._format_tools_requests_checks_prompt(
+        verification_prompt = self._format_tool_call_verification_prompt(
             interaction_history,
             guidelines,
             guideline_tools_associations,
             produced_tool_events,
-            tools_requests_calls,
+            inference_output,
         )
 
         with duration_logger("Tool calls"):
-            tools_calls = await self._review_tool_calls(tools_requests_checks_prompt)
+            return await self._verify_inference(verification_prompt)
 
-        tools_result = await asyncio.gather(
+    async def execute_tool_calls(
+        self,
+        tool_calls: Iterable[ToolCall],
+        tools: Iterable[Tool],
+    ) -> list[ToolResult]:
+        tools_by_name = {t.name: t for t in tools}
+
+        tool_results = await asyncio.gather(
             *[
-                self._proccess_tool(
-                    t,
-                    tools,
+                self._run_tool(
+                    tool_call=tool_call,
+                    tool=tools_by_name[tool_call.name],
                 )
-                for t in tools_calls
+                for tool_call in tool_calls
             ]
         )
-        return tools_result
 
-    def _format_guideline_tools_associations(
+        return tool_results
+
+    def _format_guideline_tool_associations(
         self,
         guideline_tools_associations: dict[Guideline, Iterable[Tool]],
     ) -> str:
@@ -103,29 +153,27 @@ class ToolCaller:
 
         return "\n\n".join(
             f"{i}) When {g.predicate}, then {g.content}\n"
-            f"Functions related: {_list_tools_names(guideline_tools_associations[g])}"
+            f"Tool functions enabled : {_list_tools_names(guideline_tools_associations[g])}"
             for i, g in enumerate(guideline_tools_associations, start=1)
         )
 
-    def _format_tools_requests_prompt(
+    def _format_tool_call_inference_prompt(
         self,
         interaction_history: Iterable[Event],
-        guidelines: Iterable[Guideline],
-        guideline_tools_associations: dict[Guideline, Iterable[Tool]],
+        ordinary_guidelines: Iterable[Guideline],
+        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
     ) -> str:
         json_events = events_to_json(interaction_history)
-        invoked_functions = self._get_invoked_functions(produced_tool_events)
-        functions_rules = self._format_guideline_tools_associations(guideline_tools_associations)
+        staged_function_calls = self._get_invoked_functions(produced_tool_events)
+        tools = set(chain(*tool_enabled_guidelines.values()))
+        functions = tools_to_json(tools)
 
-        tools_set = {
-            tool for tools_list in guideline_tools_associations.values() for tool in tools_list
-        }
-        functions = tools_to_json(tools_set)
-
-        rules = "\n".join(
-            f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
+        ordinary_rules = "\n".join(
+            f"{i}) When {g.predicate}, then {g.content}"
+            for i, g in enumerate(ordinary_guidelines, start=1)
         )
+        function_enabled_rules = self._format_guideline_tool_associations(tool_enabled_guidelines)
 
         return f"""\
 The following is a list of events describing a back-and-forth interaction between you, an AI assistant, and a user: ###
@@ -136,11 +184,11 @@ Before generating your next response, you are highly encouraged to use tools tha
 to you, in order to generate a high-quality, well-informed response.
 
 In generating the response, you must adhere to the following rules: ###
-{rules}
+{ordinary_rules}
 ###
 
 The following is a list of instructions that apply, along with the tool functions related to them, which may or may not need to be called at this point, depending on your judgement and the rules provided: ###
-{functions_rules}
+{function_enabled_rules}
 ###
 
 The following are the tool function definitions: ###
@@ -151,7 +199,7 @@ The following is a list of ordered invoked tool functions after the interaction'
 You can use this information to avoid redundant calls and inform your response.
 For example, if the data you need already exists in one of these calls, then you DO NOT
 need to ask for this tool function to be run again, because its information is fresh here!: ###
-{invoked_functions}
+{staged_function_calls}
 ###
 
 Before generating your next response, you must now decide whether to use any of the tools provided.
@@ -167,21 +215,21 @@ Here are the principles by which you can decide whether to use tools:
 Produce a valid JSON object according to the following format:
 
 {{
-    "tools_requests_calls": [
+    "tool_call_specifications": [
         {{
             "name": "<FUNCTION NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE FUNCTION NEEDS TO BE CALLED>",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL FUNCTION NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
-            "parameters": <PARAMETERS FOR THE FUNCTION>
+            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>
         }},
         ...,
         {{
             "name": "<FUNCTION NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE FUNCTION NEEDS TO BE CALLED>",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL FUNCTION NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
-            "parameters": <PARAMETERS FOR THE FUNCTION>
+            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>
         }}
     ]
 }}
@@ -189,7 +237,7 @@ Produce a valid JSON object according to the following format:
 Here's a hypothetical example, for your reference:
 
 {{
-    "tools_requests_calls": [
+    "tool_call_specifications": [
         {{
             "name": "transfer_money",
             "rationale": "Jack owes John $5",
@@ -212,45 +260,47 @@ Here's a hypothetical example, for your reference:
 }}
 
 
-Note that the `tools_requests_calls` list can be empty if no functions need to be called.
+Note that the `tool_call_specifications` list can be empty if no functions need to be called.
 """  # noqa
 
     def _get_invoked_functions(
         self,
         produced_events: Iterable[ProducedEvent],
     ) -> str:
-        functions_list_by_order = itertools.chain(
-            *[e["data"] for e in produced_tools_events_to_json(produced_events)]
+        ordered_function_invocations = chain(
+            *[e["data"] for e in produced_tools_events_to_dict(produced_events)]
         )
-        invoked_functions_list = [
-            {
-                "function_name": f["tool_name"],
-                "parameters": f["parameters"],
-                "result": f["result"],
-            }
-            for f in functions_list_by_order
-        ]
-        return json.dumps(invoked_functions_list)
 
-    def _format_tools_requests_checks_prompt(
+        return json.dumps(
+            [
+                {
+                    "function_name": invocation["tool_name"],
+                    "parameters": invocation["parameters"],
+                    "result": invocation["result"],
+                }
+                for invocation in ordered_function_invocations
+            ]
+        )
+
+    def _format_tool_call_verification_prompt(
         self,
         interaction_history: Iterable[Event],
         guidelines: Iterable[Guideline],
-        guideline_tools_associations: dict[Guideline, Iterable[Tool]],
+        guideline_tool_associations: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
-        tools_requests_calls: Iterable[ToolCallRequest],
+        tool_call_specifications: Iterable[ToolCallRequest],
     ) -> str:
         json_events = events_to_json(interaction_history)
-        functions_rules = self._format_guideline_tools_associations(guideline_tools_associations)
         invoked_functions = self._get_invoked_functions(produced_tool_events)
 
-        tools_set = {
-            tool for tools_list in guideline_tools_associations.values() for tool in tools_list
-        }
-        functions = tools_to_json(tools_set)
+        tools = set(chain(*guideline_tool_associations.values()))
+        functions = tools_to_json(tools)
 
-        rules = "\n".join(
+        ordinary_rules = "\n".join(
             f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
+        )
+        function_enabled_rules = self._format_guideline_tool_associations(
+            guideline_tool_associations
         )
 
         return f"""\
@@ -262,11 +312,11 @@ Before generating your next response, you are highly encouraged to use tools tha
 to you, in order to generate a high-quality, well-informed response.
 
 In generating the response, you must adhere to the following rules: ###
-{rules}
+{ordinary_rules}
 ###
 
 The following is a list of instructions that apply, along with the tool functions related to them, which may or may not need to be called at this point, depending on your judgement and the rules provided: ###
-{functions_rules}
+{function_enabled_rules}
 ###
 
 The following are the tool function definitions: ###
@@ -280,7 +330,7 @@ You can use this information to avoid redundant calls and inform your response: 
 
 A predictive NLP algorithm has suggested that the following tool calls be executed
 prior to generating your next response to the user. ###
-{tools_requests_calls}
+{tool_call_specifications}
 ###
 
 Before generating your next response, you must now first decide whether to go ahead and execute
@@ -299,21 +349,21 @@ Produce a valid JSON object according to the following format:
     "checks": [
         {{
             "name": "<FUNCTION NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHY THE FUNCTION NEEDS TO BE CALLED OR NOT CALLED>",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHY THE TOOL FUNCTION NEEDS TO BE CALLED OR NOT CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
-            "parameters": <PARAMETERS FOR THE FUNCTION IF CALLED, OTHERWISE AN EMPTY OBJECT>,
-            "parameters_rationale": <"A FEW WORDS EXPLAINING THE PARAMETERS' POPULATION AND THEIR TYPE CORRECTNESS">,
+            "parameters": <PARAMETERS FOR THE TOOL FUNCTION IF CALLED, OTHERWISE AN EMPTY OBJECT>,
+            "parameters_rationale": <"A FEW WORDS EXPLAINING THE CHOICE OF PARAMETERS AND THEIR TYPE CORRECTNESS">,
             "parameters_correct": <BOOLEAN>
         }},
         ...,
         {{
             "name": "<FUNCTION NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHY THE FUNCTION NEEDS TO BE CALLED OR NOT CALLED>",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHY THE TOOL FUNCTION NEEDS TO BE CALLED OR NOT CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
             "parameters": <PARAMETERS FOR THE FUNCTION IF CALLED, OTHERWISE AN EMPTY OBJECT>,
-            "parameters_rationale": <"A FEW WORDS EXPLAINING THE PARAMETERS' POPULATION AND THEIR TYPE CORRECTNESS">,
+            "parameters_rationale": <"A FEW WORDS EXPLAINING THE CHOICE OF PARAMETERS AND THEIR TYPE CORRECTNESS">,
             "parameters_correct": <BOOLEAN>
         }}
     ]
@@ -349,7 +399,7 @@ Here's a hypothetical example, for your reference:
 Note that the `checks` list can be empty if no functions need to be called.
 """  # noqa
 
-    async def _propose_tool_calls(
+    async def _run_inference(
         self,
         prompt: str,
     ) -> Iterable[ToolCallRequest]:
@@ -363,9 +413,9 @@ Note that the `checks` list can be empty if no functions need to be called.
         content = response.choices[0].message.content or ""
         json_content = jsonfinder.only_json(content)[2]
 
-        return json_content["tools_requests_calls"]  # type: ignore
+        return json_content["tool_call_specifications"]  # type: ignore
 
-    async def _review_tool_calls(
+    async def _verify_inference(
         self,
         prompt: str,
     ) -> Iterable[ToolCall]:
@@ -391,15 +441,24 @@ Note that the `checks` list can be empty if no functions need to be called.
 
         return tools_calls
 
-    async def _proccess_tool(
+    async def _run_tool(
         self,
         tool_call: ToolCall,
-        tools: Iterable[Tool],
+        tool: Tool,
     ) -> ToolResult:
-        module_path = next((t.module_path for t in tools if t.name == tool_call.name), "")
-        module = importlib.import_module(module_path)
+        module = importlib.import_module(tool.module_path)
         func = getattr(module, tool_call.name)
-        result = func(**tool_call.parameters)
+
+        try:
+            logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
+            if inspect.isawaitable(func):
+                result = await func(**tool_call.parameters)  # type: ignore
+            else:
+                result = func(**tool_call.parameters)
+            logger.debug(f"Tool call returned: {tool_call.name}/{tool_call.id}: {result}")
+        except Exception as e:
+            logger.warning(f"Tool call produced an error: {tool_call.name}/{tool_call.id}: {e}")
+            result = e
 
         return ToolResult(
             id=ToolResultId(generate_id()),

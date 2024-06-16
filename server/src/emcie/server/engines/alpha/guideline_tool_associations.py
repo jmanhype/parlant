@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional
+from typing import Iterable, NewType, Optional
 from emcie.server.core import common
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.tools import ToolId
@@ -43,7 +43,6 @@ class GuidelineToolAssociationStore:
 
         return association
 
-    async def list_associations(
-        self,
-    ) -> dict[GuidelineId, set[GuidelineToolAssociation]]:
-        return self._associations
+    async def list_associations(self) -> Iterable[GuidelineToolAssociation]:
+        associations = self._associations.values()
+        return sum(map(list, associations), [])
