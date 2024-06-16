@@ -2,41 +2,41 @@ import asyncio
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter
-from pydantic import BaseModel
 
+from emcie.server.base import EmcieBase
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.models import ModelId, ModelRegistry
 from emcie.server.core.threads import MessageId, ThreadId, ThreadStore
 
 
-class AgentDTO(BaseModel):
+class AgentDTO(EmcieBase):
     id: AgentId
     llm_id: str
     creation_utc: datetime
 
 
-class ReactionDTO(BaseModel):
+class ReactionDTO(EmcieBase):
     thread_id: ThreadId
     message_id: MessageId
 
 
-class CreateAgentRequest(BaseModel):
+class CreateAgentRequest(EmcieBase):
     llm_id: Optional[ModelId] = None
 
 
-class CreateAgentResponse(BaseModel):
+class CreateAgentResponse(EmcieBase):
     agent_id: AgentId
 
 
-class ListAgentsResponse(BaseModel):
+class ListAgentsResponse(EmcieBase):
     agents: List[AgentDTO]
 
 
-class CreateReactionRequest(BaseModel):
+class CreateReactionRequest(EmcieBase):
     thread_id: ThreadId
 
 
-class CreateReactionResponse(BaseModel):
+class CreateReactionResponse(EmcieBase):
     reaction: ReactionDTO
 
 

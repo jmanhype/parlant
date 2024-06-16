@@ -1,3 +1,4 @@
+Feature: Alpha Engine
     Scenario: The agent greets the user
         Given the alpha engine
         And an agent

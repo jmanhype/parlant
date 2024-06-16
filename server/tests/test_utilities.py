@@ -9,7 +9,7 @@ import tiktoken
 T = TypeVar("T")
 
 llm_client = Client(api_key=os.environ["OPENAI_API_KEY"])
-llm_name = "gpt-3.5-turbo"
+llm_name = "gpt-4o"
 tokenizer = tiktoken.encoding_for_model(llm_name)
 
 
@@ -18,7 +18,7 @@ class SyncAwaiter:
         self.event_loop = event_loop
 
     def __call__(self, awaitable: Generator[Any, None, T] | Awaitable[T]) -> T:
-        return self.event_loop.run_until_complete(awaitable)
+        return self.event_loop.run_until_complete(awaitable)  # type: ignore
 
 
 def nlp_test(context: str, predicate: str) -> bool:

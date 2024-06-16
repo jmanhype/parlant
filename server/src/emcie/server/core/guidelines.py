@@ -20,7 +20,7 @@ class GuidelineStore:
     def __init__(
         self,
     ) -> None:
-        self._guideline_sets: dict[str, dict[GuidelineId, Guideline]] = defaultdict(lambda: dict())
+        self._guideline_sets: dict[str, dict[GuidelineId, Guideline]] = defaultdict(dict)
 
     async def create_guideline(
         self,
@@ -45,3 +45,10 @@ class GuidelineStore:
         guideline_set: str,
     ) -> Iterable[Guideline]:
         return self._guideline_sets[guideline_set].values()
+
+    async def read_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> Guideline:
+        return self._guideline_sets[guideline_set][guideline_id]

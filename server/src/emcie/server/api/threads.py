@@ -1,8 +1,8 @@
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 from typing import List
 
+from emcie.server.base import EmcieBase
 from emcie.server.core.threads import (
     MessageId,
     MessageRole,
@@ -11,7 +11,7 @@ from emcie.server.core.threads import (
 )
 
 
-class MessageDTO(BaseModel):
+class MessageDTO(EmcieBase):
     id: MessageId
     role: MessageRole
     content: str
@@ -20,35 +20,35 @@ class MessageDTO(BaseModel):
     revision: int
 
 
-class CreateThreadResponse(BaseModel):
+class CreateThreadResponse(EmcieBase):
     thread_id: ThreadId
 
 
-class CreateMessageRequest(BaseModel):
+class CreateMessageRequest(EmcieBase):
     role: MessageRole
     content: str
     completed: bool = False
 
 
-class CreateMessageResponse(BaseModel):
+class CreateMessageResponse(EmcieBase):
     message: MessageDTO
 
 
-class PatchMessageRequest(BaseModel):
+class PatchMessageRequest(EmcieBase):
     target_revision: int
     content_delta: str
     completed: bool
 
 
-class PatchMessageResponse(BaseModel):
+class PatchMessageResponse(EmcieBase):
     patched_message: MessageDTO
 
 
-class ListMessagesResponse(BaseModel):
+class ListMessagesResponse(EmcieBase):
     messages: List[MessageDTO]
 
 
-class ReadMessageResponse(BaseModel):
+class ReadMessageResponse(EmcieBase):
     message: MessageDTO
 
 

@@ -7,14 +7,16 @@ readme = "README.md"
 packages = [{include = "emcie", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 fastapi = "^0.109.2"
 nanoid = "^2.0.0"
 python-dateutil = "^2.8.2"
 python-dotenv = "^1.0.1"
-openai = "^1.12.0"
 lagom = "^2.6.0"
-tiktoken = "^0.6.0"
+tiktoken = "^0.7.0"
+openai = "^1.12.0"
+pyautogen = "^0.2.28"
+jsonfinder = "^0.4.2"
 
 
 [tool.poetry.group.dev.dependencies]

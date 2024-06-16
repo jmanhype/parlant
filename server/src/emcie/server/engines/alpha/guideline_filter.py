@@ -1,6 +1,8 @@
 import asyncio
 import json
+import jsonfinder  # type: ignore
 from typing import Iterable, TypedDict
+from loguru import logger
 
 from emcie.server.engines.alpha.utils import (
     duration_logger,
@@ -45,7 +47,7 @@ class GuidelineFilter:
         batch_size: int,
     ) -> list[list[Guideline]]:
         batches = []
-        batch_count = int(len(guidelines) / batch_size) + 1
+        batch_count = len(guidelines) // batch_size + 1
 
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
@@ -67,6 +69,8 @@ class GuidelineFilter:
 
         predicate_checks = json.loads(llm_response)["checks"]
 
+        logger.debug(f"Guideline filter batch result: {predicate_checks}")
+
         checks_by_index = {(int(c["predicate_number"]) - 1): c for c in predicate_checks}
 
         relevant_checks_by_index = {
@@ -79,7 +83,7 @@ class GuidelineFilter:
                 "score": relevant_checks_by_index[i]["applies_score"],
                 "rationale": relevant_checks_by_index[i]["rationale"],
             }
-            for i in relevant_checks_by_index.keys()
+            for i in relevant_checks_by_index
         ]
 
     def _format_prompt(
@@ -127,9 +131,10 @@ Produce a JSON object of the following format:
     async def _generate_llm_response(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="gpt-3.5-turbo",
-            temperature=0.0,
+            model="gpt-4o",
+            temperature=0.3,
             response_format={"type": "json_object"},
         )
 
-        return response.choices[0].message.content or ""
+        content = response.choices[0].message.content or "{}"
+        return json.dumps(jsonfinder.only_json(content)[2])  # type: ignore
