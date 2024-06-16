@@ -76,7 +76,7 @@ def test_hierarchical_contradiction(
     hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator()
     contradiction_results = list(
         sync_await(
-            hierarchical_contradiction_evaluator.evaluate_candidates(
+            hierarchical_contradiction_evaluator.evaluate(
                 [candidate_guideline, reference_guideline],
             )
         )
@@ -163,7 +163,7 @@ def test_parallel_contradiction(
     parallel_contradiction_evaluator = ParallelContradictionEvaluator()
     contradiction_results = list(
         sync_await(
-            parallel_contradiction_evaluator.evaluate_candidates(
+            parallel_contradiction_evaluator.evaluate(
                 [candidate_guideline, reference_guideline],
                 [],
             )
@@ -251,7 +251,7 @@ def test_temporal_contradiction(
     temporal_contradiction_evaluator = TemporalContradictionEvaluator()
     contradiction_results = list(
         sync_await(
-            temporal_contradiction_evaluator.evaluate_candidates(
+            temporal_contradiction_evaluator.evaluate(
                 [candidate_guideline, reference_guideline],
                 [],
             )
@@ -339,7 +339,7 @@ def test_contexual_contradiction(
     contextual_contradiction_evaluator = ContextualContradictionEvaluator()
     contradiction_results = list(
         sync_await(
-            contextual_contradiction_evaluator.evaluate_candidates(
+            contextual_contradiction_evaluator.evaluate(
                 [candidate_guideline, reference_guideline],
                 [],
             )

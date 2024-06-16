@@ -37,31 +37,13 @@ class Contradiction(BaseModel):
     creation_utc: datetime
 
 
-class ContradictionResolution(BaseModel):
-    contradiction: Contradiction
-    reference_guideline_id: GuidelineId
-    checked_guideline_id: GuidelineId
-    reference_predicate_proposal: str
-    checked_predicate_proposal: str
-    reference_content_proposal: str
-    checked_content_proposal: str
-    rationale: str
-
-
 class ContradictionEvaluator(ABC):
     @abstractmethod
-    async def evaluate_candidates(
+    async def evaluate(
         self,
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
     ) -> Iterable[Contradiction]: ...
-
-    @staticmethod
-    def _map_guidelines(
-        guidelines: Iterable[Guideline],
-    ) -> dict[GuidelineId, Guideline]:
-        result = {g.id: g for g in guidelines}
-        return result
 
     @staticmethod
     def _filter_unique_contradictions(
@@ -84,7 +66,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
         self.coherence_contradiction_type = ContradictionType.HIERARCHICAL
         self._llm_client = make_llm_client("openai")
 
-    async def evaluate_candidates(
+    async def evaluate(
         self,
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline] = [],
@@ -284,7 +266,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluator):
         self.coherence_contradiction_type = ContradictionType.PARALLEL
         self._llm_client = make_llm_client("openai")
 
-    async def evaluate_candidates(
+    async def evaluate(
         self,
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
@@ -481,7 +463,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluator):
         self.coherence_contradiction_type = ContradictionType.TEMPORAL
         self._llm_client = make_llm_client("openai")
 
-    async def evaluate_candidates(
+    async def evaluate(
         self,
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
@@ -679,7 +661,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluator):
         self.coherence_contradiction_type = ContradictionType.CONTEXTUAL
         self._llm_client = make_llm_client("openai")
 
-    async def evaluate_candidates(
+    async def evaluate(
         self,
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
@@ -885,25 +867,21 @@ class CoherenceChecker:
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
     ) -> str:
-        hierarchical_contradictions_task = (
-            self.hierarchical_contradiction_evaluator.evaluate_candidates(
-                candidates,
-                foundational_guidelines,
-            )
-        )
-        parallel_contradictions_task = self.parallel_contradiction_evaluator.evaluate_candidates(
+        hierarchical_contradictions_task = self.hierarchical_contradiction_evaluator.evaluate(
             candidates,
             foundational_guidelines,
         )
-        temporal_contradictions_task = self.temporal_contradiction_evaluator.evaluate_candidates(
+        parallel_contradictions_task = self.parallel_contradiction_evaluator.evaluate(
             candidates,
             foundational_guidelines,
         )
-        contexutal_contradictions_task = (
-            self.contexutal_contradiction_evaluator.evaluate_candidates(
-                candidates,
-                foundational_guidelines,
-            )
+        temporal_contradictions_task = self.temporal_contradiction_evaluator.evaluate(
+            candidates,
+            foundational_guidelines,
+        )
+        contexutal_contradictions_task = self.contexutal_contradiction_evaluator.evaluate(
+            candidates,
+            foundational_guidelines,
         )
         altogether_contradictions = chain.from_iterable(
             await asyncio.gather(
