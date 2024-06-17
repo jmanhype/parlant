@@ -86,7 +86,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline] = [],
     ) -> Iterable[Contradiction]:
-        batch_size = 3
+        batch_size = 5
         foundational_guideline_list = list(foundational_guidelines)
         candidates_list = list(candidates)
         tasks = []
@@ -286,7 +286,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluator):
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
     ) -> Iterable[Contradiction]:
-        batch_size = 3
+        batch_size = 5
         foundational_guideline_list = list(foundational_guidelines)
         candidates_list = list(candidates)
         tasks = []
@@ -483,7 +483,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluator):
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
     ) -> Iterable[Contradiction]:
-        batch_size = 3
+        batch_size = 5
         foundational_guideline_list = list(foundational_guidelines)
         candidates_list = list(candidates)
         tasks = []
@@ -681,7 +681,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluator):
         candidates: Iterable[Guideline],
         foundational_guidelines: Iterable[Guideline],
     ) -> Iterable[Contradiction]:
-        batch_size = 3
+        batch_size = 5
         foundational_guideline_list = list(foundational_guidelines)
         candidates_list = list(candidates)
         tasks = []
