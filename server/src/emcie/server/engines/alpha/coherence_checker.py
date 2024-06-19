@@ -7,9 +7,9 @@ import json
 from typing import Iterable, NewType
 
 from more_itertools import chunked
-from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_fixed
 
+from emcie.server.base import DefaultBaseModel
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.engines.alpha.utils import duration_logger, make_llm_client
 
@@ -23,7 +23,7 @@ class ContradictionType(Enum):
     CONTEXTUAL = "Contextual Contradiction"
 
 
-class ContradictionTest(BaseModel):
+class ContradictionTest(DefaultBaseModel):
     contradiction_type: ContradictionType
     existing_guideline_id: GuidelineId
     proposed_guideline_id: GuidelineId

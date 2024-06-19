@@ -3,40 +3,40 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter
 
-from emcie.server.base import EmcieBase
+from emcie.server.base import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.models import ModelId, ModelRegistry
 from emcie.server.core.threads import MessageId, ThreadId, ThreadStore
 
 
-class AgentDTO(EmcieBase):
+class AgentDTO(DefaultBaseModel):
     id: AgentId
     llm_id: str
     creation_utc: datetime
 
 
-class ReactionDTO(EmcieBase):
+class ReactionDTO(DefaultBaseModel):
     thread_id: ThreadId
     message_id: MessageId
 
 
-class CreateAgentRequest(EmcieBase):
+class CreateAgentRequest(DefaultBaseModel):
     llm_id: Optional[ModelId] = None
 
 
-class CreateAgentResponse(EmcieBase):
+class CreateAgentResponse(DefaultBaseModel):
     agent_id: AgentId
 
 
-class ListAgentsResponse(EmcieBase):
+class ListAgentsResponse(DefaultBaseModel):
     agents: List[AgentDTO]
 
 
-class CreateReactionRequest(EmcieBase):
+class CreateReactionRequest(DefaultBaseModel):
     thread_id: ThreadId
 
 
-class CreateReactionResponse(EmcieBase):
+class CreateReactionResponse(DefaultBaseModel):
     reaction: ReactionDTO
 
 
