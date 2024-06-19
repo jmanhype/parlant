@@ -51,30 +51,30 @@ def guidelines_with_contradictions(
             "predicate": "A customer inquires about upgrading their service package",
             "content": "Provide information on available upgrade options and benefits",
         },
-        # {
-        #     "predicate": "A customer needs assistance with understanding their billing statements", # noqa
-        #     "content": "Guide them through the billing details and explain any charges",
-        # },
-        # {
-        #     "predicate": "A customer expresses satisfaction with the service",
-        #     "content": "encourage them to leave a review or testimonial",
-        # },
-        # {
-        #     "predicate": "A customer refers another potential client",
-        #     "content": "initiate the referral rewards process",
-        # },
-        # {
-        #     "predicate": "A customer exceeds their data storage limit",
-        #     "content": "Prompt them to upgrade their subscription plan",
-        # },
-        # {
-        #     "predicate": "Promoting customer retention and satisfaction",
-        #     "content": "Offer a temporary data limit extension without requiring an upgrade",
-        # },
-        # {
-        #     "predicate": "Receiving feedback on a new feature",
-        #     "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
-        # },
+        {
+            "predicate": "A customer needs assistance with understanding their billing statements",  # noqa
+            "content": "Guide them through the billing details and explain any charges",
+        },
+        {
+            "predicate": "A customer expresses satisfaction with the service",
+            "content": "encourage them to leave a review or testimonial",
+        },
+        {
+            "predicate": "A customer refers another potential client",
+            "content": "initiate the referral rewards process",
+        },
+        {
+            "predicate": "A customer exceeds their data storage limit",
+            "content": "Prompt them to upgrade their subscription plan",
+        },
+        {
+            "predicate": "Promoting customer retention and satisfaction",
+            "content": "Offer a temporary data limit extension without requiring an upgrade",
+        },
+        {
+            "predicate": "Receiving feedback on a new feature",
+            "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
+        },
         # {
         #     "predicate": "Users express significant resistance to a new feature",
         #     "content": "Roll back or offer the option to revert to previous settings",
@@ -151,30 +151,30 @@ def guidelines_without_contradictions(
             "predicate": "A customer refers another potential client",
             "content": "initiate the referral rewards process",
         },
-        # {
-        #     "predicate": "A customer asks about the security of their data",
-        #     "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
-        # },
-        # {
-        #     "predicate": "A customer inquires about compliance with specific regulations",
-        #     "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-        # },
-        # {
-        #     "predicate": "A customer requests faster support response times",
-        #     "content": "Explain the standard response times and efforts to improve them",
-        # },
-        # {
-        #     "predicate": "A customer compliments the service on social media",
-        #     "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
-        # },
-        # {
-        #     "predicate": "A customer asks about the security of their data",
-        #     "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
-        # },
-        # {
-        #     "predicate": "A customer inquires about compliance with specific regulations",
-        #     "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-        # },
+        {
+            "predicate": "A customer asks about the security of their data",
+            "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+        },
+        {
+            "predicate": "A customer inquires about compliance with specific regulations",
+            "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+        },
+        {
+            "predicate": "A customer requests faster support response times",
+            "content": "Explain the standard response times and efforts to improve them",
+        },
+        {
+            "predicate": "A customer compliments the service on social media",
+            "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+        },
+        {
+            "predicate": "A customer asks about the security of their data",
+            "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+        },
+        {
+            "predicate": "A customer inquires about compliance with specific regulations",
+            "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+        },
         # {
         #     "predicate": "A customer requests faster support response times",
         #     "content": "Explain the standard response times and efforts to improve them",
@@ -209,7 +209,6 @@ def guidelines_without_contradictions(
     (
         "guideline_a_definition",
         "guideline_b_definition",
-        "expected_contradiction",
     ),
     [
         (
@@ -221,7 +220,6 @@ def guidelines_without_contradictions(
                 "predicate": "Any customer requests a feature not available in the current version",
                 "content": "Inform them about the product roadmap and upcoming features",
             },
-            True,
         ),
         (
             {
@@ -232,39 +230,15 @@ def guidelines_without_contradictions(
                 "predicate": "The issue reported affects a critical operational feature for multiple clients",  # noqa
                 "content": "Escalate immediately to the highest priority for resolution",
             },
-            True,
-        ),
-        (
-            {
-                "predicate": "A customer inquires about upgrading their service package",
-                "content": "Provide information on available upgrade options and benefits",
-            },
-            {
-                "predicate": "A customer needs assistance with understanding their billing statements",  # noqa
-                "content": "Guide them through the billing details and explain any charges",
-            },
-            False,
-        ),
-        (
-            {
-                "predicate": "A customer expresses satisfaction with the service",
-                "content": "encourage them to leave a review or testimonial",
-            },
-            {
-                "predicate": "A customer refers another potential client",
-                "content": "initiate the referral rewards process",
-            },
-            False,
         ),
     ],
 )
-def test_hierarchical_contradiction(
+def test_hierarchical_evaluator_detects_contradictions(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: str,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
-    expected_contradiction: bool,
 ) -> None:
     guideline_store = container.resolve(GuidelineStore)
     guideline_a = sync_await(
@@ -288,36 +262,92 @@ def test_hierarchical_contradiction(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
     assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL
-    if expected_contradiction:
-        assert contradiction.severity >= 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "A contradiction has been found and an explanation is provided as to why it is a "
-            "hierarchical contradiction",
-        )
-    else:
-        assert contradiction.severity < 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "No contradiction has been found betweem the two behavioral guidelines",
-        )
+    assert contradiction.severity >= 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "A contradiction has been found and an explanation is provided as to why it is a "
+        "hierarchical contradiction",
+    )
 
 
 @mark.parametrize(
     (
         "guideline_a_definition",
         "guideline_b_definition",
-        "expected_contradiction",
+    ),
+    [
+        (
+            {
+                "predicate": "A customer inquires about upgrading their service package",
+                "content": "Provide information on available upgrade options and benefits",
+            },
+            {
+                "predicate": "A customer needs assistance with understanding their billing statements",  # noqa
+                "content": "Guide them through the billing details and explain any charges",
+            },
+        ),
+        (
+            {
+                "predicate": "A customer expresses satisfaction with the service",
+                "content": "encourage them to leave a review or testimonial",
+            },
+            {
+                "predicate": "A customer refers another potential client",
+                "content": "initiate the referral rewards process",
+            },
+        ),
+    ],
+)
+def test_hierarchical_evaluator_does_not_detect_contradictions(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: str,
+    guideline_a_definition: dict[str, str],
+    guideline_b_definition: dict[str, str],
+) -> None:
+    guideline_store = container.resolve(GuidelineStore)
+    guideline_a = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
+        )
+    )
+    guideline_b = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
+        )
+    )
+    hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator()
+    contradiction_results = list(
+        sync_await(
+            hierarchical_contradiction_evaluator.evaluate(
+                [guideline_a, guideline_b],
+            )
+        )
+    )
+    assert len(contradiction_results) == 1
+    contradiction = contradiction_results[0]
+    assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL
+    assert contradiction.severity < 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "No contradiction has been found betweem the two behavioral guidelines",
+    )
+
+
+@mark.parametrize(
+    (
+        "guideline_a_definition",
+        "guideline_b_definition",
     ),
     [
         (
@@ -329,7 +359,6 @@ def test_hierarchical_contradiction(
                 "predicate": "Promoting customer retention and satisfaction",
                 "content": "Offer a temporary data limit extension without requiring an upgrade",
             },
-            True,
         ),
         (
             {
@@ -340,39 +369,15 @@ def test_hierarchical_contradiction(
                 "predicate": "Users express significant resistance to a new feature",
                 "content": "Roll back or offer the option to revert to previous settings",
             },
-            True,
-        ),
-        (
-            {
-                "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
-            },
-            {
-                "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-            },  # noqa
-            False,
-        ),
-        (
-            {
-                "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
-            },
-            {
-                "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
-            },
-            False,
         ),
     ],
 )
-def test_parallel_contradiction(
+def test_parallel_evaluator_detects_contradictions(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: str,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
-    expected_contradiction: bool,
 ) -> None:
     guideline_store = container.resolve(GuidelineStore)
     guideline_a = sync_await(
@@ -397,36 +402,93 @@ def test_parallel_contradiction(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
     assert contradiction.contradiction_type == ContradictionType.PARALLEL
-    if expected_contradiction:
-        assert contradiction.severity >= 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "A contradiction has been found and an explanation is provided as to why it is a "
-            "hierarchical contradiction",
-        )
-    else:
-        assert contradiction.severity < 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "No contradiction has been found betweem the two behavioral guidelines",
-        )
+    assert contradiction.severity >= 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "A contradiction has been found and an explanation is provided as to why it is a "
+        "hierarchical contradiction",
+    )
 
 
 @mark.parametrize(
     (
         "guideline_a_definition",
         "guideline_b_definition",
-        "expected_contradiction",
+    ),
+    [
+        (
+            {
+                "predicate": "A customer asks about the security of their data",
+                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+            },
+            {
+                "predicate": "A customer inquires about compliance with specific regulations",
+                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+            },  # noqa
+        ),
+        (
+            {
+                "predicate": "A customer requests faster support response times",
+                "content": "Explain the standard response times and efforts to improve them",
+            },
+            {
+                "predicate": "A customer compliments the service on social media",
+                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+            },
+        ),
+    ],
+)
+def test_parallel_evaluator_does_not_detect_contradictions(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: str,
+    guideline_a_definition: dict[str, str],
+    guideline_b_definition: dict[str, str],
+) -> None:
+    guideline_store = container.resolve(GuidelineStore)
+    guideline_a = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
+        )
+    )
+    guideline_b = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
+        )
+    )
+    parallel_contradiction_evaluator = ParallelContradictionEvaluator()
+    contradiction_results = list(
+        sync_await(
+            parallel_contradiction_evaluator.evaluate(
+                [guideline_a, guideline_b],
+                [],
+            )
+        )
+    )
+    assert len(contradiction_results) == 1
+    contradiction = contradiction_results[0]
+    assert contradiction.contradiction_type == ContradictionType.PARALLEL
+    assert contradiction.severity < 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "No contradiction has been found betweem the two behavioral guidelines",
+    )
+
+
+@mark.parametrize(
+    (
+        "guideline_a_definition",
+        "guideline_b_definition",
     ),
     [
         (
@@ -438,7 +500,6 @@ def test_parallel_contradiction(
                 "predicate": "Key clients are in the middle of a critical project",
                 "content": "Delay software updates to avoid disrupting their operations",
             },
-            True,
         ),
         (
             {
@@ -449,39 +510,15 @@ def test_parallel_contradiction(
                 "predicate": "A new financial regulation is implemented at the end of the quarter",
                 "content": "re-evaluate all transactions from that quarter before closing the books",  # noqa
             },
-            True,
-        ),
-        (
-            {
-                "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
-            },
-            {
-                "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-            },  # noqa
-            False,
-        ),
-        (
-            {
-                "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
-            },
-            {
-                "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
-            },
-            False,
         ),
     ],
 )
-def test_temporal_contradiction(
+def test_temporal_evaluator_detects_contradictions(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: str,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
-    expected_contradiction: bool,
 ) -> None:
     guideline_store = container.resolve(GuidelineStore)
     guideline_a = sync_await(
@@ -506,36 +543,93 @@ def test_temporal_contradiction(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
     assert contradiction.contradiction_type == ContradictionType.TEMPORAL
-    if expected_contradiction:
-        assert contradiction.severity >= 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "A contradiction has been found and an explanation is provided as to why it is a "
-            "hierarchical contradiction",
-        )
-    else:
-        assert contradiction.severity < 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "No contradiction has been found betweem the two behavioral guidelines",
-        )
+    assert contradiction.severity >= 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "A contradiction has been found and an explanation is provided as to why it is a "
+        "hierarchical contradiction",
+    )
 
 
 @mark.parametrize(
     (
         "guideline_a_definition",
         "guideline_b_definition",
-        "expected_contradiction",
+    ),
+    [
+        (
+            {
+                "predicate": "A customer asks about the security of their data",
+                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+            },
+            {
+                "predicate": "A customer inquires about compliance with specific regulations",
+                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+            },  # noqa
+        ),
+        (
+            {
+                "predicate": "A customer requests faster support response times",
+                "content": "Explain the standard response times and efforts to improve them",
+            },
+            {
+                "predicate": "A customer compliments the service on social media",
+                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+            },
+        ),
+    ],
+)
+def test_temporal_evaluator_does_not_detect_contradictions(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: str,
+    guideline_a_definition: dict[str, str],
+    guideline_b_definition: dict[str, str],
+) -> None:
+    guideline_store = container.resolve(GuidelineStore)
+    guideline_a = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
+        )
+    )
+    guideline_b = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
+        )
+    )
+    temporal_contradiction_evaluator = TemporalContradictionEvaluator()
+    contradiction_results = list(
+        sync_await(
+            temporal_contradiction_evaluator.evaluate(
+                [guideline_a, guideline_b],
+                [],
+            )
+        )
+    )
+    assert len(contradiction_results) == 1
+    contradiction = contradiction_results[0]
+    assert contradiction.contradiction_type == ContradictionType.TEMPORAL
+    assert contradiction.severity < 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "No contradiction has been found betweem the two behavioral guidelines",
+    )
+
+
+@mark.parametrize(
+    (
+        "guideline_a_definition",
+        "guideline_b_definition",
     ),
     [
         (
@@ -547,7 +641,6 @@ def test_temporal_contradiction(
                 "predicate": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
                 "content": "Consolidate data handling to enhance efficiency",
             },
-            True,
         ),
         (
             {
@@ -558,39 +651,15 @@ def test_temporal_contradiction(
                 "predicate": "The company’s financial performance targets require maximizing revenue",  # noqa
                 "content": "avoid discounts and push for higher-priced contracts",
             },
-            True,
-        ),
-        (
-            {
-                "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
-            },
-            {
-                "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-            },  # noqa
-            False,
-        ),
-        (
-            {
-                "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
-            },
-            {
-                "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
-            },
-            False,
         ),
     ],
 )
-def test_contexual_contradiction(
+def test_contextual_evaluator_detects_contradictions(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: str,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
-    expected_contradiction: bool,
 ) -> None:
     guideline_store = container.resolve(GuidelineStore)
     guideline_a = sync_await(
@@ -615,29 +684,87 @@ def test_contexual_contradiction(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
     assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL
-    if expected_contradiction:
-        assert contradiction.severity >= 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "A contradiction has been found and an explanation is provided as to why it is a "
-            "hierarchical contradiction",
+    assert contradiction.severity >= 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "A contradiction has been found and an explanation is provided as to why it is a "
+        "hierarchical contradiction",
+    )
+
+
+@mark.parametrize(
+    (
+        "guideline_a_definition",
+        "guideline_b_definition",
+    ),
+    [
+        (
+            {
+                "predicate": "A customer asks about the security of their data",
+                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+            },
+            {
+                "predicate": "A customer inquires about compliance with specific regulations",
+                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+            },
+        ),
+        (
+            {
+                "predicate": "A customer requests faster support response times",
+                "content": "Explain the standard response times and efforts to improve them",
+            },
+            {
+                "predicate": "A customer compliments the service on social media",
+                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+            },
+        ),
+    ],
+)
+def test_contextual_evaluator_does_not_detect_contradictions(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: str,
+    guideline_a_definition: dict[str, str],
+    guideline_b_definition: dict[str, str],
+) -> None:
+    guideline_store = container.resolve(GuidelineStore)
+    guideline_a = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
         )
-    else:
-        assert contradiction.severity < 5
-        assert nlp_test(
-            "Here are two behavioral guidelines:"
-            "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-            f"1. {contradiction.existing_guideline_id}\n"
-            f"2. {contradiction.proposed_guideline_id}\n"
-            "Here is the output explanation generated by the contradiction test:"
-            f"{contradiction.rationale}",
-            "No contradiction has been found betweem the two behavioral guidelines",
+    )
+    guideline_b = sync_await(
+        guideline_store.create_guideline(
+            agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
+    )
+    contextual_contradiction_evaluator = ContextualContradictionEvaluator()
+    contradiction_results = list(
+        sync_await(
+            contextual_contradiction_evaluator.evaluate(
+                [guideline_a, guideline_b],
+                [],
+            )
+        )
+    )
+    assert len(contradiction_results) == 1
+    contradiction = contradiction_results[0]
+    assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL
+    assert contradiction.severity < 5
+    assert nlp_test(
+        "Here are two behavioral guidelines:"
+        "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
+        f"1. {contradiction.existing_guideline_id}\n"
+        f"2. {contradiction.proposed_guideline_id}\n"
+        "Here is the output explanation generated by the contradiction test:"
+        f"{contradiction.rationale}",
+        "No contradiction has been found betweem the two behavioral guidelines",
+    )
 
 
 def test_no_contradictions_found(
