@@ -786,4 +786,49 @@ def test_multiple_contradictions_found(
     contradiction_results = sync_await(
         coherence_checker.evaluate_coherence(guidelines_with_contradictions, [])
     )
-    assert len(list(filter(lambda c: c.severity >= 5, contradiction_results))) == 10
+    assert len(list(filter(lambda c: c.severity >= 5, contradiction_results))) == 12
+
+
+def test_existing_guidelines_not_getting_checked(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: str,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    async def create_guideline(predicate: str, content: str) -> Guideline:
+        return await guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=predicate,
+            content=content,
+        )
+
+    proposed_guideline_definiton = {
+        "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
+        "content": "Escalate the request to product management for special consideration",
+    }
+    existing_guideline_definiton_1 = {
+        "predicate": "Any customer requests a feature not available in the current version",
+        "content": "Inform them about the product roadmap and upcoming features",
+    }
+    existing_guideline_definiton_2 = {
+        "predicate": "A customer with low ranking requests a specific feature that does not aligns the current product roadmap",  # noqa
+        "content": "Inform them about the current roadmap and advise them to inquire again in one year.",  # noqa
+    }
+    proposed_guideline = sync_await(create_guideline(**proposed_guideline_definiton))
+    existing_guideline_1 = sync_await(create_guideline(**existing_guideline_definiton_1))
+    existing_guideline_2 = sync_await(create_guideline(**existing_guideline_definiton_2))
+
+    coherence_checker = CoherenceChecker()
+    contradiction_results = list(
+        sync_await(
+            coherence_checker.evaluate_coherence(
+                [proposed_guideline], [existing_guideline_1, existing_guideline_2]
+            )
+        )
+    )
+    # Hierarchical and contradiction between each existing guideline, but not between them both.
+    assert contradiction_results[0].proposed_guideline_id == proposed_guideline.id
+    assert contradiction_results[1].proposed_guideline_id == proposed_guideline.id
+    assert contradiction_results[0].existing_guideline_id == existing_guideline_1.id
+    assert contradiction_results[1].existing_guideline_id == existing_guideline_2.id
