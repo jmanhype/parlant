@@ -339,11 +339,11 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
 **Task Description**:
 1. **Input**:
    - Existing Guidelines: {existing_guidelines_string}
-   - Proposed Guidelines:{proposed_guideline_string}
+   - Proposed Guidelines: {proposed_guideline_string}
 
 2. **Process**:
    - For each guideline in the existing set, compare it with the proposed guideline.
-   - Determine if there is a parallel priority contradiction, where both guidelines apply under the same conditions and directly Contradiction without a clear way to resolve the priority.
+   - Determine if there is a parallel priority contradiction, where both guidelines apply under the same conditions and directly contradict each other without a clear way to resolve the priority.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 3. **Output**:
@@ -354,8 +354,8 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
              {{
                  "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
                  "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>"
-                 "rationale": "<Brief explanation of why the two guidelines are in parallel priority Contradiction>"
+                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>",
+                 "rationale": "<Brief explanation of why the two guidelines result in a parallel priority contradiction>"
              }}
          ]
      }}
@@ -391,7 +391,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
                  "severity_level": 8,
-                 "rationale": "The requirement to focus all resources on a single project Contradictions with the need to distribute resources equally when multiple projects are due, creating a decision-making deadlock without a clear priority directive."
+                 "rationale": "The requirement to focus all resources on a single project contradicts the need to distribute resources equally when multiple projects are due, creating a decision-making deadlock without a clear priority directive."
              }}
          ]
      }}
@@ -408,7 +408,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
                  "existing_guideline_id": "5",
                  "proposed_guideline_id": "6",
                  "severity_level": 7,
-                 "rationale": "The policy to accommodate flexible working hours Contradictions with the requirement for standard hours to enhance team collaboration, creating a scenario where both policies are justified but contradictory."
+                 "rationale": "The policy to accommodate flexible working hours contradicts the requirement for standard hours to enhance team collaboration, creating a scenario where both policies are justified but contradictory."
              }}
          ]
      }}
@@ -425,7 +425,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
                  "existing_guideline_id": "7",
                  "proposed_guideline_id": "8",
                  "severity_level": 1,
-                 "rationale": "The guidelines address different aspects of customer inquiries without Contradictioning. One provides general product information, while the other focuses specifically on compatibility issues, allowing both guidelines to operate simultaneously without contradiction."
+                 "rationale": "The guidelines address different aspects of customer inquiries without contradiction. One provides general product information, while the other focuses specifically on compatibility issues, allowing both guidelines to operate simultaneously without contradiction."
              }}
          ]
      }}
@@ -535,12 +535,12 @@ This arises from a lack of clear prioritization or differentiation between actio
 **Task Description**:
 1. **Input**:
    - Existing Guidelines: {existing_guidelines_string}
-    - Proposed Guidelines:{proposed_guideline_string}
+   - Proposed Guidelines: {proposed_guideline_string}
 
 2. **Process**:
    - Analyze the conditions and the timing specified for each pair of guidelines.
    - Determine if there is a temporal contradiction, where the timings of the guidelines conflict without a clear way to resolve which action should take precedence.
-   - If no contradiction is detected, set the contradiction level to 1 to indicate minimal or no contradiction.
+   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 3. **Output**:
    - A list of results, each detailing either a potential contradiction or the absence of one, structured as follows:
@@ -550,7 +550,7 @@ This arises from a lack of clear prioritization or differentiation between actio
              {{
                  "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
                  "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to timing overlap>",
+                 "severity_level": "<Severity Level (1-10): Measures the degree of contradiction due to timing overlap>",
                  "rationale": "<Brief explanation of why the two guidelines are in temporal contradiction or why they are not>"
              }}
          ]
@@ -560,7 +560,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 ### Examples of Evaluations:
 
 #### Example #1:
-- **Foundational guideline**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
+- **Existing Guideline**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
 - **Proposed Guideline**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
 - **Expected Result**:
      ```json
@@ -570,14 +570,14 @@ This arises from a lack of clear prioritization or differentiation between actio
                  "existing_guideline_id": "1",
                  "proposed_guideline_id": "2",
                  "severity_level": 9,
-                 "rationale": "The guideline to apply discounts during the holiday season contradicts the guideline to withhold discounts during the end-of-year sales period, even though these periods can overlap, leading to contradictory pricing strategies."
+                 "rationale": "The guideline to apply discounts during the holiday season contradicts the guideline to withhold discounts during the end-of-year sales period, as these periods can overlap, leading to contradictory pricing strategies."
              }}
          ]
      }}
      ```
 
 #### Example #2:
-- **Foundational guideline**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
+- **Existing Guideline**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
 - **Proposed Guideline**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
 - **Expected Result**:
      ```json
@@ -587,14 +587,14 @@ This arises from a lack of clear prioritization or differentiation between actio
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
                  "severity_level": 8,
-                 "rationale": "The need to sell expiring products at reduced prices contradicts the strategy to maintain standard pricing during active promotional campaigns, especially problematic when both circumstances coincide."
+                 "rationale": "The need to sell expiring products at reduced prices contradicts the strategy to maintain standard pricing during active promotional campaigns, particularly problematic when both circumstances coincide."
              }}
          ]
      }}
      ```
 
 #### Example #3:
-- **Foundational guideline**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
+- **Existing Guideline**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
 - **Proposed Guideline**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
 - **Expected Result**:
      ```json
@@ -611,7 +611,7 @@ This arises from a lack of clear prioritization or differentiation between actio
      ```
 
 #### Example #4:
-- **Foundational guideline**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
+- **Existing Guideline**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
 - **Proposed Guideline**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
 - **Expected Result**:
      ```json
