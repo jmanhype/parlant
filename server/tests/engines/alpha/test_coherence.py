@@ -264,11 +264,8 @@ def test_hierarchical_evaluator_detects_contradictions(
     assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity >= 5
     assert nlp_test(
-        "Here is an explanation of what hierarchical contradiction type is:"
-        "Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, "
-        "with one being more specific or detailed than the other. This type of Contradiction occurs when "  # noqa
-        "the application of a general guideline is contradicted by a more specific guideline under certain conditions, "  # noqa
-        "leading to inconsistencies in decision-making."
+        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -339,11 +336,8 @@ def test_hierarchical_evaluator_does_not_detect_contradictions(
     assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity < 5
     assert nlp_test(
-        "Here is an explanation of what hierarchical contradiction type is:"
-        "Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, "
-        "with one being more specific or detailed than the other. This type of Contradiction occurs when "  # noqa
-        "the application of a general guideline is contradicted by a more specific guideline under certain conditions, "  # noqa
-        "leading to inconsistencies in decision-making."
+        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -414,10 +408,8 @@ def test_parallel_evaluator_detects_contradictions(
     assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
     assert contradiction.severity >= 5
     assert nlp_test(
-        "Here is an explanation of what parallel contradiction type is:"
-        "Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions. "  # noqa
-        "This happens when conditions for both guidelines are met simultaneously, "
-        "without a clear resolution mechanism to prioritize one over the other."
+        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -489,10 +481,8 @@ def test_parallel_evaluator_does_not_detect_contradictions(
     assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
     assert contradiction.severity < 5
     assert nlp_test(
-        "Here is an explanation of what parallel contradiction type is:"
-        "Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions. "  # noqa
-        "This happens when conditions for both guidelines are met simultaneously, "
-        "without a clear resolution mechanism to prioritize one over the other."
+        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -563,9 +553,8 @@ def test_temporal_evaluator_detects_contradictions(
     assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
     assert contradiction.severity >= 5
     assert nlp_test(
-        "Here is an explanation of what temporal contradiction type is:"
-        "Temporal Contradiction occurs when guidelines dependent on timing or sequence overlap in a way that leads to contradictions."  # noqa
-        "This arises from a lack of clear prioritization or differentiation between actions required at the same time."  # noqa
+        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:\n"  # noqa
+        f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -637,9 +626,8 @@ def test_temporal_evaluator_does_not_detect_contradictions(
     assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
     assert contradiction.severity < 5
     assert nlp_test(
-        "Here is an explanation of what temporal contradiction type is:"
-        "Temporal Contradiction occurs when guidelines dependent on timing or sequence overlap in a way that leads to contradictions."  # noqa
-        "This arises from a lack of clear prioritization or differentiation between actions required at the same time."  # noqa
+        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"
@@ -710,10 +698,8 @@ def test_contextual_evaluator_detects_contradictions(
     assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL.value  # type: ignore
     assert contradiction.severity >= 5
     assert nlp_test(
-        "Here is an explanation of what parallel contradiction type is:"
-        "Contextual Contradiction occurs when external conditions or operational contexts "
-        "lead to contradictory actions. These conflicts arise from different but potentially "
-        "overlapping circumstances requiring actions that are valid under each specific context yet oppose each other."  # noqa
+        f"Here is an explanation of what {contextual_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"{contextual_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
         f"1. {contradiction.existing_guideline_id}\n"

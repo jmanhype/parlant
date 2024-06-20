@@ -15,6 +15,10 @@ from emcie.server.engines.alpha.utils import duration_logger, make_llm_client
 
 CoherenceContradictionId = NewType("CoherenceContradictionId", str)
 
+LLM_RETRY_WAIT_TIME_SECONDS = 3.5
+LLM_MAX_RETRIES = 100
+EVALUATION_BATCH_SIZE = 5
+
 
 class ContradictionType(Enum):
     HIERARCHICAL = "Hierarchical Contradiction"
@@ -46,7 +50,8 @@ def _filter_unique_contradictions(
     """
 
     def _generate_key(g1_id: GuidelineId, g2_id: GuidelineId) -> tuple[GuidelineId, GuidelineId]:
-        return tuple(sorted((g1_id, g2_id)))
+        _sorted_guidelines_tuple = tuple(sorted((g1_id, g2_id)))
+        return _sorted_guidelines_tuple  # type: ignore
 
     seen_keys = set()
     unique_contradictions = []
@@ -69,17 +74,21 @@ class ContradictionEvaluator(ABC):
     ) -> Iterable[ContradictionTest]: ...
 
 
-class HierarchicalContradictionEvaluator(ContradictionEvaluator):
-    def __init__(self) -> None:
-        self.contradiction_type = ContradictionType.HIERARCHICAL
+class ContradictionEvaluatorBase(ABC):
+    def __init__(
+        self,
+        contradiction_type: ContradictionType,
+    ) -> None:
         self._llm_client = make_llm_client("openai")
+        self.contradiction_type = contradiction_type
+        self.contradiction_response_outcome_key = f"{self.contradiction_type.value.replace(" ", "_")
+                                                     .lower()}s"
 
     async def evaluate(
         self,
         proposed_guidelines: Iterable[Guideline],
         existing_guidelines: Iterable[Guideline] = [],
     ) -> Iterable[ContradictionTest]:
-        batch_size = 5
         existing_guideline_list = list(existing_guidelines)
         proposed_guidelines_list = list(proposed_guidelines)
         tasks = []
@@ -90,16 +99,14 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
                 for g in proposed_guidelines_list + existing_guideline_list
                 if g.id != proposed_guideline.id
             ]
-            guideline_batches = chunked(filtered_existing_guidelines, batch_size)
+            guideline_batches = chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE)
             tasks.extend(
                 [
                     asyncio.create_task(self._process_proposed_guideline(proposed_guideline, batch))
                     for batch in guideline_batches
                 ]
             )
-        with duration_logger(
-            f"Evaluate hierarchical coherence contradictions for ({len(tasks)} batches)"
-        ):
+        with duration_logger(f"Evaluate {self.contradiction_type} for ({len(tasks)} batches)"):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
 
         distinct_contradictions = _filter_unique_contradictions(contradictions)
@@ -117,6 +124,12 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
         contradictions = await self._generate_contradictions(prompt)
         return contradictions
 
+    @abstractmethod
+    def _format_contradiction_type_definition(self) -> str: ...
+
+    @abstractmethod
+    def _format_contradiction_type_examples(self) -> str: ...
+
     def _format_contradiction_prompt(
         self,
         proposed_guideline: Guideline,
@@ -130,12 +143,13 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
             f"{{id: {proposed_guideline.id}, "
             f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
         )
+
         return f"""
-### Definition of Hierarchical Coherence Contradiction:
+### Definition of {self.contradiction_type.value}:
 
-Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, with one being more specific or detailed than the other. This type of Contradiction occurs when the application of a general guideline is contradicted by a more specific guideline under certain conditions, leading to inconsistencies in decision-making.
+{self._format_contradiction_type_definition()}
 
-**Objective**: Evaluate potential hierarchical contradictions between the set of existing guidelines and the proposed guideline.
+**Objective**: Evaluate potential {self.contradiction_type.value}s between the set of existing guidelines and the proposed guideline.
 
 **Task Description**:
 1. **Input**:
@@ -148,19 +162,19 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 
 2. **Process**:
    - For each guideline in the existing set, compare it with the proposed guideline.
-   - Determine if there is a hierarchical contradiction, where the proposed guideline is more specific and directly contradicts a more general guideline from the existing set.
+   - Determine if there is a {self.contradiction_type.value}, where the proposed guideline is more specific and directly contradicts a more general guideline from the existing set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 3. **Output**:
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
      {{
-         "hierarchical_coherence_contradictions": [
+         "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
                  "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
                  "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>"
-                 "rationale": "<Brief explanation of why the two guidelines have a hierarchical contradiction>"
+                 "rationale": "<Brief explanation of why the two guidelines have a {self.contradiction_type.value}>"
              }}
          ]
      }}
@@ -168,13 +182,58 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 
 ### Examples of Evaluations:
 
+{self._format_contradiction_type_examples()}
+"""  # noqa
+
+    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    async def _generate_contradictions(
+        self,
+        prompt: str,
+    ) -> Iterable[ContradictionTest]:
+        response = await self._llm_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="gpt-4o",
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content or ""
+
+        json_content = json.loads(content)[self.contradiction_response_outcome_key]
+
+        contradictions = [
+            ContradictionTest(
+                contradiction_type=self.contradiction_type,
+                existing_guideline_id=json_contradiction["existing_guideline_id"],
+                proposed_guideline_id=json_contradiction["proposed_guideline_id"],
+                severity=json_contradiction["severity_level"],
+                rationale=json_contradiction["rationale"],
+                creation_utc=datetime.now(timezone.utc),
+            )
+            for json_contradiction in json_content
+        ]
+
+        return contradictions
+
+
+class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
+    def __init__(self) -> None:
+        super().__init__(ContradictionType.HIERARCHICAL)
+
+    def _format_contradiction_type_definition(self) -> str:
+        return """
+Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, with one being more specific or detailed than the other.
+This type of Contradiction occurs when the application of a general guideline is contradicted by a more specific guideline under certain conditions, leading to inconsistencies in decision-making.
+"""  # noqa
+
+    def _format_contradiction_type_examples(self) -> str:
+        return f"""
 #### Example #1:
 - **Foundational Guideline**: {{"id": 3, "guideline": "When a customer orders any item, Then prioritize shipping based on customer loyalty level."}}
 - **Proposed Guideline**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
 - **Expected Result**:
      ```json
      {{
-         "hierarchical_coherence_contradictions": [
+         "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
@@ -191,7 +250,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 - **Expected Result**:
      ```json
      {{
-         "hierarchical_coherence_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "1",
                  "proposed_guideline_id": "2",
@@ -208,7 +267,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 - **Expected Result**:
      ```json
      {{
-         "hierarchical_coherence_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "5",
                  "proposed_guideline_id": "6",
@@ -225,7 +284,7 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
 - **Expected Result**:
      ```json
      {{
-         "hierarchical_coherence_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "7",
                  "proposed_guideline_id": "8",
@@ -237,139 +296,26 @@ Hierarchical Coherence Contradiction arises when there are multiple layers of gu
      ```
         """  # noqa
 
-    @retry(wait=wait_fixed(3.5), stop=stop_after_attempt(100))
-    async def _generate_contradictions(
-        self,
-        prompt: str,
-    ) -> Iterable[ContradictionTest]:
-        response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or ""
 
-        json_content = json.loads(content)["hierarchical_coherence_contradictions"]
+class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
 
-        contradictions = [
-            ContradictionTest(
-                contradiction_type=ContradictionType.HIERARCHICAL,
-                existing_guideline_id=json_contradiction["existing_guideline_id"],
-                proposed_guideline_id=json_contradiction["proposed_guideline_id"],
-                severity=json_contradiction["severity_level"],
-                rationale=json_contradiction["rationale"],
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for json_contradiction in json_content
-        ]
-
-        return contradictions
-
-
-class ParallelContradictionEvaluator(ContradictionEvaluator):
     def __init__(self) -> None:
-        self.contradiction_type = ContradictionType.PARALLEL
-        self._llm_client = make_llm_client("openai")
+        super().__init__(ContradictionType.PARALLEL)
 
-    async def evaluate(
-        self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline] = [],
-    ) -> Iterable[ContradictionTest]:
-        batch_size = 5
-        existing_guideline_list = list(existing_guidelines)
-        proposed_guidelines_list = list(proposed_guidelines)
-        tasks = []
+    def _format_contradiction_type_definition(self) -> str:
+        return """
+Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions.
+This happens when conditions for both guidelines are met simultaneously, without a clear resolution mechanism to prioritize one over the other.
+"""  # noqa
 
-        for proposed_guideline in proposed_guidelines:
-            filtered_existing_guidelines = [
-                g
-                for g in proposed_guidelines_list + existing_guideline_list
-                if g.id != proposed_guideline.id
-            ]
-            guideline_batches = chunked(filtered_existing_guidelines, batch_size)
-            tasks.extend(
-                [
-                    asyncio.create_task(self._process_proposed_guideline(proposed_guideline, batch))
-                    for batch in guideline_batches
-                ]
-            )
-
-        with duration_logger(
-            f"Evaluate parallel coherence contradictions for ({len(tasks)} batches)"
-        ):
-            contradictions = chain.from_iterable(await asyncio.gather(*tasks))
-        distinct_contradictions = _filter_unique_contradictions(contradictions)
-        return distinct_contradictions
-
-    async def _process_proposed_guideline(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> Iterable[ContradictionTest]:
-        prompt = self._format_contradiction_prompt(
-            proposed_guideline,
-            existing_guidelines,
-        )
-        contradictions = await self._generate_contradictions(prompt)
-        return contradictions
-
-    def _format_contradiction_prompt(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> str:
-        existing_guidelines_string = "\n".join(
-            f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
-            for i, g in enumerate(existing_guidelines, start=1)
-        )
-        proposed_guideline_string = (
-            f"{{id: {proposed_guideline.id}, "
-            f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
-        )
-
-        return f"""
-### Definition of Parallel Contradiction:
-
-Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions. This happens when conditions for both guidelines are met simultaneously, without a clear resolution mechanism to prioritize one over the other.
-
-**Objective**: Evaluate potential parallel contradictions between the set of existing guidelines and the proposed guideline.
-
-**Task Description**:
-1. **Input**:
-   - Existing Guidelines: {existing_guidelines_string}
-   - Proposed Guidelines: {proposed_guideline_string}
-
-2. **Process**:
-   - For each guideline in the existing set, compare it with the proposed guideline.
-   - Determine if there is a parallel priority contradiction, where both guidelines apply under the same conditions and directly contradict each other without a clear way to resolve the priority.
-   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
-
-3. **Output**:
-   - A list of results, each item detailing a potential contradiction, structured as follows:
-     ```json
-     {{
-         "parallel_priority_contradictions": [
-             {{
-                 "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
-                 "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>",
-                 "rationale": "<Brief explanation of why the two guidelines result in a parallel priority contradiction>"
-             }}
-         ]
-     }}
-     ```
-
-### Examples of Evaluations:
-
-#### Example #1:
+    def _format_contradiction_type_examples(self) -> str:
+        return f"""#### Example #1:
 - **Existing Guideline**: {{"id": 1, "guideline": "When a customer returns an item within 30 days, Then issue a full refund."}}
 - **Proposed Guideline**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
 - **Expected Result**:
      ```json
      {{
-         "parallel_priority_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "1",
                  "proposed_guideline_id": "2",
@@ -386,7 +332,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
 - **Expected Result**:
      ```json
      {{
-         "parallel_priority_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
@@ -403,7 +349,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
 - **Expected Result**:
      ```json
      {{
-         "parallel_priority_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "5",
                  "proposed_guideline_id": "6",
@@ -420,7 +366,7 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
 - **Expected Result**:
      ```json
      {{
-         "parallel_priority_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "7",
                  "proposed_guideline_id": "8",
@@ -430,142 +376,28 @@ Parallel Contradiction occurs when two guidelines of equal specificity lead to c
          ]
      }}
      ```
-    """  # noqa
-
-    @retry(wait=wait_fixed(3.5), stop=stop_after_attempt(100))
-    async def _generate_contradictions(
-        self,
-        prompt: str,
-    ) -> Iterable[ContradictionTest]:
-        response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or ""
-
-        json_content = json.loads(content)["parallel_priority_contradictions"]
-
-        contradictions = [
-            ContradictionTest(
-                contradiction_type=ContradictionType.PARALLEL,
-                existing_guideline_id=json_contradiction["existing_guideline_id"],
-                proposed_guideline_id=json_contradiction["proposed_guideline_id"],
-                severity=json_contradiction["severity_level"],
-                rationale=json_contradiction["rationale"],
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for json_contradiction in json_content
-        ]
-
-        return contradictions
+        """  # noqa
 
 
-class TemporalContradictionEvaluator(ContradictionEvaluator):
+class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
     def __init__(self) -> None:
-        self.contradiction_type = ContradictionType.TEMPORAL
-        self._llm_client = make_llm_client("openai")
+        super().__init__(ContradictionType.TEMPORAL)
 
-    async def evaluate(
-        self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline] = [],
-    ) -> Iterable[ContradictionTest]:
-        batch_size = 5
-        existing_guideline_list = list(existing_guidelines)
-        proposed_guidelines_list = list(proposed_guidelines)
-        tasks = []
-
-        for proposed_guideline in proposed_guidelines:
-            filtered_existing_guidelines = [
-                g
-                for g in proposed_guidelines_list + existing_guideline_list
-                if g.id != proposed_guideline.id
-            ]
-            guideline_batches = chunked(filtered_existing_guidelines, batch_size)
-            tasks.extend(
-                [
-                    asyncio.create_task(self._process_proposed_guideline(proposed_guideline, batch))
-                    for batch in guideline_batches
-                ]
-            )
-
-        with duration_logger(
-            f"Evaluate temporal coherence contradictions for({len(tasks)} batches)"
-        ):
-            contradictions = chain.from_iterable(await asyncio.gather(*tasks))
-
-        distinct_contradictions = _filter_unique_contradictions(contradictions)
-        return distinct_contradictions
-
-    async def _process_proposed_guideline(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> Iterable[ContradictionTest]:
-        prompt = self._format_contradiction_prompt(
-            proposed_guideline,
-            existing_guidelines,
-        )
-        contradictions = await self._generate_contradictions(prompt)
-        return contradictions
-
-    def _format_contradiction_prompt(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> str:
-        existing_guidelines_string = "\n".join(
-            f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
-            for i, g in enumerate(existing_guidelines, start=1)
-        )
-        proposed_guideline_string = (
-            f"{{id: {proposed_guideline.id}, "
-            f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
-        )
-        return f"""
-### Definition of Temporal Contradiction:
-
+    def _format_contradiction_type_definition(self) -> str:
+        return """
 Temporal Contradiction occurs when guidelines dependent on timing or sequence overlap in a way that leads to contradictions.
 This arises from a lack of clear prioritization or differentiation between actions required at the same time.
+"""  # noqa
 
-**Objective**: Evaluate potential temporal contradictions between sets of guidelines that are based on timing.
-
-**Task Description**:
-1. **Input**:
-   - Existing Guidelines: {existing_guidelines_string}
-   - Proposed Guidelines: {proposed_guideline_string}
-
-2. **Process**:
-   - Analyze the conditions and the timing specified for each pair of guidelines.
-   - Determine if there is a temporal contradiction, where the timings of the guidelines conflict without a clear way to resolve which action should take precedence.
-   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
-
-3. **Output**:
-   - A list of results, each detailing either a potential contradiction or the absence of one, structured as follows:
-     ```json
-     {{
-         "temporal_contradictions": [
-             {{
-                 "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
-                 "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Severity Level (1-10): Measures the degree of contradiction due to timing overlap>",
-                 "rationale": "<Brief explanation of why the two guidelines are in temporal contradiction or why they are not>"
-             }}
-         ]
-     }}
-     ```
-
-### Examples of Evaluations:
-
+    def _format_contradiction_type_examples(self) -> str:
+        return f"""
 #### Example #1:
 - **Existing Guideline**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
 - **Proposed Guideline**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
 - **Expected Result**:
      ```json
      {{
-         "temporal_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "1",
                  "proposed_guideline_id": "2",
@@ -582,7 +414,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-         "temporal_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
@@ -599,7 +431,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-         "temporal_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "5",
                  "proposed_guideline_id": "6",
@@ -616,7 +448,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-         "temporal_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "7",
                  "proposed_guideline_id": "8",
@@ -626,134 +458,21 @@ This arises from a lack of clear prioritization or differentiation between actio
          ]
      }}
      ```
-"""  # noqa
-
-    @retry(wait=wait_fixed(3.5), stop=stop_after_attempt(100))
-    async def _generate_contradictions(
-        self,
-        prompt: str,
-    ) -> Iterable[ContradictionTest]:
-        response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or ""
-
-        json_content = json.loads(content)["temporal_contradictions"]
-
-        contradictions = [
-            ContradictionTest(
-                contradiction_type=ContradictionType.TEMPORAL,
-                existing_guideline_id=json_contradiction["existing_guideline_id"],
-                proposed_guideline_id=json_contradiction["proposed_guideline_id"],
-                severity=json_contradiction["severity_level"],
-                rationale=json_contradiction["rationale"],
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for json_contradiction in json_content
-        ]
-
-        return contradictions
+        """  # noqa
 
 
-class ContextualContradictionEvaluator(ContradictionEvaluator):
+class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
     def __init__(self) -> None:
-        self.contradiction_type = ContradictionType.CONTEXTUAL
-        self._llm_client = make_llm_client("openai")
+        super().__init__(ContradictionType.CONTEXTUAL)
 
-    async def evaluate(
-        self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline] = [],
-    ) -> Iterable[ContradictionTest]:
-        batch_size = 5
-        existing_guideline_list = list(existing_guidelines)
-        proposed_guidelines_list = list(proposed_guidelines)
-        tasks = []
-
-        for proposed_guideline in proposed_guidelines:
-            filtered_existing_guidelines = [
-                g
-                for g in proposed_guidelines_list + existing_guideline_list
-                if g.id != proposed_guideline.id
-            ]
-            guideline_batches = chunked(filtered_existing_guidelines, batch_size)
-            tasks.extend(
-                [
-                    asyncio.create_task(self._process_proposed_guideline(proposed_guideline, batch))
-                    for batch in guideline_batches
-                ]
-            )
-
-        with duration_logger(
-            f"Evaluate contextual coherence contradictions for({len(tasks)} batches)"
-        ):
-            contradictions = chain.from_iterable(await asyncio.gather(*tasks))
-
-        distinct_contradictions = _filter_unique_contradictions(contradictions)
-        return distinct_contradictions
-
-    async def _process_proposed_guideline(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> Iterable[ContradictionTest]:
-        prompt = self._format_contradiction_prompt(
-            proposed_guideline,
-            existing_guidelines,
-        )
-        contradictions = await self._generate_contradictions(prompt)
-        return contradictions
-
-    def _format_contradiction_prompt(
-        self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> str:
-        existing_guidelines_string = "\n".join(
-            f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
-            for i, g in enumerate(existing_guidelines, start=1)
-        )
-        proposed_guideline_string = (
-            f"{{id: {proposed_guideline.id}, "
-            f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
-        )
-        return f"""
-### Definition of Contextual Contradiction:
-
+    def _format_contradiction_type_definition(self) -> str:
+        return """
 Contextual Contradiction occurs when external conditions or operational contexts lead to contradictory actions.
 These conflicts arise from different but potentially overlapping circumstances requiring actions that are valid under each specific context yet oppose each other.
+"""  # noqa
 
-**Objective**: Evaluate potential contextual contradictions between sets of guidelines that are influenced by external or operational conditions.
-
-**Task Description**:
-1. **Input**:
-   - Existing Guidelines: {existing_guidelines_string}
-    - Proposed Guidelines:{proposed_guideline_string}
-
-2. **Process**:
-   - Analyze the conditions and operational contexts specified for each pair of guidelines.
-   - Determine if there is a contextual contradiction, where the guidelines apply under overlapping external conditions but lead to opposing actions.
-   - If no contradiction is detected, set the contradiction level to 1 to indicate minimal or no contradiction.
-
-3. **Output**:
-   - A list of results, each detailing either a potential contradiction or the absence of one, structured as follows:
-     ```json
-     {{
-         "contextual_contradictions": [
-             {{
-                 "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
-                 "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Contradiction Level (1-10): Measures the degree of contradiction due to conflicting contexts>",
-                 "rationale": "<Brief explanation of why the two guidelines are in contextual contradiction or why they are not>"
-             }}
-         ]
-     }}
-     ```
-
-### Examples of Evaluations:
+    def _format_contradiction_type_examples(self) -> str:
+        return f"""
 
 #### Example #1:
 - **Foundational guideline**: {{"id": 1, "guideline": "When operating in urban areas, Then offer free shipping."}}
@@ -778,7 +497,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-         "contextual_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "3",
                  "proposed_guideline_id": "4",
@@ -795,7 +514,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-         "contextual_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "5",
                  "proposed_guideline_id": "6",
@@ -811,7 +530,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-         "contextual_contradictions": [
+        "{self.contradiction_response_outcome_key}": [
              {{
                  "existing_guideline_id": "7",
                  "proposed_guideline_id": "8",
@@ -821,37 +540,7 @@ These conflicts arise from different but potentially overlapping circumstances r
          ]
      }}
      ```
-
-"""  # noqa
-
-    @retry(wait=wait_fixed(3.5), stop=stop_after_attempt(100))
-    async def _generate_contradictions(
-        self,
-        prompt: str,
-    ) -> Iterable[ContradictionTest]:
-        response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or ""
-
-        json_content = json.loads(content)["contextual_contradictions"]
-
-        contradictions = [
-            ContradictionTest(
-                contradiction_type=ContradictionType.CONTEXTUAL,
-                existing_guideline_id=json_contradiction["existing_guideline_id"],
-                proposed_guideline_id=json_contradiction["proposed_guideline_id"],
-                severity=json_contradiction["severity_level"],
-                rationale=json_contradiction["rationale"],
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for json_contradiction in json_content
-        ]
-
-        return contradictions
+        """  # noqa
 
 
 class CoherenceChecker:
