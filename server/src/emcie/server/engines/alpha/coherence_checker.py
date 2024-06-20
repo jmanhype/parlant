@@ -46,7 +46,7 @@ def _remove_duplicate_contradictions(
     """
 
     def _generate_key(g1_id: GuidelineId, g2_id: GuidelineId) -> tuple[GuidelineId, GuidelineId]:
-        return (g1_id, g2_id) if g1_id > g2_id else (g2_id, g1_id)
+        return tuple(sorted((g1_id, g2_id)))
 
     seen_keys = set()
     unique_contradictions = []
