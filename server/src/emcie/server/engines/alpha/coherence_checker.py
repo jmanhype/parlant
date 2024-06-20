@@ -32,7 +32,7 @@ class ContradictionTest(DefaultBaseModel):
     creation_utc: datetime
 
 
-def _remove_duplicate_contradictions(
+def _filter_unique_contradictions(
     contradictions: Iterable[ContradictionTest],
 ) -> Iterable[ContradictionTest]:
     """
@@ -102,7 +102,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluator):
         ):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
 
-        distinct_contradictions = _remove_duplicate_contradictions(contradictions)
+        distinct_contradictions = _filter_unique_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_proposed_guideline(
@@ -300,7 +300,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluator):
             f"Evaluate parallel coherence contradictions for ({len(tasks)} batches)"
         ):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
-        distinct_contradictions = _remove_duplicate_contradictions(contradictions)
+        distinct_contradictions = _filter_unique_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_proposed_guideline(
@@ -496,7 +496,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluator):
         ):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
 
-        distinct_contradictions = _remove_duplicate_contradictions(contradictions)
+        distinct_contradictions = _filter_unique_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_proposed_guideline(
@@ -692,7 +692,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluator):
         ):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
 
-        distinct_contradictions = _remove_duplicate_contradictions(contradictions)
+        distinct_contradictions = _filter_unique_contradictions(contradictions)
         return distinct_contradictions
 
     async def _process_proposed_guideline(
