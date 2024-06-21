@@ -5,7 +5,6 @@ from enum import Enum
 from itertools import chain
 import json
 from typing import Iterable, NewType
-
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
