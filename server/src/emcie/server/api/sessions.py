@@ -2,48 +2,48 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Response, status
 from datetime import datetime
 
-from emcie.server.base import EmcieBase
+from emcie.server.base import DefaultBaseModel
 from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionStore
 
 
-class CreateSessionRequest(EmcieBase):
+class CreateSessionRequest(DefaultBaseModel):
     client_id: str
 
 
-class CreateSessionResponse(EmcieBase):
+class CreateSessionResponse(DefaultBaseModel):
     session_id: SessionId
 
 
-class CreateEventRequest(EmcieBase):
+class CreateEventRequest(DefaultBaseModel):
     source: EventSource
     type: str
     creation_utc: datetime
     data: Dict[str, Any]
 
 
-class CreateEventResponse(EmcieBase):
+class CreateEventResponse(DefaultBaseModel):
     event_id: EventId
 
 
-class ConsumptionOffsetsDTO(EmcieBase):
+class ConsumptionOffsetsDTO(DefaultBaseModel):
     server: int
     client: int
 
 
-class ReadSessionResponse(EmcieBase):
+class ReadSessionResponse(DefaultBaseModel):
     consumption_offsets: ConsumptionOffsetsDTO
 
 
-class ConsumptionOffsetsPatchDTO(EmcieBase):
+class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
     server: Optional[int] = None
     client: Optional[int] = None
 
 
-class PatchSessionRequest(EmcieBase):
+class PatchSessionRequest(DefaultBaseModel):
     consumption_offsets: Optional[ConsumptionOffsetsPatchDTO] = None
 
 
-class EventDTO(EmcieBase):
+class EventDTO(DefaultBaseModel):
     id: EventId
     source: EventSource
     type: str
@@ -52,7 +52,7 @@ class EventDTO(EmcieBase):
     data: Dict[str, Any]
 
 
-class ListEventsResponse(EmcieBase):
+class ListEventsResponse(DefaultBaseModel):
     events: List[EventDTO]
 
 

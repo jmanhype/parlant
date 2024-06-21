@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class EmcieBase(BaseModel):
+class DefaultBaseModel(BaseModel):
     """
     Base class for all Emcie Pydantic models.
     """
