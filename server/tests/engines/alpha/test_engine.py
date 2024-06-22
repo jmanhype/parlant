@@ -1,14 +1,16 @@
 from typing import Callable, List
 from lagom import Container
+from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.end_users import EndUserId
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionId, SessionStore
+from emcie.server.core.sessions import Event, Session, SessionId, SessionStore
 
 from tests.test_utilities import SyncAwaiter, nlp_test
 
@@ -16,6 +18,21 @@ scenarios(
     "engines/alpha/vanilla_agent.feature",
     "engines/alpha/message_agent_with_rules.feature",
 )
+
+
+@fixture
+def new_session(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> Session:
+    store = container[SessionStore]
+
+    return sync_await(
+        store.create_session(
+            end_user_id=EndUserId("test_user"),
+            client_id="my_client",
+        )
+    )
 
 
 @given("the alpha engine", target_fixture="engine")
@@ -315,59 +332,58 @@ def given_50_other_random_guidelines(
 def given_an_empty_session(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
-    store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
-    return session.id
+    return new_session.id
 
 
 @given("a session with a single user message", target_fixture="session_id")
 def given_a_session_with_a_single_user_message(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     sync_await(
         store.create_event(
-            session_id=session.id,
+            session_id=new_session.id,
             source="client",
             type=Event.MESSAGE_TYPE,
             data={"message": "Hey there"},
         )
     )
 
-    return session.id
+    return new_session.id
 
 
 @given("a session with a thirsty user", target_fixture="session_id")
 def given_a_session_with_a_thirsty_user(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     sync_await(
         store.create_event(
-            session_id=session.id,
+            session_id=new_session.id,
             source="client",
             type=Event.MESSAGE_TYPE,
             data={"message": "I'm thirsty"},
         )
     )
 
-    return session.id
+    return new_session.id
 
 
 @given("a session with a few messages", target_fixture="session_id")
 def given_a_session_with_a_few_messages(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     messages = [
         {
@@ -387,14 +403,14 @@ def given_a_session_with_a_few_messages(
     for m in messages:
         sync_await(
             store.create_event(
-                session_id=session.id,
+                session_id=new_session.id,
                 source=m["source"] == "server" and "server" or "client",
                 type=Event.MESSAGE_TYPE,
                 data={"message": m["message"]},
             )
         )
 
-    return session.id
+    return new_session.id
 
 
 @when("processing is triggered", target_fixture="produced_events")

@@ -15,20 +15,20 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 
 
 @dataclass
-class TestContext:
+class _TestContext:
     sync_await: SyncAwaiter
     container: Container
     agent_id: AgentId
 
 
 @fixture
-def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> TestContext:
-    return TestContext(sync_await, container, agent_id)
+def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> _TestContext:
+    return _TestContext(sync_await, container, agent_id)
 
 
 @fixture
 def guidelines_with_contradictions(
-    context: TestContext,
+    context: _TestContext,
 ) -> list[Guideline]:
     guideline_store = context.container[GuidelineStore]
 
@@ -96,7 +96,7 @@ def guidelines_with_contradictions(
 
 @fixture
 def guidelines_without_contradictions(
-    context: TestContext,
+    context: _TestContext,
 ) -> list[Guideline]:
     guideline_store = context.container[GuidelineStore]
 
@@ -187,7 +187,7 @@ def guidelines_without_contradictions(
     ],
 )
 def test_that_hierarchical_evaluator_detects_contradictions(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -257,7 +257,7 @@ def test_that_hierarchical_evaluator_detects_contradictions(
     ],
 )
 def test_that_hierarchical_evaluator_does_not_produce_false_positives(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -326,7 +326,7 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
     ],
 )
 def test_that_parallel_evaluator_detects_contradictions(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -397,7 +397,7 @@ def test_that_parallel_evaluator_detects_contradictions(
     ],
 )
 def test_that_parallel_evaluator_does_not_produce_false_positives(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -467,7 +467,7 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
     ],
 )
 def test_that_temporal_evaluator_detects_contradictions(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -538,7 +538,7 @@ def test_that_temporal_evaluator_detects_contradictions(
     ],
 )
 def test_that_temporal_evaluator_does_not_produce_false_positives(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -608,7 +608,7 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
     ],
 )
 def test_that_contextual_evaluator_detects_contradictions(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -679,7 +679,7 @@ def test_that_contextual_evaluator_detects_contradictions(
     ],
 )
 def test_that_contextual_evaluator_does_not_produce_false_positives(
-    context: TestContext,
+    context: _TestContext,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
@@ -741,7 +741,7 @@ def test_that_coherence_check_produces_multiple_contradictions(
 
 
 def test_that_existing_guidelines_are_not_evaluated_as_proposed_guidelines(
-    context: TestContext,
+    context: _TestContext,
 ) -> None:
     guideline_store = context.container[GuidelineStore]
 

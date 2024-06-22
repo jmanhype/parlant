@@ -6,6 +6,7 @@ from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.end_users import EndUserId
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import (
@@ -26,14 +27,14 @@ scenarios(
 
 
 @dataclass
-class TestState:
+class _TestContext:
     guidelines: dict[str, Guideline]
     tools: dict[str, Tool]
 
 
 @fixture
-def state() -> TestState:
-    return TestState(
+def context() -> _TestContext:
+    return _TestContext(
         guidelines=dict(),
         tools=dict(),
     )
@@ -67,7 +68,12 @@ def given_an_empty_session(
     container: Container,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
+    session = sync_await(
+        store.create_session(
+            end_user_id=EndUserId("test_user"),
+            client_id="my_client",
+        )
+    )
     return session.id
 
 
@@ -79,11 +85,11 @@ def given_a_guideline_to_when(
     sync_await: SyncAwaiter,
     container: Container,
     agent_id: AgentId,
-    state: TestState,
+    context: _TestContext,
 ) -> None:
     guideline_store = container[GuidelineStore]
 
-    state.guidelines[guideline_name] = sync_await(
+    context.guidelines[guideline_name] = sync_await(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
@@ -173,7 +179,7 @@ def given_a_tool(
     container: Container,
     agent_id: AgentId,
     tool_name: str,
-    state: TestState,
+    context: _TestContext,
 ) -> None:
     tool_store = container[ToolStore]
 
@@ -288,7 +294,7 @@ def given_a_tool(
 
     tool = sync_await(create_tool(**tools[tool_name]))
 
-    state.tools[tool_name] = tool
+    context.tools[tool_name] = tool
 
 
 @given(parsers.parse('an association between "{guideline_name}" and "{tool_name}"'))
@@ -297,14 +303,14 @@ def given_guideline_tool_association(
     container: Container,
     tool_name: str,
     guideline_name: str,
-    state: TestState,
+    context: _TestContext,
 ) -> GuidelineToolAssociation:
     guideline_tool_association_store = container[GuidelineToolAssociationStore]
 
     return sync_await(
         guideline_tool_association_store.create_association(
-            guideline_id=state.guidelines[guideline_name].id,
-            tool_id=state.tools[tool_name].id,
+            guideline_id=context.guidelines[guideline_name].id,
+            tool_id=context.tools[tool_name].id,
         )
     )
 
