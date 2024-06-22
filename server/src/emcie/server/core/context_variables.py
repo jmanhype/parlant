@@ -1,11 +1,13 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Iterable, Literal, NewType, Optional
 
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.tools import ToolId
 
 ContextVariableId = NewType("ContextVariableId", str)
+ContextVariableValueId = NewType("ContextVariableValueId", str)
 
 
 @dataclass(frozen=True)
@@ -44,11 +46,22 @@ class ContextVariable:
     """If None, the variable will only be updated on session creation"""
 
 
+@dataclass(frozen=True)
+class ContextVariableValue:
+    id: ContextVariableValueId
+    variable_id: ContextVariableId
+    last_modified: datetime
+    data: JSONSerializable
+
+
 class ContextVariableStore:
     def __init__(
         self,
     ) -> None:
         self._variable_sets: dict[str, dict[ContextVariableId, ContextVariable]] = defaultdict(dict)
+        self._variable_values: dict[
+            str, dict[str, dict[ContextVariableId, ContextVariableValue]]
+        ] = defaultdict(lambda: defaultdict(dict))
 
     async def create_variable(
         self,
@@ -69,6 +82,26 @@ class ContextVariableStore:
         self._variable_sets[variable_set][variable.id] = variable
 
         return variable
+
+    async def update_value(
+        self,
+        variable_set: str,
+        key: str,
+        variable_id: ContextVariableId,
+        data: JSONSerializable,
+    ) -> ContextVariableValue:
+        existing_value = self._variable_values[variable_set][key].get(variable_id, None)
+
+        updated_value = ContextVariableValue(
+            id=existing_value and existing_value.id or ContextVariableValueId(generate_id()),
+            variable_id=variable_id,
+            last_modified=datetime.now(timezone.utc),
+            data=data,
+        )
+
+        self._variable_values[variable_set][key][variable_id] = updated_value
+
+        return updated_value
 
     async def delete_variable(
         self,
