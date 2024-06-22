@@ -1,6 +1,6 @@
 from itertools import chain
 import json
-from typing import Iterable
+from typing import Iterable, Optional
 from loguru import logger
 
 from emcie.server.core.tools import Tool
@@ -57,31 +57,39 @@ class MessagesEventProducer:
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
+        interaction_event_list = list(interaction_history)
+
+        if not interaction_event_list and not ordinary_guidelines and not tool_enabled_guidelines:
+            # No interaction and no guidelines that could trigger
+            # a proactive start of the interaction
+            return []
+
         prompt = self._format_prompt(
-            interaction_history=interaction_history,
+            interaction_event_list=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
 
-        response_message = await self._generate_response_message(prompt)
+        if response_message := await self._generate_response_message(prompt):
+            return [
+                ProducedEvent(
+                    source="server",
+                    type=Event.MESSAGE_TYPE,
+                    data={"message": response_message},
+                )
+            ]
 
-        return [
-            ProducedEvent(
-                source="server",
-                type=Event.MESSAGE_TYPE,
-                data={"message": response_message},
-            )
-        ]
+        return []
 
     def _format_prompt(
         self,
-        interaction_history: Iterable[Event],
+        interaction_event_list: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
-        interaction_events = events_to_json(interaction_history)
+        interaction_events_json = events_to_json(interaction_event_list)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
         all_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
 
@@ -90,24 +98,46 @@ class MessagesEventProducer:
             for i, g in enumerate(all_guidelines, start=1)
         )
 
-        return f"""\
+        prompt = ""
+
+        if interaction_event_list:
+            prompt += f"""\
 The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
-{interaction_events}
+{interaction_events_json}
 ###
+"""
+        else:
+            prompt += """\
+You, an AI assistant, are now present in an online session with a user.
+An interaction may or may not now be initiated by you, addressing the user.
 
+Here's how to decide whether to initiate the interaction:
+A. If the rules below both apply to the context, as well as suggest that you should say something
+to the user, then you should indeed initiate the interaction now.
+B. Otherwise, if no reason is provided that suggests you should say something to the user,
+then you should not initiate the interaction. Produce no response in this case.
+"""
+
+        if rules:
+            prompt += f"""
 In generating the response, you must adhere to the following rules: ###
 {rules}
 ###
-
+"""
+        prompt += """
 You must generate your response message to the current
 (latest) state of the interaction.
+"""
 
+        if staged_events_as_dict:
+            prompt += f"""
 For your information, here are some staged events that have just been produced,
 to assist you with generating your response message while following the rules above: ###
 {staged_events_as_dict}
 ###
-
+"""
+        prompt += f"""
 Propose revisions to the message content until you are
 absolutely sure that your proposed message adheres to
 each and every one of the provided rules,
@@ -118,9 +148,20 @@ follows all of the rules.
 Ensure that each critique is unique, to avoid repeating the same
 faulty content suggestion over and over again.
 
-Produce a valid JSON object in the format according to the following example.
+Produce a valid JSON object in the format according to the following examples.
 
+Example 1: When no response was deemed appropriate: ###
 {{
+    "produced_response": false,
+    "rationale": "a few words to justify why a response was NOT produced here",
+    "revisions": []
+}}
+###
+
+Example 2: A response that took critique in a few revisions to get right: ###
+{{
+    "produced_response": true,
+    "rationale": "a few words to justify why a response was produced here",
     "revisions": [
         {{
             "content": "some proposed message content",
@@ -148,9 +189,12 @@ Produce a valid JSON object in the format according to the following example.
         }},
     ]
 }}
+###
 """  # noqa
 
-    async def _generate_response_message(self, prompt: str) -> str:
+        return prompt
+
+    async def _generate_response_message(self, prompt: str) -> Optional[str]:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",
@@ -161,6 +205,9 @@ Produce a valid JSON object in the format according to the following example.
         content = response.choices[0].message.content or ""
 
         json_content = json.loads(content)
+
+        if not json_content["produced_response"]:
+            return None
 
         final_revision = json_content["revisions"][-1]
 

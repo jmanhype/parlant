@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Callable, List
 from lagom import Container
 from pytest import fixture
@@ -17,6 +18,7 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 scenarios(
     "engines/alpha/vanilla_agent.feature",
     "engines/alpha/message_agent_with_rules.feature",
+    "engines/alpha/proactive_agent.feature",
 )
 
 
@@ -70,8 +72,8 @@ def given_a_guideline_to(
         "greet with 'Howdy'": lambda: sync_await(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
-                predicate="It's time to greet the user",
-                content="Use the word 'Howdy'",
+                predicate="The interaction hasn't started yet",
+                content="Greet the user with the word 'Howdy'",
             )
         ),
         "offer thirsty users a Pepsi": lambda: sync_await(
@@ -84,6 +86,25 @@ def given_a_guideline_to(
     }
 
     return guidelines[do_something]()
+
+
+@given(parsers.parse("a guideline to {do_something} when {a_condition_holds}"))
+def given_a_guideline_to_when(
+    do_something: str,
+    a_condition_holds: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    sync_await(
+        guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=a_condition_holds,
+            content=do_something,
+        )
+    )
 
 
 @given("50 other random guidelines")

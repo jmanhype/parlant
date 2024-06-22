@@ -1,10 +1,9 @@
-    Scenario: A single message is produced for an empty session
+    Scenario: No message is produced for an empty session
         Given the alpha engine
         And an agent
         And an empty session
         When processing is triggered
-        # the "How can I assist?" greeting...
-        Then a single message event is produced
+        Then no events are produced
 
     Scenario: A single message event is produced for a session with a user message
         Given the alpha engine
