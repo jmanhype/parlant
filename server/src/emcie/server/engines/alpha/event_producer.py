@@ -17,8 +17,8 @@ from emcie.server.core.sessions import Event
 class EventProducer:
 
     def __init__(self) -> None:
-        self.tool_event_producer = ToolsEventProducer()
-        self.message_event_producer = MessagesEventProducer()
+        self.tool_event_producer = ToolEventProducer()
+        self.message_event_producer = MessageEventProducer()
 
     async def produce_events(
         self,
@@ -44,7 +44,7 @@ class EventProducer:
         return chain(tool_events, message_events)
 
 
-class MessagesEventProducer:
+class MessageEventProducer:
     def __init__(
         self,
     ) -> None:
@@ -217,7 +217,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
         return str(final_revision["content"])
 
 
-class ToolsEventProducer:
+class ToolEventProducer:
     def __init__(
         self,
     ) -> None:
