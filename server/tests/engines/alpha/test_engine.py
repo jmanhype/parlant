@@ -1,9 +1,10 @@
-from typing import Callable, List
+from typing import Callable
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
@@ -17,7 +18,6 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 scenarios(
     "engines/alpha/vanilla_agent.feature",
     "engines/alpha/message_agent_with_rules.feature",
-    "engines/alpha/proactive_agent.feature",
 )
 
 
@@ -42,6 +42,7 @@ def given_the_alpha_engine(
 ) -> AlphaEngine:
     return AlphaEngine(
         session_store=container[SessionStore],
+        context_variable_store=container[ContextVariableStore],
         guideline_store=container[GuidelineStore],
         tool_store=container[ToolStore],
         guideline_tool_association_store=container[GuidelineToolAssociationStore],
@@ -87,25 +88,6 @@ def given_a_guideline_to(
     return guidelines[do_something]()
 
 
-@given(parsers.parse("a guideline to {do_something} when {a_condition_holds}"))
-def given_a_guideline_to_when(
-    do_something: str,
-    a_condition_holds: str,
-    sync_await: SyncAwaiter,
-    container: Container,
-    agent_id: AgentId,
-) -> None:
-    guideline_store = container[GuidelineStore]
-
-    sync_await(
-        guideline_store.create_guideline(
-            guideline_set=agent_id,
-            predicate=a_condition_holds,
-            content=do_something,
-        )
-    )
-
-
 @given("50 other random guidelines")
 def given_50_other_random_guidelines(
     sync_await: SyncAwaiter,
@@ -130,7 +112,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks about vegetarian options",
-            "content": "List all vegetarian pizza options",
+            "content": "list all vegetarian pizza options",
         },
         {
             "predicate": "The user inquires about delivery times",
@@ -166,7 +148,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user requests a drink",
-            "content": "List available beverages and suggest popular pairings with "
+            "content": "list available beverages and suggest popular pairings with "
             "their pizza choice",
         },
         {
@@ -227,7 +209,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks for gluten-free options",
-            "content": "List our gluten-free pizza bases and toppings",
+            "content": "list our gluten-free pizza bases and toppings",
         },
         {
             "predicate": "The user is looking for side orders",
@@ -303,7 +285,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks about non-dairy options",
-            "content": "List our vegan cheese alternatives and other non-dairy products",
+            "content": "list our vegan cheese alternatives and other non-dairy products",
         },
         {
             "predicate": "The user expresses excitement about a new menu item",
@@ -439,7 +421,7 @@ def when_processing_is_triggered(
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
-) -> List[ProducedEvent]:
+) -> list[ProducedEvent]:
     events = sync_await(
         engine.process(
             Context(
@@ -454,21 +436,21 @@ def when_processing_is_triggered(
 
 @then("no events are produced")
 def then_no_events_are_produced(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
 ) -> None:
     assert len(produced_events) == 0
 
 
 @then("a single message event is produced")
 def then_a_single_message_event_is_produced(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
 ) -> None:
     assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
 
 
 @then(parsers.parse("the message contains {something}"))
 def then_the_message_contains(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
     message = next(e for e in produced_events if e.type == Event.MESSAGE_TYPE).data["message"]

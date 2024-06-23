@@ -1,9 +1,12 @@
 from collections import defaultdict
-from itertools import chain
 from typing import Iterable
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import ContextVariableValue
+from emcie.server.core.context_variables import (
+    ContextVariable,
+    ContextVariableStore,
+    ContextVariableValue,
+)
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
@@ -19,11 +22,13 @@ class AlphaEngine(Engine):
     def __init__(
         self,
         session_store: SessionStore,
+        context_variable_store: ContextVariableStore,
         guideline_store: GuidelineStore,
         tool_store: ToolStore,
         guideline_tool_association_store: GuidelineToolAssociationStore,
     ) -> None:
         self.session_store = session_store
+        self.context_variable_store = context_variable_store
         self.guideline_store = guideline_store
         self.tool_store = tool_store
         self.guideline_tool_association_store = guideline_tool_association_store
@@ -56,17 +61,34 @@ class AlphaEngine(Engine):
         self,
         agent_id: AgentId,
         session_id: SessionId,
-    ) -> list[ContextVariableValue]:
-        return []
+    ) -> list[tuple[ContextVariable, ContextVariableValue]]:
+        session = await self.session_store.read_session(session_id)
+
+        variables = await self.context_variable_store.list_variables(
+            variable_set=agent_id,
+        )
+
+        return [
+            (
+                variable,
+                await self.context_variable_store.read_value(
+                    variable_set=agent_id,
+                    key=session.end_user_id,
+                    variable_id=variable.id,
+                ),
+            )
+            for variable in variables
+        ]
 
     async def _load_guidelines(
         self,
         agent_id: AgentId,
-        context_variables: list[ContextVariableValue],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
     ) -> tuple[Iterable[Guideline], dict[Guideline, Iterable[Tool]]]:
         all_relevant_guidelines = await self._fetch_relevant_guidelines(
             agent_id=agent_id,
+            context_variables=context_variables,
             interaction_history=interaction_history,
         )
 
@@ -82,6 +104,7 @@ class AlphaEngine(Engine):
     async def _fetch_relevant_guidelines(
         self,
         agent_id: AgentId,
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
     ) -> set[Guideline]:
         all_possible_guidelines = await self.guideline_store.list_guidelines(
@@ -90,6 +113,7 @@ class AlphaEngine(Engine):
 
         relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
             guidelines=all_possible_guidelines,
+            context_variables=context_variables,
             interaction_history=interaction_history,
         )
 

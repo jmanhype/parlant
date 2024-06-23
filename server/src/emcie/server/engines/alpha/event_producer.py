@@ -3,10 +3,11 @@ import json
 from typing import Iterable, Optional
 from loguru import logger
 
-from emcie.server.core.context_variables import ContextVariableValue
+from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
 from emcie.server.engines.alpha.utils import (
+    context_variables_to_json,
     events_to_json,
     make_llm_client,
 )
@@ -23,7 +24,7 @@ class EventProducer:
 
     async def produce_events(
         self,
-        context_variables: Iterable[ContextVariableValue],
+        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
@@ -35,6 +36,7 @@ class EventProducer:
         )
 
         message_events = await self.message_event_producer.produce_events(
+            context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
@@ -52,6 +54,7 @@ class MessageEventProducer:
 
     async def produce_events(
         self,
+        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
@@ -65,6 +68,7 @@ class MessageEventProducer:
             return []
 
         prompt = self._format_prompt(
+            context_variables=list(context_variables),
             interaction_event_list=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
@@ -84,12 +88,14 @@ class MessageEventProducer:
 
     def _format_prompt(
         self,
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events_json = events_to_json(interaction_event_list)
+        context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
         all_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
 
@@ -117,6 +123,12 @@ A. If the rules below both apply to the context, as well as suggest that you sho
 to the user, then you should indeed initiate the interaction now.
 B. Otherwise, if no reason is provided that suggests you should say something to the user,
 then you should not initiate the interaction. Produce no response in this case.
+"""
+        if context_variables:
+            prompt += f"""
+The following is information that you're given about the user and context of the interaction: ###
+{context_values}
+###
 """
 
         if rules:

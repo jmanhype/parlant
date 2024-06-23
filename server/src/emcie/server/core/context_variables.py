@@ -122,3 +122,11 @@ class ContextVariableStore:
         id: ContextVariableId,
     ) -> ContextVariable:
         return self._variable_sets[variable_set][id]
+
+    async def read_value(
+        self,
+        variable_set: str,
+        key: str,
+        variable_id: ContextVariableId,
+    ) -> ContextVariableValue:
+        return self._variable_values[variable_set][key][variable_id]

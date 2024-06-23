@@ -1,3 +1,4 @@
+Feature: Alpha Engine
     Scenario: No message is produced for an empty session
         Given the alpha engine
         And an agent

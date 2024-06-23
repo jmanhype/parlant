@@ -6,6 +6,7 @@ from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.context_variables import ContextVariableStore, ContextVariableValue
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
@@ -23,6 +24,7 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 
 scenarios(
     "engines/alpha/tools/single_tool_event.feature",
+    "engines/alpha/proactive_agent.feature",
 )
 
 
@@ -46,6 +48,7 @@ def given_the_alpha_engine(
 ) -> AlphaEngine:
     return AlphaEngine(
         session_store=container[SessionStore],
+        context_variable_store=container[ContextVariableStore],
         guideline_store=container[GuidelineStore],
         tool_store=container[ToolStore],
         guideline_tool_association_store=container[GuidelineToolAssociationStore],
@@ -77,8 +80,61 @@ def given_an_empty_session(
     return session.id
 
 
-@given(parsers.parse('a guideline "{guideline_name}", to {do_something} when {a_condition_holds}'))
+@given(parsers.parse('a context variable "{variable_name}" with a value of "{variable_value}"'))
+def given_a_context_variable(
+    variable_name: str,
+    variable_value: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+    session_id: SessionId,
+) -> ContextVariableValue:
+    session_store = container[SessionStore]
+    context_variable_store = container[ContextVariableStore]
+
+    end_user_id = sync_await(session_store.read_session(session_id)).end_user_id
+
+    variable = sync_await(
+        context_variable_store.create_variable(
+            variable_set=agent_id,
+            name=variable_name,
+            description="",
+            tool_id=ToolId(""),
+            freshness_rules=None,
+        )
+    )
+
+    return sync_await(
+        context_variable_store.update_value(
+            variable_set=agent_id,
+            key=end_user_id,
+            variable_id=variable.id,
+            data=variable_value,
+        )
+    )
+
+
+@given(parsers.parse("a guideline to {do_something} when {a_condition_holds}"))
 def given_a_guideline_to_when(
+    do_something: str,
+    a_condition_holds: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    sync_await(
+        guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=a_condition_holds,
+            content=do_something,
+        )
+    )
+
+
+@given(parsers.parse('a guideline "{guideline_name}", to {do_something} when {a_condition_holds}'))
+def given_a_guideline_name_to_when(
     guideline_name: str,
     do_something: str,
     a_condition_holds: str,
@@ -316,7 +372,7 @@ def given_guideline_tool_association(
 
 
 @given(parsers.parse('a user message, "{user_message}"'), target_fixture="session_id")
-def given_a_session_user_message(
+def given_a_user_message(
     sync_await: SyncAwaiter,
     container: Container,
     session_id: SessionId,
@@ -341,7 +397,7 @@ def given_a_session_user_message(
     parsers.parse('a server message, "{server_message}"'),
     target_fixture="session_id",
 )
-def given_a_session_with_server_message(
+def given_a_server_message(
     sync_await: SyncAwaiter,
     container: Container,
     server_message: str,
@@ -592,3 +648,17 @@ def then_the_message_contains(
         context=message,
         predicate=f"the text contains {something}",
     )
+
+
+@then("no events are produced")
+def then_no_events_are_produced(
+    produced_events: list[ProducedEvent],
+) -> None:
+    assert len(produced_events) == 0
+
+
+@then("a single message event is produced")
+def then_a_single_message_event_is_produced(
+    produced_events: list[ProducedEvent],
+) -> None:
+    assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
