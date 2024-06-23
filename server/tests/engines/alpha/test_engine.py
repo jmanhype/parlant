@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Callable, List
 from lagom import Container
 from pytest import fixture
