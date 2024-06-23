@@ -3,6 +3,7 @@ import json
 from typing import Iterable, Optional
 from loguru import logger
 
+from emcie.server.core.context_variables import ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
 from emcie.server.engines.alpha.utils import (
@@ -22,6 +23,7 @@ class EventProducer:
 
     async def produce_events(
         self,
+        context_variables: Iterable[ContextVariableValue],
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],

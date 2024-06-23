@@ -3,6 +3,7 @@ from itertools import chain
 from typing import Iterable
 
 from emcie.server.core.agents import AgentId
+from emcie.server.core.context_variables import ContextVariableValue
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
@@ -11,7 +12,7 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
 )
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionStore
+from emcie.server.core.sessions import Event, SessionId, SessionStore
 
 
 class AlphaEngine(Engine):
@@ -33,20 +34,35 @@ class AlphaEngine(Engine):
     async def process(self, context: Context) -> Iterable[ProducedEvent]:
         interaction_history = list(await self.session_store.list_events(context.session_id))
 
+        context_variables = await self._load_context_variables(
+            agent_id=context.agent_id,
+            session_id=context.session_id,
+        )
+
         ordinary_guidelines, tool_enabled_guidelines = await self._load_guidelines(
             agent_id=context.agent_id,
+            context_variables=context_variables,
             interaction_history=interaction_history,
         )
 
         return await self.event_producer.produce_events(
+            context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
         )
 
+    async def _load_context_variables(
+        self,
+        agent_id: AgentId,
+        session_id: SessionId,
+    ) -> list[ContextVariableValue]:
+        return []
+
     async def _load_guidelines(
         self,
         agent_id: AgentId,
+        context_variables: list[ContextVariableValue],
         interaction_history: list[Event],
     ) -> tuple[Iterable[Guideline], dict[Guideline, Iterable[Tool]]]:
         all_relevant_guidelines = await self._fetch_relevant_guidelines(
