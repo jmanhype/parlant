@@ -25,13 +25,11 @@ class EventProducer:
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-        tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
         tool_events = await self.tool_event_producer.produce_events(
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
-            tools=tools,
         )
 
         message_events = await self.message_event_producer.produce_events(
@@ -229,7 +227,6 @@ class ToolEventProducer:
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-        tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
         if not tool_enabled_guidelines:
             return []
@@ -242,6 +239,8 @@ class ToolEventProducer:
             tool_enabled_guidelines,
             produced_tool_events,
         )
+
+        tools = chain(*tool_enabled_guidelines.values())
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,

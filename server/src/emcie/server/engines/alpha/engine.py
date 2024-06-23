@@ -49,13 +49,10 @@ class AlphaEngine(Engine):
 
         ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
 
-        enabled_tools = chain(*tool_enabled_guidelines.values())
-
         return await self.event_producer.produce_events(
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
-            tools=enabled_tools,
         )
 
     async def _fetch_relevant_guidelines(
