@@ -31,29 +31,37 @@ class AlphaEngine(Engine):
         self.guide_filter = GuidelineFilter()
 
     async def process(self, context: Context) -> Iterable[ProducedEvent]:
-        interaction_history = list(
-            await self.session_store.list_events(
-                session_id=context.session_id,
-            )
-        )
+        interaction_history = list(await self.session_store.list_events(context.session_id))
 
-        all_relevant_guidelines = await self._fetch_relevant_guidelines(
+        ordinary_guidelines, tool_enabled_guidelines = await self._load_guidelines(
             agent_id=context.agent_id,
             interaction_history=interaction_history,
         )
-
-        tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
-            agent_id=context.agent_id,
-            guidelines=all_relevant_guidelines,
-        )
-
-        ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
 
         return await self.event_producer.produce_events(
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
         )
+
+    async def _load_guidelines(
+        self,
+        agent_id: AgentId,
+        interaction_history: list[Event],
+    ) -> tuple[Iterable[Guideline], dict[Guideline, Iterable[Tool]]]:
+        all_relevant_guidelines = await self._fetch_relevant_guidelines(
+            agent_id=agent_id,
+            interaction_history=interaction_history,
+        )
+
+        tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
+            agent_id=agent_id,
+            guidelines=all_relevant_guidelines,
+        )
+
+        ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
+
+        return ordinary_guidelines, tool_enabled_guidelines
 
     async def _fetch_relevant_guidelines(
         self,
