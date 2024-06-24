@@ -17,5 +17,3 @@ Feature: Proactive agents
         When processing is triggered
         Then a single message event is produced
         And the message contains an offering of a loan
-
-# TODO: Add tool_caller context use case

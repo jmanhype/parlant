@@ -24,7 +24,7 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 
 scenarios(
     "engines/alpha/tools/single_tool_event.feature",
-    "engines/alpha/proactive_agent.feature",
+    "engines/alpha/tools/proactive_agent.feature",
 )
 
 
