@@ -1,14 +1,17 @@
-from typing import Callable, List
+from typing import Callable
 from lagom import Container
+from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.context_variables import ContextVariableStore
+from emcie.server.core.end_users import EndUserId
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionId, SessionStore
+from emcie.server.core.sessions import Event, Session, SessionId, SessionStore
 
 from tests.test_utilities import SyncAwaiter, nlp_test
 
@@ -18,12 +21,28 @@ scenarios(
 )
 
 
+@fixture
+def new_session(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> Session:
+    store = container[SessionStore]
+
+    return sync_await(
+        store.create_session(
+            end_user_id=EndUserId("test_user"),
+            client_id="my_client",
+        )
+    )
+
+
 @given("the alpha engine", target_fixture="engine")
 def given_the_alpha_engine(
     container: Container,
 ) -> AlphaEngine:
     return AlphaEngine(
         session_store=container[SessionStore],
+        context_variable_store=container[ContextVariableStore],
         guideline_store=container[GuidelineStore],
         tool_store=container[ToolStore],
         guideline_tool_association_store=container[GuidelineToolAssociationStore],
@@ -53,8 +72,8 @@ def given_a_guideline_to(
         "greet with 'Howdy'": lambda: sync_await(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
-                predicate="It's time to greet the user",
-                content="Use the word 'Howdy'",
+                predicate="The interaction hasn't started yet",
+                content="Greet the user with the word 'Howdy'",
             )
         ),
         "offer thirsty users a Pepsi": lambda: sync_await(
@@ -93,7 +112,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks about vegetarian options",
-            "content": "List all vegetarian pizza options",
+            "content": "list all vegetarian pizza options",
         },
         {
             "predicate": "The user inquires about delivery times",
@@ -129,7 +148,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user requests a drink",
-            "content": "List available beverages and suggest popular pairings with "
+            "content": "list available beverages and suggest popular pairings with "
             "their pizza choice",
         },
         {
@@ -190,7 +209,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks for gluten-free options",
-            "content": "List our gluten-free pizza bases and toppings",
+            "content": "list our gluten-free pizza bases and toppings",
         },
         {
             "predicate": "The user is looking for side orders",
@@ -266,7 +285,7 @@ def given_50_other_random_guidelines(
         },
         {
             "predicate": "The user asks about non-dairy options",
-            "content": "List our vegan cheese alternatives and other non-dairy products",
+            "content": "list our vegan cheese alternatives and other non-dairy products",
         },
         {
             "predicate": "The user expresses excitement about a new menu item",
@@ -315,59 +334,58 @@ def given_50_other_random_guidelines(
 def given_an_empty_session(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
-    store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
-    return session.id
+    return new_session.id
 
 
 @given("a session with a single user message", target_fixture="session_id")
 def given_a_session_with_a_single_user_message(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     sync_await(
         store.create_event(
-            session_id=session.id,
+            session_id=new_session.id,
             source="client",
             type=Event.MESSAGE_TYPE,
             data={"message": "Hey there"},
         )
     )
 
-    return session.id
+    return new_session.id
 
 
 @given("a session with a thirsty user", target_fixture="session_id")
 def given_a_session_with_a_thirsty_user(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     sync_await(
         store.create_event(
-            session_id=session.id,
+            session_id=new_session.id,
             source="client",
             type=Event.MESSAGE_TYPE,
             data={"message": "I'm thirsty"},
         )
     )
 
-    return session.id
+    return new_session.id
 
 
 @given("a session with a few messages", target_fixture="session_id")
 def given_a_session_with_a_few_messages(
     sync_await: SyncAwaiter,
     container: Container,
+    new_session: Session,
 ) -> SessionId:
     store = container[SessionStore]
-    session = sync_await(store.create_session(client_id="my_client"))
 
     messages = [
         {
@@ -387,14 +405,14 @@ def given_a_session_with_a_few_messages(
     for m in messages:
         sync_await(
             store.create_event(
-                session_id=session.id,
+                session_id=new_session.id,
                 source=m["source"] == "server" and "server" or "client",
                 type=Event.MESSAGE_TYPE,
                 data={"message": m["message"]},
             )
         )
 
-    return session.id
+    return new_session.id
 
 
 @when("processing is triggered", target_fixture="produced_events")
@@ -403,7 +421,7 @@ def when_processing_is_triggered(
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
-) -> List[ProducedEvent]:
+) -> list[ProducedEvent]:
     events = sync_await(
         engine.process(
             Context(
@@ -418,21 +436,21 @@ def when_processing_is_triggered(
 
 @then("no events are produced")
 def then_no_events_are_produced(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
 ) -> None:
     assert len(produced_events) == 0
 
 
 @then("a single message event is produced")
 def then_a_single_message_event_is_produced(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
 ) -> None:
     assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
 
 
 @then(parsers.parse("the message contains {something}"))
 def then_the_message_contains(
-    produced_events: List[ProducedEvent],
+    produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
     message = next(e for e in produced_events if e.type == Event.MESSAGE_TYPE).data["message"]

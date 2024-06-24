@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Literal, NewType, Optional
 
 from emcie.server.core import common
+from emcie.server.core.end_users import EndUserId
 
 
 SessionId = NewType("SessionId", str)
@@ -28,6 +29,7 @@ class Event:
 @dataclass(frozen=True)
 class Session:
     id: SessionId
+    end_user_id: EndUserId
     client_id: str
     consumption_offsets: Dict[str, int]
 
@@ -39,11 +41,16 @@ class SessionStore:
         self._sessions: Dict[SessionId, Session] = {}
         self._events: Dict[SessionId, Dict[EventId, Event]] = {}
 
-    async def create_session(self, client_id: str) -> Session:
+    async def create_session(
+        self,
+        end_user_id: EndUserId,
+        client_id: str,
+    ) -> Session:
         session_id = SessionId(common.generate_id())
 
         self._sessions[session_id] = Session(
             id=session_id,
+            end_user_id=end_user_id,
             client_id=client_id,
             consumption_offsets={
                 "server": 0,

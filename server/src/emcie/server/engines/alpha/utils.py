@@ -6,6 +6,7 @@ from typing import Any, Iterable, Literal
 from loguru import logger
 from openai import AsyncClient
 
+from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event
 
 
@@ -45,3 +46,17 @@ def event_to_dict(event: Event) -> dict[str, Any]:
         }.get(event.source),
         "data": event.data,
     }
+
+
+def context_variables_to_json(
+    context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
+) -> str:
+    context_values = {
+        variable.name: {
+            "description": variable.description,
+            "value": value.data,
+        }
+        for variable, value in context_variables
+    }
+
+    return json.dumps(context_values)

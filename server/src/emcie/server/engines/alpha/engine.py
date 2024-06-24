@@ -1,8 +1,12 @@
 from collections import defaultdict
-from itertools import chain
 from typing import Iterable
 
 from emcie.server.core.agents import AgentId
+from emcie.server.core.context_variables import (
+    ContextVariable,
+    ContextVariableStore,
+    ContextVariableValue,
+)
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
@@ -11,18 +15,20 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
 )
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionStore
+from emcie.server.core.sessions import Event, SessionId, SessionStore
 
 
 class AlphaEngine(Engine):
     def __init__(
         self,
         session_store: SessionStore,
+        context_variable_store: ContextVariableStore,
         guideline_store: GuidelineStore,
         tool_store: ToolStore,
         guideline_tool_association_store: GuidelineToolAssociationStore,
     ) -> None:
         self.session_store = session_store
+        self.context_variable_store = context_variable_store
         self.guideline_store = guideline_store
         self.tool_store = tool_store
         self.guideline_tool_association_store = guideline_tool_association_store
@@ -31,36 +37,74 @@ class AlphaEngine(Engine):
         self.guide_filter = GuidelineFilter()
 
     async def process(self, context: Context) -> Iterable[ProducedEvent]:
-        interaction_history = list(
-            await self.session_store.list_events(
-                session_id=context.session_id,
-            )
+        interaction_history = list(await self.session_store.list_events(context.session_id))
+
+        context_variables = await self._load_context_variables(
+            agent_id=context.agent_id,
+            session_id=context.session_id,
         )
 
-        all_relevant_guidelines = await self._fetch_relevant_guidelines(
+        ordinary_guidelines, tool_enabled_guidelines = await self._load_guidelines(
             agent_id=context.agent_id,
+            context_variables=context_variables,
+            interaction_history=interaction_history,
+        )
+
+        return await self.event_producer.produce_events(
+            context_variables=context_variables,
+            interaction_history=interaction_history,
+            ordinary_guidelines=ordinary_guidelines,
+            tool_enabled_guidelines=tool_enabled_guidelines,
+        )
+
+    async def _load_context_variables(
+        self,
+        agent_id: AgentId,
+        session_id: SessionId,
+    ) -> list[tuple[ContextVariable, ContextVariableValue]]:
+        session = await self.session_store.read_session(session_id)
+
+        variables = await self.context_variable_store.list_variables(
+            variable_set=agent_id,
+        )
+
+        return [
+            (
+                variable,
+                await self.context_variable_store.read_value(
+                    variable_set=agent_id,
+                    key=session.end_user_id,
+                    variable_id=variable.id,
+                ),
+            )
+            for variable in variables
+        ]
+
+    async def _load_guidelines(
+        self,
+        agent_id: AgentId,
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
+    ) -> tuple[Iterable[Guideline], dict[Guideline, Iterable[Tool]]]:
+        all_relevant_guidelines = await self._fetch_relevant_guidelines(
+            agent_id=agent_id,
+            context_variables=context_variables,
             interaction_history=interaction_history,
         )
 
         tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
-            agent_id=context.agent_id,
+            agent_id=agent_id,
             guidelines=all_relevant_guidelines,
         )
 
         ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
 
-        enabled_tools = chain(*tool_enabled_guidelines.values())
-
-        return await self.event_producer.produce_events(
-            interaction_history=interaction_history,
-            ordinary_guidelines=ordinary_guidelines,
-            tool_enabled_guidelines=tool_enabled_guidelines,
-            tools=enabled_tools,
-        )
+        return ordinary_guidelines, tool_enabled_guidelines
 
     async def _fetch_relevant_guidelines(
         self,
         agent_id: AgentId,
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
     ) -> set[Guideline]:
         all_possible_guidelines = await self.guideline_store.list_guidelines(
@@ -69,6 +113,7 @@ class AlphaEngine(Engine):
 
         relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
             guidelines=all_possible_guidelines,
+            context_variables=context_variables,
             interaction_history=interaction_history,
         )
 

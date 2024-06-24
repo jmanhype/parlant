@@ -4,7 +4,9 @@ import jsonfinder  # type: ignore
 from typing import Iterable, TypedDict
 from loguru import logger
 
+from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.engines.alpha.utils import (
+    context_variables_to_json,
     duration_logger,
     events_to_json,
     make_llm_client,
@@ -25,6 +27,7 @@ class GuidelineFilter:
     async def find_relevant_guidelines(
         self,
         guidelines: Iterable[Guideline],
+        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
     ) -> Iterable[Guideline]:
         guideline_list = list(guidelines)
@@ -35,7 +38,14 @@ class GuidelineFilter:
         batches = self._create_batches(guideline_list, batch_size=5)
 
         with duration_logger(f"Total guideline filtering ({len(batches)} batches)"):
-            batch_tasks = [self._process_batch(interaction_history, batch) for batch in batches]
+            batch_tasks = [
+                self._process_batch(
+                    list(context_variables),
+                    list(interaction_history),
+                    batch,
+                )
+                for batch in batches
+            ]
             batch_results = await asyncio.gather(*batch_tasks)
             aggregated_checks = sum(batch_results, [])
 
@@ -59,10 +69,15 @@ class GuidelineFilter:
 
     async def _process_batch(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         batch: list[Guideline],
     ) -> list[PredicateCheck]:
-        prompt = self._format_prompt(interaction_history, batch)
+        prompt = self._format_prompt(
+            context_variables=context_variables,
+            interaction_history=interaction_history,
+            guidelines=batch,
+        )
 
         with duration_logger("Guideline batch filtering"):
             llm_response = await self._generate_llm_response(prompt)
@@ -88,25 +103,45 @@ class GuidelineFilter:
 
     def _format_prompt(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         guidelines: list[Guideline],
     ) -> str:
         json_events = events_to_json(interaction_history)
+        context_values = context_variables_to_json(context_variables)
         predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guidelines, start=1))
 
-        return f"""\
+        prompt = ""
+
+        if interaction_history:
+            prompt += f"""\
 The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
 {json_events}
 ###
+"""
+        else:
+            prompt += """\
+You, an AI assistant, are now present in an online interaction session with a user.
+The session has just started, and the user hasn't said anything yet nor chosen to engage with you.
+"""
 
+        if context_variables:
+            prompt += f"""
+The following is information that you're given about the user and context of the interaction: ###
+{context_values}
+###
+"""
+
+        prompt += f"""
 The following is a list of predicates that may or may not apply
 to the LAST KNOWN STATE of the human/assistant interaction given above: ###
 {predicates}
 ###
 
 There are exactly {len(guidelines)} predicate(s).
-
+"""
+        prompt += """
 Your job is to determine which of the {len(guidelines)} predicate(s) applies
 to the LAST KNOWN STATE of the human/assistant interaction, and which don't.
 You must answer this question for each and every one of the predicate(s) provided.
@@ -127,6 +162,8 @@ Produce a JSON object of the following format:
     }}
 ]}}
 """
+
+        return prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(

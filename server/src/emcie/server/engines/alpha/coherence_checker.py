@@ -80,8 +80,9 @@ class ContradictionEvaluatorBase(ABC):
     ) -> None:
         self._llm_client = make_llm_client("openai")
         self.contradiction_type = contradiction_type
-        self.contradiction_response_outcome_key = f"{self.contradiction_type.value.replace(" ", "_")
-                                                     .lower()}s"
+        self.contradiction_response_outcome_key = (
+            f'{self.contradiction_type.value.replace(" ", "_").lower()}s'
+        )
 
     async def evaluate(
         self,

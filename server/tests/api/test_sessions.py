@@ -10,13 +10,25 @@ from emcie.server.core.sessions import EventSource, SessionId
 
 @fixture
 def session_id(client: TestClient) -> SessionId:
-    response = client.post("/sessions", json={"client_id": "my_client"})
+    response = client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user",
+            "client_id": "my_client",
+        },
+    )
     return SessionId(response.json()["session_id"])
 
 
 @fixture
 def long_session_id(client: TestClient) -> SessionId:
-    response = client.post("/sessions", json={"client_id": "my_client"})
+    response = client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user",
+            "client_id": "my_client",
+        },
+    )
     session_id = SessionId(response.json()["session_id"])
 
     populate_session_id(
@@ -68,7 +80,13 @@ def event_is_according_to_params(event: Dict[str, Any], params: Dict[str, Any]) 
 
 
 def test_that_a_session_can_be_created(client: TestClient) -> None:
-    response = client.post("/sessions", json={"client_id": "my_client"})
+    response = client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user",
+            "client_id": "my_client",
+        },
+    )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 

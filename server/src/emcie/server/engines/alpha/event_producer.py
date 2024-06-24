@@ -1,11 +1,13 @@
 from itertools import chain
 import json
-from typing import Iterable
+from typing import Iterable, Optional
 from loguru import logger
 
+from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
 from emcie.server.engines.alpha.utils import (
+    context_variables_to_json,
     events_to_json,
     make_llm_client,
 )
@@ -17,25 +19,29 @@ from emcie.server.core.sessions import Event
 class EventProducer:
 
     def __init__(self) -> None:
-        self.tool_event_producer = ToolsEventProducer()
-        self.message_event_producer = MessagesEventProducer()
+        self.tool_event_producer = ToolEventProducer()
+        self.message_event_producer = MessageEventProducer()
 
     async def produce_events(
         self,
+        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-        tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
+        interaction_event_list = list(interaction_history)
+        context_variable_list = list(context_variables)
+
         tool_events = await self.tool_event_producer.produce_events(
-            interaction_history=interaction_history,
+            context_variables=context_variable_list,
+            interaction_history=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
-            tools=tools,
         )
 
         message_events = await self.message_event_producer.produce_events(
-            interaction_history=interaction_history,
+            context_variables=context_variable_list,
+            interaction_history=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=tool_events,
@@ -44,7 +50,7 @@ class EventProducer:
         return chain(tool_events, message_events)
 
 
-class MessagesEventProducer:
+class MessageEventProducer:
     def __init__(
         self,
     ) -> None:
@@ -52,36 +58,48 @@ class MessagesEventProducer:
 
     async def produce_events(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
+        interaction_event_list = list(interaction_history)
+
+        if not interaction_event_list and not ordinary_guidelines and not tool_enabled_guidelines:
+            # No interaction and no guidelines that could trigger
+            # a proactive start of the interaction
+            return []
+
         prompt = self._format_prompt(
+            context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
 
-        response_message = await self._generate_response_message(prompt)
+        if response_message := await self._generate_response_message(prompt):
+            return [
+                ProducedEvent(
+                    source="server",
+                    type=Event.MESSAGE_TYPE,
+                    data={"message": response_message},
+                )
+            ]
 
-        return [
-            ProducedEvent(
-                source="server",
-                type=Event.MESSAGE_TYPE,
-                data={"message": response_message},
-            )
-        ]
+        return []
 
     def _format_prompt(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
-        interaction_events = events_to_json(interaction_history)
+        interaction_events_json = events_to_json(interaction_history)
+        context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
         all_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
 
@@ -90,24 +108,52 @@ class MessagesEventProducer:
             for i, g in enumerate(all_guidelines, start=1)
         )
 
-        return f"""\
+        prompt = ""
+
+        if interaction_history:
+            prompt += f"""\
 The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
-{interaction_events}
+{interaction_events_json}
 ###
+"""
+        else:
+            prompt += """\
+You, an AI assistant, are now present in an online session with a user.
+An interaction may or may not now be initiated by you, addressing the user.
 
+Here's how to decide whether to initiate the interaction:
+A. If the rules below both apply to the context, as well as suggest that you should say something
+to the user, then you should indeed initiate the interaction now.
+B. Otherwise, if no reason is provided that suggests you should say something to the user,
+then you should not initiate the interaction. Produce no response in this case.
+"""
+        if context_variables:
+            prompt += f"""
+The following is information that you're given about the user and context of the interaction: ###
+{context_values}
+###
+"""
+
+        if rules:
+            prompt += f"""
 In generating the response, you must adhere to the following rules: ###
 {rules}
 ###
-
+"""
+        prompt += """
 You must generate your response message to the current
 (latest) state of the interaction.
+"""
 
+        if staged_events_as_dict:
+            prompt += f"""
 For your information, here are some staged events that have just been produced,
 to assist you with generating your response message while following the rules above: ###
 {staged_events_as_dict}
 ###
-
+"""
+        prompt += f"""
 Propose revisions to the message content until you are
 absolutely sure that your proposed message adheres to
 each and every one of the provided rules,
@@ -118,9 +164,20 @@ follows all of the rules.
 Ensure that each critique is unique, to avoid repeating the same
 faulty content suggestion over and over again.
 
-Produce a valid JSON object in the format according to the following example.
+Produce a valid JSON object in the format according to the following examples.
 
+Example 1: When no response was deemed appropriate: ###
 {{
+    "produced_response": false,
+    "rationale": "a few words to justify why a response was NOT produced here",
+    "revisions": []
+}}
+###
+
+Example 2: A response that took critique in a few revisions to get right: ###
+{{
+    "produced_response": true,
+    "rationale": "a few words to justify why a response was produced here",
     "revisions": [
         {{
             "content": "some proposed message content",
@@ -148,9 +205,12 @@ Produce a valid JSON object in the format according to the following example.
         }},
     ]
 }}
+###
 """  # noqa
 
-    async def _generate_response_message(self, prompt: str) -> str:
+        return prompt
+
+    async def _generate_response_message(self, prompt: str) -> Optional[str]:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",
@@ -162,6 +222,9 @@ Produce a valid JSON object in the format according to the following example.
 
         json_content = json.loads(content)
 
+        if not json_content["produced_response"]:
+            return None
+
         final_revision = json_content["revisions"][-1]
 
         if not final_revision["followed_all_rules"]:
@@ -170,7 +233,7 @@ Produce a valid JSON object in the format according to the following example.
         return str(final_revision["content"])
 
 
-class ToolsEventProducer:
+class ToolEventProducer:
     def __init__(
         self,
     ) -> None:
@@ -179,10 +242,10 @@ class ToolsEventProducer:
 
     async def produce_events(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-        tools: Iterable[Tool],
     ) -> Iterable[ProducedEvent]:
         if not tool_enabled_guidelines:
             return []
@@ -190,11 +253,14 @@ class ToolsEventProducer:
         produced_tool_events: list[ProducedEvent] = []
 
         tool_calls = await self.tool_caller.infer_tool_calls(
+            context_variables,
             interaction_history,
             ordinary_guidelines,
             tool_enabled_guidelines,
             produced_tool_events,
         )
+
+        tools = chain(*tool_enabled_guidelines.values())
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,

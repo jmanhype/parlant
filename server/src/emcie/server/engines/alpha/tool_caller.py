@@ -5,16 +5,18 @@ import inspect
 from itertools import chain
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, NewType, TypedDict
+from typing import Any, Iterable, NewType, Optional, TypedDict
 
 from loguru import logger
 
 from emcie.server.core.common import generate_id
+from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 
 from emcie.server.engines.alpha.utils import (
+    context_variables_to_json,
     duration_logger,
     events_to_json,
     make_llm_client,
@@ -97,12 +99,14 @@ class ToolCaller:
 
     async def infer_tool_calls(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         guidelines: Iterable[Guideline],
         guideline_tools_associations: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
     ) -> Iterable[ToolCall]:
         inference_prompt = self._format_tool_call_inference_prompt(
+            context_variables,
             interaction_history,
             guidelines,
             guideline_tools_associations,
@@ -113,6 +117,7 @@ class ToolCaller:
             inference_output = await self._run_inference(inference_prompt)
 
         verification_prompt = self._format_tool_call_verification_prompt(
+            context_variables,
             interaction_history,
             guidelines,
             guideline_tools_associations,
@@ -159,12 +164,14 @@ class ToolCaller:
 
     def _format_tool_call_inference_prompt(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_event_list: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
     ) -> str:
-        json_events = events_to_json(interaction_history)
+        json_events = events_to_json(interaction_event_list)
+        context_values = context_variables_to_json(context_variables)
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
         tools = set(chain(*tool_enabled_guidelines.values()))
         functions = tools_to_json(tools)
@@ -175,33 +182,70 @@ class ToolCaller:
         )
         function_enabled_rules = self._format_guideline_tool_associations(tool_enabled_guidelines)
 
-        return f"""\
-The following is a list of events describing a back-and-forth interaction between you, an AI assistant, and a user: ###
+        prompt = ""
+
+        if interaction_event_list:
+            prompt += f"""\
+The following is a list of events describing a back-and-forth interaction between you,
+an AI assistant, and a user: ###
 {json_events}
 ###
+"""
+        else:
+            prompt += """
+You, an AI assistant, are now present in an online session with a user.
+An interaction may or may not now be initiated by you, addressing the user.
 
+Here's how to decide whether to initiate the interaction:
+A. If the rules below both apply to the context, as well as suggest that you should say something
+to the user, then you should indeed initiate the interaction now.
+B. Otherwise, if no reason is provided that suggests you should say something to the user,
+then you should not initiate the interaction. Produce no response in this case.
+"""
+
+        if context_variables:
+            prompt += f"""
+The following is information that you're given about the user and context of the interaction: ###
+{context_values}
+###
+"""
+
+        prompt += f"""
 Before generating your next response, you are highly encouraged to use tools that are provided
 to you, in order to generate a high-quality, well-informed response.
+"""
 
+        if ordinary_rules:
+            prompt += f"""
 In generating the response, you must adhere to the following rules: ###
 {ordinary_rules}
 ###
+"""
 
-The following is a list of instructions that apply, along with the tool functions related to them, which may or may not need to be called at this point, depending on your judgement and the rules provided: ###
+        if function_enabled_rules:
+            prompt += f"""
+The following is a list of instructions that apply, along with the tool functions enabled for them,
+which may or may not need to be called at this point, depending on your judgement
+and the rules provided: ###
 {function_enabled_rules}
 ###
 
 The following are the tool function definitions: ###
 {functions}
 ###
+"""
 
+        if staged_function_calls:
+            prompt += f"""
 The following is a list of ordered invoked tool functions after the interaction's latest state.
 You can use this information to avoid redundant calls and inform your response.
 For example, if the data you need already exists in one of these calls, then you DO NOT
 need to ask for this tool function to be run again, because its information is fresh here!: ###
 {staged_function_calls}
 ###
+"""
 
+        prompt += f"""
 Before generating your next response, you must now decide whether to use any of the tools provided.
 Here are the principles by which you can decide whether to use tools:
 
@@ -263,13 +307,18 @@ Here's a hypothetical example, for your reference:
 Note that the `tool_call_specifications` list can be empty if no functions need to be called.
 """  # noqa
 
+        return prompt
+
     def _get_invoked_functions(
         self,
         produced_events: Iterable[ProducedEvent],
-    ) -> str:
-        ordered_function_invocations = chain(
-            *[e["data"] for e in produced_tools_events_to_dict(produced_events)]
+    ) -> Optional[str]:
+        ordered_function_invocations = list(
+            chain(*[e["data"] for e in produced_tools_events_to_dict(produced_events)])
         )
+
+        if not ordered_function_invocations:
+            return None
 
         return json.dumps(
             [
@@ -284,14 +333,16 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
 
     def _format_tool_call_verification_prompt(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_event_list: list[Event],
         guidelines: Iterable[Guideline],
         guideline_tool_associations: dict[Guideline, Iterable[Tool]],
         produced_tool_events: Iterable[ProducedEvent],
         tool_call_specifications: Iterable[ToolCallRequest],
     ) -> str:
-        json_events = events_to_json(interaction_history)
-        invoked_functions = self._get_invoked_functions(produced_tool_events)
+        json_events = events_to_json(interaction_event_list)
+        context_values = context_variables_to_json(context_variables)
+        staged_function_calls = self._get_invoked_functions(produced_tool_events)
 
         tools = set(chain(*guideline_tool_associations.values()))
         functions = tools_to_json(tools)
@@ -303,31 +354,68 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
             guideline_tool_associations
         )
 
-        return f"""\
-The following is a list of events describing a back-and-forth interaction between you, an AI assistant, and a user: ###
+        prompt = ""
+
+        if interaction_event_list:
+            prompt += f"""\
+The following is a list of events describing a back-and-forth interaction between you,
+an AI assistant, and a user: ###
 {json_events}
 ###
+"""
+        else:
+            prompt += """
+You, an AI assistant, are now present in an online session with a user.
+An interaction may or may not now be initiated by you, addressing the user.
 
+Here's how to decide whether to initiate the interaction:
+A. If the rules below both apply to the context, as well as suggest that you should say something
+to the user, then you should indeed initiate the interaction now.
+B. Otherwise, if no reason is provided that suggests you should say something to the user,
+then you should not initiate the interaction. Produce no response in this case.
+"""
+
+        if context_variables:
+            prompt += f"""
+The following is information that you're given about the user and context of the interaction: ###
+{context_values}
+###
+"""
+
+        prompt += f"""
 Before generating your next response, you are highly encouraged to use tools that are provided
 to you, in order to generate a high-quality, well-informed response.
+"""
 
+        if ordinary_rules:
+            prompt += f"""
 In generating the response, you must adhere to the following rules: ###
 {ordinary_rules}
 ###
+"""
 
-The following is a list of instructions that apply, along with the tool functions related to them, which may or may not need to be called at this point, depending on your judgement and the rules provided: ###
+        if function_enabled_rules:
+            prompt += f"""
+The following is a list of instructions that apply, along with the tool functions enabled for them,
+which may or may not need to be called at this point, depending on your judgement
+and the rules provided: ###
 {function_enabled_rules}
 ###
 
 The following are the tool function definitions: ###
 {functions}
 ###
+"""
 
+        if staged_function_calls:
+            prompt += f"""
 The following is a list of ordered invoked tool functions after the interaction's latest state.
 You can use this information to avoid redundant calls and inform your response: ###
-{invoked_functions}
+{staged_function_calls}
 ###
+"""
 
+        prompt += f"""
 A predictive NLP algorithm has suggested that the following tool calls be executed
 prior to generating your next response to the user. ###
 {tool_call_specifications}
@@ -398,6 +486,8 @@ Here's a hypothetical example, for your reference:
 
 Note that the `checks` list can be empty if no functions need to be called.
 """  # noqa
+
+        return prompt
 
     async def _run_inference(
         self,
