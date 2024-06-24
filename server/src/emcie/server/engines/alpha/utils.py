@@ -54,7 +54,7 @@ def context_variables_to_json(
     context_values = {
         variable.name: {
             "description": variable.description,
-            "value": json.dumps(value.data),
+            "value": value.data,
         }
         for variable, value in context_variables
     }

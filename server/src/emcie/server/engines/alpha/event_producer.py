@@ -29,15 +29,19 @@ class EventProducer:
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
+        interaction_event_list = list(interaction_history)
+        context_variable_list = list(context_variables)
+
         tool_events = await self.tool_event_producer.produce_events(
-            interaction_history=interaction_history,
+            context_variables=context_variable_list,
+            interaction_history=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
         )
 
         message_events = await self.message_event_producer.produce_events(
-            context_variables=context_variables,
-            interaction_history=interaction_history,
+            context_variables=context_variable_list,
+            interaction_history=interaction_event_list,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=tool_events,
@@ -54,8 +58,8 @@ class MessageEventProducer:
 
     async def produce_events(
         self,
-        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
@@ -68,8 +72,8 @@ class MessageEventProducer:
             return []
 
         prompt = self._format_prompt(
-            context_variables=list(context_variables),
-            interaction_event_list=interaction_event_list,
+            context_variables=context_variables,
+            interaction_history=interaction_history,
             ordinary_guidelines=ordinary_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
@@ -89,12 +93,12 @@ class MessageEventProducer:
     def _format_prompt(
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_event_list: list[Event],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
-        interaction_events_json = events_to_json(interaction_event_list)
+        interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
         all_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
@@ -106,7 +110,7 @@ class MessageEventProducer:
 
         prompt = ""
 
-        if interaction_event_list:
+        if interaction_history:
             prompt += f"""\
 The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
@@ -238,7 +242,8 @@ class ToolEventProducer:
 
     async def produce_events(
         self,
-        interaction_history: Iterable[Event],
+        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: list[Event],
         ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
@@ -248,6 +253,7 @@ class ToolEventProducer:
         produced_tool_events: list[ProducedEvent] = []
 
         tool_calls = await self.tool_caller.infer_tool_calls(
+            context_variables,
             interaction_history,
             ordinary_guidelines,
             tool_enabled_guidelines,

@@ -106,4 +106,15 @@ Feature: Single Tool Event
         When processing is triggered
         Then a single tool calls event is produced
         And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains a call to "get_account_balance" Larry David's current balance
+        And the tool calls event contains a call to "get_account_balance" with Larry David's current balance
+
+    Scenario: Tool call takes context variables into consideration
+        Given a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
+        And the tool "get_account_balance"
+        And an association between "retrieve_account_information" and "get_account_balance"
+        And a context variable "user_account_name" with a value of "Jerry Seinfeld"
+        And a user message, "What's my account balance?"
+        When processing is triggered
+        Then a single tool calls event is produced
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call to "get_account_balance" with Jerry Seinfeld's current balance
