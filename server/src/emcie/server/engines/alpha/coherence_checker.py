@@ -93,11 +93,9 @@ class ContradictionEvaluatorBase(ABC):
         proposed_guidelines_list = list(proposed_guidelines)
         tasks = []
 
-        for proposed_guideline in proposed_guidelines:
+        for i, proposed_guideline in enumerate(proposed_guidelines):
             filtered_existing_guidelines = [
-                g
-                for g in proposed_guidelines_list + existing_guideline_list
-                if g.id != proposed_guideline.id
+                g for g in proposed_guidelines_list[i + 1 :] + existing_guideline_list
             ]
             guideline_batches = chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE)
             tasks.extend(
@@ -119,7 +117,7 @@ class ContradictionEvaluatorBase(ABC):
     ) -> Iterable[ContradictionTest]:
         prompt = self._format_contradiction_prompt(
             proposed_guideline,
-            existing_guidelines,
+            list(existing_guidelines),
         )
         contradictions = await self._generate_contradictions(prompt)
         return contradictions
@@ -133,7 +131,7 @@ class ContradictionEvaluatorBase(ABC):
     def _format_contradiction_prompt(
         self,
         proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
+        existing_guidelines: list[Guideline],
     ) -> str:
         existing_guidelines_string = "\n".join(
             f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
@@ -143,7 +141,17 @@ class ContradictionEvaluatorBase(ABC):
             f"{{id: {proposed_guideline.id}, "
             f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
         )
-
+        result_structure = [
+            {
+                "existing_guideline_id": g.id,
+                "proposed_guideline_id": proposed_guideline.id,
+                "severity_level": "<Severity Level (1-10): Indicates the intensity "
+                "of the contradiction arising from overlapping conditions>",
+                "rationale": "<Brief explanation of why the two guidelines have "
+                f"a {self.contradiction_type.value}>",
+            }
+            for g in existing_guidelines
+        ]
         return f"""
 ### Definition of {self.contradiction_type.value}:
 
@@ -161,7 +169,7 @@ class ContradictionEvaluatorBase(ABC):
    ###
 
 2. **Process**:
-   - For each guideline in the existing set, compare it with the proposed guideline.
+   - Compare each of the {len(existing_guidelines)} existing guidelines with the proposed guideline.
    - Determine if there is a {self.contradiction_type.value}, where the proposed guideline is more specific and directly contradicts a more general guideline from the existing set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
@@ -169,14 +177,8 @@ class ContradictionEvaluatorBase(ABC):
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
      {{
-         "{self.contradiction_response_outcome_key}": [
-             {{
-                 "existing_guideline_id": "<ID of the existing guideline in the contradiction>",
-                 "proposed_guideline_id": "<ID of the proposed guideline in the contradiction>",
-                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the contradiction arising from overlapping conditions>"
-                 "rationale": "<Brief explanation of why the two guidelines have a {self.contradiction_type.value}>"
-             }}
-         ]
+         "{self.contradiction_response_outcome_key}": 
+            {result_structure}
      }}
      ```
 

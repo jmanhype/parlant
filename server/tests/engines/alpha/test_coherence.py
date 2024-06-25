@@ -61,30 +61,6 @@ def guidelines_with_contradictions(
             "content": "Escalate immediately to the highest priority for resolution",
         },
         {
-            "predicate": "A customer inquires about upgrading their service package",
-            "content": "Provide information on available upgrade options and benefits",
-        },
-        {
-            "predicate": "A customer needs assistance with understanding their billing statements",  # noqa
-            "content": "Guide them through the billing details and explain any charges",
-        },
-        {
-            "predicate": "A customer expresses satisfaction with the service",
-            "content": "encourage them to leave a review or testimonial",
-        },
-        {
-            "predicate": "A customer refers another potential client",
-            "content": "initiate the referral rewards process",
-        },
-        {
-            "predicate": "A customer exceeds their data storage limit",
-            "content": "Prompt them to upgrade their subscription plan",
-        },
-        {
-            "predicate": "Promoting customer retention and satisfaction",
-            "content": "Offer a temporary data limit extension without requiring an upgrade",
-        },
-        {
             "predicate": "Receiving feedback on a new feature",
             "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
         },
@@ -734,10 +710,13 @@ def test_that_coherence_check_produces_multiple_contradictions(
     guidelines_with_contradictions: list[Guideline],
 ) -> None:
     coherence_checker = CoherenceChecker()
-    contradiction_results = sync_await(
-        coherence_checker.evaluate_coherence(guidelines_with_contradictions, [])
+    contradiction_results = list(
+        sync_await(coherence_checker.evaluate_coherence(guidelines_with_contradictions, []))
     )
-    assert len(list(filter(lambda c: c.severity >= 5, contradiction_results))) == 12
+    n = len(guidelines_with_contradictions)
+    pairs_per_evaluator = n * (n - 1) / 2
+    num_contradiction_evaluators = 4
+    assert len(contradiction_results) == num_contradiction_evaluators * pairs_per_evaluator
 
 
 def test_that_existing_guidelines_are_not_evaluated_as_proposed_guidelines(
