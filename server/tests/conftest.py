@@ -11,7 +11,9 @@ from emcie.server.core.end_users import EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionStore
 from emcie.server.core.tools import ToolStore
+from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
+from emcie.server.engines.common import Engine
 
 from .test_utilities import SyncAwaiter
 
@@ -37,6 +39,7 @@ def container() -> Container:
     container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
     container[SessionStore] = SessionStore()
     container[ToolStore] = ToolStore()
+    container[Engine] = AlphaEngine
 
     return container
 

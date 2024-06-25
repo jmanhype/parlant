@@ -4,11 +4,8 @@ from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
 from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, Session, SessionId, SessionStore
@@ -31,7 +28,6 @@ def new_session(
     return sync_await(
         store.create_session(
             end_user_id=EndUserId("test_user"),
-            client_id="my_client",
         )
     )
 
@@ -40,13 +36,7 @@ def new_session(
 def given_the_alpha_engine(
     container: Container,
 ) -> AlphaEngine:
-    return AlphaEngine(
-        session_store=container[SessionStore],
-        context_variable_store=container[ContextVariableStore],
-        guideline_store=container[GuidelineStore],
-        tool_store=container[ToolStore],
-        guideline_tool_association_store=container[GuidelineToolAssociationStore],
-    )
+    return container[AlphaEngine]
 
 
 @given("an agent", target_fixture="agent_id")

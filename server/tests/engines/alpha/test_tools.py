@@ -46,13 +46,7 @@ def context() -> _TestContext:
 def given_the_alpha_engine(
     container: Container,
 ) -> AlphaEngine:
-    return AlphaEngine(
-        session_store=container[SessionStore],
-        context_variable_store=container[ContextVariableStore],
-        guideline_store=container[GuidelineStore],
-        tool_store=container[ToolStore],
-        guideline_tool_association_store=container[GuidelineToolAssociationStore],
-    )
+    return container[AlphaEngine]
 
 
 @given("an agent", target_fixture="agent_id")
@@ -74,7 +68,6 @@ def given_an_empty_session(
     session = sync_await(
         store.create_session(
             end_user_id=EndUserId("test_user"),
-            client_id="my_client",
         )
     )
     return session.id

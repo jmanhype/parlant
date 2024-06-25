@@ -44,14 +44,13 @@ class SessionStore:
     async def create_session(
         self,
         end_user_id: EndUserId,
-        client_id: str,
     ) -> Session:
         session_id = SessionId(common.generate_id())
 
         self._sessions[session_id] = Session(
             id=session_id,
             end_user_id=end_user_id,
-            client_id=client_id,
+            client_id="<default_client>",
             consumption_offsets={
                 "server": 0,
                 "client": 0,

@@ -64,7 +64,6 @@ def create_router(session_store: SessionStore) -> APIRouter:
     async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
         session = await session_store.create_session(
             end_user_id=request.end_user_id,
-            client_id="<default_client>",
         )
 
         return CreateSessionResponse(session_id=session.id)
