@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 from typing import List
 
-from emcie.server.base import DefaultBaseModel
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.threads import (
     MessageId,
     MessageRole,

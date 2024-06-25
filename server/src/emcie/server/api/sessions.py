@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Response, status
 from datetime import datetime
 
-from emcie.server.base import DefaultBaseModel
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionStore
 

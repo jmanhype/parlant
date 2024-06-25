@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter
 
-from emcie.server.base import DefaultBaseModel
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.models import ModelId, ModelRegistry
 from emcie.server.core.threads import MessageId, ThreadId, ThreadStore
