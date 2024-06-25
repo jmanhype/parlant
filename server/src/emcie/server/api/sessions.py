@@ -9,7 +9,6 @@ from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionS
 
 class CreateSessionRequest(DefaultBaseModel):
     end_user_id: EndUserId
-    client_id: str
 
 
 class CreateSessionResponse(DefaultBaseModel):
@@ -65,7 +64,7 @@ def create_router(session_store: SessionStore) -> APIRouter:
     async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
         session = await session_store.create_session(
             end_user_id=request.end_user_id,
-            client_id=request.client_id,
+            client_id="<default_client>",
         )
 
         return CreateSessionResponse(session_id=session.id)
