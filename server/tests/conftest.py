@@ -7,6 +7,7 @@ from pytest import fixture, Config
 from emcie.server import main
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.context_variables import ContextVariableStore
+from emcie.server.core.end_users import EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionStore
 from emcie.server.core.tools import ToolStore
@@ -30,11 +31,12 @@ def container() -> Container:
     container = Container()
 
     container[AgentStore] = AgentStore()
-    container[SessionStore] = SessionStore()
     container[ContextVariableStore] = ContextVariableStore()
+    container[EndUserStore] = EndUserStore()
     container[GuidelineStore] = GuidelineStore()
-    container[ToolStore] = ToolStore()
     container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
+    container[SessionStore] = SessionStore()
+    container[ToolStore] = ToolStore()
 
     return container
 
@@ -45,8 +47,3 @@ async def client(container: Container) -> AsyncIterator[TestClient]:
 
     with TestClient(app) as client:
         yield client
-
-
-@fixture
-def agent_id(client: TestClient) -> str:
-    return str(client.post("/agents").json()["agent_id"])
