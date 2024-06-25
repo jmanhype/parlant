@@ -210,7 +210,7 @@ The following is information that you're given about the user and context of the
 ###
 """
 
-        prompt += f"""
+        prompt += """
 Before generating your next response, you are highly encouraged to use tools that are provided
 to you, in order to generate a high-quality, well-informed response.
 """
@@ -382,7 +382,7 @@ The following is information that you're given about the user and context of the
 ###
 """
 
-        prompt += f"""
+        prompt += """
 Before generating your next response, you are highly encouraged to use tools that are provided
 to you, in order to generate a high-quality, well-informed response.
 """
