@@ -1,12 +1,16 @@
 from dataclasses import dataclass
+from typing import AsyncGenerator
 from lagom import Container
 from pytest import fixture
 
+from emcie.server.async_utils import Timeout
 from emcie.server.mc import MC
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId, EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import Event, Session, SessionStore
+
+REASONABLE_AMOUNT_OF_TIME = 10
 
 
 @dataclass
@@ -30,8 +34,9 @@ async def context(
 
 
 @fixture
-async def mc(container: Container) -> MC:
-    return MC(container)
+async def mc(container: Container) -> AsyncGenerator[MC, None]:
+    async with MC(container) as mc:
+        yield mc
 
 
 @fixture
@@ -101,6 +106,8 @@ async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message
         agent_id=proactive_agent_id,
     )
 
+    assert await context.mc.wait_for_update(session, Timeout(REASONABLE_AMOUNT_OF_TIME))
+
     events = list(await context.container[SessionStore].list_events(session.id))
 
     assert len(events) == 1
@@ -115,9 +122,8 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_pro
         type=Event.MESSAGE_TYPE,
         data={"message": "Hey there"},
     )
-    # TODO work with client consumption offsets
-    #      to long-poll a session, and post
-    #      completely asynchronously.
+
+    await context.mc.wait_for_update(session, Timeout(REASONABLE_AMOUNT_OF_TIME))
 
     events = list(await context.container[SessionStore].list_events(session.id))
 

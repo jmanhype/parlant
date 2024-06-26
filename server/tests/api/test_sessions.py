@@ -165,13 +165,11 @@ def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
     data = response.json()
 
     assert "consumption_offsets" in data
-    assert "server" in data["consumption_offsets"]
     assert "client" in data["consumption_offsets"]
-    assert data["consumption_offsets"]["server"] == 0
     assert data["consumption_offsets"]["client"] == 0
 
 
-@mark.parametrize("consumer_id", ("server", "client"))
+@mark.parametrize("consumer_id", ["client"])
 def test_that_consumption_offsets_can_be_updated(
     client: TestClient,
     long_session_id: SessionId,

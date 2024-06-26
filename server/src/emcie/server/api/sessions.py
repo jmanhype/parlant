@@ -29,7 +29,6 @@ class CreateEventResponse(DefaultBaseModel):
 
 
 class ConsumptionOffsetsDTO(DefaultBaseModel):
-    server: int
     client: int
 
 
@@ -38,7 +37,6 @@ class ReadSessionResponse(DefaultBaseModel):
 
 
 class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
-    server: Optional[int] = None
     client: Optional[int] = None
 
 
@@ -77,7 +75,6 @@ def create_router(session_store: SessionStore) -> APIRouter:
 
         return ReadSessionResponse(
             consumption_offsets=ConsumptionOffsetsDTO(
-                server=session.consumption_offsets["server"],
                 client=session.consumption_offsets["client"],
             )
         )
@@ -88,12 +85,6 @@ def create_router(session_store: SessionStore) -> APIRouter:
         request: PatchSessionRequest,
     ) -> Response:
         if request.consumption_offsets:
-            if request.consumption_offsets.server:
-                await session_store.update_consumption_offset(
-                    session_id=session_id,
-                    consumer_id="server",
-                    new_offset=request.consumption_offsets.server,
-                )
             if request.consumption_offsets.client:
                 await session_store.update_consumption_offset(
                     session_id=session_id,

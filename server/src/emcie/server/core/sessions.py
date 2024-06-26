@@ -1,7 +1,10 @@
+from abc import ABC, abstractmethod
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Literal, NewType, Optional
 
+from emcie.server.async_utils import Timeout
 from emcie.server.core import common
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
@@ -27,13 +30,16 @@ class Event:
     data: Dict[str, Any]
 
 
+ConsumerId = Literal["client"]
+"""In the future we may support multiple consumer IDs"""
+
+
 @dataclass(frozen=True)
 class Session:
     id: SessionId
     end_user_id: EndUserId
     agent_id: AgentId
-    client_id: str
-    consumption_offsets: Dict[str, int]
+    consumption_offsets: Dict[ConsumerId, int]
 
 
 class SessionStore:
@@ -54,11 +60,7 @@ class SessionStore:
             id=session_id,
             end_user_id=end_user_id,
             agent_id=agent_id,
-            client_id="<default_client>",
-            consumption_offsets={
-                "server": 0,
-                "client": 0,
-            },
+            consumption_offsets={"client": 0},
         )
 
         self._events[session_id] = {}
@@ -70,7 +72,7 @@ class SessionStore:
     async def update_consumption_offset(
         self,
         session_id: SessionId,
-        consumer_id: str,
+        consumer_id: ConsumerId,
         new_offset: int,
     ) -> None:
         self._sessions[session_id].consumption_offsets[consumer_id] = new_offset
@@ -111,3 +113,42 @@ class SessionStore:
             events = [e for e in events if e.offset >= min_offset]
 
         return events
+
+
+class SessionListener(ABC):
+    @abstractmethod
+    async def wait_for_update(
+        self,
+        session: Session,
+        consumer_id: ConsumerId,
+        timeout: Timeout,
+    ) -> bool: ...
+
+
+class PollingSessionListener(SessionListener):
+    def __init__(self, session_store: SessionStore) -> None:
+        self._session_store = session_store
+
+    async def wait_for_update(
+        self,
+        session: Session,
+        consumer_id: ConsumerId,
+        timeout: Timeout,
+    ) -> bool:
+        latest_known_offset = session.consumption_offsets[consumer_id]
+
+        while True:
+            events = list(
+                await self._session_store.list_events(
+                    session.id,
+                    source="server",
+                    min_offset=latest_known_offset,
+                )
+            )
+
+            if events:
+                return True
+            elif timeout.expired():
+                return False
+            else:
+                await asyncio.sleep(min(1, timeout.remaining()))

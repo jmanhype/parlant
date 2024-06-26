@@ -9,7 +9,7 @@ from emcie.server.core.agents import AgentStore
 from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.end_users import EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.sessions import SessionStore
+from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
@@ -39,6 +39,7 @@ def container() -> Container:
     container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
     container[SessionStore] = SessionStore()
     container[ToolStore] = ToolStore()
+    container[SessionListener] = PollingSessionListener
     container[Engine] = AlphaEngine
 
     return container

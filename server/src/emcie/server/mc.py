@@ -1,17 +1,49 @@
+from __future__ import annotations
+import asyncio
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional, Type
 from lagom import Container
 
+from emcie.server.async_utils import Timeout
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.sessions import Session, SessionId, SessionStore
+from emcie.server.core.sessions import Session, SessionId, SessionListener, SessionStore
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 
 
 class MC:
     def __init__(self, container: Container) -> None:
         self._session_store = container[SessionStore]
+        self._session_listener = container[SessionListener]
         self._engine = container[Engine]
+        self._tasks = asyncio.Queue[asyncio.Task[None]]()
+
+    async def __aenter__(self) -> MC:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[object],
+    ) -> bool:
+        while not self._tasks.empty():
+            task = self._tasks.get_nowait()
+            await task
+
+        return False
+
+    async def wait_for_update(
+        self,
+        session: Session,
+        timeout: Timeout,
+    ) -> bool:
+
+        return await self._session_listener.wait_for_update(
+            session=session,
+            consumer_id="client",
+            timeout=timeout,
+        )
 
     async def create_end_user_session(
         self,
@@ -23,7 +55,7 @@ class MC:
             agent_id=agent_id,
         )
 
-        await self._update_session(session)
+        await self._dispatch_session_update(session)
 
         return session
 
@@ -42,7 +74,21 @@ class MC:
 
         session = await self._session_store.read_session(session_id)
 
-        await self._update_session(session)
+        await self._dispatch_session_update(session)
+
+    async def update_consumption_offset(
+        self,
+        session: Session,
+        new_offset: int,
+    ) -> None:
+        await self._session_store.update_consumption_offset(
+            session.id,
+            consumer_id="client",
+            new_offset=new_offset,
+        )
+
+    async def _dispatch_session_update(self, session: Session) -> None:
+        await self._tasks.put(asyncio.create_task(self._update_session(session)))
 
     async def _update_session(self, session: Session) -> None:
         produced_events = await self._engine.process(
