@@ -115,8 +115,8 @@ class GuidelineFilter:
 This process involves assessing the relevance of predefined predicates 
 to the last known state of an interaction between an AI assistant and a user.
 
-**Objective**: Determine the applicability of each predicate to the concluding 
-state of the interaction based on a given set of interactions.
+**Objective**: Determine the applicability of each predicate to the latest 
+state based on a stream of events.
 
 **Task Description**:
 1. **Input**:
@@ -133,7 +133,8 @@ state of the interaction based on a given set of interactions.
     - Interaction Context: ###
     You, an AI assistant, 
     are currently engaged in the initial phase of an online session with a user.
-    The interaction has just commenced, and no substantial exchange has occurred yet.
+    The interaction has just commenced, 
+    and the user hasn't said anything yet nor chosen to engage with you.
     ###
     """
 
@@ -154,6 +155,7 @@ state of the interaction based on a given set of interactions.
    a. Examine the provided interaction events to discern 
    the latest state of interaction between the user and the assistant.
    b. Determine the applicability of each predicate based on the most recent interaction state.
+     Note: There are exactly {len(guidelines)} predicates.
    c. Assign a relevance score to each predicate, from 1 to 10, where 10 denotes high relevance.
 
 3. **Output**:
@@ -164,13 +166,15 @@ state of the interaction based on a given set of interactions.
         "checks": [
             {{
                 "predicate_number": "1",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
                 "applies_score": <RELEVANCE SCORE>,
             }},
             ...
             {{
                 "predicate_number": "N",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
                 CONSIDERING THE CURRENT STATE OF THE INTRACTION>"
                 "applies_score": <RELEVANCE SCORE>
             }}
@@ -206,7 +210,7 @@ state of the interaction based on a given set of interactions.
             "rationale": "The client completed the purchase and 
             the conversation shifted to a new topic,
             making the purchase-related guideline irrelevant.",
-            "applies_score": 1
+            "applies_score": 3
         }},
         {{
             "predicate_number": "2",

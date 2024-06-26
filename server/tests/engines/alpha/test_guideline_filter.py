@@ -1,70 +1,76 @@
 from dataclasses import dataclass
-from typing import Iterable, Literal, cast
-from lagom import Container
+from typing import Iterable, cast
 from pytest import fixture, mark
-from emcie.server.core.agents import AgentId
-from emcie.server.core.end_users import EndUserId
-from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionId, SessionStore
+from emcie.server.core.guidelines import Guideline, GuidelineId
+from emcie.server.core.sessions import Event, EventId, EventSource, SessionId
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
 from tests.test_utilities import SyncAwaiter
+from datetime import datetime, timezone
 
-roles = Literal["client", "server"]
+from emcie.server.core import common
 
 
 @dataclass
-class TestContext:
+class _TestContext:
     sync_await: SyncAwaiter
-    container: Container
-    agent_id: AgentId
+    guidelines: list[Guideline]
 
 
 @fixture
-def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> TestContext:
-    return TestContext(sync_await, container, agent_id)
+def context(
+    sync_await: SyncAwaiter,
+) -> _TestContext:
+    return _TestContext(sync_await, guidelines=list())
 
 
-@fixture
-def session_id(context: TestContext) -> SessionId:
-    session_store = context.container[SessionStore]
-    session = context.sync_await(
-        session_store.create_session(
-            end_user_id=EndUserId("test_user"),
-            client_id="my_client",
+def retrieve_guidelines(
+    context: _TestContext,
+    conversation_context: list[tuple[str, str]],
+) -> Iterable[Guideline]:
+    guideline_filter = GuidelineFilter()
+
+    interaction_history = [
+        create_event_message(
+            offset=i,
+            source=cast(EventSource, source),
+            message=message,
+        )
+        for i, (source, message) in enumerate(conversation_context)
+    ]
+
+    retrieved_guidelines = context.sync_await(
+        guideline_filter.find_relevant_guidelines(
+            guidelines=context.guidelines,
+            context_variables=[],
+            interaction_history=interaction_history,
         )
     )
-    return session.id
+
+    return retrieved_guidelines
 
 
 def create_event_message(
-    context: TestContext, session_id: SessionId, role: roles, message: str
+    offset: int,
+    source: EventSource,
+    message: str,
 ) -> Event:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
 
-    event = context.sync_await(
-        store.create_event(
-            session_id=session.id,
-            source=role,
-            type=Event.MESSAGE_TYPE,
-            data={"message": message},
-        )
+    event = Event(
+        id=EventId(common.generate_id()),
+        source=source,
+        type=Event.MESSAGE_TYPE,
+        offset=offset,
+        data={"message": message},
+        creation_utc=datetime.now(timezone.utc),
     )
+
     return event
 
 
-def create_guideline_by_name(context: TestContext, guideline_name: str) -> Guideline:
-    guideline_store = context.container[GuidelineStore]
-
-    def create_guideline(predicate: str, content: str) -> Guideline:
-        return context.sync_await(
-            guideline_store.create_guideline(
-                guideline_set=context.agent_id,
-                predicate=predicate,
-                content=content,
-            )
-        )
-
+def create_guideline_by_name(
+    context: _TestContext,
+    guideline_name: str,
+) -> Guideline:
     guidelines = {
         "check_drinks_in_stock": {
             "predicate": "a client asks for a drink",
@@ -97,7 +103,14 @@ def create_guideline_by_name(context: TestContext, guideline_name: str) -> Guide
         },
     }
 
-    return create_guideline(**guidelines[guideline_name])
+    guideline = Guideline(
+        GuidelineId(common.generate_id()),
+        predicate=guidelines[guideline_name]["predicate"],
+        content=guidelines[guideline_name]["content"],
+        creation_utc=datetime.now(timezone.utc),
+    )
+    context.guidelines.append(guideline)
+    return guideline
 
 
 @mark.parametrize(
@@ -179,22 +192,21 @@ def create_guideline_by_name(context: TestContext, guideline_name: str) -> Guide
     ],
 )
 def test_that_relevant_guidelines_are_retrieved(
-    context: TestContext,
-    session_id: SessionId,
+    context: _TestContext,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
     relevant_guideline_names: list[str],
 ) -> None:
     conversation_guidelines = {
-        g_name: create_guideline_by_name(context, g_name) for g_name in conversation_guideline_names
+        name: create_guideline_by_name(context, name) for name in conversation_guideline_names
     }
     relevant_guidelines = [
-        conversation_guidelines[g_name]
-        for g_name in conversation_guidelines
-        if g_name in relevant_guideline_names
+        conversation_guidelines[name]
+        for name in conversation_guidelines
+        if name in relevant_guideline_names
     ]
 
-    retrieved_guidelines = retrieve_guidelines(context, session_id, conversation_context)
+    retrieved_guidelines = retrieve_guidelines(context, conversation_context)
 
     for guideline in relevant_guidelines:
         assert guideline in retrieved_guidelines
@@ -240,51 +252,22 @@ def test_that_relevant_guidelines_are_retrieved(
     ],
 )
 def test_that_irrelevant_guidelines_are_not_retrieved(
-    context: TestContext,
-    session_id: SessionId,
+    context: _TestContext,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
     irrelevant_guideline_names: list[str],
 ) -> None:
     conversation_guidelines = {
-        g_name: create_guideline_by_name(context, g_name) for g_name in conversation_guideline_names
+        name: create_guideline_by_name(context, name) for name in conversation_guideline_names
     }
 
     irrelevant_guidelines = [
-        conversation_guidelines[g_name]
-        for g_name in conversation_guidelines
-        if g_name in irrelevant_guideline_names
+        conversation_guidelines[name]
+        for name in conversation_guidelines
+        if name in irrelevant_guideline_names
     ]
 
-    retrieved_guidelines = retrieve_guidelines(context, session_id, conversation_context)
+    retrieved_guidelines = retrieve_guidelines(context, conversation_context)
 
     for guideline in retrieved_guidelines:
         assert guideline not in irrelevant_guidelines
-
-
-def retrieve_guidelines(
-    context: TestContext,
-    session_id: SessionId,
-    conversation_context: list[tuple[str, str]],
-) -> Iterable[Guideline]:
-    guideline_store = context.container[GuidelineStore]
-    guide_filter = GuidelineFilter()
-
-    interaction_history = [
-        create_event_message(context, session_id, cast(roles, r), m)
-        for r, m in conversation_context
-    ]
-
-    all_possible_guidelines = context.sync_await(
-        guideline_store.list_guidelines(guideline_set=context.agent_id)
-    )
-
-    retrieved_guidelines = context.sync_await(
-        guide_filter.find_relevant_guidelines(
-            guidelines=all_possible_guidelines,
-            context_variables=[],
-            interaction_history=interaction_history,
-        )
-    )
-
-    return retrieved_guidelines
