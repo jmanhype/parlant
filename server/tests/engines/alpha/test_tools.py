@@ -42,6 +42,16 @@ def context() -> _TestContext:
     )
 
 
+@fixture
+def agent_id(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    store = container[AgentStore]
+    agent = sync_await(store.create_agent())
+    return agent.id
+
+
 @given("the alpha engine", target_fixture="engine")
 def given_the_alpha_engine(
     container: Container,
@@ -51,23 +61,22 @@ def given_the_alpha_engine(
 
 @given("an agent", target_fixture="agent_id")
 def given_an_agent(
-    sync_await: SyncAwaiter,
-    container: Container,
+    agent_id: AgentId,
 ) -> AgentId:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent())
-    return agent.id
+    return agent_id
 
 
 @given("an empty session", target_fixture="session_id")
 def given_an_empty_session(
     sync_await: SyncAwaiter,
     container: Container,
+    agent_id: AgentId,
 ) -> SessionId:
     store = container[SessionStore]
     session = sync_await(
         store.create_session(
             end_user_id=EndUserId("test_user"),
+            agent_id=agent_id,
         )
     )
     return session.id

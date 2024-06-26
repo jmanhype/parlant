@@ -14,6 +14,7 @@ def session_id(client: TestClient) -> SessionId:
         "/sessions",
         json={
             "end_user_id": "test_user",
+            "agent_id": "test_agent",
         },
     )
     return SessionId(response.json()["session_id"])
@@ -25,6 +26,7 @@ def long_session_id(client: TestClient) -> SessionId:
         "/sessions",
         json={
             "end_user_id": "test_user",
+            "agent_id": "test_agent",
         },
     )
     session_id = SessionId(response.json()["session_id"])
@@ -82,6 +84,7 @@ def test_that_a_session_can_be_created(client: TestClient) -> None:
         "/sessions",
         json={
             "end_user_id": "test_user",
+            "agent_id": "test_agent",
         },
     )
     assert response.status_code == status.HTTP_200_OK

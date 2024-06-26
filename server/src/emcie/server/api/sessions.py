@@ -3,12 +3,14 @@ from fastapi import APIRouter, Response, status
 from datetime import datetime
 
 from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventId, EventSource, SessionId, SessionStore
 
 
 class CreateSessionRequest(DefaultBaseModel):
     end_user_id: EndUserId
+    agent_id: AgentId
 
 
 class CreateSessionResponse(DefaultBaseModel):
@@ -64,6 +66,7 @@ def create_router(session_store: SessionStore) -> APIRouter:
     async def create_session(request: CreateSessionRequest) -> CreateSessionResponse:
         session = await session_store.create_session(
             end_user_id=request.end_user_id,
+            agent_id=request.agent_id,
         )
 
         return CreateSessionResponse(session_id=session.id)

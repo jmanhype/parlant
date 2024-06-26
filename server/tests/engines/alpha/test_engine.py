@@ -19,15 +19,27 @@ scenarios(
 
 
 @fixture
+def agent_id(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    store = container[AgentStore]
+    agent = sync_await(store.create_agent())
+    return agent.id
+
+
+@fixture
 def new_session(
     container: Container,
     sync_await: SyncAwaiter,
+    agent_id: AgentId,
 ) -> Session:
     store = container[SessionStore]
 
     return sync_await(
         store.create_session(
             end_user_id=EndUserId("test_user"),
+            agent_id=agent_id,
         )
     )
 
@@ -41,12 +53,9 @@ def given_the_alpha_engine(
 
 @given("an agent", target_fixture="agent_id")
 def given_an_agent(
-    sync_await: SyncAwaiter,
-    container: Container,
+    agent_id: AgentId,
 ) -> AgentId:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent())
-    return agent.id
+    return agent_id
 
 
 @given(parsers.parse("a guideline to {do_something}"))
@@ -62,7 +71,7 @@ def given_a_guideline_to(
         "greet with 'Howdy'": lambda: sync_await(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
-                predicate="The interaction hasn't started yet",
+                predicate="The user hasn't engaged yet",
                 content="Greet the user with the word 'Howdy'",
             )
         ),

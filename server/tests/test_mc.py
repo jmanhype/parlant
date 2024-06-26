@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture
 
+from emcie.server.mc import MC
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId, EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.sessions import SessionStore
-from emcie.server.mc import MC
+from emcie.server.core.sessions import Event, Session, SessionStore
 
 
 @dataclass
@@ -42,7 +42,10 @@ async def agent_id(container: Container) -> AgentId:
 
 
 @fixture
-async def proactive_agent_id(container: Container, agent_id: AgentId) -> AgentId:
+async def proactive_agent_id(
+    container: Container,
+    agent_id: AgentId,
+) -> AgentId:
     await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate="The user hasn't engaged yet",
@@ -50,6 +53,20 @@ async def proactive_agent_id(container: Container, agent_id: AgentId) -> AgentId
     )
 
     return agent_id
+
+
+@fixture
+async def session(
+    container: Container,
+    end_user_id: EndUserId,
+    agent_id: AgentId,
+) -> Session:
+    store = container[SessionStore]
+    session = await store.create_session(
+        end_user_id=end_user_id,
+        agent_id=agent_id,
+    )
+    return session
 
 
 @fixture
@@ -87,3 +104,21 @@ async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message
     events = list(await context.container[SessionStore].list_events(session.id))
 
     assert len(events) == 1
+
+
+async def test_that_when_a_client_event_is_posted_then_new_server_events_are_produced(
+    context: _TestContext,
+    session: Session,
+) -> None:
+    await context.mc.post_client_event(
+        session_id=session.id,
+        type=Event.MESSAGE_TYPE,
+        data={"message": "Hey there"},
+    )
+    # TODO work with client consumption offsets
+    #      to long-poll a session, and post
+    #      completely asynchronously.
+
+    events = list(await context.container[SessionStore].list_events(session.id))
+
+    assert len(events) > 1
