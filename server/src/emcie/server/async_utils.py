@@ -17,5 +17,14 @@ class Timeout:
     def remaining(self) -> float:
         return max(0, self._expiration - self._now())
 
+    def afford_up_to(self, seconds: float) -> float:
+        return min(self.remaining(), seconds)
+
+    async def wait(self) -> None:
+        await asyncio.sleep(self.remaining())
+
+    async def wait_up_to(self, seconds: float) -> None:
+        await asyncio.sleep(self.afford_up_to(seconds))
+
     def _now(self) -> float:
         return asyncio.get_event_loop().time()

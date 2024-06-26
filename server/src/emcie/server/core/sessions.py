@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Literal, NewType, Optional
@@ -151,4 +150,4 @@ class PollingSessionListener(SessionListener):
             elif timeout.expired():
                 return False
             else:
-                await asyncio.sleep(min(1, timeout.remaining()))
+                await timeout.wait_up_to(1)
