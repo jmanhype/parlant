@@ -1,7 +1,8 @@
 import asyncio
+from dataclasses import dataclass
 import json
 import jsonfinder  # type: ignore
-from typing import Iterable, TypedDict
+from typing import Iterable
 from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -15,12 +16,14 @@ from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 
 
-class GuidelineFilter:
-    class PredicateCheck(TypedDict):
-        guideline: Guideline
-        score: int
-        rationale: str
+@dataclass(frozen=True)
+class RetrievedGuideline:
+    guideline: Guideline
+    score: int
+    rationale: str
 
+
+class GuidelineFilter:
     def __init__(self) -> None:
         self._llm_client = make_llm_client("openai")
 
@@ -29,7 +32,7 @@ class GuidelineFilter:
         guidelines: Iterable[Guideline],
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-    ) -> Iterable[Guideline]:
+    ) -> Iterable[RetrievedGuideline]:
         guideline_list = list(guidelines)
 
         if not guideline_list:
@@ -47,9 +50,9 @@ class GuidelineFilter:
                 for batch in batches
             ]
             batch_results = await asyncio.gather(*batch_tasks)
-            aggregated_checks = sum(batch_results, [])
+            aggregated_retrieved_guidelines = sum(batch_results, [])
 
-        return [c["guideline"] for c in aggregated_checks]
+        return aggregated_retrieved_guidelines
 
     def _create_batches(
         self,
@@ -72,7 +75,7 @@ class GuidelineFilter:
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
         batch: list[Guideline],
-    ) -> list[PredicateCheck]:
+    ) -> list[RetrievedGuideline]:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -82,24 +85,20 @@ class GuidelineFilter:
         with duration_logger("Guideline batch filtering"):
             llm_response = await self._generate_llm_response(prompt)
 
-        predicate_checks = json.loads(llm_response)["checks"]
+        retrieved_guidelines_json = json.loads(llm_response)["checks"]
 
-        logger.debug(f"Guideline filter batch result: {predicate_checks}")
-
-        checks_by_index = {(int(c["predicate_number"]) - 1): c for c in predicate_checks}
-
-        relevant_checks_by_index = {
-            index: check for index, check in checks_by_index.items() if check["applies_score"] >= 8
-        }
-
-        return [
-            {
-                "guideline": batch[i],
-                "score": relevant_checks_by_index[i]["applies_score"],
-                "rationale": relevant_checks_by_index[i]["rationale"],
-            }
-            for i in relevant_checks_by_index
+        logger.debug(f"Guideline filter batch result: {retrieved_guidelines_json}")
+        retrieved_guidelines = [
+            RetrievedGuideline(
+                guideline=batch[int(r["predicate_number"]) - 1],
+                score=r["applies_score"],
+                rationale=r["rationale"],
+            )
+            for r in retrieved_guidelines_json
+            if r["applies_score"] >= 8
         ]
+
+        return retrieved_guidelines
 
     def _format_prompt(
         self,

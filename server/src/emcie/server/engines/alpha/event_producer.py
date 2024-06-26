@@ -5,6 +5,7 @@ from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
+from emcie.server.engines.alpha.guideline_filter import RetrievedGuideline
 from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
 from emcie.server.engines.alpha.utils import (
     context_variables_to_json,
@@ -26,8 +27,8 @@ class EventProducer:
         self,
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-        ordinary_guidelines: Iterable[Guideline],
-        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
+        ordinary_retrieved_guidelines: Iterable[RetrievedGuideline],
+        tool_enabled_retrieved_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         interaction_event_list = list(interaction_history)
         context_variable_list = list(context_variables)
@@ -35,15 +36,17 @@ class EventProducer:
         tool_events = await self.tool_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_guidelines=ordinary_guidelines,
-            tool_enabled_guidelines=tool_enabled_guidelines,
+            ordinary_retrieved_guidelines=[r.guideline for r in ordinary_retrieved_guidelines],
+            tool_enabled_guidelines={
+                r.guideline: tools for r, tools in tool_enabled_retrieved_guidelines.items()
+            },
         )
 
         message_events = await self.message_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_guidelines=ordinary_guidelines,
-            tool_enabled_guidelines=tool_enabled_guidelines,
+            ordinary_retrieved_guidelines=ordinary_retrieved_guidelines,
+            tool_enabled_guidelines=tool_enabled_retrieved_guidelines,
             staged_events=tool_events,
         )
 
@@ -60,13 +63,17 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_guidelines: Iterable[Guideline],
-        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
+        ordinary_retrieved_guidelines: Iterable[RetrievedGuideline],
+        tool_enabled_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
         interaction_event_list = list(interaction_history)
 
-        if not interaction_event_list and not ordinary_guidelines and not tool_enabled_guidelines:
+        if (
+            not interaction_event_list
+            and not ordinary_retrieved_guidelines
+            and not tool_enabled_guidelines
+        ):
             # No interaction and no guidelines that could trigger
             # a proactive start of the interaction
             return []
@@ -74,7 +81,7 @@ class MessageEventProducer:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            ordinary_guidelines=ordinary_guidelines,
+            ordinary_guidelines=ordinary_retrieved_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
@@ -94,18 +101,18 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_guidelines: Iterable[Guideline],
-        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
+        ordinary_guidelines: Iterable[RetrievedGuideline],
+        tool_enabled_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
-        all_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
+        all_retrieved_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
 
         rules = "\n".join(
-            f"{i}) When {g.predicate}, then {g.content}"
-            for i, g in enumerate(all_guidelines, start=1)
+            f"{i}) When {r.guideline.predicate}, then {r.guideline.content}"
+            for i, r in enumerate(all_retrieved_guidelines, start=1)
         )
 
         prompt = ""
@@ -244,7 +251,7 @@ class ToolEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_guidelines: Iterable[Guideline],
+        ordinary_retrieved_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         if not tool_enabled_guidelines:
@@ -255,7 +262,7 @@ class ToolEventProducer:
         tool_calls = await self.tool_caller.infer_tool_calls(
             context_variables,
             interaction_history,
-            ordinary_guidelines,
+            ordinary_retrieved_guidelines,
             tool_enabled_guidelines,
             produced_tool_events,
         )
