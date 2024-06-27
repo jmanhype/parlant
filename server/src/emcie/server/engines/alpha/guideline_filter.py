@@ -17,7 +17,7 @@ from emcie.server.core.sessions import Event
 
 
 @dataclass(frozen=True)
-class RetrievedGuideline:
+class GuidelineProposition:
     guideline: Guideline
     score: int
     rationale: str
@@ -32,7 +32,7 @@ class GuidelineFilter:
         guidelines: Iterable[Guideline],
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-    ) -> Iterable[RetrievedGuideline]:
+    ) -> Iterable[GuidelineProposition]:
         guideline_list = list(guidelines)
 
         if not guideline_list:
@@ -50,9 +50,9 @@ class GuidelineFilter:
                 for batch in batches
             ]
             batch_results = await asyncio.gather(*batch_tasks)
-            aggregated_retrieved_guidelines = sum(batch_results, [])
+            aggregated_proposed_guidelines = sum(batch_results, [])
 
-        return aggregated_retrieved_guidelines
+        return aggregated_proposed_guidelines
 
     def _create_batches(
         self,
@@ -75,7 +75,7 @@ class GuidelineFilter:
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
         batch: list[Guideline],
-    ) -> list[RetrievedGuideline]:
+    ) -> list[GuidelineProposition]:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -85,20 +85,20 @@ class GuidelineFilter:
         with duration_logger("Guideline batch filtering"):
             llm_response = await self._generate_llm_response(prompt)
 
-        retrieved_guidelines_json = json.loads(llm_response)["checks"]
+        proposed_guidelines_json = json.loads(llm_response)["checks"]
 
-        logger.debug(f"Guideline filter batch result: {retrieved_guidelines_json}")
-        retrieved_guidelines = [
-            RetrievedGuideline(
+        logger.debug(f"Guideline filter batch result: {proposed_guidelines_json}")
+        proposed_guidelines = [
+            GuidelineProposition(
                 guideline=batch[int(r["predicate_number"]) - 1],
                 score=r["applies_score"],
                 rationale=r["rationale"],
             )
-            for r in retrieved_guidelines_json
+            for r in proposed_guidelines_json
             if r["applies_score"] >= 8
         ]
 
-        return retrieved_guidelines
+        return proposed_guidelines
 
     def _format_prompt(
         self,

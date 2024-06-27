@@ -9,7 +9,7 @@ from emcie.server.core.context_variables import (
 )
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
-from emcie.server.engines.alpha.guideline_filter import GuidelineFilter, RetrievedGuideline
+from emcie.server.engines.alpha.guideline_filter import GuidelineFilter, GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
@@ -44,7 +44,7 @@ class AlphaEngine(Engine):
             session_id=context.session_id,
         )
 
-        ordinary_retrieved_guidelines, tool_enabled_retrieved_guidelines = (
+        ordinary_proposed_guidelines, tool_enabled_proposed_guidelines = (
             await self._load_guidelines(
                 agent_id=context.agent_id,
                 context_variables=context_variables,
@@ -55,8 +55,8 @@ class AlphaEngine(Engine):
         return await self.event_producer.produce_events(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            ordinary_retrieved_guidelines=ordinary_retrieved_guidelines,
-            tool_enabled_retrieved_guidelines=tool_enabled_retrieved_guidelines,
+            ordinary_proposed_guidelines=ordinary_proposed_guidelines,
+            tool_enabled_proposed_guidelines=tool_enabled_proposed_guidelines,
         )
 
     async def _load_context_variables(
@@ -87,7 +87,7 @@ class AlphaEngine(Engine):
         agent_id: AgentId,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-    ) -> tuple[Iterable[RetrievedGuideline], dict[RetrievedGuideline, Iterable[Tool]]]:
+    ) -> tuple[Iterable[GuidelineProposition], dict[GuidelineProposition, Iterable[Tool]]]:
         all_relevant_guidelines = await self._fetch_relevant_guidelines(
             agent_id=agent_id,
             context_variables=context_variables,
@@ -96,7 +96,7 @@ class AlphaEngine(Engine):
 
         tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
             agent_id=agent_id,
-            retrieved_guidelines=all_relevant_guidelines,
+            proposed_guidelines=all_relevant_guidelines,
         )
 
         ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
@@ -108,7 +108,7 @@ class AlphaEngine(Engine):
         agent_id: AgentId,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-    ) -> set[RetrievedGuideline]:
+    ) -> set[GuidelineProposition]:
         all_possible_guidelines = await self.guideline_store.list_guidelines(
             guideline_set=agent_id,
         )
@@ -124,21 +124,21 @@ class AlphaEngine(Engine):
     async def _find_tool_enabled_guidelines(
         self,
         agent_id: AgentId,
-        retrieved_guidelines: Iterable[RetrievedGuideline],
-    ) -> dict[RetrievedGuideline, Iterable[Tool]]:
+        proposed_guidelines: Iterable[GuidelineProposition],
+    ) -> dict[GuidelineProposition, Iterable[Tool]]:
         guideline_tool_associations = list(
             await self.guideline_tool_association_store.list_associations()
         )
-        retrieved_guidelines_by_id = {r.guideline.id: r for r in retrieved_guidelines}
+        proposed_guidelines_by_id = {r.guideline.id: r for r in proposed_guidelines}
 
         relevant_associations = [
-            a for a in guideline_tool_associations if a.guideline_id in retrieved_guidelines_by_id
+            a for a in guideline_tool_associations if a.guideline_id in proposed_guidelines_by_id
         ]
 
-        tools_for_guidelines: dict[RetrievedGuideline, list[Tool]] = defaultdict(list)
+        tools_for_guidelines: dict[GuidelineProposition, list[Tool]] = defaultdict(list)
 
         for association in relevant_associations:
             tool = await self.tool_store.read_tool(agent_id, association.tool_id)
-            tools_for_guidelines[retrieved_guidelines_by_id[association.guideline_id]].append(tool)
+            tools_for_guidelines[proposed_guidelines_by_id[association.guideline_id]].append(tool)
 
         return dict(tools_for_guidelines)

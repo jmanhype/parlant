@@ -8,7 +8,7 @@ from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
 from emcie.server.engines.alpha.event_producer import MessageEventProducer
-from emcie.server.engines.alpha.guideline_filter import RetrievedGuideline
+from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
 from emcie.server.engines.common import ProducedEvent
 from tests.test_utilities import SyncAwaiter, nlp_test
 
@@ -25,7 +25,7 @@ class _TestContext:
     container: Container
     agent_id: AgentId
     guidelines: dict[str, Guideline]
-    retrieved_guidelines: dict[str, RetrievedGuideline]
+    proposed_guidelines: dict[str, GuidelineProposition]
     intercations_history: list[Event]
 
 
@@ -40,7 +40,7 @@ def context(
         container,
         agent_id,
         guidelines=dict(),
-        retrieved_guidelines=dict(),
+        proposed_guidelines=dict(),
         intercations_history=list(),
     )
 
@@ -101,17 +101,17 @@ def given_a_guideline_to_when(
 
 @given(
     parsers.parse(
-        "retrieve the {guideline_name} guideline with a score of {score} because {rationale}"
+        "propose the {guideline_name} guideline with a score of {score} because {rationale}"
     )
 )
-def given_a_retrieved_guideline(
+def given_a_proposed_guideline(
     context: _TestContext,
     guideline_name: str,
     score: int,
     rationale: str,
 ) -> None:
     guideline = context.guidelines[guideline_name]
-    context.retrieved_guidelines[guideline_name] = RetrievedGuideline(
+    context.proposed_guidelines[guideline_name] = GuidelineProposition(
         guideline=guideline,
         score=score,
         rationale=rationale,
@@ -128,7 +128,7 @@ def when_processing_is_triggered(
         message_event_producer.produce_events(
             context_variables=[],
             interaction_history=context.intercations_history,
-            ordinary_retrieved_guidelines=context.retrieved_guidelines.values(),
+            ordinary_proposed_guidelines=context.proposed_guidelines.values(),
             tool_enabled_guidelines={},
             staged_events=[],
         )

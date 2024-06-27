@@ -3,7 +3,7 @@ from typing import Iterable, cast
 from pytest import fixture, mark
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event, EventId, EventSource
-from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
+from emcie.server.engines.alpha.guideline_filter import GuidelineFilter, GuidelineProposition
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
@@ -23,10 +23,10 @@ def context(
     return _TestContext(sync_await, guidelines=list())
 
 
-def retrieve_guidelines(
+def propose_guidelines(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
-) -> Iterable[Guideline]:
+) -> Iterable[GuidelineProposition]:
     guideline_filter = GuidelineFilter()
 
     interaction_history = [
@@ -38,7 +38,7 @@ def retrieve_guidelines(
         for i, (source, message) in enumerate(conversation_context)
     ]
 
-    retrieved_guidelines = context.sync_await(
+    proposed_guidelines = context.sync_await(
         guideline_filter.find_relevant_guidelines(
             guidelines=context.guidelines,
             context_variables=[],
@@ -46,7 +46,7 @@ def retrieve_guidelines(
         )
     )
 
-    return retrieved_guidelines
+    return proposed_guidelines
 
 
 def create_event_message(
@@ -191,7 +191,7 @@ def create_guideline_by_name(
         ),
     ],
 )
-def test_that_relevant_guidelines_are_retrieved(
+def test_that_relevant_guidelines_are_proposed(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
@@ -206,10 +206,11 @@ def test_that_relevant_guidelines_are_retrieved(
         if name in relevant_guideline_names
     ]
 
-    retrieved_guidelines = retrieve_guidelines(context, conversation_context)
+    proposed_guidelines = propose_guidelines(context, conversation_context)
+    guidelines = [p.guideline for p in proposed_guidelines]
 
     for guideline in relevant_guidelines:
-        assert guideline in retrieved_guidelines
+        assert guideline in guidelines
 
 
 @mark.parametrize(
@@ -251,7 +252,7 @@ def test_that_relevant_guidelines_are_retrieved(
         ),
     ],
 )
-def test_that_irrelevant_guidelines_are_not_retrieved(
+def test_that_irrelevant_guidelines_are_not_proposed(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
@@ -267,7 +268,8 @@ def test_that_irrelevant_guidelines_are_not_retrieved(
         if name in irrelevant_guideline_names
     ]
 
-    retrieved_guidelines = retrieve_guidelines(context, conversation_context)
+    proposed_guidelines = propose_guidelines(context, conversation_context)
+    guidelines = [p.guideline for p in proposed_guidelines]
 
-    for guideline in retrieved_guidelines:
+    for guideline in guidelines:
         assert guideline not in irrelevant_guidelines

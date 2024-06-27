@@ -5,7 +5,7 @@ from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
-from emcie.server.engines.alpha.guideline_filter import RetrievedGuideline
+from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
 from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
 from emcie.server.engines.alpha.utils import (
     context_variables_to_json,
@@ -27,8 +27,8 @@ class EventProducer:
         self,
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-        ordinary_retrieved_guidelines: Iterable[RetrievedGuideline],
-        tool_enabled_retrieved_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
+        ordinary_proposed_guidelines: Iterable[GuidelineProposition],
+        tool_enabled_proposed_guidelines: dict[GuidelineProposition, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         interaction_event_list = list(interaction_history)
         context_variable_list = list(context_variables)
@@ -36,17 +36,17 @@ class EventProducer:
         tool_events = await self.tool_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_retrieved_guidelines=[r.guideline for r in ordinary_retrieved_guidelines],
+            ordinary_guidelines=[r.guideline for r in ordinary_proposed_guidelines],
             tool_enabled_guidelines={
-                r.guideline: tools for r, tools in tool_enabled_retrieved_guidelines.items()
+                r.guideline: tools for r, tools in tool_enabled_proposed_guidelines.items()
             },
         )
 
         message_events = await self.message_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_retrieved_guidelines=ordinary_retrieved_guidelines,
-            tool_enabled_guidelines=tool_enabled_retrieved_guidelines,
+            ordinary_proposed_guidelines=ordinary_proposed_guidelines,
+            tool_enabled_guidelines=tool_enabled_proposed_guidelines,
             staged_events=tool_events,
         )
 
@@ -63,15 +63,15 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_retrieved_guidelines: Iterable[RetrievedGuideline],
-        tool_enabled_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
+        ordinary_proposed_guidelines: Iterable[GuidelineProposition],
+        tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
         interaction_event_list = list(interaction_history)
 
         if (
             not interaction_event_list
-            and not ordinary_retrieved_guidelines
+            and not ordinary_proposed_guidelines
             and not tool_enabled_guidelines
         ):
             # No interaction and no guidelines that could trigger
@@ -81,7 +81,7 @@ class MessageEventProducer:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            ordinary_guidelines=ordinary_retrieved_guidelines,
+            ordinary_guidelines=ordinary_proposed_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
@@ -101,30 +101,42 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_guidelines: Iterable[RetrievedGuideline],
-        tool_enabled_guidelines: dict[RetrievedGuideline, Iterable[Tool]],
+        ordinary_guidelines: Iterable[GuidelineProposition],
+        tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
-        all_retrieved_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
+        all_proposed_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
 
         rules = "\n".join(
             f"{i}) When {r.guideline.predicate}, then {r.guideline.content}"
-            for i, r in enumerate(all_retrieved_guidelines, start=1)
+            for i, r in enumerate(all_proposed_guidelines, start=1)
         )
 
         prompt = ""
 
         if interaction_history:
-            prompt += f"""\
-The following is a list of events describing a back-and-forth
-interaction between you, an AI assistant, and a user: ###
-{interaction_events_json}
+            prompt += f"""
+        ### Interaction Events:
+        The following is a list of events describing a back-and-forth 
+        interaction between you, an AI assistant, and a user: ###
+        {interaction_events_json}
+        ###
+        """
+
+        else:
+            prompt += """
+### Initial Interaction Context:
+You, an AI assistant, are currently engaged at the start of an online session with a user.
+The interaction has yet to be initiated by either party.
+
+#### Decision Criteria for Initiating Interaction:
+A. If both rules apply to the context and suggest initiating dialogue with the user, proceed to engage.
+B. If there is no compelling reason to initiate dialogue, refrain from engaging and do not produce a response.
 ###
 """
-        else:
             prompt += """\
 You, an AI assistant, are now present in an online session with a user.
 An interaction may or may not now be initiated by you, addressing the user.
@@ -251,7 +263,7 @@ class ToolEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_retrieved_guidelines: Iterable[Guideline],
+        ordinary_guidelines: Iterable[Guideline],
         tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         if not tool_enabled_guidelines:
@@ -262,7 +274,7 @@ class ToolEventProducer:
         tool_calls = await self.tool_caller.infer_tool_calls(
             context_variables,
             interaction_history,
-            ordinary_retrieved_guidelines,
+            ordinary_guidelines,
             tool_enabled_guidelines,
             produced_tool_events,
         )
