@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Iterable, cast
 from pytest import fixture, mark
 from emcie.server.core.guidelines import Guideline, GuidelineId
-from emcie.server.core.sessions import Event, EventId, EventSource, SessionId
+from emcie.server.core.sessions import Event, EventId, EventSource
 from emcie.server.engines.alpha.guideline_filter import GuidelineFilter
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone

@@ -124,18 +124,17 @@ state based on a stream of events.
 
         if interaction_history:
             prompt += f"""\
-    - Interaction Events: ###
+    The following is a list of events describing a back-and-forth
+    interaction between you, an AI assistant, and a user: ###
     {json_events}
     ###
     """
         else:
             prompt += """\
-    - Interaction Context: ###
     You, an AI assistant, 
     are currently engaged in the initial phase of an online session with a user.
     The interaction has just commenced, 
     and the user hasn't said anything yet nor chosen to engage with you.
-    ###
     """
 
         if context_variables:
@@ -167,15 +166,14 @@ state based on a stream of events.
             {{
                 "predicate_number": "1",
                 "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>,
             }},
             ...
             {{
                 "predicate_number": "N",
                 "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>"
-                CONSIDERING THE CURRENT STATE OF THE INTRACTION>"
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>
             }}
         ]
