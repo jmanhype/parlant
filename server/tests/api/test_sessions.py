@@ -1,11 +1,13 @@
+import time
 from typing import Any, Dict, Iterable
 from fastapi.testclient import TestClient
 from fastapi import status
+from lagom import Container
 from pytest import fixture, mark
 from datetime import datetime, timezone
 from itertools import count
 
-from emcie.server.core.sessions import EventSource, SessionId
+from emcie.server.core.sessions import EventSource, SessionId, SessionStore
 
 
 @fixture
@@ -21,7 +23,10 @@ def session_id(client: TestClient) -> SessionId:
 
 
 @fixture
-def long_session_id(client: TestClient) -> SessionId:
+async def long_session_id(
+    client: TestClient,
+    container: Container,
+) -> SessionId:
     response = client.post(
         "/sessions",
         json={
@@ -31,8 +36,8 @@ def long_session_id(client: TestClient) -> SessionId:
     )
     session_id = SessionId(response.json()["session_id"])
 
-    populate_session_id(
-        client,
+    await populate_session_id(
+        container,
         session_id,
         [
             make_event_params("client"),
@@ -60,16 +65,26 @@ def make_event_params(
     }
 
 
-def populate_session_id(
-    client: TestClient,
+async def populate_session_id(
+    container: Container,
     session_id: SessionId,
     events: Iterable[Dict[str, Any]],
 ) -> None:
+    session_store = container[SessionStore]
+
     for e in events:
-        client.post(f"/sessions/{session_id}/events", json=e)
+        await session_store.create_event(
+            session_id=session_id,
+            source=e["source"],
+            type=e["type"],
+            data=e["data"],
+        )
 
 
-def event_is_according_to_params(event: Dict[str, Any], params: Dict[str, Any]) -> bool:
+def event_is_according_to_params(
+    event: Dict[str, Any],
+    params: Dict[str, Any],
+) -> bool:
     tested_properties = ["source", "type", "data"]
 
     for p in tested_properties:
@@ -93,21 +108,9 @@ def test_that_a_session_can_be_created(client: TestClient) -> None:
     assert "session_id" in data
 
 
-def test_that_an_event_can_be_created(
+async def test_that_events_can_be_listed(
     client: TestClient,
-    session_id: SessionId,
-) -> None:
-    response = client.post(
-        f"/sessions/{session_id}/events",
-        json=make_event_params("client"),
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert "event_id" in data
-
-
-def test_that_events_can_be_listed(
-    client: TestClient,
+    container: Container,
     session_id: SessionId,
 ) -> None:
     session_events = [
@@ -118,7 +121,7 @@ def test_that_events_can_be_listed(
         make_event_params("server"),
     ]
 
-    populate_session_id(client, session_id, session_events)
+    await populate_session_id(container, session_id, session_events)
 
     response = client.get(f"/sessions/{session_id}/events")
     assert response.status_code == status.HTTP_200_OK
@@ -129,30 +132,6 @@ def test_that_events_can_be_listed(
 
     for i, event_params, listed_event in zip(count(), session_events, data["events"]):
         assert listed_event["offset"] == i
-        assert event_is_according_to_params(event=listed_event, params=event_params)
-
-
-def test_that_events_can_be_filtered_by_source(
-    client: TestClient,
-    session_id: SessionId,
-) -> None:
-    session_events = [
-        make_event_params("client"),
-        make_event_params("server"),
-        make_event_params("client"),
-    ]
-
-    populate_session_id(client, session_id, session_events)
-
-    response = client.get(f"/sessions/{session_id}/events", params={"source": "client"})
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-
-    session_client_events = [e for e in session_events if e["source"] == "client"]
-
-    assert len(data["events"]) == len(session_client_events)
-
-    for event_params, listed_event in zip(session_client_events, data["events"]):
         assert event_is_according_to_params(event=listed_event, params=event_params)
 
 
@@ -193,8 +172,9 @@ def test_that_consumption_offsets_can_be_updated(
 
 
 @mark.parametrize("offset", (0, 2, 4))
-def test_that_events_can_be_filtered_by_source_and_offset(
+async def test_that_events_can_be_filtered_by_offset(
     client: TestClient,
+    container: Container,
     session_id: SessionId,
     offset: int,
 ) -> None:
@@ -206,23 +186,74 @@ def test_that_events_can_be_filtered_by_source_and_offset(
         make_event_params("client"),
     ]
 
-    populate_session_id(client, session_id, session_events)
+    await populate_session_id(container, session_id, session_events)
 
-    response = client.get(
+    retrieved_events = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={
+                "min_offset": offset,
+            },
+        )
+        .raise_for_status()
+        .json()["events"]
+    )
+
+    for event_params, listed_event in zip(session_events, retrieved_events):
+        assert event_is_according_to_params(event=listed_event, params=event_params)
+
+
+def test_that_posting_a_message_elicits_a_response(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    posted_event = (
+        client.post(
+            f"/sessions/{session_id}/events",
+            json={"content": "Hello there!"},
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    events_in_session = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={
+                "min_offset": posted_event["event_offset"],
+                "wait": True,
+            },
+        )
+        .raise_for_status()
+        .json()["events"]
+    )
+
+    assert events_in_session
+
+
+def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    posted_event = (
+        client.post(
+            f"/sessions/{session_id}/events",
+            json={"content": "Hello there!"},
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    t_start = time.time()
+
+    client.get(
         f"/sessions/{session_id}/events",
         params={
-            "source": "client",
-            "min_offset": offset,
+            "min_offset": posted_event["event_offset"],
+            "wait": False,
         },
     )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
 
-    session_client_events = [e for e in session_events if e["source"] == "client"][
-        int(offset / 2) :
-    ]
+    t_end = time.time()
 
-    assert len(data["events"]) == len(session_client_events)
-
-    for event_params, listed_event in zip(session_client_events, data["events"]):
-        assert event_is_according_to_params(event=listed_event, params=event_params)
+    assert (t_end - t_start) < 0.25

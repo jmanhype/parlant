@@ -106,7 +106,11 @@ async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message
         agent_id=proactive_agent_id,
     )
 
-    assert await context.mc.wait_for_update(session, Timeout(REASONABLE_AMOUNT_OF_TIME))
+    assert await context.mc.wait_for_update(
+        session_id=session.id,
+        latest_known_offset=session.consumption_offsets["client"],
+        timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
+    )
 
     events = list(await context.container[SessionStore].list_events(session.id))
 
@@ -123,7 +127,11 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_pro
         data={"message": "Hey there"},
     )
 
-    await context.mc.wait_for_update(session, Timeout(REASONABLE_AMOUNT_OF_TIME))
+    await context.mc.wait_for_update(
+        session_id=session.id,
+        latest_known_offset=session.consumption_offsets["client"],
+        timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
+    )
 
     events = list(await context.container[SessionStore].list_events(session.id))
 

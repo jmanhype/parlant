@@ -118,8 +118,8 @@ class SessionListener(ABC):
     @abstractmethod
     async def wait_for_update(
         self,
-        session: Session,
-        consumer_id: ConsumerId,
+        session_id: SessionId,
+        latest_known_offset: int,
         timeout: Timeout,
     ) -> bool: ...
 
@@ -130,16 +130,14 @@ class PollingSessionListener(SessionListener):
 
     async def wait_for_update(
         self,
-        session: Session,
-        consumer_id: ConsumerId,
+        session_id: SessionId,
+        latest_known_offset: int,
         timeout: Timeout,
     ) -> bool:
-        latest_known_offset = session.consumption_offsets[consumer_id]
-
         while True:
             events = list(
                 await self._session_store.list_events(
-                    session.id,
+                    session_id,
                     source="server",
                     min_offset=latest_known_offset,
                 )

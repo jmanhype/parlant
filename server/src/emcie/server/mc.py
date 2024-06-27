@@ -7,7 +7,7 @@ from lagom import Container
 from emcie.server.async_utils import Timeout
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.sessions import Session, SessionId, SessionListener, SessionStore
+from emcie.server.core.sessions import Event, Session, SessionId, SessionListener, SessionStore
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 
 
@@ -35,13 +35,13 @@ class MC:
 
     async def wait_for_update(
         self,
-        session: Session,
+        session_id: SessionId,
+        latest_known_offset: int,
         timeout: Timeout,
     ) -> bool:
-
         return await self._session_listener.wait_for_update(
-            session=session,
-            consumer_id="client",
+            session_id=session_id,
+            latest_known_offset=latest_known_offset,
             timeout=timeout,
         )
 
@@ -64,8 +64,8 @@ class MC:
         session_id: SessionId,
         type: str,
         data: dict[str, Any],
-    ) -> None:
-        await self._session_store.create_event(
+    ) -> Event:
+        event = await self._session_store.create_event(
             session_id=session_id,
             source="client",
             type=type,
@@ -75,6 +75,8 @@ class MC:
         session = await self._session_store.read_session(session_id)
 
         await self._dispatch_session_update(session)
+
+        return event
 
     async def update_consumption_offset(
         self,

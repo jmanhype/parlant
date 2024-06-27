@@ -14,6 +14,7 @@ from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
+from emcie.server.mc import MC
 
 from .test_utilities import SyncAwaiter
 
@@ -41,6 +42,7 @@ def container() -> Container:
     container[ToolStore] = ToolStore()
     container[SessionListener] = PollingSessionListener
     container[Engine] = AlphaEngine
+    container[MC] = MC(container)
 
     return container
 
