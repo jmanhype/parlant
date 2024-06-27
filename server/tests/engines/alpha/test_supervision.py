@@ -101,7 +101,7 @@ def given_a_guideline_to_when(
 
 @given(
     parsers.parse(
-        "propose the {guideline_name} guideline with a score of {score} because {rationale}"
+        "the {guideline_name} guideline is proposed with a score of {score} because {rationale}"
     )
 )
 def given_a_proposed_guideline(

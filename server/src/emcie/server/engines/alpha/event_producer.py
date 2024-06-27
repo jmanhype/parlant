@@ -81,7 +81,7 @@ class MessageEventProducer:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            ordinary_guidelines=ordinary_proposed_guidelines,
+            proposed_guidelines=ordinary_proposed_guidelines,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
@@ -101,40 +101,41 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_guidelines: Iterable[GuidelineProposition],
+        proposed_guidelines: Iterable[GuidelineProposition],
         tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
-        all_proposed_guidelines = chain(ordinary_guidelines, tool_enabled_guidelines)
+        all_proposed_guidelines = chain(proposed_guidelines, tool_enabled_guidelines)
 
         rules = "\n".join(
-            f"{i}) When {r.guideline.predicate}, then {r.guideline.content}"
-            for i, r in enumerate(all_proposed_guidelines, start=1)
+            f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
+            f"\n\t Priorirty score: {p.score}, rationale: {p.rationale}"
+            for i, p in enumerate(all_proposed_guidelines, start=1)
         )
 
         prompt = ""
 
         if interaction_history:
             prompt += f"""
-        ### Interaction Events:
-        The following is a list of events describing a back-and-forth 
-        interaction between you, an AI assistant, and a user: ###
-        {interaction_events_json}
-        ###
-        """
+The following is a list of events describing a back-and-forth 
+interaction between you, an AI assistant, and a user: ###
+{interaction_events_json}
+###
+"""
 
         else:
             prompt += """
-### Initial Interaction Context:
 You, an AI assistant, are currently engaged at the start of an online session with a user.
 The interaction has yet to be initiated by either party.
 
-#### Decision Criteria for Initiating Interaction:
-A. If both rules apply to the context and suggest initiating dialogue with the user, proceed to engage.
-B. If there is no compelling reason to initiate dialogue, refrain from engaging and do not produce a response.
+- Decision Criteria for Initiating Interaction:
+A. If the rules below both apply to the context, as well as suggest that you should say something
+to the user, then you should indeed initiate the interaction now.
+B. Otherwise, if no reason is provided that suggests you should say something to the user,
+then you should not initiate the interaction. Produce no response in this case.
 ###
 """
             prompt += """\
@@ -156,7 +157,10 @@ The following is information that you're given about the user and context of the
 
         if rules:
             prompt += f"""
-In generating the response, you must adhere to the following rules: ###
+In formulating your response, you are required to follow these rules,
+which are applicable to the latest state of the interaction. 
+Each rule is accompanied by a priority score indicating its significance, 
+and a rationale explaining why it is applicable: ###
 {rules}
 ###
 """
@@ -173,15 +177,19 @@ to assist you with generating your response message while following the rules ab
 ###
 """
         prompt += f"""
-Propose revisions to the message content until you are
-absolutely sure that your proposed message adheres to
-each and every one of the provided rules,
-with regards to the interaction's latest state.
-Check yourself and criticize the last revision
-every time, until you are sure the message
-follows all of the rules.
-Ensure that each critique is unique, to avoid repeating the same
-faulty content suggestion over and over again.
+Propose revisions to the message content, 
+ensuring that your proposals adhere to each and every one of the provided rules based on the most recent state of interaction. 
+Consider the priority scores assigned to each rule, acknowledging that in some cases, adherence to a higher-priority rule may necessitate deviation from another. 
+Additionally, recognize that if a rule cannot be adhered to due to lack of necessary context or data, this must be clearly justified in your response.
+
+Continuously critique each revision to refine the response. 
+Ensure each critique is unique to prevent redundancy in the revision process.
+
+Your final output should be a JSON object documenting the entire message development process. 
+This document should detail how each rule was adhered to, 
+instances where one rule was prioritized over another, 
+situations where rules could not be followed due to lack of context or data, 
+and the rationale for each decision made during the revision process.
 
 Produce a valid JSON object in the format according to the following examples.
 
@@ -208,7 +216,9 @@ Example 2: A response that took critique in a few revisions to get right: ###
                 "#5; didn't do...",
                 "#2; didn't say..."
             ],
-            "followed_all_rules": false
+            "followed_all_rules": false,
+            "prioritized_some_rules_over_others": false,
+            "rules_broken_due_to_data": false
         }},
         ...,
         {{
@@ -220,11 +230,59 @@ Example 2: A response that took critique in a few revisions to get right: ###
                 "#5; correctly did..."
             ],
             "rules_broken": [],
-            "followed_all_rules": true
+            "followed_all_rules": true,
+            "prioritized_some_rules_over_others": false,
+            "rules_broken_due_to_data": false
         }},
     ]
 }}
+
 ###
+
+Example 3: A response where one rule was prioritized over another: ###
+{{
+    "produced_response": true,
+    "rationale": "Ensuring food quality is paramount, thus it overrides the immediate provision of a burger with requested toppings.",
+    "revisions": [
+        {{
+            "content": "I'd be happy to prepare your burger as soon as we restock the requested toppings.",
+            "rules_followed": [
+                "#2; upheld food quality and did not prepare the burger without the fresh toppings."
+            ],
+            "rules_broken": [
+                "#1; did not provide the burger with requested toppings immediately due to the unavailability of fresh ingredients."
+            ],
+            "followed_all_rules": false,
+            "prioritized_some_rules_over_others": true,
+            "prioritization_rationale": "Given the higher priority score of Rule 2, maintaining food quality standards before serving the burger is prioritized over immediate service.",
+            "rules_broken_due_to_data": false
+        }}
+    ]
+}}
+###
+
+
+Example 4: Non-Adherence Due to Missing Data: ###
+{{
+    "produced_response": true,
+    "rationale": "No data of drinks menu is available, therefore informing the customer that we don't have this information at this time.",
+    "revisions": [
+        {{
+            "content": "I'm sorry, I am unable to provide this information at this time.",
+            "rules_followed": [
+            ],
+            "rules_broken": [
+                "#1; Lacking menu data in the context prevented providing the client with drink information."
+            ],
+            "followed_all_rules": false,
+            "rules_broken_due_to_data": true
+            "missing_data_details": "Menu data was missing",
+            "prioritized_some_rules_over_others": false,
+        }}
+    ]
+}}
+###
+
 """  # noqa
 
         return prompt
