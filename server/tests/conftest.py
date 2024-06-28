@@ -30,7 +30,7 @@ def test_config(pytestconfig: Config) -> Dict[str, Any]:
 
 
 @fixture
-def container() -> Container:
+async def container() -> AsyncIterator[Container]:
     container = Container()
 
     container[AgentStore] = AgentStore()
@@ -42,9 +42,10 @@ def container() -> Container:
     container[ToolStore] = ToolStore()
     container[SessionListener] = PollingSessionListener
     container[Engine] = AlphaEngine
-    container[MC] = MC(container)
 
-    return container
+    async with MC(container) as mc:
+        container[MC] = mc
+        yield container
 
 
 @fixture

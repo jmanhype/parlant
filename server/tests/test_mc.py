@@ -23,20 +23,13 @@ class _TestContext:
 @fixture
 async def context(
     container: Container,
-    mc: MC,
     end_user_id: EndUserId,
 ) -> _TestContext:
     return _TestContext(
         container=container,
-        mc=mc,
+        mc=container[MC],
         end_user_id=end_user_id,
     )
-
-
-@fixture
-async def mc(container: Container) -> AsyncGenerator[MC, None]:
-    async with MC(container) as mc:
-        yield mc
 
 
 @fixture
