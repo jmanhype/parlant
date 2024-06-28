@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import AsyncGenerator
 from lagom import Container
 from pytest import fixture
 
