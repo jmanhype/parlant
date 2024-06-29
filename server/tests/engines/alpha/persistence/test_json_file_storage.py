@@ -6,7 +6,7 @@ from pathlib import Path
 from lagom import Container
 from pytest import fixture
 from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId, AgentStore
-from emcie.server.core.end_users import EndUserId
+from emcie.server.core.end_users import EndUser, EndUserDocumentStore, EndUserId, EndUserStore
 from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore, GuidelineStore
 from emcie.server.core.models import ModelId
 from emcie.server.core.persistence import DocumentCollection, JSONFileDocumentCollection
@@ -35,6 +35,11 @@ def agent_json_path() -> str:
 
 
 @fixture
+def session_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_sessions.json")
+
+
+@fixture
 def tool_json_path() -> str:
     return os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
 
@@ -45,43 +50,57 @@ def guideline_json_path() -> str:
 
 
 @fixture
-def session_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_sessions.json")
+def end_user_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_end_user.json")
 
 
 @fixture
 def agent_store(agent_json_path: str) -> AgentStore:
     file_path = Path(agent_json_path)
     file_path.unlink(missing_ok=True)
-    db: DocumentCollection[Agent] = JSONFileDocumentCollection[Agent](agent_json_path)
-    return AgentDocumentStore(db)
+    agent_collection: DocumentCollection[Agent] = JSONFileDocumentCollection[Agent](agent_json_path)
+    return AgentDocumentStore(agent_collection)
 
 
 @fixture
 def session_store(session_json_path: str) -> SessionStore:
     file_path = Path(session_json_path)
-    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
-    db: DocumentCollection[Session] = JSONFileDocumentCollection[Session](session_json_path)
-    event_db: DocumentCollection[Event] = JSONFileDocumentCollection[Event](
+    file_path.unlink(missing_ok=True)
+    session_collection: DocumentCollection[Session] = JSONFileDocumentCollection[Session](
         session_json_path
-    )  # Using the same file for simplicity
-    return SessionDocumentStore(db, event_db)
+    )
+    event_collection: DocumentCollection[Event] = JSONFileDocumentCollection[Event](
+        session_json_path
+    )
+    return SessionDocumentStore(session_collection, event_collection)
 
 
 @fixture
 def guideline_store(guideline_json_path: str) -> GuidelineStore:
     file_path = Path(guideline_json_path)
-    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
-    db: DocumentCollection[Guideline] = JSONFileDocumentCollection[Guideline](guideline_json_path)
-    return GuidelineDocumentStore(db)
+    file_path.unlink(missing_ok=True)
+    guideline_collection: DocumentCollection[Guideline] = JSONFileDocumentCollection[Guideline](
+        guideline_json_path
+    )
+    return GuidelineDocumentStore(guideline_collection)
 
 
 @fixture
 def tool_store(tool_json_path: str) -> ToolStore:
     file_path = Path(tool_json_path)
-    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
-    db: DocumentCollection[Tool] = JSONFileDocumentCollection[Tool](tool_json_path)
-    return ToolDocumentStore(db)
+    file_path.unlink(missing_ok=True)
+    tool_collection: DocumentCollection[Tool] = JSONFileDocumentCollection[Tool](tool_json_path)
+    return ToolDocumentStore(tool_collection)
+
+
+@fixture
+def end_user_store(end_user_json_path: str) -> EndUserStore:
+    file_path = Path(end_user_json_path)
+    file_path.unlink(missing_ok=True)
+    end_user_collection: DocumentCollection[EndUser] = JSONFileDocumentCollection[EndUser](
+        end_user_json_path
+    )
+    return EndUserDocumentStore(end_user_collection)
 
 
 def test_guideline_creation_persists_in_json(
@@ -331,3 +350,40 @@ def test_event_creation_and_retrieval(
     assert event_from_json["type"] == Event.MESSAGE_TYPE
     assert event_from_json["data"]["message"] == "Hello, world!"
     assert event_from_json["source"] == "client"
+
+
+async def test_end_user_persistence(
+    end_user_store: EndUserStore,
+    end_user_json_path: str,
+) -> None:
+    name = "Jane Doe"
+    email = "jane.doe@example.com"
+
+    created_user = await end_user_store.create_end_user(name=name, email=email)
+
+    with open(end_user_json_path, "r") as file:
+        data = json.load(file)
+
+    assert created_user.id in data["end_users"]
+    assert data["end_users"][created_user.id]["name"] == name
+    assert data["end_users"][created_user.id]["email"] == email
+    assert (
+        datetime.fromisoformat(data["end_users"][created_user.id]["creation_utc"])
+        == created_user.creation_utc
+    )
+
+
+async def test_create_and_retrieve_end_user(
+    end_user_store: EndUserStore,
+) -> None:
+    name = "John Doe"
+    email = "john.doe@example.com"
+
+    created_user = await end_user_store.create_end_user(name=name, email=email)
+
+    retrieved_user = await end_user_store.read_end_user(created_user.id)
+
+    assert retrieved_user.id == created_user.id
+    assert retrieved_user.name == name
+    assert retrieved_user.email == email
+    assert retrieved_user.creation_utc == created_user.creation_utc
