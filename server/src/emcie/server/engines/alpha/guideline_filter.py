@@ -110,59 +110,148 @@ class GuidelineFilter:
         json_events = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guidelines, start=1))
+        prompt = """
+### Definition of Predicate Relevance Evaluation:
+This process involves assessing the relevance of predefined predicates 
+to the last known state of an interaction between an AI assistant and a user.
 
-        prompt = ""
+**Objective**: Determine the applicability of each predicate to the latest 
+state based on a stream of events.
+
+**Task Description**:
+1. **Input**:
+"""
 
         if interaction_history:
             prompt += f"""\
-The following is a list of events describing a back-and-forth
-interaction between you, an AI assistant, and a user: ###
-{json_events}
-###
-"""
+    The following is a list of events describing a back-and-forth
+    interaction between you, an AI assistant, and a user: ###
+    {json_events}
+    ###
+    """
         else:
             prompt += """\
-You, an AI assistant, are now present in an online interaction session with a user.
-The session has just started, and the user hasn't said anything yet nor chosen to engage with you.
-"""
+    You, an AI assistant, are now present in an online interaction session with a user.
+    The session has just started, 
+    and the user hasn't said anything yet nor chosen to engage with you.
+    """
 
         if context_variables:
             prompt += f"""
-The following is information that you're given about the user and context of the interaction: ###
-{context_values}
-###
-"""
+    The following is additional information available 
+    about the user and the context of the interaction: ###
+    {context_values}
+    ###
+    """
 
         prompt += f"""
-The following is a list of predicates that may or may not apply
-to the LAST KNOWN STATE of the human/assistant interaction given above: ###
-{predicates}
-###
+    - Predicate List: ###
+    {predicates}
+    ###
 
-There are exactly {len(guidelines)} predicate(s).
-"""
-        prompt += """
-Your job is to determine which of the {len(guidelines)} predicate(s) applies
-to the LAST KNOWN STATE of the human/assistant interaction, and which don't.
-You must answer this question for each and every one of the predicate(s) provided.
+2. **Process**:
+   a. Examine the provided interaction events to discern 
+   the latest state of interaction between the user and the assistant.
+   b. Determine the applicability of each predicate based on the most recent interaction state.
+     Note: There are exactly {len(guidelines)} predicates.
+   c. Assign a relevance score to each predicate, from 1 to 10, where 10 denotes high relevance.
 
-Produce a JSON object of the following format:
+3. **Output**:
+   - Create a JSON object summarizing relevance for each predicate, formatted as follows:
 
-{{ "checks": [
+    ```json
     {{
-        "predicate_number": "1",
-        "rationale": <A FEW WORDS THAT EXPLAIN WHY IT DOES OR DOESN'T APPLY>",
-        "applies_score": <INTEGER FROM 1 TO 10>,
-    }},
-    ...,
-    {{
-        "predicate_number": "N",
-        "rationale": <A FEW WORDS THAT EXPLAIN WHY IT DOES OR DOESN'T APPLY>",
-        "applies_score": <INTEGER FROM 1 TO 10>
+        "checks": [
+            {{
+                "predicate_number": "1",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "applies_score": <RELEVANCE SCORE>,
+            }},
+            ...
+            {{
+                "predicate_number": "N",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
+                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "applies_score": <RELEVANCE SCORE>
+            }}
+        ]
     }}
-]}}
-"""
+    ```
 
+### Examples of Predicate Evaluations:
+
+    #### Example #1:
+    - Interaction Events: ###
+    [{{"id": "MZC1H9iyYe", "type": "<message>", "source": "user", 
+    "data": {{"message": "Can I purchase a subscription to your software?"}},
+    {{"id": "F2oFNx_Ld8", "type": "<message>", "source": "assistant", 
+    "data": {{"message": "Absolutely, I can assist you with that right now."}},
+    {{"id": "dfI1jYAjqe", "type": "<message>", "source": "user",
+    "data": {{"message": "Please proceed with the subscription for the Pro plan."}},
+    {{"id": "2ZWfAC4xLf", "type": "<message>", "source": "assistant",
+    "data": {{"message": "Your subscription has been successfully activated. 
+    Is there anything else I can help you with?"}},
+    {{"id": "78oTChjBfM", "type": "<message>", "source": "user",
+    "data": {{"message": "Yes, can you tell me more about your data security policies?"}}]
+    ###
+    - Predicates: ###
+    1) the client initiates a purchase
+    2) the client asks about data security
+    ###
+    - **Expected Result**:
+    ```json
+    {{ "checks": [
+        {{
+            "predicate_number": "1",
+            "rationale": "The client completed the purchase and 
+            the conversation shifted to a new topic,
+            making the purchase-related guideline irrelevant.",
+            "applies_score": 3
+        }},
+        {{
+            "predicate_number": "2",
+            "rationale": "The client specifically inquired about data security policies, 
+            making this guideline highly relevant to the ongoing discussion.",
+            "applies_score": 10
+        }}
+    ]}}
+    ```
+
+    #### Example #2:
+    [{{"id": "P06dNR7ySO", "type": "<message>", "source": "user",
+    "data": {{"message": "I need to make this quick.
+    Can you give me a brief overview of your pricing plans?"}},
+    {{"id": "bwZwM6YjfR", "type": "<message>", "source": "assistant",
+    "data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
+    Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}},
+    {{"id": "bFKLDMthb2", "type": "<message>", "source": "user",
+    "data": {{"message": "Tell me about the Pro plan."}},
+    ###
+    - Predicates: ###
+    1) the client indicates they are in a hurry
+    2) a client inquires about pricing plans
+    ###
+    - **Expected Result**:
+    ```json
+    {{
+        "checks": [
+            {{
+                "predicate_number": "1",
+                "rationale": "The client initially stated they were in a hurry. "
+                "This urgency applies throughout the conversation unless stated otherwise.",
+                "applies_score": 8
+            }},
+            {{
+                "predicate_number": "2",
+                "rationale": "The client inquired about pricing plans, "
+                "specifically asking for details about the Pro plan.",
+                "applies_score": 10
+            }},
+        ]
+    }}
+    ```
+"""
         return prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
