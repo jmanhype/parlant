@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from lagom import Container
 from pytest import fixture, Config
 
-from emcie.server import main
+from emcie.server.api.app import create_app
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.end_users import EndUserStore
@@ -50,7 +50,7 @@ async def container() -> AsyncIterator[Container]:
 
 @fixture
 async def client(container: Container) -> AsyncIterator[TestClient]:
-    app = await main.create_app(container)
+    app = await create_app(container)
 
     with TestClient(app) as client:
         yield client
