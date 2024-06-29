@@ -5,11 +5,11 @@ import os
 from pathlib import Path
 from lagom import Container
 from pytest import fixture
-from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId
-from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore
+from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId, AgentStore
+from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore, GuidelineStore
 from emcie.server.core.models import ModelId
 from emcie.server.core.persistence import DocumentDatabase, JSONFileDatabase
-from emcie.server.core.tools import Tool, ToolDocumentStore
+from emcie.server.core.tools import Tool, ToolDocumentStore, ToolStore
 from tests.test_utilities import SyncAwaiter
 
 JSON_TEST_FILES_PATH = "tests/engines/alpha/persistence/json_test_files/"
@@ -33,22 +33,44 @@ def agent_json_path() -> str:
 
 
 @fixture
-def agent_store(agent_json_path: str) -> AgentDocumentStore:
+def tool_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
+
+
+@fixture
+def guideline_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_guidelines.json")
+
+
+@fixture
+def agent_store(agent_json_path: str) -> AgentStore:
     file_path = Path(agent_json_path)
     file_path.unlink(missing_ok=True)
     db: DocumentDatabase[Agent] = JSONFileDatabase[Agent](agent_json_path)
     return AgentDocumentStore(db)
 
 
+@fixture
+def guideline_store(guideline_json_path: str) -> GuidelineStore:
+    file_path = Path(guideline_json_path)
+    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
+    db: DocumentDatabase[Guideline] = JSONFileDatabase[Guideline](guideline_json_path)
+    return GuidelineDocumentStore(db)
+
+
+@fixture
+def tool_store(tool_json_path: str) -> ToolStore:
+    file_path = Path(tool_json_path)
+    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
+    db: DocumentDatabase[Tool] = JSONFileDatabase[Tool](tool_json_path)
+    return ToolDocumentStore(db)
+
+
 def test_guideline_creation_persists_in_json(
     context: _TestContext,
+    guideline_store: GuidelineStore,
+    guideline_json_path: str,
 ) -> None:
-    guidelines_json_file_path = os.path.join(JSON_TEST_FILES_PATH, "test_guidelines.json")
-    file_path = Path(guidelines_json_file_path)
-    file_path.unlink(missing_ok=True)
-
-    db: DocumentDatabase[Guideline] = JSONFileDatabase[Guideline](guidelines_json_file_path)
-    guideline_store = GuidelineDocumentStore(db)
 
     guideline = context.sync_await(
         guideline_store.create_guideline(
@@ -58,7 +80,7 @@ def test_guideline_creation_persists_in_json(
         )
     )
 
-    with open(guidelines_json_file_path) as _f:
+    with open(guideline_json_path) as _f:
         guidelines_from_json = json.load(_f)
 
     assert len(guidelines_from_json) == 1
@@ -79,7 +101,7 @@ def test_guideline_creation_persists_in_json(
         )
     )
 
-    with open(guidelines_json_file_path) as _f:
+    with open(guideline_json_path) as _f:
         guidelines_from_json = json.load(_f)
 
     assert len(guidelines_from_json) == 1
@@ -103,14 +125,8 @@ def test_guideline_creation_persists_in_json(
 
 def test_guideline_loading_from_json(
     context: _TestContext,
+    guideline_store: GuidelineStore,
 ) -> None:
-    guidelines_json_file_path = os.path.join(JSON_TEST_FILES_PATH, "test_guidelines.json")
-    file_path = Path(guidelines_json_file_path)
-    file_path.unlink(missing_ok=True)
-
-    db: DocumentDatabase[Guideline] = JSONFileDatabase[Guideline](guidelines_json_file_path)
-    guideline_store = GuidelineDocumentStore(db)
-
     context.sync_await(
         guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -130,13 +146,9 @@ def test_guideline_loading_from_json(
 
 def test_tool_creation_persists_in_json(
     context: _TestContext,
+    tool_store: ToolStore,
+    tool_json_path: str,
 ) -> None:
-    tools_json_file_path = os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
-    file_path = Path(tools_json_file_path)
-    file_path.unlink(missing_ok=True)
-
-    db: DocumentDatabase[Tool] = JSONFileDatabase[Tool](tools_json_file_path)
-    tool_store = ToolDocumentStore(db)
 
     tool = context.sync_await(
         tool_store.create_tool(
@@ -150,7 +162,7 @@ def test_tool_creation_persists_in_json(
         )
     )
 
-    with open(tools_json_file_path) as _f:
+    with open(tool_json_path) as _f:
         tools_from_json = json.load(_f)
 
     assert len(tools_from_json) == 1
@@ -166,14 +178,8 @@ def test_tool_creation_persists_in_json(
 
 def test_tool_loading_from_json(
     context: _TestContext,
+    tool_store: ToolStore,
 ) -> None:
-    tools_json_file_path = os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
-    file_path = Path(tools_json_file_path)
-    file_path.unlink(missing_ok=True)
-
-    db: DocumentDatabase[Tool] = JSONFileDatabase[Tool](tools_json_file_path)
-    tool_store = ToolDocumentStore(db)
-
     context.sync_await(
         tool_store.create_tool(
             tool_set=context.agent_id,
