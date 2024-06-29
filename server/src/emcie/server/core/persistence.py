@@ -47,6 +47,11 @@ class DocumentCollection(ABC, Generic[T]):
         document_id: str,
     ) -> None: ...
 
+    @abstractmethod
+    async def list_collections(
+        self,
+    ) -> Iterable[str]: ...
+
     async def flush(self) -> None: ...
 
 
@@ -100,6 +105,11 @@ class TransientDocumentCollection(DocumentCollection[T]):
         else:
             raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
 
+    async def list_collections(
+        self,
+    ) -> Iterable[str]:
+        return self._document_store.keys()
+
 
 class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
     def __init__(
@@ -138,11 +148,12 @@ class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
 
     async def _load_data(
         self,
-    ) -> Any:
+    ) -> dict[str, Any]:
         async with self._lock:
             async with aiofiles.open(self.file_path, "r") as file:
                 data = await file.read()
-                return json.loads(data, object_hook=self.json_datetime_decoder)
+                json_data: dict[str, Any] = json.loads(data, object_hook=self.json_datetime_decoder)
+                return json_data
 
     def _json_dumps(self, data: dict[str, dict[str, T]]) -> str:
         return json.dumps(
@@ -222,3 +233,9 @@ class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
             await self._save_data(data)
         else:
             raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
+
+    async def list_collections(
+        self,
+    ) -> Iterable[str]:
+        data = await self._load_data()
+        return data.keys()

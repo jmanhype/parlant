@@ -58,7 +58,7 @@ class ToolDocumentStore(ToolStore):
         self,
         tool_collection: DocumentCollection[Tool],
     ):
-        self.tool_collection = tool_collection
+        self._collection = tool_collection
 
     async def create_tool(
         self,
@@ -84,20 +84,20 @@ class ToolDocumentStore(ToolStore):
             required=required,
             consequential=consequential,
         )
-        return await self.tool_collection.add_document(tool_set, tool.id, tool)
+        return await self._collection.add_document(tool_set, tool.id, tool)
 
     async def list_tools(
         self,
         tool_set: str,
     ) -> Iterable[Tool]:
-        return await self.tool_collection.read_documents(tool_set)
+        return await self._collection.read_documents(tool_set)
 
     async def read_tool(
         self,
         tool_set: str,
         tool_id: ToolId,
     ) -> Tool:
-        return await self.tool_collection.read_document(tool_set, tool_id)
+        return await self._collection.read_document(tool_set, tool_id)
 
     async def _is_tool_name_unique(
         self,

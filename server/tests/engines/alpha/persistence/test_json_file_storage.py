@@ -13,11 +13,20 @@ from emcie.server.core.context_variables import (
     ContextVariableValue,
 )
 from emcie.server.core.end_users import EndUser, EndUserDocumentStore, EndUserId, EndUserStore
-from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore, GuidelineStore
+from emcie.server.core.guidelines import (
+    Guideline,
+    GuidelineDocumentStore,
+    GuidelineId,
+    GuidelineStore,
+)
 from emcie.server.core.models import ModelId
 from emcie.server.core.persistence import DocumentCollection, JSONFileDocumentCollection
 from emcie.server.core.sessions import Event, Session, SessionDocumentStore, SessionStore
 from emcie.server.core.tools import Tool, ToolDocumentStore, ToolId, ToolStore
+from emcie.server.engines.alpha.guideline_tool_associations import (
+    GuidelineToolAssociation,
+    GuidelineToolAssociationDocumentStore,
+)
 from tests.test_utilities import SyncAwaiter
 
 JSON_TEST_FILES_PATH = "tests/engines/alpha/persistence/json_test_files/"
@@ -63,6 +72,11 @@ def end_user_json_path() -> str:
 @fixture
 def context_variable_json_path() -> str:
     return os.path.join(JSON_TEST_FILES_PATH, "test_context_variables.json")
+
+
+@fixture
+def association_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "associations.json")
 
 
 @fixture
@@ -127,6 +141,124 @@ def context_variable_store(context_variable_json_path: str) -> ContextVariableSt
     return ContextVariableDocumentStore(variable_collection, value_collection)
 
 
+@fixture
+def association_store(association_json_path: str) -> GuidelineToolAssociationDocumentStore:
+    file_path = Path(association_json_path)
+    file_path.unlink(missing_ok=True)
+    association_collection: DocumentCollection[GuidelineToolAssociation] = (
+        JSONFileDocumentCollection[GuidelineToolAssociation](association_json_path)
+    )
+    return GuidelineToolAssociationDocumentStore(association_collection)
+
+
+def test_agent_creation_persists_in_json(
+    context: _TestContext,
+    agent_store: AgentDocumentStore,
+    agent_json_path: str,
+) -> None:
+    model_id = ModelId("default_model")
+
+    agent = context.sync_await(
+        agent_store.create_agent(
+            model_id=model_id,
+        )
+    )
+
+    with open(agent_json_path) as _f:
+        agents_from_json = json.load(_f)
+
+    assert len(agents_from_json) == 1
+    assert "agents" in agents_from_json
+    assert len(agents_from_json["agents"]) == 1
+    assert agent.id in agents_from_json["agents"]
+    assert agents_from_json["agents"][agent.id]["model_id"] == model_id
+    assert (
+        datetime.fromisoformat(agents_from_json["agents"][agent.id]["creation_utc"])
+        == agent.creation_utc
+    )
+
+
+def test_agent_loading_from_json(
+    context: _TestContext,
+    agent_store: AgentDocumentStore,
+) -> None:
+    model_id = ModelId("test_model")
+    context.sync_await(
+        agent_store.create_agent(
+            model_id=model_id,
+        )
+    )
+
+    loaded_agents = context.sync_await(agent_store.list_agents())
+    loaded_agent_list = list(loaded_agents)
+
+    assert len(loaded_agent_list) == 1
+    loaded_agent = loaded_agent_list[0]
+    assert loaded_agent.model_id == model_id
+
+
+def test_session_creation_persists_in_json(
+    context: _TestContext,
+    session_store: SessionStore,
+    session_json_path: str,
+) -> None:
+    end_user_id = EndUserId("test_user")
+    client_id = "test_client"
+
+    session = context.sync_await(
+        session_store.create_session(
+            end_user_id=end_user_id,
+            client_id=client_id,
+        )
+    )
+
+    with open(session_json_path) as _f:
+        sessions_from_json = json.load(_f)
+
+    assert session.id in sessions_from_json["sessions"]
+    assert sessions_from_json["sessions"][session.id]["end_user_id"] == end_user_id
+    assert sessions_from_json["sessions"][session.id]["client_id"] == client_id
+    assert sessions_from_json["sessions"][session.id]["consumption_offsets"] == {
+        "server": 0,
+        "client": 0,
+    }
+
+
+def test_event_creation_and_retrieval(
+    context: _TestContext,
+    session_store: SessionStore,
+    session_json_path: str,
+) -> None:
+    end_user_id = EndUserId("test_user")
+    client_id = "test_client"
+
+    session = context.sync_await(
+        session_store.create_session(
+            end_user_id=end_user_id,
+            client_id=client_id,
+        )
+    )
+
+    event = context.sync_await(
+        session_store.create_event(
+            session_id=session.id,
+            source="client",
+            type=Event.MESSAGE_TYPE,
+            data={"message": "Hello, world!"},
+            creation_utc=datetime.now(timezone.utc),
+        )
+    )
+
+    with open(session_json_path) as _f:
+        sessions_from_json = json.load(_f)
+
+    assert event.id in sessions_from_json[f"events_{session.id}"]
+    event_from_json = sessions_from_json[f"events_{session.id}"][event.id]
+    assert event_from_json["type"] == Event.MESSAGE_TYPE
+    assert event_from_json["data"]["message"] == "Hello, world!"
+    assert event_from_json["source"] == "client"
+
+
 def test_guideline_creation_persists_in_json(
     context: _TestContext,
     guideline_store: GuidelineStore,
@@ -153,7 +285,6 @@ def test_guideline_creation_persists_in_json(
         datetime.fromisoformat(guidelines_from_json[context.agent_id][guideline.id]["creation_utc"])
         == guideline.creation_utc
     )
-    # Create a second guideline to check if both are stored correctly
     second_guideline = context.sync_await(
         guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -264,114 +395,6 @@ def test_tool_loading_from_json(
     assert loaded_tool.parameters == {"param1": "value1"}
     assert loaded_tool.required == ["param1"]
     assert not loaded_tool.consequential
-
-
-def test_agent_creation_persists_in_json(
-    context: _TestContext,
-    agent_store: AgentDocumentStore,
-    agent_json_path: str,
-) -> None:
-    model_id = ModelId("default_model")
-
-    agent = context.sync_await(
-        agent_store.create_agent(
-            model_id=model_id,
-        )
-    )
-
-    with open(agent_json_path) as _f:
-        agents_from_json = json.load(_f)
-
-    assert len(agents_from_json) == 1
-    assert "agents" in agents_from_json
-    assert len(agents_from_json["agents"]) == 1
-    assert agent.id in agents_from_json["agents"]
-    assert agents_from_json["agents"][agent.id]["model_id"] == model_id
-    assert (
-        datetime.fromisoformat(agents_from_json["agents"][agent.id]["creation_utc"])
-        == agent.creation_utc
-    )
-
-
-def test_agent_loading_from_json(
-    context: _TestContext,
-    agent_store: AgentDocumentStore,
-) -> None:
-    model_id = ModelId("test_model")
-    context.sync_await(
-        agent_store.create_agent(
-            model_id=model_id,
-        )
-    )
-
-    loaded_agents = context.sync_await(agent_store.list_agents())
-    loaded_agent_list = list(loaded_agents)
-
-    assert len(loaded_agent_list) == 1
-    loaded_agent = loaded_agent_list[0]
-    assert loaded_agent.model_id == model_id
-
-
-def test_session_creation_persists_in_json(
-    context: _TestContext,
-    session_store: SessionStore,
-    session_json_path: str,
-) -> None:
-    end_user_id = EndUserId("test_user")
-    client_id = "test_client"
-
-    session = context.sync_await(
-        session_store.create_session(
-            end_user_id=end_user_id,
-            client_id=client_id,
-        )
-    )
-
-    with open(session_json_path) as _f:
-        sessions_from_json = json.load(_f)
-
-    assert session.id in sessions_from_json["sessions"]
-    assert sessions_from_json["sessions"][session.id]["end_user_id"] == end_user_id
-    assert sessions_from_json["sessions"][session.id]["client_id"] == client_id
-    assert sessions_from_json["sessions"][session.id]["consumption_offsets"] == {
-        "server": 0,
-        "client": 0,
-    }
-
-
-def test_event_creation_and_retrieval(
-    context: _TestContext,
-    session_store: SessionStore,
-    session_json_path: str,
-) -> None:
-    end_user_id = EndUserId("test_user")
-    client_id = "test_client"
-
-    session = context.sync_await(
-        session_store.create_session(
-            end_user_id=end_user_id,
-            client_id=client_id,
-        )
-    )
-
-    event = context.sync_await(
-        session_store.create_event(
-            session_id=session.id,
-            source="client",
-            type=Event.MESSAGE_TYPE,
-            data={"message": "Hello, world!"},
-            creation_utc=datetime.now(timezone.utc),
-        )
-    )
-
-    with open(session_json_path) as _f:
-        sessions_from_json = json.load(_f)
-
-    assert event.id in sessions_from_json[f"events_{session.id}"]
-    event_from_json = sessions_from_json[f"events_{session.id}"][event.id]
-    assert event_from_json["type"] == Event.MESSAGE_TYPE
-    assert event_from_json["data"]["message"] == "Hello, world!"
-    assert event_from_json["source"] == "client"
 
 
 def test_end_user_persistence(
@@ -547,3 +570,48 @@ def test_context_variable_deletion(
         context.sync_await(context_variable_store.list_variables(context.agent_id))
     )
     assert all(var.id != variable.id for var in variables_after_deletion)
+
+
+def test_create_and_retrieve_association(
+    context: _TestContext,
+    association_store: GuidelineToolAssociationDocumentStore,
+) -> None:
+    guideline_id = GuidelineId("guideline-123")
+    tool_id = ToolId("tool-456")
+    creation_utc = datetime.now(timezone.utc)
+
+    created_association = context.sync_await(
+        association_store.create_association(
+            guideline_id=guideline_id,
+            tool_id=tool_id,
+            creation_utc=creation_utc,
+        )
+    )
+
+    associations = list(context.sync_await(association_store.list_associations()))
+    assert len(associations) == 1
+    retrieved_association = list(associations)[0]
+
+    assert retrieved_association.id == created_association.id
+    assert retrieved_association.guideline_id == guideline_id
+    assert retrieved_association.tool_id == tool_id
+    assert retrieved_association.creation_utc == creation_utc
+
+
+def test_association_persistence(
+    context: _TestContext,
+    association_store: GuidelineToolAssociationDocumentStore,
+    association_json_path: Path,
+) -> None:
+    guideline_id = GuidelineId("guideline-789")
+    tool_id = ToolId("tool-012")
+
+    context.sync_await(
+        association_store.create_association(guideline_id=guideline_id, tool_id=tool_id)
+    )
+
+    with open(association_json_path, "r") as file:
+        data = json.load(file)
+    assert str(guideline_id) in data
+    associations = data[str(guideline_id)]
+    assert any(assoc["tool_id"] == tool_id for assoc in associations.values())

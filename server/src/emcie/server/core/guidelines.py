@@ -43,7 +43,7 @@ class GuidelineStore(ABC):
 
 class GuidelineDocumentStore(GuidelineStore):
     def __init__(self, guideline_collection: DocumentCollection[Guideline]):
-        self.guideline_collection = guideline_collection
+        self._collection = guideline_collection
 
     async def create_guideline(
         self,
@@ -58,10 +58,10 @@ class GuidelineDocumentStore(GuidelineStore):
             content=content,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
-        return await self.guideline_collection.add_document(guideline_set, guideline.id, guideline)
+        return await self._collection.add_document(guideline_set, guideline.id, guideline)
 
     async def list_guidelines(self, guideline_set: str) -> Iterable[Guideline]:
-        return await self.guideline_collection.read_documents(guideline_set)
+        return await self._collection.read_documents(guideline_set)
 
     async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
-        return await self.guideline_collection.read_document(guideline_set, guideline_id)
+        return await self._collection.read_document(guideline_set, guideline_id)

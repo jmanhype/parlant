@@ -38,7 +38,7 @@ class AgentDocumentStore(AgentStore):
         self,
         agent_collection: DocumentCollection[Agent],
     ):
-        self.agent_collection = agent_collection
+        self._collection = agent_collection
 
     async def create_agent(
         self,
@@ -50,15 +50,15 @@ class AgentDocumentStore(AgentStore):
             name=name,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
-        return await self.agent_collection.add_document("agents", agent.id, agent)
+        return await self._collection.add_document("agents", agent.id, agent)
 
     async def list_agents(
         self,
     ) -> Iterable[Agent]:
-        return await self.agent_collection.read_documents("agents")
+        return await self._collection.read_documents("agents")
 
     async def read_agent(
         self,
         agent_id: AgentId,
     ) -> Agent:
-        return await self.agent_collection.read_document("agents", agent_id)
+        return await self._collection.read_document("agents", agent_id)

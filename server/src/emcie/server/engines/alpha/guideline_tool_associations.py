@@ -1,10 +1,12 @@
-from collections import defaultdict
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, NewType, Optional
+
 from emcie.server.core import common
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.tools import ToolId
+from emcie.server.core.persistence import DocumentCollection
 
 ToolGuidelineAssociationId = NewType("ToolGuidelineAssociationId", str)
 
@@ -20,11 +22,22 @@ class GuidelineToolAssociation:
         return hash(self.id)
 
 
-class GuidelineToolAssociationStore:
-    def __init__(
+class GuidelineToolAssociationStore(ABC):
+    @abstractmethod
+    async def create_association(
         self,
-    ) -> None:
-        self._associations: dict[GuidelineId, set[GuidelineToolAssociation]] = defaultdict(set)
+        guideline_id: GuidelineId,
+        tool_id: ToolId,
+        creation_utc: Optional[datetime] = None,
+    ) -> GuidelineToolAssociation: ...
+
+    @abstractmethod
+    async def list_associations(self) -> Iterable[GuidelineToolAssociation]: ...
+
+
+class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
+    def __init__(self, association_collection: DocumentCollection[GuidelineToolAssociation]):
+        self._collection = association_collection
 
     async def create_association(
         self,
@@ -38,11 +51,11 @@ class GuidelineToolAssociationStore:
             guideline_id=guideline_id,
             tool_id=tool_id,
         )
-
-        self._associations[guideline_id].add(association)
-
+        await self._collection.add_document(guideline_id, association.id, association)
         return association
 
     async def list_associations(self) -> Iterable[GuidelineToolAssociation]:
-        associations = self._associations.values()
-        return sum(map(list, associations), [])
+        associations: list[GuidelineToolAssociation] = []
+        for guideline_id in await self._collection.list_collections():
+            associations.extend(await self._collection.read_documents(guideline_id))
+        return associations

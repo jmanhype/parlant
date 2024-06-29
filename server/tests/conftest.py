@@ -15,6 +15,26 @@ from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
+from emcie.server.core.agents import Agent, AgentDocumentStore, AgentStore
+from emcie.server.core.context_variables import (
+    ContextVariable,
+    ContextVariableDocumentStore,
+    ContextVariableStore,
+    ContextVariableValue,
+)
+from emcie.server.core.guidelines import (
+    Guideline,
+    GuidelineDocumentStore,
+    GuidelineStore,
+)
+from emcie.server.core.persistence import DocumentCollection, TransientDocumentCollection
+from emcie.server.core.sessions import Event, Session, SessionDocumentStore, SessionStore
+from emcie.server.core.tools import Tool, ToolDocumentStore, ToolStore
+from emcie.server.engines.alpha.guideline_tool_associations import (
+    GuidelineToolAssociation,
+    GuidelineToolAssociationDocumentStore,
+    GuidelineToolAssociationStore,
+)
 
 from .test_utilities import SyncAwaiter
 
