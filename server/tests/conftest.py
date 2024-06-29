@@ -31,7 +31,7 @@ def test_config(pytestconfig: Config) -> Dict[str, Any]:
 
 @fixture
 async def container() -> AsyncIterator[Container]:
-    container = Container()
+    container = Container(log_undefined_deps=True)
 
     container[AgentStore] = AgentStore()
     container[ContextVariableStore] = ContextVariableStore()
