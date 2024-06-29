@@ -1,8 +1,10 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, NewType, Optional
+from typing import Iterable, NewType, Optional
 
 from emcie.server.core import common
+from emcie.server.core.persistence import DocumentDatabase
 
 AgentId = NewType("AgentId", str)
 
@@ -14,11 +16,26 @@ class Agent:
     creation_utc: datetime
 
 
-class AgentStore:
-    def __init__(
+class AgentStore(ABC):
+    @abstractmethod
+    async def create_agent(
         self,
-    ) -> None:
-        self._agents: Dict[AgentId, Agent] = {}
+        creation_utc: Optional[datetime] = None,
+    ) -> Agent:
+        pass
+
+    @abstractmethod
+    async def list_agents(self) -> Iterable[Agent]:
+        pass
+
+    @abstractmethod
+    async def read_agent(self, agent_id: AgentId) -> Agent:
+        pass
+
+
+class AgentDocumentStore(AgentStore):
+    def __init__(self, database: DocumentDatabase[Agent]):
+        self.database = database
 
     async def create_agent(
         self,
@@ -30,13 +47,11 @@ class AgentStore:
             name=name,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
-
-        self._agents[agent.id] = agent
-
+        await self.database.add_document("agents", agent.id, agent)
         return agent
 
     async def list_agents(self) -> Iterable[Agent]:
-        return self._agents.values()
+        return await self.database.read_documents("agents")
 
     async def read_agent(self, agent_id: AgentId) -> Agent:
-        return self._agents[agent_id]
+        return await self.database.read_document("agents", agent_id)

@@ -5,8 +5,9 @@ import os
 from pathlib import Path
 from lagom import Container
 from pytest import fixture
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId
 from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore
+from emcie.server.core.models import ModelId
 from emcie.server.core.persistence import DocumentDatabase, JSONFileDatabase
 from emcie.server.core.tools import Tool, ToolDocumentStore
 from tests.test_utilities import SyncAwaiter
@@ -24,6 +25,19 @@ class _TestContext:
 @fixture
 def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> _TestContext:
     return _TestContext(sync_await, container, agent_id)
+
+
+@fixture
+def agent_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_agents.json")
+
+
+@fixture
+def agent_store(agent_json_path: str) -> AgentDocumentStore:
+    file_path = Path(agent_json_path)
+    file_path.unlink(missing_ok=True)
+    db: DocumentDatabase[Agent] = JSONFileDatabase[Agent](agent_json_path)
+    return AgentDocumentStore(db)
 
 
 def test_guideline_creation_persists_in_json(
@@ -183,3 +197,51 @@ def test_tool_loading_from_json(
     assert loaded_tool.parameters == {"param1": "value1"}
     assert loaded_tool.required == ["param1"]
     assert not loaded_tool.consequential
+
+
+def test_agent_creation_persists_in_json(
+    context: _TestContext,
+    agent_store: AgentDocumentStore,
+    agent_json_path: str,
+) -> None:
+    model_id = ModelId("default_model")
+
+    agent = context.sync_await(
+        agent_store.create_agent(
+            model_id=model_id,
+        )
+    )
+
+    with open(agent_json_path) as _f:
+        agents_from_json = json.load(_f)
+
+    assert len(agents_from_json) == 1
+    assert "agents" in agents_from_json
+    assert len(agents_from_json["agents"]) == 1
+    assert agent.id in agents_from_json["agents"]
+    assert agents_from_json["agents"][agent.id]["model_id"] == model_id
+    assert (
+        datetime.fromisoformat(agents_from_json["agents"][agent.id]["creation_utc"])
+        == agent.creation_utc
+    )
+
+
+def test_agent_loading_from_json(
+    context: _TestContext,
+    agent_store: AgentDocumentStore,
+) -> None:
+    # Create an agent to ensure there's something to load.
+    model_id = ModelId("default_model")
+    context.sync_await(
+        agent_store.create_agent(
+            model_id=model_id,
+        )
+    )
+
+    # Load agents to test retrieval
+    loaded_agents = context.sync_await(agent_store.list_agents())
+    loaded_agent_list = list(loaded_agents)
+
+    assert len(loaded_agent_list) == 1
+    loaded_agent = loaded_agent_list[0]
+    assert loaded_agent.model_id == model_id
