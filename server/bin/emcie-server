@@ -1,0 +1,125 @@
+#!/usr/bin/python3
+
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from lagom import Container
+from typing import Any, AsyncIterator
+import argparse
+import json
+import pathlib
+import sys
+import uvicorn
+
+from emcie.server.api.app import create_app
+from emcie.server.core.agents import AgentStore
+from emcie.server.core.context_variables import ContextVariableStore
+from emcie.server.core.end_users import EndUserStore
+from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
+from emcie.server.core.tools import ToolStore
+from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
+from emcie.server.engines.common import Engine
+from emcie.server.mc import MC
+
+
+async def load_agents(c: Container, config: Any) -> None:
+    store = c[AgentStore]
+
+    for agent_name in config["agents"]:
+        await store.create_agent(name=agent_name)
+
+
+async def load_guidelines(c: Container, config: Any) -> None:
+    agent_store = c[AgentStore]
+    guideline_store = c[GuidelineStore]
+
+    agents = await agent_store.list_agents()
+
+    for agent_name, guidelines in config["guidelines"].items():
+        agent_id = next(a.id for a in agents if a.name == agent_name)
+
+        for g in guidelines:
+            await guideline_store.create_guideline(
+                guideline_set=agent_id,
+                predicate=g["when"],
+                content=g["then"],
+            )
+
+
+@asynccontextmanager
+async def setup_container(config: Any) -> AsyncIterator[Container]:
+    c = Container()
+
+    c[AgentStore] = AgentStore()
+    c[ContextVariableStore] = ContextVariableStore()
+    c[EndUserStore] = EndUserStore()
+    c[GuidelineStore] = GuidelineStore()
+    c[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
+    c[SessionStore] = SessionStore()
+    c[ToolStore] = ToolStore()
+    c[SessionListener] = PollingSessionListener
+    c[Engine] = AlphaEngine
+
+    for loader in load_agents, load_guidelines:
+        await loader(c, config)
+
+    async with MC(c) as mc:
+        c[MC] = mc
+        yield c
+
+
+@asynccontextmanager
+async def load_app(config: Any) -> AsyncIterator[FastAPI]:
+    async with setup_container(config) as container:
+        yield await create_app(container)
+
+
+async def run_server(app: FastAPI, port: int) -> None:
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+async def main(port: int, config: Any) -> None:
+    async with load_app(config) as app:
+        try:
+            await run_server(app, port)
+        except KeyboardInterrupt:
+            pass
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Starts the Emcie API server.",
+    )
+
+    parser.add_argument(
+        "-c",
+        "--config",
+        metavar="FILE",
+        type=str,
+        help="Emcie configuration file",
+        required=True,
+    )
+
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        help="API server port (default=8000)",
+        default=8000,
+    )
+
+    args = parser.parse_args()
+
+    config_file_path = pathlib.Path(args.config)
+
+    if not config_file_path.exists():
+        print(f"error: config file not found: {config_file_path}", file=sys.stderr)
+        exit(1)
+
+    with open(config_file_path, "r") as config_file:
+        config = json.load(config_file)
+        asyncio.get_event_loop().run_until_complete(main(args.port, config))
