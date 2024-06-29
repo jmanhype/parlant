@@ -9,7 +9,7 @@ from emcie.server.core.context_variables import (
 )
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
-from emcie.server.engines.alpha.guideline_filter import GuidelineFilter, GuidelineProposition
+from emcie.server.engines.alpha.guideline_filter import GuidelineProposer, GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
@@ -34,7 +34,7 @@ class AlphaEngine(Engine):
         self.guideline_tool_association_store = guideline_tool_association_store
 
         self.event_producer = EventProducer()
-        self.guide_filter = GuidelineFilter()
+        self.guide_filter = GuidelineProposer()
 
     async def process(self, context: Context) -> Iterable[ProducedEvent]:
         interaction_history = list(await self.session_store.list_events(context.session_id))
@@ -44,7 +44,7 @@ class AlphaEngine(Engine):
             session_id=context.session_id,
         )
 
-        ordinary_proposed_guidelines, tool_enabled_proposed_guidelines = (
+        ordinary_guideline_propositions, tool_enabled_guideline_propositions = (
             await self._load_guidelines(
                 agent_id=context.agent_id,
                 context_variables=context_variables,
@@ -55,8 +55,8 @@ class AlphaEngine(Engine):
         return await self.event_producer.produce_events(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            ordinary_proposed_guidelines=ordinary_proposed_guidelines,
-            tool_enabled_proposed_guidelines=tool_enabled_proposed_guidelines,
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
         )
 
     async def _load_context_variables(
@@ -96,7 +96,7 @@ class AlphaEngine(Engine):
 
         tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
             agent_id=agent_id,
-            proposed_guidelines=all_relevant_guidelines,
+            guideline_propositions=all_relevant_guidelines,
         )
 
         ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
@@ -113,7 +113,7 @@ class AlphaEngine(Engine):
             guideline_set=agent_id,
         )
 
-        relevant_guidelines = await self.guide_filter.find_relevant_guidelines(
+        relevant_guidelines = await self.guide_filter.propose_guidelines(
             guidelines=all_possible_guidelines,
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -124,21 +124,23 @@ class AlphaEngine(Engine):
     async def _find_tool_enabled_guidelines(
         self,
         agent_id: AgentId,
-        proposed_guidelines: Iterable[GuidelineProposition],
+        guideline_propositions: Iterable[GuidelineProposition],
     ) -> dict[GuidelineProposition, Iterable[Tool]]:
         guideline_tool_associations = list(
             await self.guideline_tool_association_store.list_associations()
         )
-        proposed_guidelines_by_id = {r.guideline.id: r for r in proposed_guidelines}
+        guideline_propositions_by_id = {r.guideline.id: r for r in guideline_propositions}
 
         relevant_associations = [
-            a for a in guideline_tool_associations if a.guideline_id in proposed_guidelines_by_id
+            a for a in guideline_tool_associations if a.guideline_id in guideline_propositions_by_id
         ]
 
         tools_for_guidelines: dict[GuidelineProposition, list[Tool]] = defaultdict(list)
 
         for association in relevant_associations:
             tool = await self.tool_store.read_tool(agent_id, association.tool_id)
-            tools_for_guidelines[proposed_guidelines_by_id[association.guideline_id]].append(tool)
+            tools_for_guidelines[guideline_propositions_by_id[association.guideline_id]].append(
+                tool
+            )
 
         return dict(tools_for_guidelines)

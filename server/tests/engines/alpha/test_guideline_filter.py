@@ -3,7 +3,7 @@ from typing import Iterable, cast
 from pytest import fixture, mark
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event, EventId, EventSource
-from emcie.server.engines.alpha.guideline_filter import GuidelineFilter, GuidelineProposition
+from emcie.server.engines.alpha.guideline_filter import GuidelineProposer, GuidelineProposition
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
@@ -27,7 +27,7 @@ def propose_guidelines(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
 ) -> Iterable[GuidelineProposition]:
-    guideline_filter = GuidelineFilter()
+    guideline_filter = GuidelineProposer()
 
     interaction_history = [
         create_event_message(
@@ -39,7 +39,7 @@ def propose_guidelines(
     ]
 
     proposed_guidelines = context.sync_await(
-        guideline_filter.find_relevant_guidelines(
+        guideline_filter.propose_guidelines(
             guidelines=context.guidelines,
             context_variables=[],
             interaction_history=interaction_history,

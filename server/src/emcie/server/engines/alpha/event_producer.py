@@ -27,8 +27,8 @@ class EventProducer:
         self,
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-        ordinary_proposed_guidelines: Iterable[GuidelineProposition],
-        tool_enabled_proposed_guidelines: dict[GuidelineProposition, Iterable[Tool]],
+        ordinary_guideline_propositions: Iterable[GuidelineProposition],
+        tool_enabled_guideline_propositions: dict[GuidelineProposition, Iterable[Tool]],
     ) -> Iterable[ProducedEvent]:
         interaction_event_list = list(interaction_history)
         context_variable_list = list(context_variables)
@@ -36,17 +36,17 @@ class EventProducer:
         tool_events = await self.tool_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_guidelines=[r.guideline for r in ordinary_proposed_guidelines],
+            ordinary_guidelines=[p.guideline for p in ordinary_guideline_propositions],
             tool_enabled_guidelines={
-                r.guideline: tools for r, tools in tool_enabled_proposed_guidelines.items()
+                p.guideline: tools for p, tools in tool_enabled_guideline_propositions.items()
             },
         )
 
         message_events = await self.message_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_proposed_guidelines=ordinary_proposed_guidelines,
-            tool_enabled_guidelines=tool_enabled_proposed_guidelines,
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guidelines=tool_enabled_guideline_propositions,
             staged_events=tool_events,
         )
 
@@ -63,7 +63,7 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        ordinary_proposed_guidelines: Iterable[GuidelineProposition],
+        ordinary_guideline_propositions: Iterable[GuidelineProposition],
         tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> Iterable[ProducedEvent]:
@@ -71,7 +71,7 @@ class MessageEventProducer:
 
         if (
             not interaction_event_list
-            and not ordinary_proposed_guidelines
+            and not ordinary_guideline_propositions
             and not tool_enabled_guidelines
         ):
             # No interaction and no guidelines that could trigger
@@ -81,7 +81,7 @@ class MessageEventProducer:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            proposed_guidelines=ordinary_proposed_guidelines,
+            guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guidelines=tool_enabled_guidelines,
             staged_events=staged_events,
         )
@@ -101,19 +101,19 @@ class MessageEventProducer:
         self,
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
-        proposed_guidelines: Iterable[GuidelineProposition],
+        guideline_propositions: Iterable[GuidelineProposition],
         tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
         staged_events: Iterable[ProducedEvent],
     ) -> str:
         interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
         staged_events_as_dict = produced_tools_events_to_dict(staged_events)
-        all_proposed_guidelines = chain(proposed_guidelines, tool_enabled_guidelines)
+        all_guideline_propositions = chain(guideline_propositions, tool_enabled_guidelines)
 
         rules = "\n".join(
             f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
-            f"\n\t Priorirty score: {p.score}, rationale: {p.rationale}"
-            for i, p in enumerate(all_proposed_guidelines, start=1)
+            f"\n\t Priority (1-10): {p.score}, rationale: {p.rationale}"
+            for i, p in enumerate(all_guideline_propositions, start=1)
         )
 
         prompt = ""

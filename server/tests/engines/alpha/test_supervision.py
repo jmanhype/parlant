@@ -25,7 +25,7 @@ class _TestContext:
     container: Container
     agent_id: AgentId
     guidelines: dict[str, Guideline]
-    proposed_guidelines: dict[str, GuidelineProposition]
+    guideline_proposition: dict[str, GuidelineProposition]
     intercations_history: list[Event]
 
 
@@ -40,7 +40,7 @@ def context(
         container,
         agent_id,
         guidelines=dict(),
-        proposed_guidelines=dict(),
+        guideline_proposition=dict(),
         intercations_history=list(),
     )
 
@@ -101,7 +101,7 @@ def given_a_guideline_to_when(
 
 @given(
     parsers.parse(
-        "the {guideline_name} guideline is proposed with a score of {score} because {rationale}"
+        "that the {guideline_name} guideline is proposed with a priority of {score} because {rationale}"  # noqa
     )
 )
 def given_a_proposed_guideline(
@@ -111,7 +111,7 @@ def given_a_proposed_guideline(
     rationale: str,
 ) -> None:
     guideline = context.guidelines[guideline_name]
-    context.proposed_guidelines[guideline_name] = GuidelineProposition(
+    context.guideline_proposition[guideline_name] = GuidelineProposition(
         guideline=guideline,
         score=score,
         rationale=rationale,
@@ -128,7 +128,7 @@ def when_processing_is_triggered(
         message_event_producer.produce_events(
             context_variables=[],
             interaction_history=context.intercations_history,
-            ordinary_proposed_guidelines=context.proposed_guidelines.values(),
+            ordinary_guideline_propositions=context.guideline_proposition.values(),
             tool_enabled_guidelines={},
             staged_events=[],
         )
@@ -137,7 +137,7 @@ def when_processing_is_triggered(
     return list(message_events)
 
 
-@then(parsers.parse("the message should contains {something}"))
+@then(parsers.parse("the message should contain {something}"))
 def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,

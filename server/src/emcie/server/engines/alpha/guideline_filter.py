@@ -23,11 +23,11 @@ class GuidelineProposition:
     rationale: str
 
 
-class GuidelineFilter:
+class GuidelineProposer:
     def __init__(self) -> None:
         self._llm_client = make_llm_client("openai")
 
-    async def find_relevant_guidelines(
+    async def propose_guidelines(
         self,
         guidelines: Iterable[Guideline],
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
@@ -50,9 +50,9 @@ class GuidelineFilter:
                 for batch in batches
             ]
             batch_results = await asyncio.gather(*batch_tasks)
-            aggregated_proposed_guidelines = sum(batch_results, [])
+            propositions = sum(batch_results, [])
 
-        return aggregated_proposed_guidelines
+        return propositions
 
     def _create_batches(
         self,
@@ -152,7 +152,7 @@ state based on a stream of events.
    a. Examine the provided interaction events to discern 
    the latest state of interaction between the user and the assistant.
    b. Determine the applicability of each predicate based on the most recent interaction state.
-     Note: There are exactly {len(guidelines)} predicates.
+      Note: There are exactly {len(guidelines)} predicates.
    c. Assign a relevance score to each predicate, from 1 to 10, where 10 denotes high relevance.
 
 3. **Output**:
@@ -163,15 +163,13 @@ state based on a stream of events.
         "checks": [
             {{
                 "predicate_number": "1",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>,
             }},
             ...
             {{
                 "predicate_number": "N",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>
             }}
         ]
@@ -250,7 +248,7 @@ state based on a stream of events.
         ]
     }}
     ```
-"""
+"""  # noqa
         return prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
