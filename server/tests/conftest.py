@@ -23,12 +23,8 @@ from emcie.server.core.guidelines import (
     GuidelineStore,
 )
 from emcie.server.core.models import ModelRegistry
-from emcie.server.core.sessions import SessionStore
-from emcie.server.core.persistence import (
-    DocumentDatabase,
-    JSONFileDatabase,
-    TransientDocumentDatabase,
-)
+from emcie.server.core.persistence import DocumentCollection, TransientDocumentCollection
+from emcie.server.core.sessions import Event, Session, SessionDocumentStore, SessionStore
 from emcie.server.core.threads import ThreadStore
 <<<<<<< HEAD
 >>>>>>> 466a6c9 (Implement persistence support with DocumentDatabase, JSONFileDatabase, and TransientDatabase)
@@ -71,7 +67,6 @@ async def container() -> AsyncIterator[Container]:
     async with MC(container) as mc:
         container[MC] = mc
         yield container
-
 
 @fixture
 async def client(container: Container) -> AsyncIterator[TestClient]:

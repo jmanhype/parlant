@@ -7,71 +7,56 @@ from pathlib import Path
 from typing import Any, Generic, Iterable, TypeVar
 import aiofiles
 
-
 T = TypeVar("T")
 
 
-class DocumentDatabase(ABC, Generic[T]):
+class DocumentCollection(ABC, Generic[T]):
+    @abstractmethod
+    async def add_document(self, collection: str, document_id: str, document: T) -> T:
+        pass
 
     @abstractmethod
-    async def add_document(
-        self,
-        collection: str,
-        document_id: str,
-        document: T,
-    ) -> T: ...
+    async def read_documents(self, collection: str) -> Iterable[T]:
+        pass
 
     @abstractmethod
-    async def read_documents(
-        self,
-        collection: str,
-    ) -> Iterable[T]: ...
+    async def read_document(self, collection: str, document_id: str) -> T:
+        pass
 
     @abstractmethod
-    async def read_document(
-        self,
-        collection: str,
-        document_id: str,
-    ) -> T: ...
+    async def update_document(self, collection: str, document_id: str, updated_document: T) -> T:
+        pass
 
     async def flush(self) -> None:
         pass
 
 
-class TransientDocumentDatabase(DocumentDatabase[T]):
+class TransientDocumentCollection(DocumentCollection[T]):
     def __init__(self) -> None:
         self._document_store: dict[str, dict[str, T]] = defaultdict(dict)
 
-    async def add_document(
-        self,
-        collection: str,
-        document_id: str,
-        document: T,
-    ) -> T:
+    async def add_document(self, collection: str, document_id: str, document: T) -> T:
         self._document_store[collection][document_id] = document
         return document
 
-    async def read_documents(
-        self,
-        collection: str,
-    ) -> Iterable[T]:
+    async def read_documents(self, collection: str) -> Iterable[T]:
         return self._document_store[collection].values()
 
-    async def read_document(
-        self,
-        collection: str,
-        document_id: str,
-    ) -> T:
-        if d := self._document_store[collection].get(document_id):
-            return d
+    async def read_document(self, collection: str, document_id: str) -> T:
+        if document := self._document_store[collection].get(document_id):
+            return document
         raise KeyError(f'Document "{document_id}" does not exist in collection "{collection}"')
 
+    async def update_document(self, collection: str, document_id: str, updated_document: T) -> T:
+        if document_id in self._document_store[collection]:
+            self._document_store[collection][document_id] = updated_document
+            return updated_document
+        else:
+            raise KeyError(f'Document "{document_id}" does not exist in collection "{collection}"')
 
-class JSONFileDatabase(DocumentDatabase[T], Generic[T]):
-    def __init__(
-        self,
-        file_path: str,
-    ):
+
+class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
+    def __init__(self, file_path: str):
         self.file_path = Path(file_path)
         self._lock = asyncio.Lock()
         if not self.file_path.exists():
@@ -110,26 +95,30 @@ class JSONFileDatabase(DocumentDatabase[T], Generic[T]):
                 data = await file.read()
                 return json.loads(data, object_hook=self.json_datetime_decoder)
 
+    def _json_dumps(self, data: dict[str, dict[str, T]]) -> str:
+        return json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=4,
+            cls=self.DateTimeEncoder,
+        )
+
     async def _save_data(
         self,
         data: dict[str, dict[str, T]],
     ) -> None:
         async with self._lock:
             async with aiofiles.open(self.file_path, mode="w") as file:
-                json_string = json.dumps(
-                    data,
-                    ensure_ascii=False,
-                    indent=4,
-                    cls=self.DateTimeEncoder,
-                )
+                json_string = self._json_dumps(data)
                 await file.write(json_string)
 
-    async def add_document(
+    def _document_from_dict(
         self,
-        collection: str,
-        document_id: str,
-        document: T,
+        data: Any,
     ) -> T:
+        return self.document_type(**data)  # type: ignore
+
+    async def add_document(self, collection: str, document_id: str, document: T) -> T:
         data = await self._load_data()
         if collection not in data:
             data[collection] = {}
@@ -137,26 +126,21 @@ class JSONFileDatabase(DocumentDatabase[T], Generic[T]):
         await self._save_data(data)
         return document
 
-    async def read_documents(
-        self,
-        collection: str,
-    ) -> Iterable[T]:
+    async def read_documents(self, collection: str) -> Iterable[T]:
         data = await self._load_data()
         return (self._document_from_dict(doc) for doc in data.get(collection, {}).values())
 
-    async def read_document(
-        self,
-        collection: str,
-        document_id: str,
-    ) -> T:
+    async def read_document(self, collection: str, document_id: str) -> T:
         data = await self._load_data()
         document_data = data.get(collection, {}).get(document_id)
         if document_data:
             return self._document_from_dict(document_data)
         raise KeyError(f"Document with id: {document_id} not found in collection '{collection}'.")
 
-    def _document_from_dict(
-        self,
-        data: Any,
-    ) -> T:
-        return self.document_type(**data)  # type: ignore
+    async def update_document(self, collection: str, document_id: str, updated_document: T) -> T:
+        data = await self._load_data()
+        if collection not in data or document_id not in data[collection]:
+            raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
+        data[collection][document_id] = updated_document.__dict__
+        await self._save_data(data)
+        return updated_document

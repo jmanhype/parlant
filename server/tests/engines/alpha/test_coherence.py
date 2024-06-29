@@ -24,7 +24,11 @@ class _TestContext:
 
 
 @fixture
-def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> _TestContext:
+def context(
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+) -> _TestContext:
     return _TestContext(sync_await, container, agent_id)
 
 

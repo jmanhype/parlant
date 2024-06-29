@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 from lagom import Container
 from pytest import fixture
 from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId, AgentStore
+from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineDocumentStore, GuidelineStore
 from emcie.server.core.models import ModelId
-from emcie.server.core.persistence import DocumentDatabase, JSONFileDatabase
+from emcie.server.core.persistence import DocumentCollection, JSONFileDocumentCollection
+from emcie.server.core.sessions import Event, Session, SessionDocumentStore, SessionStore
 from emcie.server.core.tools import Tool, ToolDocumentStore, ToolStore
 from tests.test_utilities import SyncAwaiter
 
@@ -43,18 +45,34 @@ def guideline_json_path() -> str:
 
 
 @fixture
+def session_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_sessions.json")
+
+
+@fixture
 def agent_store(agent_json_path: str) -> AgentStore:
     file_path = Path(agent_json_path)
     file_path.unlink(missing_ok=True)
-    db: DocumentDatabase[Agent] = JSONFileDatabase[Agent](agent_json_path)
+    db: DocumentCollection[Agent] = JSONFileDocumentCollection[Agent](agent_json_path)
     return AgentDocumentStore(db)
+
+
+@fixture
+def session_store(session_json_path: str) -> SessionStore:
+    file_path = Path(session_json_path)
+    file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
+    db: DocumentCollection[Session] = JSONFileDocumentCollection[Session](session_json_path)
+    event_db: DocumentCollection[Event] = JSONFileDocumentCollection[Event](
+        session_json_path
+    )  # Using the same file for simplicity
+    return SessionDocumentStore(db, event_db)
 
 
 @fixture
 def guideline_store(guideline_json_path: str) -> GuidelineStore:
     file_path = Path(guideline_json_path)
     file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
-    db: DocumentDatabase[Guideline] = JSONFileDatabase[Guideline](guideline_json_path)
+    db: DocumentCollection[Guideline] = JSONFileDocumentCollection[Guideline](guideline_json_path)
     return GuidelineDocumentStore(db)
 
 
@@ -62,7 +80,7 @@ def guideline_store(guideline_json_path: str) -> GuidelineStore:
 def tool_store(tool_json_path: str) -> ToolStore:
     file_path = Path(tool_json_path)
     file_path.unlink(missing_ok=True)  # Ensure the file is deleted if it exists
-    db: DocumentDatabase[Tool] = JSONFileDatabase[Tool](tool_json_path)
+    db: DocumentCollection[Tool] = JSONFileDocumentCollection[Tool](tool_json_path)
     return ToolDocumentStore(db)
 
 
@@ -237,7 +255,7 @@ def test_agent_loading_from_json(
     agent_store: AgentDocumentStore,
 ) -> None:
     # Create an agent to ensure there's something to load.
-    model_id = ModelId("default_model")
+    model_id = ModelId("test_model")
     context.sync_await(
         agent_store.create_agent(
             model_id=model_id,
@@ -251,3 +269,65 @@ def test_agent_loading_from_json(
     assert len(loaded_agent_list) == 1
     loaded_agent = loaded_agent_list[0]
     assert loaded_agent.model_id == model_id
+
+
+def test_session_creation_persists_in_json(
+    context: _TestContext,
+    session_store: SessionStore,
+    session_json_path: str,
+) -> None:
+    end_user_id = EndUserId("test_user")
+    client_id = "test_client"
+
+    session = context.sync_await(
+        session_store.create_session(
+            end_user_id=end_user_id,
+            client_id=client_id,
+        )
+    )
+
+    with open(session_json_path) as _f:
+        sessions_from_json = json.load(_f)
+
+    assert session.id in sessions_from_json["sessions"]
+    assert sessions_from_json["sessions"][session.id]["end_user_id"] == end_user_id
+    assert sessions_from_json["sessions"][session.id]["client_id"] == client_id
+    assert sessions_from_json["sessions"][session.id]["consumption_offsets"] == {
+        "server": 0,
+        "client": 0,
+    }
+
+
+def test_event_creation_and_retrieval(
+    context: _TestContext,
+    session_store: SessionStore,
+    session_json_path: str,
+) -> None:
+    end_user_id = EndUserId("test_user")
+    client_id = "test_client"
+
+    session = context.sync_await(
+        session_store.create_session(
+            end_user_id=end_user_id,
+            client_id=client_id,
+        )
+    )
+
+    event = context.sync_await(
+        session_store.create_event(
+            session_id=session.id,
+            source="client",
+            type=Event.MESSAGE_TYPE,
+            data={"message": "Hello, world!"},
+            creation_utc=datetime.now(timezone.utc),
+        )
+    )
+
+    with open(session_json_path) as _f:
+        sessions_from_json = json.load(_f)
+
+    assert event.id in sessions_from_json[f"events_{session.id}"]
+    event_from_json = sessions_from_json[f"events_{session.id}"][event.id]
+    assert event_from_json["type"] == Event.MESSAGE_TYPE
+    assert event_from_json["data"]["message"] == "Hello, world!"
+    assert event_from_json["source"] == "client"

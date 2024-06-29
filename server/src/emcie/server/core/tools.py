@@ -5,7 +5,7 @@ from typing import Any, Iterable, NewType, Optional
 from pydantic import ValidationError
 
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentDatabase
+from emcie.server.core.persistence import DocumentCollection  # Adjusted import
 
 ToolId = NewType("ToolId", str)
 
@@ -38,24 +38,17 @@ class ToolStore(ABC):
         pass
 
     @abstractmethod
-    async def list_tools(
-        self,
-        tool_set: str,
-    ) -> Iterable[Tool]:
+    async def list_tools(self, tool_set: str) -> Iterable[Tool]:
         pass
 
     @abstractmethod
-    async def read_tool(
-        self,
-        tool_set: str,
-        tool_id: ToolId,
-    ) -> Tool:
+    async def read_tool(self, tool_set: str, tool_id: ToolId) -> Tool:
         pass
 
 
 class ToolDocumentStore(ToolStore):
-    def __init__(self, database: DocumentDatabase[Tool]):
-        self.database = database
+    def __init__(self, tool_collection: DocumentCollection[Tool]):
+        self.tool_collection = tool_collection
 
     async def create_tool(
         self,
@@ -81,14 +74,13 @@ class ToolDocumentStore(ToolStore):
             required=required,
             consequential=consequential,
         )
-        await self.database.add_document(tool_set, tool.id, tool)
-        return tool
+        return await self.tool_collection.add_document(tool_set, tool.id, tool)
 
     async def list_tools(self, tool_set: str) -> Iterable[Tool]:
-        return await self.database.read_documents(tool_set)
+        return await self.tool_collection.read_documents(tool_set)
 
     async def read_tool(self, tool_set: str, tool_id: ToolId) -> Tool:
-        return await self.database.read_document(tool_set, tool_id)
+        return await self.tool_collection.read_document(tool_set, tool_id)
 
     async def _is_tool_name_unique(self, tool_set: str, name: str) -> bool:
         tools = await self.list_tools(tool_set)
