@@ -1,16 +1,10 @@
 {
-    "fF13t3MClB": {
-        "Q7w8ztW6nA": {
-            "id": "Q7w8ztW6nA",
-            "creation_utc": "2024-06-29T09:34:49.454853+00:00",
-            "predicate": "Creating a guideline with JSONFileDatabase implementation",
-            "content": "Expecting it to show in the guidelines json file"
-        },
-        "NtN2e1_mKF": {
-            "id": "NtN2e1_mKF",
-            "creation_utc": "2024-06-29T09:35:20.086633+00:00",
-            "predicate": "Second guideline creation",
-            "content": "Additional test entry in the JSON file"
+    "4-goKpmx96": {
+        "JF_ewawn2T": {
+            "id": "JF_ewawn2T",
+            "creation_utc": "2024-06-29T09:55:42.938659+00:00",
+            "predicate": "Test predicate for loading",
+            "content": "Test content for loading guideline"
         }
     }
 }

@@ -21,9 +21,13 @@ from emcie.server.core.models import ModelRegistry
 from emcie.server.core.sessions import SessionStore
 from emcie.server.core.persistence import DocumentDatabase, JSONFileDatabase
 from emcie.server.core.threads import ThreadStore
+<<<<<<< HEAD
 >>>>>>> 466a6c9 (Implement persistence support with DocumentDatabase, JSONFileDatabase, and TransientDatabase)
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
+=======
+from emcie.server.core.tools import Tool, ToolDocumentStore, ToolStore
+>>>>>>> b520c1b (Add persistence support for Tool entities with JSONFileDatabase.)
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
