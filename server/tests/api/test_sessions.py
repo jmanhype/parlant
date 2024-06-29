@@ -220,7 +220,7 @@ def test_that_posting_a_message_elicits_a_response(
         client.get(
             f"/sessions/{session_id}/events",
             params={
-                "min_offset": posted_event["event_offset"],
+                "min_offset": posted_event["event_offset"] + 1,
                 "wait": True,
             },
         )
@@ -249,7 +249,7 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     client.get(
         f"/sessions/{session_id}/events",
         params={
-            "min_offset": posted_event["event_offset"],
+            "min_offset": posted_event["event_offset"] + 1,
             "wait": False,
         },
     )

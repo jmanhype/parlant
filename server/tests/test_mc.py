@@ -100,7 +100,7 @@ async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message
 
     assert await context.mc.wait_for_update(
         session_id=session.id,
-        latest_known_offset=session.consumption_offsets["client"],
+        min_offset=1 + session.consumption_offsets["client"],
         timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
     )
 
@@ -121,7 +121,7 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_pro
 
     await context.mc.wait_for_update(
         session_id=session.id,
-        latest_known_offset=session.consumption_offsets["client"],
+        min_offset=1 + session.consumption_offsets["client"],
         timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
     )
 

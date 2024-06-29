@@ -132,9 +132,9 @@ def create_router(
         wait: Optional[bool] = None,
     ) -> ListEventsResponse:
         if wait:
-            await session_listener.wait_for_update(
+            await session_listener.wait_for_events(
                 session_id=session_id,
-                latest_known_offset=min_offset or 0,
+                min_offset=min_offset or 0,
                 timeout=Timeout(60),
             )
 

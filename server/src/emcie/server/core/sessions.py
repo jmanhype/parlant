@@ -116,10 +116,10 @@ class SessionStore:
 
 class SessionListener(ABC):
     @abstractmethod
-    async def wait_for_update(
+    async def wait_for_events(
         self,
         session_id: SessionId,
-        latest_known_offset: int,
+        min_offset: int,
         timeout: Timeout,
     ) -> bool: ...
 
@@ -128,10 +128,10 @@ class PollingSessionListener(SessionListener):
     def __init__(self, session_store: SessionStore) -> None:
         self._session_store = session_store
 
-    async def wait_for_update(
+    async def wait_for_events(
         self,
         session_id: SessionId,
-        latest_known_offset: int,
+        min_offset: int,
         timeout: Timeout,
     ) -> bool:
         while True:
@@ -139,7 +139,7 @@ class PollingSessionListener(SessionListener):
                 await self._session_store.list_events(
                     session_id,
                     source="server",
-                    min_offset=latest_known_offset,
+                    min_offset=min_offset,
                 )
             )
 
