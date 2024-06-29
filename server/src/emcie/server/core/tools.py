@@ -21,6 +21,9 @@ class Tool:
     required: list[str]
     consequential: bool
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
 
 class ToolStore(ABC):
     @abstractmethod
