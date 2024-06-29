@@ -48,6 +48,12 @@ class DocumentCollection(ABC, Generic[T]):
     ) -> None: ...
 
     @abstractmethod
+    async def delete_collection(
+        self,
+        collection: str,
+    ) -> None: ...
+
+    @abstractmethod
     async def list_collections(
         self,
     ) -> Iterable[str]: ...
@@ -104,6 +110,15 @@ class TransientDocumentCollection(DocumentCollection[T]):
             del self._document_store[collection][document_id]
         else:
             raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
+
+    async def delete_collection(
+        self,
+        collection: str,
+    ) -> None:
+        if collection in self._document_store:
+            del self._document_store[collection]
+        else:
+            raise KeyError(f'Collection "{collection}" not found')
 
     async def list_collections(
         self,
@@ -233,6 +248,17 @@ class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
             await self._save_data(data)
         else:
             raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
+
+    async def delete_collection(
+        self,
+        collection: str,
+    ) -> None:
+        data = await self._load_data()
+        if collection in data:
+            del data[collection]
+            await self._save_data(data)
+        else:
+            raise KeyError(f'Collection "{collection}" not found')
 
     async def list_collections(
         self,
