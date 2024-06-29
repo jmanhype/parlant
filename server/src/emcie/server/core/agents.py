@@ -10,6 +10,7 @@ AgentId = NewType("AgentId", str)
 @dataclass(frozen=True)
 class Agent:
     id: AgentId
+    name: str
     creation_utc: datetime
 
 
@@ -21,10 +22,12 @@ class AgentStore:
 
     async def create_agent(
         self,
+        name: str,
         creation_utc: Optional[datetime] = None,
     ) -> Agent:
         agent = Agent(
             id=AgentId(common.generate_id()),
+            name=name,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
 

@@ -34,7 +34,7 @@ async def context(
 @fixture
 async def agent_id(container: Container) -> AgentId:
     store = container[AgentStore]
-    agent = await store.create_agent()
+    agent = await store.create_agent(name="test-agent")
     return agent.id
 
 

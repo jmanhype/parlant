@@ -7,7 +7,7 @@ def test_that_an_agent_can_be_created(
 ) -> None:
     response = client.post(
         "/agents",
-        json={"id": "test-agent"},
+        json={"agent_name": "test-agent"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -19,3 +19,4 @@ def test_that_an_agent_can_be_created(
     data = response.json()
 
     assert len(data["agents"]) == 1
+    assert data["agents"][0]["name"] == "test-agent"

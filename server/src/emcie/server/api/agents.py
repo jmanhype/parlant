@@ -8,11 +8,12 @@ from emcie.server.core.agents import AgentId, AgentStore
 
 class AgentDTO(DefaultBaseModel):
     id: AgentId
+    name: str
     creation_utc: datetime
 
 
 class CreateAgentRequest(DefaultBaseModel):
-    id: AgentId
+    agent_name: str
 
 
 class CreateAgentResponse(DefaultBaseModel):
@@ -32,7 +33,9 @@ def create_router(
     async def create_agent(
         request: Optional[CreateAgentRequest] = None,
     ) -> CreateAgentResponse:
-        agent = await agent_store.create_agent()
+        agent = await agent_store.create_agent(
+            name=request and request.agent_name or "Unnamed Agent"
+        )
 
         return CreateAgentResponse(agent_id=agent.id)
 
@@ -44,6 +47,7 @@ def create_router(
             agents=[
                 AgentDTO(
                     id=a.id,
+                    name=a.name,
                     creation_utc=a.creation_utc,
                 )
                 for a in agents

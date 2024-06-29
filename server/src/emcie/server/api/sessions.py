@@ -134,8 +134,8 @@ def create_router(
         if wait:
             await session_listener.wait_for_update(
                 session_id=session_id,
-                latest_known_offset=(min_offset or 0) + 1,
-                timeout=Timeout(10),
+                latest_known_offset=min_offset or 0,
+                timeout=Timeout(60),
             )
 
         events = await session_store.list_events(

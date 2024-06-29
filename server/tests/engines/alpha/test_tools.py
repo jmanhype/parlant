@@ -48,7 +48,7 @@ def agent_id(
     sync_await: SyncAwaiter,
 ) -> AgentId:
     store = container[AgentStore]
-    agent = sync_await(store.create_agent())
+    agent = sync_await(store.create_agent(name="test-agent"))
     return agent.id
 
 
