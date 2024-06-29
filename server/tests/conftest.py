@@ -1,19 +1,20 @@
 import asyncio
 from typing import Any, AsyncIterator, Dict
-from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
 from pytest import fixture, Config
 
-from emcie.server import main
+from emcie.server.api.app import create_app
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.context_variables import ContextVariableStore
+from emcie.server.core.end_users import EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.models import ModelRegistry
-from emcie.server.core.sessions import SessionStore
-from emcie.server.core.threads import ThreadStore
+from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
 from emcie.server.core.tools import ToolStore
+from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
+from emcie.server.engines.common import Engine
+from emcie.server.mc import MC
 
 from .test_utilities import SyncAwaiter
 
@@ -29,52 +30,27 @@ def test_config(pytestconfig: Config) -> Dict[str, Any]:
 
 
 @fixture
-def container() -> Container:
-    container = Container()
+async def container() -> AsyncIterator[Container]:
+    container = Container(log_undefined_deps=True)
 
     container[AgentStore] = AgentStore()
-    container[ThreadStore] = ThreadStore()
-    container[SessionStore] = SessionStore()
     container[ContextVariableStore] = ContextVariableStore()
+    container[EndUserStore] = EndUserStore()
     container[GuidelineStore] = GuidelineStore()
-    container[ToolStore] = ToolStore()
     container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
-    container[ModelRegistry] = ModelRegistry()
+    container[SessionStore] = SessionStore()
+    container[ToolStore] = ToolStore()
+    container[SessionListener] = PollingSessionListener
+    container[Engine] = AlphaEngine
 
-    return container
+    async with MC(container) as mc:
+        container[MC] = mc
+        yield container
 
 
 @fixture
 async def client(container: Container) -> AsyncIterator[TestClient]:
-    app = await main.create_app(container)
+    app = await create_app(container)
 
     with TestClient(app) as client:
         yield client
-
-
-@fixture
-def agent_id(client: TestClient) -> str:
-    return str(client.post("/agents").json()["agent_id"])
-
-
-@fixture
-def new_thread_id(client: TestClient) -> str:
-    return str(client.post("/threads").json()["thread_id"])
-
-
-@fixture
-def user_question_thread_id(
-    client: TestClient,
-    new_thread_id: str,
-) -> str:
-    response = client.post(
-        f"/threads/{new_thread_id}/messages",
-        json={
-            "role": "user",
-            "content": "Is 42 a number?",
-        },
-    )
-
-    assert response.status_code == status.HTTP_200_OK
-
-    return new_thread_id

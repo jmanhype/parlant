@@ -8,7 +8,7 @@ from typing import Iterable, NewType
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from emcie.server.base import DefaultBaseModel
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.engines.alpha.utils import duration_logger, make_llm_client
 

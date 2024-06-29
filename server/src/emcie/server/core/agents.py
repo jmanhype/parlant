@@ -1,10 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import os
 from typing import Dict, Iterable, NewType, Optional
 
 from emcie.server.core import common
-from emcie.server.core.models import ModelId
 
 AgentId = NewType("AgentId", str)
 
@@ -12,7 +10,7 @@ AgentId = NewType("AgentId", str)
 @dataclass(frozen=True)
 class Agent:
     id: AgentId
-    model_id: ModelId
+    name: str
     creation_utc: datetime
 
 
@@ -24,12 +22,12 @@ class AgentStore:
 
     async def create_agent(
         self,
-        model_id: Optional[ModelId] = None,
+        name: str,
         creation_utc: Optional[datetime] = None,
     ) -> Agent:
         agent = Agent(
             id=AgentId(common.generate_id()),
-            model_id=model_id or ModelId(os.environ["DEFAULT_AGENT_MODEL"]),
+            name=name,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
 

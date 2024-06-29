@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture, mark
+
 from emcie.server.core.agents import AgentId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.engines.alpha.coherence_checker import (
@@ -11,6 +12,7 @@ from emcie.server.engines.alpha.coherence_checker import (
     ParallelContradictionEvaluator,
     TemporalContradictionEvaluator,
 )
+
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 
