@@ -95,6 +95,7 @@ class SessionStore:
 
         self._events[session_id][event.id] = event
 
+        await self.event_collection.add_document(session_id, event.id, event)
         return event
 
     async def list_events(
@@ -150,3 +151,11 @@ class PollingSessionListener(SessionListener):
                 return False
             else:
                 await timeout.wait_up_to(1)
+        all_events = await self.event_collection.read_documents(session_id)
+        filtered_events = [
+            e
+            for e in all_events
+            if (source is None or e.source == source)
+            and (min_offset is None or e.offset >= min_offset)
+        ]
+        return filtered_events

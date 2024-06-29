@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from lagom import Container
 from pytest import fixture
+import pytest
 from emcie.server.core.agents import Agent, AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariable,
@@ -55,6 +56,11 @@ def session_json_path() -> str:
 
 
 @fixture
+def event_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_events.json")
+
+
+@fixture
 def tool_json_path() -> str:
     return os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
 
@@ -70,8 +76,13 @@ def end_user_json_path() -> str:
 
 
 @fixture
-def context_variable_json_path() -> str:
+def context_variables_json_path() -> str:
     return os.path.join(JSON_TEST_FILES_PATH, "test_context_variables.json")
+
+
+@fixture
+def context_variable_value_json_path() -> str:
+    return os.path.join(JSON_TEST_FILES_PATH, "test_context_variable_values.json")
 
 
 @fixture
@@ -88,15 +99,20 @@ def agent_store(agent_json_path: str) -> AgentStore:
 
 
 @fixture
-def session_store(session_json_path: str) -> SessionStore:
-    file_path = Path(session_json_path)
-    file_path.unlink(missing_ok=True)
+def session_store(
+    session_json_path: str,
+    event_json_path: str,
+) -> SessionStore:
+    session_file_path = Path(session_json_path)
+    session_file_path.unlink(missing_ok=True)
+
+    event_file_path = Path(event_json_path)
+    event_file_path.unlink(missing_ok=True)
+
     session_collection: DocumentCollection[Session] = JSONFileDocumentCollection[Session](
         session_json_path
     )
-    event_collection: DocumentCollection[Event] = JSONFileDocumentCollection[Event](
-        session_json_path
-    )
+    event_collection: DocumentCollection[Event] = JSONFileDocumentCollection[Event](event_json_path)
     return SessionDocumentStore(session_collection, event_collection)
 
 
@@ -129,15 +145,22 @@ def end_user_store(end_user_json_path: str) -> EndUserStore:
 
 
 @fixture
-def context_variable_store(context_variable_json_path: str) -> ContextVariableStore:
-    file_path = Path(context_variable_json_path)
-    file_path.unlink(missing_ok=True)
+def context_variable_store(
+    context_variables_json_path: str,
+    context_variable_value_json_path: str,
+) -> ContextVariableStore:
+    variable_file_path = Path(context_variables_json_path)
+    variable_file_path.unlink(missing_ok=True)
+
+    value_file_path = Path(context_variable_value_json_path)
+    value_file_path.unlink(missing_ok=True)
+
     variable_collection: DocumentCollection[ContextVariable] = JSONFileDocumentCollection[
         ContextVariable
-    ](context_variable_json_path)
+    ](context_variables_json_path)
     value_collection: DocumentCollection[ContextVariableValue] = JSONFileDocumentCollection[
         ContextVariableValue
-    ](context_variable_json_path)
+    ](context_variable_value_json_path)
     return ContextVariableDocumentStore(variable_collection, value_collection)
 
 
@@ -224,10 +247,10 @@ def test_session_creation_persists_in_json(
     }
 
 
-def test_event_creation_and_retrieval(
+def test_event_creation(
     context: _TestContext,
     session_store: SessionStore,
-    session_json_path: str,
+    event_json_path: str,
 ) -> None:
     end_user_id = EndUserId("test_user")
     client_id = "test_client"
@@ -249,11 +272,11 @@ def test_event_creation_and_retrieval(
         )
     )
 
-    with open(session_json_path) as _f:
-        sessions_from_json = json.load(_f)
+    with open(event_json_path) as _f:
+        events_from_json = json.load(_f)
 
-    assert event.id in sessions_from_json[f"events_{session.id}"]
-    event_from_json = sessions_from_json[f"events_{session.id}"][event.id]
+    assert event.id in events_from_json[session.id]
+    event_from_json = events_from_json[session.id][event.id]
     assert event_from_json["type"] == Event.MESSAGE_TYPE
     assert event_from_json["data"]["message"] == "Hello, world!"
     assert event_from_json["source"] == "client"
@@ -439,9 +462,9 @@ def test_create_and_retrieve_end_user(
 def test_context_variable_creation_persists_in_json(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
-    context_variable_json_path: str,
+    context_variables_json_path: str,
 ) -> None:
-    tool_id = ToolId("tool123")
+    tool_id = ToolId("test_tool")
     variable = context.sync_await(
         context_variable_store.create_variable(
             variable_set=context.agent_id,
@@ -452,7 +475,7 @@ def test_context_variable_creation_persists_in_json(
         )
     )
 
-    with open(context_variable_json_path) as _f:
+    with open(context_variables_json_path) as _f:
         variables_from_json = json.load(_f)
 
     assert context.agent_id in variables_from_json
@@ -468,9 +491,9 @@ def test_context_variable_creation_persists_in_json(
 def test_context_variable_value_update_and_retrieval(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
-    context_variable_json_path: str,
+    context_variable_value_json_path: str,
 ) -> None:
-    tool_id = ToolId("tool123")
+    tool_id = ToolId("test_tool")
     end_user_id = EndUserId("test_user")
     variable = context.sync_await(
         context_variable_store.create_variable(
@@ -482,7 +505,7 @@ def test_context_variable_value_update_and_retrieval(
         )
     )
 
-    updated_value = context.sync_await(
+    context.sync_await(
         context_variable_store.update_value(
             variable_set=context.agent_id,
             key=end_user_id,
@@ -491,19 +514,17 @@ def test_context_variable_value_update_and_retrieval(
         )
     )
 
-    with open(context_variable_json_path) as _f:
+    with open(context_variable_value_json_path) as _f:
         values_from_json = json.load(_f)
 
+    end_user_id in values_from_json[f"{context.agent_id}_{variable.id}"]
+
     assert (
-        values_from_json[context.agent_id][f"{end_user_id}_{variable.id}"]["id"] == updated_value.id
+        values_from_json[f"{context.agent_id}_{variable.id}"][end_user_id]["data"]["key"] == "value"
     )
 
     assert (
-        values_from_json[context.agent_id][f"{end_user_id}_{variable.id}"]["data"]["key"] == "value"
-    )
-
-    assert (
-        values_from_json[context.agent_id][f"{end_user_id}_{variable.id}"]["variable_id"]
+        values_from_json[f"{context.agent_id}_{variable.id}"][end_user_id]["variable_id"]
         == variable.id
     )
 
@@ -512,7 +533,7 @@ def test_context_variable_listing(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
 ) -> None:
-    tool_id = ToolId("tool123")
+    tool_id = ToolId("test_tool")
     var1 = context.sync_await(
         context_variable_store.create_variable(
             variable_set=context.agent_id,
@@ -543,7 +564,7 @@ def test_context_variable_deletion(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
 ) -> None:
-    tool_id = ToolId("tool123")
+    tool_id = ToolId("test_tool")
     variable = context.sync_await(
         context_variable_store.create_variable(
             variable_set=context.agent_id,
@@ -554,10 +575,29 @@ def test_context_variable_deletion(
         )
     )
 
+    value_data = {"key": "test", "data": "This is a test value"}
+    context.sync_await(
+        context_variable_store.update_value(
+            variable_set=context.agent_id,
+            key="test_user",
+            variable_id=variable.id,
+            data=value_data,
+        )
+    )
+
     variables_before_deletion = list(
         context.sync_await(context_variable_store.list_variables(context.agent_id))
     )
-    assert any(var.id == variable.id for var in variables_before_deletion)
+    assert any(v.id == variable.id for v in variables_before_deletion)
+
+    value_before_deletion = context.sync_await(
+        context_variable_store.read_value(
+            variable_set=context.agent_id,
+            key="test_user",
+            variable_id=variable.id,
+        )
+    )
+    assert value_before_deletion.data == value_data
 
     context.sync_await(
         context_variable_store.delete_variable(
@@ -571,13 +611,20 @@ def test_context_variable_deletion(
     )
     assert all(var.id != variable.id for var in variables_after_deletion)
 
+    with pytest.raises(KeyError):
+        context.sync_await(
+            context_variable_store.read_value(
+                variable_set=context.agent_id, key="test_user", variable_id=variable.id
+            )
+        )
+
 
 def test_create_and_retrieve_association(
     context: _TestContext,
     association_store: GuidelineToolAssociationDocumentStore,
 ) -> None:
-    guideline_id = GuidelineId("guideline-123")
-    tool_id = ToolId("tool-456")
+    guideline_id = GuidelineId("test_guideline")
+    tool_id = ToolId("test_tool")
     creation_utc = datetime.now(timezone.utc)
 
     created_association = context.sync_await(

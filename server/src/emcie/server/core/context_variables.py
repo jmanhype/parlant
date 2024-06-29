@@ -98,6 +98,13 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self.variable_collection = variable_collection
         self.value_collection = value_collection
 
+    @staticmethod
+    def format_variable_value_collection(
+        variable_set: str,
+        variable_id: str,
+    ) -> str:
+        return f"{variable_set}_{variable_id}"
+
     async def create_variable(
         self,
         variable_set: str,
@@ -129,8 +136,12 @@ class ContextVariableDocumentStore(ContextVariableStore):
             last_modified=datetime.now(timezone.utc),
             data=data,
         )
-        combined_key = f"{key}_{variable_id}"
-        await self.value_collection.add_document(variable_set, combined_key, updated_value)
+
+        await self.value_collection.add_document(
+            self.format_variable_value_collection(variable_set, variable_id),
+            key,
+            updated_value,
+        )
         return updated_value
 
     async def delete_variable(
@@ -139,6 +150,9 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_id: ContextVariableId,
     ) -> None:
         await self.variable_collection.delete_document(variable_set, variable_id)
+        await self.value_collection.delete_collection(
+            self.format_variable_value_collection(variable_set, variable_id)
+        )
 
     async def list_variables(
         self,
@@ -159,5 +173,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         key: str,
         variable_id: ContextVariableId,
     ) -> ContextVariableValue:
-        combined_key = f"{key}_{variable_id}"
-        return await self.value_collection.read_document(variable_set, combined_key)
+        return await self.value_collection.read_document(
+            self.format_variable_value_collection(variable_set, variable_id),
+            key,
+        )
