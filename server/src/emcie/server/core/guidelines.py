@@ -1,9 +1,10 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, NewType, Optional
+from abc import ABC, abstractmethod
 
 from emcie.server.core import common
+from emcie.server.core.persistence import DocumentDatabase
 
 GuidelineId = NewType("GuidelineId", str)
 
@@ -16,11 +17,33 @@ class Guideline:
     content: str
 
 
-class GuidelineStore:
-    def __init__(
+class GuidelineStore(ABC):
+    @abstractmethod
+    async def create_guideline(
         self,
-    ) -> None:
-        self._guideline_sets: dict[str, dict[GuidelineId, Guideline]] = defaultdict(dict)
+        guideline_set: str,
+        predicate: str,
+        content: str,
+        creation_utc: Optional[datetime] = None,
+    ) -> Guideline: ...
+
+    @abstractmethod
+    async def list_guidelines(
+        self,
+        guideline_set: str,
+    ) -> Iterable[Guideline]: ...
+
+    @abstractmethod
+    async def read_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> Guideline: ...
+
+
+class GuidelineDocumentStore(GuidelineStore):
+    def __init__(self, database: DocumentDatabase[Guideline]):
+        self.database = database
 
     async def create_guideline(
         self,
@@ -35,20 +58,22 @@ class GuidelineStore:
             content=content,
             creation_utc=creation_utc or datetime.now(timezone.utc),
         )
-
-        self._guideline_sets[guideline_set][guideline.id] = guideline
-
-        return guideline
+        return await self.database.add_document(guideline_set, guideline.id, guideline)
 
     async def list_guidelines(
         self,
         guideline_set: str,
     ) -> Iterable[Guideline]:
-        return self._guideline_sets[guideline_set].values()
+        return await self.database.read_documents(
+            guideline_set,
+        )
 
     async def read_guideline(
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
     ) -> Guideline:
-        return self._guideline_sets[guideline_set][guideline_id]
+        return await self.database.read_document(
+            guideline_set,
+            guideline_id,
+        )
