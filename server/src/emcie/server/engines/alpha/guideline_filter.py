@@ -131,9 +131,8 @@ state based on a stream of events.
     """
         else:
             prompt += """\
-    You, an AI assistant, 
-    are currently engaged in the initial phase of an online session with a user.
-    The interaction has just commenced, 
+    You, an AI assistant, are now present in an online interaction session with a user.
+    The session has just started, 
     and the user hasn't said anything yet nor chosen to engage with you.
     """
 
