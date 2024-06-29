@@ -25,16 +25,20 @@ class GuidelineStore(ABC):
         predicate: str,
         content: str,
         creation_utc: Optional[datetime] = None,
-    ) -> Guideline:
-        pass
+    ) -> Guideline: ...
 
     @abstractmethod
-    async def list_guidelines(self, guideline_set: str) -> Iterable[Guideline]:
-        pass
+    async def list_guidelines(
+        self,
+        guideline_set: str,
+    ) -> Iterable[Guideline]: ...
 
     @abstractmethod
-    async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
-        pass
+    async def read_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> Guideline: ...
 
 
 class GuidelineDocumentStore(GuidelineStore):

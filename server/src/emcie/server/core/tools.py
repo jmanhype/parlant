@@ -34,20 +34,27 @@ class ToolStore(ABC):
         required: list[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
-    ) -> Tool:
-        pass
+    ) -> Tool: ...
 
     @abstractmethod
-    async def list_tools(self, tool_set: str) -> Iterable[Tool]:
-        pass
+    async def list_tools(
+        self,
+        tool_set: str,
+    ) -> Iterable[Tool]: ...
 
     @abstractmethod
-    async def read_tool(self, tool_set: str, tool_id: ToolId) -> Tool:
-        pass
+    async def read_tool(
+        self,
+        tool_set: str,
+        tool_id: ToolId,
+    ) -> Tool: ...
 
 
 class ToolDocumentStore(ToolStore):
-    def __init__(self, tool_collection: DocumentCollection[Tool]):
+    def __init__(
+        self,
+        tool_collection: DocumentCollection[Tool],
+    ):
         self.tool_collection = tool_collection
 
     async def create_tool(
@@ -76,12 +83,23 @@ class ToolDocumentStore(ToolStore):
         )
         return await self.tool_collection.add_document(tool_set, tool.id, tool)
 
-    async def list_tools(self, tool_set: str) -> Iterable[Tool]:
+    async def list_tools(
+        self,
+        tool_set: str,
+    ) -> Iterable[Tool]:
         return await self.tool_collection.read_documents(tool_set)
 
-    async def read_tool(self, tool_set: str, tool_id: ToolId) -> Tool:
+    async def read_tool(
+        self,
+        tool_set: str,
+        tool_id: ToolId,
+    ) -> Tool:
         return await self.tool_collection.read_document(tool_set, tool_id)
 
-    async def _is_tool_name_unique(self, tool_set: str, name: str) -> bool:
+    async def _is_tool_name_unique(
+        self,
+        tool_set: str,
+        name: str,
+    ) -> bool:
         tools = await self.list_tools(tool_set)
         return all(tool.name != name for tool in tools)

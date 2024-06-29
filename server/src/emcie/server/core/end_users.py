@@ -20,21 +20,31 @@ class EndUser:
 class EndUserStore(ABC):
     @abstractmethod
     async def create_end_user(
-        self, name: str, email: str, creation_utc: Optional[datetime] = None
-    ) -> EndUser:
-        pass
+        self,
+        name: str,
+        email: str,
+        creation_utc: Optional[datetime] = None,
+    ) -> EndUser: ...
 
     @abstractmethod
-    async def read_end_user(self, end_user_id: EndUserId) -> EndUser:
-        pass
+    async def read_end_user(
+        self,
+        end_user_id: EndUserId,
+    ) -> EndUser: ...
 
 
 class EndUserDocumentStore(EndUserStore):
-    def __init__(self, end_user_collection: DocumentCollection[EndUser]):
+    def __init__(
+        self,
+        end_user_collection: DocumentCollection[EndUser],
+    ):
         self.end_user_collection = end_user_collection
 
     async def create_end_user(
-        self, name: str, email: str, creation_utc: Optional[datetime] = None
+        self,
+        name: str,
+        email: str,
+        creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         end_user = EndUser(
             id=EndUserId(generate_id()),
@@ -45,5 +55,8 @@ class EndUserDocumentStore(EndUserStore):
         await self.end_user_collection.add_document("end_users", end_user.id, end_user)
         return end_user
 
-    async def read_end_user(self, end_user_id: EndUserId) -> EndUser:
+    async def read_end_user(
+        self,
+        end_user_id: EndUserId,
+    ) -> EndUser:
         return await self.end_user_collection.read_document("end_users", end_user_id)

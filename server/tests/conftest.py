@@ -4,35 +4,14 @@ from fastapi.testclient import TestClient
 from lagom import Container, Singleton
 from pytest import fixture, Config
 
-<<<<<<< HEAD
 from emcie.server.api.app import create_app
 from emcie.server.core.agents import AgentStore
-=======
-from emcie.server import main
-from emcie.server.core.agents import Agent, AgentDocumentStore, AgentStore
->>>>>>> 4962412 (Add persistence support for Agent)
 from emcie.server.core.context_variables import ContextVariableStore
-<<<<<<< HEAD
 from emcie.server.core.end_users import EndUserStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
-=======
-from emcie.server.core.guidelines import (
-    Guideline,
-    GuidelineDocumentStore,
-    GuidelineStore,
-)
-from emcie.server.core.models import ModelRegistry
-from emcie.server.core.persistence import DocumentCollection, TransientDocumentCollection
-from emcie.server.core.sessions import Event, Session, SessionDocumentStore, SessionStore
-from emcie.server.core.threads import ThreadStore
-<<<<<<< HEAD
->>>>>>> 466a6c9 (Implement persistence support with DocumentDatabase, JSONFileDatabase, and TransientDatabase)
 from emcie.server.core.tools import ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-=======
-from emcie.server.core.tools import Tool, ToolDocumentStore, ToolStore
->>>>>>> b520c1b (Add persistence support for Tool entities with JSONFileDatabase.)
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
@@ -67,6 +46,7 @@ async def container() -> AsyncIterator[Container]:
     async with MC(container) as mc:
         container[MC] = mc
         yield container
+
 
 @fixture
 async def client(container: Container) -> AsyncIterator[TestClient]:

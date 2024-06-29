@@ -16,25 +16,28 @@ class Agent:
     creation_utc: datetime
 
 
-class AgentStore(ABC):
+class AgentStore:
     @abstractmethod
     async def create_agent(
         self,
         creation_utc: Optional[datetime] = None,
-    ) -> Agent:
-        pass
+    ) -> Agent: ...
 
     @abstractmethod
-    async def list_agents(self) -> Iterable[Agent]:
-        pass
+    async def list_agents(self) -> Iterable[Agent]: ...
 
     @abstractmethod
-    async def read_agent(self, agent_id: AgentId) -> Agent:
-        pass
+    async def read_agent(
+        self,
+        agent_id: AgentId,
+    ) -> Agent: ...
 
 
 class AgentDocumentStore(AgentStore):
-    def __init__(self, agent_collection: DocumentCollection[Agent]):
+    def __init__(
+        self,
+        agent_collection: DocumentCollection[Agent],
+    ):
         self.agent_collection = agent_collection
 
     async def create_agent(
@@ -49,8 +52,13 @@ class AgentDocumentStore(AgentStore):
         )
         return await self.agent_collection.add_document("agents", agent.id, agent)
 
-    async def list_agents(self) -> Iterable[Agent]:
+    async def list_agents(
+        self,
+    ) -> Iterable[Agent]:
         return await self.agent_collection.read_documents("agents")
 
-    async def read_agent(self, agent_id: AgentId) -> Agent:
+    async def read_agent(
+        self,
+        agent_id: AgentId,
+    ) -> Agent:
         return await self.agent_collection.read_document("agents", agent_id)
