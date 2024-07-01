@@ -2,26 +2,41 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from fastapi import FastAPI
 from lagom import Container
 from typing import Any, AsyncIterator
-import argparse
+import click
+import click_completion
 import json
 import pathlib
 import sys
+import rich
+from rich.text import Text
+from tabulate import tabulate
 import uvicorn
 
 from emcie.server.api.app import create_app
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.end_users import EndUserStore
-from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
 from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
 from emcie.server.core.tools import ToolStore
+from emcie.server.engines.alpha.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
+
+DEFAULT_PORT = 8000
+
+
+@dataclass
+class CLIParams:
+    config: dict[str, Any]
+    port: int
 
 
 async def load_agents(c: Container, config: Any) -> None:
@@ -76,50 +91,115 @@ async def load_app(config: Any) -> AsyncIterator[FastAPI]:
         yield await create_app(container)
 
 
-async def run_server(app: FastAPI, port: int) -> None:
+async def serve_app(app: FastAPI, port: int) -> None:
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
 
-async def main(port: int, config: Any) -> None:
-    async with load_app(config) as app:
+async def start_server(params: CLIParams) -> None:
+    async with load_app(params.config) as app:
         try:
-            await run_server(app, port)
+            await serve_app(app, params.port)
         except KeyboardInterrupt:
             pass
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Starts the Emcie API server.",
-    )
+async def check_coherence(params: CLIParams) -> None:
+    def render_guideline(g: Guideline) -> str:
+        return f"When {g.predicate}, then {g.content}"
 
-    parser.add_argument(
+    checker = CoherenceChecker()
+
+    for agent, guideline_specs in params.config["guidelines"].items():
+        guidelines = [
+            Guideline(
+                id=GuidelineId(str(index)),
+                creation_utc=datetime.now(timezone.utc),
+                predicate=guideline["when"],
+                content=guideline["then"],
+            )
+            for index, guideline in enumerate(guideline_specs)
+        ]
+
+        guidelines_by_id = {g.id: g for g in guidelines}
+
+        tests = [
+            t
+            for t in await checker.evaluate_coherence(
+                proposed_guidelines=guidelines,
+                existing_guidelines=[],
+            )
+            if t.severity >= 6
+        ]
+
+        if tests:
+            rich.print(Text(f'{len(tests)} issues found in "{agent}"\n', style="bold red"))
+            entries = [
+                {
+                    "existing": render_guideline(guidelines_by_id[t.existing_guideline_id]),
+                    "proposed": render_guideline(guidelines_by_id[t.proposed_guideline_id]),
+                    "issue": t.rationale,
+                    "severity": t.severity,
+                }
+                for t in tests
+            ]
+            rich.print(
+                tabulate(
+                    entries,
+                    headers="keys",
+                    maxcolwidths=[20, 20, 40, 10],
+                    tablefmt="rounded_grid",
+                )
+            )
+            rich.print()
+
+
+if __name__ == "__main__":
+    click_completion.init()
+
+    @click.group
+    @click.option(
         "-c",
-        "--config",
-        metavar="FILE",
+        "--config-file",
         type=str,
-        help="Emcie configuration file",
+        help="Server configuration file",
+        metavar="FILE",
         required=True,
     )
+    @click.pass_context
+    def cli(ctx: click.Context, config_file: str) -> None:
+        if not ctx.obj:
+            config_file_path = pathlib.Path(config_file)
 
-    parser.add_argument(
+            if not config_file_path.exists():
+                print(f"error: config file not found: {config_file_path}", file=sys.stderr)
+                exit(1)
+
+            with open(config_file_path, "r") as config_file:
+                config = json.load(config_file)
+
+                ctx.obj = CLIParams(
+                    config=config,
+                    port=DEFAULT_PORT,
+                )
+
+    @cli.command(help="Run the Emcie server")
+    @click.option(
         "-p",
         "--port",
         type=int,
-        help="API server port (default=8000)",
-        default=8000,
+        default=DEFAULT_PORT,
+        help="Server port",
     )
+    @click.pass_context
+    def run(ctx: click.Context, port: int) -> None:
+        ctx.obj.port = port
+        asyncio.run(start_server(ctx.obj))
 
-    args = parser.parse_args()
+    @cli.command(help="Check the configuration's validity and coherence")
+    @click.pass_context
+    def check(ctx: click.Context) -> None:
+        asyncio.run(check_coherence(ctx.obj))
 
-    config_file_path = pathlib.Path(args.config)
-
-    if not config_file_path.exists():
-        print(f"error: config file not found: {config_file_path}", file=sys.stderr)
-        exit(1)
-
-    with open(config_file_path, "r") as config_file:
-        config = json.load(config_file)
-        asyncio.run(main(args.port, config))
+    cli()
