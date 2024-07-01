@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, NewType, Optional
+
 from pydantic import ValidationError
 
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentCollection  # Adjusted import
+from emcie.server.core.persistence import DocumentDatabase, FieldFilter
 
 ToolId = NewType("ToolId", str)
 
@@ -56,9 +57,10 @@ class ToolStore(ABC):
 class ToolDocumentStore(ToolStore):
     def __init__(
         self,
-        tool_collection: DocumentCollection[Tool],
-    ):
-        self._collection = tool_collection
+        database: DocumentDatabase,
+    ) -> None:
+        self._database = database
+        self._collection_name = "tools"
 
     async def create_tool(
         self,
@@ -71,38 +73,42 @@ class ToolDocumentStore(ToolStore):
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
     ) -> Tool:
-        if not await self._is_tool_name_unique(tool_set, name):
+        if list(
+            await self._database.find(
+                collection=self._collection_name, filters={"name": FieldFilter(equal_to=name)}
+            )
+        ):
             raise ValidationError("Tool name must be unique within the tool set")
 
-        tool = Tool(
-            id=ToolId(common.generate_id()),
-            creation_utc=creation_utc or datetime.now(timezone.utc),
-            name=name,
-            module_path=module_path,
-            description=description,
-            parameters=parameters,
-            required=required,
-            consequential=consequential,
-        )
-        return await self._collection.add_document(tool_set, tool.id, tool)
+        tool_data = {
+            "tool_set": tool_set,
+            "name": name,
+            "module_path": module_path,
+            "description": description,
+            "parameters": parameters,
+            "required": required,
+            "creation_utc": creation_utc or datetime.now(timezone.utc),
+            "consequential": consequential,
+        }
+        inserted_tool = await self._database.insert_one(self._collection_name, tool_data)
+        return common.create_instance_from_dict(Tool, inserted_tool)
 
     async def list_tools(
         self,
         tool_set: str,
     ) -> Iterable[Tool]:
-        return await self._collection.read_documents(tool_set)
+        filters = {"tool_set": FieldFilter(equal_to=tool_set)}
+        tools = await self._database.find(self._collection_name, filters)
+        return (common.create_instance_from_dict(Tool, tool) for tool in tools)
 
     async def read_tool(
         self,
         tool_set: str,
         tool_id: ToolId,
     ) -> Tool:
-        return await self._collection.read_document(tool_set, tool_id)
-
-    async def _is_tool_name_unique(
-        self,
-        tool_set: str,
-        name: str,
-    ) -> bool:
-        tools = await self.list_tools(tool_set)
-        return all(tool.name != name for tool in tools)
+        filters = {
+            "tool_set": FieldFilter(equal_to=tool_set),
+            "id": FieldFilter(equal_to=tool_id),
+        }
+        tool = await self._database.find_one(self._collection_name, filters)
+        return common.create_instance_from_dict(Tool, tool)

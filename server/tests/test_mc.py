@@ -115,7 +115,7 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_pro
 ) -> None:
     event = await context.mc.post_client_event(
         session_id=session.id,
-        type=Event.MESSAGE_TYPE,
+        kind=Event.MESSAGE_TYPE,
         data={"message": "Hey there"},
     )
 

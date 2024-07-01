@@ -39,7 +39,7 @@ def events_to_json(events: Iterable[Event]) -> str:
 def event_to_dict(event: Event) -> dict[str, Any]:
     return {
         "id": event.id,
-        "type": event.type,
+        "kind": event.kind,
         "source": {
             "client": "user",
             "server": "assistant",

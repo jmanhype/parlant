@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentCollection
+from emcie.server.core.persistence import DocumentDatabase, FieldFilter
 
 GuidelineId = NewType("GuidelineId", str)
 
@@ -42,8 +42,9 @@ class GuidelineStore(ABC):
 
 
 class GuidelineDocumentStore(GuidelineStore):
-    def __init__(self, guideline_collection: DocumentCollection[Guideline]):
-        self._collection = guideline_collection
+    def __init__(self, database: DocumentDatabase):
+        self._database = database
+        self._collection_name = "guidelines"
 
     async def create_guideline(
         self,
@@ -52,16 +53,31 @@ class GuidelineDocumentStore(GuidelineStore):
         content: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline:
-        guideline = Guideline(
-            id=GuidelineId(common.generate_id()),
-            predicate=predicate,
-            content=content,
-            creation_utc=creation_utc or datetime.now(timezone.utc),
+        guideline_to_insert = {
+            "guideline_set": guideline_set,
+            "predicate": predicate,
+            "content": content,
+            "creation_utc": creation_utc or datetime.now(timezone.utc),
+        }
+        guideline = common.create_instance_from_dict(
+            Guideline,
+            await self._database.insert_one(self._collection_name, guideline_to_insert),
         )
-        return await self._collection.add_document(guideline_set, guideline.id, guideline)
+        return guideline
 
     async def list_guidelines(self, guideline_set: str) -> Iterable[Guideline]:
-        return await self._collection.read_documents(guideline_set)
+        filters = {"guideline_set": FieldFilter(equal_to=guideline_set)}
+        return (
+            common.create_instance_from_dict(Guideline, d)
+            for d in await self._database.find(self._collection_name, filters)
+        )
 
     async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
-        return await self._collection.read_document(guideline_set, guideline_id)
+        filters = {
+            "guideline_set": FieldFilter(equal_to=guideline_set),
+            "id": FieldFilter(equal_to=guideline_id),
+        }
+        guideline = common.create_instance_from_dict(
+            Guideline, await self._database.find_one(self._collection_name, filters)
+        )
+        return guideline

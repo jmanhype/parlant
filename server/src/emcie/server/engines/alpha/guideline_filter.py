@@ -183,16 +183,16 @@ state based on a stream of events.
 
     #### Example #1:
     - Interaction Events: ###
-    [{{"id": "MZC1H9iyYe", "type": "<message>", "source": "user", 
+    [{{"id": "MZC1H9iyYe", "kind": "<message>", "source": "user", 
     "data": {{"message": "Can I purchase a subscription to your software?"}},
-    {{"id": "F2oFNx_Ld8", "type": "<message>", "source": "assistant", 
+    {{"id": "F2oFNx_Ld8", "kind": "<message>", "source": "assistant", 
     "data": {{"message": "Absolutely, I can assist you with that right now."}},
-    {{"id": "dfI1jYAjqe", "type": "<message>", "source": "user",
+    {{"id": "dfI1jYAjqe", "kind": "<message>", "source": "user",
     "data": {{"message": "Please proceed with the subscription for the Pro plan."}},
-    {{"id": "2ZWfAC4xLf", "type": "<message>", "source": "assistant",
+    {{"id": "2ZWfAC4xLf", "kind": "<message>", "source": "assistant",
     "data": {{"message": "Your subscription has been successfully activated. 
     Is there anything else I can help you with?"}},
-    {{"id": "78oTChjBfM", "type": "<message>", "source": "user",
+    {{"id": "78oTChjBfM", "kind": "<message>", "source": "user",
     "data": {{"message": "Yes, can you tell me more about your data security policies?"}}]
     ###
     - Predicates: ###
@@ -219,13 +219,13 @@ state based on a stream of events.
     ```
 
     #### Example #2:
-    [{{"id": "P06dNR7ySO", "type": "<message>", "source": "user",
+    [{{"id": "P06dNR7ySO", "kind": "<message>", "source": "user",
     "data": {{"message": "I need to make this quick.
     Can you give me a brief overview of your pricing plans?"}},
-    {{"id": "bwZwM6YjfR", "type": "<message>", "source": "assistant",
+    {{"id": "bwZwM6YjfR", "kind": "<message>", "source": "assistant",
     "data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
     Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}},
-    {{"id": "bFKLDMthb2", "type": "<message>", "source": "user",
+    {{"id": "bFKLDMthb2", "kind": "<message>", "source": "user",
     "data": {{"message": "Tell me about the Pro plan."}},
     ###
     - Predicates: ###

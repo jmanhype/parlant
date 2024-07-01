@@ -387,7 +387,7 @@ def given_a_user_message(
         store.create_event(
             session_id=session.id,
             source="client",
-            type=Event.MESSAGE_TYPE,
+            kind=Event.MESSAGE_TYPE,
             data={"message": user_message},
         )
     )
@@ -412,7 +412,7 @@ def given_a_server_message(
         store.create_event(
             session_id=session.id,
             source="server",
-            type=Event.MESSAGE_TYPE,
+            kind=Event.MESSAGE_TYPE,
             data={"message": server_message},
         )
     )
@@ -437,7 +437,7 @@ def given_a_session_with_tool_event(
         store.create_event(
             session_id=session.id,
             source="server",
-            type=Event.TOOL_TYPE,
+            kind=Event.TOOL_TYPE,
             data=json.loads(tool_event_data),
         )
     )
@@ -468,14 +468,14 @@ def when_processing_is_triggered(
 def then_no_tools_events_are_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert 0 == len([e for e in produced_events if e.type == Event.TOOL_TYPE])
+    assert 0 == len([e for e in produced_events if e.kind == Event.TOOL_TYPE])
 
 
 @then("a single tool calls event is produced")
 def then_a_single_tool_event_is_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert 1 == len([e for e in produced_events if e.type == Event.TOOL_TYPE])
+    assert 1 == len([e for e in produced_events if e.kind == Event.TOOL_TYPE])
 
 
 @then(parsers.parse("the tool calls event contains {number_of_tool_calls:d} tool call(s)"))
@@ -483,7 +483,7 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     number_of_tool_calls: int,
     produced_events: list[ProducedEvent],
 ) -> None:
-    tool_calls_event = next(e for e in produced_events if e.type == Event.TOOL_TYPE)
+    tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_TYPE)
     assert number_of_tool_calls == len(tool_calls_event.data["tools_result"])
 
 
@@ -492,7 +492,7 @@ def then_the_tool_calls_event_contains_expected_content(
     expected_content: str,
     produced_events: list[ProducedEvent],
 ) -> None:
-    tool_calls_event = next(e for e in produced_events if e.type == Event.TOOL_TYPE)
+    tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_TYPE)
     tool_calls = tool_calls_event.data["tools_result"]
 
     assert nlp_test(
@@ -663,4 +663,4 @@ def then_no_events_are_produced(
 def then_a_single_message_event_is_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert len(list(filter(lambda e: e.type == Event.MESSAGE_TYPE, produced_events))) == 1
+    assert len(list(filter(lambda e: e.kind == Event.MESSAGE_TYPE, produced_events))) == 1

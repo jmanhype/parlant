@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture, mark
 
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.engines.alpha.coherence_checker import (
     CoherenceChecker,
@@ -14,6 +14,16 @@ from emcie.server.engines.alpha.coherence_checker import (
 )
 
 from tests.test_utilities import SyncAwaiter, nlp_test
+
+
+@fixture
+def agent_id(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    store = container[AgentStore]
+    agent = sync_await(store.create_agent(name="test-agent"))
+    return agent.id
 
 
 @dataclass

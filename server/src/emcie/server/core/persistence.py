@@ -4,142 +4,159 @@ from collections import defaultdict
 from datetime import datetime
 import json
 from pathlib import Path
-from typing import Any, Generic, Iterable, TypeVar
+import re
+from typing import Any, Iterable, TypedDict
 import aiofiles
 
-T = TypeVar("T")
+from emcie.server.core import common
 
 
-class DocumentCollection(ABC, Generic[T]):
+class FieldFilter(TypedDict, total=False):
+    equal_to: Any
+    not_equal_to: Any
+    greater_than: Any
+    less_than: Any
+    regex: str
+
+
+class DocumentDatabase(ABC):
+    @staticmethod
+    def _matches_filters(
+        filters: dict[str, FieldFilter],
+        candidate: dict[str, Any],
+    ) -> bool:
+        for field, conditions in filters.items():
+            value = candidate.get(field)
+            if conditions.get("equal_to") is not None and value != conditions["equal_to"]:
+                return False
+            if conditions.get("not_equal_to") is not None and value == conditions["not_equal_to"]:
+                return False
+            if conditions.get("greater_than") is not None and not (
+                value > conditions["greater_than"]
+            ):
+                return False
+            if conditions.get("less_than") is not None and not (value < conditions["less_than"]):
+                return False
+            if conditions.get("regex") is not None and not re.match(
+                conditions["regex"], str(value)
+            ):
+                return False
+        return True
+
     @abstractmethod
-    async def add_document(
+    async def insert_one(
         self,
         collection: str,
-        document_id: str,
-        document: T,
-    ) -> T: ...
+        document: dict[str, Any],
+    ) -> dict[str, Any]: ...
 
     @abstractmethod
-    async def read_documents(
+    async def find(
         self,
         collection: str,
-    ) -> Iterable[T]: ...
+        filters: dict[str, FieldFilter],
+    ) -> Iterable[dict[str, Any]]: ...
 
     @abstractmethod
-    async def read_document(
+    async def find_one(
         self,
         collection: str,
-        document_id: str,
-    ) -> T: ...
+        filters: dict[str, FieldFilter],
+    ) -> dict[str, Any]:
+        """
+        Returns the first document that matches the query criteria.
+        """
+
+    ...
 
     @abstractmethod
-    async def update_document(
+    async def update_one(
         self,
         collection: str,
-        document_id: str,
-        updated_document: T,
-    ) -> T: ...
+        filters: dict[str, FieldFilter],
+        updated_document: dict[str, Any],
+        upsert: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Updates the first document that matches the query criteria.
+        """
+        ...
 
     @abstractmethod
-    async def delete_document(
+    async def delete_one(
         self,
         collection: str,
-        document_id: str,
-    ) -> None: ...
-
-    @abstractmethod
-    async def delete_collection(
-        self,
-        collection: str,
-    ) -> None: ...
-
-    @abstractmethod
-    async def list_collections(
-        self,
-    ) -> Iterable[str]: ...
+        filters: dict[str, FieldFilter],
+    ) -> None:
+        """
+        Deletes the first document that matches the query criteria.
+        """
+        ...
 
     async def flush(self) -> None: ...
 
 
-class TransientDocumentCollection(DocumentCollection[T]):
+class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._document_store: dict[str, dict[str, T]] = defaultdict(dict)
+        self._collections: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-    async def add_document(
+    async def insert_one(
         self,
         collection: str,
-        document_id: str,
-        document: T,
-    ) -> T:
-        self._document_store[collection][document_id] = document
+        document: dict[str, Any],
+    ) -> dict[str, Any]:
+        doc_id = common.generate_id()
+        document["id"] = doc_id
+        self._collections[collection].append(document)
         return document
 
-    async def read_documents(
+    async def find(
         self,
         collection: str,
-    ) -> Iterable[T]:
-        return self._document_store[collection].values()
+        filters: dict[str, FieldFilter],
+    ) -> Iterable[dict[str, Any]]:
+        return filter(lambda d: self._matches_filters(filters, d), self._collections[collection])
 
-    async def read_document(
+    async def find_one(
         self,
         collection: str,
-        document_id: str,
-    ) -> T:
-        if document := self._document_store[collection].get(document_id):
+        filters: dict[str, FieldFilter],
+    ) -> dict[str, Any]:
+        matched_documents = list(await self.find(collection, filters))
+        if len(matched_documents) >= 1:
+            return matched_documents[0]
+        raise ValueError("No document found matching the provided filters.")
+
+    async def update_one(
+        self,
+        collection: str,
+        filters: dict[str, FieldFilter],
+        updated_document: dict[str, Any],
+        upsert: bool = False,
+    ) -> dict[str, Any]:
+        for i, d in enumerate(self._collections[collection]):
+            if self._matches_filters(filters, d):
+                self._collections[collection][i] = updated_document
+                return updated_document
+        if upsert:
+            document = await self.insert_one(collection, updated_document)
             return document
-        raise KeyError(f'Document "{document_id}" does not exist in collection "{collection}"')
 
-    async def update_document(
+        raise ValueError("No document found matching the provided filters.")
+
+    async def delete_one(
         self,
         collection: str,
-        document_id: str,
-        updated_document: T,
-    ) -> T:
-        if document_id in self._document_store[collection]:
-            self._document_store[collection][document_id] = updated_document
-            return updated_document
-        else:
-            raise KeyError(f'Document "{document_id}" does not exist in collection "{collection}"')
-
-    async def delete_document(
-        self,
-        collection: str,
-        document_id: str,
+        filters: dict[str, FieldFilter],
     ) -> None:
-        if document_id in self._document_store[collection]:
-            del self._document_store[collection][document_id]
-        else:
-            raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
-
-    async def delete_collection(
-        self,
-        collection: str,
-    ) -> None:
-        if collection in self._document_store:
-            del self._document_store[collection]
-        else:
-            raise KeyError(f'Collection "{collection}" not found')
-
-    async def list_collections(
-        self,
-    ) -> Iterable[str]:
-        return self._document_store.keys()
+        for i, d in enumerate(self._collections[collection]):
+            if self._matches_filters(filters, d):
+                del self._collections[collection][i]
+                return
+        raise ValueError("No document found matching the provided filters.")
 
 
-class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
-    def __init__(
-        self,
-        file_path: str,
-    ):
-        self.file_path = Path(file_path)
-        self._lock = asyncio.Lock()
-        if not self.file_path.exists():
-            self.file_path.write_text(json.dumps({}))
-
-    @property
-    def document_type(self) -> Any:
-        return self.__orig_class__.__args__[0]  # type: ignore
-
+class JSONFileDocumentDatabase(DocumentDatabase):
     class DateTimeEncoder(json.JSONEncoder):
         def default(
             self,
@@ -149,7 +166,13 @@ class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
                 return obj.isoformat()
             return json.JSONEncoder.default(self, obj)
 
-    def json_datetime_decoder(
+    def __init__(self, file_path: str) -> None:
+        self.file_path = Path(file_path)
+        self._lock = asyncio.Lock()
+        if not self.file_path.exists():
+            self.file_path.write_text(json.dumps({}))
+
+    def _json_datetime_decoder(
         self,
         data: Any,
     ) -> Any:
@@ -158,110 +181,102 @@ class JSONFileDocumentCollection(DocumentCollection[T], Generic[T]):
                 try:
                     data[key] = datetime.fromisoformat(value)
                 except ValueError:
-                    ...
+                    pass
         return data
 
     async def _load_data(
         self,
-    ) -> dict[str, Any]:
+    ) -> dict[str, list[dict[str, Any]]]:
         async with self._lock:
             async with aiofiles.open(self.file_path, "r") as file:
                 data = await file.read()
-                json_data: dict[str, Any] = json.loads(data, object_hook=self.json_datetime_decoder)
+                json_data: dict[str, Any] = json.loads(
+                    data, object_hook=self._json_datetime_decoder
+                )
                 return json_data
-
-    def _json_dumps(self, data: dict[str, dict[str, T]]) -> str:
-        return json.dumps(
-            data,
-            ensure_ascii=False,
-            indent=4,
-            cls=self.DateTimeEncoder,
-        )
 
     async def _save_data(
         self,
-        data: dict[str, dict[str, T]],
+        data: dict[str, list[dict[str, Any]]],
     ) -> None:
         async with self._lock:
             async with aiofiles.open(self.file_path, mode="w") as file:
-                json_string = self._json_dumps(data)
+                json_string = json.dumps(
+                    data,
+                    ensure_ascii=False,
+                    indent=4,
+                    cls=self.DateTimeEncoder,
+                )
                 await file.write(json_string)
 
-    def _document_from_dict(
-        self,
-        data: Any,
-    ) -> T:
-        return self.document_type(**data)  # type: ignore
-
-    async def add_document(
+    async def insert_one(
         self,
         collection: str,
-        document_id: str,
-        document: T,
-    ) -> T:
+        document: dict[str, Any],
+    ) -> dict[str, Any]:
+        doc_id = common.generate_id()
+        document["id"] = doc_id
+
         data = await self._load_data()
-        if collection not in data:
-            data[collection] = {}
-        data[collection][document_id] = document.__dict__
+
+        if collection in data:
+            data[collection].append(document)
+        else:
+            data[collection] = [document]
         await self._save_data(data)
+
         return document
 
-    async def read_documents(
+    async def find(
         self,
         collection: str,
-    ) -> Iterable[T]:
+        filters: dict[str, FieldFilter],
+    ) -> Iterable[dict[str, Any]]:
         data = await self._load_data()
-        return (self._document_from_dict(doc) for doc in data.get(collection, {}).values())
+        return filter(lambda doc: self._matches_filters(filters, doc), data.get(collection, []))
 
-    async def read_document(
+    async def find_one(
         self,
         collection: str,
-        document_id: str,
-    ) -> T:
+        filters: dict[str, FieldFilter],
+    ) -> dict[str, Any]:
+        matched_documents = list(await self.find(collection, filters))
+        if len(matched_documents) >= 1:
+            return matched_documents[0]
+        raise ValueError("No document found matching the provided filters.")
+
+    async def update_one(
+        self,
+        collection: str,
+        filters: dict[str, FieldFilter],
+        updated_document: dict[str, Any],
+        upsert: bool = False,
+    ) -> dict[str, Any]:
         data = await self._load_data()
-        document_data = data.get(collection, {}).get(document_id)
-        if document_data:
-            return self._document_from_dict(document_data)
-        raise KeyError(f"Document with id: {document_id} not found in collection '{collection}'.")
 
-    async def update_document(
+        for i, d in enumerate(data.get(collection, [])):
+            if self._matches_filters(filters, d):
+                data[collection][i] = updated_document
+                await self._save_data(data)
+                return updated_document
+        if upsert:
+            document = await self.insert_one(collection, updated_document)
+            return document
+        raise ValueError("No document found matching the provided filters.")
+
+    async def delete_one(
         self,
         collection: str,
-        document_id: str,
-        updated_document: T,
-    ) -> T:
-        data = await self._load_data()
-        if collection not in data or document_id not in data[collection]:
-            raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
-        data[collection][document_id] = updated_document.__dict__
-        await self._save_data(data)
-        return updated_document
-
-    async def delete_document(
-        self,
-        collection: str,
-        document_id: str,
+        filters: dict[str, FieldFilter],
     ) -> None:
         data = await self._load_data()
-        if collection in data and document_id in data[collection]:
-            del data[collection][document_id]
-            await self._save_data(data)
-        else:
-            raise KeyError(f'Document "{document_id}" not found in collection "{collection}"')
 
-    async def delete_collection(
-        self,
-        collection: str,
-    ) -> None:
-        data = await self._load_data()
-        if collection in data:
-            del data[collection]
-            await self._save_data(data)
-        else:
-            raise KeyError(f'Collection "{collection}" not found')
+        for i, d in enumerate(data.get(collection, [])):
+            if self._matches_filters(filters, d):
+                del data[collection][i]
+                await self._save_data(data)
+                return
+        raise ValueError("No document found matching the provided filters.")
 
-    async def list_collections(
-        self,
-    ) -> Iterable[str]:
-        data = await self._load_data()
-        return data.keys()
+    async def flush(self) -> None:
+        raise NotImplementedError

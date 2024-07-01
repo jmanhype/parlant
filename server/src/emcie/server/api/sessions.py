@@ -29,7 +29,7 @@ class CreateSessionResponse(DefaultBaseModel):
 
 
 class CreateMessageRequest(DefaultBaseModel):
-    type: str = Field(Event.MESSAGE_TYPE, description=f'Internal (leave as "{Event.MESSAGE_TYPE}")')
+    kind: str = Field(Event.MESSAGE_TYPE, description=f'Internal (leave as "{Event.MESSAGE_TYPE}")')
     content: str
 
 
@@ -57,7 +57,7 @@ class PatchSessionRequest(DefaultBaseModel):
 class EventDTO(DefaultBaseModel):
     id: EventId
     source: EventSource
-    type: str
+    kind: str
     offset: int
     creation_utc: datetime
     data: Dict[str, Any]
@@ -116,7 +116,7 @@ def create_router(
     ) -> CreateEventResponse:
         event = await mc.post_client_event(
             session_id=session_id,
-            type=request.type,
+            kind=request.kind,
             data={"message": request.content},
         )
 
@@ -149,7 +149,7 @@ def create_router(
                 EventDTO(
                     id=e.id,
                     source=e.source,
-                    type=e.type,
+                    kind=e.kind,
                     offset=e.offset,
                     creation_utc=e.creation_utc,
                     data=e.data,

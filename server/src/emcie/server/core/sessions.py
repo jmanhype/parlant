@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, Literal, NewType, Optional
+from typing import Any, Iterable, Literal, NewType, Optional
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core import common
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-
+from emcie.server.core.persistence import DocumentDatabase, FieldFilter
 
 SessionId = NewType("SessionId", str)
 EventId = NewType("EventId", str)
@@ -23,10 +23,10 @@ class Event:
 
     id: EventId
     source: EventSource
-    type: str
+    kind: str
     creation_utc: datetime
     offset: int
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 ConsumerId = Literal["client"]
@@ -38,35 +38,90 @@ class Session:
     id: SessionId
     end_user_id: EndUserId
     agent_id: AgentId
-    consumption_offsets: Dict[ConsumerId, int]
+    consumption_offsets: dict[ConsumerId, int]
 
 
-class SessionStore:
-    def __init__(
+class SessionStore(ABC):
+    @abstractmethod
+    async def create_session(
         self,
-    ) -> None:
-        self._sessions: Dict[SessionId, Session] = {}
-        self._events: Dict[SessionId, Dict[EventId, Event]] = {}
+        end_user_id: EndUserId,
+        agent_id: AgentId,
+    ) -> Session: ...
+
+    @abstractmethod
+    async def read_session(
+        self,
+        session_id: SessionId,
+    ) -> Session: ...
+
+    @abstractmethod
+    async def update_consumption_offset(
+        self,
+        session_id: SessionId,
+        consumer_id: ConsumerId,
+        new_offset: int,
+    ) -> None: ...
+
+    @abstractmethod
+    async def create_event(
+        self,
+        session_id: SessionId,
+        source: EventSource,
+        kind: str,
+        data: dict[str, Any],
+        creation_utc: Optional[datetime] = None,
+    ) -> Event: ...
+
+    @abstractmethod
+    async def list_events(
+        self,
+        session_id: SessionId,
+        source: Optional[EventSource] = None,
+        min_offset: Optional[int] = None,
+    ) -> Iterable[Event]: ...
+
+
+class SessionDocumentStore(SessionStore):
+    def __init__(self, database: DocumentDatabase):
+        self._database = database
+        self._session_collection_name = "sessions"
+        self._event_collection_name = "events"
 
     async def create_session(
         self,
         end_user_id: EndUserId,
         agent_id: AgentId,
     ) -> Session:
-        session_id = SessionId(common.generate_id())
-
-        self._sessions[session_id] = Session(
-            id=session_id,
-            end_user_id=end_user_id,
-            agent_id=agent_id,
-            consumption_offsets={"client": 0},
+        session_data = {
+            "end_user_id": end_user_id,
+            "agent_id": agent_id,
+            "consumption_offsets": {"client": 0},
+        }
+        inserted_session = await self._database.insert_one(
+            self._session_collection_name, session_data
         )
+        return common.create_instance_from_dict(Session, inserted_session)
 
-        self._events[session_id] = {}
-        return self._sessions[session_id]
+    async def read_session(
+        self,
+        session_id: SessionId,
+    ) -> Session:
+        filters = {"id": FieldFilter(equal_to=session_id)}
+        found_session = await self._database.find_one(self._session_collection_name, filters)
+        return common.create_instance_from_dict(Session, found_session)
 
-    async def read_session(self, session_id: SessionId) -> Session:
-        return self._sessions[session_id]
+    async def update_session(
+        self,
+        session_id: SessionId,
+        updated_session: Session,
+    ) -> None:
+        filters = {"id": FieldFilter(equal_to=session_id)}
+        await self._database.update_one(
+            self._session_collection_name,
+            filters,
+            updated_session.__dict__,
+        )
 
     async def update_consumption_offset(
         self,
@@ -74,29 +129,29 @@ class SessionStore:
         consumer_id: ConsumerId,
         new_offset: int,
     ) -> None:
-        self._sessions[session_id].consumption_offsets[consumer_id] = new_offset
+        session = await self.read_session(session_id)
+        session.consumption_offsets[consumer_id] = new_offset
+        await self.update_session(session_id, session)
 
     async def create_event(
         self,
         session_id: SessionId,
         source: EventSource,
-        type: str,
-        data: Dict[str, Any],
+        kind: str,
+        data: dict[str, Any],
         creation_utc: Optional[datetime] = None,
     ) -> Event:
-        event = Event(
-            id=EventId(common.generate_id()),
-            source=source,
-            type=type,
-            offset=len(self._events[session_id]),
-            data=data,
-            creation_utc=creation_utc or datetime.now(timezone.utc),
-        )
-
-        self._events[session_id][event.id] = event
-
-        await self.event_collection.add_document(session_id, event.id, event)
-        return event
+        session_events = await self.list_events(session_id)
+        event_data = {
+            "session_id": session_id,
+            "source": source,
+            "kind": kind,
+            "offset": len(list(session_events)),
+            "creation_utc": creation_utc or datetime.now(timezone.utc),
+            "data": data,
+        }
+        inserted_event = await self._database.insert_one(self._event_collection_name, event_data)
+        return common.create_instance_from_dict(Event, inserted_event)
 
     async def list_events(
         self,
@@ -104,15 +159,15 @@ class SessionStore:
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
     ) -> Iterable[Event]:
-        events = list(self._events[session_id].values())
-
-        if source:
-            events = [e for e in events if e.source == source]
-
-        if min_offset:
-            events = [e for e in events if e.offset >= min_offset]
-
-        return events
+        source_filter = {"source": FieldFilter(equal_to=source)} if source else {}
+        offset_filter = {"offset": FieldFilter(greater_than=min_offset - 1)} if min_offset else {}
+        filters = {
+            **{"session_id": FieldFilter(equal_to=session_id)},
+            **source_filter,
+            **offset_filter,
+        }
+        found_events = await self._database.find(self._event_collection_name, filters)
+        return (common.create_instance_from_dict(Event, event) for event in found_events)
 
 
 class SessionListener(ABC):
@@ -151,11 +206,3 @@ class PollingSessionListener(SessionListener):
                 return False
             else:
                 await timeout.wait_up_to(1)
-        all_events = await self.event_collection.read_documents(session_id)
-        filtered_events = [
-            e
-            for e in all_events
-            if (source is None or e.source == source)
-            and (min_offset is None or e.offset >= min_offset)
-        ]
-        return filtered_events

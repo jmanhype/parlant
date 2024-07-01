@@ -62,13 +62,13 @@ class MC:
     async def post_client_event(
         self,
         session_id: SessionId,
-        type: str,
+        kind: str,
         data: dict[str, Any],
     ) -> Event:
         event = await self._session_store.create_event(
             session_id=session_id,
             source="client",
-            type=type,
+            kind=kind,
             data=data,
         )
 
@@ -116,7 +116,7 @@ class MC:
             await self._session_store.create_event(
                 session_id=session_id,
                 source=e.source,
-                type=e.type,
+                kind=e.kind,
                 data=e.data,
                 creation_utc=utc_now,
             )
