@@ -133,6 +133,7 @@ class PollingSessionListener(SessionListener):
         session_id: SessionId,
         min_offset: int,
         timeout: Timeout,
+        # TODO: allow filtering based on type (e.g. to filter out tool events)
     ) -> bool:
         while True:
             events = list(

@@ -122,4 +122,4 @@ if __name__ == "__main__":
 
     with open(config_file_path, "r") as config_file:
         config = json.load(config_file)
-        asyncio.get_event_loop().run_until_complete(main(args.port, config))
+        asyncio.run(main(args.port, config))

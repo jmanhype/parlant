@@ -2,11 +2,6 @@
   "agents": ["Default Agent"],
 
   "guidelines": {
-    "Default Agent": [
-      {
-        "when": "talking about football (i.e. soccer)",
-        "then": "ask who's better, Messi or Ronaldo"
-      }
-    ]
+    "Default Agent": []
   }
 }
