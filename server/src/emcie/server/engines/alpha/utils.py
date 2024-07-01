@@ -28,7 +28,7 @@ def duration_logger(operation_name: str) -> Any:
         yield
     finally:
         t_end = time.time()
-        logger.info(f"{operation_name} took {round(t_end - t_start, 3)}s")
+        logger.debug(f"{operation_name} took {round(t_end - t_start, 3)}s")
 
 
 def events_to_json(events: Iterable[Event]) -> str:
