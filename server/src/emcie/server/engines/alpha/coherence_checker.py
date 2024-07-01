@@ -104,7 +104,10 @@ class ContradictionEvaluatorBase(ABC):
                     for batch in guideline_batches
                 ]
             )
-        with duration_logger(f"Evaluate {self.contradiction_type} for ({len(tasks)} batches)"):
+        with duration_logger(
+            f"Evaluating {self.contradiction_type} for {len(tasks)} "
+            f"batches (batch size={EVALUATION_BATCH_SIZE})"
+        ):
             contradictions = chain.from_iterable(await asyncio.gather(*tasks))
 
         distinct_contradictions = _filter_unique_contradictions(contradictions)
@@ -177,7 +180,7 @@ class ContradictionEvaluatorBase(ABC):
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
      {{
-         "{self.contradiction_response_outcome_key}": 
+         "{self.contradiction_response_outcome_key}":
             {result_structure}
      }}
      ```
