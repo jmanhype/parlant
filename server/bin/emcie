@@ -184,7 +184,7 @@ async def main() -> None:
                         break
 
             except KeyboardInterrupt:
-                rich.print("\nQuitting...")
+                rich.print("\nQuitting...", flush=True)
                 return
 
     cli()
