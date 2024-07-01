@@ -6,6 +6,7 @@ from pytest import fixture, Config
 
 from emcie.server.api.app import create_app
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from emcie.server.core.sessions import (
     PollingSessionListener,
@@ -47,6 +48,7 @@ async def container() -> AsyncIterator[Container]:
     container[ToolStore] = Singleton(ToolDocumentStore)
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
+    container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
     container[Engine] = AlphaEngine
