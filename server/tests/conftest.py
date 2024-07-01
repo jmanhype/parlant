@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, AsyncIterator, Dict
 from fastapi.testclient import TestClient
-from lagom import Container
+from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from emcie.server.api.app import create_app
@@ -40,8 +40,8 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
     container[SessionStore] = SessionStore()
     container[ToolStore] = ToolStore()
-    container[SessionListener] = PollingSessionListener
-    container[Engine] = AlphaEngine
+    container[SessionListener] = Singleton(PollingSessionListener)
+    container[Engine] = Singleton(AlphaEngine)
 
     async with MC(container) as mc:
         container[MC] = mc
