@@ -26,7 +26,7 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
 )
 from tests.test_utilities import SyncAwaiter
 
-TEST_CACHE_DIR = Path(__file__).resolve() / "test_cache"
+TEST_CACHE_DIR = Path(__file__).parent.resolve() / "test_cache"
 AGENT_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_agents.json"))
 SESSION_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_sessions.json"))
 TOOL_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_tools.json"))
