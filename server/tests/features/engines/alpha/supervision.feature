@@ -8,7 +8,7 @@ Feature: Supervision
         And a user message, "I believe there is an error with my last transaction. Can we process a refund?"
         And that the "freeze_transactions" guideline proposition has a priority of 10 because "An error in the last transaction occurred, which is unusual and raises concerns."
         And that the "process_refund" guideline proposition has a priority of 9 because "The customer explicitly requested a refund."
-        When message processing is triggered
+        When messages are produced
         Then the message should contain information that all transactions will be temporarily frozen and the refund will not be processed at this time.
 
     Scenario: Prioritizing transferring the upset customer to the manager over offering pizza
@@ -17,12 +17,12 @@ Feature: Supervision
         And a user message, "I came to eat some pizza, but the line was so long! I'm so upset!"
         And that the "selling_pizza" guideline proposition has a priority of 7 because "The conversation was initiated, indicating a new customer has arrived."
         And that the "customer_upset" guideline proposition has a priority of 8 because "The customer is visibly upset about the wait."
-        When message processing is triggered
+        When messages are produced
         Then the message should contain an apology and inform the customer about being transferred to the manager, explicitly omitting any offer to order pizza.
 
     Scenario: Adherence to guidelines without fabricating responses
         Given a guideline "account_related_questions", to respond to account-related questions about their account when users inquire about their account
         And a user message, "What's my account balance?"
         And that the "account_related_questions" guideline proposition has a priority of 10 because "User inquired about their account balance."
-        When message processing is triggered
+        When messages are produced
         Then the message should contain information that the account balance is not available.

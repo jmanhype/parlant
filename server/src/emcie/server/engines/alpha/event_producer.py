@@ -218,7 +218,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
             ],
             "followed_all_rules": false,
             "prioritized_some_rules_over_others": false,
-            "rules_broken_due_to_data": false
+            "rules_broken_due_to_prioritization": false
         }},
         ...,
         {{
@@ -232,7 +232,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
             "rules_broken": [],
             "followed_all_rules": true,
             "prioritized_some_rules_over_others": false,
-            "rules_broken_due_to_data": false
+            "rules_broken_due_to_prioritization": false
         }},
     ]
 }}
@@ -255,7 +255,7 @@ Example 3: A response where one rule was prioritized over another: ###
             "followed_all_rules": false,
             "prioritized_some_rules_over_others": true,
             "prioritization_rationale": "Given the higher priority score of Rule 2, maintaining food quality standards before serving the burger is prioritized over immediate service.",
-            "rules_broken_due_to_data": false
+            "rules_broken_due_to_prioritization": false
         }}
     ]
 }}
@@ -275,7 +275,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
                 "#1; Lacking menu data in the context prevented providing the client with drink information."
             ],
             "followed_all_rules": false,
-            "rules_broken_due_to_data": true
+            "rules_broken_due_to_prioritization": true
             "missing_data_details": "Menu data was missing",
             "prioritized_some_rules_over_others": false,
         }}

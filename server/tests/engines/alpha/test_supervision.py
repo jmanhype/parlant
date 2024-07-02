@@ -101,7 +101,7 @@ def given_a_guideline_to_when(
 
 @given(
     parsers.parse(
-        "that the {guideline_name} guideline proposition is with a priority of {score} because {rationale}"  # noqa
+        "that the {guideline_name} guideline proposition has a priority of {score} because {rationale}"  # noqa
     )
 )
 def given_a_guideline_proposition(
@@ -118,7 +118,7 @@ def given_a_guideline_proposition(
     )
 
 
-@when("message processing is triggered", target_fixture="produced_events")
+@when("messages are produced", target_fixture="produced_events")
 def when_processing_is_triggered(
     context: _TestContext,
 ) -> list[ProducedEvent]:
