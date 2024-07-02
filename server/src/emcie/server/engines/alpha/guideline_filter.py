@@ -95,7 +95,7 @@ class GuidelineProposer:
                 rationale=p["rationale"],
             )
             for p in guideline_propositions_json
-            if p["applies_score"] >= 8
+            if p["applies_score"] >= 7
         ]
 
         return guideline_propositions
