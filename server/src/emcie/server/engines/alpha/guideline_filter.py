@@ -90,12 +90,12 @@ class GuidelineProposer:
         logger.debug(f"Guideline filter batch result: {guideline_propositions_json}")
         guideline_propositions = [
             GuidelineProposition(
-                guideline=batch[int(r["predicate_number"]) - 1],
-                score=r["applies_score"],
-                rationale=r["rationale"],
+                guideline=batch[int(p["predicate_number"]) - 1],
+                score=p["applies_score"],
+                rationale=p["rationale"],
             )
-            for r in guideline_propositions_json
-            if r["applies_score"] >= 8
+            for p in guideline_propositions_json
+            if p["applies_score"] >= 8
         ]
 
         return guideline_propositions

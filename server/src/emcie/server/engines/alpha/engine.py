@@ -129,7 +129,7 @@ class AlphaEngine(Engine):
         guideline_tool_associations = list(
             await self.guideline_tool_association_store.list_associations()
         )
-        guideline_propositions_by_id = {r.guideline.id: r for r in guideline_propositions}
+        guideline_propositions_by_id = {p.guideline.id: p for p in guideline_propositions}
 
         relevant_associations = [
             a for a in guideline_tool_associations if a.guideline_id in guideline_propositions_by_id
