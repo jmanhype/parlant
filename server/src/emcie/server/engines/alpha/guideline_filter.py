@@ -1,7 +1,8 @@
 import asyncio
+from dataclasses import dataclass
 import json
 import jsonfinder  # type: ignore
-from typing import Iterable, TypedDict
+from typing import Iterable
 from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -15,21 +16,23 @@ from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 
 
-class GuidelineFilter:
-    class PredicateCheck(TypedDict):
-        guideline: Guideline
-        score: int
-        rationale: str
+@dataclass(frozen=True)
+class GuidelineProposition:
+    guideline: Guideline
+    score: int
+    rationale: str
 
+
+class GuidelineProposer:
     def __init__(self) -> None:
         self._llm_client = make_llm_client("openai")
 
-    async def find_relevant_guidelines(
+    async def propose_guidelines(
         self,
         guidelines: Iterable[Guideline],
         context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Iterable[Event],
-    ) -> Iterable[Guideline]:
+    ) -> Iterable[GuidelineProposition]:
         guideline_list = list(guidelines)
 
         if not guideline_list:
@@ -47,9 +50,9 @@ class GuidelineFilter:
                 for batch in batches
             ]
             batch_results = await asyncio.gather(*batch_tasks)
-            aggregated_checks = sum(batch_results, [])
+            propositions = sum(batch_results, [])
 
-        return [c["guideline"] for c in aggregated_checks]
+        return propositions
 
     def _create_batches(
         self,
@@ -72,7 +75,7 @@ class GuidelineFilter:
         context_variables: list[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: list[Event],
         batch: list[Guideline],
-    ) -> list[PredicateCheck]:
+    ) -> list[GuidelineProposition]:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -82,24 +85,20 @@ class GuidelineFilter:
         with duration_logger("Guideline batch filtering"):
             llm_response = await self._generate_llm_response(prompt)
 
-        predicate_checks = json.loads(llm_response)["checks"]
+        propositions_json = json.loads(llm_response)["checks"]
 
-        logger.debug(f"Guideline filter batch result: {predicate_checks}")
-
-        checks_by_index = {(int(c["predicate_number"]) - 1): c for c in predicate_checks}
-
-        relevant_checks_by_index = {
-            index: check for index, check in checks_by_index.items() if check["applies_score"] >= 8
-        }
-
-        return [
-            {
-                "guideline": batch[i],
-                "score": relevant_checks_by_index[i]["applies_score"],
-                "rationale": relevant_checks_by_index[i]["rationale"],
-            }
-            for i in relevant_checks_by_index
+        logger.debug(f"Guideline filter batch result: {propositions_json}")
+        propositions = [
+            GuidelineProposition(
+                guideline=batch[int(p["predicate_number"]) - 1],
+                score=p["applies_score"],
+                rationale=p["rationale"],
+            )
+            for p in propositions_json
+            if p["applies_score"] >= 7
         ]
+
+        return propositions
 
     def _format_prompt(
         self,
@@ -153,7 +152,7 @@ state based on a stream of events.
    a. Examine the provided interaction events to discern 
    the latest state of interaction between the user and the assistant.
    b. Determine the applicability of each predicate based on the most recent interaction state.
-     Note: There are exactly {len(guidelines)} predicates.
+      Note: There are exactly {len(guidelines)} predicates.
    c. Assign a relevance score to each predicate, from 1 to 10, where 10 denotes high relevance.
 
 3. **Output**:
@@ -164,15 +163,13 @@ state based on a stream of events.
         "checks": [
             {{
                 "predicate_number": "1",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>,
             }},
             ...
             {{
                 "predicate_number": "N",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS 
-                RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
                 "applies_score": <RELEVANCE SCORE>
             }}
         ]
@@ -251,7 +248,7 @@ state based on a stream of events.
         ]
     }}
     ```
-"""
+"""  # noqa
         return prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
