@@ -38,7 +38,7 @@ def propose_guidelines(
         for i, (source, message) in enumerate(conversation_context)
     ]
 
-    proposed_guidelines = context.sync_await(
+    guideline_propositions = context.sync_await(
         guideline_filter.propose_guidelines(
             guidelines=context.guidelines,
             context_variables=[],
@@ -46,7 +46,7 @@ def propose_guidelines(
         )
     )
 
-    return proposed_guidelines
+    return guideline_propositions
 
 
 def create_event_message(
@@ -206,8 +206,8 @@ def test_that_relevant_guidelines_are_proposed(
         if name in relevant_guideline_names
     ]
 
-    proposed_guidelines = propose_guidelines(context, conversation_context)
-    guidelines = [p.guideline for p in proposed_guidelines]
+    guideline_propositions = propose_guidelines(context, conversation_context)
+    guidelines = [p.guideline for p in guideline_propositions]
 
     for guideline in relevant_guidelines:
         assert guideline in guidelines
@@ -268,8 +268,8 @@ def test_that_irrelevant_guidelines_are_not_proposed(
         if name in irrelevant_guideline_names
     ]
 
-    proposed_guidelines = propose_guidelines(context, conversation_context)
-    guidelines = [p.guideline for p in proposed_guidelines]
+    guideline_propositions = propose_guidelines(context, conversation_context)
+    guidelines = [p.guideline for p in guideline_propositions]
 
     for guideline in guidelines:
         assert guideline not in irrelevant_guidelines

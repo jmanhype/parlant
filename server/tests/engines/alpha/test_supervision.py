@@ -101,10 +101,10 @@ def given_a_guideline_to_when(
 
 @given(
     parsers.parse(
-        "that the {guideline_name} guideline is proposed with a priority of {score} because {rationale}"  # noqa
+        "that the {guideline_name} guideline proposition is with a priority of {score} because {rationale}"  # noqa
     )
 )
-def given_a_proposed_guideline(
+def given_a_guideline_proposition(
     context: _TestContext,
     guideline_name: str,
     score: int,

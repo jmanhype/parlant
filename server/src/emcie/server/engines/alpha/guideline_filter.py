@@ -85,20 +85,20 @@ class GuidelineProposer:
         with duration_logger("Guideline batch filtering"):
             llm_response = await self._generate_llm_response(prompt)
 
-        proposed_guidelines_json = json.loads(llm_response)["checks"]
+        guideline_propositions_json = json.loads(llm_response)["checks"]
 
-        logger.debug(f"Guideline filter batch result: {proposed_guidelines_json}")
-        proposed_guidelines = [
+        logger.debug(f"Guideline filter batch result: {guideline_propositions_json}")
+        guideline_propositions = [
             GuidelineProposition(
                 guideline=batch[int(r["predicate_number"]) - 1],
                 score=r["applies_score"],
                 rationale=r["rationale"],
             )
-            for r in proposed_guidelines_json
+            for r in guideline_propositions_json
             if r["applies_score"] >= 8
         ]
 
-        return proposed_guidelines
+        return guideline_propositions
 
     def _format_prompt(
         self,
