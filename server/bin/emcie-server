@@ -81,7 +81,15 @@ async def load_guidelines(c: Container, config: Any) -> None:
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
     c = Container()
-    print(config)
+
+    if "server_home" not in config:
+        print(f"error: server_home must be specified", file=sys.stderr)
+        exit(1)
+
+    data_files_path = pathlib.Path(config["server_home"])
+    if not data_files_path.exists():
+        print(f"error: directory not found: {data_files_path.resolve()}", file=sys.stderr)
+        exit(1)
 
     c[AgentStore] = AgentDocumentStore(
         JSONFileDocumentDatabase(os.path.join(config["server_home"], "agents.json"))
