@@ -21,4 +21,4 @@ COPY bin /app/bin
 # Expose the port your app runs on
 EXPOSE 8000
 
-CMD ["poetry", "run", "python", "/app/bin/emcie-server", "-c", "/mnt/data/config.json"]
+CMD ["poetry", "run", "python", "/app/bin/emcie-server", "-c", "/mnt/data/config.json", "run"]
