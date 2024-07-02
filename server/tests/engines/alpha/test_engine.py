@@ -350,7 +350,7 @@ def given_a_session_with_a_single_user_message(
         store.create_event(
             session_id=new_session.id,
             source="client",
-            kind=Event.MESSAGE_TYPE,
+            kind=Event.MESSAGE_KIND,
             data={"message": "Hey there"},
         )
     )
@@ -370,7 +370,7 @@ def given_a_session_with_a_thirsty_user(
         store.create_event(
             session_id=new_session.id,
             source="client",
-            kind=Event.MESSAGE_TYPE,
+            kind=Event.MESSAGE_KIND,
             data={"message": "I'm thirsty"},
         )
     )
@@ -406,7 +406,7 @@ def given_a_session_with_a_few_messages(
             store.create_event(
                 session_id=new_session.id,
                 source=m["source"] == "server" and "server" or "client",
-                kind=Event.MESSAGE_TYPE,
+                kind=Event.MESSAGE_KIND,
                 data={"message": m["message"]},
             )
         )
@@ -444,7 +444,7 @@ def then_no_events_are_produced(
 def then_a_single_message_event_is_produced(
     produced_events: list[ProducedEvent],
 ) -> None:
-    assert len(list(filter(lambda e: e.kind == Event.MESSAGE_TYPE, produced_events))) == 1
+    assert len(list(filter(lambda e: e.kind == Event.MESSAGE_KIND, produced_events))) == 1
 
 
 @then(parsers.parse("the message contains {something}"))
@@ -452,7 +452,7 @@ def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
-    message = next(e for e in produced_events if e.kind == Event.MESSAGE_TYPE).data["message"]
+    message = next(e for e in produced_events if e.kind == Event.MESSAGE_KIND).data["message"]
 
     assert nlp_test(
         context=message,

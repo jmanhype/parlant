@@ -83,7 +83,7 @@ class MessageEventProducer:
             return [
                 ProducedEvent(
                     source="server",
-                    kind=Event.MESSAGE_TYPE,
+                    kind=Event.MESSAGE_KIND,
                     data={"message": response_message},
                 )
             ]
@@ -273,7 +273,7 @@ class ToolEventProducer:
         produced_tool_events.append(
             ProducedEvent(
                 source="server",
-                kind=Event.TOOL_TYPE,
+                kind=Event.TOOL_KIND,
                 data={"tools_result": tool_results},
             )
         )

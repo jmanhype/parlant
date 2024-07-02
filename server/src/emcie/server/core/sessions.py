@@ -18,8 +18,8 @@ EventSource = Literal["client", "server"]
 
 @dataclass(frozen=True)
 class Event:
-    MESSAGE_TYPE = "<message>"
-    TOOL_TYPE = "<tool>"
+    MESSAGE_KIND = "<message>"
+    TOOL_KIND = "<tool>"
 
     id: EventId
     source: EventSource

@@ -29,7 +29,7 @@ class CreateSessionResponse(DefaultBaseModel):
 
 
 class CreateMessageRequest(DefaultBaseModel):
-    kind: str = Field(Event.MESSAGE_TYPE, description=f'Internal (leave as "{Event.MESSAGE_TYPE}")')
+    kind: str = Field(Event.MESSAGE_KIND, description=f'Internal (leave as "{Event.MESSAGE_KIND}")')
     content: str
 
 

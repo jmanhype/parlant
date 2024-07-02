@@ -6,6 +6,7 @@ from pathlib import Path
 from lagom import Container
 from pytest import fixture
 import pytest
+
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
@@ -25,7 +26,16 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
 )
 from tests.test_utilities import SyncAwaiter
 
-JSON_TEST_FILES_PATH = "tests/engines/alpha/persistence/json_test_files/"
+TEST_CACHE_DIR = Path(__file__).resolve() / "test_cache"
+AGENT_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_agents.json"))
+SESSION_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_sessions.json"))
+TOOL_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_tools.json"))
+GUIDELINE_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_guidelines.json"))
+END_USER_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_end_users.json"))
+CONTEXT_VARIABLES_JSON_PATH = Path(os.path.join(TEST_CACHE_DIR, "test_context_variables.json"))
+GUIDELINE_TOOL_ASSOCIATION_JSON_PATH = Path(
+    os.path.join(TEST_CACHE_DIR, "test_guideline_tool_associations.json")
+)
 
 
 @fixture
@@ -51,111 +61,73 @@ def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) ->
 
 
 @fixture
-def agent_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_agents.json")
+def agent_store() -> AgentStore:
+    AGENT_JSON_PATH.unlink(missing_ok=True)
 
-
-@fixture
-def session_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_sessions.json")
-
-
-@fixture
-def tool_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_tools.json")
-
-
-@fixture
-def guideline_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_guidelines.json")
-
-
-@fixture
-def end_user_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_end_users.json")
-
-
-@fixture
-def context_variables_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_context_variables.json")
-
-
-@fixture
-def association_json_path() -> str:
-    return os.path.join(JSON_TEST_FILES_PATH, "test_guideline_tool_associations.json")
-
-
-@fixture
-def agent_store(agent_json_path: str) -> AgentStore:
-    file_path = Path(agent_json_path)
-    file_path.unlink(missing_ok=True)
-    agent_db: DocumentDatabase = JSONFileDocumentDatabase(agent_json_path)
+    agent_db: DocumentDatabase = JSONFileDocumentDatabase(str(AGENT_JSON_PATH.resolve()))
     return AgentDocumentStore(agent_db)
 
 
 @fixture
-def session_store(
-    session_json_path: str,
-) -> SessionStore:
-    session_file_path = Path(session_json_path)
-    session_file_path.unlink(missing_ok=True)
+def session_store() -> SessionStore:
+    SESSION_JSON_PATH.unlink(missing_ok=True)
 
-    session_db: DocumentDatabase = JSONFileDocumentDatabase(session_json_path)
+    session_db: DocumentDatabase = JSONFileDocumentDatabase(str(SESSION_JSON_PATH.resolve()))
     return SessionDocumentStore(session_db)
 
 
 @fixture
-def guideline_store(guideline_json_path: str) -> GuidelineStore:
-    file_path = Path(guideline_json_path)
-    file_path.unlink(missing_ok=True)
-    guideline_db: DocumentDatabase = JSONFileDocumentDatabase(guideline_json_path)
+def guideline_store() -> GuidelineStore:
+    GUIDELINE_JSON_PATH.unlink(missing_ok=True)
+
+    guideline_db: DocumentDatabase = JSONFileDocumentDatabase(str(GUIDELINE_JSON_PATH.resolve()))
     return GuidelineDocumentStore(guideline_db)
 
 
 @fixture
-def tool_store(tool_json_path: str) -> ToolStore:
-    file_path = Path(tool_json_path)
-    file_path.unlink(missing_ok=True)
-    tool_db: DocumentDatabase = JSONFileDocumentDatabase(tool_json_path)
+def tool_store() -> ToolStore:
+    TOOL_JSON_PATH.unlink(missing_ok=True)
+
+    tool_db: DocumentDatabase = JSONFileDocumentDatabase(str(TOOL_JSON_PATH.resolve()))
     return ToolDocumentStore(tool_db)
 
 
 @fixture
-def end_user_store(end_user_json_path: str) -> EndUserStore:
-    file_path = Path(end_user_json_path)
-    file_path.unlink(missing_ok=True)
-    end_user_db: DocumentDatabase = JSONFileDocumentDatabase(end_user_json_path)
+def end_user_store() -> EndUserStore:
+    END_USER_JSON_PATH.unlink(missing_ok=True)
+
+    end_user_db: DocumentDatabase = JSONFileDocumentDatabase(str(END_USER_JSON_PATH.resolve()))
     return EndUserDocumentStore(end_user_db)
 
 
 @fixture
-def context_variable_store(
-    context_variables_json_path: str,
-) -> ContextVariableStore:
-    file_path = Path(context_variables_json_path)
-    file_path.unlink(missing_ok=True)
+def context_variable_store() -> ContextVariableStore:
+    CONTEXT_VARIABLES_JSON_PATH.unlink(missing_ok=True)
 
-    variable_db: DocumentDatabase = JSONFileDocumentDatabase(context_variables_json_path)
+    variable_db: DocumentDatabase = JSONFileDocumentDatabase(
+        str(CONTEXT_VARIABLES_JSON_PATH.resolve())
+    )
     return ContextVariableDocumentStore(variable_db)
 
 
 @fixture
-def association_store(association_json_path: str) -> GuidelineToolAssociationDocumentStore:
-    file_path = Path(association_json_path)
-    file_path.unlink(missing_ok=True)
-    association_db: DocumentDatabase = JSONFileDocumentDatabase(association_json_path)
+def guideline_tool_association_store() -> GuidelineToolAssociationDocumentStore:
+    GUIDELINE_TOOL_ASSOCIATION_JSON_PATH.unlink(missing_ok=True)
+
+    association_db: DocumentDatabase = JSONFileDocumentDatabase(
+        str(GUIDELINE_TOOL_ASSOCIATION_JSON_PATH.resolve())
+    )
     return GuidelineToolAssociationDocumentStore(association_db)
 
 
 def test_agent_creation(
     context: _TestContext,
     agent_store: AgentDocumentStore,
-    agent_json_path: str,
 ) -> None:
     agent = context.sync_await(agent_store.create_agent(name="Test Agent"))
 
-    with open(agent_json_path) as _f:
-        agents_from_json = json.load(_f)
+    with open(AGENT_JSON_PATH) as f:
+        agents_from_json = json.load(f)
 
     assert len(agents_from_json["agents"]) == 1
     json_agent = agents_from_json["agents"][0]
@@ -185,7 +157,6 @@ def test_agent_retrieval(
 def test_session_creation(
     context: _TestContext,
     session_store: SessionStore,
-    session_json_path: str,
 ) -> None:
     end_user_id = EndUserId("test_user")
 
@@ -196,8 +167,8 @@ def test_session_creation(
         )
     )
 
-    with open(session_json_path) as _f:
-        sessions_from_json = json.load(_f)
+    with open(SESSION_JSON_PATH) as f:
+        sessions_from_json = json.load(f)
 
     assert len(sessions_from_json["sessions"]) == 1
     json_session = sessions_from_json["sessions"][0]
@@ -212,7 +183,6 @@ def test_session_creation(
 def test_event_creation(
     context: _TestContext,
     session_store: SessionStore,
-    session_json_path: str,
 ) -> None:
     end_user_id = EndUserId("test_user")
 
@@ -227,14 +197,14 @@ def test_event_creation(
         session_store.create_event(
             session_id=session.id,
             source="client",
-            kind=Event.MESSAGE_TYPE,
+            kind=Event.MESSAGE_KIND,
             data={"message": "Hello, world!"},
             creation_utc=datetime.now(timezone.utc),
         )
     )
 
-    with open(session_json_path) as _f:
-        events_from_json = json.load(_f)
+    with open(SESSION_JSON_PATH) as f:
+        events_from_json = json.load(f)
 
     assert len(events_from_json["events"]) == 1
     json_event = events_from_json["events"][0]
@@ -247,7 +217,6 @@ def test_event_creation(
 def test_guideline_creation(
     context: _TestContext,
     guideline_store: GuidelineStore,
-    guideline_json_path: str,
 ) -> None:
 
     guideline = context.sync_await(
@@ -258,8 +227,8 @@ def test_guideline_creation(
         )
     )
 
-    with open(guideline_json_path) as _f:
-        guidelines_from_json = json.load(_f)
+    with open(GUIDELINE_JSON_PATH) as f:
+        guidelines_from_json = json.load(f)
 
     assert len(guidelines_from_json) == 1
 
@@ -278,8 +247,8 @@ def test_guideline_creation(
         )
     )
 
-    with open(guideline_json_path) as _f:
-        guidelines_from_json = json.load(_f)
+    with open(GUIDELINE_JSON_PATH) as f:
+        guidelines_from_json = json.load(f)
 
     assert len(guidelines_from_json["guidelines"]) == 2
 
@@ -318,7 +287,6 @@ def test_guideline_retrieval(
 def test_tool_creation(
     context: _TestContext,
     tool_store: ToolStore,
-    tool_json_path: str,
 ) -> None:
 
     tool = context.sync_await(
@@ -333,8 +301,8 @@ def test_tool_creation(
         )
     )
 
-    with open(tool_json_path) as _f:
-        tools_from_json = json.load(_f)
+    with open(TOOL_JSON_PATH) as f:
+        tools_from_json = json.load(f)
 
     assert len(tools_from_json) == 1
     json_tool = tools_from_json["tools"][0]
@@ -375,14 +343,13 @@ def test_tool_retrieval(
 def test_end_user_creation(
     context: _TestContext,
     end_user_store: EndUserStore,
-    end_user_json_path: str,
 ) -> None:
     name = "Jane Doe"
     email = "jane.doe@example.com"
 
     created_user = context.sync_await(end_user_store.create_end_user(name=name, email=email))
 
-    with open(end_user_json_path, "r") as file:
+    with open(END_USER_JSON_PATH, "r") as file:
         data = json.load(file)
 
     assert len(data["end_users"]) == 1
@@ -409,7 +376,6 @@ def test_end_user_retrieval(
 def test_context_variable_creation(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
-    context_variables_json_path: str,
 ) -> None:
     tool_id = ToolId("test_tool")
     variable = context.sync_await(
@@ -422,8 +388,8 @@ def test_context_variable_creation(
         )
     )
 
-    with open(context_variables_json_path) as _f:
-        variables_from_json = json.load(_f)
+    with open(CONTEXT_VARIABLES_JSON_PATH) as f:
+        variables_from_json = json.load(f)
 
     assert len(variables_from_json["variables"]) == 1
     json_variable = variables_from_json["variables"][0]
@@ -437,7 +403,6 @@ def test_context_variable_creation(
 def test_context_variable_value_update_and_retrieval(
     context: _TestContext,
     context_variable_store: ContextVariableStore,
-    context_variables_json_path: str,
 ) -> None:
     tool_id = ToolId("test_tool")
     end_user_id = EndUserId("test_user")
@@ -460,8 +425,8 @@ def test_context_variable_value_update_and_retrieval(
         )
     )
 
-    with open(context_variables_json_path) as _f:
-        values_from_json = json.load(_f)
+    with open(CONTEXT_VARIABLES_JSON_PATH) as f:
+        values_from_json = json.load(f)
 
     assert len(values_from_json["values"]) == 1
     json_value = values_from_json["values"][0]
@@ -561,23 +526,24 @@ def test_context_variable_deletion(
         )
 
 
-def test_association_creation(
+def test_guideline_tool_association_creation(
     context: _TestContext,
-    association_store: GuidelineToolAssociationDocumentStore,
-    association_json_path: Path,
+    guideline_tool_association_store: GuidelineToolAssociationDocumentStore,
 ) -> None:
     guideline_id = GuidelineId("guideline-789")
     tool_id = ToolId("tool-012")
 
     context.sync_await(
-        association_store.create_association(guideline_id=guideline_id, tool_id=tool_id)
+        guideline_tool_association_store.create_association(
+            guideline_id=guideline_id, tool_id=tool_id
+        )
     )
 
-    with open(association_json_path, "r") as _f:
-        associations_from_json = json.load(_f)
+    with open(GUIDELINE_TOOL_ASSOCIATION_JSON_PATH, "r") as f:
+        guideline_tool_associations_from_json = json.load(f)
 
-    assert len(associations_from_json["associations"]) == 1
-    json_variable = associations_from_json["associations"][0]
+    assert len(guideline_tool_associations_from_json["associations"]) == 1
+    json_variable = guideline_tool_associations_from_json["associations"][0]
 
     assert json_variable["guideline_id"] == guideline_id
     assert json_variable["tool_id"] == tool_id

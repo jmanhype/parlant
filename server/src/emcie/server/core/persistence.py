@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
-from typing import Any, Iterable, TypedDict
+from typing import Any, Callable, Iterable, TypedDict
 import aiofiles
 
 from emcie.server.core import common
@@ -20,28 +20,6 @@ class FieldFilter(TypedDict, total=False):
 
 
 class DocumentDatabase(ABC):
-    @staticmethod
-    def _matches_filters(
-        filters: dict[str, FieldFilter],
-        candidate: dict[str, Any],
-    ) -> bool:
-        for field, conditions in filters.items():
-            value = candidate.get(field)
-            if conditions.get("equal_to") is not None and value != conditions["equal_to"]:
-                return False
-            if conditions.get("not_equal_to") is not None and value == conditions["not_equal_to"]:
-                return False
-            if conditions.get("greater_than") is not None and not (
-                value > conditions["greater_than"]
-            ):
-                return False
-            if conditions.get("less_than") is not None and not (value < conditions["less_than"]):
-                return False
-            if conditions.get("regex") is not None and not re.match(
-                conditions["regex"], str(value)
-            ):
-                return False
-        return True
 
     @abstractmethod
     async def insert_one(
@@ -96,6 +74,24 @@ class DocumentDatabase(ABC):
     async def flush(self) -> None: ...
 
 
+def _matches_filters(
+    conditions: dict[str, FieldFilter],
+    candidate: dict[str, Any],
+) -> bool:
+    tests: dict[str, Callable[[Any, Any], bool]] = {
+        "equal_to": lambda a, b: a == b,
+        "not_equal_to": lambda a, b: a != b,
+        "greater_than": lambda a, b: a > b,
+        "less_than": lambda a, b: a < b,
+        "regex": lambda a, b: bool(re.match(str(a), str(b))),
+    }
+    for field, field_filter in conditions.items():
+        for test_name, test_value in field_filter.items():
+            if not tests[test_name](test_value, candidate.get(field)):
+                return False
+    return True
+
+
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
         self._collections: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -115,7 +111,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> Iterable[dict[str, Any]]:
-        return filter(lambda d: self._matches_filters(filters, d), self._collections[collection])
+        return filter(lambda d: _matches_filters(filters, d), self._collections[collection])
 
     async def find_one(
         self,
@@ -135,7 +131,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         upsert: bool = False,
     ) -> dict[str, Any]:
         for i, d in enumerate(self._collections[collection]):
-            if self._matches_filters(filters, d):
+            if _matches_filters(filters, d):
                 self._collections[collection][i] = updated_document
                 return updated_document
         if upsert:
@@ -150,7 +146,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         filters: dict[str, FieldFilter],
     ) -> None:
         for i, d in enumerate(self._collections[collection]):
-            if self._matches_filters(filters, d):
+            if _matches_filters(filters, d):
                 del self._collections[collection][i]
                 return
         raise ValueError("No document found matching the provided filters.")
@@ -233,7 +229,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         filters: dict[str, FieldFilter],
     ) -> Iterable[dict[str, Any]]:
         data = await self._load_data()
-        return filter(lambda doc: self._matches_filters(filters, doc), data.get(collection, []))
+        return filter(lambda doc: _matches_filters(filters, doc), data.get(collection, []))
 
     async def find_one(
         self,
@@ -255,7 +251,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         data = await self._load_data()
 
         for i, d in enumerate(data.get(collection, [])):
-            if self._matches_filters(filters, d):
+            if _matches_filters(filters, d):
                 data[collection][i] = updated_document
                 await self._save_data(data)
                 return updated_document
@@ -272,7 +268,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         data = await self._load_data()
 
         for i, d in enumerate(data.get(collection, [])):
-            if self._matches_filters(filters, d):
+            if _matches_filters(filters, d):
                 del data[collection][i]
                 await self._save_data(data)
                 return
