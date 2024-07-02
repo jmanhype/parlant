@@ -134,6 +134,7 @@ def test_agent_creation(
     assert json_agent["id"] == agent.id
     assert json_agent["name"] == agent.name
     assert datetime.fromisoformat(json_agent["creation_utc"]) == agent.creation_utc
+    AGENT_JSON_PATH.unlink()
 
 
 def test_agent_retrieval(
@@ -178,6 +179,7 @@ def test_session_creation(
     assert json_session["consumption_offsets"] == {
         "client": 0,
     }
+    SESSION_JSON_PATH.unlink()
 
 
 def test_event_creation(
@@ -212,6 +214,7 @@ def test_event_creation(
     assert json_event["data"] == event.data
     assert json_event["source"] == event.source
     assert datetime.fromisoformat(json_event["creation_utc"]) == event.creation_utc
+    SESSION_JSON_PATH.unlink()
 
 
 def test_guideline_creation(
@@ -261,6 +264,7 @@ def test_guideline_creation(
         datetime.fromisoformat(second_json_guideline["creation_utc"])
         == second_guideline.creation_utc
     )
+    GUIDELINE_JSON_PATH.unlink()
 
 
 def test_guideline_retrieval(
@@ -314,6 +318,7 @@ def test_tool_creation(
     assert json_tool["parameters"] == tool.parameters
     assert json_tool["required"] == tool.required
     assert json_tool["consequential"] == tool.consequential
+    TOOL_JSON_PATH.unlink()
 
 
 def test_tool_retrieval(
@@ -357,6 +362,7 @@ def test_end_user_creation(
     assert json_end_user["name"] == name
     assert json_end_user["email"] == email
     assert datetime.fromisoformat(json_end_user["creation_utc"]) == created_user.creation_utc
+    END_USER_JSON_PATH.unlink()
 
 
 def test_end_user_retrieval(
@@ -398,6 +404,7 @@ def test_context_variable_creation(
     assert json_variable["name"] == variable.name
     assert json_variable["description"] == variable.description
     assert json_variable["tool_id"] == tool_id
+    CONTEXT_VARIABLES_JSON_PATH.unlink()
 
 
 def test_context_variable_value_update_and_retrieval(
@@ -434,6 +441,7 @@ def test_context_variable_value_update_and_retrieval(
     assert json_value["data"] == value.data
     assert json_value["variable_id"] == value.variable_id
     assert json_value["data"] == value.data
+    CONTEXT_VARIABLES_JSON_PATH.unlink()
 
 
 def test_context_variable_listing(
@@ -547,6 +555,7 @@ def test_guideline_tool_association_creation(
 
     assert json_variable["guideline_id"] == guideline_id
     assert json_variable["tool_id"] == tool_id
+    GUIDELINE_TOOL_ASSOCIATION_JSON_PATH.unlink()
 
 
 def test_guideline_tool_association_retrieval(
