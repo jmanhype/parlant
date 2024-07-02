@@ -5,16 +5,25 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from emcie.server.api.app import create_app
-from emcie.server.core.agents import AgentStore
-from emcie.server.core.context_variables import ContextVariableStore
-from emcie.server.core.end_users import EndUserStore
-from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
-from emcie.server.core.tools import ToolStore
+from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
+from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
+from emcie.server.core.sessions import (
+    PollingSessionListener,
+    SessionDocumentStore,
+    SessionListener,
+    SessionStore,
+)
+from emcie.server.core.tools import ToolDocumentStore, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
+from emcie.server.core.agents import AgentDocumentStore, AgentStore
+from emcie.server.core.persistence import DocumentDatabase, TransientDocumentDatabase
+from emcie.server.engines.alpha.guideline_tool_associations import (
+    GuidelineToolAssociationDocumentStore,
+    GuidelineToolAssociationStore,
+)
 
 from .test_utilities import SyncAwaiter
 
@@ -33,15 +42,16 @@ def test_config(pytestconfig: Config) -> Dict[str, Any]:
 async def container() -> AsyncIterator[Container]:
     container = Container(log_undefined_deps=True)
 
-    container[AgentStore] = AgentStore()
-    container[ContextVariableStore] = ContextVariableStore()
-    container[EndUserStore] = EndUserStore()
-    container[GuidelineStore] = GuidelineStore()
-    container[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
-    container[SessionStore] = SessionStore()
-    container[ToolStore] = ToolStore()
-    container[SessionListener] = Singleton(PollingSessionListener)
-    container[Engine] = Singleton(AlphaEngine)
+    container[DocumentDatabase] = TransientDocumentDatabase
+    container[AgentStore] = Singleton(AgentDocumentStore)
+    container[GuidelineStore] = Singleton(GuidelineDocumentStore)
+    container[ToolStore] = Singleton(ToolDocumentStore)
+    container[SessionStore] = Singleton(SessionDocumentStore)
+    container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
+    container[EndUserStore] = Singleton(EndUserDocumentStore)
+    container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
+    container[SessionListener] = PollingSessionListener
+    container[Engine] = AlphaEngine
 
     async with MC(container) as mc:
         container[MC] = mc

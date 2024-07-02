@@ -55,11 +55,11 @@ async def long_session_id(
 def make_event_params(
     source: EventSource,
     data: Dict[str, Any] = {},
-    type: str = "custom",
+    kind: str = "custom",
 ) -> Dict[str, Any]:
     return {
         "source": source,
-        "type": type,
+        "kind": kind,
         "creation_utc": str(datetime.now(timezone.utc)),
         "data": data,
     }
@@ -76,7 +76,7 @@ async def populate_session_id(
         await session_store.create_event(
             session_id=session_id,
             source=e["source"],
-            type=e["type"],
+            kind=e["type"],
             data=e["data"],
         )
 

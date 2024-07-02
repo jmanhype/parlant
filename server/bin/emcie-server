@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import os
 from fastapi import FastAPI
 from lagom import Container
 from typing import Any, AsyncIterator
@@ -18,15 +19,29 @@ from tabulate import tabulate
 import uvicorn
 
 from emcie.server.api.app import create_app
-from emcie.server.core.agents import AgentStore
-from emcie.server.core.context_variables import ContextVariableStore
-from emcie.server.core.end_users import EndUserStore
-from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
-from emcie.server.core.sessions import PollingSessionListener, SessionListener, SessionStore
-from emcie.server.core.tools import ToolStore
+from emcie.server.core.agents import AgentDocumentStore, AgentStore
+from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
+from emcie.server.core.guidelines import (
+    Guideline,
+    GuidelineDocumentStore,
+    GuidelineId,
+    GuidelineStore,
+)
+from emcie.server.core.persistence import JSONFileDocumentDatabase
+from emcie.server.core.sessions import (
+    PollingSessionListener,
+    SessionDocumentStore,
+    SessionListener,
+    SessionStore,
+)
+from emcie.server.core.tools import ToolDocumentStore, ToolStore
 from emcie.server.engines.alpha.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.guideline_tool_associations import GuidelineToolAssociationStore
+from emcie.server.engines.alpha.guideline_tool_associations import (
+    GuidelineToolAssociationDocumentStore,
+    GuidelineToolAssociationStore,
+)
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
 
@@ -67,13 +82,29 @@ async def load_guidelines(c: Container, config: Any) -> None:
 async def setup_container(config: Any) -> AsyncIterator[Container]:
     c = Container()
 
-    c[AgentStore] = AgentStore()
-    c[ContextVariableStore] = ContextVariableStore()
-    c[EndUserStore] = EndUserStore()
-    c[GuidelineStore] = GuidelineStore()
-    c[GuidelineToolAssociationStore] = GuidelineToolAssociationStore()
-    c[SessionStore] = SessionStore()
-    c[ToolStore] = ToolStore()
+    c[AgentStore] = AgentDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "agents.json"))
+    )
+    c[ContextVariableStore] = ContextVariableDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "context_variables.json"))
+    )
+    c[EndUserStore] = EndUserDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "end_users.json"))
+    )
+    c[GuidelineStore] = GuidelineDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "guidelines.json"))
+    )
+    c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
+        JSONFileDocumentDatabase(
+            os.path.join(config.server_home, "guideline_tool_associations.json")
+        )
+    )
+    c[SessionStore] = SessionDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "sessions.json"))
+    )
+    c[ToolStore] = ToolDocumentStore(
+        JSONFileDocumentDatabase(os.path.join(config.server_home, "tools.json"))
+    )
     c[SessionListener] = PollingSessionListener
     c[Engine] = AlphaEngine
 

@@ -15,7 +15,7 @@ class Context:
 @dataclass(frozen=True)
 class ProducedEvent:
     source: EventSource
-    type: str
+    kind: str
     data: dict[str, Any]
 
 

@@ -58,7 +58,7 @@ def create_event_message(
     event = Event(
         id=EventId(common.generate_id()),
         source=source,
-        type=Event.MESSAGE_TYPE,
+        kind=Event.MESSAGE_KIND,
         offset=offset,
         data={"message": message},
         creation_utc=datetime.now(timezone.utc),

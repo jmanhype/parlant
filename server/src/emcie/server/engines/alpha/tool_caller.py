@@ -51,7 +51,7 @@ def produced_tools_events_to_dict(
 
 def produced_tools_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
     return {
-        "type": produced_event.type,
+        "kind": produced_event.kind,
         "data": [
             tool_result_to_dict(tool_result) for tool_result in produced_event.data["tools_result"]
         ],
