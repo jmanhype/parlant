@@ -549,23 +549,23 @@ def test_guideline_tool_association_creation(
     assert json_variable["tool_id"] == tool_id
 
 
-def test_association_retrieval(
+def test_guideline_tool_association_retrieval(
     context: _TestContext,
-    association_store: GuidelineToolAssociationDocumentStore,
+    guideline_tool_association_store: GuidelineToolAssociationDocumentStore,
 ) -> None:
     guideline_id = GuidelineId("test_guideline")
     tool_id = ToolId("test_tool")
     creation_utc = datetime.now(timezone.utc)
 
     created_association = context.sync_await(
-        association_store.create_association(
+        guideline_tool_association_store.create_association(
             guideline_id=guideline_id,
             tool_id=tool_id,
             creation_utc=creation_utc,
         )
     )
 
-    associations = list(context.sync_await(association_store.list_associations()))
+    associations = list(context.sync_await(guideline_tool_association_store.list_associations()))
     assert len(associations) == 1
     retrieved_association = list(associations)[0]
 
