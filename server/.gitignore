@@ -2,5 +2,5 @@
 .pytest_cache
 .mypy_cache
 __pycache__
-tests/engines/core/persistence/test_cache/*.json
+tests/core/persistence/test_cache/*.json
 data/*.json
