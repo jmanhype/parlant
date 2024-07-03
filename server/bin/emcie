@@ -138,14 +138,15 @@ async def main() -> None:
         response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
         response.raise_for_status()
 
-        message_events = [e for e in response.json()["events"] if e["type"] == Event.MESSAGE_TYPE]
+        message_events = [e for e in response.json()["events"] if e["kind"] == Event.MESSAGE_KIND]
 
         max_number_of_history_events_to_show = 5
 
         if len(message_events) > max_number_of_history_events_to_show:
             rich.print(
-                f"[skipping {len(message_events) - max_number_of_history_events_to_show} "
-                "event(s) in history...]\n"
+                f"(skipping {len(message_events) - max_number_of_history_events_to_show} "
+                "event(s) in history...)\n",
+                flush=True,
             )
             message_events = message_events[-max_number_of_history_events_to_show:]
 
@@ -177,7 +178,7 @@ async def main() -> None:
                     last_known_offset = events[-1]["offset"]
 
                     if message_events := [
-                        e for e in response.json()["events"] if e["type"] == Event.MESSAGE_TYPE
+                        e for e in response.json()["events"] if e["kind"] == Event.MESSAGE_KIND
                     ]:
                         for m in message_events:
                             print_message(m)

@@ -160,7 +160,11 @@ class SessionDocumentStore(SessionStore):
         min_offset: Optional[int] = None,
     ) -> Iterable[Event]:
         source_filter = {"source": FieldFilter(equal_to=source)} if source else {}
-        offset_filter = {"offset": FieldFilter(greater_than=min_offset - 1)} if min_offset else {}
+        offset_filter = (
+            {"offset": FieldFilter(greater_than=min_offset - 1)}
+            if min_offset and min_offset > 0
+            else {}
+        )
         filters = {
             **{"session_id": FieldFilter(equal_to=session_id)},
             **source_filter,

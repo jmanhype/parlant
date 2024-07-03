@@ -75,19 +75,19 @@ class DocumentDatabase(ABC):
 
 
 def _matches_filters(
-    conditions: dict[str, FieldFilter],
+    field_filters: dict[str, FieldFilter],
     candidate: dict[str, Any],
 ) -> bool:
     tests: dict[str, Callable[[Any, Any], bool]] = {
-        "equal_to": lambda a, b: a == b,
-        "not_equal_to": lambda a, b: a != b,
-        "greater_than": lambda a, b: a > b,
-        "less_than": lambda a, b: a < b,
-        "regex": lambda a, b: bool(re.match(str(a), str(b))),
+        "equal_to": lambda candidate, filter_value: candidate == filter_value,
+        "not_equal_to": lambda candidate, filter_value: candidate != filter_value,
+        "greater_than": lambda candidate, filter_value: candidate > filter_value,
+        "less_than": lambda candidate, filter_value: candidate < filter_value,
+        "regex": lambda candidate, filter_value: bool(re.match(str(candidate), str(filter_value))),
     }
-    for field, field_filter in conditions.items():
-        for test_name, test_value in field_filter.items():
-            if not tests[test_name](test_value, candidate.get(field)):
+    for field, field_filter in field_filters.items():
+        for filter_name, filter_value in field_filter.items():
+            if not tests[filter_name](candidate.get(field), filter_value):
                 return False
     return True
 

@@ -53,7 +53,7 @@ def given_an_empty_session(
     session = context.sync_await(
         store.create_session(
             end_user_id=EndUserId("test_user"),
-            client_id="my_client",
+            agent_id=context.agent_id,
         )
     )
     return session.id
@@ -73,7 +73,7 @@ def given_a_user_message(
             store.create_event(
                 session_id=session.id,
                 source="client",
-                type=Event.MESSAGE_TYPE,
+                kind=Event.MESSAGE_KIND,
                 data={"message": user_message},
             )
         )
