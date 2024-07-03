@@ -11,7 +11,7 @@ from typing import Any, AsyncIterator
 import click
 import click_completion
 import json
-import pathlib
+from pathlib import Path
 import sys
 import rich
 from rich.text import Text
@@ -47,7 +47,7 @@ from emcie.server.mc import MC
 
 DEFAULT_PORT = 8000
 
-SERVER_HOME_DIR = pathlib.Path(os.environ.get("SERVER_HOME_DIR", "/var/lib/emcie"))
+SERVER_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
 SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -194,11 +194,12 @@ if __name__ == "__main__":
         help="Server configuration file",
         metavar="FILE",
         required=True,
+        default=SERVER_HOME_DIR / "config.json",
     )
     @click.pass_context
     def cli(ctx: click.Context, config_file: str) -> None:
         if not ctx.obj:
-            config_file_path = pathlib.Path(config_file)
+            config_file_path = Path(config_file)
 
             if not config_file_path.exists():
                 print(f"error: config file not found: {config_file_path}", file=sys.stderr)
