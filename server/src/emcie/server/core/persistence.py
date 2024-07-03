@@ -15,7 +15,9 @@ class FieldFilter(TypedDict, total=False):
     equal_to: Any
     not_equal_to: Any
     greater_than: Any
+    greater_than_or_equal_to: Any
     less_than: Any
+    less_than_or_equal_to: Any
     regex: str
 
 
@@ -82,7 +84,9 @@ def _matches_filters(
         "equal_to": lambda candidate, filter_value: candidate == filter_value,
         "not_equal_to": lambda candidate, filter_value: candidate != filter_value,
         "greater_than": lambda candidate, filter_value: candidate > filter_value,
+        "greater_than_or_equal_to": lambda candidate, filter_value: candidate >= filter_value,
         "less_than": lambda candidate, filter_value: candidate < filter_value,
+        "less_than_or_equal_to": lambda candidate, filter_value: candidate <= filter_value,
         "regex": lambda candidate, filter_value: bool(re.match(str(candidate), str(filter_value))),
     }
     for field, field_filter in field_filters.items():
