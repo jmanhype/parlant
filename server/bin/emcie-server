@@ -246,8 +246,8 @@ async def check_coherence(params: CLIParams) -> None:
             rich.print(Text(f'{len(tests)} issues found in "{agent}"\n', style="bold red"))
             entries = [
                 {
-                    "existing": render_guideline(guidelines_by_id[t.existing_guideline_id]),
-                    "proposed": render_guideline(guidelines_by_id[t.proposed_guideline_id]),
+                    "first": render_guideline(guidelines_by_id[t.proposed_guideline_id]),
+                    "second": render_guideline(guidelines_by_id[t.existing_guideline_id]),
                     "issue": t.rationale,
                     "severity": t.severity,
                 }
