@@ -23,9 +23,9 @@ async def create_app(container: Container) -> FastAPI:
         ),
     )
 
-    app.mount(
-        "/sessions",
-        sessions.create_router(
+    app.include_router(
+        prefix="/sessions",
+        router=sessions.create_router(
             mc=mc,
             session_store=session_store,
             session_listener=session_listener,

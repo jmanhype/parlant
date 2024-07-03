@@ -162,8 +162,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 return obj.isoformat()
             return json.JSONEncoder.default(self, obj)
 
-    def __init__(self, file_path: str) -> None:
-        self.file_path = Path(file_path)
+    def __init__(self, file_path: Path) -> None:
+        self.file_path = file_path
         self._lock = asyncio.Lock()
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))

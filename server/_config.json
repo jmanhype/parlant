@@ -1,4 +1,5 @@
 {
+  "server_home": "data/",
   "agents": ["Default Agent"],
 
   "guidelines": {

@@ -11,7 +11,7 @@ from typing import Any, AsyncIterator
 import click
 import click_completion
 import json
-import pathlib
+from pathlib import Path
 import sys
 import rich
 from rich.text import Text
@@ -47,6 +47,9 @@ from emcie.server.mc import MC
 
 DEFAULT_PORT = 8000
 
+SERVER_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
+SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+
 
 @dataclass
 class CLIParams:
@@ -56,9 +59,11 @@ class CLIParams:
 
 async def load_agents(c: Container, config: Any) -> None:
     store = c[AgentStore]
+    existing_agents = await store.list_agents()
 
     for agent_name in config["agents"]:
-        await store.create_agent(name=agent_name)
+        if not [a for a in existing_agents if a.name == agent_name]:
+            await store.create_agent(name=agent_name)
 
 
 async def load_guidelines(c: Container, config: Any) -> None:
@@ -80,31 +85,28 @@ async def load_guidelines(c: Container, config: Any) -> None:
 
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
+    for store_name in "guideline", "tools", "guideline_tool_associations", "context_variables":
+        (SERVER_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
+
     c = Container()
 
-    c[AgentStore] = AgentDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "agents.json"))
-    )
+    c[AgentStore] = AgentDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "agents.json"))
     c[ContextVariableStore] = ContextVariableDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "context_variables.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "context_variables.json")
     )
     c[EndUserStore] = EndUserDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "end_users.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "end_users.json")
     )
     c[GuidelineStore] = GuidelineDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "guidelines.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guidelines.json")
     )
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        JSONFileDocumentDatabase(
-            os.path.join(config.server_home, "guideline_tool_associations.json")
-        )
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guideline_tool_associations.json")
     )
     c[SessionStore] = SessionDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "sessions.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "sessions.json")
     )
-    c[ToolStore] = ToolDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config.server_home, "tools.json"))
-    )
+    c[ToolStore] = ToolDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "tools.json"))
     c[SessionListener] = PollingSessionListener
     c[Engine] = AlphaEngine
 
@@ -197,11 +199,12 @@ if __name__ == "__main__":
         help="Server configuration file",
         metavar="FILE",
         required=True,
+        default=SERVER_HOME_DIR / "config.json",
     )
     @click.pass_context
     def cli(ctx: click.Context, config_file: str) -> None:
         if not ctx.obj:
-            config_file_path = pathlib.Path(config_file)
+            config_file_path = Path(config_file)
 
             if not config_file_path.exists():
                 print(f"error: config file not found: {config_file_path}", file=sys.stderr)
