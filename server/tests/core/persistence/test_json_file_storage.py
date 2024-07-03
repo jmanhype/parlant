@@ -18,7 +18,7 @@ from emcie.server.core.guidelines import (
     GuidelineId,
     GuidelineStore,
 )
-from emcie.server.core.persistence import DocumentDatabase, JSONFileDocumentDatabase
+from emcie.server.core.persistence import JSONFileDocumentDatabase
 from emcie.server.core.sessions import Event, SessionDocumentStore, SessionStore
 from emcie.server.core.tools import ToolDocumentStore, ToolId, ToolStore
 from emcie.server.engines.alpha.guideline_tool_associations import (
@@ -62,7 +62,7 @@ def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) ->
 
 @fixture
 def agent_store() -> Iterator[AgentStore]:
-    agent_db = JSONFileDocumentDatabase(str(AGENTS_JSON_PATH.resolve()))
+    agent_db = JSONFileDocumentDatabase(AGENTS_JSON_PATH)
 
     try:
         yield AgentDocumentStore(agent_db)
@@ -72,7 +72,7 @@ def agent_store() -> Iterator[AgentStore]:
 
 @fixture
 def session_store() -> Iterator[SessionStore]:
-    session_db = JSONFileDocumentDatabase(str(SESSIONS_JSON_PATH.resolve()))
+    session_db = JSONFileDocumentDatabase(SESSIONS_JSON_PATH)
 
     try:
         yield SessionDocumentStore(session_db)
@@ -82,7 +82,7 @@ def session_store() -> Iterator[SessionStore]:
 
 @fixture
 def guideline_store() -> Iterator[GuidelineStore]:
-    guideline_db = JSONFileDocumentDatabase(str(GUIDELINES_JSON_PATH.resolve()))
+    guideline_db = JSONFileDocumentDatabase(GUIDELINES_JSON_PATH)
 
     try:
         yield GuidelineDocumentStore(guideline_db)
@@ -92,7 +92,7 @@ def guideline_store() -> Iterator[GuidelineStore]:
 
 @fixture
 def tool_store() -> Iterator[ToolStore]:
-    tool_db = JSONFileDocumentDatabase(str(TOOL_JSON_PATH.resolve()))
+    tool_db = JSONFileDocumentDatabase(TOOL_JSON_PATH)
 
     try:
         yield ToolDocumentStore(tool_db)
@@ -102,7 +102,7 @@ def tool_store() -> Iterator[ToolStore]:
 
 @fixture
 def end_user_store() -> Iterator[EndUserStore]:
-    end_user_db = JSONFileDocumentDatabase(str(END_USERS_JSON_PATH.resolve()))
+    end_user_db = JSONFileDocumentDatabase(END_USERS_JSON_PATH)
 
     try:
         yield EndUserDocumentStore(end_user_db)
@@ -112,7 +112,7 @@ def end_user_store() -> Iterator[EndUserStore]:
 
 @fixture
 def context_variable_store() -> Iterator[ContextVariableStore]:
-    variable_db = JSONFileDocumentDatabase(str(CONTEXT_VARIABLES_JSON_PATH.resolve()))
+    variable_db = JSONFileDocumentDatabase(CONTEXT_VARIABLES_JSON_PATH)
 
     try:
         yield ContextVariableDocumentStore(variable_db)
@@ -122,7 +122,7 @@ def context_variable_store() -> Iterator[ContextVariableStore]:
 
 @fixture
 def guideline_tool_association_store() -> Iterator[GuidelineToolAssociationDocumentStore]:
-    association_db = JSONFileDocumentDatabase(str(GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH.resolve()))
+    association_db = JSONFileDocumentDatabase(GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH)
 
     try:
         yield GuidelineToolAssociationDocumentStore(association_db)

@@ -47,6 +47,9 @@ from emcie.server.mc import MC
 
 DEFAULT_PORT = 8000
 
+SERVER_HOME_DIR = pathlib.Path(os.environ.get("SERVER_HOME_DIR", "/var/lib/emcie"))
+SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+
 
 @dataclass
 class CLIParams:
@@ -82,38 +85,23 @@ async def load_guidelines(c: Container, config: Any) -> None:
 async def setup_container(config: Any) -> AsyncIterator[Container]:
     c = Container()
 
-    if "server_home" not in config:
-        print(f"error: server_home must be specified", file=sys.stderr)
-        exit(1)
-
-    data_files_path = pathlib.Path(config["server_home"])
-    if not data_files_path.exists():
-        print(f"error: directory not found: {data_files_path.resolve()}", file=sys.stderr)
-        exit(1)
-
-    c[AgentStore] = AgentDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "agents.json"))
-    )
+    c[AgentStore] = AgentDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "agents.json"))
     c[ContextVariableStore] = ContextVariableDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "context_variables.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "context_variables.json")
     )
     c[EndUserStore] = EndUserDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "end_users.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "end_users.json")
     )
     c[GuidelineStore] = GuidelineDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "guidelines.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guidelines.json")
     )
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        JSONFileDocumentDatabase(
-            os.path.join(config["server_home"], "guideline_tool_associations.json")
-        )
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guideline_tool_associations.json")
     )
     c[SessionStore] = SessionDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "sessions.json"))
+        JSONFileDocumentDatabase(SERVER_HOME_DIR / "sessions.json")
     )
-    c[ToolStore] = ToolDocumentStore(
-        JSONFileDocumentDatabase(os.path.join(config["server_home"], "tools.json"))
-    )
+    c[ToolStore] = ToolDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "tools.json"))
     c[SessionListener] = PollingSessionListener
     c[Engine] = AlphaEngine
 
