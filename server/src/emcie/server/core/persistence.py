@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from collections import defaultdict
@@ -5,7 +6,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, TypedDict
+from typing import Any, Callable, Iterable, Optional, Type, TypedDict
 import aiofiles
 
 from emcie.server.core import common
@@ -100,6 +101,15 @@ class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
         self._collections: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
+    def load_collections(
+        self,
+        data: dict[str, list[dict[str, Any]]],
+    ) -> None:
+        self._collections.update(data)
+
+    def get_collections(self) -> dict[str, list[dict[str, Any]]]:
+        return self._collections
+
     async def insert_one(
         self,
         collection: str,
@@ -171,6 +181,21 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self._lock = asyncio.Lock()
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
+        self.transient_db: Optional[TransientDocumentDatabase]
+
+    async def __aenter__(self) -> JSONFileDocumentDatabase:
+        self.transient_db = TransientDocumentDatabase()
+        self.transient_db.load_collections(await self._load_data())
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[object],
+    ) -> bool:
+        await self.flush()
+        return False
 
     def _json_datetime_decoder(
         self,
@@ -214,6 +239,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         document: dict[str, Any],
     ) -> dict[str, Any]:
+        if self.transient_db:
+            return await self.transient_db.insert_one(collection, document)
         doc_id = common.generate_id()
         document["id"] = doc_id
 
@@ -232,6 +259,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> Iterable[dict[str, Any]]:
+        if self.transient_db:
+            return await self.transient_db.find(collection, filters)
         data = await self._load_data()
         return filter(lambda doc: _matches_filters(filters, doc), data.get(collection, []))
 
@@ -240,6 +269,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
+        if self.transient_db:
+            return await self.transient_db.find_one(collection, filters)
         matched_documents = list(await self.find(collection, filters))
         if len(matched_documents) >= 1:
             return matched_documents[0]
@@ -252,6 +283,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         updated_document: dict[str, Any],
         upsert: bool = False,
     ) -> dict[str, Any]:
+        if self.transient_db:
+            return await self.transient_db.update_one(collection, filters, updated_document, upsert)
         data = await self._load_data()
 
         for i, d in enumerate(data.get(collection, [])):
@@ -269,6 +302,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> None:
+        if self.transient_db:
+            return await self.transient_db.delete_one(collection, filters)
         data = await self._load_data()
 
         for i, d in enumerate(data.get(collection, [])):
@@ -279,4 +314,5 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         raise ValueError("No document found matching the provided filters.")
 
     async def flush(self) -> None:
-        raise NotImplementedError
+        if self.transient_db:
+            await self._save_data(self.transient_db.get_collections())
