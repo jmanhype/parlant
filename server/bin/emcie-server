@@ -48,8 +48,8 @@ from emcie.server.mc import MC
 
 DEFAULT_PORT = 8000
 
-SERVER_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
-SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
+EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 TOOL_NAME_TO_ID: dict[str, str] = {}
 
@@ -116,32 +116,25 @@ async def load_guidelines(c: Container, config: Any) -> None:
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
     for store_name in "guidelines", "tools", "guideline_tool_associations", "context_variables":
-        (SERVER_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
+        (EMCIE_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
-    c[SessionListener] = PollingSessionListener
-    c[Engine] = AlphaEngine
-
-    for loader in load_agents, load_tools, load_guidelines:
-        await loader(c, config)
 
     async with JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "agents.json"
+        EMCIE_HOME_DIR / "agents.json"
     ) as agents_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "context_variables.json"
+        EMCIE_HOME_DIR / "context_variables.json"
     ) as ctxs_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "end_users.json"
+        EMCIE_HOME_DIR / "end_users.json"
     ) as end_users_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "guidelines.json"
+        EMCIE_HOME_DIR / "guidelines.json"
     ) as guidelines_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "guideline_tool_associations.json"
+        EMCIE_HOME_DIR / "guideline_tool_associations.json"
     ) as gtas_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "sessions.json",
+        EMCIE_HOME_DIR / "sessions.json",
     ) as sessions_db, JSONFileDocumentDatabase(
-        SERVER_HOME_DIR / "tools.json"
-    ) as tools_db, MC(
-        c
-    ) as mc:
+        EMCIE_HOME_DIR / "tools.json"
+    ) as tools_db:
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(ctxs_db)
         c[EndUserStore] = EndUserDocumentStore(end_users_db)
@@ -149,8 +142,16 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(gtas_db)
         c[SessionStore] = SessionDocumentStore(sessions_db)
         c[ToolStore] = ToolDocumentStore(tools_db)
-        c[MC] = mc
-        yield c
+
+        c[SessionListener] = PollingSessionListener
+        c[Engine] = AlphaEngine
+
+        for loader in load_agents, load_guidelines:
+            await loader(c, config)
+
+        async with MC(c) as mc:
+            c[MC] = mc
+            yield c
 
 
 @asynccontextmanager
@@ -257,7 +258,7 @@ if __name__ == "__main__":
         help="Server configuration file",
         metavar="FILE",
         required=True,
-        default=SERVER_HOME_DIR / "config.json",
+        default=EMCIE_HOME_DIR / "config.json",
     )
     @click.pass_context
     def cli(ctx: click.Context, config_file: str) -> None:
