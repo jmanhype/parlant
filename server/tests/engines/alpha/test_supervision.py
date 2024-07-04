@@ -3,7 +3,7 @@ from typing import Literal
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
@@ -27,6 +27,16 @@ class _TestContext:
     guidelines: dict[str, Guideline]
     guideline_proposition: dict[str, GuidelineProposition]
     intercations_history: list[Event]
+
+
+@fixture
+def agent_id(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    store = container[AgentStore]
+    agent = sync_await(store.create_agent(name="test-agent"))
+    return agent.id
 
 
 @fixture
