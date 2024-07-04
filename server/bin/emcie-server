@@ -119,31 +119,36 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         (SERVER_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
-
-    c[AgentStore] = AgentDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "agents.json"))
-    c[ContextVariableStore] = ContextVariableDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "context_variables.json")
-    )
-    c[EndUserStore] = EndUserDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "end_users.json")
-    )
-    c[GuidelineStore] = GuidelineDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guidelines.json")
-    )
-    c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guideline_tool_associations.json")
-    )
-    c[SessionStore] = SessionDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "sessions.json")
-    )
-    c[ToolStore] = ToolDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "tools.json"))
     c[SessionListener] = PollingSessionListener
     c[Engine] = AlphaEngine
 
     for loader in load_agents, load_tools, load_guidelines:
         await loader(c, config)
 
-    async with MC(c) as mc:
+    async with JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "agents.json"
+    ) as agents_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "context_variables.json"
+    ) as ctxs_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "end_users.json"
+    ) as end_users_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "guidelines.json"
+    ) as guidelines_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "guideline_tool_associations.json"
+    ) as gtas_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "sessions.json",
+    ) as sessions_db, JSONFileDocumentDatabase(
+        SERVER_HOME_DIR / "tools.json"
+    ) as tools_db, MC(
+        c
+    ) as mc:
+        c[AgentStore] = AgentDocumentStore(agents_db)
+        c[ContextVariableStore] = ContextVariableDocumentStore(ctxs_db)
+        c[EndUserStore] = EndUserDocumentStore(end_users_db)
+        c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
+        c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(gtas_db)
+        c[SessionStore] = SessionDocumentStore(sessions_db)
+        c[ToolStore] = ToolDocumentStore(tools_db)
         c[MC] = mc
         yield c
 
