@@ -76,6 +76,7 @@ class MessageEventProducer:
         ):
             # No interaction and no guidelines that could trigger
             # a proactive start of the interaction
+            logger.debug("Skipping response; interaction is empty and there are no guidelines")
             return []
 
         prompt = self._format_prompt(
@@ -94,6 +95,8 @@ class MessageEventProducer:
                     data={"message": response_message},
                 )
             ]
+        else:
+            logger.debug("Skipping response; no response deemed necessary")
 
         return []
 
@@ -119,25 +122,14 @@ class MessageEventProducer:
         prompt = ""
 
         if interaction_history:
-            prompt += f"""
-The following is a list of events describing a back-and-forth 
+            prompt += f"""\
+The following is a list of events describing a back-and-forth
 interaction between you, an AI assistant, and a user: ###
 {interaction_events_json}
 ###
 """
 
         else:
-            prompt += """
-You, an AI assistant, are currently engaged at the start of an online session with a user.
-The interaction has yet to be initiated by either party.
-
-- Decision Criteria for Initiating Interaction:
-A. If the rules below both apply to the context, as well as suggest that you should say something
-to the user, then you should indeed initiate the interaction now.
-B. Otherwise, if no reason is provided that suggests you should say something to the user,
-then you should not initiate the interaction. Produce no response in this case.
-###
-"""
             prompt += """\
 You, an AI assistant, are now present in an online session with a user.
 An interaction may or may not now be initiated by you, addressing the user.
@@ -148,6 +140,7 @@ to the user, then you should indeed initiate the interaction now.
 B. Otherwise, if no reason is provided that suggests you should say something to the user,
 then you should not initiate the interaction. Produce no response in this case.
 """
+
         if context_variables:
             prompt += f"""
 The following is information that you're given about the user and context of the interaction: ###
@@ -158,12 +151,13 @@ The following is information that you're given about the user and context of the
         if rules:
             prompt += f"""
 In formulating your response, you are required to follow these rules,
-which are applicable to the latest state of the interaction. 
-Each rule is accompanied by a priority score indicating its significance, 
+which are applicable to the latest state of the interaction.
+Each rule is accompanied by a priority score indicating its significance,
 and a rationale explaining why it is applicable: ###
 {rules}
 ###
 """
+
         prompt += """
 You must generate your response message to the current
 (latest) state of the interaction.
@@ -176,19 +170,36 @@ to assist you with generating your response message while following the rules ab
 {staged_events_as_dict}
 ###
 """
-        prompt += f"""
-Propose revisions to the message content, 
-ensuring that your proposals adhere to each and every one of the provided rules based on the most recent state of interaction. 
-Consider the priority scores assigned to each rule, acknowledging that in some cases, adherence to a higher-priority rule may necessitate deviation from another. 
+
+        if not rules:
+            prompt += """
+Produce a valid JSON object in the following format: ###
+{{
+    "produced_response": true,
+    "rationale": "<a few words to justify why you decided to respond in this way>",
+    "revisions": [
+        {
+            "content": "<your message here>",
+            "followed_all_rules": true
+        }
+    ]
+}}
+###
+"""
+        else:
+            prompt += f"""
+Propose revisions to the message content,
+ensuring that your proposals adhere to each and every one of the provided rules based on the most recent state of interaction.
+Consider the priority scores assigned to each rule, acknowledging that in some cases, adherence to a higher-priority rule may necessitate deviation from another.
 Additionally, recognize that if a rule cannot be adhered to due to lack of necessary context or data, this must be clearly justified in your response.
 
-Continuously critique each revision to refine the response. 
+Continuously critique each revision to refine the response.
 Ensure each critique is unique to prevent redundancy in the revision process.
 
-Your final output should be a JSON object documenting the entire message development process. 
-This document should detail how each rule was adhered to, 
-instances where one rule was prioritized over another, 
-situations where rules could not be followed due to lack of context or data, 
+Your final output should be a JSON object documenting the entire message development process.
+This document should detail how each rule was adhered to,
+instances where one rule was prioritized over another,
+situations where rules could not be followed due to lack of context or data,
 and the rationale for each decision made during the revision process.
 
 Produce a valid JSON object in the format according to the following examples.
@@ -302,7 +313,12 @@ Example 4: Non-Adherence Due to Missing Data: ###
 
         final_revision = json_content["revisions"][-1]
 
-        if not final_revision["followed_all_rules"]:
+        followed_all_rules = final_revision.get("followed_all_rules", False)
+        rules_broken_due_to_prioritization = final_revision.get(
+            "rules_broken_due_to_prioritization", False
+        )
+
+        if not followed_all_rules and not rules_broken_due_to_prioritization:
             logger.warning(f"PROBLEMATIC RESPONSE: {content}")
 
         return str(final_revision["content"])
@@ -327,15 +343,17 @@ class ToolEventProducer:
 
         produced_tool_events: list[ProducedEvent] = []
 
-        tool_calls = await self.tool_caller.infer_tool_calls(
-            context_variables,
-            interaction_history,
-            ordinary_guidelines,
-            tool_enabled_guidelines,
-            produced_tool_events,
+        tool_calls = list(
+            await self.tool_caller.infer_tool_calls(
+                context_variables,
+                interaction_history,
+                ordinary_guidelines,
+                tool_enabled_guidelines,
+                produced_tool_events,
+            )
         )
 
-        tools = chain(*tool_enabled_guidelines.values())
+        tools = list(chain(*tool_enabled_guidelines.values()))
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,
@@ -349,7 +367,7 @@ class ToolEventProducer:
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tools_result": tool_results},
+                data={"tool_result": tool_results},
             )
         )
 

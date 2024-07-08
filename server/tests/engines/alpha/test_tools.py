@@ -249,7 +249,6 @@ def given_a_tool(
         required: list[str],
     ) -> Tool:
         return await tool_store.create_tool(
-            tool_set=agent_id,
             name=name,
             module_path=module_path,
             description=description,
@@ -484,7 +483,7 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    assert number_of_tool_calls == len(tool_calls_event.data["tools_result"])
+    assert number_of_tool_calls == len(tool_calls_event.data["tool_result"])
 
 
 @then(parsers.parse("the tool calls event contains {expected_content}"))
@@ -493,7 +492,7 @@ def then_the_tool_calls_event_contains_expected_content(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    tool_calls = tool_calls_event.data["tools_result"]
+    tool_calls = tool_calls_event.data["tool_result"]
 
     assert nlp_test(
         context=f"The following is the result of tool (function) calls: {tool_calls}",

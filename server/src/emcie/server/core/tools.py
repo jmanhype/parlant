@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, NewType, Optional
+from typing import Iterable, Literal, NewType, Optional, TypedDict
+from typing_extensions import NotRequired
 
 from pydantic import ValidationError
 
@@ -11,6 +12,11 @@ from emcie.server.core.persistence import DocumentDatabase, FieldFilter
 ToolId = NewType("ToolId", str)
 
 
+class ToolParameter(TypedDict):
+    type: Literal["string", "number", "integer", "boolean", "array", "object"]
+    description: NotRequired[str]
+
+
 @dataclass(frozen=True)
 class Tool:
     id: ToolId
@@ -18,7 +24,7 @@ class Tool:
     name: str
     module_path: str
     description: str
-    parameters: dict[str, Any]
+    parameters: dict[str, ToolParameter]
     required: list[str]
     consequential: bool
 
@@ -30,11 +36,10 @@ class ToolStore(ABC):
     @abstractmethod
     async def create_tool(
         self,
-        tool_set: str,
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, Any],
+        parameters: dict[str, ToolParameter],
         required: list[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
@@ -43,13 +48,11 @@ class ToolStore(ABC):
     @abstractmethod
     async def list_tools(
         self,
-        tool_set: str,
     ) -> Iterable[Tool]: ...
 
     @abstractmethod
     async def read_tool(
         self,
-        tool_set: str,
         tool_id: ToolId,
     ) -> Tool: ...
 
@@ -64,11 +67,10 @@ class ToolDocumentStore(ToolStore):
 
     async def create_tool(
         self,
-        tool_set: str,
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, Any],
+        parameters: dict[str, ToolParameter],
         required: list[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
@@ -81,7 +83,6 @@ class ToolDocumentStore(ToolStore):
             raise ValidationError("Tool name must be unique within the tool set")
 
         tool_data = {
-            "tool_set": tool_set,
             "name": name,
             "module_path": module_path,
             "description": description,
@@ -95,19 +96,15 @@ class ToolDocumentStore(ToolStore):
 
     async def list_tools(
         self,
-        tool_set: str,
     ) -> Iterable[Tool]:
-        filters = {"tool_set": FieldFilter(equal_to=tool_set)}
-        tools = await self._database.find(self._collection_name, filters)
+        tools = await self._database.find(self._collection_name, {})
         return (common.create_instance_from_dict(Tool, tool) for tool in tools)
 
     async def read_tool(
         self,
-        tool_set: str,
         tool_id: ToolId,
     ) -> Tool:
         filters = {
-            "tool_set": FieldFilter(equal_to=tool_set),
             "id": FieldFilter(equal_to=tool_id),
         }
         tool = await self._database.find_one(self._collection_name, filters)

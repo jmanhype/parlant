@@ -167,16 +167,24 @@ async def main() -> None:
 
                 last_known_offset = new_event["event_offset"]
 
-                while response := requests.get(
-                    urljoin(
-                        ctx.obj.server_address,
-                        f"sessions/{session_id}/events"
-                        f"?min_offset={1 + last_known_offset}&wait=true",
+                while True:
+                    response = requests.get(
+                        urljoin(
+                            ctx.obj.server_address,
+                            f"sessions/{session_id}/events"
+                            f"?min_offset={1 + last_known_offset}&wait=true",
+                        )
                     )
-                ):
+
+                    if response.status_code == 504:
+                        # Timeout occurred; try again
+                        continue
+
                     events = response.json()["events"]
                     last_known_offset = events[-1]["offset"]
 
+                    # TODO: This current implementation does not support async polling mode,
+                    #       but rather relies on request/response, which isn't comprehensive.
                     if message_events := [
                         e for e in response.json()["events"] if e["kind"] == Event.MESSAGE_KIND
                     ]:

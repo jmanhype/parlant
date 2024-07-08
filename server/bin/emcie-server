@@ -50,6 +50,11 @@ DEFAULT_PORT = 8000
 SERVER_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
 SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
+TOOL_NAME_TO_ID: dict[str, str] = {}
+
+
+sys.path.append(SERVER_HOME_DIR.as_posix())
+
 
 @dataclass
 class CLIParams:
@@ -66,26 +71,49 @@ async def load_agents(c: Container, config: Any) -> None:
             await store.create_agent(name=agent_name)
 
 
+async def load_tools(c: Container, config: Any) -> None:
+    tool_store = c[ToolStore]
+
+    for tool_name, tool in config["tools"].items():
+        tool = await tool_store.create_tool(
+            name=tool["function_name"],
+            module_path=tool["module_path"],
+            description=tool["description"],
+            parameters=tool["parameters"],
+            required=tool["required"],
+            consequential=False,
+        )
+
+        TOOL_NAME_TO_ID[tool_name] = tool.id
+
+
 async def load_guidelines(c: Container, config: Any) -> None:
     agent_store = c[AgentStore]
     guideline_store = c[GuidelineStore]
+    guideline_tool_association_store = c[GuidelineToolAssociationStore]
 
     agents = await agent_store.list_agents()
 
     for agent_name, guidelines in config["guidelines"].items():
         agent_id = next(a.id for a in agents if a.name == agent_name)
 
-        for g in guidelines:
-            await guideline_store.create_guideline(
+        for guideline_spec in guidelines:
+            guideline = await guideline_store.create_guideline(
                 guideline_set=agent_id,
-                predicate=g["when"],
-                content=g["then"],
+                predicate=guideline_spec["when"],
+                content=guideline_spec["then"],
             )
+
+            for tool_name in guideline_spec.get("enabled_tools", []):
+                await guideline_tool_association_store.create_association(
+                    guideline_id=guideline.id,
+                    tool_id=TOOL_NAME_TO_ID[tool_name],
+                )
 
 
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
-    for store_name in "guideline", "tools", "guideline_tool_associations", "context_variables":
+    for store_name in "guidelines", "tools", "guideline_tool_associations", "context_variables":
         (SERVER_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
@@ -110,7 +138,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
     c[SessionListener] = PollingSessionListener
     c[Engine] = AlphaEngine
 
-    for loader in load_agents, load_guidelines:
+    for loader in load_agents, load_tools, load_guidelines:
         await loader(c, config)
 
     async with MC(c) as mc:

@@ -301,11 +301,10 @@ def test_tool_creation(
 
     tool = context.sync_await(
         tool_store.create_tool(
-            tool_set=context.agent_id,
             name="Unique tool name",
             module_path="path/to/module",
             description="A tool for testing JSON persistence",
-            parameters={"param1": "value1", "param2": "value2"},
+            parameters={"param1": {"type": "string"}, "param2": {"type": "number"}},
             required=["param1"],
             consequential=True,
         )
@@ -317,7 +316,6 @@ def test_tool_creation(
     assert len(tools_from_json) == 1
     json_tool = tools_from_json["tools"][0]
 
-    assert json_tool["tool_set"] == context.agent_id
     assert json_tool["name"] == tool.name
     assert json_tool["module_path"] == tool.module_path
     assert json_tool["description"] == tool.description
@@ -332,17 +330,16 @@ def test_tool_retrieval(
 ) -> None:
     tool = context.sync_await(
         tool_store.create_tool(
-            tool_set=context.agent_id,
             name="Tool for loading test",
             module_path="path/to/tool/module",
             description="Testing tool load functionality",
-            parameters={"param1": "value1"},
+            parameters={"param1": {"type": "string"}},
             required=["param1"],
             consequential=False,
         )
     )
 
-    loaded_tools = context.sync_await(tool_store.list_tools(context.agent_id))
+    loaded_tools = context.sync_await(tool_store.list_tools())
     loaded_tool_list = list(loaded_tools)
 
     assert len(loaded_tool_list) == 1
