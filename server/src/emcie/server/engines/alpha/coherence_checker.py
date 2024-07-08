@@ -136,7 +136,7 @@ class ContradictionEvaluatorBase(ABC):
         proposed_guideline: Guideline,
         existing_guidelines: list[Guideline],
     ) -> str:
-        existing_guidelines_string = "\n".join(
+        existing_guidelines_string = "\n\t".join(
             f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
             for i, g in enumerate(existing_guidelines, start=1)
         )
@@ -147,11 +147,11 @@ class ContradictionEvaluatorBase(ABC):
         result_structure = [
             {
                 "compared_guideline_id": g.id,
-                "guideline_id": proposed_guideline.id,
-                "severity_level": "<Severity Level (1-10): Indicates the intensity "
-                "of the contradiction arising from overlapping conditions>",
-                "rationale": "<Concise explanation of why the guideline from the Guideline Set "
-                f"and the Guideline have a {self.contradiction_type.value}>",
+                "guideline_under_test_id": proposed_guideline.id,
+                "severity_level": "<Severity Level (1-10): Indicates the intensity of the "
+                "contradiction arising from overlapping conditions>",
+                "rationale": "<Concise explanation of why the Guideline Under Test and the "
+                f"compared guideline exhibit a {self.contradiction_type.value}>",
             }
             for g in existing_guidelines
         ]
@@ -165,18 +165,19 @@ class ContradictionEvaluatorBase(ABC):
 
 **Task Description**:
 1. **Input**:
-   - Guideline Set: ###
-   {existing_guidelines_string}
+   - Guideline Comparison Set: ###
+    {existing_guidelines_string}
    ###
-   - Guideline: ###
+   - Guideline Under Test: ###
    {proposed_guideline_string}
    ###
 
 2. **Process**:
-   - Compare each of the {len(existing_guidelines)} guidelines in the Guideline Set with the Guideline.
-   - Determine if there is a {self.contradiction_type.value}, where the Guideline is more specific and directly contradicts a more general guideline from the Guideline Set.
+   - Compare each of the {len(existing_guidelines)} guidelines in the Guideline Comparison Set with the Guideline Under Test.
+   - Determine if there is a {self.contradiction_type.value}, where the Guideline Under Test is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
+   
 3. **Output**:
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
@@ -210,7 +211,7 @@ class ContradictionEvaluatorBase(ABC):
             ContradictionTest(
                 contradiction_type=self.contradiction_type,
                 existing_guideline_id=json_contradiction["compared_guideline_id"],
-                proposed_guideline_id=json_contradiction["guideline_id"],
+                proposed_guideline_id=json_contradiction["guideline_under_test_id"],
                 severity=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
                 creation_utc=datetime.now(timezone.utc),
@@ -242,7 +243,7 @@ This type of Contradiction occurs when the application of a general guideline is
          "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "3",
-                 "guideline_id": "4",
+                 "guideline_under_test_id": "4",
                  "severity_level": 9,
                  "rationale": "Shipping high-demand items immediately contradicts the policy of prioritizing shipments based on loyalty."
              }}
@@ -259,7 +260,7 @@ This type of Contradiction occurs when the application of a general guideline is
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "1",
-                 "guideline_id": "2",
+                 "guideline_under_test_id": "2",
                  "severity_level": 8,
                  "rationale": "Offering extra rewards for specific projects directly conflicts with the uniform application of standard performance metrics."
              }}
@@ -276,7 +277,7 @@ This type of Contradiction occurs when the application of a general guideline is
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "5",
-                 "guideline_id": "6",
+                 "guideline_under_test_id": "6",
                  "severity_level": 1,
                  "rationale": "The policies to offer discounts for yearly subscriptions and additional discounts during promotional periods complement each other rather than contradict. Both discounts can be applied simultaneously without undermining one another, enhancing the overall attractiveness of the subscription offers during promotions."
              }}
@@ -293,7 +294,7 @@ This type of Contradiction occurs when the application of a general guideline is
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "7",
-                 "guideline_id": "8",
+                 "guideline_under_test_id": "8",
                  "severity_level": 9,
                  "rationale": "The need for additional training on major UI changes necessitates delaying rapid deployments, causing a conflict with established update protocols."
              }}
@@ -325,7 +326,7 @@ This happens when conditions for both guidelines are met simultaneously, without
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "1",
-                 "guideline_id": "2",
+                 "guideline_under_test_id": "2",
                  "severity_level": 9,
                  "rationale": "Refund policy conflict: special orders returned within 30 days challenge the standard refund guideline, causing potential customer confusion."
              }}
@@ -342,7 +343,7 @@ This happens when conditions for both guidelines are met simultaneously, without
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "3",
-                 "guideline_id": "4",
+                 "guideline_under_test_id": "4",
                  "severity_level": 8,
                  "rationale": "Resource allocation conflict: The need to focus resources on imminent deadlines clashes with equal distribution policies during multiple simultaneous project deadlines."
              }}
@@ -359,7 +360,7 @@ This happens when conditions for both guidelines are met simultaneously, without
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "5",
-                 "guideline_id": "6",
+                 "guideline_under_test_id": "6",
                  "severity_level": 7,
                  "rationale": "Flexible vs. standard hours conflict: Approving flexible hours contradicts the necessity for standard hours required for effective team collaboration."
              }}
@@ -376,7 +377,7 @@ This happens when conditions for both guidelines are met simultaneously, without
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "7",
-                 "guideline_id": "8",
+                 "guideline_under_test_id": "8",
                  "severity_level": 1,
                  "rationale": "These guidelines complement each other by addressing different customer needs: detailed product information and specific compatibility advice."
              }}
@@ -407,7 +408,7 @@ This arises from a lack of clear prioritization or differentiation between actio
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "1",
-                 "guideline_id": "2",
+                 "guideline_under_test_id": "2",
                  "severity_level": 9,
                  "rationale": "Applying discounts during the holiday season directly contradicts withholding them during overlapping end-of-year sales, creating inconsistent pricing strategies."
              }}
@@ -424,7 +425,7 @@ This arises from a lack of clear prioritization or differentiation between actio
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "3",
-                 "guideline_id": "4",
+                 "guideline_under_test_id": "4",
                  "severity_level": 8,
                  "rationale": "Reducing prices for expiring products conflicts with maintaining standard pricing during promotional campaigns, causing pricing conflicts."
              }}
@@ -441,7 +442,7 @@ This arises from a lack of clear prioritization or differentiation between actio
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "5",
-                 "guideline_id": "6",
+                 "guideline_under_test_id": "6",
                  "severity_level": 9,
                  "rationale": "Emergency protocol for severe weather contradicts the need for maximum capacity during major sales events, challenging management decisions."
              }}
@@ -458,7 +459,7 @@ This arises from a lack of clear prioritization or differentiation between actio
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "7",
-                 "guideline_id": "8",
+                 "guideline_under_test_id": "8",
                  "severity_level": 1,
                  "rationale": "Both guidelines support enhancing customer service under different circumstances, effectively complementing each other without conflict."
              }}
@@ -489,7 +490,7 @@ These conflicts arise from different but potentially overlapping circumstances r
          "contextual_contradictions": [
              {{
                  "compared_guideline_id": "1",
-                 "guideline_id": "2",
+                 "guideline_under_test_id": "2",
                  "severity_level": 9,
                  "rationale": "Offering free shipping in urban areas directly conflicts with initiatives to minimize operational costs, leading to contradictory shipping policies when both conditions apply."
              }}
@@ -506,7 +507,7 @@ These conflicts arise from different but potentially overlapping circumstances r
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "3",
-                 "guideline_id": "4",
+                 "guideline_under_test_id": "4",
                  "severity_level": 8,
                  "rationale": "The preference for eco-friendly products conflicts with cost-driven decisions to use cheaper materials, creating a strategic dilemma between sustainability and cost efficiency."
              }}
@@ -523,7 +524,7 @@ These conflicts arise from different but potentially overlapping circumstances r
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "5",
-                 "guideline_id": "6",
+                 "guideline_under_test_id": "6",
                  "severity_level": 9,
                  "rationale": "Targeting premium product lines based on customer preferences contradicts strategies to enhance mass market appeal with lower-cost items, presenting a strategic conflict."
              }}
@@ -540,7 +541,7 @@ These conflicts arise from different but potentially overlapping circumstances r
         "{self.contradiction_response_outcome_key}": [
              {{
                  "compared_guideline_id": "7",
-                 "guideline_id": "8",
+                 "guideline_under_test_id": "8",
                  "severity_level": 1,
                  "rationale": "Marketing new products and notifying existing customers about updates serve complementary purposes without conflicting, effectively targeting different customer segments."
              }}
