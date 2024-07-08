@@ -568,7 +568,7 @@ async def test_guideline_tool_association_retrieval(
 
 
 @pytest.mark.asyncio
-async def test_loading_successfully_an_empty_json_file(
+async def test_successful_loading_of_an_empty_json_file(
     context: _TestContext,
     guideline_json_file: Path,
 ) -> None:
@@ -578,8 +578,8 @@ async def test_loading_successfully_an_empty_json_file(
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
-            predicate="Creating a guideline with JSONFileDatabase implementation",
-            content="Expecting it to show in the guidelines json file",
+            predicate="Create a guideline just for testing",
+            content="Expect it to appear in the guidelines JSON file eventually",
         )
 
     with open(guideline_json_file) as f:
