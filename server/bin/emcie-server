@@ -7,10 +7,11 @@ from datetime import datetime, timezone
 import os
 from fastapi import FastAPI
 from lagom import Container
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Awaitable, Callable
 import click
 import click_completion
 import json
+from loguru import logger
 from pathlib import Path
 import sys
 import rich
@@ -58,6 +59,7 @@ sys.path.append(SERVER_HOME_DIR.as_posix())
 
 @dataclass
 class CLIParams:
+    config_file: Path
     config: dict[str, Any]
     port: int
 
@@ -152,18 +154,41 @@ async def load_app(config: Any) -> AsyncIterator[FastAPI]:
         yield await create_app(container)
 
 
-async def serve_app(app: FastAPI, port: int) -> None:
+async def serve_app(
+    app: FastAPI, port: int, should_shutdown: Callable[[], Awaitable[bool]]
+) -> None:
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
+
+    async def monitor_shutdown_request() -> None:
+        while True:
+            await asyncio.sleep(1)
+
+            if await should_shutdown():
+                server.should_exit = True
+                return
+
+    hot_reload_task = asyncio.create_task(monitor_shutdown_request())
     await server.serve()
+    await hot_reload_task
 
 
 async def start_server(params: CLIParams) -> None:
-    async with load_app(params.config) as app:
+    last_config_update_time = os.path.getmtime(params.config_file)
+
+    async def config_file_changed() -> bool:
+        return os.path.getmtime(params.config_file) > last_config_update_time
+
+    while True:
         try:
-            await serve_app(app, params.port)
+            async with load_app(params.config) as app:
+                await serve_app(app, params.port, should_shutdown=config_file_changed)
+
+            logger.info("***** HOT RELOAD *****")
+
+            last_config_update_time = os.path.getmtime(params.config_file)
         except KeyboardInterrupt:
-            pass
+            return
 
 
 async def check_coherence(params: CLIParams) -> None:
@@ -242,6 +267,7 @@ if __name__ == "__main__":
                 config = json.load(config_file)
 
                 ctx.obj = CLIParams(
+                    config_file=config_file_path,
                     config=config,
                     port=DEFAULT_PORT,
                 )
