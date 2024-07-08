@@ -76,6 +76,7 @@ class MessageEventProducer:
         ):
             # No interaction and no guidelines that could trigger
             # a proactive start of the interaction
+            logger.debug("Skipping response; interaction is empty and there are no guidelines")
             return []
 
         prompt = self._format_prompt(
@@ -94,6 +95,8 @@ class MessageEventProducer:
                     data={"message": response_message},
                 )
             ]
+        else:
+            logger.debug("Skipping response; no response deemed necessary")
 
         return []
 
@@ -340,15 +343,17 @@ class ToolEventProducer:
 
         produced_tool_events: list[ProducedEvent] = []
 
-        tool_calls = await self.tool_caller.infer_tool_calls(
-            context_variables,
-            interaction_history,
-            ordinary_guidelines,
-            tool_enabled_guidelines,
-            produced_tool_events,
+        tool_calls = list(
+            await self.tool_caller.infer_tool_calls(
+                context_variables,
+                interaction_history,
+                ordinary_guidelines,
+                tool_enabled_guidelines,
+                produced_tool_events,
+            )
         )
 
-        tools = chain(*tool_enabled_guidelines.values())
+        tools = list(chain(*tool_enabled_guidelines.values()))
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,
@@ -362,7 +367,7 @@ class ToolEventProducer:
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tools_result": tool_results},
+                data={"tool_result": tool_results},
             )
         )
 

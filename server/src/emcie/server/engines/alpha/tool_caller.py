@@ -53,7 +53,7 @@ def produced_tools_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any
     return {
         "kind": produced_event.kind,
         "data": [
-            tool_result_to_dict(tool_result) for tool_result in produced_event.data["tools_result"]
+            tool_result_to_dict(tool_result) for tool_result in produced_event.data["tool_result"]
         ],
     }
 
@@ -113,7 +113,7 @@ class ToolCaller:
             produced_tool_events,
         )
 
-        with duration_logger("Tools classification"):
+        with duration_logger("Tool classification"):
             inference_output = await self._run_inference(inference_prompt)
 
         verification_prompt = self._format_tool_call_verification_prompt(
@@ -125,7 +125,7 @@ class ToolCaller:
             inference_output,
         )
 
-        with duration_logger("Tool calls"):
+        with duration_logger("Tool verification"):
             return await self._verify_inference(verification_prompt)
 
     async def execute_tool_calls(
@@ -135,17 +135,18 @@ class ToolCaller:
     ) -> list[ToolResult]:
         tools_by_name = {t.name: t for t in tools}
 
-        tool_results = await asyncio.gather(
-            *[
-                self._run_tool(
-                    tool_call=tool_call,
-                    tool=tools_by_name[tool_call.name],
+        with duration_logger("Tool calls"):
+            tool_results = await asyncio.gather(
+                *(
+                    self._run_tool(
+                        tool_call=tool_call,
+                        tool=tools_by_name[tool_call.name],
+                    )
+                    for tool_call in tool_calls
                 )
-                for tool_call in tool_calls
-            ]
-        )
+            )
 
-        return tool_results
+            return tool_results
 
     def _format_guideline_tool_associations(
         self,
@@ -536,8 +537,12 @@ Note that the `checks` list can be empty if no functions need to be called.
         tool_call: ToolCall,
         tool: Tool,
     ) -> ToolResult:
-        module = importlib.import_module(tool.module_path)
-        func = getattr(module, tool_call.name)
+        try:
+            module = importlib.import_module(tool.module_path)
+            func = getattr(module, tool_call.name)
+        except Exception as e:
+            logger.error(f"ERROR IN LOADING TOOL {tool_call.name}: " + str(e))
+            return ToolResult(id=ToolResultId(generate_id()), tool_call=tool_call, result=e)
 
         try:
             logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")

@@ -88,6 +88,7 @@ class GuidelineProposer:
         propositions_json = json.loads(llm_response)["checks"]
 
         logger.debug(f"Guideline filter batch result: {propositions_json}")
+
         propositions = [
             GuidelineProposition(
                 guideline=batch[int(p["predicate_number"]) - 1],
@@ -111,10 +112,10 @@ class GuidelineProposer:
         predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guidelines, start=1))
         prompt = """
 ### Definition of Predicate Relevance Evaluation:
-This process involves assessing the relevance of predefined predicates 
+This process involves assessing the relevance of predefined predicates
 to the last known state of an interaction between an AI assistant and a user.
 
-**Objective**: Determine the applicability of each predicate to the latest 
+**Objective**: Determine the applicability of each predicate to the latest
 state based on a stream of events.
 
 **Task Description**:
@@ -131,13 +132,13 @@ state based on a stream of events.
         else:
             prompt += """\
     You, an AI assistant, are now present in an online interaction session with a user.
-    The session has just started, 
+    The session has just started,
     and the user hasn't said anything yet nor chosen to engage with you.
     """
 
         if context_variables:
             prompt += f"""
-    The following is additional information available 
+    The following is additional information available
     about the user and the context of the interaction: ###
     {context_values}
     ###
@@ -148,8 +149,10 @@ state based on a stream of events.
     {predicates}
     ###
 
+    IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the list for you to check.
+
 2. **Process**:
-   a. Examine the provided interaction events to discern 
+   a. Examine the provided interaction events to discern
    the latest state of interaction between the user and the assistant.
    b. Determine the applicability of each predicate based on the most recent interaction state.
       Note: There are exactly {len(guidelines)} predicates.
@@ -180,14 +183,14 @@ state based on a stream of events.
 
     #### Example #1:
     - Interaction Events: ###
-    [{{"id": "MZC1H9iyYe", "kind": "<message>", "source": "user", 
+    [{{"id": "MZC1H9iyYe", "kind": "<message>", "source": "user",
     "data": {{"message": "Can I purchase a subscription to your software?"}},
-    {{"id": "F2oFNx_Ld8", "kind": "<message>", "source": "assistant", 
+    {{"id": "F2oFNx_Ld8", "kind": "<message>", "source": "assistant",
     "data": {{"message": "Absolutely, I can assist you with that right now."}},
     {{"id": "dfI1jYAjqe", "kind": "<message>", "source": "user",
     "data": {{"message": "Please proceed with the subscription for the Pro plan."}},
     {{"id": "2ZWfAC4xLf", "kind": "<message>", "source": "assistant",
-    "data": {{"message": "Your subscription has been successfully activated. 
+    "data": {{"message": "Your subscription has been successfully activated.
     Is there anything else I can help you with?"}},
     {{"id": "78oTChjBfM", "kind": "<message>", "source": "user",
     "data": {{"message": "Yes, can you tell me more about your data security policies?"}}]
@@ -201,14 +204,14 @@ state based on a stream of events.
     {{ "checks": [
         {{
             "predicate_number": "1",
-            "rationale": "The client completed the purchase and 
+            "rationale": "The client completed the purchase and
             the conversation shifted to a new topic,
             making the purchase-related guideline irrelevant.",
             "applies_score": 3
         }},
         {{
             "predicate_number": "2",
-            "rationale": "The client specifically inquired about data security policies, 
+            "rationale": "The client specifically inquired about data security policies,
             making this guideline highly relevant to the ongoing discussion.",
             "applies_score": 10
         }}
