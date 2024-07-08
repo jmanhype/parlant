@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, Union
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 from datetime import datetime
 
 from pydantic import Field
@@ -132,11 +132,15 @@ def create_router(
         wait: Optional[bool] = None,
     ) -> ListEventsResponse:
         if wait:
-            await session_listener.wait_for_events(
+            if not await session_listener.wait_for_events(
                 session_id=session_id,
                 min_offset=min_offset or 0,
                 timeout=Timeout(60),
-            )
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Request timed out",
+                )
 
         events = await session_store.list_events(
             session_id=session_id,
