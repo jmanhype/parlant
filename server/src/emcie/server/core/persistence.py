@@ -87,7 +87,7 @@ def _matches_filters(
         "greater_than_or_equal_to": lambda candidate, filter_value: candidate >= filter_value,
         "less_than": lambda candidate, filter_value: candidate < filter_value,
         "less_than_or_equal_to": lambda candidate, filter_value: candidate <= filter_value,
-        "regex": lambda candidate, filter_value: bool(re.match(str(candidate), str(filter_value))),
+        "regex": lambda candidate, filter_value: bool(re.match(str(filter_value), str(candidate))),
     }
     for field, field_filter in field_filters.items():
         for filter_name, filter_value in field_filter.items():
