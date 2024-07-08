@@ -138,7 +138,7 @@ class AlphaEngine(Engine):
         tools_for_guidelines: dict[GuidelineProposition, list[Tool]] = defaultdict(list)
 
         for association in relevant_associations:
-            tool = await self.tool_store.read_tool(agent_id, association.tool_id)
+            tool = await self.tool_store.read_tool(association.tool_id)
             tools_for_guidelines[guideline_propositions_by_id[association.guideline_id]].append(
                 tool
             )

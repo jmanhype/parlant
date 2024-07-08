@@ -249,7 +249,6 @@ def given_a_tool(
         required: list[str],
     ) -> Tool:
         return await tool_store.create_tool(
-            tool_set=agent_id,
             name=name,
             module_path=module_path,
             description=description,
