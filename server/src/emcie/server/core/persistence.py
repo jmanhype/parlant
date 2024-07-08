@@ -98,17 +98,11 @@ def _matches_filters(
 
 
 class TransientDocumentDatabase(DocumentDatabase):
-    def __init__(self) -> None:
-        self._collections: dict[str, list[dict[str, Any]]] = defaultdict(list)
-
-    def load_collections(
+    def __init__(
         self,
-        data: dict[str, list[dict[str, Any]]],
+        collections: Optional[dict[str, list[dict[str, Any]]]] = None,
     ) -> None:
-        self._collections.update(data)
-
-    def get_collections(self) -> dict[str, list[dict[str, Any]]]:
-        return self._collections
+        self._collections = collections if collections else defaultdict(list)
 
     async def insert_one(
         self,
@@ -165,6 +159,9 @@ class TransientDocumentDatabase(DocumentDatabase):
                 return
         raise ValueError("No document found matching the provided filters.")
 
+    async def list_collections(self) -> Iterable[str]:
+        return self._collections.keys()
+
 
 class JSONFileDocumentDatabase(DocumentDatabase):
     class DateTimeEncoder(json.JSONEncoder):
@@ -184,8 +181,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self.transient_db: Optional[TransientDocumentDatabase]
 
     async def __aenter__(self) -> JSONFileDocumentDatabase:
-        self.transient_db = TransientDocumentDatabase()
-        self.transient_db.load_collections(await self._load_data())
+        self.transient_db = TransientDocumentDatabase(await self._load_data())
         return self
 
     async def __aexit__(
@@ -213,6 +209,10 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self,
     ) -> dict[str, list[dict[str, Any]]]:
         async with self._lock:
+            # Return an empty JSON object if the file is empty
+            if self.file_path.stat().st_size == 0:
+                return {}
+
             async with aiofiles.open(self.file_path, "r") as file:
                 data = await file.read()
                 json_data: dict[str, Any] = json.loads(
@@ -315,4 +315,13 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
     async def flush(self) -> None:
         if self.transient_db:
-            await self._save_data(self.transient_db.get_collections())
+            data = {}
+            for collection_name in await self.transient_db.list_collections():
+                data[collection_name] = list(
+                    await self.transient_db.find(
+                        collection=collection_name,
+                        filters={},
+                    )
+                )
+
+            await self._save_data(data)

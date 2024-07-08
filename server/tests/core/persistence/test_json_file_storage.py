@@ -50,11 +50,16 @@ def agent_id(
 class _TestContext:
     container: Container
     agent_id: AgentId
+    sync_await: SyncAwaiter
 
 
 @fixture
-def context(container: Container, agent_id: AgentId) -> _TestContext:
-    return _TestContext(container, agent_id)
+def context(
+    container: Container,
+    agent_id: AgentId,
+    sync_await: SyncAwaiter,
+) -> _TestContext:
+    return _TestContext(container, agent_id, sync_await)
 
 
 @fixture
@@ -247,8 +252,9 @@ async def test_guideline_creation_and_loading_data_from_file(
 @pytest.mark.asyncio
 async def test_guideline_retrieval(
     context: _TestContext,
+    guideline_json_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(GUIDELINES_JSON_PATH) as guideline_db:
+    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -267,12 +273,11 @@ async def test_guideline_retrieval(
 
 @pytest.mark.asyncio
 async def test_tool_creation(
-    context: _TestContext,
+    tool_json_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(TOOL_JSON_PATH) as tool_db:
+    async with JSONFileDocumentDatabase(tool_json_file) as tool_db:
         tool_store = ToolDocumentStore(tool_db)
         tool = await tool_store.create_tool(
-            tool_set=context.agent_id,
             name="Unique tool name",
             module_path="path/to/module",
             description="A tool for testing JSON persistence",
@@ -281,7 +286,7 @@ async def test_tool_creation(
             consequential=True,
         )
 
-    with open(TOOL_JSON_PATH) as f:
+    with open(tool_json_file) as f:
         tools_from_json = json.load(f)
 
     assert len(tools_from_json) == 1
@@ -297,13 +302,11 @@ async def test_tool_creation(
 
 @pytest.mark.asyncio
 async def test_tool_retrieval(
-    context: _TestContext,
     tool_json_file: Path,
 ) -> None:
     async with JSONFileDocumentDatabase(tool_json_file) as tool_db:
         tool_store = ToolDocumentStore(tool_db)
         tool = await tool_store.create_tool(
-            tool_set=context.agent_id,
             name="Tool for loading test",
             module_path="path/to/tool/module",
             description="Testing tool load functionality",
@@ -562,3 +565,27 @@ async def test_guideline_tool_association_retrieval(
         assert retrieved_association.guideline_id == guideline_id
         assert retrieved_association.tool_id == tool_id
         assert retrieved_association.creation_utc == creation_utc
+
+
+@pytest.mark.asyncio
+async def test_loading_successfully_an_empty_json_file(
+    context: _TestContext,
+    guideline_json_file: Path,
+) -> None:
+    # Create an empty file
+    guideline_json_file.touch()
+    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
+        guideline_store = GuidelineDocumentStore(guideline_db)
+        await guideline_store.create_guideline(
+            guideline_set=context.agent_id,
+            predicate="Creating a guideline with JSONFileDatabase implementation",
+            content="Expecting it to show in the guidelines json file",
+        )
+
+    with open(guideline_json_file) as f:
+        guidelines_from_json = json.load(f)
+
+    assert len(guidelines_from_json) == 1
+
+    json_guideline = guidelines_from_json["guidelines"][0]
+    assert json_guideline["guideline_set"] == context.agent_id
