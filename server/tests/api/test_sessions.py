@@ -76,7 +76,7 @@ async def populate_session_id(
         await session_store.create_event(
             session_id=session_id,
             source=e["source"],
-            kind=e["type"],
+            kind=e["kind"],
             data=e["data"],
         )
 
@@ -85,7 +85,7 @@ def event_is_according_to_params(
     event: Dict[str, Any],
     params: Dict[str, Any],
 ) -> bool:
-    tested_properties = ["source", "type", "data"]
+    tested_properties = ["source", "kind", "data"]
 
     for p in tested_properties:
         if event[p] != params[p]:
