@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, NewType, Optional
+from typing import Iterable, Literal, NewType, Optional, TypedDict
+from typing_extensions import NotRequired
 
 from pydantic import ValidationError
 
@@ -11,6 +12,11 @@ from emcie.server.core.persistence import DocumentDatabase, FieldFilter
 ToolId = NewType("ToolId", str)
 
 
+class ToolParameter(TypedDict):
+    type: Literal["string", "number", "integer", "boolean", "array", "object"]
+    description: NotRequired[str]
+
+
 @dataclass(frozen=True)
 class Tool:
     id: ToolId
@@ -18,7 +24,7 @@ class Tool:
     name: str
     module_path: str
     description: str
-    parameters: dict[str, Any]
+    parameters: dict[str, ToolParameter]
     required: list[str]
     consequential: bool
 
@@ -33,7 +39,7 @@ class ToolStore(ABC):
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, Any],
+        parameters: dict[str, ToolParameter],
         required: list[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
@@ -64,7 +70,7 @@ class ToolDocumentStore(ToolStore):
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, Any],
+        parameters: dict[str, ToolParameter],
         required: list[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,

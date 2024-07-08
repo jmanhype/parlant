@@ -304,7 +304,7 @@ def test_tool_creation(
             name="Unique tool name",
             module_path="path/to/module",
             description="A tool for testing JSON persistence",
-            parameters={"param1": "value1", "param2": "value2"},
+            parameters={"param1": {"type": "string"}, "param2": {"type": "number"}},
             required=["param1"],
             consequential=True,
         )
@@ -333,7 +333,7 @@ def test_tool_retrieval(
             name="Tool for loading test",
             module_path="path/to/tool/module",
             description="Testing tool load functionality",
-            parameters={"param1": "value1"},
+            parameters={"param1": {"type": "string"}},
             required=["param1"],
             consequential=False,
         )
