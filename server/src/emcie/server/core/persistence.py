@@ -248,7 +248,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> dict[str, Any]:
         async with self._lock:
             result = await self.transient_db.insert_one(collection, document)
-            self._process_operation_counter()
+            await self._process_operation_counter()
             return result
 
     async def find(
@@ -278,7 +278,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             result = await self.transient_db.update_one(
                 collection, filters, updated_document, upsert
             )
-            self._process_operation_counter()
+            await self._process_operation_counter()
             return result
 
     async def delete_one(
@@ -288,7 +288,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> None:
         async with self._lock:
             result = await self.transient_db.delete_one(collection, filters)
-            self._process_operation_counter()
+            await self._process_operation_counter()
             return result
 
     async def flush(self) -> None:

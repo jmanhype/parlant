@@ -115,7 +115,7 @@ async def load_guidelines(c: Container, config: Any) -> None:
 
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
-    for store_name in "guidelines", "tools", "guideline_tool_associations", "context_variables":
+    for store_name in "context_variables":
         (EMCIE_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
@@ -146,7 +146,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[SessionListener] = PollingSessionListener
         c[Engine] = AlphaEngine
 
-        for loader in load_agents, load_guidelines:
+        for loader in load_agents, load_tools, load_guidelines:
             await loader(c, config)
 
         async with MC(c) as mc:
