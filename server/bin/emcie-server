@@ -75,7 +75,6 @@ async def load_agents(c: Container, config: Any) -> None:
 
 async def load_tools(c: Container, config: Any) -> None:
     tool_store = c[ToolStore]
-    logger.info(f"DORZO DEBUGING: {config}")
 
     for tool_name, tool in config["tools"].items():
         tool = await tool_store.create_tool(
