@@ -54,7 +54,7 @@ EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
 TOOL_NAME_TO_ID: dict[str, str] = {}
 
 
-sys.path.append(SERVER_HOME_DIR.as_posix())
+sys.path.append(EMCIE_HOME_DIR.as_posix())
 
 
 @dataclass
