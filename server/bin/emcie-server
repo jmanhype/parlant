@@ -29,7 +29,7 @@ from emcie.server.core.guidelines import (
     GuidelineId,
     GuidelineStore,
 )
-from emcie.server.core.persistence import JSONFileDocumentDatabase
+from emcie.server.core.persistence import JSONFileDocumentDatabase, TransientDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -75,6 +75,7 @@ async def load_agents(c: Container, config: Any) -> None:
 
 async def load_tools(c: Container, config: Any) -> None:
     tool_store = c[ToolStore]
+    logger.info(f"DORZO DEBUGING: {config}")
 
     for tool_name, tool in config["tools"].items():
         tool = await tool_store.create_tool(
@@ -119,6 +120,11 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         (EMCIE_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
+    c[GuidelineStore] = GuidelineDocumentStore(TransientDocumentDatabase())
+    c[ToolStore] = ToolDocumentStore(TransientDocumentDatabase())
+    c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
+        TransientDocumentDatabase()
+    )
 
     async with JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "agents.json"
@@ -127,21 +133,13 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
     ) as ctxs_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "end_users.json"
     ) as end_users_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "guidelines.json"
-    ) as guidelines_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "guideline_tool_associations.json"
-    ) as gtas_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "sessions.json",
-    ) as sessions_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "tools.json"
-    ) as tools_db:
+    ) as sessions_db:
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(ctxs_db)
         c[EndUserStore] = EndUserDocumentStore(end_users_db)
-        c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
-        c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(gtas_db)
+
         c[SessionStore] = SessionDocumentStore(sessions_db)
-        c[ToolStore] = ToolDocumentStore(tools_db)
 
         c[SessionListener] = PollingSessionListener
         c[Engine] = AlphaEngine
