@@ -207,10 +207,9 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         return data
 
     async def _process_operation_counter(self) -> None:
-        async with self._lock:
-            self.op_counter += 1
-            if self.op_counter % 5:
-                await self.flush()
+        self.op_counter += 1
+        if self.op_counter % 5:
+            await self.flush()
 
     async def _load_data(
         self,
@@ -246,26 +245,23 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         document: dict[str, Any],
     ) -> dict[str, Any]:
-        async with self._lock:
-            result = await self.transient_db.insert_one(collection, document)
-            await self._process_operation_counter()
-            return result
+        result = await self.transient_db.insert_one(collection, document)
+        await self._process_operation_counter()
+        return result
 
     async def find(
         self,
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> Iterable[dict[str, Any]]:
-        async with self._lock:
-            return await self.transient_db.find(collection, filters)
+        return await self.transient_db.find(collection, filters)
 
     async def find_one(
         self,
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
-        async with self._lock:
-            return await self.transient_db.find_one(collection, filters)
+        return await self.transient_db.find_one(collection, filters)
 
     async def update_one(
         self,
@@ -274,22 +270,18 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         updated_document: dict[str, Any],
         upsert: bool = False,
     ) -> dict[str, Any]:
-        async with self._lock:
-            result = await self.transient_db.update_one(
-                collection, filters, updated_document, upsert
-            )
-            await self._process_operation_counter()
-            return result
+        result = await self.transient_db.update_one(collection, filters, updated_document, upsert)
+        await self._process_operation_counter()
+        return result
 
     async def delete_one(
         self,
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> None:
-        async with self._lock:
-            result = await self.transient_db.delete_one(collection, filters)
-            await self._process_operation_counter()
-            return result
+        result = await self.transient_db.delete_one(collection, filters)
+        await self._process_operation_counter()
+        return result
 
     async def flush(self) -> None:
         if self.transient_db:
