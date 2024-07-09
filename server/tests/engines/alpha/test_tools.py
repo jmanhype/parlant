@@ -483,7 +483,7 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    assert number_of_tool_calls == len(tool_calls_event.data["tool_result"])
+    assert number_of_tool_calls == len(tool_calls_event.data["tool_results"])
 
 
 @then(parsers.parse("the tool calls event contains {expected_content}"))
@@ -492,7 +492,7 @@ def then_the_tool_calls_event_contains_expected_content(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    tool_calls = tool_calls_event.data["tool_result"]
+    tool_calls = tool_calls_event.data["tool_results"]
 
     assert nlp_test(
         context=f"The following is the result of tool (function) calls: {tool_calls}",

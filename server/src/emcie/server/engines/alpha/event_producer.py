@@ -367,7 +367,7 @@ class ToolEventProducer:
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tool_result": tool_results},
+                data={"tool_results": tool_results},
             )
         )
 
