@@ -118,7 +118,6 @@ async def guideline_tool_association_json_file() -> AsyncIterator[Path]:
         GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH.unlink()
 
 
-@pytest.mark.asyncio
 async def test_agent_creation(
     agent_json_file: Path,
 ) -> None:
@@ -141,7 +140,6 @@ async def test_agent_creation(
     assert datetime.fromisoformat(json_agent["creation_utc"]) == agent.creation_utc
 
 
-@pytest.mark.asyncio
 async def test_session_creation(
     context: _TestContext,
     session_json_file: Path,
@@ -167,7 +165,6 @@ async def test_session_creation(
     }
 
 
-@pytest.mark.asyncio
 async def test_event_creation(
     context: _TestContext,
     session_json_file: Path,
@@ -199,7 +196,6 @@ async def test_event_creation(
     assert datetime.fromisoformat(json_event["creation_utc"]) == event.creation_utc
 
 
-@pytest.mark.asyncio
 async def test_guideline_creation_and_loading_data_from_file(
     context: _TestContext,
     guideline_json_file: Path,
@@ -249,7 +245,7 @@ async def test_guideline_creation_and_loading_data_from_file(
     )
 
 
-@pytest.mark.asyncio
+
 async def test_guideline_retrieval(
     context: _TestContext,
     guideline_json_file: Path,
@@ -271,7 +267,6 @@ async def test_guideline_retrieval(
         assert loaded_guideline.content == "Test content for loading guideline"
 
 
-@pytest.mark.asyncio
 async def test_tool_creation(
     tool_json_file: Path,
 ) -> None:
@@ -300,7 +295,6 @@ async def test_tool_creation(
     assert json_tool["consequential"] == tool.consequential
 
 
-@pytest.mark.asyncio
 async def test_tool_retrieval(
     tool_json_file: Path,
 ) -> None:
@@ -323,7 +317,6 @@ async def test_tool_retrieval(
         assert loaded_tool == tool
 
 
-@pytest.mark.asyncio
 async def test_end_user_creation(
     end_user_json_file: Path,
 ) -> None:
@@ -346,7 +339,6 @@ async def test_end_user_creation(
     assert datetime.fromisoformat(json_end_user["creation_utc"]) == created_user.creation_utc
 
 
-@pytest.mark.asyncio
 async def test_end_user_retrieval(
     end_user_json_file: Path,
 ) -> None:
@@ -362,7 +354,6 @@ async def test_end_user_retrieval(
         assert created_user == retrieved_user
 
 
-@pytest.mark.asyncio
 async def test_context_variable_creation(
     context: _TestContext,
     context_variable_json_file: Path,
@@ -390,7 +381,6 @@ async def test_context_variable_creation(
     assert json_variable["tool_id"] == tool_id
 
 
-@pytest.mark.asyncio
 async def test_context_variable_value_update_and_retrieval(
     context: _TestContext,
     context_variable_json_file: Path,
@@ -425,7 +415,6 @@ async def test_context_variable_value_update_and_retrieval(
     assert json_value["data"] == value.data
 
 
-@pytest.mark.asyncio
 async def test_context_variable_listing(
     context: _TestContext,
     context_variable_json_file: Path,
@@ -455,7 +444,6 @@ async def test_context_variable_listing(
         assert len(variables) == 2
 
 
-@pytest.mark.asyncio
 async def test_context_variable_deletion(
     context: _TestContext,
     context_variable_json_file: Path,
@@ -510,7 +498,6 @@ async def test_context_variable_deletion(
             )
 
 
-@pytest.mark.asyncio
 async def test_guideline_tool_association_creation(
     guideline_tool_association_json_file: Path,
 ) -> None:
@@ -537,7 +524,6 @@ async def test_guideline_tool_association_creation(
     assert json_variable["tool_id"] == tool_id
 
 
-@pytest.mark.asyncio
 async def test_guideline_tool_association_retrieval(
     guideline_tool_association_json_file: Path,
 ) -> None:
@@ -567,7 +553,6 @@ async def test_guideline_tool_association_retrieval(
         assert retrieved_association.creation_utc == creation_utc
 
 
-@pytest.mark.asyncio
 async def test_successful_loading_of_an_empty_json_file(
     context: _TestContext,
     guideline_json_file: Path,
