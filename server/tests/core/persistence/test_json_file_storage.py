@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import AsyncIterator
+import tempfile
 from lagom import Container
 from pytest import fixture
 import pytest
@@ -23,17 +24,6 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
 from tests.test_utilities import SyncAwaiter
-
-TEST_CACHE_DIR = Path(__file__).resolve().parent / "test_cache"
-
-
-AGENTS_JSON_PATH = TEST_CACHE_DIR / "agents.json"
-SESSIONS_JSON_PATH = TEST_CACHE_DIR / "sessions.json"
-TOOL_JSON_PATH = TEST_CACHE_DIR / "tools.json"
-GUIDELINES_JSON_PATH = TEST_CACHE_DIR / "guidelines.json"
-END_USERS_JSON_PATH = TEST_CACHE_DIR / "end_users.json"
-CONTEXT_VARIABLES_JSON_PATH = TEST_CACHE_DIR / "context_variables.json"
-GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH = TEST_CACHE_DIR / "guideline_tool_associations.json"
 
 
 @fixture
@@ -63,65 +53,15 @@ def context(
 
 
 @fixture
-async def agent_json_file() -> AsyncIterator[Path]:
-    try:
-        yield AGENTS_JSON_PATH
-    finally:
-        AGENTS_JSON_PATH.unlink()
-
-
-@fixture
-async def session_json_file() -> AsyncIterator[Path]:
-    try:
-        yield SESSIONS_JSON_PATH
-    finally:
-        SESSIONS_JSON_PATH.unlink()
-
-
-@fixture
-async def guideline_json_file() -> AsyncIterator[Path]:
-    try:
-        yield GUIDELINES_JSON_PATH
-    finally:
-        GUIDELINES_JSON_PATH.unlink()
-
-
-@fixture
-async def tool_json_file() -> AsyncIterator[Path]:
-    try:
-        yield TOOL_JSON_PATH
-    finally:
-        TOOL_JSON_PATH.unlink()
-
-
-@fixture
-async def end_user_json_file() -> AsyncIterator[Path]:
-    try:
-        yield END_USERS_JSON_PATH
-    finally:
-        END_USERS_JSON_PATH.unlink()
-
-
-@fixture
-async def context_variable_json_file() -> AsyncIterator[Path]:
-    try:
-        yield CONTEXT_VARIABLES_JSON_PATH
-    finally:
-        CONTEXT_VARIABLES_JSON_PATH.unlink()
-
-
-@fixture
-async def guideline_tool_association_json_file() -> AsyncIterator[Path]:
-    try:
-        yield GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH
-    finally:
-        GUIDELINE_TOOL_ASSOCIATIONS_JSON_PATH.unlink()
+async def new_file() -> AsyncIterator[Path]:
+    with tempfile.NamedTemporaryFile() as file:
+        yield Path(file.name)
 
 
 async def test_agent_creation(
-    agent_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(agent_json_file) as agent_db:
+    async with JSONFileDocumentDatabase(new_file) as agent_db:
         agent_store = AgentDocumentStore(agent_db)
         agent = await agent_store.create_agent(name="Test Agent")
 
@@ -130,7 +70,7 @@ async def test_agent_creation(
         assert len(agents) == 1
         assert agents[0] == agent
 
-    with open(agent_json_file) as f:
+    with open(new_file) as f:
         agents_from_json = json.load(f)
 
     assert len(agents_from_json["agents"]) == 1
@@ -142,9 +82,9 @@ async def test_agent_creation(
 
 async def test_session_creation(
     context: _TestContext,
-    session_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(session_json_file) as session_db:
+    async with JSONFileDocumentDatabase(new_file) as session_db:
         session_store = SessionDocumentStore(session_db)
         end_user_id = EndUserId("test_user")
         session = await session_store.create_session(
@@ -152,7 +92,7 @@ async def test_session_creation(
             agent_id=context.agent_id,
         )
 
-    with open(session_json_file) as f:
+    with open(new_file) as f:
         sessions_from_json = json.load(f)
 
     assert len(sessions_from_json["sessions"]) == 1
@@ -167,9 +107,9 @@ async def test_session_creation(
 
 async def test_event_creation(
     context: _TestContext,
-    session_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(session_json_file) as session_db:
+    async with JSONFileDocumentDatabase(new_file) as session_db:
         session_store = SessionDocumentStore(session_db)
         end_user_id = EndUserId("test_user")
         session = await session_store.create_session(
@@ -185,7 +125,7 @@ async def test_event_creation(
             creation_utc=datetime.now(timezone.utc),
         )
 
-    with open(session_json_file) as f:
+    with open(new_file) as f:
         events_from_json = json.load(f)
 
     assert len(events_from_json["events"]) == 1
@@ -198,9 +138,9 @@ async def test_event_creation(
 
 async def test_guideline_creation_and_loading_data_from_file(
     context: _TestContext,
-    guideline_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
+    async with JSONFileDocumentDatabase(new_file) as guideline_db:
         guideline_store = GuidelineDocumentStore(guideline_db)
         guideline = await guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -208,7 +148,7 @@ async def test_guideline_creation_and_loading_data_from_file(
             content="Expecting it to show in the guidelines json file",
         )
 
-    with open(guideline_json_file) as f:
+    with open(new_file) as f:
         guidelines_from_json = json.load(f)
 
     assert len(guidelines_from_json) == 1
@@ -220,7 +160,7 @@ async def test_guideline_creation_and_loading_data_from_file(
     assert json_guideline["content"] == guideline.content
     assert datetime.fromisoformat(json_guideline["creation_utc"]) == guideline.creation_utc
 
-    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
+    async with JSONFileDocumentDatabase(new_file) as guideline_db:
         guideline_store = GuidelineDocumentStore(guideline_db)
 
         second_guideline = await guideline_store.create_guideline(
@@ -229,7 +169,7 @@ async def test_guideline_creation_and_loading_data_from_file(
             content="Additional test entry in the JSON file",
         )
 
-    with open(guideline_json_file) as f:
+    with open(new_file) as f:
         guidelines_from_json = json.load(f)
 
     assert len(guidelines_from_json["guidelines"]) == 2
@@ -245,12 +185,11 @@ async def test_guideline_creation_and_loading_data_from_file(
     )
 
 
-
 async def test_guideline_retrieval(
     context: _TestContext,
-    guideline_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
+    async with JSONFileDocumentDatabase(new_file) as guideline_db:
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -268,9 +207,9 @@ async def test_guideline_retrieval(
 
 
 async def test_tool_creation(
-    tool_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(tool_json_file) as tool_db:
+    async with JSONFileDocumentDatabase(new_file) as tool_db:
         tool_store = ToolDocumentStore(tool_db)
         tool = await tool_store.create_tool(
             name="Unique tool name",
@@ -281,7 +220,7 @@ async def test_tool_creation(
             consequential=True,
         )
 
-    with open(tool_json_file) as f:
+    with open(new_file) as f:
         tools_from_json = json.load(f)
 
     assert len(tools_from_json) == 1
@@ -296,9 +235,9 @@ async def test_tool_creation(
 
 
 async def test_tool_retrieval(
-    tool_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(tool_json_file) as tool_db:
+    async with JSONFileDocumentDatabase(new_file) as tool_db:
         tool_store = ToolDocumentStore(tool_db)
         tool = await tool_store.create_tool(
             name="Tool for loading test",
@@ -318,9 +257,9 @@ async def test_tool_retrieval(
 
 
 async def test_end_user_creation(
-    end_user_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(end_user_json_file) as end_user_db:
+    async with JSONFileDocumentDatabase(new_file) as end_user_db:
         end_user_store = EndUserDocumentStore(end_user_db)
         name = "Jane Doe"
         email = "jane.doe@example.com"
@@ -329,7 +268,7 @@ async def test_end_user_creation(
             email=email,
         )
 
-    with open(end_user_json_file, "r") as file:
+    with open(new_file, "r") as file:
         data = json.load(file)
 
     assert len(data["end_users"]) == 1
@@ -340,9 +279,9 @@ async def test_end_user_creation(
 
 
 async def test_end_user_retrieval(
-    end_user_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(end_user_json_file) as end_user_db:
+    async with JSONFileDocumentDatabase(new_file) as end_user_db:
         end_user_store = EndUserDocumentStore(end_user_db)
         name = "John Doe"
         email = "john.doe@example.com"
@@ -356,9 +295,9 @@ async def test_end_user_retrieval(
 
 async def test_context_variable_creation(
     context: _TestContext,
-    context_variable_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context_variable_json_file) as context_variable_db:
+    async with JSONFileDocumentDatabase(new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
         tool_id = ToolId("test_tool")
         variable = await context_variable_store.create_variable(
@@ -369,7 +308,7 @@ async def test_context_variable_creation(
             freshness_rules=None,
         )
 
-    with open(context_variable_json_file) as f:
+    with open(new_file) as f:
         variables_from_json = json.load(f)
 
     assert len(variables_from_json["variables"]) == 1
@@ -383,9 +322,9 @@ async def test_context_variable_creation(
 
 async def test_context_variable_value_update_and_retrieval(
     context: _TestContext,
-    context_variable_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context_variable_json_file) as context_variable_db:
+    async with JSONFileDocumentDatabase(new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
         tool_id = ToolId("test_tool")
         end_user_id = EndUserId("test_user")
@@ -404,7 +343,7 @@ async def test_context_variable_value_update_and_retrieval(
             data={"key": "value"},
         )
 
-    with open(context_variable_json_file) as f:
+    with open(new_file) as f:
         values_from_json = json.load(f)
 
     assert len(values_from_json["values"]) == 1
@@ -417,9 +356,9 @@ async def test_context_variable_value_update_and_retrieval(
 
 async def test_context_variable_listing(
     context: _TestContext,
-    context_variable_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context_variable_json_file) as context_variable_db:
+    async with JSONFileDocumentDatabase(new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
         tool_id = ToolId("test_tool")
         var1 = await context_variable_store.create_variable(
@@ -446,9 +385,9 @@ async def test_context_variable_listing(
 
 async def test_context_variable_deletion(
     context: _TestContext,
-    context_variable_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context_variable_json_file) as context_variable_db:
+    async with JSONFileDocumentDatabase(new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
         tool_id = ToolId("test_tool")
         variable = await context_variable_store.create_variable(
@@ -499,11 +438,9 @@ async def test_context_variable_deletion(
 
 
 async def test_guideline_tool_association_creation(
-    guideline_tool_association_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(
-        guideline_tool_association_json_file
-    ) as guideline_tool_association_db:
+    async with JSONFileDocumentDatabase(new_file) as guideline_tool_association_db:
         guideline_tool_association_store = GuidelineToolAssociationDocumentStore(
             guideline_tool_association_db
         )
@@ -514,7 +451,7 @@ async def test_guideline_tool_association_creation(
             guideline_id=guideline_id, tool_id=tool_id
         )
 
-    with open(guideline_tool_association_json_file, "r") as f:
+    with open(new_file, "r") as f:
         guideline_tool_associations_from_json = json.load(f)
 
     assert len(guideline_tool_associations_from_json["associations"]) == 1
@@ -525,11 +462,9 @@ async def test_guideline_tool_association_creation(
 
 
 async def test_guideline_tool_association_retrieval(
-    guideline_tool_association_json_file: Path,
+    new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(
-        guideline_tool_association_json_file
-    ) as guideline_tool_association_db:
+    async with JSONFileDocumentDatabase(new_file) as guideline_tool_association_db:
         guideline_tool_association_store = GuidelineToolAssociationDocumentStore(
             guideline_tool_association_db
         )
@@ -555,11 +490,11 @@ async def test_guideline_tool_association_retrieval(
 
 async def test_successful_loading_of_an_empty_json_file(
     context: _TestContext,
-    guideline_json_file: Path,
+    new_file: Path,
 ) -> None:
     # Create an empty file
-    guideline_json_file.touch()
-    async with JSONFileDocumentDatabase(guideline_json_file) as guideline_db:
+    new_file.touch()
+    async with JSONFileDocumentDatabase(new_file) as guideline_db:
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
@@ -567,7 +502,7 @@ async def test_successful_loading_of_an_empty_json_file(
             content="Expect it to appear in the guidelines JSON file eventually",
         )
 
-    with open(guideline_json_file) as f:
+    with open(new_file) as f:
         guidelines_from_json = json.load(f)
 
     assert len(guidelines_from_json) == 1

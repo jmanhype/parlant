@@ -6,7 +6,11 @@ from loguru import logger
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
-from emcie.server.engines.alpha.tool_caller import ToolCaller, produced_tools_events_to_dict
+from emcie.server.engines.alpha.tool_caller import (
+    ToolCaller,
+    produced_tool_events_to_dict,
+    tool_result_to_dict,
+)
 from emcie.server.engines.alpha.utils import (
     context_variables_to_json,
     events_to_json,
@@ -110,7 +114,10 @@ class MessageEventProducer:
     ) -> str:
         interaction_events_json = events_to_json(interaction_history)
         context_values = context_variables_to_json(context_variables)
-        staged_events_as_dict = produced_tools_events_to_dict(staged_events)
+        # FIXME: The following is a code-smell. We can't assume staged_events
+        #        is necessarily only composed of tool events.
+        #        Also, produced_tool_events_to_dict() is an oddball of a function.
+        staged_events_as_dict = produced_tool_events_to_dict(staged_events)
         all_guideline_propositions = chain(guideline_propositions, tool_enabled_guidelines)
 
         rules = "\n".join(
@@ -367,7 +374,7 @@ class ToolEventProducer:
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tool_results": tool_results},
+                data={"tool_results": [tool_result_to_dict(r) for r in tool_results]},
             )
         )
 

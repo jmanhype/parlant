@@ -1,7 +1,17 @@
-from typing import Any, NewType, Type, TypeVar, Union
+from typing import Any, Mapping, NewType, Sequence, Type, TypeVar, Union
 import nanoid  # type: ignore
 
-JSONSerializable = Union[str, int, float, bool, None, dict[str, Any], list[Any]]
+
+JSONSerializable = Union[
+    str,
+    int,
+    float,
+    bool,
+    None,
+    Mapping[str, "JSONSerializable"],
+    Sequence["JSONSerializable"],
+]
+
 
 UniqueId = NewType("UniqueId", str)
 T = TypeVar("T")

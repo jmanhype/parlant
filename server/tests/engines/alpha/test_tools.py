@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import json
-from typing import Any
+from typing import Any, cast
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
@@ -14,10 +14,16 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
-from emcie.server.engines.alpha.tool_caller import produced_tools_event_to_dict
+from emcie.server.engines.alpha.tool_caller import produced_tool_event_to_dict
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionId, SessionStore
+from emcie.server.core.sessions import (
+    Event,
+    MessageEventData,
+    SessionId,
+    SessionStore,
+    ToolEventData,
+)
 
 from tests import tool_utilities
 from tests.test_utilities import SyncAwaiter, nlp_test
@@ -483,7 +489,7 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    assert number_of_tool_calls == len(tool_calls_event.data["tool_results"])
+    assert number_of_tool_calls == len(cast(ToolEventData, tool_calls_event.data)["tool_results"])
 
 
 @then(parsers.parse("the tool calls event contains {expected_content}"))
@@ -492,7 +498,7 @@ def then_the_tool_calls_event_contains_expected_content(
     produced_events: list[ProducedEvent],
 ) -> None:
     tool_calls_event = next(e for e in produced_events if e.kind == Event.TOOL_KIND)
-    tool_calls = tool_calls_event.data["tool_results"]
+    tool_calls = cast(ToolEventData, tool_calls_event.data)["tool_results"]
 
     assert nlp_test(
         context=f"The following is the result of tool (function) calls: {tool_calls}",
@@ -511,7 +517,7 @@ def then_drinks_available_in_stock_tool_event_is_produced(
     tool_id: ToolId,
     tool_event_number: int,
 ) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
     tool_event_functions = {
         "tool_id": tool_utilities.get_available_drinks,
@@ -540,7 +546,7 @@ def then_product_availability_for_toppings_and_drinks_tools_event_is_produced(
         "drinks": tool_utilities.get_available_drinks,
         "toppings": tool_utilities.get_available_toppings,
     }
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
     assert {
         "tool_name": "get_available_product_by_type",
         "parameters": {"product_type": product_type},
@@ -560,7 +566,7 @@ def then_add_tool_event_is_produced(
     second_num: int,
     tool_event_number: int,
 ) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
     assert {
         "tool_name": "add",
@@ -584,7 +590,7 @@ def then_multiply_tool_event_is_produced(
     second_num: int,
     tool_event_number: int,
 ) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
     assert {
         "tool_name": "multiply",
@@ -607,7 +613,7 @@ def then_get_balance_account_tool_event_is_produced(
     name: str,
     tool_event_number: int,
 ) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
     assert {
         "tool_name": "get_account_balance",
@@ -627,7 +633,7 @@ def then_get_account_loans_tool_event_is_produced(
     name: str,
     tool_event_number: int,
 ) -> None:
-    results = produced_tools_event_to_dict(produced_events[tool_event_number - 1])["data"]
+    results = produced_tool_event_to_dict(produced_events[tool_event_number - 1])["data"]
 
     assert {
         "tool_name": "get_account_loans",
@@ -643,7 +649,7 @@ def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
-    message = produced_events[-1].data["message"]
+    message = cast(MessageEventData, produced_events[-1].data)["message"]
 
     assert nlp_test(
         context=message,

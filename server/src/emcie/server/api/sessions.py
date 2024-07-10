@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 from fastapi import APIRouter, HTTPException, Response, status
 from datetime import datetime
 
@@ -60,7 +60,7 @@ class EventDTO(DefaultBaseModel):
     kind: str
     offset: int
     creation_utc: datetime
-    data: Dict[str, Any]
+    data: Any
 
 
 class ListEventsResponse(DefaultBaseModel):

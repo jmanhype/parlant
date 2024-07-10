@@ -179,7 +179,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self.op_counter = 0
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
-        self.transient_db: Optional[TransientDocumentDatabase]
+        self.transient_db: TransientDocumentDatabase
 
     async def __aenter__(self) -> JSONFileDocumentDatabase:
         self.transient_db = TransientDocumentDatabase(await self._load_data())
@@ -279,9 +279,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> None:
-        result = await self.transient_db.delete_one(collection, filters)
+        await self.transient_db.delete_one(collection, filters)
         await self._process_operation_counter()
-        return result
 
     async def flush(self) -> None:
         if self.transient_db:

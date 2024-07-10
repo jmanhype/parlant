@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, SessionId, SessionStore
+from emcie.server.core.sessions import Event, MessageEventData, SessionId, SessionStore
 from emcie.server.engines.alpha.event_producer import MessageEventProducer
 from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
 from emcie.server.engines.common import ProducedEvent
@@ -152,7 +152,7 @@ def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
-    message = produced_events[-1].data["message"]
+    message = cast(MessageEventData, produced_events[-1].data)["message"]
 
     assert nlp_test(
         context=message,

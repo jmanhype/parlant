@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, Literal, NewType, Optional
+from typing import Iterable, Literal, NewType, Optional, TypedDict
 
 from emcie.server.async_utils import Timeout
-from emcie.server.core import common
+from emcie.server.core.common import JSONSerializable, create_instance_from_dict
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.tools import ToolParameter
 
 SessionId = NewType("SessionId", str)
 EventId = NewType("EventId", str)
@@ -26,7 +27,21 @@ class Event:
     kind: str
     creation_utc: datetime
     offset: int
-    data: dict[str, Any]
+    data: JSONSerializable
+
+
+class MessageEventData(TypedDict):
+    message: str
+
+
+class _ToolResult(TypedDict):
+    tool_name: str
+    parameters: dict[str, ToolParameter]
+    result: JSONSerializable
+
+
+class ToolEventData(TypedDict):
+    tool_results: list[_ToolResult]
 
 
 ConsumerId = Literal["client"]
@@ -69,7 +84,7 @@ class SessionStore(ABC):
         session_id: SessionId,
         source: EventSource,
         kind: str,
-        data: dict[str, Any],
+        data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event: ...
 
@@ -101,7 +116,7 @@ class SessionDocumentStore(SessionStore):
         inserted_session = await self._database.insert_one(
             self._session_collection_name, session_data
         )
-        return common.create_instance_from_dict(Session, inserted_session)
+        return create_instance_from_dict(Session, inserted_session)
 
     async def read_session(
         self,
@@ -109,7 +124,7 @@ class SessionDocumentStore(SessionStore):
     ) -> Session:
         filters = {"id": FieldFilter(equal_to=session_id)}
         found_session = await self._database.find_one(self._session_collection_name, filters)
-        return common.create_instance_from_dict(Session, found_session)
+        return create_instance_from_dict(Session, found_session)
 
     async def update_session(
         self,
@@ -138,7 +153,7 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
         source: EventSource,
         kind: str,
-        data: dict[str, Any],
+        data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event:
         session_events = await self.list_events(session_id)
@@ -151,7 +166,7 @@ class SessionDocumentStore(SessionStore):
             "data": data,
         }
         inserted_event = await self._database.insert_one(self._event_collection_name, event_data)
-        return common.create_instance_from_dict(Event, inserted_event)
+        return create_instance_from_dict(Event, inserted_event)
 
     async def list_events(
         self,
@@ -169,7 +184,7 @@ class SessionDocumentStore(SessionStore):
             **offset_filter,
         }
         found_events = await self._database.find(self._event_collection_name, filters)
-        return (common.create_instance_from_dict(Event, event) for event in found_events)
+        return (create_instance_from_dict(Event, event) for event in found_events)
 
 
 class SessionListener(ABC):

@@ -189,7 +189,9 @@ async def start_server(params: CLIParams) -> None:
 
             logger.info("***** HOT RELOAD *****")
 
-            last_config_update_time = os.path.getmtime(params.config_file)
+            with open(params.config_file) as f:
+                params.config = json.load(f)
+                last_config_update_time = os.path.getmtime(params.config_file)
         except KeyboardInterrupt:
             return
 
