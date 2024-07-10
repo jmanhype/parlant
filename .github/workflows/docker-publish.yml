@@ -17,9 +17,9 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io/emcie-co
+  REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
-  IMAGE_NAME: emcie-server
+  IMAGE_NAME: emcie-co/emcie-server
 
 
 jobs:
