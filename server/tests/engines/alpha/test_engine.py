@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, cast
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
@@ -8,7 +8,7 @@ from emcie.server.core.end_users import EndUserId
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import Event, Session, SessionId, SessionStore
+from emcie.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 
 from tests.test_utilities import SyncAwaiter, nlp_test
 
@@ -452,9 +452,9 @@ def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,
 ) -> None:
-    message = next(e for e in produced_events if e.kind == Event.MESSAGE_KIND).data["message"]
+    message_event = next(e for e in produced_events if e.kind == Event.MESSAGE_KIND)
 
     assert nlp_test(
-        context=message,
+        context=cast(MessageEventData, message_event.data)["message"],
         predicate=f"the text contains {something}",
     )

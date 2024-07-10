@@ -29,7 +29,7 @@ from emcie.server.core.guidelines import (
     GuidelineId,
     GuidelineStore,
 )
-from emcie.server.core.persistence import JSONFileDocumentDatabase
+from emcie.server.core.persistence import JSONFileDocumentDatabase, TransientDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -48,13 +48,13 @@ from emcie.server.mc import MC
 
 DEFAULT_PORT = 8000
 
-SERVER_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
-SERVER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
+EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 TOOL_NAME_TO_ID: dict[str, str] = {}
 
 
-sys.path.append(SERVER_HOME_DIR.as_posix())
+sys.path.append(EMCIE_HOME_DIR.as_posix())
 
 
 @dataclass
@@ -115,37 +115,40 @@ async def load_guidelines(c: Container, config: Any) -> None:
 
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
-    for store_name in "guidelines", "tools", "guideline_tool_associations", "context_variables":
-        (SERVER_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
+    for store_name in "context_variables":
+        (EMCIE_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
-
-    c[AgentStore] = AgentDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "agents.json"))
-    c[ContextVariableStore] = ContextVariableDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "context_variables.json")
-    )
-    c[EndUserStore] = EndUserDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "end_users.json")
-    )
-    c[GuidelineStore] = GuidelineDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guidelines.json")
-    )
+    c[GuidelineStore] = GuidelineDocumentStore(TransientDocumentDatabase())
+    c[ToolStore] = ToolDocumentStore(TransientDocumentDatabase())
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "guideline_tool_associations.json")
+        TransientDocumentDatabase()
     )
-    c[SessionStore] = SessionDocumentStore(
-        JSONFileDocumentDatabase(SERVER_HOME_DIR / "sessions.json")
-    )
-    c[ToolStore] = ToolDocumentStore(JSONFileDocumentDatabase(SERVER_HOME_DIR / "tools.json"))
-    c[SessionListener] = PollingSessionListener
-    c[Engine] = AlphaEngine
 
-    for loader in load_agents, load_tools, load_guidelines:
-        await loader(c, config)
+    async with JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "agents.json"
+    ) as agents_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "context_variables.json"
+    ) as ctxs_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "end_users.json"
+    ) as end_users_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "sessions.json",
+    ) as sessions_db:
+        c[AgentStore] = AgentDocumentStore(agents_db)
+        c[ContextVariableStore] = ContextVariableDocumentStore(ctxs_db)
+        c[EndUserStore] = EndUserDocumentStore(end_users_db)
 
-    async with MC(c) as mc:
-        c[MC] = mc
-        yield c
+        c[SessionStore] = SessionDocumentStore(sessions_db)
+
+        c[SessionListener] = PollingSessionListener
+        c[Engine] = AlphaEngine
+
+        for loader in load_agents, load_tools, load_guidelines:
+            await loader(c, config)
+
+        async with MC(c) as mc:
+            c[MC] = mc
+            yield c
 
 
 @asynccontextmanager
@@ -186,7 +189,9 @@ async def start_server(params: CLIParams) -> None:
 
             logger.info("***** HOT RELOAD *****")
 
-            last_config_update_time = os.path.getmtime(params.config_file)
+            with open(params.config_file) as f:
+                params.config = json.load(f)
+                last_config_update_time = os.path.getmtime(params.config_file)
         except KeyboardInterrupt:
             return
 
@@ -252,7 +257,7 @@ if __name__ == "__main__":
         help="Server configuration file",
         metavar="FILE",
         required=True,
-        default=SERVER_HOME_DIR / "config.json",
+        default=EMCIE_HOME_DIR / "config.json",
     )
     @click.pass_context
     def cli(ctx: click.Context, config_file: str) -> None:

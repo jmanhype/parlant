@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Iterable
 
 from emcie.server.core.agents import AgentId
+from emcie.server.core.common import JSONSerializable
 from emcie.server.core.sessions import EventSource, SessionId
 
 
@@ -16,7 +17,7 @@ class Context:
 class ProducedEvent:
     source: EventSource
     kind: str
-    data: dict[str, Any]
+    data: JSONSerializable
 
 
 class Engine(ABC):

@@ -5,14 +5,14 @@ import inspect
 from itertools import chain
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, NewType, Optional, TypedDict
+from typing import Any, Iterable, NewType, Optional, TypedDict, cast
 
 from loguru import logger
 
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
-from emcie.server.core.sessions import Event
+from emcie.server.core.sessions import Event, ToolEventData
 from emcie.server.core.tools import Tool
 
 from emcie.server.engines.alpha.utils import (
@@ -40,32 +40,33 @@ class ToolCall:
 class ToolResult:
     id: ToolResultId
     tool_call: ToolCall
-    result: Any
+    result: JSONSerializable
 
 
-def produced_tools_events_to_dict(
+def produced_tool_events_to_dict(
     produced_events: Iterable[ProducedEvent],
 ) -> list[dict[str, Any]]:
-    return [produced_tools_event_to_dict(e) for e in produced_events]
+    return [produced_tool_event_to_dict(e) for e in produced_events]
 
 
-def produced_tools_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
+def produced_tool_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
+    assert produced_event.kind == Event.TOOL_KIND
+
     return {
         "kind": produced_event.kind,
-        "data": [
-            tool_result_to_dict(tool_result) for tool_result in produced_event.data["tool_result"]
-        ],
+        "data": cast(ToolEventData, produced_event.data)["tool_results"],
     }
 
 
 def tool_result_to_dict(
     tool_result: ToolResult,
 ) -> dict[str, Any]:
-    return {
+    x = {
         "tool_name": tool_result.tool_call.name,
         "parameters": tool_result.tool_call.parameters,
         "result": tool_result.result,
     }
+    return x
 
 
 def tool_to_dict(
@@ -315,7 +316,7 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
         produced_events: Iterable[ProducedEvent],
     ) -> Optional[str]:
         ordered_function_invocations = list(
-            chain(*[e["data"] for e in produced_tools_events_to_dict(produced_events)])
+            chain(*[e["data"] for e in produced_tool_events_to_dict(produced_events)])
         )
 
         if not ordered_function_invocations:
@@ -542,18 +543,26 @@ Note that the `checks` list can be empty if no functions need to be called.
             func = getattr(module, tool_call.name)
         except Exception as e:
             logger.error(f"ERROR IN LOADING TOOL {tool_call.name}: " + str(e))
-            return ToolResult(id=ToolResultId(generate_id()), tool_call=tool_call, result=e)
+            return ToolResult(
+                id=ToolResultId(generate_id()),
+                tool_call=tool_call,
+                result=str(e),
+            )
 
         try:
             logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
+
             if inspect.isawaitable(func):
                 result = await func(**tool_call.parameters)  # type: ignore
             else:
                 result = func(**tool_call.parameters)
+
+            result = json.dumps(result)
+
             logger.debug(f"Tool call returned: {tool_call.name}/{tool_call.id}: {result}")
         except Exception as e:
             logger.warning(f"Tool call produced an error: {tool_call.name}/{tool_call.id}: {e}")
-            result = e
+            result = str(e)
 
         return ToolResult(
             id=ToolResultId(generate_id()),
