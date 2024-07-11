@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 import tempfile
 from lagom import Container
 from pytest import fixture, mark
@@ -67,7 +67,7 @@ async def new_file() -> AsyncIterator[Path]:
 )
 async def test_agent_creation(
     new_file: Path,
-    agent_configuration: dict[str, str],
+    agent_configuration: dict[str, Any],
 ) -> None:
     async with JSONFileDocumentDatabase(new_file) as agent_db:
         agent_store = AgentDocumentStore(agent_db)

@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter
-from pydantic import Field
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
@@ -38,7 +37,7 @@ def create_router(
     ) -> CreateAgentResponse:
         agent = await agent_store.create_agent(
             name=request and request.agent_name or "Unnamed Agent",
-            description=request and request.agent_description,
+            description=request and request.agent_description or None,
         )
 
         return CreateAgentResponse(agent_id=agent.id)
