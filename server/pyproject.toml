@@ -28,6 +28,7 @@ types-aiofiles = "^24.1.0.20240626"
 tenacity = "^8.4.2"
 loguru = "^0.7.2"
 jsonschema = "^4.23.0"
+types-jsonschema = "^4.22.0.20240610"
 
 
 [tool.poetry.group.dev.dependencies]

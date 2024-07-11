@@ -1438,6 +1438,20 @@ files = [
 ]
 
 [[package]]
+name = "types-jsonschema"
+version = "4.22.0.20240610"
+description = "Typing stubs for jsonschema"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-jsonschema-4.22.0.20240610.tar.gz", hash = "sha256:f82ab9fe756e3a2642ea9712c46b403ce61eb380b939b696cff3252af42f65b0"},
+    {file = "types_jsonschema-4.22.0.20240610-py3-none-any.whl", hash = "sha256:89996b9bd1928f820a0e252b2844be21cd2e55d062b6fa1048d88453006ad89e"},
+]
+
+[package.dependencies]
+referencing = "*"
+
+[[package]]
 name = "types-python-dateutil"
 version = "2.9.0.20240316"
 description = "Typing stubs for python-dateutil"
@@ -1512,4 +1526,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "8330572e5ff70a8679cba5ed5840172271b84965adc91460124b7160fdb0d9dc"
+content-hash = "53f4a3b0e3b8495f08e886ea7b769b952d7668b17fe7281585d7200bf713ddca"

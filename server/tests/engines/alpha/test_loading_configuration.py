@@ -19,7 +19,7 @@ async def new_file() -> AsyncIterator[Path]:
 
 @pytest.fixture
 async def valid_config(new_file: Path) -> JSONSerializable:
-    config = {
+    config: JSONSerializable = {
         "agents": [{"name": "Default Agent"}],
         "guidelines": {
             "Default Agent": [
@@ -34,7 +34,9 @@ async def valid_config(new_file: Path) -> JSONSerializable:
             "multiply": {
                 "description": "Multiply two number",
                 "function_name": "multiply",
-                "module_path": "",
+                "module_path": str(new_file.relative_to(Path.cwd()))
+                .replace("/", ".")
+                .replace(".py", ""),
                 "parameters": {
                     "a": {"description": "first number", "type": "number"},
                     "b": {"description": "second number", "type": "number"},
@@ -44,9 +46,6 @@ async def valid_config(new_file: Path) -> JSONSerializable:
             }
         },
     }
-    config["tools"]["multiply"]["module_path"] = (
-        str(new_file.relative_to(Path.cwd())).replace("/", ".").replace(".py", "")
-    )
     with open(new_file, "w") as f:
         f.write("""def multiply(a,b): return a*b""")
     return config
@@ -61,53 +60,57 @@ async def test_valid_config(
 
 async def test_invalid_tool(
     valid_config: JSONSerializable,
-    new_file,
+    new_file: Path,
 ) -> None:
-    config = copy.deepcopy(valid_config)
-    config["tools"]["multiply"]["module_path"] = "invalid.path.to.multiply"
+    invalid_config: JSONSerializable = copy.deepcopy(valid_config)
+    invalid_config["tools"]["multiply"]["module_path"] = "invalid.path.to.multiply"  # type: ignore
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False
 
-    config = copy.deepcopy(valid_config)
+    invalid_config = copy.deepcopy(valid_config)
     with open(new_file, "w") as f:
         f.write("""def not_multiply(): return""")
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False
 
 
 async def test_guideline_missing_mandatory_keys(
     valid_config: JSONSerializable,
 ) -> None:
-    config = copy.deepcopy(valid_config)
-    del config["guidelines"]["Default Agent"][0]["when"]
+    invalid_config = copy.deepcopy(valid_config)
+    del invalid_config["guidelines"]["Default Agent"][0]["when"]  # type: ignore
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False
 
-    config = copy.deepcopy(valid_config)
-    del config["guidelines"]["Default Agent"][0]["then"]
+    invalid_config = copy.deepcopy(valid_config)
+    del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False
 
 
 async def test_guideline_with_nonexistent_tool(
     valid_config: JSONSerializable,
 ) -> None:
-    config = copy.deepcopy(valid_config)
-    config["guidelines"]["Default Agent"][0]["enabled_tools"] = ["nonexistent_tool"]
+    invalid_config = copy.deepcopy(valid_config)
+    invalid_config["guidelines"]["Default Agent"][0]["enabled_tools"] = [  # type: ignore
+        "nonexistent_tool"
+    ]
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False
 
 
-def test_guideline_agent_existence(valid_config: JSONSerializable):
-    config = copy.deepcopy(valid_config)
-    config["guidelines"]["Nonexistent Agent"] = [
+def test_guideline_agent_existence(
+    valid_config: JSONSerializable,
+) -> None:
+    invalid_config = copy.deepcopy(valid_config)
+    invalid_config["guidelines"]["Nonexistent Agent"] = [  # type: ignore
         {"when": "Example condition", "then": "Example action"}
     ]
 
-    validator = ConfigFileValidator(config)
+    validator = ConfigFileValidator(invalid_config)
     assert validator.validate() is False

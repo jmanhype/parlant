@@ -5,7 +5,10 @@ from loguru import logger
 
 
 class ConfigFileValidator:
-    def __init__(self, config: Any):
+    def __init__(
+        self,
+        config: Any,
+    ) -> None:
         self.config = config
         self.schema = {
             "type": "object",
@@ -82,10 +85,10 @@ class ConfigFileValidator:
             "required": ["agents", "guidelines", "tools"],
         }
 
-    def validate_json_schema(self):
+    def validate_json_schema(self) -> None:
         validate(instance=self.config, schema=self.schema)
 
-    def validate_tools(self):
+    def validate_tools(self) -> None:
         for tool_name, tool_info in self.config["tools"].items():
             module_path = tool_info["module_path"]
             try:
@@ -103,7 +106,7 @@ class ConfigFileValidator:
                     f'does not exist in the "{module_path}" module.'
                 )
 
-    def validate_guidelines(self):
+    def validate_guidelines(self) -> None:
         tools = set(self.config["tools"].keys())
         agents = set(agent["name"] for agent in self.config["agents"])
         for agent, guidelines in self.config["guidelines"].items():
