@@ -111,7 +111,7 @@ class ConfigFileValidator:
         agents = set(agent["name"] for agent in self.config["agents"])
         for agent, guidelines in self.config["guidelines"].items():
             if agent not in agents:
-                raise ValidationError(f'Agent "{agent}" Does not exists')
+                raise ValidationError(f'Agent "{agent}" does not exist.')
 
             for guideline in guidelines:
                 if "enabled_tools" in guideline:
