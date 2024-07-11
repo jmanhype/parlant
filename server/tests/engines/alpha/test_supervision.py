@@ -138,8 +138,8 @@ def when_processing_is_triggered(
         message_event_producer.produce_events(
             context_variables=[],
             interaction_history=context.intercations_history,
-            ordinary_guideline_propositions=context.guideline_proposition.values(),
-            tool_enabled_guidelines={},
+            ordinary_guideline_propositions=list(context.guideline_proposition.values()),
+            tool_enabled_guideline_propositions={},
             staged_events=[],
         )
     )

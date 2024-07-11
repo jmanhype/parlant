@@ -5,7 +5,7 @@ import inspect
 from itertools import chain
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, NewType, Optional, TypedDict, cast
+from typing import Any, Iterable, Mapping, NewType, Optional, Sequence, TypedDict, cast
 
 from loguru import logger
 
@@ -100,12 +100,12 @@ class ToolCaller:
 
     async def infer_tool_calls(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        guidelines: Iterable[Guideline],
-        guideline_tools_associations: dict[Guideline, Iterable[Tool]],
-        produced_tool_events: Iterable[ProducedEvent],
-    ) -> Iterable[ToolCall]:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        guidelines: Sequence[Guideline],
+        guideline_tools_associations: Mapping[Guideline, Sequence[Tool]],
+        produced_tool_events: Sequence[ProducedEvent],
+    ) -> Sequence[ToolCall]:
         inference_prompt = self._format_tool_call_inference_prompt(
             context_variables,
             interaction_history,
@@ -151,7 +151,7 @@ class ToolCaller:
 
     def _format_guideline_tool_associations(
         self,
-        guideline_tools_associations: dict[Guideline, Iterable[Tool]],
+        guideline_tools_associations: Mapping[Guideline, Sequence[Tool]],
     ) -> str:
         def _list_tools_names(
             tools: Iterable[Tool],
@@ -166,11 +166,11 @@ class ToolCaller:
 
     def _format_tool_call_inference_prompt(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_event_list: list[Event],
-        ordinary_guidelines: Iterable[Guideline],
-        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-        produced_tool_events: Iterable[ProducedEvent],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_event_list: Sequence[Event],
+        ordinary_guidelines: Sequence[Guideline],
+        tool_enabled_guidelines: Mapping[Guideline, Sequence[Tool]],
+        produced_tool_events: Sequence[ProducedEvent],
     ) -> str:
         json_events = events_to_json(interaction_event_list)
         context_values = context_variables_to_json(context_variables)
@@ -335,12 +335,12 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
 
     def _format_tool_call_verification_prompt(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_event_list: list[Event],
-        guidelines: Iterable[Guideline],
-        guideline_tool_associations: dict[Guideline, Iterable[Tool]],
-        produced_tool_events: Iterable[ProducedEvent],
-        tool_call_specifications: Iterable[ToolCallRequest],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_event_list: Sequence[Event],
+        guidelines: Sequence[Guideline],
+        guideline_tool_associations: Mapping[Guideline, Sequence[Tool]],
+        produced_tool_events: Sequence[ProducedEvent],
+        tool_call_specifications: Sequence[ToolCallRequest],
     ) -> str:
         json_events = events_to_json(interaction_event_list)
         context_values = context_variables_to_json(context_variables)
@@ -494,7 +494,7 @@ Note that the `checks` list can be empty if no functions need to be called.
     async def _run_inference(
         self,
         prompt: str,
-    ) -> Iterable[ToolCallRequest]:
+    ) -> Sequence[ToolCallRequest]:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",
@@ -510,7 +510,7 @@ Note that the `checks` list can be empty if no functions need to be called.
     async def _verify_inference(
         self,
         prompt: str,
-    ) -> Iterable[ToolCall]:
+    ) -> Sequence[ToolCall]:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",

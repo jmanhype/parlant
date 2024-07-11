@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 import json
 import jsonfinder  # type: ignore
-from typing import Iterable
+from typing import Sequence
 from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -29,10 +29,10 @@ class GuidelineProposer:
 
     async def propose_guidelines(
         self,
-        guidelines: Iterable[Guideline],
-        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Iterable[Event],
-    ) -> Iterable[GuidelineProposition]:
+        guidelines: Sequence[Guideline],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+    ) -> Sequence[GuidelineProposition]:
         guideline_list = list(guidelines)
 
         if not guideline_list:
