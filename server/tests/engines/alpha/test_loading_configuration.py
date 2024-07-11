@@ -55,7 +55,7 @@ async def valid_config(new_file: Path) -> JSONSerializable:
 async def empty_config() -> JSONSerializable:
     config: JSONSerializable = {
         "agents": [{"name": "Default Agent"}],
-        "guidelines": {},
+        "guidelines": {"Default Agent": []},
         "tools": {},
     }
     return config
