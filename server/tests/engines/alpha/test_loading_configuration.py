@@ -20,7 +20,7 @@ async def new_file() -> AsyncIterator[Path]:
 @pytest.fixture
 async def valid_config(new_file: Path) -> JSONSerializable:
     config = {
-        "agents": ["Default Agent"],
+        "agents": [{"name": "Default Agent"}],
         "guidelines": {
             "Default Agent": [
                 {

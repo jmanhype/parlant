@@ -10,7 +10,17 @@ class ConfigFileValidator:
         self.schema = {
             "type": "object",
             "properties": {
-                "agents": {"type": "array", "items": {"type": "string"}},
+                "agents": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "description": {"type": "string"},
+                        },
+                        "required": ["name"],
+                    },
+                },
                 "guidelines": {
                     "type": "object",
                     "additionalProperties": {
@@ -95,7 +105,7 @@ class ConfigFileValidator:
 
     def validate_guidelines(self):
         tools = set(self.config["tools"].keys())
-        agents = set(self.config["agents"])
+        agents = set(agent["name"] for agent in self.config["agents"])
         for agent, guidelines in self.config["guidelines"].items():
             if agent not in agents:
                 raise ValidationError(f'Agent "{agent}" Does not exists')
