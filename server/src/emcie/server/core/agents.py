@@ -13,6 +13,7 @@ AgentId = NewType("AgentId", str)
 class Agent:
     id: AgentId
     name: str
+    description: Optional[str]
     creation_utc: datetime
 
 
@@ -21,6 +22,7 @@ class AgentStore(ABC):
     async def create_agent(
         self,
         name: str,
+        description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
     ) -> Agent: ...
 
@@ -45,23 +47,31 @@ class AgentDocumentStore(AgentStore):
     async def create_agent(
         self,
         name: str,
+        description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
     ) -> Agent:
-        agent_to_insert = {
-            "name": name,
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-        }
-        agent = common.create_instance_from_dict(
-            Agent,
-            await self._database.insert_one(self._collection_name, agent_to_insert),
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+        agent_document = await self._database.insert_one(
+            self._collection_name,
+            {"name": name, "description": description, "creation_utc": creation_utc},
         )
-        return agent
+        return Agent(
+            id=agent_document["id"],
+            name=name,
+            description=description,
+            creation_utc=creation_utc,
+        )
 
     async def list_agents(
         self,
     ) -> Iterable[Agent]:
         return (
-            common.create_instance_from_dict(Agent, a)
+            Agent(
+                id=a["id"],
+                name=a["name"],
+                description=a.get("description"),
+                creation_utc=a["creation_utc"],
+            )
             for a in await self._database.find(self._collection_name, filters={})
         )
 
@@ -72,7 +82,10 @@ class AgentDocumentStore(AgentStore):
         filters = {
             "id": FieldFilter(equal_to=agent_id),
         }
-        agent = common.create_instance_from_dict(
-            Agent, await self._database.find_one(self._collection_name, filters)
+        agent_document = await self._database.find_one(self._collection_name, filters)
+        return Agent(
+            id=agent_document["id"],
+            name=agent_document["name"],
+            description=agent_document["description"],
+            creation_utc=agent_document["creation_utc"],
         )
-        return agent

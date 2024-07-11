@@ -63,21 +63,39 @@ async def test_agent_creation(
 ) -> None:
     async with JSONFileDocumentDatabase(new_file) as agent_db:
         agent_store = AgentDocumentStore(agent_db)
-        agent = await agent_store.create_agent(name="Test Agent")
+        agent_without_description = await agent_store.create_agent(name="Test Agent")
+        agent_with_description = await agent_store.create_agent(
+            name="Test Agent",
+            description="You are a test agent",
+        )
 
         agents = list(await agent_store.list_agents())
 
-        assert len(agents) == 1
-        assert agents[0] == agent
+        assert len(agents) == 2
+        assert agents[0] == agent_without_description
 
     with open(new_file) as f:
         agents_from_json = json.load(f)
 
-    assert len(agents_from_json["agents"]) == 1
-    json_agent = agents_from_json["agents"][0]
-    assert json_agent["id"] == agent.id
-    assert json_agent["name"] == agent.name
-    assert datetime.fromisoformat(json_agent["creation_utc"]) == agent.creation_utc
+    assert len(agents_from_json["agents"]) == 2
+
+    json_agent_without_description = agents_from_json["agents"][0]
+    assert json_agent_without_description["id"] == agent_without_description.id
+    assert json_agent_without_description["name"] == agent_without_description.name
+    assert json_agent_without_description["description"] is None
+    assert (
+        datetime.fromisoformat(json_agent_without_description["creation_utc"])
+        == agent_without_description.creation_utc
+    )
+
+    json_agent_with_description = agents_from_json["agents"][1]
+    assert json_agent_with_description["id"] == agent_with_description.id
+    assert json_agent_with_description["name"] == agent_with_description.name
+    assert json_agent_with_description["description"] == agent_with_description.description
+    assert (
+        datetime.fromisoformat(json_agent_without_description["creation_utc"])
+        == agent_without_description.creation_utc
+    )
 
 
 async def test_session_creation(
