@@ -1,22 +1,19 @@
 from itertools import chain
 import json
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, cast
 from loguru import logger
 
+from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
-from emcie.server.engines.alpha.tool_caller import (
-    ToolCaller,
-    tool_result_to_dict,
-)
+from emcie.server.engines.alpha.tool_caller import ToolCaller
 from emcie.server.engines.alpha.utils import (
     make_llm_client,
 )
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.core.guidelines import Guideline
-from emcie.server.core.sessions import Event
+from emcie.server.core.sessions import Event, ToolEventData
 
 
 class EventProducer:
@@ -38,10 +35,8 @@ class EventProducer:
         tool_events = await self.tool_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_guidelines=[p.guideline for p in ordinary_guideline_propositions],
-            tool_enabled_guidelines={
-                p.guideline: tools for p, tools in tool_enabled_guideline_propositions.items()
-            },
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
         )
 
         message_events = await self.message_event_producer.produce_events(
@@ -295,10 +290,10 @@ class ToolEventProducer:
         self,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
-        ordinary_guidelines: Sequence[Guideline],
-        tool_enabled_guidelines: Mapping[Guideline, Sequence[Tool]],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
     ) -> Sequence[ProducedEvent]:
-        if not tool_enabled_guidelines:
+        if not tool_enabled_guideline_propositions:
             return []
 
         produced_tool_events: list[ProducedEvent] = []
@@ -307,13 +302,13 @@ class ToolEventProducer:
             await self.tool_caller.infer_tool_calls(
                 context_variables,
                 interaction_history,
-                ordinary_guidelines,
-                tool_enabled_guidelines,
+                ordinary_guideline_propositions,
+                tool_enabled_guideline_propositions,
                 produced_tool_events,
             )
         )
 
-        tools = list(chain(*tool_enabled_guidelines.values()))
+        tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,
@@ -323,11 +318,22 @@ class ToolEventProducer:
         if not tool_results:
             return []
 
+        data: ToolEventData = {
+            "tool_results": [
+                {
+                    "tool_name": r.tool_call.name,
+                    "parameters": r.tool_call.parameters,
+                    "result": r.result,
+                }
+                for r in tool_results
+            ]
+        }
+
         produced_tool_events.append(
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tool_results": [tool_result_to_dict(r) for r in tool_results]},
+                data=cast(JSONSerializable, data),
             )
         )
 

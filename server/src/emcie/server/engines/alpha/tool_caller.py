@@ -5,21 +5,22 @@ import inspect
 from itertools import chain
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, Mapping, NewType, Optional, Sequence, TypedDict, cast
+from typing import Any, Iterable, Mapping, NewType, Optional, Sequence, TypedDict
 
 from loguru import logger
 
 from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
-from emcie.server.core.sessions import Event, ToolEventData
+from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.engines.alpha.utils import (
-    context_variables_to_json,
     duration_logger,
-    events_to_json,
     make_llm_client,
+    produced_tool_events_to_dict,
 )
 from emcie.server.engines.common import (
     ProducedEvent,
@@ -43,49 +44,6 @@ class ToolResult:
     result: JSONSerializable
 
 
-def produced_tool_events_to_dict(
-    produced_events: Iterable[ProducedEvent],
-) -> list[dict[str, Any]]:
-    return [produced_tool_event_to_dict(e) for e in produced_events]
-
-
-def produced_tool_event_to_dict(produced_event: ProducedEvent) -> dict[str, Any]:
-    assert produced_event.kind == Event.TOOL_KIND
-
-    return {
-        "kind": produced_event.kind,
-        "data": cast(ToolEventData, produced_event.data)["tool_results"],
-    }
-
-
-def tool_result_to_dict(
-    tool_result: ToolResult,
-) -> dict[str, Any]:
-    x = {
-        "tool_name": tool_result.tool_call.name,
-        "parameters": tool_result.tool_call.parameters,
-        "result": tool_result.result,
-    }
-    return x
-
-
-def tool_to_dict(
-    tool: Tool,
-) -> dict[str, Any]:
-    return {
-        "name": tool.name,
-        "description": tool.description,
-        "parameters": tool.parameters,
-        "required": tool.required,
-    }
-
-
-def tools_to_json(
-    tools: Iterable[Tool],
-) -> list[dict[str, Any]]:
-    return [tool_to_dict(t) for t in tools]
-
-
 class ToolCaller:
     class ToolCallRequest(TypedDict):
         name: str
@@ -102,15 +60,15 @@ class ToolCaller:
         self,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
-        guidelines: Sequence[Guideline],
-        guideline_tools_associations: Mapping[Guideline, Sequence[Tool]],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         produced_tool_events: Sequence[ProducedEvent],
     ) -> Sequence[ToolCall]:
         inference_prompt = self._format_tool_call_inference_prompt(
             context_variables,
             interaction_history,
-            guidelines,
-            guideline_tools_associations,
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
             produced_tool_events,
         )
 
@@ -120,8 +78,8 @@ class ToolCaller:
         verification_prompt = self._format_tool_call_verification_prompt(
             context_variables,
             interaction_history,
-            guidelines,
-            guideline_tools_associations,
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
             produced_tool_events,
             inference_output,
         )
@@ -149,96 +107,40 @@ class ToolCaller:
 
             return tool_results
 
-    def _format_guideline_tool_associations(
-        self,
-        guideline_tools_associations: Mapping[Guideline, Sequence[Tool]],
-    ) -> str:
-        def _list_tools_names(
-            tools: Iterable[Tool],
-        ) -> str:
-            return str([t.name for t in tools])
-
-        return "\n\n".join(
-            f"{i}) When {g.predicate}, then {g.content}\n"
-            f"Tool functions enabled : {_list_tools_names(guideline_tools_associations[g])}"
-            for i, g in enumerate(guideline_tools_associations, start=1)
-        )
-
     def _format_tool_call_inference_prompt(
         self,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
-        ordinary_guidelines: Sequence[Guideline],
-        tool_enabled_guidelines: Mapping[Guideline, Sequence[Tool]],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         produced_tool_events: Sequence[ProducedEvent],
     ) -> str:
-        json_events = events_to_json(interaction_event_list)
-        context_values = context_variables_to_json(context_variables)
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
-        tools = set(chain(*tool_enabled_guidelines.values()))
-        functions = tools_to_json(tools)
+        tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
-        ordinary_rules = "\n".join(
-            f"{i}) When {g.predicate}, then {g.content}"
-            for i, g in enumerate(ordinary_guidelines, start=1)
+        builder = PromptBuilder()
+
+        builder.add_interaction_history(interaction_event_list)
+        builder.add_context_variables(context_variables)
+
+        builder.add_section(
+            """
+Before generating your next response, you are highly encouraged to use tools that are provided to you, in order to generate a high-quality, well-informed response.
+"""  # noqa
         )
-        function_enabled_rules = self._format_guideline_tool_associations(tool_enabled_guidelines)
 
-        prompt = ""
+        builder.add_guideline_propositions(
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
+            include_priority=False,
+            include_tool_associations=True,
+        )
 
-        if interaction_event_list:
-            prompt += f"""\
-The following is a list of events describing a back-and-forth interaction between you,
-an AI assistant, and a user: ###
-{json_events}
-###
-"""
-        else:
-            prompt += """
-You, an AI assistant, are now present in an online session with a user.
-An interaction may or may not now be initiated by you, addressing the user.
-
-Here's how to decide whether to initiate the interaction:
-A. If the rules below both apply to the context, as well as suggest that you should say something
-to the user, then you should indeed initiate the interaction now.
-B. Otherwise, if no reason is provided that suggests you should say something to the user,
-then you should not initiate the interaction. Produce no response in this case.
-"""
-
-        if context_variables:
-            prompt += f"""
-The following is information that you're given about the user and context of the interaction: ###
-{context_values}
-###
-"""
-
-        prompt += """
-Before generating your next response, you are highly encouraged to use tools that are provided
-to you, in order to generate a high-quality, well-informed response.
-"""
-
-        if ordinary_rules:
-            prompt += f"""
-In generating the response, you must adhere to the following rules: ###
-{ordinary_rules}
-###
-"""
-
-        if function_enabled_rules:
-            prompt += f"""
-The following is a list of instructions that apply, along with the tool functions enabled for them,
-which may or may not need to be called at this point, depending on your judgement
-and the rules provided: ###
-{function_enabled_rules}
-###
-
-The following are the tool function definitions: ###
-{functions}
-###
-"""
+        builder.add_tool_definitions(tools)
 
         if staged_function_calls:
-            prompt += f"""
+            builder.add_section(
+                f"""
 The following is a list of ordered invoked tool functions after the interaction's latest state.
 You can use this information to avoid redundant calls and inform your response.
 For example, if the data you need already exists in one of these calls, then you DO NOT
@@ -246,8 +148,10 @@ need to ask for this tool function to be run again, because its information is f
 {staged_function_calls}
 ###
 """
+            )
 
-        prompt += f"""
+        builder.add_section(
+            f"""
 Before generating your next response, you must now decide whether to use any of the tools provided.
 Here are the principles by which you can decide whether to use tools:
 
@@ -308,8 +212,9 @@ Here's a hypothetical example, for your reference:
 
 Note that the `tool_call_specifications` list can be empty if no functions need to be called.
 """  # noqa
+        )
 
-        return prompt
+        return builder.build()
 
     def _get_invoked_functions(
         self,
@@ -337,87 +242,46 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
         self,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
-        guidelines: Sequence[Guideline],
-        guideline_tool_associations: Mapping[Guideline, Sequence[Tool]],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         produced_tool_events: Sequence[ProducedEvent],
         tool_call_specifications: Sequence[ToolCallRequest],
     ) -> str:
-        json_events = events_to_json(interaction_event_list)
-        context_values = context_variables_to_json(context_variables)
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
+        tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
-        tools = set(chain(*guideline_tool_associations.values()))
-        functions = tools_to_json(tools)
+        builder = PromptBuilder()
 
-        ordinary_rules = "\n".join(
-            f"{i}) When {g.predicate}, then {g.content}" for i, g in enumerate(guidelines, start=1)
+        builder.add_interaction_history(interaction_event_list)
+        builder.add_context_variables(context_variables)
+
+        builder.add_section(
+            """
+Before generating your next response, you are highly encouraged to use tools that are provided to you, in order to generate a high-quality, well-informed response.
+"""  # noqa
         )
-        function_enabled_rules = self._format_guideline_tool_associations(
-            guideline_tool_associations
+
+        builder.add_guideline_propositions(
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
+            include_priority=False,
+            include_tool_associations=True,
         )
 
-        prompt = ""
-
-        if interaction_event_list:
-            prompt += f"""\
-The following is a list of events describing a back-and-forth interaction between you,
-an AI assistant, and a user: ###
-{json_events}
-###
-"""
-        else:
-            prompt += """
-You, an AI assistant, are now present in an online session with a user.
-An interaction may or may not now be initiated by you, addressing the user.
-
-Here's how to decide whether to initiate the interaction:
-A. If the rules below both apply to the context, as well as suggest that you should say something
-to the user, then you should indeed initiate the interaction now.
-B. Otherwise, if no reason is provided that suggests you should say something to the user,
-then you should not initiate the interaction. Produce no response in this case.
-"""
-
-        if context_variables:
-            prompt += f"""
-The following is information that you're given about the user and context of the interaction: ###
-{context_values}
-###
-"""
-
-        prompt += """
-Before generating your next response, you are highly encouraged to use tools that are provided
-to you, in order to generate a high-quality, well-informed response.
-"""
-
-        if ordinary_rules:
-            prompt += f"""
-In generating the response, you must adhere to the following rules: ###
-{ordinary_rules}
-###
-"""
-
-        if function_enabled_rules:
-            prompt += f"""
-The following is a list of instructions that apply, along with the tool functions enabled for them,
-which may or may not need to be called at this point, depending on your judgement
-and the rules provided: ###
-{function_enabled_rules}
-###
-
-The following are the tool function definitions: ###
-{functions}
-###
-"""
+        builder.add_tool_definitions(tools)
 
         if staged_function_calls:
-            prompt += f"""
+            builder.add_section(
+                f"""
 The following is a list of ordered invoked tool functions after the interaction's latest state.
 You can use this information to avoid redundant calls and inform your response: ###
 {staged_function_calls}
 ###
 """
+            )
 
-        prompt += f"""
+        builder.add_section(
+            f"""
 A predictive NLP algorithm has suggested that the following tool calls be executed
 prior to generating your next response to the user. ###
 {tool_call_specifications}
@@ -488,8 +352,9 @@ Here's a hypothetical example, for your reference:
 
 Note that the `checks` list can be empty if no functions need to be called.
 """  # noqa
+        )
 
-        return prompt
+        return builder.build()
 
     async def _run_inference(
         self,

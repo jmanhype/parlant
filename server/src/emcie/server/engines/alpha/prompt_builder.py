@@ -9,8 +9,11 @@ from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.engines.alpha.tool_caller import produced_tool_events_to_dict
-from emcie.server.engines.alpha.utils import context_variables_to_json, events_to_json
+from emcie.server.engines.alpha.utils import (
+    context_variables_to_json,
+    events_to_json,
+    produced_tool_events_to_dict,
+)
 from emcie.server.engines.common import ProducedEvent
 
 
@@ -19,6 +22,7 @@ class BuiltInSection(Enum):
     CONTEXT_VARIABLES = auto()
     GUIDELINE_PREDICATES = auto()
     GUIDELINE_PROPOSITIONS = auto()
+    TOOLS = auto()
     STAGED_EVENTS = auto()
 
 
@@ -152,25 +156,53 @@ IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the lis
         self,
         ordinary: Sequence[GuidelineProposition],
         tool_enabled: Mapping[GuidelineProposition, Sequence[Tool]],
+        include_priority: bool = True,
+        include_tool_associations: bool = False,
     ) -> PromptBuilder:
         all_propositions = list(chain(ordinary, tool_enabled))
 
         if all_propositions:
+            rules = []
 
-            rules = "\n".join(
-                f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
-                f"\n    [Priority (1-10): {p.score}, rationale: {p.rationale}]"
-                for i, p in enumerate(all_propositions, start=1)
-            )
+            for i, p in enumerate(all_propositions, start=1):
+                rule = f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
+
+                if include_priority:
+                    rule += f"\n    [Priority (1-10): {p.score}, rationale: {p.rationale}]"
+
+                if include_tool_associations:
+                    if p in tool_enabled:
+                        tools = tool_enabled[p]
+                        tool_names = ", ".join([f"'{t.name}'" for t in tools])
+                        rule += f"\n    [Associated Tools: {tool_names}]"
+
+                rules.append(rule)
+
+            rule_list = "\n".join(rules)
+
+            section_preface = """
+In formulating your response, you are required to follow these behavioral rules,
+which are applicable to the latest state of the interaction.
+"""
+
+            if include_priority:
+                section_preface += """
+Each rule is accompanied by a priority score indicating its significance,
+and a rationale explaining why it is applicable.
+""".strip()
+
+            if include_tool_associations:
+                section_preface += """
+Note also that each rule may be associated with one or more tools that it can utilize to achieve its goal, as needed. If a rule has associated tool(s), use your judgement, as well as the nature of that rule and the other rules provided, to decide whether any tools should be utilized.
+""".strip()  # noqa
 
             self.add_section(
                 name=BuiltInSection.GUIDELINE_PROPOSITIONS,
                 content=f"""
-In formulating your response, you are required to follow these behavioral rules,
-which are applicable to the latest state of the interaction.
-Each rule is accompanied by a priority score indicating its significance,
-and a rationale explaining why it is applicable: ###
-{rules}
+{section_preface}
+
+Rules: ###
+{rule_list}
 ###
 """,
                 status=SectionStatus.ACTIVE,
@@ -184,6 +216,31 @@ However, in this case, no special behavrioal rules were provided.
 """,
                 status=SectionStatus.PASSIVE,
             )
+
+        return self
+
+    def add_tool_definitions(self, tools: Sequence[Tool]) -> PromptBuilder:
+        assert tools
+
+        tool_specs = [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+                "required_parameters": tool.required,
+            }
+            for tool in tools
+        ]
+
+        self.add_section(
+            name=BuiltInSection.TOOLS,
+            content=f"""
+The following are the tool function definitions: ###
+{tool_specs}
+###
+""",
+            status=SectionStatus.ACTIVE,
+        )
 
         return self
 

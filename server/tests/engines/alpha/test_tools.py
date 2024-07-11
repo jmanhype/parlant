@@ -14,7 +14,7 @@ from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
-from emcie.server.engines.alpha.tool_caller import produced_tool_event_to_dict
+from emcie.server.engines.alpha.utils import produced_tool_event_to_dict
 from emcie.server.engines.common import Context, ProducedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import (
