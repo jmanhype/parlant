@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Iterable
+from typing import Mapping, Sequence
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.context_variables import (
@@ -9,7 +9,8 @@ from emcie.server.core.context_variables import (
 )
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposer, GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
@@ -36,7 +37,7 @@ class AlphaEngine(Engine):
         self.event_producer = EventProducer()
         self.guide_filter = GuidelineProposer()
 
-    async def process(self, context: Context) -> Iterable[ProducedEvent]:
+    async def process(self, context: Context) -> Sequence[ProducedEvent]:
         interaction_history = list(await self.session_store.list_events(context.session_id))
 
         context_variables = await self._load_context_variables(
@@ -63,7 +64,7 @@ class AlphaEngine(Engine):
         self,
         agent_id: AgentId,
         session_id: SessionId,
-    ) -> list[tuple[ContextVariable, ContextVariableValue]]:
+    ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
         session = await self.session_store.read_session(session_id)
 
         variables = await self.context_variable_store.list_variables(
@@ -85,9 +86,9 @@ class AlphaEngine(Engine):
     async def _load_guidelines(
         self,
         agent_id: AgentId,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-    ) -> tuple[Iterable[GuidelineProposition], dict[GuidelineProposition, Iterable[Tool]]]:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+    ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[Tool]]]:
         all_relevant_guidelines = await self._fetch_relevant_guidelines(
             agent_id=agent_id,
             context_variables=context_variables,
@@ -99,33 +100,35 @@ class AlphaEngine(Engine):
             guideline_propositions=all_relevant_guidelines,
         )
 
-        ordinary_guidelines = all_relevant_guidelines.difference(tool_enabled_guidelines)
+        ordinary_guidelines = list(
+            set(all_relevant_guidelines).difference(tool_enabled_guidelines),
+        )
 
         return ordinary_guidelines, tool_enabled_guidelines
 
     async def _fetch_relevant_guidelines(
         self,
         agent_id: AgentId,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-    ) -> set[GuidelineProposition]:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+    ) -> Sequence[GuidelineProposition]:
         all_possible_guidelines = await self.guideline_store.list_guidelines(
             guideline_set=agent_id,
         )
 
         relevant_guidelines = await self.guide_filter.propose_guidelines(
-            guidelines=all_possible_guidelines,
+            guidelines=list(all_possible_guidelines),
             context_variables=context_variables,
             interaction_history=interaction_history,
         )
 
-        return set(relevant_guidelines)
+        return relevant_guidelines
 
     async def _find_tool_enabled_guidelines(
         self,
         agent_id: AgentId,
-        guideline_propositions: Iterable[GuidelineProposition],
-    ) -> dict[GuidelineProposition, Iterable[Tool]]:
+        guideline_propositions: Sequence[GuidelineProposition],
+    ) -> Mapping[GuidelineProposition, Sequence[Tool]]:
         guideline_tool_associations = list(
             await self.guideline_tool_association_store.list_associations()
         )

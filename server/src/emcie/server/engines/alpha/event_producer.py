@@ -1,24 +1,19 @@
 from itertools import chain
 import json
-from typing import Iterable, Optional
+from typing import Mapping, Optional, Sequence, cast
 from loguru import logger
 
+from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
-from emcie.server.engines.alpha.tool_caller import (
-    ToolCaller,
-    produced_tool_events_to_dict,
-    tool_result_to_dict,
-)
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
+from emcie.server.engines.alpha.tool_caller import ToolCaller
 from emcie.server.engines.alpha.utils import (
-    context_variables_to_json,
-    events_to_json,
     make_llm_client,
 )
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.core.guidelines import Guideline
-from emcie.server.core.sessions import Event
+from emcie.server.core.sessions import Event, ToolEventData
 
 
 class EventProducer:
@@ -29,32 +24,30 @@ class EventProducer:
 
     async def produce_events(
         self,
-        context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Iterable[Event],
-        ordinary_guideline_propositions: Iterable[GuidelineProposition],
-        tool_enabled_guideline_propositions: dict[GuidelineProposition, Iterable[Tool]],
-    ) -> Iterable[ProducedEvent]:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+    ) -> Sequence[ProducedEvent]:
         interaction_event_list = list(interaction_history)
         context_variable_list = list(context_variables)
 
         tool_events = await self.tool_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
-            ordinary_guidelines=[p.guideline for p in ordinary_guideline_propositions],
-            tool_enabled_guidelines={
-                p.guideline: tools for p, tools in tool_enabled_guideline_propositions.items()
-            },
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
         )
 
         message_events = await self.message_event_producer.produce_events(
             context_variables=context_variable_list,
             interaction_history=interaction_event_list,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guidelines=tool_enabled_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
             staged_events=tool_events,
         )
 
-        return chain(tool_events, message_events)
+        return list(chain(tool_events, message_events))
 
 
 class MessageEventProducer:
@@ -65,18 +58,18 @@ class MessageEventProducer:
 
     async def produce_events(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        ordinary_guideline_propositions: Iterable[GuidelineProposition],
-        tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
-        staged_events: Iterable[ProducedEvent],
-    ) -> Iterable[ProducedEvent]:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        staged_events: Sequence[ProducedEvent],
+    ) -> Sequence[ProducedEvent]:
         interaction_event_list = list(interaction_history)
 
         if (
             not interaction_event_list
             and not ordinary_guideline_propositions
-            and not tool_enabled_guidelines
+            and not tool_enabled_guideline_propositions
         ):
             # No interaction and no guidelines that could trigger
             # a proactive start of the interaction
@@ -86,8 +79,8 @@ class MessageEventProducer:
         prompt = self._format_prompt(
             context_variables=context_variables,
             interaction_history=interaction_history,
-            guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guidelines=tool_enabled_guidelines,
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
             staged_events=staged_events,
         )
 
@@ -106,80 +99,33 @@ class MessageEventProducer:
 
     def _format_prompt(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        guideline_propositions: Iterable[GuidelineProposition],
-        tool_enabled_guidelines: dict[GuidelineProposition, Iterable[Tool]],
-        staged_events: Iterable[ProducedEvent],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        staged_events: Sequence[ProducedEvent],
     ) -> str:
-        interaction_events_json = events_to_json(interaction_history)
-        context_values = context_variables_to_json(context_variables)
-        # FIXME: The following is a code-smell. We can't assume staged_events
-        #        is necessarily only composed of tool events.
-        #        Also, produced_tool_events_to_dict() is an oddball of a function.
-        staged_events_as_dict = produced_tool_events_to_dict(staged_events)
-        all_guideline_propositions = chain(guideline_propositions, tool_enabled_guidelines)
+        builder = PromptBuilder()
 
-        rules = "\n".join(
-            f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
-            f"\n\t Priority (1-10): {p.score}, rationale: {p.rationale}"
-            for i, p in enumerate(all_guideline_propositions, start=1)
+        builder.add_interaction_history(interaction_history)
+        builder.add_context_variables(context_variables)
+        builder.add_guideline_propositions(
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
         )
 
-        prompt = ""
-
-        if interaction_history:
-            prompt += f"""\
-The following is a list of events describing a back-and-forth
-interaction between you, an AI assistant, and a user: ###
-{interaction_events_json}
-###
-"""
-
-        else:
-            prompt += """\
-You, an AI assistant, are now present in an online session with a user.
-An interaction may or may not now be initiated by you, addressing the user.
-
-Here's how to decide whether to initiate the interaction:
-A. If the rules below both apply to the context, as well as suggest that you should say something
-to the user, then you should indeed initiate the interaction now.
-B. Otherwise, if no reason is provided that suggests you should say something to the user,
-then you should not initiate the interaction. Produce no response in this case.
-"""
-
-        if context_variables:
-            prompt += f"""
-The following is information that you're given about the user and context of the interaction: ###
-{context_values}
-###
-"""
-
-        if rules:
-            prompt += f"""
-In formulating your response, you are required to follow these rules,
-which are applicable to the latest state of the interaction.
-Each rule is accompanied by a priority score indicating its significance,
-and a rationale explaining why it is applicable: ###
-{rules}
-###
-"""
-
-        prompt += """
+        builder.add_section(
+            """
 You must generate your response message to the current
 (latest) state of the interaction.
 """
+        )
 
-        if staged_events_as_dict:
-            prompt += f"""
-For your information, here are some staged events that have just been produced,
-to assist you with generating your response message while following the rules above: ###
-{staged_events_as_dict}
-###
-"""
+        builder.add_staged_events(staged_events)
 
-        if not rules:
-            prompt += """
+        if builder.section_status(BuiltInSection.GUIDELINE_PROPOSITIONS) != SectionStatus.ACTIVE:
+            builder.add_section(
+                """
 Produce a valid JSON object in the following format: ###
 {{
     "produced_response": true,
@@ -193,8 +139,10 @@ Produce a valid JSON object in the following format: ###
 }}
 ###
 """
+            )
         else:
-            prompt += f"""
+            builder.add_section(
+                f"""
 Propose revisions to the message content,
 ensuring that your proposals adhere to each and every one of the provided rules based on the most recent state of interaction.
 Consider the priority scores assigned to each rule, acknowledging that in some cases, adherence to a higher-priority rule may necessitate deviation from another.
@@ -298,10 +246,10 @@ Example 4: Non-Adherence Due to Missing Data: ###
     ]
 }}
 ###
-
 """  # noqa
+            )
 
-        return prompt
+        return builder.build()
 
     async def _generate_response_message(self, prompt: str) -> Optional[str]:
         response = await self._llm_client.chat.completions.create(
@@ -340,12 +288,12 @@ class ToolEventProducer:
 
     async def produce_events(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        ordinary_guidelines: Iterable[Guideline],
-        tool_enabled_guidelines: dict[Guideline, Iterable[Tool]],
-    ) -> Iterable[ProducedEvent]:
-        if not tool_enabled_guidelines:
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+    ) -> Sequence[ProducedEvent]:
+        if not tool_enabled_guideline_propositions:
             return []
 
         produced_tool_events: list[ProducedEvent] = []
@@ -354,13 +302,13 @@ class ToolEventProducer:
             await self.tool_caller.infer_tool_calls(
                 context_variables,
                 interaction_history,
-                ordinary_guidelines,
-                tool_enabled_guidelines,
+                ordinary_guideline_propositions,
+                tool_enabled_guideline_propositions,
                 produced_tool_events,
             )
         )
 
-        tools = list(chain(*tool_enabled_guidelines.values()))
+        tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
         tool_results = await self.tool_caller.execute_tool_calls(
             tool_calls,
@@ -370,11 +318,22 @@ class ToolEventProducer:
         if not tool_results:
             return []
 
+        data: ToolEventData = {
+            "tool_results": [
+                {
+                    "tool_name": r.tool_call.name,
+                    "parameters": r.tool_call.parameters,
+                    "result": r.result,
+                }
+                for r in tool_results
+            ]
+        }
+
         produced_tool_events.append(
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
-                data={"tool_results": [tool_result_to_dict(r) for r in tool_results]},
+                data=cast(JSONSerializable, data),
             )
         )
 
