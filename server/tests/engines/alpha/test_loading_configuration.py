@@ -24,15 +24,15 @@ async def valid_config(new_file: Path) -> JSONSerializable:
         "guidelines": {
             "Default Agent": [
                 {
-                    "when": "Ask for multiply two numbers",
-                    "then": "use the multiply tool to give him result",
+                    "when": "Ask to multiply two numbers",
+                    "then": "use the multiply tool to provide the result",
                     "enabled_tools": ["multiply"],
                 }
             ]
         },
         "tools": {
             "multiply": {
-                "description": "Multiply two number",
+                "description": "Multiply two numbers",
                 "function_name": "multiply",
                 "module_path": str(new_file.relative_to(Path.cwd()))
                 .replace("/", ".")
@@ -47,7 +47,7 @@ async def valid_config(new_file: Path) -> JSONSerializable:
         },
     }
     with open(new_file, "w") as f:
-        f.write("""def multiply(a,b): return a*b""")
+        f.write("""def multiply(a, b): return a * b""")
     return config
 
 
