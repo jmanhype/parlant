@@ -11,7 +11,7 @@
           "program": "${workspaceFolder}/bin/emcie-server",
           "args": [
               "-c",
-              "/Users/dorzo/Projects/emcie-data/config.json",
+              "_config.json",
               "run"
           ],
           "console": "integratedTerminal",

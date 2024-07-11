@@ -16,7 +16,7 @@ class AgentDTO(DefaultBaseModel):
 
 class CreateAgentRequest(DefaultBaseModel):
     agent_name: str
-    agent_description: Optional[str] = Field(None, description="Description of the agent")
+    agent_description: Optional[str] = None
 
 
 class CreateAgentResponse(DefaultBaseModel):
@@ -38,7 +38,7 @@ def create_router(
     ) -> CreateAgentResponse:
         agent = await agent_store.create_agent(
             name=request and request.agent_name or "Unnamed Agent",
-            description=request and request.agent_description or None,
+            description=request and request.agent_description,
         )
 
         return CreateAgentResponse(agent_id=agent.id)
