@@ -552,10 +552,10 @@ Note that the `checks` list can be empty if no functions need to be called.
         try:
             logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
 
-            if inspect.isawaitable(func):
-                result = await func(**tool_call.parameters)  # type: ignore
-            else:
-                result = func(**tool_call.parameters)
+            result = func(**tool_call.parameters)
+
+            if inspect.isawaitable(result):
+                result = await result
 
             result = json.dumps(result)
 
