@@ -1,8 +1,11 @@
 {
-  "server_home": "data/",
-  "agents": ["Default Agent"],
-
-  "guidelines": {
-    "Default Agent": []
-  }
+    "agents": [
+        {
+            "name": "Default Agent"
+        }
+    ],
+    "guidelines": {
+        "Default Agent": []
+    },
+    "tools": {}
 }
