@@ -3,13 +3,15 @@ from typing import Literal, cast
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
+
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, MessageEventData, SessionId, SessionStore
 from emcie.server.engines.alpha.event_producer import MessageEventProducer
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.common import ProducedEvent
+
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 roles = Literal["client", "server"]

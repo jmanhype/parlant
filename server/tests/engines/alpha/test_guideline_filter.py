@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from typing import Iterable, cast
 from pytest import fixture, mark
-from emcie.server.core.guidelines import Guideline, GuidelineId
-from emcie.server.core.sessions import Event, EventId, EventSource
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposer, GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
 from emcie.server.core import common
+from emcie.server.core.guidelines import Guideline, GuidelineId
+from emcie.server.core.sessions import Event, EventId, EventSource
 
 
 @dataclass

@@ -5,7 +5,7 @@ from loguru import logger
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from emcie.server.engines.alpha.tool_caller import (
     ToolCaller,

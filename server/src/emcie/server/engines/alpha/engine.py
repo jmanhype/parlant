@@ -9,7 +9,8 @@ from emcie.server.core.context_variables import (
 )
 from emcie.server.core.tools import Tool, ToolStore
 from emcie.server.engines.alpha.event_producer import EventProducer
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposer, GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )

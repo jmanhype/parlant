@@ -5,9 +5,10 @@ from typing import Any, Mapping, Optional, Sequence, cast
 
 from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
+from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
-from emcie.server.engines.alpha.guideline_filter import GuidelineProposition
+from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.tool_caller import produced_tool_events_to_dict
 from emcie.server.engines.alpha.utils import context_variables_to_json, events_to_json
 from emcie.server.engines.common import ProducedEvent
@@ -16,6 +17,7 @@ from emcie.server.engines.common import ProducedEvent
 class BuiltInSection(Enum):
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
+    GUIDELINE_PREDICATES = auto()
     GUIDELINE_PROPOSITIONS = auto()
     STAGED_EVENTS = auto()
 
@@ -121,6 +123,28 @@ The following is information that you're given about the user and context of the
 """,
                 status=SectionStatus.ACTIVE,
             )
+
+        return self
+
+    def add_guideline_predicates(
+        self,
+        guidelines: Sequence[Guideline],
+    ) -> PromptBuilder:
+        assert guidelines
+
+        predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guidelines, start=1))
+
+        self.add_section(
+            name=BuiltInSection.GUIDELINE_PREDICATES,
+            content=f"""
+- Predicate List: ###
+{predicates}
+###
+
+IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the list for you to check.
+    """,
+            status=SectionStatus.ACTIVE,
+        )
 
         return self
 
