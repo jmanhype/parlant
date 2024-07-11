@@ -4,7 +4,7 @@ from jsonschema import ValidationError, validate
 from loguru import logger
 
 
-class ConfigFileValidator:
+class ConfigurationValidator:
     def __init__(
         self,
         config: Any,
@@ -127,8 +127,7 @@ class ConfigFileValidator:
             self.validate_json_schema()
             self.validate_tools()
             self.validate_guidelines()
-            logger.info("Configuration file is valid.")
             return True
-        except ValidationError as e:
+        except Exception as e:
             logger.error(f"Configuration file invalid: {str(e)}")
             return False

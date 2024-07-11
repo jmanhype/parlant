@@ -4,7 +4,7 @@ from typing import AsyncIterator
 import pytest
 
 from emcie.server.core.common import JSONSerializable
-from emcie.server.engines.alpha.configuration_validator import ConfigFileValidator
+from emcie.server.engines.alpha.configuration_validator import ConfigurationValidator
 
 
 @pytest.fixture
@@ -64,14 +64,14 @@ async def empty_config() -> JSONSerializable:
 async def test_that_empty_config_is_valid(
     empty_config: JSONSerializable,
 ) -> None:
-    validator = ConfigFileValidator(empty_config)
+    validator = ConfigurationValidator(empty_config)
     assert validator.validate() is True
 
 
 async def test_valid_config(
     valid_config: JSONSerializable,
 ) -> None:
-    validator = ConfigFileValidator(valid_config)
+    validator = ConfigurationValidator(valid_config)
     assert validator.validate() is True
 
 
@@ -82,14 +82,14 @@ async def test_invalid_tool(
     invalid_config: JSONSerializable = copy.deepcopy(valid_config)
     invalid_config["tools"]["multiply"]["module_path"] = "invalid.path.to.multiply"  # type: ignore
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False
 
     invalid_config = copy.deepcopy(valid_config)
     with open(new_file, "w") as f:
         f.write("""def not_multiply(): return""")
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False
 
 
@@ -99,13 +99,13 @@ async def test_guideline_missing_mandatory_keys(
     invalid_config = copy.deepcopy(valid_config)
     del invalid_config["guidelines"]["Default Agent"][0]["when"]  # type: ignore
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False
 
     invalid_config = copy.deepcopy(valid_config)
     del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False
 
 
@@ -117,7 +117,7 @@ async def test_guideline_with_nonexistent_tool(
         "nonexistent_tool"
     ]
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False
 
 
@@ -129,5 +129,5 @@ def test_guideline_agent_existence(
         {"when": "Example condition", "then": "Example action"}
     ]
 
-    validator = ConfigFileValidator(invalid_config)
+    validator = ConfigurationValidator(invalid_config)
     assert validator.validate() is False

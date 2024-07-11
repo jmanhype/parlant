@@ -181,15 +181,27 @@ async def serve_app(
 
 
 async def start_server(params: CLIParams) -> None:
+    assert ConfigFileValidator(config=params.config).validate()
+
     last_config_update_time = os.path.getmtime(params.config_file)
 
     async def config_file_changed() -> bool:
-        return os.path.getmtime(params.config_file) > last_config_update_time
+        nonlocal last_config_update_time
+        current_mtime = os.path.getmtime(params.config_file)
+
+        if current_mtime > last_config_update_time:
+            validated = ConfigFileValidator(
+                config=json.loads(params.config_file.read_text())
+            ).validate()
+
+            last_config_update_time = current_mtime
+
+            return validated
+
+        return False
 
     while True:
         try:
-            assert ConfigFileValidator(params.config).validate()
-
             async with load_app(params.config) as app:
                 await serve_app(app, params.port, should_shutdown=config_file_changed)
 
