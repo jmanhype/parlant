@@ -1,29 +1,9 @@
 {
-  "server_home": "data/",
-  "agents": ["Default Agent"],
+  "agents": [{"name":"Default Agent"}],
 
   "guidelines": {
-    "Default Agent": [{"when": "Ask for multiply two numbers", "then": "use the multiply tool to give him result", "enabled_tools": ["multiply"]}]
+    
   },
   "tools": {
-        "multiply": {
-            "description": "Multiply two number",
-            "function_name": "multiply",
-            "module_path": "multiply",
-            "parameters": {
-                "a": {
-                    "description": "first number",
-                    "type": "number"
-                },
-                "b": {
-                    "description": "second number",
-                    "type": "number"
-                }
-            },
-            "required": [
-                    "a", "b"
-                ],
-            "type": "python"
-        }
     }
 }
