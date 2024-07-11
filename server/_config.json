@@ -1,9 +1,5 @@
 {
   "agents": [{"name":"Default Agent"}],
-
-  "guidelines": {
-    
-  },
-  "tools": {
-    }
+  "guidelines": {},
+  "tools": {}
 }

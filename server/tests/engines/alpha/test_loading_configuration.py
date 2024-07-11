@@ -51,6 +51,23 @@ async def valid_config(new_file: Path) -> JSONSerializable:
     return config
 
 
+@pytest.fixture
+async def empty_config() -> JSONSerializable:
+    config: JSONSerializable = {
+        "agents": [{"name": "Default Agent"}],
+        "guidelines": {},
+        "tools": {},
+    }
+    return config
+
+
+async def test_that_empty_config_is_valid(
+    empty_config: JSONSerializable,
+) -> None:
+    validator = ConfigFileValidator(empty_config)
+    assert validator.validate() is True
+
+
 async def test_valid_config(
     valid_config: JSONSerializable,
 ) -> None:
