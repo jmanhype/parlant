@@ -68,9 +68,12 @@ async def load_agents(c: Container, config: Any) -> None:
     store = c[AgentStore]
     existing_agents = await store.list_agents()
 
-    for agent_name in config["agents"]:
-        if not [a for a in existing_agents if a.name == agent_name]:
-            await store.create_agent(name=agent_name)
+    for agent in config["agents"]:
+        if not [a for a in existing_agents if a.name == agent["name"]]:
+            await store.create_agent(
+                name=agent["name"],
+                description=agent.get("description"),
+            )
 
 
 async def load_tools(c: Container, config: Any) -> None:
