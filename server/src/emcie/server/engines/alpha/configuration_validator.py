@@ -1,6 +1,7 @@
 import importlib
 import json
 from pathlib import Path
+import typing
 from jsonschema import ValidationError, validate
 from loguru import logger
 
@@ -91,7 +92,8 @@ class ConfigurationFileValidator:
         config_file: Path,
     ) -> JSONSerializable:
         try:
-            return json.loads(config_file.read_text())
+            config: JSONSerializable = json.loads(config_file.read_text())
+            return config
         except json.JSONDecodeError as e:
             raise ValidationError(f"Invalid JSON: {e.msg} at line {e.lineno}, column {e.colno}")
 
@@ -105,6 +107,8 @@ class ConfigurationFileValidator:
         self,
         config: JSONSerializable,
     ) -> None:
+        config = typing.cast(dict[str, typing.Any], config)
+        
         for tool_name, tool_info in config["tools"].items():
             module_path = tool_info["module_path"]
             try:
@@ -126,6 +130,8 @@ class ConfigurationFileValidator:
         self,
         config: JSONSerializable,
     ) -> None:
+        config = typing.cast(dict[str, typing.Any], config)
+
         tools = set(config["tools"].keys())
         agents = set(agent["name"] for agent in config["agents"])
         for agent, guidelines in config["guidelines"].items():
