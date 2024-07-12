@@ -236,7 +236,7 @@ This type of Contradiction occurs when the application of a general guideline is
         return f"""
 #### Example #1:
 - **Compared Guideline**: {{"id": 3, "guideline": "When a customer orders any item, Then prioritize shipping based on customer loyalty level."}}
-- **Guideline**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
+- **Guideline Under Test**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
 - **Expected Result**:
      ```json
      {{
@@ -253,7 +253,7 @@ This type of Contradiction occurs when the application of a general guideline is
 
 #### Example #2:
 - **Compared Guideline**: {{"id": 1, "guideline": "When an employee qualifies for any reward, Then distribute rewards based on standard performance metrics."}}
-- **Guideline**: {{"id": 2, "guideline": "When an employee excels in a critical project, Then offer additional rewards beyond standard metrics."}}
+- **Guideline Under Test**: {{"id": 2, "guideline": "When an employee excels in a critical project, Then offer additional rewards beyond standard metrics."}}
 - **Expected Result**:
      ```json
      {{
@@ -270,7 +270,7 @@ This type of Contradiction occurs when the application of a general guideline is
 
 #### Example #3:
 - **Compared Guideline**: {{"id": 5, "guideline": "When a customer subscribes to a yearly plan, Then offer a 10% discount on the subscription fee."}}
-- **Guideline**: {{"id": 6, "guideline": "When a customer subscribes to any plan during a promotional period, Then offer an additional 5% discount on the subscription fee."}}
+- **Guideline Under Test**: {{"id": 6, "guideline": "When a customer subscribes to any plan during a promotional period, Then offer an additional 5% discount on the subscription fee."}}
 - **Expected Result**:
      ```json
      {{
@@ -287,7 +287,7 @@ This type of Contradiction occurs when the application of a general guideline is
 
 #### Example #4:
 - **Compared Guideline**: {{"id": 7, "guideline": "When there is a software update, Then deploy it within 48 hours."}}
-- **Guideline**: {{"id": 8, "guideline": "When a software update includes major changes affecting user interfaces, Then delay deployment for additional user training."}}
+- **Guideline Under Test**: {{"id": 8, "guideline": "When a software update includes major changes affecting user interfaces, Then delay deployment for additional user training."}}
 - **Expected Result**:
      ```json
      {{
@@ -319,7 +319,7 @@ This happens when conditions for both guidelines are met simultaneously, without
         return f"""
 #### Example #1:
 - **Compared Guideline**: {{"id": 1, "guideline": "When a customer returns an item within 30 days, Then issue a full refund."}}
-- **Guideline**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
+- **Guideline Under Test**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
 - **Expected Result**:
      ```json
      {{
@@ -336,7 +336,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 
 #### Example #2:
 - **Compared Guideline**: {{"id": 3, "guideline": "When a project deadline is imminent, Then allocate all available resources to complete the project."}}
-- **Guideline**: {{"id": 4, "guideline": "When multiple projects are nearing deadlines at the same time, Then distribute resources equally among projects."}}
+- **Guideline Under Test**: {{"id": 4, "guideline": "When multiple projects are nearing deadlines at the same time, Then distribute resources equally among projects."}}
 - **Expected Result**:
      ```json
      {{
@@ -353,7 +353,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 
 #### Example #3:
 - **Compared Guideline**: {{"id": 5, "guideline": "When an employee requests flexible working hours, Then approve to support work-life balance."}}
-- **Guideline**: {{"id": 6, "guideline": "When team collaboration is essential, Then require standard working hours for all team members."}}
+- **Guideline Under Test**: {{"id": 6, "guideline": "When team collaboration is essential, Then require standard working hours for all team members."}}
 - **Expected Result**:
      ```json
      {{
@@ -370,7 +370,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 
 #### Example #4:
 - **Compared Guideline**: {{"id": 7, "guideline": "When a customer inquires about product features, Then provide detailed information and recommendations based on their needs."}}
-- **Guideline**: {{"id": 8, "guideline": "When a customer asks about compatibility with other products, Then offer guidance on compatible products and configurations."}}
+- **Guideline Under Test**: {{"id": 8, "guideline": "When a customer asks about compatibility with other products, Then offer guidance on compatible products and configurations."}}
 - **Expected Result**:
      ```json
      {{
@@ -401,7 +401,7 @@ This arises from a lack of clear prioritization or differentiation between actio
         return f"""
 #### Example #1:
 - **Compared Guideline**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
-- **Guideline**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
+- **Guideline Under Test**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
 - **Expected Result**:
      ```json
      {{
@@ -418,7 +418,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 
 #### Example #2:
 - **Compared Guideline**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
-- **Guideline**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
+- **Guideline Under Test**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
 - **Expected Result**:
      ```json
      {{
@@ -435,7 +435,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 
 #### Example #3:
 - **Compared Guideline**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
-- **Guideline**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
+- **Guideline Under Test**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
 - **Expected Result**:
      ```json
      {{
@@ -452,7 +452,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 
 #### Example #4:
 - **Compared Guideline**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
-- **Guideline**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
+- **Guideline Under Test**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
 - **Expected Result**:
      ```json
      {{
@@ -483,7 +483,7 @@ These conflicts arise from different but potentially overlapping circumstances r
         return f"""
 #### Example #1:
 - **Compared Guideline**: {{"id": 1, "guideline": "When operating in urban areas, Then offer free shipping."}}
-- **Guideline**: {{"id": 2, "guideline": "When operational costs need to be minimized, Then restrict free shipping."}}
+- **Guideline Under Test**: {{"id": 2, "guideline": "When operational costs need to be minimized, Then restrict free shipping."}}
 - **Expected Result**:
      ```json
      {{
@@ -500,7 +500,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 
 #### Example #2:
 - **Compared Guideline**: {{"id": 3, "guideline": "When customer surveys indicate a preference for environmentally friendly products, Then shift production to eco-friendly materials."}}
-- **Guideline**: {{"id": 4, "guideline": "When cost considerations drive decisions, Then continue using less expensive, traditional materials."}}
+- **Guideline Under Test**: {{"id": 4, "guideline": "When cost considerations drive decisions, Then continue using less expensive, traditional materials."}}
 - **Expected Result**:
      ```json
      {{
@@ -517,7 +517,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 
 #### Example #3:
 - **Compared Guideline**: {{"id": 5, "guideline": "When market data shows customer preference for high-end products, Then focus on premium product lines."}}
-- **Guideline**: {{"id": 6, "guideline": "When internal strategy targets mass market appeal, Then increase production of lower-cost items."}}
+- **Guideline Under Test**: {{"id": 6, "guideline": "When internal strategy targets mass market appeal, Then increase production of lower-cost items."}}
 - **Expected Result**:
      ```json
      {{
@@ -534,7 +534,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 
 #### Example #4:
 - **Compared Guideline**: {{"id": 7, "guideline": "When a technology product is released, Then launch a marketing campaign to promote the new product."}}
-- **Guideline**: {{"id": 8, "guideline": "When a new software update is released, Then send notifications to existing customers to encourage updates."}}
+- **Guideline Under Test**: {{"id": 8, "guideline": "When a new software update is released, Then send notifications to existing customers to encourage updates."}}
 - **Expected Result**:
      ```json
      {{
