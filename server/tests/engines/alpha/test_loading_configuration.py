@@ -1,133 +1,176 @@
 import copy
+import importlib
+import json
 from pathlib import Path
-from typing import AsyncIterator
-import pytest
+from pydoc import importfile
+import tempfile
+from typing import Callable
 
+from pytest import fixture
+
+from emcie.server.engines.alpha.configuration_validator import config_validator
 from emcie.server.core.common import JSONSerializable
-from emcie.server.engines.alpha.configuration_validator import ConfigurationValidator
 
 
-@pytest.fixture
-async def new_file() -> AsyncIterator[Path]:
-    path = Path(__file__).parent / "new_file.py"
-    path.touch()
-    try:
-        yield path
-    finally:
-        path.unlink()
+@fixture(scope="function")
+def new_file() -> Callable[[], Path]:
+    def create_temp_file() -> Path:
+        with tempfile.NamedTemporaryFile() as file:
+            return Path(file.name)
+
+    return create_temp_file
 
 
-@pytest.fixture
-async def valid_config(new_file: Path) -> JSONSerializable:
-    config: JSONSerializable = {
-        "agents": [{"name": "Default Agent"}],
-        "guidelines": {
-            "Default Agent": [
-                {
-                    "when": "Ask to multiply two numbers",
-                    "then": "use the multiply tool to provide the result",
-                    "enabled_tools": ["multiply"],
+@fixture
+def valid_config(
+    new_file: Callable[[], Path],
+) -> JSONSerializable:
+    tool_file = new_file()
+
+    def create_valid_config() -> JSONSerializable:
+        return {
+            "agents": [{"name": "Default Agent"}],
+            "guidelines": {
+                "Default Agent": [
+                    {
+                        "when": "Ask to multiply two numbers",
+                        "then": "use the multiply tool to provide the result",
+                        "enabled_tools": ["multiply"],
+                    }
+                ]
+            },
+            "tools": {
+                "multiply": {
+                    "description": "Multiply two numbers",
+                    "function_name": "multiply",
+                    "module_path": importfile(str(tool_file)).__name__,
+                    "parameters": {
+                        "a": {"description": "first number", "type": "number"},
+                        "b": {"description": "second number", "type": "number"},
+                    },
+                    "required": ["a", "b"],
+                    "type": "python",
                 }
-            ]
-        },
-        "tools": {
-            "multiply": {
-                "description": "Multiply two numbers",
-                "function_name": "multiply",
-                "module_path": str(new_file.relative_to(Path.cwd()))
-                .replace("/", ".")
-                .replace(".py", ""),
-                "parameters": {
-                    "a": {"description": "first number", "type": "number"},
-                    "b": {"description": "second number", "type": "number"},
-                },
-                "required": ["a", "b"],
-                "type": "python",
-            }
-        },
-    }
-    with open(new_file, "w") as f:
+            },
+        }
+
+    with open(tool_file, "w") as f:
         f.write("""def multiply(a, b): return a * b""")
-    return config
-
-
-@pytest.fixture
-async def empty_config() -> JSONSerializable:
-    config: JSONSerializable = {
-        "agents": [{"name": "Default Agent"}],
-        "guidelines": {"Default Agent": []},
-        "tools": {},
-    }
-    return config
+    return create_valid_config()
 
 
 async def test_that_empty_config_is_valid(
-    empty_config: JSONSerializable,
+    new_file: Callable[[], Path],
 ) -> None:
-    validator = ConfigurationValidator(empty_config)
-    assert validator.validate() is True
+    config_file = new_file()
+    with open(config_file, "w") as f:
+        f.write(
+            json.dumps(
+                {
+                    "agents": [{"name": "Default Agent"}],
+                    "guidelines": {"Default Agent": []},
+                    "tools": {},
+                }
+            )
+        )
+    assert config_validator.validate(config_file) is True
 
 
 async def test_valid_config(
     valid_config: JSONSerializable,
+    new_file: Callable[[], Path],
 ) -> None:
-    validator = ConfigurationValidator(valid_config)
-    assert validator.validate() is True
+    config_file = new_file()
+    with open(config_file, "w") as f:
+        f.write(json.dumps(valid_config))
+
+    assert config_validator.validate(config_file) is True
 
 
 async def test_invalid_tool(
     valid_config: JSONSerializable,
-    new_file: Path,
+    new_file: Callable[[], Path],
 ) -> None:
+    config_file = new_file()
+    tool_file = new_file()
+
     invalid_config: JSONSerializable = copy.deepcopy(valid_config)
     invalid_config["tools"]["multiply"]["module_path"] = "invalid.path.to.multiply"  # type: ignore
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    with open(config_file, "w") as f:
+        f.write(json.dumps(invalid_config))
 
-    invalid_config = copy.deepcopy(valid_config)
-    with open(new_file, "w") as f:
+    assert config_validator.validate(config_file) is False
+
+    with open(tool_file, "w") as f:
         f.write("""def not_multiply(): return""")
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    assert config_validator.validate(config_file) is False
 
 
 async def test_guideline_missing_mandatory_keys(
     valid_config: JSONSerializable,
+    new_file: Callable[[], Path],
 ) -> None:
+    config_file = new_file()
+
     invalid_config = copy.deepcopy(valid_config)
     del invalid_config["guidelines"]["Default Agent"][0]["when"]  # type: ignore
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    with open(config_file, "w") as f:
+        f.write(json.dumps(invalid_config))
+
+    assert config_validator.validate(config_file) is False
 
     invalid_config = copy.deepcopy(valid_config)
     del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    with open(config_file, "w") as f:
+        f.write(json.dumps(invalid_config))
+
+    assert config_validator.validate(config_file) is False
 
 
 async def test_guideline_with_nonexistent_tool(
     valid_config: JSONSerializable,
+    new_file: Callable[[], Path],
 ) -> None:
+    config_file = new_file()
+
     invalid_config = copy.deepcopy(valid_config)
     invalid_config["guidelines"]["Default Agent"][0]["enabled_tools"] = [  # type: ignore
         "nonexistent_tool"
     ]
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    with open(config_file, "w") as f:
+        f.write(json.dumps(invalid_config))
+
+    assert config_validator.validate(config_file) is False
 
 
 def test_guideline_agent_existence(
     valid_config: JSONSerializable,
+    new_file: Callable[[], Path],
 ) -> None:
+    config_file = new_file()
+
     invalid_config = copy.deepcopy(valid_config)
     invalid_config["guidelines"]["Nonexistent Agent"] = [  # type: ignore
         {"when": "Example condition", "then": "Example action"}
     ]
 
-    validator = ConfigurationValidator(invalid_config)
-    assert validator.validate() is False
+    with open(config_file, "w") as f:
+        f.write(json.dumps(invalid_config))
+
+    assert config_validator.validate(config_file) is False
+
+
+def test_invalid_json(
+    new_file: Callable[[], Path],
+) -> None:
+    config_file = new_file()
+
+    with open(config_file, "w") as f:
+        f.write("{invalid_json: true,}")
+
+    assert config_validator.validate(config_file) is False
