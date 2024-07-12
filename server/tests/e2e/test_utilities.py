@@ -1,19 +1,15 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 import json
-from loguru import logger
 import os
 from pathlib import Path
-import shutil
 import signal
+import subprocess
 import time
 from typing import Iterator, TypedDict, cast
-import subprocess
-import tempfile
+from loguru import logger
 
-from pytest import fixture
 
-REASONABLE_AMOUNT_OF_TIME = 5
 SERVER_PORT = 8089
 DEFAULT_AGENT_NAME = "Default Agent"
 
@@ -168,51 +164,3 @@ def run_server(context: _TestContext) -> Iterator[subprocess.Popen[str]]:
 
         process.kill()
         process.wait()
-
-
-@fixture
-def context() -> Iterator[_TestContext]:
-    with tempfile.TemporaryDirectory(prefix="emcie-server_cli_test_") as home_dir:
-        home_dir_path = Path(home_dir)
-        active_config_file_path = home_dir_path / "config.json"
-
-        config_template_file = get_package_path() / "_config.json"
-        shutil.copy(config_template_file, active_config_file_path)
-
-        yield _TestContext(
-            home_dir=home_dir_path,
-            config_file=active_config_file_path,
-        )
-
-
-def test_server_starts_and_shuts_down_cleanly_on_interrupt(
-    context: _TestContext,
-) -> None:
-    with run_server(context) as server_process:
-        time.sleep(REASONABLE_AMOUNT_OF_TIME)
-        server_process.send_signal(signal.SIGINT)
-        server_process.wait(timeout=REASONABLE_AMOUNT_OF_TIME)
-        assert server_process.returncode == os.EX_OK
-
-
-def test_server_hot_reloads_guideline_changes(
-    context: _TestContext,
-) -> None:
-    with run_server(context):
-        initial_guidelines = read_guideline_config(context.config_file)
-
-        new_guideline: _Guideline = {
-            "when": "talking about bananas",
-            "then": "say they're very tasty",
-        }
-
-        write_guideline_config(
-            new_guidelines=initial_guidelines + [new_guideline],
-            config_file=context.config_file,
-        )
-
-        time.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-        loaded_guidelines = read_loaded_guidelines(context.home_dir)
-
-        assert find_guideline(new_guideline, within=loaded_guidelines)
