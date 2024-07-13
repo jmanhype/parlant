@@ -9,8 +9,6 @@ import re
 from typing import Any, Callable, Iterable, Optional, Type, TypedDict
 import aiofiles
 
-from emcie.server.core import common
-
 
 class FieldFilter(TypedDict, total=False):
     equal_to: Any
@@ -109,8 +107,6 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: str,
         document: dict[str, Any],
     ) -> dict[str, Any]:
-        doc_id = common.generate_id()
-        document["id"] = doc_id
         self._collections[collection].append(document)
         return document
 

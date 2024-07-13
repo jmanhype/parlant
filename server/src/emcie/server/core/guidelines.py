@@ -53,22 +53,36 @@ class GuidelineDocumentStore(GuidelineStore):
         content: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline:
-        guideline_to_insert = {
-            "guideline_set": guideline_set,
-            "predicate": predicate,
-            "content": content,
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-        }
-        guideline = common.create_instance_from_dict(
-            Guideline,
-            await self._database.insert_one(self._collection_name, guideline_to_insert),
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+
+        guideline_document = await self._database.insert_one(
+            self._collection_name,
+            {
+                "id": common.generate_id(),
+                "guideline_set": guideline_set,
+                "predicate": predicate,
+                "content": content,
+                "creation_utc": creation_utc,
+            },
         )
-        return guideline
+
+        return Guideline(
+            id=GuidelineId(guideline_document["id"]),
+            predicate=predicate,
+            content=content,
+            creation_utc=creation_utc,
+        )
 
     async def list_guidelines(self, guideline_set: str) -> Iterable[Guideline]:
         filters = {"guideline_set": FieldFilter(equal_to=guideline_set)}
+
         return (
-            common.create_instance_from_dict(Guideline, d)
+            Guideline(
+                id=GuidelineId(d["id"]),
+                predicate=d["predicate"],
+                content=d["content"],
+                creation_utc=d["creation_utc"],
+            )
             for d in await self._database.find(self._collection_name, filters)
         )
 
@@ -77,7 +91,11 @@ class GuidelineDocumentStore(GuidelineStore):
             "guideline_set": FieldFilter(equal_to=guideline_set),
             "id": FieldFilter(equal_to=guideline_id),
         }
-        guideline = common.create_instance_from_dict(
-            Guideline, await self._database.find_one(self._collection_name, filters)
+        guideline_document = await self._database.find_one(self._collection_name, filters)
+
+        return Guideline(
+            id=GuidelineId(guideline_document["id"]),
+            predicate=guideline_document["predicate"],
+            content=guideline_document["content"],
+            creation_utc=guideline_document["creation_utc"],
         )
-        return guideline

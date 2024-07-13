@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from typing import Iterable, Literal, NewType, Optional, TypedDict
 
 from emcie.server.async_utils import Timeout
-from emcie.server.core.common import JSONSerializable, create_instance_from_dict
+from emcie.server.core import common
+from emcie.server.core.common import JSONSerializable
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.persistence import DocumentDatabase, FieldFilter
@@ -108,23 +109,36 @@ class SessionDocumentStore(SessionStore):
         end_user_id: EndUserId,
         agent_id: AgentId,
     ) -> Session:
-        session_data = {
-            "end_user_id": end_user_id,
-            "agent_id": agent_id,
-            "consumption_offsets": {"client": 0},
-        }
-        inserted_session = await self._database.insert_one(
-            self._session_collection_name, session_data
+        session_document = await self._database.insert_one(
+            self._session_collection_name,
+            {
+                "id": common.generate_id(),
+                "end_user_id": end_user_id,
+                "agent_id": agent_id,
+                "consumption_offsets": {"client": 0},
+            },
         )
-        return create_instance_from_dict(Session, inserted_session)
+
+        return Session(
+            id=session_document["id"],
+            end_user_id=end_user_id,
+            agent_id=agent_id,
+            consumption_offsets=session_document["consumption_offsets"],
+        )
 
     async def read_session(
         self,
         session_id: SessionId,
     ) -> Session:
         filters = {"id": FieldFilter(equal_to=session_id)}
-        found_session = await self._database.find_one(self._session_collection_name, filters)
-        return create_instance_from_dict(Session, found_session)
+        session_document = await self._database.find_one(self._session_collection_name, filters)
+
+        return Session(
+            id=session_document["id"],
+            end_user_id=session_document["end_user_id"],
+            agent_id=session_document["agent_id"],
+            consumption_offsets=session_document["consumption_offsets"],
+        )
 
     async def update_session(
         self,
@@ -157,16 +171,29 @@ class SessionDocumentStore(SessionStore):
         creation_utc: Optional[datetime] = None,
     ) -> Event:
         session_events = await self.list_events(session_id)
-        event_data = {
-            "session_id": session_id,
-            "source": source,
-            "kind": kind,
-            "offset": len(list(session_events)),
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-            "data": data,
-        }
-        inserted_event = await self._database.insert_one(self._event_collection_name, event_data)
-        return create_instance_from_dict(Event, inserted_event)
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+
+        event_document = await self._database.insert_one(
+            self._event_collection_name,
+            {
+                "id": common.generate_id(),
+                "session_id": session_id,
+                "source": source,
+                "kind": kind,
+                "offset": len(list(session_events)),
+                "creation_utc": creation_utc,
+                "data": data,
+            },
+        )
+
+        return Event(
+            id=EventId(event_document["id"]),
+            source=source,
+            kind=kind,
+            offset=event_document["offset"],
+            creation_utc=creation_utc,
+            data=data,
+        )
 
     async def list_events(
         self,
@@ -183,8 +210,18 @@ class SessionDocumentStore(SessionStore):
             **source_filter,
             **offset_filter,
         }
-        found_events = await self._database.find(self._event_collection_name, filters)
-        return (create_instance_from_dict(Event, event) for event in found_events)
+
+        return (
+            Event(
+                id=EventId(d["id"]),
+                source=d["source"],
+                kind=d["kind"],
+                offset=d["offset"],
+                creation_utc=d["creation_utc"],
+                data=d["data"],
+            )
+            for d in await self._database.find(self._event_collection_name, filters)
+        )
 
 
 class SessionListener(ABC):

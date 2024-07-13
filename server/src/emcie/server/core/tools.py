@@ -82,23 +82,48 @@ class ToolDocumentStore(ToolStore):
         ):
             raise ValidationError("Tool name must be unique within the tool set")
 
-        tool_data = {
-            "name": name,
-            "module_path": module_path,
-            "description": description,
-            "parameters": parameters,
-            "required": required,
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-            "consequential": consequential,
-        }
-        inserted_tool = await self._database.insert_one(self._collection_name, tool_data)
-        return common.create_instance_from_dict(Tool, inserted_tool)
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+        tool_document = await self._database.insert_one(
+            self._collection_name,
+            {
+                "id": common.generate_id(),
+                "name": name,
+                "module_path": module_path,
+                "description": description,
+                "parameters": parameters,
+                "required": required,
+                "creation_utc": creation_utc,
+                "consequential": consequential,
+            },
+        )
+
+        return Tool(
+            id=ToolId(tool_document["id"]),
+            name=name,
+            module_path=module_path,
+            description=description,
+            parameters=parameters,
+            creation_utc=creation_utc,
+            required=required,
+            consequential=consequential,
+        )
 
     async def list_tools(
         self,
     ) -> Iterable[Tool]:
-        tools = await self._database.find(self._collection_name, {})
-        return (common.create_instance_from_dict(Tool, tool) for tool in tools)
+        return (
+            Tool(
+                id=ToolId(d["id"]),
+                name=d["name"],
+                module_path=d["module_path"],
+                description=d["description"],
+                parameters=d["parameters"],
+                creation_utc=d["creation_utc"],
+                required=d["required"],
+                consequential=d["consequential"],
+            )
+            for d in await self._database.find(self._collection_name, {})
+        )
 
     async def read_tool(
         self,
@@ -107,5 +132,16 @@ class ToolDocumentStore(ToolStore):
         filters = {
             "id": FieldFilter(equal_to=tool_id),
         }
-        tool = await self._database.find_one(self._collection_name, filters)
-        return common.create_instance_from_dict(Tool, tool)
+
+        tool_document = await self._database.find_one(self._collection_name, filters)
+
+        return Tool(
+            id=ToolId(tool_document["id"]),
+            name=tool_document["name"],
+            module_path=tool_document["module_path"],
+            description=tool_document["description"],
+            parameters=tool_document["parameters"],
+            creation_utc=tool_document["creation_utc"],
+            required=tool_document["required"],
+            consequential=tool_document["consequential"],
+        )

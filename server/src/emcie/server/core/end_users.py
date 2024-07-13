@@ -47,15 +47,24 @@ class EndUserDocumentStore(EndUserStore):
         email: str,
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
-        end_user_data = {
-            "name": name,
-            "email": email,
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-        }
-        inserted_end_user = await self._database.insert_one(self._collection_name, end_user_data)
+        creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        end_user = common.create_instance_from_dict(EndUser, inserted_end_user)
-        return end_user
+        end_user_document = await self._database.insert_one(
+            self._collection_name,
+            {
+                "id": common.generate_id(),
+                "name": name,
+                "email": email,
+                "creation_utc": creation_utc,
+            },
+        )
+
+        return EndUser(
+            id=EndUserId(end_user_document["id"]),
+            name=name,
+            email=email,
+            creation_utc=creation_utc,
+        )
 
     async def read_end_user(
         self,
@@ -64,5 +73,9 @@ class EndUserDocumentStore(EndUserStore):
         filters = {"id": FieldFilter(equal_to=end_user_id)}
         found_end_user = await self._database.find_one(self._collection_name, filters)
 
-        end_user = common.create_instance_from_dict(EndUser, found_end_user)
-        return end_user
+        return EndUser(
+            id=EndUserId(found_end_user["id"]),
+            name=found_end_user["name"],
+            email=found_end_user["email"],
+            creation_utc=found_end_user["creation_utc"],
+        )

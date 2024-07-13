@@ -53,10 +53,15 @@ class AgentDocumentStore(AgentStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         agent_document = await self._database.insert_one(
             self._collection_name,
-            {"name": name, "description": description, "creation_utc": creation_utc},
+            {
+                "id": common.generate_id(),
+                "name": name,
+                "description": description,
+                "creation_utc": creation_utc,
+            },
         )
         return Agent(
-            id=agent_document["id"],
+            id=AgentId(agent_document["id"]),
             name=name,
             description=description,
             creation_utc=creation_utc,
