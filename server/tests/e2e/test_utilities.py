@@ -11,6 +11,8 @@ from loguru import logger
 
 
 SERVER_PORT = 8089
+SERVER_ADDRESS = f"http://localhost:{SERVER_PORT}"
+
 DEFAULT_AGENT_NAME = "Default Agent"
 
 
