@@ -108,7 +108,7 @@ class ConfigurationFileValidator:
         config: JSONSerializable,
     ) -> None:
         config = typing.cast(dict[str, typing.Any], config)
-        
+
         for tool_name, tool_info in config["tools"].items():
             module_path = tool_info["module_path"]
             try:
@@ -157,6 +157,3 @@ class ConfigurationFileValidator:
         except Exception as e:
             logger.error(f"Configuration file invalid: {str(e)}")
             return False
-
-
-config_validator = ConfigurationFileValidator()

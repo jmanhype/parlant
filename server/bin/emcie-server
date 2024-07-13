@@ -38,7 +38,7 @@ from emcie.server.core.sessions import (
 )
 from emcie.server.core.tools import ToolDocumentStore, ToolStore
 from emcie.server.engines.alpha.coherence_checker import CoherenceChecker
-from emcie.server.configuration_validator import config_validator
+from emcie.server.configuration_validator import ConfigurationFileValidator
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -193,7 +193,7 @@ async def serve_app(
 
 
 async def start_server(params: CLIParams) -> None:
-    assert config_validator.validate(config_file=params.config_file)
+    assert ConfigurationFileValidator().validate(config_file=params.config_file)
 
     last_config_update_time = os.path.getmtime(params.config_file)
 
@@ -202,7 +202,7 @@ async def start_server(params: CLIParams) -> None:
         current_mtime = os.path.getmtime(params.config_file)
 
         if current_mtime > last_config_update_time:
-            validated = config_validator.validate(config_file=params.config_file)
+            validated = ConfigurationFileValidator().validate(config_file=params.config_file)
 
             last_config_update_time = current_mtime
 

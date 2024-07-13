@@ -7,7 +7,7 @@ from typing import Callable
 
 from pytest import fixture
 
-from emcie.server.configuration_validator import config_validator
+from emcie.server.configuration_validator import ConfigurationFileValidator
 from emcie.server.core.common import JSONSerializable
 
 
@@ -72,7 +72,7 @@ async def test_that_empty_config_is_valid(
                 }
             )
         )
-    assert config_validator.validate(config_file) is True
+    assert ConfigurationFileValidator().validate(config_file) is True
 
 
 async def test_valid_config(
@@ -83,7 +83,7 @@ async def test_valid_config(
     with open(config_file, "w") as f:
         f.write(json.dumps(valid_config))
 
-    assert config_validator.validate(config_file) is True
+    assert ConfigurationFileValidator().validate(config_file) is True
 
 
 async def test_invalid_tool(
@@ -99,12 +99,12 @@ async def test_invalid_tool(
     with open(config_file, "w") as f:
         f.write(json.dumps(invalid_config))
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
     with open(tool_file, "w") as f:
         f.write("""def not_multiply(): return""")
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
 
 async def test_guideline_missing_mandatory_keys(
@@ -119,7 +119,7 @@ async def test_guideline_missing_mandatory_keys(
     with open(config_file, "w") as f:
         f.write(json.dumps(invalid_config))
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
     invalid_config = copy.deepcopy(valid_config)
     del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
@@ -127,7 +127,7 @@ async def test_guideline_missing_mandatory_keys(
     with open(config_file, "w") as f:
         f.write(json.dumps(invalid_config))
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
 
 async def test_guideline_with_nonexistent_tool(
@@ -144,7 +144,7 @@ async def test_guideline_with_nonexistent_tool(
     with open(config_file, "w") as f:
         f.write(json.dumps(invalid_config))
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
 
 def test_guideline_agent_existence(
@@ -161,7 +161,7 @@ def test_guideline_agent_existence(
     with open(config_file, "w") as f:
         f.write(json.dumps(invalid_config))
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
 
 
 def test_invalid_json(
@@ -172,4 +172,4 @@ def test_invalid_json(
     with open(config_file, "w") as f:
         f.write("{invalid_json: true,}")
 
-    assert config_validator.validate(config_file) is False
+    assert ConfigurationFileValidator().validate(config_file) is False
