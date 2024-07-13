@@ -129,7 +129,9 @@ async def main() -> None:
                 f"{role}:".ljust(6), style="bold " + {"User": "blue", "Agent": "green"}.get(role)
             )
 
-            message = wrap(m["data"]["message"], subsequent_indent=" " * (1 + len(prefix)))
+            message = wrap(
+                message_event["data"]["message"], subsequent_indent=" " * (1 + len(prefix))
+            )
 
             rich.print(prefix, os.linesep.join(message))
 
