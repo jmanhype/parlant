@@ -71,11 +71,11 @@ class EndUserDocumentStore(EndUserStore):
         end_user_id: EndUserId,
     ) -> EndUser:
         filters = {"id": FieldFilter(equal_to=end_user_id)}
-        found_end_user = await self._database.find_one(self._collection_name, filters)
+        end_user_document = await self._database.find_one(self._collection_name, filters)
 
         return EndUser(
-            id=EndUserId(found_end_user["id"]),
-            name=found_end_user["name"],
-            email=found_end_user["email"],
-            creation_utc=found_end_user["creation_utc"],
+            id=EndUserId(end_user_document["id"]),
+            name=end_user_document["name"],
+            email=end_user_document["email"],
+            creation_utc=end_user_document["creation_utc"],
         )
