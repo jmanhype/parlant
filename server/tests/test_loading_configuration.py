@@ -1,5 +1,4 @@
 import copy
-import importlib
 import json
 from pathlib import Path
 from pydoc import importfile
@@ -8,7 +7,7 @@ from typing import Callable
 
 from pytest import fixture
 
-from emcie.server.engines.alpha.configuration_validator import config_validator
+from emcie.server.configuration_validator import config_validator
 from emcie.server.core.common import JSONSerializable
 
 
