@@ -29,7 +29,7 @@ from emcie.server.core.guidelines import (
     GuidelineId,
     GuidelineStore,
 )
-from emcie.server.core.persistence import JSONFileDocumentDatabase, TransientDocumentDatabase
+from emcie.server.core.persistence import JSONFileDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -119,29 +119,39 @@ async def load_guidelines(c: Container, config: Any) -> None:
 
 @asynccontextmanager
 async def setup_container(config: Any) -> AsyncIterator[Container]:
-    for store_name in "context_variables":
+    for store_name in [
+        "guidelines",
+        "tools",
+        "guideline_tool_associations",
+        "context_variables",
+    ]:
         (EMCIE_HOME_DIR / f"{store_name}.json").unlink(missing_ok=True)
 
     c = Container()
-    c[GuidelineStore] = GuidelineDocumentStore(TransientDocumentDatabase())
-    c[ToolStore] = ToolDocumentStore(TransientDocumentDatabase())
-    c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        TransientDocumentDatabase()
-    )
 
     async with JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "agents.json"
     ) as agents_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "context_variables.json"
-    ) as ctxs_db, JSONFileDocumentDatabase(
+    ) as context_variables_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "end_users.json"
     ) as end_users_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "sessions.json",
-    ) as sessions_db:
+    ) as sessions_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "guidelines.json"
+    ) as guidelines_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "tools.json"
+    ) as tools_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "guideline_tool_associations.json"
+    ) as guideline_tool_associations_db:
         c[AgentStore] = AgentDocumentStore(agents_db)
-        c[ContextVariableStore] = ContextVariableDocumentStore(ctxs_db)
+        c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
         c[EndUserStore] = EndUserDocumentStore(end_users_db)
-
+        c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
+        c[ToolStore] = ToolDocumentStore(tools_db)
+        c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
+            guideline_tool_associations_db
+        )
         c[SessionStore] = SessionDocumentStore(sessions_db)
 
         c[SessionListener] = PollingSessionListener
@@ -162,7 +172,9 @@ async def load_app(config: Any) -> AsyncIterator[FastAPI]:
 
 
 async def serve_app(
-    app: FastAPI, port: int, should_shutdown: Callable[[], Awaitable[bool]]
+    app: FastAPI,
+    port: int,
+    should_shutdown: Callable[[], Awaitable[bool]],
 ) -> None:
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
