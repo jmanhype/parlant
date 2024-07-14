@@ -6,8 +6,9 @@ from typing_extensions import NotRequired
 
 from pydantic import ValidationError
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 
 ToolId = NewType("ToolId", str)
 
@@ -58,12 +59,25 @@ class ToolStore(ABC):
 
 
 class ToolDocumentStore(ToolStore):
+    class ToolDocument(DefaultBaseModel):
+        id: ToolId
+        creation_utc: datetime
+        name: str
+        module_path: str
+        description: str
+        parameters: dict[str, ToolParameter]
+        required: list[str]
+        consequential: bool
+
     def __init__(
         self,
         database: DocumentDatabase,
     ) -> None:
         self._database = database
-        self._collection_name = "tools"
+        self._collection = CollectionDescriptor(
+            name="tools",
+            schema=self.ToolDocument,
+        )
 
     async def create_tool(
         self,
@@ -77,14 +91,14 @@ class ToolDocumentStore(ToolStore):
     ) -> Tool:
         if list(
             await self._database.find(
-                collection=self._collection_name, filters={"name": FieldFilter(equal_to=name)}
+                collection=self._collection, filters={"name": FieldFilter(equal_to=name)}
             )
         ):
             raise ValidationError("Tool name must be unique within the tool set")
 
         creation_utc = creation_utc or datetime.now(timezone.utc)
         tool_document = await self._database.insert_one(
-            self._collection_name,
+            self._collection,
             {
                 "id": common.generate_id(),
                 "name": name,
@@ -122,7 +136,7 @@ class ToolDocumentStore(ToolStore):
                 required=d["required"],
                 consequential=d["consequential"],
             )
-            for d in await self._database.find(self._collection_name, {})
+            for d in await self._database.find(self._collection, {})
         )
 
     async def read_tool(
@@ -133,7 +147,7 @@ class ToolDocumentStore(ToolStore):
             "id": FieldFilter(equal_to=tool_id),
         }
 
-        tool_document = await self._database.find_one(self._collection_name, filters)
+        tool_document = await self._database.find_one(self._collection, filters)
 
         return Tool(
             id=ToolId(tool_document["id"]),

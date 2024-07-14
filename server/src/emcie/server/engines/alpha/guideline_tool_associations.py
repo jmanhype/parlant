@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, NewType, Optional
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.tools import ToolId
-from emcie.server.core.persistence import DocumentDatabase
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase
 
 GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)
 
@@ -36,9 +37,17 @@ class GuidelineToolAssociationStore(ABC):
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
+    class GuidelineToolAssociationDocument(DefaultBaseModel):
+        id: GuidelineToolAssociationId
+        creation_utc: datetime
+        guideline_id: GuidelineId
+        tool_id: ToolId
+
     def __init__(self, database: DocumentDatabase):
         self._database = database
-        self._collection_name = "associations"
+        self._collection = CollectionDescriptor(
+            name="associations", schema=self.GuidelineToolAssociationDocument
+        )
 
     async def create_association(
         self,
@@ -48,7 +57,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     ) -> GuidelineToolAssociation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
         association_document = await self._database.insert_one(
-            self._collection_name,
+            self._collection,
             {
                 "id": common.generate_id(),
                 "creation_utc": creation_utc,
@@ -72,5 +81,5 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
                 guideline_id=d["guideline_id"],
                 tool_id=d["tool_id"],
             )
-            for d in await self._database.find(self._collection_name, filters={})
+            for d in await self._database.find(self._collection, filters={})
         )

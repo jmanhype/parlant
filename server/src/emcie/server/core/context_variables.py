@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Literal, NewType, Optional
+from typing import Any, Iterable, Literal, NewType, Optional
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
 from emcie.server.core.tools import ToolId
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 
 ContextVariableId = NewType("ContextVariableId", str)
 ContextVariableValueId = NewType("ContextVariableValueId", str)
@@ -47,12 +48,66 @@ class ContextVariable:
     """If None, the variable will only be updated on session creation"""
 
 
+context_variable_schema = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": ["string", "null"]},
+        "tool_id": {"type": "string"},
+        "freshness_rules": {"type": "string"},
+    },
+    "required": ["id", "name", "tool_id"],
+}
+
+
 @dataclass(frozen=True)
 class ContextVariableValue:
     id: ContextVariableValueId
     variable_id: ContextVariableId
     last_modified: datetime
     data: common.JSONSerializable
+
+
+context_variable_value_schema = context_variable_schema = {
+    "definitions": {
+        "FreshnessRules": {
+            "type": "object",
+            "properties": {
+                "months": {"type": ["array", "null"], "items": {"type": "integer"}},
+                "days_of_month": {"type": ["array", "null"], "items": {"type": "integer"}},
+                "days_of_week": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                        ],
+                    },
+                },
+                "hours": {"type": ["array", "null"], "items": {"type": "integer"}},
+                "minutes": {"type": ["array", "null"], "items": {"type": "integer"}},
+                "seconds": {"type": ["array", "null"], "items": {"type": "integer"}},
+            },
+            "additionalProperties": False,
+        }
+    },
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": ["string", "null"]},
+        "tool_id": {"type": "string"},
+        "freshness_rules": {"type": ["object", "null"], "$ref": "#/definitions/FreshnessRules"},
+    },
+    "required": ["id", "name", "tool_id"],
+}
 
 
 class ContextVariableStore(ABC):
@@ -105,10 +160,32 @@ class ContextVariableStore(ABC):
 
 
 class ContextVariableDocumentStore(ContextVariableStore):
+    class ContextVariableDocument(DefaultBaseModel):
+        id: str
+        variable_set: str
+        name: str
+        description: Optional[str] = None
+        tool_id: ToolId
+        freshness_rules: Optional[FreshnessRules]
+
+    class ContextVariableValueDocument(DefaultBaseModel):
+        id: str
+        last_modified: datetime
+        variable_set: str
+        variable_id: ContextVariableId
+        key: str
+        data: dict[str, Any]
+
     def __init__(self, database: DocumentDatabase):
         self._database = database
-        self._variable_collection = "variables"
-        self._value_collection = "values"
+        self._variable_collection = CollectionDescriptor(
+            name="variables",
+            schema=self.ContextVariableDocument,
+        )
+        self._value_collection = CollectionDescriptor(
+            name="values",
+            schema=self.ContextVariableValueDocument,
+        )
 
     async def create_variable(
         self,

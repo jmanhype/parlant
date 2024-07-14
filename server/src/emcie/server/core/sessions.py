@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, Literal, NewType, Optional, TypedDict
+from typing import Any, Iterable, Literal, NewType, Optional, TypedDict
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core import common
 from emcie.server.core.common import JSONSerializable
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 from emcie.server.core.tools import ToolParameter
 
 SessionId = NewType("SessionId", str)
@@ -99,10 +100,31 @@ class SessionStore(ABC):
 
 
 class SessionDocumentStore(SessionStore):
+    class SessionDocument(DefaultBaseModel):
+        id: SessionId
+        end_user_id: EndUserId
+        agent_id: AgentId
+        consumption_offsets: dict[ConsumerId, int]
+
+    class EventDocument(DefaultBaseModel):
+        id: EventId
+        creation_utc: datetime
+        session_id: SessionId
+        source: EventSource
+        kind: str
+        offset: int
+        data: dict[str, Any]
+
     def __init__(self, database: DocumentDatabase):
         self._database = database
-        self._session_collection_name = "sessions"
-        self._event_collection_name = "events"
+        self._session_collection = CollectionDescriptor(
+            name="sessions",
+            schema=self.SessionDocument,
+        )
+        self._event_collection = CollectionDescriptor(
+            name="events",
+            schema=self.EventDocument,
+        )
 
     async def create_session(
         self,
@@ -110,7 +132,7 @@ class SessionDocumentStore(SessionStore):
         agent_id: AgentId,
     ) -> Session:
         session_document = await self._database.insert_one(
-            self._session_collection_name,
+            self._session_collection,
             {
                 "id": common.generate_id(),
                 "end_user_id": end_user_id,
@@ -131,7 +153,7 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
     ) -> Session:
         filters = {"id": FieldFilter(equal_to=session_id)}
-        session_document = await self._database.find_one(self._session_collection_name, filters)
+        session_document = await self._database.find_one(self._session_collection, filters)
 
         return Session(
             id=session_document["id"],
@@ -147,7 +169,7 @@ class SessionDocumentStore(SessionStore):
     ) -> None:
         filters = {"id": FieldFilter(equal_to=session_id)}
         await self._database.update_one(
-            self._session_collection_name,
+            self._session_collection,
             filters,
             updated_session.__dict__,
         )
@@ -174,7 +196,7 @@ class SessionDocumentStore(SessionStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         event_document = await self._database.insert_one(
-            self._event_collection_name,
+            self._event_collection,
             {
                 "id": common.generate_id(),
                 "session_id": session_id,
@@ -220,7 +242,7 @@ class SessionDocumentStore(SessionStore):
                 creation_utc=d["creation_utc"],
                 data=d["data"],
             )
-            for d in await self._database.find(self._event_collection_name, filters)
+            for d in await self._database.find(self._event_collection, filters)
         )
 
 

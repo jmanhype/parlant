@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, NewType, Optional
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 
 AgentId = NewType("AgentId", str)
 
@@ -37,12 +38,21 @@ class AgentStore(ABC):
 
 
 class AgentDocumentStore(AgentStore):
+    class AgentDocument(DefaultBaseModel):
+        id: AgentId
+        creation_utc: datetime
+        name: str
+        description: Optional[str]
+
     def __init__(
         self,
         database: DocumentDatabase,
     ):
         self._database = database
-        self._collection_name = "agents"
+        self._collection = CollectionDescriptor(
+            name="agents",
+            schema=self.AgentDocument,
+        )
 
     async def create_agent(
         self,
@@ -52,7 +62,7 @@ class AgentDocumentStore(AgentStore):
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
         agent_document = await self._database.insert_one(
-            self._collection_name,
+            self._collection,
             {
                 "id": common.generate_id(),
                 "name": name,
@@ -77,7 +87,7 @@ class AgentDocumentStore(AgentStore):
                 description=a.get("description"),
                 creation_utc=a["creation_utc"],
             )
-            for a in await self._database.find(self._collection_name, filters={})
+            for a in await self._database.find(self._collection, filters={})
         )
 
     async def read_agent(
@@ -87,7 +97,7 @@ class AgentDocumentStore(AgentStore):
         filters = {
             "id": FieldFilter(equal_to=agent_id),
         }
-        agent_document = await self._database.find_one(self._collection_name, filters)
+        agent_document = await self._database.find_one(self._collection, filters)
         return Agent(
             id=agent_document["id"],
             name=agent_document["name"],

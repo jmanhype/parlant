@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 
 GuidelineId = NewType("GuidelineId", str)
 
@@ -42,9 +43,19 @@ class GuidelineStore(ABC):
 
 
 class GuidelineDocumentStore(GuidelineStore):
+    class GuidelineDocument(DefaultBaseModel):
+        id: GuidelineId
+        guideline_set: str
+        predicate: str
+        content: str
+        creation_utc: Optional[datetime] = None
+
     def __init__(self, database: DocumentDatabase):
         self._database = database
-        self._collection_name = "guidelines"
+        self._collection = CollectionDescriptor(
+            name="guidelines",
+            schema=self.GuidelineDocument,
+        )
 
     async def create_guideline(
         self,
@@ -56,7 +67,7 @@ class GuidelineDocumentStore(GuidelineStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         guideline_document = await self._database.insert_one(
-            self._collection_name,
+            self._collection,
             {
                 "id": common.generate_id(),
                 "guideline_set": guideline_set,
@@ -83,7 +94,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 content=d["content"],
                 creation_utc=d["creation_utc"],
             )
-            for d in await self._database.find(self._collection_name, filters)
+            for d in await self._database.find(self._collection, filters)
         )
 
     async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
@@ -91,7 +102,7 @@ class GuidelineDocumentStore(GuidelineStore):
             "guideline_set": FieldFilter(equal_to=guideline_set),
             "id": FieldFilter(equal_to=guideline_id),
         }
-        guideline_document = await self._database.find_one(self._collection_name, filters)
+        guideline_document = await self._database.find_one(self._collection, filters)
 
         return Guideline(
             id=GuidelineId(guideline_document["id"]),
