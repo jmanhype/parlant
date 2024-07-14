@@ -3,6 +3,7 @@ import json
 from typing import Mapping, Optional, Sequence, cast
 from loguru import logger
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
@@ -24,24 +25,25 @@ class EventProducer:
 
     async def produce_events(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
     ) -> Sequence[ProducedEvent]:
-        interaction_event_list = list(interaction_history)
-        context_variable_list = list(context_variables)
-
+        assert len(agents) == 1
         tool_events = await self.tool_event_producer.produce_events(
-            context_variables=context_variable_list,
-            interaction_history=interaction_event_list,
+            agents=agents,
+            context_variables=context_variables,
+            interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
         )
 
         message_events = await self.message_event_producer.produce_events(
-            context_variables=context_variable_list,
-            interaction_history=interaction_event_list,
+            agents=agents,
+            context_variables=context_variables,
+            interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
             staged_events=tool_events,
@@ -58,16 +60,15 @@ class MessageEventProducer:
 
     async def produce_events(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
     ) -> Sequence[ProducedEvent]:
-        interaction_event_list = list(interaction_history)
-
         if (
-            not interaction_event_list
+            not interaction_history
             and not ordinary_guideline_propositions
             and not tool_enabled_guideline_propositions
         ):
@@ -77,6 +78,7 @@ class MessageEventProducer:
             return []
 
         prompt = self._format_prompt(
+            agents=agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
@@ -99,14 +101,18 @@ class MessageEventProducer:
 
     def _format_prompt(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
     ) -> str:
+        assert len(agents) == 1
+
         builder = PromptBuilder()
 
+        builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
         builder.add_context_variables(context_variables)
         builder.add_guideline_propositions(
@@ -288,11 +294,14 @@ class ToolEventProducer:
 
     async def produce_events(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
     ) -> Sequence[ProducedEvent]:
+        assert len(agents) == 1
+
         if not tool_enabled_guideline_propositions:
             return []
 
@@ -300,6 +309,7 @@ class ToolEventProducer:
 
         tool_calls = list(
             await self.tool_caller.infer_tool_calls(
+                agents,
                 context_variables,
                 interaction_history,
                 ordinary_guideline_propositions,

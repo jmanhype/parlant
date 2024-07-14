@@ -9,6 +9,7 @@ from typing import Any, Iterable, Mapping, NewType, Optional, Sequence, TypedDic
 
 from loguru import logger
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
@@ -58,6 +59,7 @@ class ToolCaller:
 
     async def infer_tool_calls(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
@@ -65,6 +67,7 @@ class ToolCaller:
         produced_tool_events: Sequence[ProducedEvent],
     ) -> Sequence[ToolCall]:
         inference_prompt = self._format_tool_call_inference_prompt(
+            agents,
             context_variables,
             interaction_history,
             ordinary_guideline_propositions,
@@ -76,6 +79,7 @@ class ToolCaller:
             inference_output = await self._run_inference(inference_prompt)
 
         verification_prompt = self._format_tool_call_verification_prompt(
+            agents,
             context_variables,
             interaction_history,
             ordinary_guideline_propositions,
@@ -109,17 +113,21 @@ class ToolCaller:
 
     def _format_tool_call_inference_prompt(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         produced_tool_events: Sequence[ProducedEvent],
     ) -> str:
+        assert len(agents) == 1
+
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
         builder = PromptBuilder()
 
+        builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_event_list)
         builder.add_context_variables(context_variables)
 
@@ -240,6 +248,7 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
 
     def _format_tool_call_verification_prompt(
         self,
+        agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
@@ -247,11 +256,14 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
         produced_tool_events: Sequence[ProducedEvent],
         tool_call_specifications: Sequence[ToolCallRequest],
     ) -> str:
+        assert len(agents) == 1
+
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
         builder = PromptBuilder()
 
+        builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_event_list)
         builder.add_context_variables(context_variables)
 

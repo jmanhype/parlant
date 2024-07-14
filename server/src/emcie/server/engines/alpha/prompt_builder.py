@@ -3,6 +3,7 @@ from enum import Enum, auto
 from itertools import chain
 from typing import Any, Mapping, Optional, Sequence, cast
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
@@ -18,6 +19,7 @@ from emcie.server.engines.common import ProducedEvent
 
 
 class BuiltInSection(Enum):
+    AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
     GUIDELINE_PREDICATES = auto()
@@ -75,6 +77,23 @@ class PromptBuilder:
             return cast(SectionStatus, section["status"])
         else:
             return SectionStatus.NONE
+
+    def add_agent_identity(
+        self,
+        agent: Agent,
+    ) -> PromptBuilder:
+        if agent.description:
+            self.add_section(
+                name=BuiltInSection.AGENT_IDENTITY,
+                content=f"""
+The following is a description of your identity:: ###
+{agent.description}
+###
+""",
+                status=SectionStatus.ACTIVE,
+            )
+
+        return self
 
     def add_interaction_history(
         self,

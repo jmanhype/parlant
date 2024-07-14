@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Mapping, Sequence
 
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
@@ -22,12 +22,14 @@ from emcie.server.core.sessions import Event, SessionId, SessionStore
 class AlphaEngine(Engine):
     def __init__(
         self,
+        agent_store: AgentStore,
         session_store: SessionStore,
         context_variable_store: ContextVariableStore,
         guideline_store: GuidelineStore,
         tool_store: ToolStore,
         guideline_tool_association_store: GuidelineToolAssociationStore,
     ) -> None:
+        self.agent_store = agent_store
         self.session_store = session_store
         self.context_variable_store = context_variable_store
         self.guideline_store = guideline_store
@@ -38,6 +40,7 @@ class AlphaEngine(Engine):
         self.guide_filter = GuidelineProposer()
 
     async def process(self, context: Context) -> Sequence[ProducedEvent]:
+        agent = await self.agent_store.read_agent(context.agent_id)
         interaction_history = list(await self.session_store.list_events(context.session_id))
 
         context_variables = await self._load_context_variables(
@@ -47,6 +50,7 @@ class AlphaEngine(Engine):
 
         ordinary_guideline_propositions, tool_enabled_guideline_propositions = (
             await self._load_guidelines(
+                agents=[agent],
                 agent_id=context.agent_id,
                 context_variables=context_variables,
                 interaction_history=interaction_history,
@@ -54,6 +58,7 @@ class AlphaEngine(Engine):
         )
 
         return await self.event_producer.produce_events(
+            agents=[agent],
             context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
@@ -85,11 +90,15 @@ class AlphaEngine(Engine):
 
     async def _load_guidelines(
         self,
+        agents: Sequence[Agent],
         agent_id: AgentId,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
     ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[Tool]]]:
+        assert len(agents) == 1
+
         all_relevant_guidelines = await self._fetch_relevant_guidelines(
+            agents=agents,
             agent_id=agent_id,
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -108,15 +117,19 @@ class AlphaEngine(Engine):
 
     async def _fetch_relevant_guidelines(
         self,
+        agents: Sequence[Agent],
         agent_id: AgentId,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
     ) -> Sequence[GuidelineProposition]:
+        assert len(agents) == 1
+
         all_possible_guidelines = await self.guideline_store.list_guidelines(
             guideline_set=agent_id,
         )
 
         relevant_guidelines = await self.guide_filter.propose_guidelines(
+            agents=agents,
             guidelines=list(all_possible_guidelines),
             context_variables=context_variables,
             interaction_history=interaction_history,

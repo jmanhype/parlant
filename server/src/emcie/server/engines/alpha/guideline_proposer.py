@@ -4,6 +4,7 @@ import jsonfinder  # type: ignore
 from typing import Sequence
 from loguru import logger
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import PromptBuilder
@@ -21,22 +22,22 @@ class GuidelineProposer:
 
     async def propose_guidelines(
         self,
+        agents: Sequence[Agent],
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
     ) -> Sequence[GuidelineProposition]:
-        guideline_list = list(guidelines)
-
-        if not guideline_list:
+        if not guidelines:
             return []
 
-        batches = self._create_batches(guideline_list, batch_size=5)
+        batches = self._create_batches(guidelines, batch_size=5)
 
         with duration_logger(f"Total guideline filtering ({len(batches)} batches)"):
             batch_tasks = [
                 self._process_batch(
-                    list(context_variables),
-                    list(interaction_history),
+                    agents,
+                    context_variables,
+                    interaction_history,
                     batch,
                 )
                 for batch in batches
@@ -48,9 +49,9 @@ class GuidelineProposer:
 
     def _create_batches(
         self,
-        guidelines: list[Guideline],
+        guidelines: Sequence[Guideline],
         batch_size: int,
-    ) -> list[list[Guideline]]:
+    ) -> Sequence[Sequence[Guideline]]:
         batches = []
         batch_count = len(guidelines) // batch_size + 1
 
@@ -64,11 +65,13 @@ class GuidelineProposer:
 
     async def _process_batch(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        batch: list[Guideline],
+        agents: Sequence[Agent],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        batch: Sequence[Guideline],
     ) -> list[GuidelineProposition]:
         prompt = self._format_prompt(
+            agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
             guidelines=batch,
@@ -95,12 +98,16 @@ class GuidelineProposer:
 
     def _format_prompt(
         self,
-        context_variables: list[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: list[Event],
-        guidelines: list[Guideline],
+        agents: Sequence[Agent],
+        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
+        interaction_history: Sequence[Event],
+        guidelines: Sequence[Guideline],
     ) -> str:
+        assert len(agents) == 1
+
         builder = PromptBuilder()
 
+        builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
         builder.add_context_variables(context_variables)
 
