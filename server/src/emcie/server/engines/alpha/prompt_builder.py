@@ -86,7 +86,7 @@ class PromptBuilder:
             self.add_section(
                 name=BuiltInSection.AGENT_IDENTITY,
                 content=f"""
-The following is a description of your identity:: ###
+The following is a description of your identity: ###
 {agent.description}
 ###
 """,
