@@ -48,66 +48,12 @@ class ContextVariable:
     """If None, the variable will only be updated on session creation"""
 
 
-context_variable_schema = {
-    "type": "object",
-    "properties": {
-        "id": {"type": "string"},
-        "name": {"type": "string"},
-        "description": {"type": ["string", "null"]},
-        "tool_id": {"type": "string"},
-        "freshness_rules": {"type": "string"},
-    },
-    "required": ["id", "name", "tool_id"],
-}
-
-
 @dataclass(frozen=True)
 class ContextVariableValue:
     id: ContextVariableValueId
     variable_id: ContextVariableId
     last_modified: datetime
     data: common.JSONSerializable
-
-
-context_variable_value_schema = context_variable_schema = {
-    "definitions": {
-        "FreshnessRules": {
-            "type": "object",
-            "properties": {
-                "months": {"type": ["array", "null"], "items": {"type": "integer"}},
-                "days_of_month": {"type": ["array", "null"], "items": {"type": "integer"}},
-                "days_of_week": {
-                    "type": ["array", "null"],
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "Sunday",
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday",
-                        ],
-                    },
-                },
-                "hours": {"type": ["array", "null"], "items": {"type": "integer"}},
-                "minutes": {"type": ["array", "null"], "items": {"type": "integer"}},
-                "seconds": {"type": ["array", "null"], "items": {"type": "integer"}},
-            },
-            "additionalProperties": False,
-        }
-    },
-    "type": "object",
-    "properties": {
-        "id": {"type": "string"},
-        "name": {"type": "string"},
-        "description": {"type": ["string", "null"]},
-        "tool_id": {"type": "string"},
-        "freshness_rules": {"type": ["object", "null"], "$ref": "#/definitions/FreshnessRules"},
-    },
-    "required": ["id", "name", "tool_id"],
-}
 
 
 class ContextVariableStore(ABC):
