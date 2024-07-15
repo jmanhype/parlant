@@ -58,6 +58,20 @@ def given_an_agent(
     return agent_id
 
 
+@given(parsers.parse("an agent with identity of selling pizza"), target_fixture="agent_id")
+def given_an_agent_with_identity(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    agent = sync_await(
+        container[AgentStore].create_agent(
+            name="test-agent",
+            description="You are selling pizza to clients",
+        )
+    )
+    return agent.id
+
+
 @given(parsers.parse("a guideline to {do_something}"))
 def given_a_guideline_to(
     do_something: str,
@@ -80,6 +94,13 @@ def given_a_guideline_to(
                 guideline_set=agent_id,
                 predicate="The user is thirsty",
                 content="Offer the user a Pepsi",
+            )
+        ),
+        "do your job when the user says hello": lambda: sync_await(
+            guideline_store.create_guideline(
+                guideline_set=agent_id,
+                predicate="greeting the user",
+                content="do your job when the user says hello",
             )
         ),
     }

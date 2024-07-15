@@ -26,3 +26,13 @@ Feature: Alpha Engine
         When processing is triggered
         Then a single message event is produced
         And the message contains an offering of a Pepsi
+
+    
+    Scenario: The agent sells pizza because of his defined identity 
+        Given the alpha engine
+        And an agent with identity of selling pizza
+        And a session with a single user message
+        And a guideline to do your job when the user says hello
+        When processing is triggered
+        Then a single message event is produced
+        And the message contains an offering to order pizza
