@@ -8,12 +8,12 @@ from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.tools import ToolId
 from emcie.server.core.persistence import DocumentDatabase
 
-ToolGuidelineAssociationId = NewType("ToolGuidelineAssociationId", str)
+GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)
 
 
 @dataclass(frozen=True)
 class GuidelineToolAssociation:
-    id: ToolGuidelineAssociationId
+    id: GuidelineToolAssociationId
     creation_utc: datetime
     guideline_id: GuidelineId
     tool_id: ToolId
@@ -46,23 +46,31 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         tool_id: ToolId,
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineToolAssociation:
-        association_data = {
-            "creation_utc": creation_utc or datetime.now(timezone.utc),
-            "guideline_id": guideline_id,
-            "tool_id": tool_id,
-        }
-        inserted_association = await self._database.insert_one(
-            self._collection_name, association_data
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+        association_document = await self._database.insert_one(
+            self._collection_name,
+            {
+                "id": common.generate_id(),
+                "creation_utc": creation_utc,
+                "guideline_id": guideline_id,
+                "tool_id": tool_id,
+            },
         )
 
-        association = common.create_instance_from_dict(
-            GuidelineToolAssociation, inserted_association
+        return GuidelineToolAssociation(
+            id=GuidelineToolAssociationId(association_document["id"]),
+            creation_utc=creation_utc,
+            guideline_id=guideline_id,
+            tool_id=tool_id,
         )
-        return association
 
     async def list_associations(self) -> Iterable[GuidelineToolAssociation]:
-        associations_data = await self._database.find(self._collection_name, filters={})
-        associations = (
-            common.create_instance_from_dict(GuidelineToolAssociation, a) for a in associations_data
+        return (
+            GuidelineToolAssociation(
+                id=GuidelineToolAssociationId(d["id"]),
+                creation_utc=d["creation_utc"],
+                guideline_id=d["guideline_id"],
+                tool_id=d["tool_id"],
+            )
+            for d in await self._database.find(self._collection_name, filters={})
         )
-        return associations

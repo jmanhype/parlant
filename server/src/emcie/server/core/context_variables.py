@@ -118,15 +118,24 @@ class ContextVariableDocumentStore(ContextVariableStore):
         tool_id: ToolId,
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable:
-        variable = {
-            "variable_set": variable_set,
-            "name": name,
-            "description": description,
-            "tool_id": tool_id,
-            "freshness_rules": freshness_rules,
-        }
-        inserted_variable = await self._database.insert_one(self._variable_collection, variable)
-        return common.create_instance_from_dict(ContextVariable, inserted_variable)
+        variable_document = await self._database.insert_one(
+            self._variable_collection,
+            {
+                "id": common.generate_id(),
+                "variable_set": variable_set,
+                "name": name,
+                "description": description,
+                "tool_id": tool_id,
+                "freshness_rules": freshness_rules,
+            },
+        )
+        return ContextVariable(
+            id=variable_document["id"],
+            name=name,
+            description=description,
+            tool_id=tool_id,
+            freshness_rules=freshness_rules,
+        )
 
     async def update_value(
         self,
@@ -140,17 +149,25 @@ class ContextVariableDocumentStore(ContextVariableStore):
             "variable_id": FieldFilter(equal_to=variable_id),
             "key": FieldFilter(equal_to=key),
         }
-        value_data = {
-            "variable_set": variable_set,
-            "variable_id": variable_id,
-            "last_modified": datetime.now(timezone.utc),
-            "data": data,
-            "key": key,
-        }
-        updated_value = await self._database.update_one(
-            self._value_collection, filters, value_data, upsert=True
+        value_document = await self._database.update_one(
+            self._value_collection,
+            filters,
+            {
+                "id": common.generate_id(),
+                "variable_set": variable_set,
+                "variable_id": variable_id,
+                "last_modified": datetime.now(timezone.utc),
+                "data": data,
+                "key": key,
+            },
+            upsert=True,
         )
-        return common.create_instance_from_dict(ContextVariableValue, updated_value)
+        return ContextVariableValue(
+            id=ContextVariableValueId(value_document["id"]),
+            variable_id=variable_id,
+            last_modified=value_document["last_modified"],
+            data=data,
+        )
 
     async def delete_variable(
         self,
@@ -174,8 +191,17 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
     ) -> Iterable[ContextVariable]:
         filters = {"variable_set": FieldFilter(equal_to=variable_set)}
-        variables = await self._database.find(self._variable_collection, filters)
-        return (common.create_instance_from_dict(ContextVariable, var) for var in variables)
+
+        return (
+            ContextVariable(
+                id=ContextVariableId(d["id"]),
+                name=d["name"],
+                description=d["description"],
+                tool_id=d["tool_id"],
+                freshness_rules=d["freshness_rules"],
+            )
+            for d in await self._database.find(self._variable_collection, filters)
+        )
 
     async def read_variable(
         self,
@@ -186,8 +212,15 @@ class ContextVariableDocumentStore(ContextVariableStore):
             "variable_set": FieldFilter(equal_to=variable_set),
             "id": FieldFilter(equal_to=id),
         }
-        variable = await self._database.find_one(self._variable_collection, filters)
-        return common.create_instance_from_dict(ContextVariable, variable)
+
+        variable_document = await self._database.find_one(self._variable_collection, filters)
+        return ContextVariable(
+            id=ContextVariableId(variable_document["id"]),
+            name=variable_document["name"],
+            description=variable_document["description"],
+            tool_id=variable_document["tool_id"],
+            freshness_rules=variable_document["freshness_rules"],
+        )
 
     async def read_value(
         self,
@@ -200,5 +233,10 @@ class ContextVariableDocumentStore(ContextVariableStore):
             "variable_id": FieldFilter(equal_to=variable_id),
             "key": FieldFilter(equal_to=key),
         }
-        value = await self._database.find_one(self._value_collection, filters)
-        return common.create_instance_from_dict(ContextVariableValue, value)
+        value_document = await self._database.find_one(self._value_collection, filters)
+        return ContextVariableValue(
+            id=ContextVariableValueId(value_document["id"]),
+            variable_id=value_document["variable_id"],
+            last_modified=value_document["last_modified"],
+            data=value_document["data"],
+        )
