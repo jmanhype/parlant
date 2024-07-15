@@ -122,8 +122,6 @@ class AlphaEngine(Engine):
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
     ) -> Sequence[GuidelineProposition]:
-        assert len(agents) == 1
-
         all_possible_guidelines = await self.guideline_store.list_guidelines(
             guideline_set=agent_id,
         )

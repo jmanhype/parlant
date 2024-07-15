@@ -140,7 +140,7 @@ def when_processing_is_triggered(
             id=AgentId("123"),
             creation_utc=datetime.now(timezone.utc),
             name="Test Agent",
-            description="You are an agent that work for Emcie",
+            description="You are an agent that works for Emcie",
         )
     ]
 

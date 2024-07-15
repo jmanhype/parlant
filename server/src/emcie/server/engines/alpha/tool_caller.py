@@ -120,8 +120,6 @@ class ToolCaller:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         produced_tool_events: Sequence[ProducedEvent],
     ) -> str:
-        assert len(agents) == 1
-
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
@@ -256,8 +254,6 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
         produced_tool_events: Sequence[ProducedEvent],
         tool_call_specifications: Sequence[ToolCallRequest],
     ) -> str:
-        assert len(agents) == 1
-
         staged_function_calls = self._get_invoked_functions(produced_tool_events)
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
