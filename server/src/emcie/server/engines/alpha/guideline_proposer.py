@@ -104,6 +104,15 @@ class GuidelineProposer:
         guidelines: Sequence[Guideline],
     ) -> str:
         assert len(agents) == 1
+        result_structure = [
+            {
+                "predicate_number": i,
+                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE "
+                "CURRENT STATE OF THE INTERACTION>",
+                "applies_score": "<RELEVANCE SCORE>",
+            }
+            for i, g in enumerate(guidelines, start=1)
+        ]
 
         builder = PromptBuilder()
 
@@ -123,52 +132,31 @@ to the last known state of an interaction between yourself, AI assistant, and a 
         builder.add_guideline_predicates(guidelines)
 
         builder.add_section(
-            """
+            f"""
+IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the list for you to check.
+
 Process Description
 -------------------
-a. Examine the provided interaction events to discern
-the latest state of interaction between the user and the assistant.
-b. Determine the applicability of each predicate based on the most recent interaction state.
-    Note: There are exactly {len(guidelines)} predicates.
-c. Assign a relevance score to each predicate, from 1 to 10, where 10 denotes high relevance.
-
-Expected Output Description
----------------------------
-- Create a JSON object specifying the applicability of each predicate, formatted as follows:
-
-```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
-            "applies_score": <RELEVANCE SCORE>,
-        }},
-        ...
-        {{
-            "predicate_number": "N",
-            "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE CURRENT STATE OF THE INTERACTION>",
-            "applies_score": <RELEVANCE SCORE>
-        }}
-    ]
-}}
-```
+a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
+b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state. 
+c. If the predicate has already been addressed, assess its continued applicability.
+d. Assign an applicability score to each predicate between 1 and 10, where 10 denotes the highest applicability score.
 
 ### Examples of Predicate Evaluations:
 
 #### Example #1:
 - Interaction Events: ###
-[{{"id": "MZC1H9iyYe", "kind": "<message>", "source": "user",
-"data": {{"message": "Can I purchase a subscription to your software?"}},
-{{"id": "F2oFNx_Ld8", "kind": "<message>", "source": "assistant",
-"data": {{"message": "Absolutely, I can assist you with that right now."}},
-{{"id": "dfI1jYAjqe", "kind": "<message>", "source": "user",
-"data": {{"message": "Please proceed with the subscription for the Pro plan."}},
-{{"id": "2ZWfAC4xLf", "kind": "<message>", "source": "assistant",
+[{{"id": "11", "kind": "<message>", "source": "user",
+"data": {{"message": "Can I purchase a subscription to your software?"}}}},
+{{"id": "23", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Absolutely, I can assist you with that right now."}}}},
+{{"id": "34", "kind": "<message>", "source": "user",
+"data": {{"message": "Please proceed with the subscription for the Pro plan."}}}},
+{{"id": "56", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Your subscription has been successfully activated.
-Is there anything else I can help you with?"}},
-{{"id": "78oTChjBfM", "kind": "<message>", "source": "user",
-"data": {{"message": "Yes, can you tell me more about your data security policies?"}}]
+Is there anything else I can help you with?"}}}},
+{{"id": "78", "kind": "<message>", "source": "user",
+"data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
 - Predicates: ###
 1) the client initiates a purchase
@@ -179,33 +167,33 @@ Is there anything else I can help you with?"}},
 {{ "checks": [
     {{
         "predicate_number": "1",
-        "rationale": "The client completed the purchase and
-        the conversation shifted to a new topic,
-        making the purchase-related guideline irrelevant.",
+        "rationale": "The purchase-related guideline is irrelevant since the client "
+        "completed the purchase and the conversation has moved to a new topic.",
         "applies_score": 3
     }},
     {{
         "predicate_number": "2",
         "rationale": "The client specifically inquired about data security policies,
         making this guideline highly relevant to the ongoing discussion.",
-        "applies_score": 10
+        "applies_score": 9
     }}
 ]}}
 ```
 
 #### Example #2:
-[{{"id": "P06dNR7ySO", "kind": "<message>", "source": "user",
+[{{"id": "112", "kind": "<message>", "source": "user",
 "data": {{"message": "I need to make this quick.
-Can you give me a brief overview of your pricing plans?"}},
-{{"id": "bwZwM6YjfR", "kind": "<message>", "source": "assistant",
+Can you give me a brief overview of your pricing plans?"}}}},
+{{"id": "223", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
-Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}},
-{{"id": "bFKLDMthb2", "kind": "<message>", "source": "user",
-"data": {{"message": "Tell me about the Pro plan."}},
+Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}}}},
+{{"id": "334", "kind": "<message>", "source": "user",
+"data": {{"message": "Tell me about the Pro plan."}}}},
 ###
 - Predicates: ###
 1) the client indicates they are in a hurry
 2) a client inquires about pricing plans
+3) a client asks for a summary of the features of the three plans.
 ###
 - **Expected Result**:
 ```json
@@ -221,11 +209,27 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
             "predicate_number": "2",
             "rationale": "The client inquired about pricing plans, "
             "specifically asking for details about the Pro plan.",
-            "applies_score": 10
+            "applies_score": 9
+        }},
+        {{
+            "predicate_number": "3",
+            "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
+            "applies_score": 2
         }},
     ]
 }}
 ```
+
+Expected Output
+---------------------------
+- Specify the applicability of each predicate by filling in the rationale and applied score in the following list:
+
+    ```json
+    {{
+        "checks":
+        {result_structure}
+    }}
+    ```
 """  # noqa
         )
 

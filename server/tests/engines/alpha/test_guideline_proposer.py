@@ -278,7 +278,7 @@ def test_that_irrelevant_guidelines_are_not_proposed(
         for name in conversation_guidelines
         if name in irrelevant_guideline_names
     ]
-
+    
     guideline_propositions = propose_guidelines(context, conversation_context)
     guidelines = [p.guideline for p in guideline_propositions]
 
