@@ -103,6 +103,8 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         guidelines: Sequence[Guideline],
     ) -> str:
+        assert len(agents) == 1
+
         builder = PromptBuilder()
 
         builder.add_agent_identity(agents[0])
