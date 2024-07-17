@@ -51,11 +51,47 @@ def given_the_alpha_engine(
     return container[AlphaEngine]
 
 
+@given(parsers.parse("an agent whose job is {description}"), target_fixture="agent_id")
+def given_an_agent_with_identity(
+    container: Container,
+    sync_await: SyncAwaiter,
+    description: str,
+) -> AgentId:
+    agent = sync_await(
+        container[AgentStore].create_agent(
+            name="test-agent",
+            description=f"Your job is {description}",
+        )
+    )
+    return agent.id
+
+
 @given("an agent", target_fixture="agent_id")
 def given_an_agent(
     agent_id: AgentId,
 ) -> AgentId:
     return agent_id
+
+
+@given(parsers.parse('a user message, "{user_message}"'), target_fixture="session_id")
+def given_a_user_message(
+    sync_await: SyncAwaiter,
+    container: Container,
+    session_id: SessionId,
+    user_message: str,
+) -> SessionId:
+    store = container[SessionStore]
+
+    sync_await(
+        store.create_event(
+            session_id=session_id,
+            source="client",
+            kind=Event.MESSAGE_KIND,
+            data={"message": user_message},
+        )
+    )
+
+    return session_id
 
 
 @given(parsers.parse("a guideline to {do_something}"))
@@ -80,6 +116,13 @@ def given_a_guideline_to(
                 guideline_set=agent_id,
                 predicate="The user is thirsty",
                 content="Offer the user a Pepsi",
+            )
+        ),
+        "do your job when the user says hello": lambda: sync_await(
+            guideline_store.create_guideline(
+                guideline_set=agent_id,
+                predicate="greeting the user",
+                content="do your job when the user says hello",
             )
         ),
     }

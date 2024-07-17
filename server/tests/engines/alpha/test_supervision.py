@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Literal, cast
 from lagom import Container
 from pytest import fixture
 from pytest_bdd import scenarios, given, when, then, parsers
 
-from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, MessageEventData, SessionId, SessionStore
@@ -134,10 +135,20 @@ def given_a_guideline_proposition(
 def when_processing_is_triggered(
     context: _TestContext,
 ) -> list[ProducedEvent]:
+    agents = [
+        Agent(
+            id=AgentId("123"),
+            creation_utc=datetime.now(timezone.utc),
+            name="Test Agent",
+            description="You are an agent that works for Emcie",
+        )
+    ]
+
     message_event_producer = MessageEventProducer()
 
     message_events = context.sync_await(
         message_event_producer.produce_events(
+            agents=agents,
             context_variables=[],
             interaction_history=context.intercations_history,
             ordinary_guideline_propositions=list(context.guideline_proposition.values()),

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable, cast
 from pytest import fixture, mark
+from emcie.server.core.agents import Agent, AgentId
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from tests.test_utilities import SyncAwaiter
@@ -29,6 +30,14 @@ def propose_guidelines(
     conversation_context: list[tuple[str, str]],
 ) -> Iterable[GuidelineProposition]:
     guideline_filter = GuidelineProposer()
+    agents = [
+        Agent(
+            id=AgentId("123"),
+            creation_utc=datetime.now(timezone.utc),
+            name="Test Agent",
+            description="You are an agent that works for Emcie",
+        )
+    ]
 
     interaction_history = [
         create_event_message(
@@ -41,6 +50,7 @@ def propose_guidelines(
 
     guideline_propositions = context.sync_await(
         guideline_filter.propose_guidelines(
+            agents=agents,
             guidelines=context.guidelines,
             context_variables=[],
             interaction_history=interaction_history,

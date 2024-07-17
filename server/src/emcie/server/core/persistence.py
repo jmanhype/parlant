@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, Optional, Type, TypedDict
+from typing import Any, Callable, Iterable, Optional, Sequence, Type, TypedDict
 import aiofiles
 
 
@@ -34,7 +34,7 @@ class DocumentDatabase(ABC):
         self,
         collection: str,
         filters: dict[str, FieldFilter],
-    ) -> Iterable[dict[str, Any]]: ...
+    ) -> Sequence[dict[str, Any]]: ...
 
     @abstractmethod
     async def find_one(
@@ -114,15 +114,15 @@ class TransientDocumentDatabase(DocumentDatabase):
         self,
         collection: str,
         filters: dict[str, FieldFilter],
-    ) -> Iterable[dict[str, Any]]:
-        return filter(lambda d: _matches_filters(filters, d), self._collections[collection])
+    ) -> Sequence[dict[str, Any]]:
+        return list(filter(lambda d: _matches_filters(filters, d), self._collections[collection]))
 
     async def find_one(
         self,
         collection: str,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
-        matched_documents = list(await self.find(collection, filters))
+        matched_documents = await self.find(collection, filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
         raise ValueError("No document found matching the provided filters.")
@@ -249,7 +249,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self,
         collection: str,
         filters: dict[str, FieldFilter],
-    ) -> Iterable[dict[str, Any]]:
+    ) -> Sequence[dict[str, Any]]:
         return await self.transient_db.find(collection, filters)
 
     async def find_one(
