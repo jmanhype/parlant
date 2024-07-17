@@ -20,7 +20,7 @@ Feature: Single Tool Event
 
     Scenario: Single tool is being called multiple times
         Given a guideline "sell_pizza", to sell pizza when interacting with users
-        Given a guideline "check_stock", to check if toppings or drinks are available in stock when a client asks for toppings or drinks
+        And a guideline "check_stock", to check if toppings or drinks are available in stock when a client asks for toppings or drinks
         And the tool "get_available_product_by_type"
         And an association between "check_stock" and "get_available_product_by_type"
         And a user message, "Hey, Can I order large pepperoni pizza with Sprite?"
