@@ -3,7 +3,7 @@
 import asyncio
 from dataclasses import dataclass
 import os
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -17,53 +17,19 @@ from textwrap import wrap
 from emcie.server.core.sessions import Event
 
 
-async def main() -> None:
-    click_completion.init()
-
-    @dataclass(frozen=True)
-    class Config:
-        server_address: str
-
-    @click.group
-    @click.option(
-        "-s", "--server", type=str, help="Server address", metavar="ADDRESS[:PORT]", required=True
-    )
-    @click.pass_context
-    def cli(ctx: click.Context, server: str) -> None:
-        if not ctx.obj:
-            ctx.obj = Config(server_address=server)
-
-    @cli.command(help="Generate shell completion code")
-    @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
-    def complete(shell: str) -> None:
-        click.echo(click_completion.get_code(shell))
-
-    @cli.group(help="Manage agents")
-    def agent() -> None:
-        pass
-
-    @agent.command("list", help="List agents")
-    @click.pass_context
-    def agent_list(ctx: click.Context) -> None:
+class Actions:
+    @staticmethod
+    def list_agents(ctx: click.Context) -> list[dict[str, Any]]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
         response.raise_for_status()
-        agents = response.json()["agents"]
+        return response.json()["agents"]
 
-        if not agents:
-            rich.print("No data available")
-            return
-
-        rich.print(tabulate(agents, headers="keys"))
-
-    @cli.group(help="Manage sessions")
-    def session() -> None:
-        pass
-
-    @session.command("new", help="Create a new session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
-    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
-    @click.pass_context
-    def session_new(ctx: click.Context, agent_id: str, end_user_id: str) -> None:
+    @staticmethod
+    def create_session(
+        ctx: click.Context,
+        agent_id: str,
+        end_user_id: str,
+    ) -> dict[str, Any]:
         response = requests.post(
             urljoin(ctx.obj.server_address, "sessions"),
             json={
@@ -74,15 +40,40 @@ async def main() -> None:
 
         response.raise_for_status()
 
-        print(tabulate([response.json()], headers="keys"))
+        return response.json()
 
-    @session.command("view", help="View session content")
-    @click.argument("session_id")
-    @click.pass_context
-    def session_view(ctx: click.Context, session_id: str) -> None:
+    @staticmethod
+    def list_events(ctx: click.Context, session_id: str) -> dict[str, Any]:
         response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
         response.raise_for_status()
-        events: list[dict[str, Any]] = response.json()["events"]
+        return response.json()["events"]
+
+    @staticmethod
+    def create_event(ctx: click.Context, session_id: str, message: str) -> dict[str, Any]:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
+            json={"content": message},
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+
+class Interface:
+    @staticmethod
+    def list_agents(ctx: click.Context) -> None:
+        agents = Actions.list_agents(ctx)
+
+        if not agents:
+            rich.print("No data available")
+            return
+
+        rich.print(tabulate(agents, headers="keys"))
+
+    @staticmethod
+    def view_session(ctx: click.Context, session_id: str) -> None:
+        events = Actions.list_events(ctx, session_id)
 
         if not events:
             rich.print("No data available")
@@ -105,24 +96,18 @@ async def main() -> None:
             )
         )
 
-    @session.command("post", help="Post user message to session")
-    @click.argument("session_id")
-    @click.argument("message")
-    @click.pass_context
-    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
-            json={"content": message},
-        )
+    @staticmethod
+    def create_session(ctx: click.Context, agent_id: str, end_user_id: str) -> None:
+        session = Actions.create_session(ctx, agent_id, end_user_id)
+        print(tabulate([session], headers="keys"))
 
-        response.raise_for_status()
+    @staticmethod
+    def create_event(ctx: click.Context, session_id: str, message: str) -> None:
+        event = Actions.create_event(ctx, session_id, message)
+        rich.print(tabulate([event], headers="keys"))
 
-        rich.print(tabulate([response.json()], headers="keys"))
-
-    @session.command("chat", help="Enter chat mode within the session")
-    @click.argument("session_id")
-    @click.pass_context
-    def session_chat(ctx: click.Context, session_id: str) -> None:
+    @staticmethod
+    def chat(ctx: click.Context, session_id: str) -> None:
         def print_message(message_event: dict[str, Any]) -> None:
             role = {"client": "User", "server": "Agent"}.get(m["source"])
             prefix = Text(
@@ -197,6 +182,84 @@ async def main() -> None:
             except KeyboardInterrupt:
                 rich.print("\nQuitting...", flush=True)
                 return
+
+
+async def main() -> None:
+    click_completion.init()
+
+    @dataclass(frozen=True)
+    class Config:
+        server_address: str
+
+    @click.group
+    @click.option(
+        "-s", "--server", type=str, help="Server address", metavar="ADDRESS[:PORT]", required=True
+    )
+    @click.pass_context
+    def cli(ctx: click.Context, server: str) -> None:
+        if not ctx.obj:
+            ctx.obj = Config(server_address=server)
+
+    @cli.command(help="Generate shell completion code")
+    @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
+    def complete(shell: str) -> None:
+        click.echo(click_completion.get_code(shell))
+
+    @cli.group(help="Manage agents")
+    def agent() -> None:
+        pass
+
+    @agent.command("list", help="List agents")
+    @click.pass_context
+    def agent_list(ctx: click.Context) -> None:
+        Interface.list_agents(ctx)
+
+    @agent.command(
+        "chat",
+        help="Jump into a chat with an agent\n\n"
+        "If AGENT_ID is omitted, the default agent will be selected.",
+    )
+    @click.argument("agent_id", required=False)
+    @click.pass_context
+    def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
+        if not agent_id:
+            agents = Actions.list_agents(ctx)
+            assert agents
+            agent_id = agents[0]["id"]
+
+        session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
+
+        Interface.chat(ctx, session["session_id"])
+
+    @cli.group(help="Manage sessions")
+    def session() -> None:
+        pass
+
+    @session.command("new", help="Create a new session")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
+    @click.pass_context
+    def session_new(ctx: click.Context, agent_id: str, end_user_id: str) -> None:
+        Interface.create_session(ctx, agent_id, end_user_id)
+
+    @session.command("view", help="View session content")
+    @click.argument("session_id")
+    @click.pass_context
+    def session_view(ctx: click.Context, session_id: str) -> None:
+        Interface.view_session(ctx, session_id)
+
+    @session.command("post", help="Post user message to session")
+    @click.argument("session_id")
+    @click.argument("message")
+    @click.pass_context
+    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
+        Interface.create_event(ctx, session_id, message)
+
+    @session.command("chat", help="Enter chat mode within the session")
+    @click.argument("session_id")
+    @click.pass_context
+    def session_chat(ctx: click.Context, session_id: str) -> None:
+        Interface.chat(ctx, session_id)
 
     cli()
 
