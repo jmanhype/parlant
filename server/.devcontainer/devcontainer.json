@@ -4,7 +4,6 @@
     "dockerfile": "Dockerfile"
   },
 
-  // 👇 Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
   // "features": {},
 
   // 👇 Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -16,9 +15,21 @@
   // 👇 Configure tool-specific properties.
   "customizations": {
     "vscode": {
-      "extensions": ["ms-python.python", "njpwerner.autodocstring"]
+      "extensions": [
+        "ms-python.python",
+        "njpwerner.autodocstring",
+        "github.remotehub",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "GitHub.vscode-pull-request-github",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "zeshuaro.vscode-python-poetry",
+        "hbenl.vscode-test-explorer"
+      ]
     }
   },
+  // 👇 Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
   "features": {
     "ghcr.io/devcontainers-contrib/features/mypy:2": {
       "version": "latest"
