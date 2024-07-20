@@ -136,7 +136,10 @@ class ToolDocumentStore(ToolStore):
                 required=d["required"],
                 consequential=d["consequential"],
             )
-            for d in await self._database.find(self._collection, {})
+            for d in await self._database.find(
+                collection=self._collection,
+                filters={},
+            )
         )
 
     async def read_tool(
