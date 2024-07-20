@@ -215,7 +215,98 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     ]
 }}
 ```
+### Example #3:
+- Interaction Events: ###
+[{{"id": "13", "kind": "<message>", "source": "user",
+"data": {{"message": "Can you recommend a good science fiction movie?"}}}},
+{{"id": "14", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Sure, I recommend 'Inception'. It's a great science fiction movie."}}}},
+{{"id": "15", "kind": "<message>", "source": "user",
+"data": {{"message": "Thanks, I'll check it out."}}}}]
+###
+- Predicates: ###
+1) the client asks for a recommendation
+2) the client asks about movie genres
+###
+- **Expected Result**:
+```json
+{{
+    "checks": [
+        {{
+            "predicate_number": "1",
+            "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
+            "applies_score": 9
+        }},
+        {{
+            "predicate_number": "2",
+            "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
+            "applies_score": 3
+        }}
+    ]
+}}
+```
 
+### Example #4:
+- Interaction Events: ###
+[{{"id": "54", "kind": "<message>", "source": "user",
+"data": {{"message": "Can I add an extra pillow to my bed order?"}}}},
+{{"id": "66", "kind": "<message>", "source": "assistant",
+"data": {{"message": "An extra pillow has been added to your order."}}}},
+{{"id": "72", "kind": "<message>", "source": "user",
+"data": {{"message": "Thanks, I'll come to pick up the order. Can you tell me the address?"}}}}]
+###
+- Predicates: ###
+1) the client requests a modification to their order
+2) the client asks for the store's location
+###
+- **Expected Result**:
+```json
+{{
+    "checks": [
+        {{
+            "predicate_number": "1",
+            "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
+            "applies_score": 3
+        }},
+        {{
+            "predicate_number": "2",
+            "rationale": "The client asked for the store's location, making this guideline highly relevant.",
+            "applies_score": 10
+        }}
+    ]
+}}
+```
+
+### Example #5:
+- Interaction Events: ###
+[{{"id": "21", "kind": "<message>", "source": "user",
+"data": {{"message": "Can I add an extra charger to my laptop order?"}}}},
+{{"id": "34", "kind": "<message>", "source": "assistant",
+"data": {{"message": "An extra charger has been added to your order."}}}},
+{{"id": "53", "kind": "<message>", "source": "user",
+"data": {{"message": "Do you have any external hard drives available?"}}}}]
+###
+- Predicates: ###
+1) the order does not exceed the limit of products
+2) the client asks about product availability
+###
+- **Expected Result**:
+```json
+{{
+    "checks": [
+        {{
+            "predicate_number": "1",
+            "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
+            "applies_score": 9
+        }},
+        {{
+            "predicate_number": "2",
+            "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
+            "applies_score": 10
+        }}
+    ]
+}}
+```
 Expected Output
 ---------------------------
 - Specify the applicability of each predicate by filling in the rationale and applied score in the following list:
