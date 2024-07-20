@@ -131,21 +131,22 @@ class SessionDocumentStore(SessionStore):
         end_user_id: EndUserId,
         agent_id: AgentId,
     ) -> Session:
-        session_document = await self._database.insert_one(
+        consumption_offsets = {"client": 0}
+        session_id = await self._database.insert_one(
             self._session_collection,
             {
                 "id": common.generate_id(),
                 "end_user_id": end_user_id,
                 "agent_id": agent_id,
-                "consumption_offsets": {"client": 0},
+                "consumption_offsets": consumption_offsets,
             },
         )
 
         return Session(
-            id=session_document["id"],
+            id=SessionId(session_id),
             end_user_id=end_user_id,
             agent_id=agent_id,
-            consumption_offsets=session_document["consumption_offsets"],
+            consumption_offsets=consumption_offsets,
         )
 
     async def read_session(
@@ -194,25 +195,26 @@ class SessionDocumentStore(SessionStore):
     ) -> Event:
         session_events = await self.list_events(session_id)
         creation_utc = creation_utc or datetime.now(timezone.utc)
+        offset = len(list(session_events))
 
-        event_document = await self._database.insert_one(
+        event_id = await self._database.insert_one(
             self._event_collection,
             {
                 "id": common.generate_id(),
                 "session_id": session_id,
                 "source": source,
                 "kind": kind,
-                "offset": len(list(session_events)),
+                "offset": offset,
                 "creation_utc": creation_utc,
                 "data": data,
             },
         )
 
         return Event(
-            id=EventId(event_document["id"]),
+            id=EventId(event_id),
             source=source,
             kind=kind,
-            offset=event_document["offset"],
+            offset=offset,
             creation_utc=creation_utc,
             data=data,
         )

@@ -56,7 +56,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineToolAssociation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
-        association_document = await self._database.insert_one(
+        association_id = await self._database.insert_one(
             self._collection,
             {
                 "id": common.generate_id(),
@@ -67,7 +67,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         )
 
         return GuidelineToolAssociation(
-            id=GuidelineToolAssociationId(association_document["id"]),
+            id=GuidelineToolAssociationId(association_id),
             creation_utc=creation_utc,
             guideline_id=guideline_id,
             tool_id=tool_id,

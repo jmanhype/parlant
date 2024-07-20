@@ -6,10 +6,13 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, Optional, Sequence, Type, TypedDict
+from typing import Any, Callable, Iterable, NewType, Optional, Sequence, Type, TypedDict
 import aiofiles
 
 from emcie.server.base_models import DefaultBaseModel
+
+
+ObjectId = NewType("ObjectId", str)
 
 
 class FieldFilter(TypedDict, total=False):
@@ -31,13 +34,6 @@ class CollectionDescriptor:
 class DocumentDatabase(ABC):
 
     @abstractmethod
-    async def insert_one(
-        self,
-        collection: CollectionDescriptor,
-        document: dict[str, Any],
-    ) -> dict[str, Any]: ...
-
-    @abstractmethod
     async def find(
         self,
         collection: CollectionDescriptor,
@@ -57,13 +53,20 @@ class DocumentDatabase(ABC):
     ...
 
     @abstractmethod
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId: ...
+
+    @abstractmethod
     async def update_one(
         self,
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ObjectId:
         """
         Updates the first document that matches the query criteria.
         """
@@ -111,20 +114,12 @@ class TransientDocumentDatabase(DocumentDatabase):
         self._collections = collections if collections else defaultdict(list)
         self._collection_descriptors: dict[str, CollectionDescriptor] = {}
 
-    async def insert_one(
-        self,
-        collection: CollectionDescriptor,
-        document: dict[str, Any],
-    ) -> dict[str, Any]:
-        self._collection_descriptors[collection.name] = collection
-        self._collections[collection.name].append(document)
-        return document
-
     async def find(
         self,
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]:
+        # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         return list(
             filter(
@@ -138,11 +133,22 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
+        # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         matched_documents = await self.find(collection, filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
         raise ValueError("No document found matching the provided filters.")
+
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
+        self._collections[collection.name].append(document)
+        return document["id"]
 
     async def update_one(
         self,
@@ -150,15 +156,16 @@ class TransientDocumentDatabase(DocumentDatabase):
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ObjectId:
+        # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
                 self._collections[collection.name][i] = updated_document
-                return updated_document
+                return updated_document["id"]
         if upsert:
-            document = await self.insert_one(collection, updated_document)
-            return document
+            document_id = await self.insert_one(collection, updated_document)
+            return document_id
 
         raise ValueError("No document found matching the provided filters.")
 
@@ -167,6 +174,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
+        # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
@@ -237,18 +245,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 )
                 await file.write(json_string)
 
-    async def insert_one(
-        self,
-        collection: CollectionDescriptor,
-        document: dict[str, Any],
-    ) -> dict[str, Any]:
-        result = await self.transient_db.insert_one(
-            collection,
-            collection.schema(**document).model_dump(mode="json"),
-        )
-        await self._process_operation_counter()
-        return collection.schema.model_validate(result).model_dump()
-
     async def find(
         self,
         collection: CollectionDescriptor,
@@ -267,13 +263,25 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         result = await self.transient_db.find_one(collection, filters)
         return collection.schema.model_validate(result).model_dump()
 
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId:
+        document_id = await self.transient_db.insert_one(
+            collection,
+            collection.schema(**document).model_dump(mode="json"),
+        )
+        await self._process_operation_counter()
+        return document_id
+
     async def update_one(
         self,
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ObjectId:
         result = await self.transient_db.update_one(
             collection,
             filters,
@@ -281,7 +289,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             upsert,
         )
         await self._process_operation_counter()
-        return collection.schema.model_validate(result).model_dump()
+        return result
 
     async def delete_one(
         self,

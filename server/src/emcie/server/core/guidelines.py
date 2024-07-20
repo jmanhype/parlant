@@ -66,7 +66,7 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        guideline_document = await self._database.insert_one(
+        guideline_id = await self._database.insert_one(
             self._collection,
             {
                 "id": common.generate_id(),
@@ -78,7 +78,7 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         return Guideline(
-            id=GuidelineId(guideline_document["id"]),
+            id=GuidelineId(guideline_id),
             predicate=predicate,
             content=content,
             creation_utc=creation_utc,

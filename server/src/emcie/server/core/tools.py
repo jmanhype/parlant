@@ -97,7 +97,7 @@ class ToolDocumentStore(ToolStore):
             raise ValidationError("Tool name must be unique within the tool set")
 
         creation_utc = creation_utc or datetime.now(timezone.utc)
-        tool_document = await self._database.insert_one(
+        tool_id = await self._database.insert_one(
             self._collection,
             {
                 "id": common.generate_id(),
@@ -112,7 +112,7 @@ class ToolDocumentStore(ToolStore):
         )
 
         return Tool(
-            id=ToolId(tool_document["id"]),
+            id=ToolId(tool_id),
             name=name,
             module_path=module_path,
             description=description,

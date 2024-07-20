@@ -141,7 +141,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         tool_id: ToolId,
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable:
-        variable_document = await self._database.insert_one(
+        variable_id = await self._database.insert_one(
             self._variable_collection,
             {
                 "id": common.generate_id(),
@@ -153,7 +153,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             },
         )
         return ContextVariable(
-            id=variable_document["id"],
+            id=variable_id,
             name=name,
             description=description,
             tool_id=tool_id,
@@ -172,23 +172,24 @@ class ContextVariableDocumentStore(ContextVariableStore):
             "variable_id": FieldFilter(equal_to=variable_id),
             "key": FieldFilter(equal_to=key),
         }
-        value_document = await self._database.update_one(
+        last_modified = datetime.now(timezone.utc)
+        value_document_id = await self._database.update_one(
             self._value_collection,
             filters,
             {
                 "id": common.generate_id(),
                 "variable_set": variable_set,
                 "variable_id": variable_id,
-                "last_modified": datetime.now(timezone.utc),
+                "last_modified": last_modified,
                 "data": data,
                 "key": key,
             },
             upsert=True,
         )
         return ContextVariableValue(
-            id=ContextVariableValueId(value_document["id"]),
+            id=ContextVariableValueId(value_document_id),
             variable_id=variable_id,
-            last_modified=value_document["last_modified"],
+            last_modified=last_modified,
             data=data,
         )
 

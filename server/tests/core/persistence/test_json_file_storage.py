@@ -346,11 +346,14 @@ async def test_context_variable_value_update_and_retrieval(
             freshness_rules=None,
         )
 
-        value = await context_variable_store.update_value(
+        await context_variable_store.update_value(
             variable_set=context.agent_id,
             key=end_user_id,
             variable_id=variable.id,
             data={"key": "value"},
+        )
+        value = await context_variable_store.read_value(
+            variable_set=context.agent_id, key=end_user_id, variable_id=variable.id
         )
 
     with open(new_file) as f:
