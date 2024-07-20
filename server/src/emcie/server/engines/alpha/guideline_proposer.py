@@ -32,7 +32,7 @@ class GuidelineProposer:
 
         batches = self._create_batches(guidelines, batch_size=5)
 
-        with duration_logger(f"Total guideline filtering ({len(batches)} batches)"):
+        with duration_logger(f"Total guideline proposing ({len(batches)} batches)"):
             batch_tasks = [
                 self._process_batch(
                     agents,
@@ -77,22 +77,26 @@ class GuidelineProposer:
             guidelines=batch,
         )
 
-        with duration_logger("Guideline batch filtering"):
+        with duration_logger("Guideline batch proposing"):
             llm_response = await self._generate_llm_response(prompt)
 
         propositions_json = json.loads(llm_response)["checks"]
 
-        logger.debug(f"Guideline filter batch result: {propositions_json}")
-
-        propositions = [
-            GuidelineProposition(
-                guideline=batch[int(p["predicate_number"]) - 1],
-                score=p["applies_score"],
-                rationale=p["rationale"],
+        propositions = []
+        for proposition in propositions_json:
+            logger.debug(
+                f'Guideline proposer result for predicate "{batch[int(proposition["predicate_number"]) - 1].predicate}":\n'  # noqa
+                f'    applies_score: {proposition["applies_score"]},\n'
+                f'    rationale: "{proposition["rationale"]}"\n'
             )
-            for p in propositions_json
-            if p["applies_score"] >= 7
-        ]
+            if proposition["applies_score"] >= 7:
+                propositions.append(
+                    GuidelineProposition(
+                        guideline=batch[int(proposition["predicate_number"]) - 1],
+                        score=proposition["applies_score"],
+                        rationale=proposition["rationale"],
+                    )
+                )
 
         return propositions
 

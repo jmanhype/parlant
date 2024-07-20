@@ -87,6 +87,7 @@ class MessageEventProducer:
         )
 
         if response_message := await self._generate_response_message(prompt):
+            logger.debug(f'Message production result: "{response_message}"')
             return [
                 ProducedEvent(
                     source="server",
@@ -303,6 +304,7 @@ class ToolEventProducer:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
+            logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
 
         produced_tool_events: list[ProducedEvent] = []

@@ -382,6 +382,11 @@ Note that the `checks` list can be empty if no functions need to be called.
         content = response.choices[0].message.content or ""
         json_content = jsonfinder.only_json(content)[2]
 
+        logger.debug(
+            f"Tool call request results: {json.dumps(
+                json_content['tool_call_specifications'], indent=2
+                )}"
+        )
         return json_content["tool_call_specifications"]  # type: ignore
 
     async def _verify_inference(
