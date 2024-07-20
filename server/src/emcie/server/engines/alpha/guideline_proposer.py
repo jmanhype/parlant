@@ -167,14 +167,12 @@ Is there anything else I can help you with?"}}}},
 {{ "checks": [
     {{
         "predicate_number": "1",
-        "rationale": "The purchase-related guideline is irrelevant since the client "
-        "completed the purchase and the conversation has moved to a new topic.",
+        "rationale": "The purchase-related guideline is irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
         "applies_score": 3
     }},
     {{
         "predicate_number": "2",
-        "rationale": "The client specifically inquired about data security policies,
-        making this guideline highly relevant to the ongoing discussion.",
+        "rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "applies_score": 9
     }}
 ]}}
@@ -201,14 +199,12 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "predicate_number": "1",
-            "rationale": "The client initially stated they were in a hurry. "
-            "This urgency applies throughout the conversation unless stated otherwise.",
+            "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
             "applies_score": 8
         }},
         {{
             "predicate_number": "2",
-            "rationale": "The client inquired about pricing plans, "
-            "specifically asking for details about the Pro plan.",
+            "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
             "applies_score": 9
         }},
         {{
