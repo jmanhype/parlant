@@ -272,6 +272,10 @@ Example 4: Non-Adherence Due to Missing Data: ###
         if not json_content["produced_response"]:
             return None
 
+        logger.debug(
+            f'Message event producer response: {json.dumps(json_content["revisions"], indent=2)}'
+        )
+
         final_revision = json_content["revisions"][-1]
 
         followed_all_rules = final_revision.get("followed_all_rules", False)
@@ -303,6 +307,7 @@ class ToolEventProducer:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
+            logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
 
         produced_tool_events: list[ProducedEvent] = []
