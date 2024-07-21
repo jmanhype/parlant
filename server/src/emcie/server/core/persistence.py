@@ -112,15 +112,12 @@ class TransientDocumentDatabase(DocumentDatabase):
         collections: Optional[dict[str, list[dict[str, Any]]]] = None,
     ) -> None:
         self._collections = collections if collections else defaultdict(list)
-        self._collection_descriptors: dict[str, CollectionDescriptor] = {}
 
     async def find(
         self,
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]:
-        # TODO MC-101
-        self._collection_descriptors[collection.name] = collection
         return list(
             filter(
                 lambda d: _matches_filters(filters, d),
@@ -133,8 +130,6 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
-        # TODO MC-101
-        self._collection_descriptors[collection.name] = collection
         matched_documents = await self.find(collection, filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
@@ -145,8 +140,6 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         document: dict[str, Any],
     ) -> ObjectId:
-        # TODO MC-101
-        self._collection_descriptors[collection.name] = collection
         self._collections[collection.name].append(document)
         return document["id"]
 
@@ -157,8 +150,6 @@ class TransientDocumentDatabase(DocumentDatabase):
         updated_document: dict[str, Any],
         upsert: bool = False,
     ) -> ObjectId:
-        # TODO MC-101
-        self._collection_descriptors[collection.name] = collection
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
                 self._collections[collection.name][i] = updated_document
@@ -174,27 +165,17 @@ class TransientDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
-        # TODO MC-101
-        self._collection_descriptors[collection.name] = collection
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
                 del self._collections[collection.name][i]
                 return
         raise ValueError("No document found matching the provided filters.")
 
-    async def list_collections(self) -> Iterable[str]:
-        return self._collections.keys()
-
-    async def get_collection(
-        self,
-        collection_name: str,
-    ) -> CollectionDescriptor:
-        return self._collection_descriptors[collection_name]
-
 
 class JSONFileDocumentDatabase(DocumentDatabase):
 
     def __init__(self, file_path: Path) -> None:
+        self._collection_descriptors: dict[str, CollectionDescriptor] = {}
         self.file_path = file_path
         self._lock = asyncio.Lock()
         self.op_counter = 0
@@ -250,6 +231,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         return [
             collection.schema.model_validate(doc).model_dump()
             for doc in await self.transient_db.find(collection, filters)
@@ -260,6 +243,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         result = await self.transient_db.find_one(collection, filters)
         return collection.schema.model_validate(result).model_dump()
 
@@ -268,6 +253,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         document: dict[str, Any],
     ) -> ObjectId:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         document_id = await self.transient_db.insert_one(
             collection,
             collection.schema(**document).model_dump(mode="json"),
@@ -282,6 +269,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         updated_document: dict[str, Any],
         upsert: bool = False,
     ) -> ObjectId:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         result = await self.transient_db.update_one(
             collection,
             filters,
@@ -296,16 +285,27 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         await self.transient_db.delete_one(collection, filters)
         await self._process_operation_counter()
+
+    async def _list_collections(self) -> Iterable[str]:
+        return self._collections.keys()
+
+    async def _get_collection(
+        self,
+        collection_name: str,
+    ) -> CollectionDescriptor:
+        return self._collection_descriptors[collection_name]
 
     async def flush(self) -> None:
         if self.transient_db:
             data = {}
-            for collection_name in await self.transient_db.list_collections():
+            for collection_name in await self._list_collections():
                 data[collection_name] = list(
                     await self.transient_db.find(
-                        collection=await self.transient_db.get_collection(collection_name),
+                        collection=await self._get_collection(collection_name),
                         filters={},
                     )
                 )
