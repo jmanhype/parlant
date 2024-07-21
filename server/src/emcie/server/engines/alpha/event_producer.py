@@ -87,7 +87,6 @@ class MessageEventProducer:
         )
 
         if response_message := await self._generate_response_message(prompt):
-            logger.debug(f'Message production result: "{response_message}"')
             return [
                 ProducedEvent(
                     source="server",
@@ -272,6 +271,10 @@ Example 4: Non-Adherence Due to Missing Data: ###
 
         if not json_content["produced_response"]:
             return None
+
+        logger.debug(
+            f'Message event producer response: {json.dumps(json_content["revisions"], indent=2)}'
+        )
 
         final_revision = json_content["revisions"][-1]
 
