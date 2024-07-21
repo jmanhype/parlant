@@ -84,9 +84,9 @@ async def test_that_a_config_with_a_tool_whose_module_cannot_be_found_fails_vali
 ) -> None:
     async with new_file_path() as config_file, new_file_path() as tool_file:
         invalid_config: JSONSerializable = copy.deepcopy(valid_config)
-        invalid_config["tools"]["multiply"][
+        invalid_config["tools"]["multiply"][  # type: ignore
             "module_path"
-        ] = "invalid.path.to.multiply"  # type: ignore
+        ] = "invalid.path.to.multiply"
 
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
