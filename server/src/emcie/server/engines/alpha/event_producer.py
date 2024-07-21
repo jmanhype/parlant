@@ -87,6 +87,7 @@ class MessageEventProducer:
         )
 
         if response_message := await self._generate_response_message(prompt):
+            logger.debug(f'Message production result: "{response_message}"')
             return [
                 ProducedEvent(
                     source="server",

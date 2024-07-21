@@ -291,7 +291,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         await self._process_operation_counter()
 
     async def _list_collections(self) -> Iterable[str]:
-        return self._collections.keys()
+        return self._collection_descriptors.keys()
 
     async def _get_collection(
         self,
