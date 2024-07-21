@@ -108,6 +108,8 @@ class MessageEventProducer:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
     ) -> str:
+        assert len(agents) == 1
+
         builder = PromptBuilder()
 
         builder.add_agent_identity(agents[0])
@@ -298,6 +300,8 @@ class ToolEventProducer:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
     ) -> Sequence[ProducedEvent]:
+        assert len(agents) == 1
+
         if not tool_enabled_guideline_propositions:
             return []
 

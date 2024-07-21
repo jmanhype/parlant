@@ -2,12 +2,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from collections import defaultdict
-from datetime import datetime
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, Optional, Sequence, Type, TypedDict
+from typing import Any, Callable, Iterable, NewType, Optional, Sequence, Type, TypedDict
 import aiofiles
+
+from emcie.server.base_models import DefaultBaseModel
+
+
+ObjectId = NewType("ObjectId", str)
 
 
 class FieldFilter(TypedDict, total=False):
@@ -20,26 +25,25 @@ class FieldFilter(TypedDict, total=False):
     regex: str
 
 
-class DocumentDatabase(ABC):
+@dataclass(frozen=True)
+class CollectionDescriptor:
+    name: str
+    schema: Type[DefaultBaseModel]
 
-    @abstractmethod
-    async def insert_one(
-        self,
-        collection: str,
-        document: dict[str, Any],
-    ) -> dict[str, Any]: ...
+
+class DocumentDatabase(ABC):
 
     @abstractmethod
     async def find(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]: ...
 
     @abstractmethod
     async def find_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
         """
@@ -49,13 +53,20 @@ class DocumentDatabase(ABC):
     ...
 
     @abstractmethod
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId: ...
+
+    @abstractmethod
     async def update_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ObjectId:
         """
         Updates the first document that matches the query criteria.
         """
@@ -64,7 +75,7 @@ class DocumentDatabase(ABC):
     @abstractmethod
     async def delete_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
         """
@@ -102,24 +113,21 @@ class TransientDocumentDatabase(DocumentDatabase):
     ) -> None:
         self._collections = collections if collections else defaultdict(list)
 
-    async def insert_one(
-        self,
-        collection: str,
-        document: dict[str, Any],
-    ) -> dict[str, Any]:
-        self._collections[collection].append(document)
-        return document
-
     async def find(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]:
-        return list(filter(lambda d: _matches_filters(filters, d), self._collections[collection]))
+        return list(
+            filter(
+                lambda d: _matches_filters(filters, d),
+                self._collections[collection.name],
+            )
+        )
 
     async def find_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
         matched_documents = await self.find(collection, filters)
@@ -127,49 +135,47 @@ class TransientDocumentDatabase(DocumentDatabase):
             return matched_documents[0]
         raise ValueError("No document found matching the provided filters.")
 
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId:
+        self._collections[collection.name].append(document)
+        return document["id"]
+
     async def update_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
-        for i, d in enumerate(self._collections[collection]):
+    ) -> ObjectId:
+        for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
-                self._collections[collection][i] = updated_document
-                return updated_document
+                self._collections[collection.name][i] = updated_document
+                return updated_document["id"]
         if upsert:
-            document = await self.insert_one(collection, updated_document)
-            return document
+            document_id = await self.insert_one(collection, updated_document)
+            return document_id
 
         raise ValueError("No document found matching the provided filters.")
 
     async def delete_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
-        for i, d in enumerate(self._collections[collection]):
+        for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
-                del self._collections[collection][i]
+                del self._collections[collection.name][i]
                 return
         raise ValueError("No document found matching the provided filters.")
 
-    async def list_collections(self) -> Iterable[str]:
-        return self._collections.keys()
-
 
 class JSONFileDocumentDatabase(DocumentDatabase):
-    class DateTimeEncoder(json.JSONEncoder):
-        def default(
-            self,
-            obj: Any,
-        ) -> Any:
-            if isinstance(obj, datetime):
-                return obj.isoformat()
-            return json.JSONEncoder.default(self, obj)
 
     def __init__(self, file_path: Path) -> None:
+        self._collection_descriptors: dict[str, CollectionDescriptor] = {}
         self.file_path = file_path
         self._lock = asyncio.Lock()
         self.op_counter = 0
@@ -190,18 +196,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         await self.flush()
         return False
 
-    def _json_datetime_decoder(
-        self,
-        data: Any,
-    ) -> Any:
-        for key, value in data.items():
-            if isinstance(value, str):
-                try:
-                    data[key] = datetime.fromisoformat(value)
-                except ValueError:
-                    pass
-        return data
-
     async def _process_operation_counter(self) -> None:
         self.op_counter += 1
         if self.op_counter % 5:
@@ -216,11 +210,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 return {}
 
             async with aiofiles.open(self.file_path, "r") as file:
-                data = await file.read()
-                json_data: dict[str, Any] = json.loads(
-                    data, object_hook=self._json_datetime_decoder
-                )
-                return json_data
+                data: dict[str, Any] = json.loads(await file.read())
+                return data
 
     async def _save_data(
         self,
@@ -232,59 +223,89 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                     data,
                     ensure_ascii=False,
                     indent=4,
-                    cls=self.DateTimeEncoder,
                 )
                 await file.write(json_string)
 
-    async def insert_one(
-        self,
-        collection: str,
-        document: dict[str, Any],
-    ) -> dict[str, Any]:
-        result = await self.transient_db.insert_one(collection, document)
-        await self._process_operation_counter()
-        return result
-
     async def find(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> Sequence[dict[str, Any]]:
-        return await self.transient_db.find(collection, filters)
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
+        return [
+            collection.schema.model_validate(doc).model_dump()
+            for doc in await self.transient_db.find(collection, filters)
+        ]
 
     async def find_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> dict[str, Any]:
-        return await self.transient_db.find_one(collection, filters)
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
+        result = await self.transient_db.find_one(collection, filters)
+        return collection.schema.model_validate(result).model_dump()
+
+    async def insert_one(
+        self,
+        collection: CollectionDescriptor,
+        document: dict[str, Any],
+    ) -> ObjectId:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
+        document_id = await self.transient_db.insert_one(
+            collection,
+            collection.schema(**document).model_dump(mode="json"),
+        )
+        await self._process_operation_counter()
+        return document_id
 
     async def update_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
         updated_document: dict[str, Any],
         upsert: bool = False,
-    ) -> dict[str, Any]:
-        result = await self.transient_db.update_one(collection, filters, updated_document, upsert)
+    ) -> ObjectId:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
+        result = await self.transient_db.update_one(
+            collection,
+            filters,
+            collection.schema(**updated_document).model_dump(mode="json"),
+            upsert,
+        )
         await self._process_operation_counter()
         return result
 
     async def delete_one(
         self,
-        collection: str,
+        collection: CollectionDescriptor,
         filters: dict[str, FieldFilter],
     ) -> None:
+        # TODO MC-101
+        self._collection_descriptors[collection.name] = collection
         await self.transient_db.delete_one(collection, filters)
         await self._process_operation_counter()
+
+    async def _list_collections(self) -> Iterable[str]:
+        return self._collections.keys()
+
+    async def _get_collection(
+        self,
+        collection_name: str,
+    ) -> CollectionDescriptor:
+        return self._collection_descriptors[collection_name]
 
     async def flush(self) -> None:
         if self.transient_db:
             data = {}
-            for collection_name in await self.transient_db.list_collections():
+            for collection_name in await self._list_collections():
                 data[collection_name] = list(
                     await self.transient_db.find(
-                        collection=collection_name,
+                        collection=await self._get_collection(collection_name),
                         filters={},
                     )
                 )

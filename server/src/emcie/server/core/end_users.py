@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional
 
+from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
-from emcie.server.core.persistence import DocumentDatabase, FieldFilter
+from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 
 EndUserId = NewType("EndUserId", str)
 
@@ -34,12 +35,21 @@ class EndUserStore(ABC):
 
 
 class EndUserDocumentStore(EndUserStore):
+    class EndUserDocument(DefaultBaseModel):
+        id: EndUserId
+        creation_utc: datetime
+        name: str
+        email: str
+
     def __init__(
         self,
         database: DocumentDatabase,
     ) -> None:
         self._database = database
-        self._collection_name = "end_users"
+        self._collection = CollectionDescriptor(
+            name="end_users",
+            schema=self.EndUserDocument,
+        )
 
     async def create_end_user(
         self,
@@ -48,9 +58,8 @@ class EndUserDocumentStore(EndUserStore):
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
-
-        end_user_document = await self._database.insert_one(
-            self._collection_name,
+        end_user_id = await self._database.insert_one(
+            self._collection,
             {
                 "id": common.generate_id(),
                 "name": name,
@@ -60,7 +69,7 @@ class EndUserDocumentStore(EndUserStore):
         )
 
         return EndUser(
-            id=EndUserId(end_user_document["id"]),
+            id=EndUserId(end_user_id),
             name=name,
             email=email,
             creation_utc=creation_utc,
@@ -71,7 +80,7 @@ class EndUserDocumentStore(EndUserStore):
         end_user_id: EndUserId,
     ) -> EndUser:
         filters = {"id": FieldFilter(equal_to=end_user_id)}
-        end_user_document = await self._database.find_one(self._collection_name, filters)
+        end_user_document = await self._database.find_one(self._collection, filters)
 
         return EndUser(
             id=EndUserId(end_user_document["id"]),
