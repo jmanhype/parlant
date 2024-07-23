@@ -12,7 +12,6 @@ from loguru import logger
 from emcie.server.core.agents import Agent
 from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
-from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 
@@ -51,6 +50,7 @@ class ToolCaller:
         parameters: dict[str, Any]
         applicability_score: int
         rationale: str
+        same_call_is_already_staged: bool
 
     def __init__(
         self,
@@ -64,7 +64,7 @@ class ToolCaller:
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-        produced_tool_events: Sequence[ProducedEvent],
+        staged_events: Sequence[ProducedEvent],
     ) -> Sequence[ToolCall]:
         inference_prompt = self._format_tool_call_inference_prompt(
             agents,
@@ -72,11 +72,19 @@ class ToolCaller:
             interaction_history,
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,
-            produced_tool_events,
+            staged_events,
         )
 
         with duration_logger("Tool classification"):
             inference_output = await self._run_inference(inference_prompt)
+
+        tool_calls_that_need_to_run = [
+            c for c in inference_output
+            if not c["same_call_is_already_staged"]
+        ]
+
+        if not tool_calls_that_need_to_run:
+            return []
 
         verification_prompt = self._format_tool_call_verification_prompt(
             agents,
@@ -84,8 +92,8 @@ class ToolCaller:
             interaction_history,
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,
-            produced_tool_events,
-            inference_output,
+            staged_events,
+            tool_calls_that_need_to_run,
         )
 
         with duration_logger("Tool verification"):
@@ -118,11 +126,11 @@ class ToolCaller:
         interaction_event_list: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-        produced_tool_events: Sequence[ProducedEvent],
+        staged_events: Sequence[ProducedEvent],
     ) -> str:
         assert len(agents) == 1
 
-        staged_function_calls = self._get_invoked_functions(produced_tool_events)
+        staged_function_calls = self._get_invoked_functions(staged_events)
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
         builder = PromptBuilder()
@@ -149,10 +157,11 @@ Before generating your next response, you are highly encouraged to use tools tha
         if staged_function_calls:
             builder.add_section(
                 f"""
-The following is a list of ordered invoked tool functions after the interaction's latest state.
+The following is a list of staged tool calls after the interaction's latest state.
 You can use this information to avoid redundant calls and inform your response.
 For example, if the data you need already exists in one of these calls, then you DO NOT
-need to ask for this tool function to be run again, because its information is fresh here!: ###
+need to ask for that exact tool call (with the same parameters) to be run again,
+because its information is fresh here!: ###
 {staged_function_calls}
 ###
 """
@@ -168,7 +177,8 @@ Here are the principles by which you can decide whether to use tools:
 3. A tool function may be called multiple times with different parameters.
 4. If a tool function is not called at all, it must still be mentioned in the results!
 5. Avoid calling a tool function that has already been called with the same parameters!
-6. Ensure that each function proposed for invocation relies solely on the immediate context and previously invoked functions, without depending on other functions yet to be invoked. This prevents the proposal of interconnected functions unless their dependencies are already satisfied by previous calls.
+6. If the data required for a tool call is already given in previous invoked tool results, then the same tool call should not run.
+7. Ensure that each function proposed for invocation relies solely on the immediate context and previously invoked functions, without depending on other functions yet to be invoked. This prevents the proposal of interconnected functions unless their dependencies are already satisfied by previous calls.
 
 Produce a valid JSON object according to the following format:
 
@@ -179,7 +189,8 @@ Produce a valid JSON object according to the following format:
             "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL FUNCTION NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
-            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>
+            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>,
+            "same_call_is_already_staged": <BOOLEAN>
         }},
         ...,
         {{
@@ -187,7 +198,8 @@ Produce a valid JSON object according to the following format:
             "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL FUNCTION NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "should_run": <BOOLEAN>,
-            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>
+            "parameters": <PARAMETERS FOR THE TOOL FUNCTION>,
+            "same_call_is_already_staged": <BOOLEAN>
         }}
     ]
 }}
@@ -206,13 +218,21 @@ Here's a hypothetical example, for your reference:
                 "to": "John",
                 "amount": 5.00
             }}
+            "same_call_is_already_staged": false
         }},
-        ...,
         {{
             "name": "loan_money",
             "rationale": "There's no obvious reason for Jack to loan any money to anyone",
             "applicability_score": 2,
-            "should_run": false
+            "should_run": false,
+            "same_call_is_already_staged": false
+        }},
+        {{
+            "name": "get_account_information",
+            "rationale": "The account information is already given in the list of staged tool calls",
+            "applicability_score": 9,
+            "should_run": false,
+            "same_call_is_already_staged": true
         }}
     ]
 }}

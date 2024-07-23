@@ -1,55 +1,17 @@
-from itertools import chain
 import json
-from typing import Mapping, Optional, Sequence, cast
+from typing import Mapping, Optional, Sequence
 from loguru import logger
 
 from emcie.server.core.agents import Agent
-from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
-from emcie.server.engines.alpha.tool_caller import ToolCaller
 from emcie.server.engines.alpha.utils import (
     make_llm_client,
 )
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.core.sessions import Event, ToolEventData
-
-
-class EventProducer:
-
-    def __init__(self) -> None:
-        self.tool_event_producer = ToolEventProducer()
-        self.message_event_producer = MessageEventProducer()
-
-    async def produce_events(
-        self,
-        agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-    ) -> Sequence[ProducedEvent]:
-        assert len(agents) == 1
-        tool_events = await self.tool_event_producer.produce_events(
-            agents=agents,
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            ordinary_guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
-        )
-
-        message_events = await self.message_event_producer.produce_events(
-            agents=agents,
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            ordinary_guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
-            staged_events=tool_events,
-        )
-
-        return list(chain(tool_events, message_events))
+from emcie.server.core.sessions import Event
 
 
 class MessageEventProducer:
@@ -67,6 +29,8 @@ class MessageEventProducer:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
     ) -> Sequence[ProducedEvent]:
+        assert len(agents) == 1
+
         if (
             not interaction_history
             and not ordinary_guideline_propositions
@@ -139,6 +103,7 @@ Produce a valid JSON object in the following format: ###
     "rationale": "<a few words to justify why you decided to respond in this way>",
     "revisions": [
         {
+            "revision_number": <1 TO N>,
             "content": "<your message here>",
             "followed_all_rules": true
         }
@@ -164,6 +129,8 @@ instances where one rule was prioritized over another,
 situations where rules could not be followed due to lack of context or data,
 and the rationale for each decision made during the revision process.
 
+DO NOT PRODUCE MORE THAN 5 REVISIONS. IF YOU REACH the 5th REVISION, STOP THERE.
+
 Produce a valid JSON object in the format according to the following examples.
 
 Example 1: When no response was deemed appropriate: ###
@@ -180,6 +147,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
     "rationale": "a few words to justify why a response was produced here",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "some proposed message content",
             "rules_followed": [
                 "#1; correctly did...",
@@ -195,6 +163,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
         }},
         ...,
         {{
+            "revision_number": 2,
             "content": "final verified message content",
             "rules_followed": [
                 "#1; correctly did...",
@@ -216,6 +185,7 @@ Example 3: A response where one rule was prioritized over another: ###
     "rationale": "Ensuring food quality is paramount, thus it overrides the immediate provision of a burger with requested toppings.",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "I'd be happy to prepare your burger as soon as we restock the requested toppings.",
             "rules_followed": [
                 "#2; upheld food quality and did not prepare the burger without the fresh toppings."
@@ -239,6 +209,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
     "rationale": "No data of drinks menu is available, therefore informing the customer that we don't have this information at this time.",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "I'm sorry, I am unable to provide this information at this time.",
             "rules_followed": [
             ],
@@ -288,69 +259,3 @@ Example 4: Non-Adherence Due to Missing Data: ###
             logger.warning(f"PROBLEMATIC RESPONSE: {content}")
 
         return str(final_revision["content"])
-
-
-class ToolEventProducer:
-    def __init__(
-        self,
-    ) -> None:
-        self._llm_client = make_llm_client("openai")
-        self.tool_caller = ToolCaller()
-
-    async def produce_events(
-        self,
-        agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-    ) -> Sequence[ProducedEvent]:
-        assert len(agents) == 1
-
-        if not tool_enabled_guideline_propositions:
-            logger.debug("Skipping tool calling; no tools associated with guidelines found")
-            return []
-
-        produced_tool_events: list[ProducedEvent] = []
-
-        tool_calls = list(
-            await self.tool_caller.infer_tool_calls(
-                agents,
-                context_variables,
-                interaction_history,
-                ordinary_guideline_propositions,
-                tool_enabled_guideline_propositions,
-                produced_tool_events,
-            )
-        )
-
-        tools = list(chain(*tool_enabled_guideline_propositions.values()))
-
-        tool_results = await self.tool_caller.execute_tool_calls(
-            tool_calls,
-            tools,
-        )
-
-        if not tool_results:
-            return []
-
-        data: ToolEventData = {
-            "tool_results": [
-                {
-                    "tool_name": r.tool_call.name,
-                    "parameters": r.tool_call.parameters,
-                    "result": r.result,
-                }
-                for r in tool_results
-            ]
-        }
-
-        produced_tool_events.append(
-            ProducedEvent(
-                source="server",
-                kind=Event.TOOL_KIND,
-                data=cast(JSONSerializable, data),
-            )
-        )
-
-        return produced_tool_events

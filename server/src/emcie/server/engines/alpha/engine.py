@@ -1,5 +1,7 @@
 from collections import defaultdict
+from itertools import chain
 from typing import Mapping, Sequence
+from loguru import logger
 
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.context_variables import (
@@ -8,12 +10,13 @@ from emcie.server.core.context_variables import (
     ContextVariableValue,
 )
 from emcie.server.core.tools import Tool, ToolStore
-from emcie.server.engines.alpha.event_producer import EventProducer
+from emcie.server.engines.alpha.message_event_producer import MessageEventProducer
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
+from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
@@ -36,8 +39,11 @@ class AlphaEngine(Engine):
         self.tool_store = tool_store
         self.guideline_tool_association_store = guideline_tool_association_store
 
-        self.event_producer = EventProducer()
-        self.guide_filter = GuidelineProposer()
+        self.max_tool_call_iterations = 5
+
+        self.guideline_proposer = GuidelineProposer()
+        self.tool_event_producer = ToolEventProducer()
+        self.message_event_producer = MessageEventProducer()
 
     async def process(self, context: Context) -> Sequence[ProducedEvent]:
         agent = await self.agent_store.read_agent(context.agent_id)
@@ -48,22 +54,48 @@ class AlphaEngine(Engine):
             session_id=context.session_id,
         )
 
-        ordinary_guideline_propositions, tool_enabled_guideline_propositions = (
-            await self._load_guidelines(
+        all_tool_events: list[ProducedEvent] = []
+        tool_call_iterations = 0
+
+        while True:
+            tool_call_iterations += 1
+
+            ordinary_guideline_propositions, tool_enabled_guideline_propositions = (
+                await self._load_guidelines(
+                    agents=[agent],
+                    agent_id=context.agent_id,
+                    context_variables=context_variables,
+                    interaction_history=interaction_history,
+                    staged_events=all_tool_events,
+                )
+            )
+
+            if tool_events := await self.tool_event_producer.produce_events(
                 agents=[agent],
-                agent_id=context.agent_id,
                 context_variables=context_variables,
                 interaction_history=interaction_history,
-            )
-        )
+                ordinary_guideline_propositions=ordinary_guideline_propositions,
+                tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+                staged_events=all_tool_events,
+            ):
+                all_tool_events += tool_events
+            else:
+                break
 
-        return await self.event_producer.produce_events(
+            if tool_call_iterations == self.max_tool_call_iterations:
+                logger.warning(f"Reached max tool call iterations ({tool_call_iterations})")
+                break
+
+        message_events = await self.message_event_producer.produce_events(
             agents=[agent],
             context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+            staged_events=all_tool_events,
         )
+
+        return list(chain(all_tool_events, message_events))
 
     async def _load_context_variables(
         self,
@@ -94,6 +126,7 @@ class AlphaEngine(Engine):
         agent_id: AgentId,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        staged_events: Sequence[ProducedEvent],
     ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[Tool]]]:
         assert len(agents) == 1
 
@@ -102,6 +135,7 @@ class AlphaEngine(Engine):
             agent_id=agent_id,
             context_variables=context_variables,
             interaction_history=interaction_history,
+            staged_events=staged_events,
         )
 
         tool_enabled_guidelines = await self._find_tool_enabled_guidelines(
@@ -121,6 +155,7 @@ class AlphaEngine(Engine):
         agent_id: AgentId,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        staged_events: Sequence[ProducedEvent],
     ) -> Sequence[GuidelineProposition]:
         assert len(agents) == 1
 
@@ -128,11 +163,12 @@ class AlphaEngine(Engine):
             guideline_set=agent_id,
         )
 
-        relevant_guidelines = await self.guide_filter.propose_guidelines(
+        relevant_guidelines = await self.guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=list(all_possible_guidelines),
             context_variables=context_variables,
             interaction_history=interaction_history,
+            staged_events=staged_events,
         )
 
         return relevant_guidelines

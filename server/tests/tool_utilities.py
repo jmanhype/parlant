@@ -37,7 +37,7 @@ def get_account_balance(account_name: str) -> int:
         "Larry David": 450000000,
         "John Smith": 100,
     }
-    return balances[account_name]
+    return balances.get(account_name, -1)
 
 
 def get_account_loans(account_name: str) -> int:

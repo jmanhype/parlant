@@ -99,7 +99,7 @@ Feature: Single Tool Event
         Given a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
-        And a user message, "What is the balance of Larry David account?"
+        And a user message, "What is the balance of Larry David's account?"
         And a tool event with data, [{ "tool_calls": { "tool_name": "get_account_balance", "parameters": { "account_name": "Larry David"}, "result": 450000000}}]
         And a server message, "Larry David currently has 451 million dollars."
         And a user message, "And what about now?"
@@ -118,3 +118,13 @@ Feature: Single Tool Event
         Then a single tool calls event is produced
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains a call to "get_account_balance" with Jerry Seinfeld's current balance
+
+    Scenario: Relevant guidelines are refreshed based on tool results
+        Given a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
+        And the tool "get_account_balance"
+        And an association between "retrieve_account_information" and "get_account_balance"
+        And a user message, "What is the balance of Scooby Doo's account?"
+        And a guideline "apologize_for_missing_data", to apologize for missing data when the account balance has the value of -1
+        When processing is triggered
+        Then a single message event is produced
+        And the message contains an apology for missing data
