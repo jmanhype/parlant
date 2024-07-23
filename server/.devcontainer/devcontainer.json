@@ -25,7 +25,8 @@
         "ms-python.vscode-pylance",
         "ms-python.debugpy",
         "zeshuaro.vscode-python-poetry",
-        "hbenl.vscode-test-explorer"
+        "hbenl.vscode-test-explorer",
+        "alexkrechik.cucumberautocomplete"
       ]
     }
   },
