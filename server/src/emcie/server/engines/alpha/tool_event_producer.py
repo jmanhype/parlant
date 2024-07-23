@@ -27,14 +27,15 @@ class ToolEventProducer:
         interaction_history: Sequence[Event],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        staged_events: Sequence[ProducedEvent],
     ) -> Sequence[ProducedEvent]:
         assert len(agents) == 1
+
+        produced_events = []
 
         if not tool_enabled_guideline_propositions:
             logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
-
-        produced_tool_events: list[ProducedEvent] = []
 
         tool_calls = list(
             await self.tool_caller.infer_tool_calls(
@@ -43,9 +44,12 @@ class ToolEventProducer:
                 interaction_history,
                 ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions,
-                produced_tool_events,
+                staged_events,
             )
         )
+
+        if not tool_calls:
+            return []
 
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
@@ -68,7 +72,7 @@ class ToolEventProducer:
             ]
         }
 
-        produced_tool_events.append(
+        produced_events.append(
             ProducedEvent(
                 source="server",
                 kind=Event.TOOL_KIND,
@@ -76,4 +80,4 @@ class ToolEventProducer:
             )
         )
 
-        return produced_tool_events
+        return produced_events

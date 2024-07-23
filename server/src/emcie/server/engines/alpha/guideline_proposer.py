@@ -14,6 +14,7 @@ from emcie.server.engines.alpha.utils import (
 )
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
+from emcie.server.engines.common import ProducedEvent
 
 
 class GuidelineProposer:
@@ -26,6 +27,7 @@ class GuidelineProposer:
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        staged_events: Sequence[ProducedEvent],
     ) -> Sequence[GuidelineProposition]:
         if not guidelines:
             return []
@@ -38,6 +40,7 @@ class GuidelineProposer:
                     agents,
                     context_variables,
                     interaction_history,
+                    staged_events,
                     batch,
                 )
                 for batch in batches
@@ -68,12 +71,14 @@ class GuidelineProposer:
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        staged_events: Sequence[ProducedEvent],
         batch: Sequence[Guideline],
     ) -> list[GuidelineProposition]:
         prompt = self._format_prompt(
             agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
+            staged_events=staged_events,
             guidelines=batch,
         )
 
@@ -105,9 +110,11 @@ class GuidelineProposer:
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        staged_events: Sequence[ProducedEvent],
         guidelines: Sequence[Guideline],
     ) -> str:
         assert len(agents) == 1
+
         result_structure = [
             {
                 "predicate_number": i,
@@ -122,6 +129,15 @@ class GuidelineProposer:
 
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
+
+        builder.add_section(
+            f"""
+The following is an additional list of staged events that were just added: ###
+{staged_events}
+###
+"""
+        )
+
         builder.add_context_variables(context_variables)
 
         builder.add_section(
@@ -142,7 +158,7 @@ IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the lis
 Process Description
 -------------------
 a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
-b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state. 
+b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state.
 c. If the predicate has already been addressed, assess its continued applicability.
 d. Assign an applicability score to each predicate between 1 and 10, where 10 denotes the highest applicability score.
 

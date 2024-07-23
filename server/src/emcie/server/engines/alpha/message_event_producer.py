@@ -103,6 +103,7 @@ Produce a valid JSON object in the following format: ###
     "rationale": "<a few words to justify why you decided to respond in this way>",
     "revisions": [
         {
+            "revision_number": <1 TO N>,
             "content": "<your message here>",
             "followed_all_rules": true
         }
@@ -128,6 +129,8 @@ instances where one rule was prioritized over another,
 situations where rules could not be followed due to lack of context or data,
 and the rationale for each decision made during the revision process.
 
+DO NOT PRODUCE MORE THAN 5 REVISIONS. IF YOU REACH the 5th REVISION, STOP THERE.
+
 Produce a valid JSON object in the format according to the following examples.
 
 Example 1: When no response was deemed appropriate: ###
@@ -144,6 +147,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
     "rationale": "a few words to justify why a response was produced here",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "some proposed message content",
             "rules_followed": [
                 "#1; correctly did...",
@@ -159,6 +163,7 @@ Example 2: A response that took critique in a few revisions to get right: ###
         }},
         ...,
         {{
+            "revision_number": 2,
             "content": "final verified message content",
             "rules_followed": [
                 "#1; correctly did...",
@@ -180,6 +185,7 @@ Example 3: A response where one rule was prioritized over another: ###
     "rationale": "Ensuring food quality is paramount, thus it overrides the immediate provision of a burger with requested toppings.",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "I'd be happy to prepare your burger as soon as we restock the requested toppings.",
             "rules_followed": [
                 "#2; upheld food quality and did not prepare the burger without the fresh toppings."
@@ -203,6 +209,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
     "rationale": "No data of drinks menu is available, therefore informing the customer that we don't have this information at this time.",
     "revisions": [
         {{
+            "revision_number": 1,
             "content": "I'm sorry, I am unable to provide this information at this time.",
             "rules_followed": [
             ],
