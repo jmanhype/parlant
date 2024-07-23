@@ -127,4 +127,4 @@ Feature: Single Tool Event
         And a guideline "apologize_for_missing_data", to apologize for missing data when the account balance has the value of -1
         When processing is triggered
         Then a single message event is produced
-        And the message event contains an apology for missing data
+        And the message contains an apology for missing data

@@ -644,7 +644,7 @@ def then_get_account_loans_tool_event_is_produced(
     } in results
 
 
-@then(parsers.parse("the message event contains {something}"))
+@then(parsers.parse("the message contains {something}"))
 def then_the_message_contains(
     produced_events: list[ProducedEvent],
     something: str,
