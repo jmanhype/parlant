@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import chain
 from typing import Mapping, Sequence
 
 from emcie.server.core.agents import Agent, AgentId, AgentStore
@@ -8,12 +9,13 @@ from emcie.server.core.context_variables import (
     ContextVariableValue,
 )
 from emcie.server.core.tools import Tool, ToolStore
-from emcie.server.engines.alpha.message_event_producer import EventProducer
+from emcie.server.engines.alpha.message_event_producer import MessageEventProducer
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
+from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.common import Context, Engine, ProducedEvent
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import Event, SessionId, SessionStore
@@ -36,8 +38,9 @@ class AlphaEngine(Engine):
         self.tool_store = tool_store
         self.guideline_tool_association_store = guideline_tool_association_store
 
-        self.event_producer = EventProducer()
-        self.guide_filter = GuidelineProposer()
+        self.guideline_proposer = GuidelineProposer()
+        self.tool_event_producer = ToolEventProducer()
+        self.message_event_producer = MessageEventProducer()
 
     async def process(self, context: Context) -> Sequence[ProducedEvent]:
         agent = await self.agent_store.read_agent(context.agent_id)
@@ -57,13 +60,24 @@ class AlphaEngine(Engine):
             )
         )
 
-        return await self.event_producer.produce_events(
+        tool_events = await self.tool_event_producer.produce_events(
             agents=[agent],
             context_variables=context_variables,
             interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
         )
+
+        message_events = await self.message_event_producer.produce_events(
+            agents=[agent],
+            context_variables=context_variables,
+            interaction_history=interaction_history,
+            ordinary_guideline_propositions=ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+            staged_events=tool_events,
+        )
+
+        return list(chain(tool_events, message_events))
 
     async def _load_context_variables(
         self,
@@ -128,7 +142,7 @@ class AlphaEngine(Engine):
             guideline_set=agent_id,
         )
 
-        relevant_guidelines = await self.guide_filter.propose_guidelines(
+        relevant_guidelines = await self.guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=list(all_possible_guidelines),
             context_variables=context_variables,

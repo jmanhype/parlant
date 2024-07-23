@@ -1,4 +1,3 @@
-from itertools import chain
 import json
 from typing import Mapping, Optional, Sequence
 from loguru import logger
@@ -8,48 +7,11 @@ from emcie.server.core.context_variables import ContextVariable, ContextVariable
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
-from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.alpha.utils import (
     make_llm_client,
 )
 from emcie.server.engines.common import ProducedEvent
 from emcie.server.core.sessions import Event
-
-
-class EventProducer:
-
-    def __init__(self) -> None:
-        self.tool_event_producer = ToolEventProducer()
-        self.message_event_producer = MessageEventProducer()
-
-    async def produce_events(
-        self,
-        agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-    ) -> Sequence[ProducedEvent]:
-        assert len(agents) == 1
-
-        tool_events = await self.tool_event_producer.produce_events(
-            agents=agents,
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            ordinary_guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
-        )
-
-        message_events = await self.message_event_producer.produce_events(
-            agents=agents,
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            ordinary_guideline_propositions=ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
-            staged_events=tool_events,
-        )
-
-        return list(chain(tool_events, message_events))
 
 
 class MessageEventProducer:
@@ -67,6 +29,8 @@ class MessageEventProducer:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
     ) -> Sequence[ProducedEvent]:
+        assert len(agents) == 1
+
         if (
             not interaction_history
             and not ordinary_guideline_propositions
