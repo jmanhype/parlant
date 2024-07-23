@@ -92,10 +92,10 @@ class AlphaEngine(Engine):
             interaction_history=interaction_history,
             ordinary_guideline_propositions=ordinary_guideline_propositions,
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
-            staged_events=tool_events,
+            staged_events=all_tool_events,
         )
 
-        return list(chain(tool_events, message_events))
+        return list(chain(all_tool_events, message_events))
 
     async def _load_context_variables(
         self,
