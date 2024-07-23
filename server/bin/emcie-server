@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum, auto
 import os
 from fastapi import FastAPI
 from lagom import Container
@@ -57,12 +58,19 @@ TOOL_NAME_TO_ID: dict[str, str] = {}
 
 sys.path.append(EMCIE_HOME_DIR.as_posix())
 
+logger.info(f"Using home directory '{EMCIE_HOME_DIR.absolute()}'")
+
 
 @dataclass
 class CLIParams:
     config_file: Path
     config: dict[str, Any]
     port: int
+
+
+class ShutdownReason(Enum):
+    HOT_RELOAD = auto()
+    SHUTDOWN_REQUEST = auto()
 
 
 async def load_agents(c: Container, config: Any) -> None:
@@ -174,22 +182,37 @@ async def load_app(config: Any) -> AsyncIterator[FastAPI]:
 async def serve_app(
     app: FastAPI,
     port: int,
-    should_shutdown: Callable[[], Awaitable[bool]],
-) -> None:
+    should_hot_reload: Callable[[], Awaitable[bool]],
+) -> ShutdownReason:
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
+    interrupted = False
 
     async def monitor_shutdown_request() -> None:
-        while True:
-            await asyncio.sleep(1)
+        try:
+            while True:
+                await asyncio.sleep(1)
 
-            if await should_shutdown():
-                server.should_exit = True
-                return
+                if await should_hot_reload():
+                    server.should_exit = True
+                    return ShutdownReason.HOT_RELOAD
+                elif interrupted:
+                    return ShutdownReason.SHUTDOWN_REQUEST
+        except asyncio.CancelledError:
+            return ShutdownReason.SHUTDOWN_REQUEST
 
-    hot_reload_task = asyncio.create_task(monitor_shutdown_request())
-    await server.serve()
-    await hot_reload_task
+    shutdown_monitor_task = asyncio.create_task(monitor_shutdown_request())
+
+    try:
+        await server.serve()
+        interrupted = True
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        return ShutdownReason.SHUTDOWN_REQUEST
+    except BaseException as e:
+        logger.critical(e.__class__.__name__ + ": " + str(e))
+        sys.exit(1)
+
+    return await shutdown_monitor_task
 
 
 async def start_server(params: CLIParams) -> None:
@@ -211,17 +234,21 @@ async def start_server(params: CLIParams) -> None:
         return False
 
     while True:
-        try:
-            async with load_app(params.config) as app:
-                await serve_app(app, params.port, should_shutdown=config_file_changed)
+        async with load_app(params.config) as app:
+            shutdown_reason = await serve_app(
+                app,
+                params.port,
+                should_hot_reload=config_file_changed,
+            )
 
-            logger.info("***** HOT RELOAD *****")
+            if shutdown_reason == ShutdownReason.SHUTDOWN_REQUEST:
+                return
+            elif shutdown_reason == ShutdownReason.HOT_RELOAD:
+                logger.info("***** HOT RELOAD *****")
 
-            with open(params.config_file) as f:
-                params.config = json.load(f)
-                last_config_update_time = os.path.getmtime(params.config_file)
-        except KeyboardInterrupt:
-            return
+                with open(params.config_file) as f:
+                    params.config = json.load(f)
+                    last_config_update_time = os.path.getmtime(params.config_file)
 
 
 async def check_coherence(params: CLIParams) -> None:
