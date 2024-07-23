@@ -9,7 +9,7 @@ from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, MessageEventData, SessionId, SessionStore
-from emcie.server.engines.alpha.event_producer import MessageEventProducer
+from emcie.server.engines.alpha.message_event_producer import MessageEventProducer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.common import ProducedEvent
 

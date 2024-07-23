@@ -1,20 +1,19 @@
 from itertools import chain
 import json
-from typing import Mapping, Optional, Sequence, cast
+from typing import Mapping, Optional, Sequence
 from loguru import logger
 
 from emcie.server.core.agents import Agent
-from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
-from emcie.server.engines.alpha.tool_caller import ToolCaller
+from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.alpha.utils import (
     make_llm_client,
 )
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.core.sessions import Event, ToolEventData
+from emcie.server.core.sessions import Event
 
 
 class EventProducer:
@@ -32,6 +31,7 @@ class EventProducer:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
     ) -> Sequence[ProducedEvent]:
         assert len(agents) == 1
+
         tool_events = await self.tool_event_producer.produce_events(
             agents=agents,
             context_variables=context_variables,
@@ -288,69 +288,3 @@ Example 4: Non-Adherence Due to Missing Data: ###
             logger.warning(f"PROBLEMATIC RESPONSE: {content}")
 
         return str(final_revision["content"])
-
-
-class ToolEventProducer:
-    def __init__(
-        self,
-    ) -> None:
-        self._llm_client = make_llm_client("openai")
-        self.tool_caller = ToolCaller()
-
-    async def produce_events(
-        self,
-        agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
-    ) -> Sequence[ProducedEvent]:
-        assert len(agents) == 1
-
-        if not tool_enabled_guideline_propositions:
-            logger.debug("Skipping tool calling; no tools associated with guidelines found")
-            return []
-
-        produced_tool_events: list[ProducedEvent] = []
-
-        tool_calls = list(
-            await self.tool_caller.infer_tool_calls(
-                agents,
-                context_variables,
-                interaction_history,
-                ordinary_guideline_propositions,
-                tool_enabled_guideline_propositions,
-                produced_tool_events,
-            )
-        )
-
-        tools = list(chain(*tool_enabled_guideline_propositions.values()))
-
-        tool_results = await self.tool_caller.execute_tool_calls(
-            tool_calls,
-            tools,
-        )
-
-        if not tool_results:
-            return []
-
-        data: ToolEventData = {
-            "tool_results": [
-                {
-                    "tool_name": r.tool_call.name,
-                    "parameters": r.tool_call.parameters,
-                    "result": r.result,
-                }
-                for r in tool_results
-            ]
-        }
-
-        produced_tool_events.append(
-            ProducedEvent(
-                source="server",
-                kind=Event.TOOL_KIND,
-                data=cast(JSONSerializable, data),
-            )
-        )
-
-        return produced_tool_events
