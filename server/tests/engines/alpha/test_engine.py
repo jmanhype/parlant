@@ -130,6 +130,25 @@ def given_a_guideline_to(
     return guidelines[do_something]()
 
 
+@given(parsers.parse("a guideline to {do_something} when {a_condition_holds}"))
+def given_a_guideline_to_when(
+    do_something: str,
+    a_condition_holds: str,
+    sync_await: SyncAwaiter,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    sync_await(
+        guideline_store.create_guideline(
+            guideline_set=agent_id,
+            predicate=a_condition_holds,
+            content=do_something,
+        )
+    )
+
+
 @given("50 other random guidelines")
 def given_50_other_random_guidelines(
     sync_await: SyncAwaiter,

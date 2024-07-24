@@ -29,7 +29,7 @@ Feature: Alpha Engine
         Then a single message event is produced
         And the message contains an offering of a Pepsi
 
-    
+
     Scenario: The agent sells pizza in accordance with its defined description
         Given the alpha engine
         And an agent whose job is to sell pizza
@@ -39,3 +39,14 @@ Feature: Alpha Engine
         When processing is triggered
         Then a single message event is produced
         And the message contains a welcome to the pizza place
+
+    Scenario: The agent follows a guideline that is entailed by another guideline
+        Given the alpha engine
+        And an agent whose job is to sell pizza
+        And an empty session
+        And a user message, "Hi"
+        And a guideline to greet the user with "Howdy" when the user says hello
+        And a guideline to add "good sir" when saying "Howdy"
+        When processing is triggered
+        Then a single message event is produced
+        And the message contains the greeting "Howdy good sir"
