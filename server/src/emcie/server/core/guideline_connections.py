@@ -97,6 +97,8 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         kind: ConnectionKind,
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineConnection:
+        assert kind in ("entails", "suggests")
+
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         connection_id = await self._database.update_one(

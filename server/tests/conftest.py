@@ -7,6 +7,10 @@ from pytest import fixture, Config
 from emcie.server.api.app import create_app
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
+from emcie.server.core.guideline_connections import (
+    GuidelineConnectionDocumentStore,
+    GuidelineConnectionStore,
+)
 from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from emcie.server.core.sessions import (
     PollingSessionListener,
@@ -45,6 +49,7 @@ async def container() -> AsyncIterator[Container]:
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)
+    container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
     container[ToolStore] = Singleton(ToolDocumentStore)
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
