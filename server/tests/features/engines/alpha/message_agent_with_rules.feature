@@ -29,7 +29,7 @@ Feature: Alpha Engine
         Then a single message event is produced
         And the message contains an offering of a Pepsi
 
-    
+
     Scenario: The agent sells pizza in accordance with its defined description
         Given the alpha engine
         And an agent whose job is to sell pizza

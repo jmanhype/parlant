@@ -8,6 +8,7 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.context_variables import ContextVariableStore, ContextVariableValue
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.guideline_connections import GuidelineConnection, GuidelineConnectionStore
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import (
@@ -31,6 +32,7 @@ from tests.test_utilities import SyncAwaiter, nlp_test
 scenarios(
     "engines/alpha/tools/single_tool_event.feature",
     "engines/alpha/tools/proactive_agent.feature",
+    "engines/alpha/guideline_connections.feature",
 )
 
 
@@ -70,6 +72,21 @@ def given_an_agent(
     agent_id: AgentId,
 ) -> AgentId:
     return agent_id
+
+
+@given(parsers.parse("an agent whose job is {description}"), target_fixture="agent_id")
+def given_an_agent_with_identity(
+    container: Container,
+    sync_await: SyncAwaiter,
+    description: str,
+) -> AgentId:
+    agent = sync_await(
+        container[AgentStore].create_agent(
+            name="test-agent",
+            description=f"Your job is {description}",
+        )
+    )
+    return agent.id
 
 
 @given("an empty session", target_fixture="session_id")
@@ -361,7 +378,7 @@ def given_a_tool(
 
 
 @given(parsers.parse('an association between "{guideline_name}" and "{tool_name}"'))
-def given_guideline_tool_association(
+def given_a_guideline_tool_association(
     sync_await: SyncAwaiter,
     container: Container,
     tool_name: str,
@@ -374,6 +391,29 @@ def given_guideline_tool_association(
         guideline_tool_association_store.create_association(
             guideline_id=context.guidelines[guideline_name].id,
             tool_id=context.tools[tool_name].id,
+        )
+    )
+
+
+@given(parsers.parse('a guideline connection whereby "{source}" {kind} "{target}"'))
+def given_a_guideline_connection(
+    sync_await: SyncAwaiter,
+    container: Container,
+    source: str,
+    target: str,
+    kind: str,
+    context: _TestContext,
+) -> GuidelineConnection:
+    store = container[GuidelineConnectionStore]
+
+    source_guideline = context.guidelines[source]
+    target_guideline = context.guidelines[target]
+
+    return sync_await(
+        store.update_connection(
+            source=source_guideline.id,
+            target=target_guideline.id,
+            kind=kind,
         )
     )
 
