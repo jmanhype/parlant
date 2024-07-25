@@ -151,6 +151,9 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> Sequence[GuidelineConnection]:
         graph = await self._get_graph()
 
+        if not graph.has_node(source):
+            return []
+
         if indirect:
             descendant_edges = networkx.bfs_edges(graph, source)
             connections = []
