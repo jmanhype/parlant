@@ -47,9 +47,10 @@ class ToolResult:
 class ToolCaller:
     class ToolCallRequest(TypedDict):
         name: str
-        parameters: dict[str, Any]
-        applicability_score: int
         rationale: str
+        applicability_score: int
+        should_run: bool
+        parameters: dict[str, Any]
         same_call_is_already_staged: bool
 
     def __init__(
@@ -83,21 +84,15 @@ class ToolCaller:
             if not c["same_call_is_already_staged"]
         ]
 
-        if not tool_calls_that_need_to_run:
-            return []
-
-        verification_prompt = self._format_tool_call_verification_prompt(
-            agents,
-            context_variables,
-            interaction_history,
-            ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
-            staged_events,
-            tool_calls_that_need_to_run,
-        )
-
-        with duration_logger("Tool verification"):
-            return await self._verify_inference(verification_prompt)
+        return [
+            ToolCall(
+                id=ToolCallId(generate_id()),
+                name=tc["name"],
+                parameters=tc["parameters"],
+            )
+            for tc in tool_calls_that_need_to_run
+            if tc["should_run"] and tc["applicability_score"] >= 7
+        ]
 
     async def execute_tool_calls(
         self,
@@ -408,32 +403,6 @@ Note that the `checks` list can be empty if no functions need to be called.
                 )}"
         )
         return json_content["tool_call_specifications"]  # type: ignore
-
-    async def _verify_inference(
-        self,
-        prompt: str,
-    ) -> Sequence[ToolCall]:
-        response = await self._llm_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
-
-        content = response.choices[0].message.content or "{}"
-        checks = jsonfinder.only_json(content)[2]["checks"]
-
-        tools_calls = [
-            ToolCall(
-                id=ToolCallId(generate_id()),
-                name=t["name"],
-                parameters=t["parameters"],
-            )
-            for t in checks
-            if t["should_run"] and t["applicability_score"] >= 7 and t["parameters_correct"]
-        ]
-
-        return tools_calls
 
     async def _run_tool(
         self,
