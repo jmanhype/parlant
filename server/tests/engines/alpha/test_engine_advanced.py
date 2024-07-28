@@ -15,7 +15,7 @@ from emcie.server.core.guideline_connections import (
 )
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.alpha.guideline_tool_associations import (
+from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
