@@ -54,9 +54,9 @@ async def long_session_id(
 
 def make_event_params(
     source: EventSource,
-    data: Dict[str, Any] = {},
+    data: dict[str, Any] = {},
     kind: str = "custom",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "source": source,
         "kind": kind,
@@ -82,8 +82,8 @@ async def populate_session_id(
 
 
 def event_is_according_to_params(
-    event: Dict[str, Any],
-    params: Dict[str, Any],
+    event: dict[str, Any],
+    params: dict[str, Any],
 ) -> bool:
     tested_properties = ["source", "kind", "data"]
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Optional, Sequence, Type
+from typing import Any, Mapping, Optional, Sequence, Type
 from lagom import Container
 
 from emcie.server.async_utils import Timeout
@@ -63,7 +63,7 @@ class MC:
         self,
         session_id: SessionId,
         kind: str,
-        data: dict[str, Any],
+        data: Mapping[str, Any],
     ) -> Event:
         event = await self._session_store.create_event(
             session_id=session_id,
