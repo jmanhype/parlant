@@ -4,7 +4,7 @@ from pytest import fixture, mark
 
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.engines.alpha.coherence_checker import (
+from emcie.server.coherence_checker import (
     CoherenceChecker,
     ContradictionType,
     ContextualContradictionEvaluator,
