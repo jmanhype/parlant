@@ -38,7 +38,7 @@ from emcie.server.core.sessions import (
     SessionStore,
 )
 from emcie.server.core.tools import ToolDocumentStore, ToolStore
-from emcie.server.engines.alpha.coherence_checker import CoherenceChecker
+from emcie.server.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
