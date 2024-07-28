@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Literal, NewType, Optional
+from typing import Any, Literal, NewType, Optional, Sequence
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
@@ -87,7 +87,7 @@ class ContextVariableStore(ABC):
     async def list_variables(
         self,
         variable_set: str,
-    ) -> Iterable[ContextVariable]: ...
+    ) -> Sequence[ContextVariable]: ...
 
     @abstractmethod
     async def read_variable(
@@ -213,7 +213,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     async def list_variables(
         self,
         variable_set: str,
-    ) -> Iterable[ContextVariable]:
+    ) -> Sequence[ContextVariable]:
         filters = {"variable_set": FieldFilter(equal_to=variable_set)}
 
         return (

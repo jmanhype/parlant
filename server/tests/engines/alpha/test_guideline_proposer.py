@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable, cast
+from typing import Sequence, cast
 from pytest import fixture, mark
 from emcie.server.core.agents import Agent, AgentId
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
@@ -28,7 +28,7 @@ def context(
 def propose_guidelines(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
-) -> Iterable[GuidelineProposition]:
+) -> Sequence[GuidelineProposition]:
     guideline_filter = GuidelineProposer()
     agents = [
         Agent(

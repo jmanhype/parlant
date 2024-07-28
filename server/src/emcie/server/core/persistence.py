@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, NewType, Optional, Sequence, Type, TypedDict
+from typing import Any, Callable, Mapping, NewType, Optional, Sequence, Type, TypedDict
 import aiofiles
 
 from emcie.server.base_models import DefaultBaseModel
@@ -37,15 +37,15 @@ class DocumentDatabase(ABC):
     async def find(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> Sequence[dict[str, Any]]: ...
+        filters: Mapping[str, FieldFilter],
+    ) -> Sequence[Mapping[str, Any]]: ...
 
     @abstractmethod
     async def find_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> dict[str, Any]:
+        filters: Mapping[str, FieldFilter],
+    ) -> Mapping[str, Any]:
         """
         Returns the first document that matches the query criteria.
         """
@@ -56,15 +56,15 @@ class DocumentDatabase(ABC):
     async def insert_one(
         self,
         collection: CollectionDescriptor,
-        document: dict[str, Any],
+        document: Mapping[str, Any],
     ) -> ObjectId: ...
 
     @abstractmethod
     async def update_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-        updated_document: dict[str, Any],
+        filters: Mapping[str, FieldFilter],
+        updated_document: Mapping[str, Any],
         upsert: bool = False,
     ) -> ObjectId:
         """
@@ -76,7 +76,7 @@ class DocumentDatabase(ABC):
     async def delete_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
+        filters: Mapping[str, FieldFilter],
     ) -> None:
         """
         Deletes the first document that matches the query criteria.
@@ -87,8 +87,8 @@ class DocumentDatabase(ABC):
 
 
 def _matches_filters(
-    field_filters: dict[str, FieldFilter],
-    candidate: dict[str, Any],
+    field_filters: Mapping[str, FieldFilter],
+    candidate: Mapping[str, Any],
 ) -> bool:
     tests: dict[str, Callable[[Any, Any], bool]] = {
         "equal_to": lambda candidate, filter_value: candidate == filter_value,
@@ -109,15 +109,15 @@ def _matches_filters(
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(
         self,
-        collections: Optional[dict[str, list[dict[str, Any]]]] = None,
+        collections: Optional[Mapping[str, Sequence[Mapping[str, Any]]]] = None,
     ) -> None:
         self._collections = collections if collections else defaultdict(list)
 
     async def find(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> Sequence[dict[str, Any]]:
+        filters: Mapping[str, FieldFilter],
+    ) -> Sequence[Mapping[str, Any]]:
         return list(
             filter(
                 lambda d: _matches_filters(filters, d),
@@ -128,8 +128,8 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def find_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> dict[str, Any]:
+        filters: Mapping[str, FieldFilter],
+    ) -> Mapping[str, Any]:
         matched_documents = await self.find(collection, filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
@@ -138,7 +138,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def insert_one(
         self,
         collection: CollectionDescriptor,
-        document: dict[str, Any],
+        document: Mapping[str, Any],
     ) -> ObjectId:
         self._collections[collection.name].append(document)
         return document["id"]
@@ -146,8 +146,8 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def update_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-        updated_document: dict[str, Any],
+        filters: Mapping[str, FieldFilter],
+        updated_document: Mapping[str, Any],
         upsert: bool = False,
     ) -> ObjectId:
         for i, d in enumerate(self._collections[collection.name]):
@@ -163,7 +163,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def delete_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
+        filters: Mapping[str, FieldFilter],
     ) -> None:
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
@@ -229,8 +229,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def find(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> Sequence[dict[str, Any]]:
+        filters: Mapping[str, FieldFilter],
+    ) -> Sequence[Mapping[str, Any]]:
         # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         return [
@@ -241,8 +241,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def find_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-    ) -> dict[str, Any]:
+        filters: Mapping[str, FieldFilter],
+    ) -> Mapping[str, Any]:
         # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         result = await self.transient_db.find_one(collection, filters)
@@ -251,7 +251,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def insert_one(
         self,
         collection: CollectionDescriptor,
-        document: dict[str, Any],
+        document: Mapping[str, Any],
     ) -> ObjectId:
         # TODO MC-101
         self._collection_descriptors[collection.name] = collection
@@ -265,8 +265,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def update_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
-        updated_document: dict[str, Any],
+        filters: Mapping[str, FieldFilter],
+        updated_document: Mapping[str, Any],
         upsert: bool = False,
     ) -> ObjectId:
         # TODO MC-101
@@ -283,14 +283,14 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def delete_one(
         self,
         collection: CollectionDescriptor,
-        filters: dict[str, FieldFilter],
+        filters: Mapping[str, FieldFilter],
     ) -> None:
         # TODO MC-101
         self._collection_descriptors[collection.name] = collection
         await self.transient_db.delete_one(collection, filters)
         await self._process_operation_counter()
 
-    async def _list_collections(self) -> Iterable[str]:
+    async def _list_collections(self) -> list[str]:
         return self._collection_descriptors.keys()
 
     async def _get_collection(

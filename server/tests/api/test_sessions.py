@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, Iterable
+from typing import Any
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
@@ -68,7 +68,7 @@ def make_event_params(
 async def populate_session_id(
     container: Container,
     session_id: SessionId,
-    events: Iterable[Dict[str, Any]],
+    events: list[dict[str, Any]],
 ) -> None:
     session_store = container[SessionStore]
 

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from itertools import chain
 import json
-from typing import Iterable, NewType
+from typing import NewType, Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -36,16 +36,16 @@ class ContradictionTest(DefaultBaseModel):
 
 
 def _filter_unique_contradictions(
-    contradictions: Iterable[ContradictionTest],
-) -> Iterable[ContradictionTest]:
+    contradictions: Sequence[ContradictionTest],
+) -> Sequence[ContradictionTest]:
     """
     Filter unique contradictions based on the combination of existing and proposed guidelines.
 
     Args:
-        contradictions: Iterable of Contradiction objects to filter.
+        contradictions: Sequence of Contradiction objects to filter.
 
     Returns:
-        Iterable of unique Contradiction objects.
+        Sequence of unique Contradiction objects.
     """
 
     def _generate_key(g1_id: GuidelineId, g2_id: GuidelineId) -> tuple[GuidelineId, GuidelineId]:
@@ -68,9 +68,9 @@ class ContradictionEvaluator(ABC):
     @abstractmethod
     async def evaluate(
         self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline] = [],
-    ) -> Iterable[ContradictionTest]: ...
+        proposed_guidelines: Sequence[Guideline],
+        existing_guidelines: Sequence[Guideline] = [],
+    ) -> Sequence[ContradictionTest]: ...
 
 
 class ContradictionEvaluatorBase(ABC):
@@ -86,9 +86,9 @@ class ContradictionEvaluatorBase(ABC):
 
     async def evaluate(
         self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline] = [],
-    ) -> Iterable[ContradictionTest]:
+        proposed_guidelines: Sequence[Guideline],
+        existing_guidelines: Sequence[Guideline] = [],
+    ) -> Sequence[ContradictionTest]:
         existing_guideline_list = list(existing_guidelines)
         proposed_guidelines_list = list(proposed_guidelines)
         tasks = []
@@ -116,8 +116,8 @@ class ContradictionEvaluatorBase(ABC):
     async def _process_proposed_guideline(
         self,
         proposed_guideline: Guideline,
-        existing_guidelines: Iterable[Guideline],
-    ) -> Iterable[ContradictionTest]:
+        existing_guidelines: Sequence[Guideline],
+    ) -> Sequence[ContradictionTest]:
         prompt = self._format_contradiction_prompt(
             proposed_guideline,
             list(existing_guidelines),
@@ -177,7 +177,7 @@ class ContradictionEvaluatorBase(ABC):
    - Determine if there is a {self.contradiction_type.value}, where the Guideline Under Test is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
-   
+
 3. **Output**:
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
@@ -196,7 +196,7 @@ class ContradictionEvaluatorBase(ABC):
     async def _generate_contradictions(
         self,
         prompt: str,
-    ) -> Iterable[ContradictionTest]:
+    ) -> Sequence[ContradictionTest]:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="gpt-4o",
@@ -561,9 +561,9 @@ class CoherenceChecker:
 
     async def evaluate_coherence(
         self,
-        proposed_guidelines: Iterable[Guideline],
-        existing_guidelines: Iterable[Guideline],
-    ) -> Iterable[ContradictionTest]:
+        proposed_guidelines: Sequence[Guideline],
+        existing_guidelines: Sequence[Guideline],
+    ) -> Sequence[ContradictionTest]:
         hierarchical_contradictions_task = self.hierarchical_contradiction_evaluator.evaluate(
             proposed_guidelines,
             existing_guidelines,

@@ -5,7 +5,7 @@ import inspect
 from itertools import chain
 import json
 import jsonfinder  # type: ignore
-from typing import Any, Iterable, Mapping, NewType, Optional, Sequence, TypedDict
+from typing import Any, Mapping, NewType, Optional, Sequence, TypedDict
 
 from loguru import logger
 
@@ -96,8 +96,8 @@ class ToolCaller:
 
     async def execute_tool_calls(
         self,
-        tool_calls: Iterable[ToolCall],
-        tools: Iterable[Tool],
+        tool_calls: Sequence[ToolCall],
+        tools: Sequence[Tool],
     ) -> list[ToolResult]:
         tools_by_name = {t.name: t for t in tools}
 
@@ -241,7 +241,7 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
 
     def _get_invoked_functions(
         self,
-        produced_events: Iterable[ProducedEvent],
+        produced_events: Sequence[ProducedEvent],
     ) -> Optional[str]:
         ordered_function_invocations = list(
             chain(*[e["data"] for e in produced_tool_events_to_dict(produced_events)])

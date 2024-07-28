@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Type
+from typing import Any, Optional, Sequence, Type
 from lagom import Container
 
 from emcie.server.async_utils import Timeout
@@ -108,7 +108,7 @@ class MC:
     async def _add_events_to_session(
         self,
         session_id: SessionId,
-        events: Iterable[ProducedEvent],
+        events: Sequence[ProducedEvent],
     ) -> None:
         utc_now = datetime.now(timezone.utc)
 

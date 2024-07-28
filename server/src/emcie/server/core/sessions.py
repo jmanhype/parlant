@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, Literal, NewType, Optional, TypedDict
+from typing import Any, Literal, NewType, Optional, Sequence, TypedDict
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core import common
@@ -96,7 +96,7 @@ class SessionStore(ABC):
         session_id: SessionId,
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
-    ) -> Iterable[Event]: ...
+    ) -> Sequence[Event]: ...
 
 
 class SessionDocumentStore(SessionStore):
@@ -224,7 +224,7 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
-    ) -> Iterable[Event]:
+    ) -> Sequence[Event]:
         source_filter = {"source": FieldFilter(equal_to=source)} if source else {}
         offset_filter = (
             {"offset": FieldFilter(greater_than_or_equal_to=min_offset)} if min_offset else {}

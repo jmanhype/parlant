@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, Literal, NewType, Optional, TypedDict
+from typing import Literal, Mapping, NewType, Optional, Sequence, TypedDict
 from typing_extensions import NotRequired
 
 from pydantic import ValidationError
@@ -40,8 +40,8 @@ class ToolStore(ABC):
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, ToolParameter],
-        required: list[str],
+        parameters: Mapping[str, ToolParameter],
+        required: Sequence[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
     ) -> Tool: ...
@@ -49,7 +49,7 @@ class ToolStore(ABC):
     @abstractmethod
     async def list_tools(
         self,
-    ) -> Iterable[Tool]: ...
+    ) -> Sequence[Tool]: ...
 
     @abstractmethod
     async def read_tool(
@@ -65,8 +65,8 @@ class ToolDocumentStore(ToolStore):
         name: str
         module_path: str
         description: str
-        parameters: dict[str, ToolParameter]
-        required: list[str]
+        parameters: Mapping[str, ToolParameter]
+        required: Sequence[str]
         consequential: bool
 
     def __init__(
@@ -84,8 +84,8 @@ class ToolDocumentStore(ToolStore):
         name: str,
         module_path: str,
         description: str,
-        parameters: dict[str, ToolParameter],
-        required: list[str],
+        parameters: Mapping[str, ToolParameter],
+        required: Sequence[str],
         creation_utc: Optional[datetime] = None,
         consequential: bool = False,
     ) -> Tool:
@@ -124,7 +124,7 @@ class ToolDocumentStore(ToolStore):
 
     async def list_tools(
         self,
-    ) -> Iterable[Tool]:
+    ) -> Sequence[Tool]:
         return (
             Tool(
                 id=ToolId(d["id"]),
