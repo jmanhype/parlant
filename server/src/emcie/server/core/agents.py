@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, NewType, Optional
+from typing import NewType, Optional, Sequence
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
@@ -28,7 +28,7 @@ class AgentStore(ABC):
     ) -> Agent: ...
 
     @abstractmethod
-    async def list_agents(self) -> Iterable[Agent]: ...
+    async def list_agents(self) -> Sequence[Agent]: ...
 
     @abstractmethod
     async def read_agent(
@@ -79,8 +79,8 @@ class AgentDocumentStore(AgentStore):
 
     async def list_agents(
         self,
-    ) -> Iterable[Agent]:
-        return (
+    ) -> Sequence[Agent]:
+        return [
             Agent(
                 id=a["id"],
                 name=a["name"],
@@ -88,7 +88,7 @@ class AgentDocumentStore(AgentStore):
                 creation_utc=a["creation_utc"],
             )
             for a in await self._database.find(self._collection, filters={})
-        )
+        ]
 
     async def read_agent(
         self,

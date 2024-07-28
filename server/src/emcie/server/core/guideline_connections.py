@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, NewType, Optional, Sequence
-import networkx
+import networkx  # type: ignore
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
@@ -142,7 +142,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         (await self._get_graph()).remove_edge(document["source"], document["target"])
 
-        self._database.delete_one(self._collection, filters={"id": {"equal_to": id}})
+        await self._database.delete_one(self._collection, filters={"id": {"equal_to": id}})
 
     async def list_connections(
         self,

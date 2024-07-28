@@ -249,7 +249,8 @@ class AlphaEngine(Engine):
                 score={
                     "suggests": connection[0].score // 2,
                     "entails": connection[0].score,
-                }.get(connection[2]),
+                }.get(connection[2])
+                or -1,
                 rationale="Automatically inferred from context",
             )
             for connection in proposition_and_inferred_guideline_guideline_pairs

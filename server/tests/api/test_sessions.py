@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, Iterable
+from typing import Any
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
@@ -54,9 +54,9 @@ async def long_session_id(
 
 def make_event_params(
     source: EventSource,
-    data: Dict[str, Any] = {},
+    data: dict[str, Any] = {},
     kind: str = "custom",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "source": source,
         "kind": kind,
@@ -68,7 +68,7 @@ def make_event_params(
 async def populate_session_id(
     container: Container,
     session_id: SessionId,
-    events: Iterable[Dict[str, Any]],
+    events: list[dict[str, Any]],
 ) -> None:
     session_store = container[SessionStore]
 
@@ -82,8 +82,8 @@ async def populate_session_id(
 
 
 def event_is_according_to_params(
-    event: Dict[str, Any],
-    params: Dict[str, Any],
+    event: dict[str, Any],
+    params: dict[str, Any],
 ) -> bool:
     tested_properties = ["source", "kind", "data"]
 

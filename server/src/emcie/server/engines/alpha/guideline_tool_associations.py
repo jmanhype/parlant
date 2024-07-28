@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, NewType, Optional
+from typing import NewType, Optional, Sequence
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
@@ -33,7 +33,7 @@ class GuidelineToolAssociationStore(ABC):
     ) -> GuidelineToolAssociation: ...
 
     @abstractmethod
-    async def list_associations(self) -> Iterable[GuidelineToolAssociation]: ...
+    async def list_associations(self) -> Sequence[GuidelineToolAssociation]: ...
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
@@ -73,8 +73,8 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             tool_id=tool_id,
         )
 
-    async def list_associations(self) -> Iterable[GuidelineToolAssociation]:
-        return (
+    async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
+        return [
             GuidelineToolAssociation(
                 id=GuidelineToolAssociationId(d["id"]),
                 creation_utc=d["creation_utc"],
@@ -82,4 +82,4 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
                 tool_id=d["tool_id"],
             )
             for d in await self._database.find(self._collection, filters={})
-        )
+        ]

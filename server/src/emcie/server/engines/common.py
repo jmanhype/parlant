@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Sequence
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import JSONSerializable
@@ -25,4 +25,4 @@ class Engine(ABC):
     async def process(
         self,
         context: Context,
-    ) -> Iterable[ProducedEvent]: ...
+    ) -> Sequence[ProducedEvent]: ...

@@ -2,7 +2,7 @@ from contextlib import contextmanager
 import json
 import os
 import time
-from typing import Any, Iterable, Literal, cast
+from typing import Any, Literal, Sequence, cast
 from loguru import logger
 from openai import AsyncClient
 
@@ -32,7 +32,7 @@ def duration_logger(operation_name: str) -> Any:
         logger.debug(f"{operation_name} took {round(t_end - t_start, 3)}s")
 
 
-def events_to_json(events: Iterable[Event]) -> str:
+def events_to_json(events: Sequence[Event]) -> str:
     event_dicts = [event_to_dict(e) for e in events]
     return json.dumps(event_dicts)
 
@@ -50,7 +50,7 @@ def event_to_dict(event: Event) -> dict[str, Any]:
 
 
 def context_variables_to_json(
-    context_variables: Iterable[tuple[ContextVariable, ContextVariableValue]],
+    context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
 ) -> str:
     context_values = {
         variable.name: {
@@ -64,7 +64,7 @@ def context_variables_to_json(
 
 
 def produced_tool_events_to_dict(
-    produced_events: Iterable[ProducedEvent],
+    produced_events: Sequence[ProducedEvent],
 ) -> list[dict[str, Any]]:
     return [produced_tool_event_to_dict(e) for e in produced_events]
 

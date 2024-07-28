@@ -1,4 +1,4 @@
-from typing import Iterable, NewType, Optional
+from typing import NewType, Optional, Sequence
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -32,7 +32,7 @@ class GuidelineStore(ABC):
     async def list_guidelines(
         self,
         guideline_set: str,
-    ) -> Iterable[Guideline]: ...
+    ) -> Sequence[Guideline]: ...
 
     @abstractmethod
     async def read_guideline(
@@ -84,10 +84,10 @@ class GuidelineDocumentStore(GuidelineStore):
             creation_utc=creation_utc,
         )
 
-    async def list_guidelines(self, guideline_set: str) -> Iterable[Guideline]:
+    async def list_guidelines(self, guideline_set: str) -> Sequence[Guideline]:
         filters = {"guideline_set": FieldFilter(equal_to=guideline_set)}
 
-        return (
+        return [
             Guideline(
                 id=GuidelineId(d["id"]),
                 predicate=d["predicate"],
@@ -95,7 +95,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 creation_utc=d["creation_utc"],
             )
             for d in await self._database.find(self._collection, filters)
-        )
+        ]
 
     async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
         filters = {
