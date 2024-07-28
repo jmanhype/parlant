@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncIterator, Dict
+from typing import Any, AsyncIterator
 from fastapi.testclient import TestClient
 from lagom import Container, Singleton
 from pytest import fixture, Config
@@ -38,7 +38,7 @@ async def sync_await() -> SyncAwaiter:
 
 
 @fixture
-def test_config(pytestconfig: Config) -> Dict[str, Any]:
+def test_config(pytestconfig: Config) -> dict[str, Any]:
     return {"patience": 10}
 
 
