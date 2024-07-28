@@ -8,7 +8,11 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.context_variables import ContextVariableStore, ContextVariableValue
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.guideline_connections import GuidelineConnection, GuidelineConnectionStore
+from emcie.server.core.guideline_connections import (
+    ConnectionKind,
+    GuidelineConnection,
+    GuidelineConnectionStore,
+)
 from emcie.server.core.tools import Tool, ToolId, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.engines.alpha.guideline_tool_associations import (
@@ -401,7 +405,7 @@ def given_a_guideline_connection(
     container: Container,
     source: str,
     target: str,
-    kind: str,
+    kind: ConnectionKind,
     context: _TestContext,
 ) -> GuidelineConnection:
     store = container[GuidelineConnectionStore]

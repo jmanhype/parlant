@@ -108,7 +108,7 @@ class ContradictionEvaluatorBase(ABC):
             f"Evaluating {self.contradiction_type} for {len(tasks)} "
             f"batches (batch size={EVALUATION_BATCH_SIZE})"
         ):
-            contradictions = chain.from_iterable(await asyncio.gather(*tasks))
+            contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
 
         distinct_contradictions = _filter_unique_contradictions(contradictions)
         return distinct_contradictions
@@ -384,7 +384,7 @@ This happens when conditions for both guidelines are met simultaneously, without
          ]
      }}
      ```
-"""
+"""  # noqa
 
 
 class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
@@ -580,12 +580,14 @@ class CoherenceChecker:
             proposed_guidelines,
             existing_guidelines,
         )
-        combined_contradictions = chain.from_iterable(
-            await asyncio.gather(
-                hierarchical_contradictions_task,
-                parallel_contradictions_task,
-                temporal_contradictions_task,
-                contextual_contradictions_task,
+        combined_contradictions = list(
+            chain.from_iterable(
+                await asyncio.gather(
+                    hierarchical_contradictions_task,
+                    parallel_contradictions_task,
+                    temporal_contradictions_task,
+                    contextual_contradictions_task,
+                )
             )
         )
         return combined_contradictions

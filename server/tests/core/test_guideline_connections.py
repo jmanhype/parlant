@@ -24,7 +24,7 @@ def store(
 
 def has_connection(
     guidelines: Sequence[GuidelineConnection],
-    connection: Tuple[GuidelineId, GuidelineId],
+    connection: Tuple[str, str],
 ) -> bool:
     return any(g.source == connection[0] and g.target == connection[1] for g in guidelines)
 

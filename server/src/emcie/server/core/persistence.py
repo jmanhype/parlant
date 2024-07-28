@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Callable, Mapping, NewType, Optional, Sequence, Type, TypedDict
+from typing import Any, Callable, Mapping, NewType, Optional, Sequence, Type, TypedDict, cast
 import aiofiles
 
 from emcie.server.base_models import DefaultBaseModel
@@ -111,7 +111,11 @@ class TransientDocumentDatabase(DocumentDatabase):
         self,
         collections: Optional[Mapping[str, Sequence[Mapping[str, Any]]]] = None,
     ) -> None:
-        self._collections = collections if collections else defaultdict(list)
+        self._collections = (
+            {name: list(docs) for name, docs in collections.items()}
+            if collections
+            else defaultdict(list)
+        )
 
     async def find(
         self,
@@ -141,7 +145,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         document: Mapping[str, Any],
     ) -> ObjectId:
         self._collections[collection.name].append(document)
-        return document["id"]
+        return cast(ObjectId, document["id"])
 
     async def update_one(
         self,
@@ -153,7 +157,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         for i, d in enumerate(self._collections[collection.name]):
             if _matches_filters(filters, d):
                 self._collections[collection.name][i] = updated_document
-                return updated_document["id"]
+                return cast(ObjectId, updated_document["id"])
         if upsert:
             document_id = await self.insert_one(collection, updated_document)
             return document_id
@@ -215,7 +219,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
     async def _save_data(
         self,
-        data: dict[str, list[dict[str, Any]]],
+        data: Mapping[str, Sequence[Mapping[str, Any]]],
     ) -> None:
         async with self._lock:
             async with aiofiles.open(self.file_path, mode="w") as file:
@@ -291,7 +295,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         await self._process_operation_counter()
 
     async def _list_collections(self) -> list[str]:
-        return self._collection_descriptors.keys()
+        return list(self._collection_descriptors.keys())
 
     async def _get_collection(
         self,

@@ -74,7 +74,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         )
 
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
-        return (
+        return [
             GuidelineToolAssociation(
                 id=GuidelineToolAssociationId(d["id"]),
                 creation_utc=d["creation_utc"],
@@ -82,4 +82,4 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
                 tool_id=d["tool_id"],
             )
             for d in await self._database.find(self._collection, filters={})
-        )
+        ]

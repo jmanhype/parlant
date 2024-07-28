@@ -87,7 +87,7 @@ class GuidelineDocumentStore(GuidelineStore):
     async def list_guidelines(self, guideline_set: str) -> Sequence[Guideline]:
         filters = {"guideline_set": FieldFilter(equal_to=guideline_set)}
 
-        return (
+        return [
             Guideline(
                 id=GuidelineId(d["id"]),
                 predicate=d["predicate"],
@@ -95,7 +95,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 creation_utc=d["creation_utc"],
             )
             for d in await self._database.find(self._collection, filters)
-        )
+        ]
 
     async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
         filters = {

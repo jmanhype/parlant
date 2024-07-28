@@ -131,7 +131,7 @@ class SessionDocumentStore(SessionStore):
         end_user_id: EndUserId,
         agent_id: AgentId,
     ) -> Session:
-        consumption_offsets = {"client": 0}
+        consumption_offsets: dict[ConsumerId, int] = {"client": 0}
         session_id = await self._database.insert_one(
             self._session_collection,
             {
@@ -235,7 +235,7 @@ class SessionDocumentStore(SessionStore):
             **offset_filter,
         }
 
-        return (
+        return [
             Event(
                 id=EventId(d["id"]),
                 source=d["source"],
@@ -245,7 +245,7 @@ class SessionDocumentStore(SessionStore):
                 data=d["data"],
             )
             for d in await self._database.find(self._event_collection, filters)
-        )
+        ]
 
 
 class SessionListener(ABC):

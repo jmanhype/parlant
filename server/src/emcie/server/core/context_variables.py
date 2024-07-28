@@ -153,7 +153,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             },
         )
         return ContextVariable(
-            id=variable_id,
+            id=ContextVariableId(variable_id),
             name=name,
             description=description,
             tool_id=tool_id,
@@ -216,7 +216,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     ) -> Sequence[ContextVariable]:
         filters = {"variable_set": FieldFilter(equal_to=variable_set)}
 
-        return (
+        return [
             ContextVariable(
                 id=ContextVariableId(d["id"]),
                 name=d["name"],
@@ -225,7 +225,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 freshness_rules=d["freshness_rules"],
             )
             for d in await self._database.find(self._variable_collection, filters)
-        )
+        ]
 
     async def read_variable(
         self,

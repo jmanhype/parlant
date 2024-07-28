@@ -80,7 +80,7 @@ class AgentDocumentStore(AgentStore):
     async def list_agents(
         self,
     ) -> Sequence[Agent]:
-        return (
+        return [
             Agent(
                 id=a["id"],
                 name=a["name"],
@@ -88,7 +88,7 @@ class AgentDocumentStore(AgentStore):
                 creation_utc=a["creation_utc"],
             )
             for a in await self._database.find(self._collection, filters={})
-        )
+        ]
 
     async def read_agent(
         self,

@@ -116,16 +116,16 @@ class ToolDocumentStore(ToolStore):
             name=name,
             module_path=module_path,
             description=description,
-            parameters=parameters,
+            parameters=dict(parameters),
             creation_utc=creation_utc,
-            required=required,
+            required=list(required),
             consequential=consequential,
         )
 
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
-        return (
+        return [
             Tool(
                 id=ToolId(d["id"]),
                 name=d["name"],
@@ -140,7 +140,7 @@ class ToolDocumentStore(ToolStore):
                 collection=self._collection,
                 filters={},
             )
-        )
+        ]
 
     async def read_tool(
         self,
