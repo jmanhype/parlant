@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -9,8 +10,8 @@ from emcie.server.core.common import JSONSerializable
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
 from emcie.server.core.tools import ToolParameter
+from emcie.server.core.persistence.document_database import DocumentDatabase
 
 SessionId = NewType("SessionId", str)
 EventId = NewType("EventId", str)
@@ -113,15 +114,14 @@ class SessionDocumentStore(SessionStore):
         source: EventSource
         kind: str
         offset: int
-        data: dict[str, Any]
+        data: Any
 
     def __init__(self, database: DocumentDatabase):
-        self._database = database
-        self._session_collection = CollectionDescriptor(
+        self._session_collection = database.get_or_create_collection(
             name="sessions",
             schema=self.SessionDocument,
         )
-        self._event_collection = CollectionDescriptor(
+        self._event_collection = database.get_or_create_collection(
             name="events",
             schema=self.EventDocument,
         )
@@ -132,9 +132,8 @@ class SessionDocumentStore(SessionStore):
         agent_id: AgentId,
     ) -> Session:
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
-        session_id = await self._database.insert_one(
-            self._session_collection,
-            {
+        session_id = await self._session_collection.insert_one(
+            document={
                 "id": common.generate_id(),
                 "end_user_id": end_user_id,
                 "agent_id": agent_id,
@@ -153,8 +152,9 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
     ) -> Session:
-        filters = {"id": FieldFilter(equal_to=session_id)}
-        session_document = await self._database.find_one(self._session_collection, filters)
+        session_document = await self._session_collection.find_one(
+            filters={"id": {"$eq": session_id}}
+        )
 
         return Session(
             id=session_document["id"],
@@ -168,11 +168,9 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
         updated_session: Session,
     ) -> None:
-        filters = {"id": FieldFilter(equal_to=session_id)}
-        await self._database.update_one(
-            self._session_collection,
-            filters,
-            updated_session.__dict__,
+        await self._session_collection.update_one(
+            filters={"id": {"$eq": session_id}},
+            updated_document=updated_session.__dict__,
         )
 
     async def update_consumption_offset(
@@ -197,9 +195,8 @@ class SessionDocumentStore(SessionStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
 
-        event_id = await self._database.insert_one(
-            self._event_collection,
-            {
+        event_id = await self._event_collection.insert_one(
+            document={
                 "id": common.generate_id(),
                 "session_id": session_id,
                 "source": source,
@@ -225,16 +222,6 @@ class SessionDocumentStore(SessionStore):
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]:
-        source_filter = {"source": FieldFilter(equal_to=source)} if source else {}
-        offset_filter = (
-            {"offset": FieldFilter(greater_than_or_equal_to=min_offset)} if min_offset else {}
-        )
-        filters = {
-            **{"session_id": FieldFilter(equal_to=session_id)},
-            **source_filter,
-            **offset_filter,
-        }
-
         return [
             Event(
                 id=EventId(d["id"]),
@@ -244,7 +231,13 @@ class SessionDocumentStore(SessionStore):
                 creation_utc=d["creation_utc"],
                 data=d["data"],
             )
-            for d in await self._database.find(self._event_collection, filters)
+            for d in await self._event_collection.find(
+                filters={
+                    **{"session_id": {"$eq": session_id}},
+                    **({"source": {"$eq": source}} if source else {}),
+                    **({"offset": {"$gte": min_offset}} if min_offset else {}),
+                }
+            )
         ]
 
 

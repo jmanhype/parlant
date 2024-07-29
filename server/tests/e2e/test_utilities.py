@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import time
 from typing import Iterator, TypedDict, cast
 from loguru import logger
@@ -136,9 +137,9 @@ def run_server(context: _TestContext) -> Iterator[subprocess.Popen[str]]:
     with subprocess.Popen(
         args=exec_args,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env={"EMCIE_HOME": context.home_dir.as_posix(), **os.environ},
+        stdout=sys.stdout,
+        stderr=sys.stdout,
+        env={**os.environ, "EMCIE_HOME": context.home_dir.as_posix()},
     ) as process:
         yield process
 

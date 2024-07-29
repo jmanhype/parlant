@@ -10,10 +10,11 @@ from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.tools import Tool
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.terminology import Term
 from emcie.server.engines.alpha.utils import (
     context_variables_to_json,
     events_to_json,
-    produced_tool_events_to_dict,
+    produced_tool_events_to_dicts,
 )
 from emcie.server.engines.common import ProducedEvent
 
@@ -22,6 +23,7 @@ class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
+    TERMINOLOGY = auto()
     GUIDELINE_PREDICATES = auto()
     GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
@@ -149,6 +151,28 @@ The following is information that you're given about the user and context of the
 
         return self
 
+    def add_terminology(
+        self,
+        terms: Sequence[Term],
+    ) -> PromptBuilder:
+        if terms:
+
+            terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
+
+            self.add_section(
+                name=BuiltInSection.TERMINOLOGY,
+                content=f"""
+The following is a terminology of the business.
+Please be tolerant of possible typos by the user with regards to these terms,
+and let the user know if/when you assume they meant a term by their typo: ###
+{terms_string}
+###
+""",  # noqa
+                status=SectionStatus.ACTIVE,
+            )
+
+        return self
+
     def add_guideline_predicates(
         self,
         guidelines: Sequence[Guideline],
@@ -271,7 +295,7 @@ The following are the tool function definitions: ###
             # FIXME: The following is a code-smell. We can't assume staged_events
             #        is necessarily only composed of tool events.
             #        Also, produced_tool_events_to_dict() is an oddball of a function.
-            staged_events_as_dict = produced_tool_events_to_dict(events)
+            staged_events_as_dict = produced_tool_events_to_dicts(events)
 
             self.add_section(
                 name=BuiltInSection.STAGED_EVENTS,

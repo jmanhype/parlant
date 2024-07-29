@@ -7,16 +7,29 @@ from pytest import fixture, mark
 from datetime import datetime, timezone
 from itertools import count
 
+from emcie.server.core.agents import AgentId
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
 
 
 @fixture
-def session_id(client: TestClient) -> SessionId:
+def agent_id(client: TestClient) -> AgentId:
+    response = client.post(
+        "/agents",
+        json={"agent_name": "test-agent"},
+    )
+    return AgentId(response.json()["agent_id"])
+
+
+@fixture
+def session_id(
+    client: TestClient,
+    agent_id: AgentId,
+) -> SessionId:
     response = client.post(
         "/sessions",
         json={
             "end_user_id": "test_user",
-            "agent_id": "test_agent",
+            "agent_id": agent_id,
         },
     )
     return SessionId(response.json()["session_id"])
@@ -26,12 +39,13 @@ def session_id(client: TestClient) -> SessionId:
 async def long_session_id(
     client: TestClient,
     container: Container,
+    agent_id: AgentId,
 ) -> SessionId:
     response = client.post(
         "/sessions",
         json={
             "end_user_id": "test_user",
-            "agent_id": "test_agent",
+            "agent_id": agent_id,
         },
     )
     session_id = SessionId(response.json()["session_id"])
@@ -233,6 +247,7 @@ def test_that_posting_a_message_elicits_a_response(
 
 def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     client: TestClient,
+    agent_id: AgentId,
     session_id: SessionId,
 ) -> None:
     posted_event = (

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
-from emcie.server.core.persistence import CollectionDescriptor, DocumentDatabase, FieldFilter
+from emcie.server.core.persistence.document_database import DocumentDatabase
 
 GuidelineId = NewType("GuidelineId", str)
 
@@ -51,8 +51,7 @@ class GuidelineDocumentStore(GuidelineStore):
         creation_utc: Optional[datetime] = None
 
     def __init__(self, database: DocumentDatabase):
-        self._database = database
-        self._collection = CollectionDescriptor(
+        self._collection = database.get_or_create_collection(
             name="guidelines",
             schema=self.GuidelineDocument,
         )
@@ -66,9 +65,8 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        guideline_id = await self._database.insert_one(
-            self._collection,
-            {
+        guideline_id = await self._collection.insert_one(
+            document={
                 "id": common.generate_id(),
                 "guideline_set": guideline_set,
                 "predicate": predicate,
@@ -84,9 +82,10 @@ class GuidelineDocumentStore(GuidelineStore):
             creation_utc=creation_utc,
         )
 
-    async def list_guidelines(self, guideline_set: str) -> Sequence[Guideline]:
-        filters = {"guideline_set": FieldFilter(equal_to=guideline_set)}
-
+    async def list_guidelines(
+        self,
+        guideline_set: str,
+    ) -> Sequence[Guideline]:
         return [
             Guideline(
                 id=GuidelineId(d["id"]),
@@ -94,15 +93,20 @@ class GuidelineDocumentStore(GuidelineStore):
                 content=d["content"],
                 creation_utc=d["creation_utc"],
             )
-            for d in await self._database.find(self._collection, filters)
+            for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
         ]
 
-    async def read_guideline(self, guideline_set: str, guideline_id: GuidelineId) -> Guideline:
-        filters = {
-            "guideline_set": FieldFilter(equal_to=guideline_set),
-            "id": FieldFilter(equal_to=guideline_id),
-        }
-        guideline_document = await self._database.find_one(self._collection, filters)
+    async def read_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> Guideline:
+        guideline_document = await self._collection.find_one(
+            filters={
+                "guideline_set": {"$eq": guideline_set},
+                "id": {"$eq": guideline_id},
+            }
+        )
 
         return Guideline(
             id=GuidelineId(guideline_document["id"]),

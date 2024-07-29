@@ -1,4 +1,6 @@
 import asyncio
+from pathlib import Path
+import tempfile
 from typing import Any, AsyncIterator
 from fastapi.testclient import TestClient
 from lagom import Container, Singleton
@@ -12,6 +14,8 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
+from emcie.server.core.persistence.chroma_database import ChromaDatabase
+from emcie.server.core.persistence.transient_database import TransientDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -20,10 +24,13 @@ from emcie.server.core.sessions import (
 )
 from emcie.server.core.tools import ToolDocumentStore, ToolStore
 from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.engines.common import Engine
 from emcie.server.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
-from emcie.server.core.persistence import DocumentDatabase, TransientDocumentDatabase
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
@@ -58,9 +65,11 @@ async def container() -> AsyncIterator[Container]:
     container[SessionListener] = PollingSessionListener
     container[Engine] = AlphaEngine
 
-    async with MC(container) as mc:
-        container[MC] = mc
-        yield container
+    with tempfile.TemporaryDirectory() as chroma_db_dir:
+        container[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(Path(chroma_db_dir)))
+        async with MC(container) as mc:
+            container[MC] = mc
+            yield container
 
 
 @fixture

@@ -17,10 +17,11 @@ from emcie.server.core.tools import Tool
 
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import PromptBuilder
+from emcie.server.core.terminology import Term
 from emcie.server.engines.alpha.utils import (
     duration_logger,
     make_llm_client,
-    produced_tool_events_to_dict,
+    produced_tool_events_to_dicts,
 )
 from emcie.server.engines.common import (
     ProducedEvent,
@@ -63,6 +64,7 @@ class ToolCaller:
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
+        terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
@@ -71,6 +73,7 @@ class ToolCaller:
             agents,
             context_variables,
             interaction_history,
+            terms,
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,
             staged_events,
@@ -98,7 +101,7 @@ class ToolCaller:
         self,
         tool_calls: Sequence[ToolCall],
         tools: Sequence[Tool],
-    ) -> list[ToolResult]:
+    ) -> Sequence[ToolResult]:
         tools_by_name = {t.name: t for t in tools}
 
         with duration_logger("Tool calls"):
@@ -119,6 +122,7 @@ class ToolCaller:
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
+        terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
         staged_events: Sequence[ProducedEvent],
@@ -133,6 +137,7 @@ class ToolCaller:
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_event_list)
         builder.add_context_variables(context_variables)
+        builder.add_terminology(terms)
 
         builder.add_section(
             """
@@ -244,7 +249,7 @@ Note that the `tool_call_specifications` list can be empty if no functions need 
         produced_events: Sequence[ProducedEvent],
     ) -> Optional[str]:
         ordered_function_invocations = list(
-            chain(*[e["data"] for e in produced_tool_events_to_dict(produced_events)])
+            chain(*[e["data"] for e in produced_tool_events_to_dicts(produced_events)])
         )
 
         if not ordered_function_invocations:

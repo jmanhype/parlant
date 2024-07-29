@@ -50,3 +50,7 @@ def get_account_loans(account_name: str) -> int:
 
 def transfer_money(from_account: str, to_account: str) -> bool:
     return True
+
+
+def get_terrys_offering() -> str:
+    return "Terry offers leaf"

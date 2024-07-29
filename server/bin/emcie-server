@@ -24,19 +24,25 @@ from emcie.server.api.app import create_app
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
+from emcie.server.core.guideline_connections import (
+    GuidelineConnectionDocumentStore,
+    GuidelineConnectionStore,
+)
 from emcie.server.core.guidelines import (
     Guideline,
     GuidelineDocumentStore,
     GuidelineId,
     GuidelineStore,
 )
-from emcie.server.core.persistence import JSONFileDocumentDatabase
+from emcie.server.core.persistence.chroma_database import ChromaDatabase
+from emcie.server.core.persistence.json_file_database import JSONFileDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
     SessionListener,
     SessionStore,
 )
+from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.core.tools import ToolDocumentStore, ToolStore
 from emcie.server.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
@@ -151,7 +157,9 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         EMCIE_HOME_DIR / "tools.json"
     ) as tools_db, JSONFileDocumentDatabase(
         EMCIE_HOME_DIR / "guideline_tool_associations.json"
-    ) as guideline_tool_associations_db:
+    ) as guideline_tool_associations_db, JSONFileDocumentDatabase(
+        EMCIE_HOME_DIR / "guideline_connections.json"
+    ) as guideline_connections_db:
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
         c[EndUserStore] = EndUserDocumentStore(end_users_db)
@@ -160,7 +168,10 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
             guideline_tool_associations_db
         )
+        c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
         c[SessionStore] = SessionDocumentStore(sessions_db)
+
+        c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(EMCIE_HOME_DIR))
 
         c[SessionListener] = PollingSessionListener
         c[Engine] = AlphaEngine
@@ -188,7 +199,7 @@ async def serve_app(
     server = uvicorn.Server(config)
     interrupted = False
 
-    async def monitor_shutdown_request() -> None:
+    async def monitor_shutdown_request() -> ShutdownReason:
         try:
             while True:
                 await asyncio.sleep(1)
@@ -323,8 +334,8 @@ if __name__ == "__main__":
                 print(f"error: config file not found: {config_file_path}", file=sys.stderr)
                 exit(1)
 
-            with open(config_file_path, "r") as config_file:
-                config = json.load(config_file)
+            with open(config_file_path, "r") as f:
+                config = json.load(f)
 
                 ctx.obj = CLIParams(
                     config_file=config_file_path,
