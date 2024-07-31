@@ -97,8 +97,9 @@ class ConfigurationFileValidator:
                             "required": ["name", "description"],
                         },
                     },
-                }},
-            "required": ["agents", "guidelines", "tools", "terminology"],
+                },
+            },
+            "required": ["agents", "guidelines", "tools"],
         }
 
     def validate_and_load_config_json(
