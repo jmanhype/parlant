@@ -2,10 +2,12 @@ from dataclasses import dataclass
 from pathlib import Path
 import tempfile
 from typing import AsyncIterator, Iterator
+from lagom import Container
 from pytest import fixture, mark, raises
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
+from emcie.server.logger import Logger
 
 
 class _TestModel(DefaultBaseModel):
@@ -17,18 +19,25 @@ class _TestModel(DefaultBaseModel):
 @dataclass(frozen=True)
 class _TestContext:
     home_dir: Path
+    logger: Logger
 
 
 @fixture
-def context() -> Iterator[_TestContext]:
+def context(container: Container) -> Iterator[_TestContext]:
     with tempfile.TemporaryDirectory() as home_dir:
         home_dir_path = Path(home_dir)
-        yield _TestContext(home_dir=home_dir_path)
+        yield _TestContext(
+            logger=container[Logger],
+            home_dir=home_dir_path,
+        )
 
 
 @fixture
 def chroma_database(context: _TestContext) -> ChromaDatabase:
-    return ChromaDatabase(dir_path=context.home_dir)
+    return ChromaDatabase(
+        logger=context.logger,
+        dir_path=context.home_dir,
+    )
 
 
 @fixture
@@ -219,7 +228,7 @@ async def test_find_similar_documents(chroma_collection: ChromaCollection) -> No
 @mark.asyncio
 async def test_loading_collections_succeed(context: _TestContext) -> None:
     # Step 1: Create initial database and collection, then insert a document
-    chroma_database_1 = ChromaDatabase(dir_path=context.home_dir)
+    chroma_database_1 = ChromaDatabase(logger=context.logger, dir_path=context.home_dir)
     chroma_collection_1 = chroma_database_1.get_or_create_collection("test_collection", _TestModel)
     await chroma_collection_1.insert_one(
         {
@@ -229,7 +238,7 @@ async def test_loading_collections_succeed(context: _TestContext) -> None:
         },
     )
 
-    chroma_database_2 = ChromaDatabase(dir_path=context.home_dir)
+    chroma_database_2 = ChromaDatabase(logger=context.logger, dir_path=context.home_dir)
     chroma_collection_2 = chroma_database_2.get_collection("test_collection")
 
     result = await chroma_collection_2.find({"id": {"$eq": "1"}})

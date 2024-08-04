@@ -13,6 +13,7 @@ from emcie.server.engines.alpha.message_event_producer import MessageEventProduc
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.common import ProducedEvent
 
+from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 roles = Literal["client", "server"]
@@ -144,7 +145,7 @@ def when_processing_is_triggered(
         )
     ]
 
-    message_event_producer = MessageEventProducer()
+    message_event_producer = MessageEventProducer(context.container[Logger])
 
     message_events = context.sync_await(
         message_event_producer.produce_events(

@@ -6,7 +6,6 @@ import traceback
 import jsonfinder  # type: ignore
 from typing import Mapping, NewType, Optional, Sequence, TypedDict
 
-from loguru import logger
 
 from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent
@@ -25,6 +24,7 @@ from emcie.server.engines.alpha.utils import (
 from emcie.server.engines.common import (
     ProducedEvent,
 )
+from emcie.server.logger import Logger
 
 ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)
@@ -55,9 +55,11 @@ class ToolCaller:
 
     def __init__(
         self,
+        logger: Logger,
         tool_service: ToolService,
     ) -> None:
         self._tool_service = tool_service
+        self.logger = logger
         self._llm_client = make_llm_client("openai")
 
     async def infer_tool_calls(
@@ -80,7 +82,7 @@ class ToolCaller:
             staged_events,
         )
 
-        with duration_logger("Tool classification"):
+        with duration_logger(self.logger, "Tool classification"):
             inference_output = await self._run_inference(inference_prompt)
 
         tool_calls_that_need_to_run = [
@@ -104,7 +106,7 @@ class ToolCaller:
     ) -> Sequence[ToolCallResult]:
         tools_by_name = {t.name: t for t in tools}
 
-        with duration_logger("Tool calls"):
+        with duration_logger(self.logger, "Tool calls"):
             tool_results = await asyncio.gather(
                 *(
                     self._run_tool(
@@ -280,7 +282,7 @@ Note that the `tool_call_evaluations` list can be empty if no functions need to 
         content = response.choices[0].message.content or ""
         json_content = jsonfinder.only_json(content)[2]
 
-        logger.debug(
+        self.logger.debug(
             f"Tool call request results: {json.dumps(
                 json_content['tool_call_evaluations'], indent=2
                 )}"
@@ -293,9 +295,9 @@ Note that the `tool_call_evaluations` list can be empty if no functions need to 
         tool: Tool,
     ) -> ToolCallResult:
         try:
-            logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
+            self.logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
             result = await self._tool_service.call_tool(tool.id, tool_call.arguments)
-            logger.debug(f"Tool call returned: {tool_call.name}/{tool_call.id}: {result}")
+            self.logger.debug(f"Tool call returned: {tool_call.name}/{tool_call.id}: {result}")
 
             return ToolCallResult(
                 id=ToolResultId(generate_id()),
@@ -303,7 +305,7 @@ Note that the `tool_call_evaluations` list can be empty if no functions need to 
                 result={"data": result.data, "metadata": result.metadata},
             )
         except Exception as e:
-            logger.error(
+            self.logger.error(
                 f"Tool execution error (tool='{tool_call.name}', "
                 "arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
             )

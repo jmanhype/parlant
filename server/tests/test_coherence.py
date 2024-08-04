@@ -13,6 +13,7 @@ from emcie.server.coherence_checker import (
     TemporalContradictionEvaluator,
 )
 
+from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 
@@ -194,7 +195,9 @@ def test_that_hierarchical_evaluator_detects_contradictions(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator()
+    hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
+        context.container[Logger]
+    )
     contradiction_results = list(
         context.sync_await(
             hierarchical_contradiction_evaluator.evaluate(
@@ -264,7 +267,9 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator()
+    hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
+        context.container[Logger]
+    )
     contradiction_results = list(
         context.sync_await(
             hierarchical_contradiction_evaluator.evaluate(
@@ -333,7 +338,7 @@ def test_that_parallel_evaluator_detects_contradictions(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    parallel_contradiction_evaluator = ParallelContradictionEvaluator()
+    parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             parallel_contradiction_evaluator.evaluate(
@@ -404,7 +409,7 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    parallel_contradiction_evaluator = ParallelContradictionEvaluator()
+    parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             parallel_contradiction_evaluator.evaluate(
@@ -474,7 +479,7 @@ def test_that_temporal_evaluator_detects_contradictions(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    temporal_contradiction_evaluator = TemporalContradictionEvaluator()
+    temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             temporal_contradiction_evaluator.evaluate(
@@ -545,7 +550,7 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    temporal_contradiction_evaluator = TemporalContradictionEvaluator()
+    temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             temporal_contradiction_evaluator.evaluate(
@@ -615,7 +620,7 @@ def test_that_contextual_evaluator_detects_contradictions(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    contextual_contradiction_evaluator = ContextualContradictionEvaluator()
+    contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             contextual_contradiction_evaluator.evaluate(
@@ -686,7 +691,7 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
             context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
         )
     )
-    contextual_contradiction_evaluator = ContextualContradictionEvaluator()
+    contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             contextual_contradiction_evaluator.evaluate(
@@ -711,10 +716,11 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
 
 
 def test_that_coherence_check_does_not_produce_false_positives(
+    context: _TestContext,
     sync_await: SyncAwaiter,
     guidelines_without_contradictions: list[Guideline],
 ) -> None:
-    coherence_checker = CoherenceChecker()
+    coherence_checker = CoherenceChecker(context.container[Logger])
     contradiction_results = sync_await(
         coherence_checker.evaluate_coherence(guidelines_without_contradictions, [])
     )
@@ -722,10 +728,11 @@ def test_that_coherence_check_does_not_produce_false_positives(
 
 
 def test_that_coherence_check_produces_multiple_contradictions(
+    context: _TestContext,
     sync_await: SyncAwaiter,
     guidelines_with_contradictions: list[Guideline],
 ) -> None:
-    coherence_checker = CoherenceChecker()
+    coherence_checker = CoherenceChecker(context.container[Logger])
     contradiction_results = list(
         sync_await(coherence_checker.evaluate_coherence(guidelines_with_contradictions, []))
     )
@@ -765,7 +772,7 @@ def test_that_existing_guidelines_are_not_evaluated_as_proposed_guidelines(
     existing_guideline_1 = create_guideline(**existing_guideline_definiton_1)
     existing_guideline_2 = create_guideline(**existing_guideline_definiton_2)
 
-    coherence_checker = CoherenceChecker()
+    coherence_checker = CoherenceChecker(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             coherence_checker.evaluate_coherence(

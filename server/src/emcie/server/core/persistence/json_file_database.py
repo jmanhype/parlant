@@ -5,19 +5,22 @@ import json
 import operator
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Type
-
 import aiofiles
-from loguru import logger
+
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.persistence.common import ObjectId, Where, matches_filters
 from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
+from emcie.server.logger import Logger
 
 
 class JSONFileDocumentDatabase(DocumentDatabase):
     def __init__(
         self,
+        logger: Logger,
         file_path: Path,
     ) -> None:
+        self.logger = logger
+
         self.file_path = file_path
         self._lock = asyncio.Lock()
         self.op_counter = 0
@@ -93,7 +96,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         name: str,
         schema: Type[DefaultBaseModel],
     ) -> JSONFileDocumentCollection:
-        logger.debug(f'Create collection "{name}"')
+        self.logger.debug(f'Create collection "{name}"')
         new_collection = JSONFileDocumentCollection(
             database=self,
             name=name,

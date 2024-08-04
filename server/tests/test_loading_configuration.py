@@ -6,10 +6,12 @@ from pydoc import importfile
 import tempfile
 from typing import AsyncIterator
 
+from lagom import Container
 from pytest import fixture
 
 from emcie.server.configuration_validator import ConfigurationFileValidator
 from emcie.server.core.common import JSONSerializable
+from emcie.server.logger import Logger
 
 
 @asynccontextmanager
@@ -68,7 +70,7 @@ async def valid_config() -> JSONSerializable:
     return valid_config
 
 
-async def test_that_empty_config_is_valid() -> None:
+async def test_that_empty_config_is_valid(container: Container) -> None:
     async with new_file_path() as config_file:
         with open(config_file, "w") as f:
             f.write(
@@ -81,20 +83,22 @@ async def test_that_empty_config_is_valid() -> None:
                     }
                 )
             )
-        assert ConfigurationFileValidator().validate(config_file) is True
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is True
 
 
 async def test_that_a_valid_config_passes_validation(
+    container: Container,
     valid_config: JSONSerializable,
 ) -> None:
     async with new_file_path() as config_file:
         with open(config_file, "w") as f:
             f.write(json.dumps(valid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is True
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is True
 
 
 async def test_that_a_config_with_a_tool_whose_module_cannot_be_found_fails_validation(
+    container: Container,
     valid_config: JSONSerializable,
 ) -> None:
     async with new_file_path() as config_file, new_file_path() as tool_file:
@@ -106,15 +110,16 @@ async def test_that_a_config_with_a_tool_whose_module_cannot_be_found_fails_vali
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
         with open(tool_file, "w") as f:
             f.write("""def not_multiply(): return""")
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
 
 async def test_that_a_config_with_missing_mandatory_keys_in_guideline_fails_validation(
+    container: Container,
     valid_config: JSONSerializable,
 ) -> None:
     async with new_file_path() as config_file:
@@ -124,7 +129,7 @@ async def test_that_a_config_with_missing_mandatory_keys_in_guideline_fails_vali
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
         invalid_config = copy.deepcopy(valid_config)
         del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
@@ -132,10 +137,11 @@ async def test_that_a_config_with_missing_mandatory_keys_in_guideline_fails_vali
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
 
 async def test_that_guidelines_under_nonexistent_agent_fail_validation(
+    container: Container,
     valid_config: JSONSerializable,
 ) -> None:
     async with new_file_path() as config_file:
@@ -147,18 +153,21 @@ async def test_that_guidelines_under_nonexistent_agent_fail_validation(
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
 
-async def test_that_syntactically_invalid_json_fails_validation() -> None:
+async def test_that_syntactically_invalid_json_fails_validation(
+    container: Container,
+) -> None:
     async with new_file_path() as config_file:
         with open(config_file, "w") as f:
             f.write("{invalid_json: true,}")
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False
 
 
 async def test_that_terms_under_nonexistent_agent_fail_validation(
+    container: Container,
     valid_config: JSONSerializable,
 ) -> None:
     async with new_file_path() as config_file:
@@ -170,4 +179,4 @@ async def test_that_terms_under_nonexistent_agent_fail_validation(
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
 
-        assert ConfigurationFileValidator().validate(config_file) is False
+        assert ConfigurationFileValidator(container[Logger]).validate(config_file) is False

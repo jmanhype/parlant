@@ -3,7 +3,6 @@ import json
 import math
 import jsonfinder  # type: ignore
 from typing import Sequence
-from loguru import logger
 
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -17,10 +16,16 @@ from emcie.server.engines.alpha.utils import (
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.engines.common import ProducedEvent
+from emcie.server.logger import Logger
 
 
 class GuidelineProposer:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self.logger = logger
+
         self._llm_client = make_llm_client("openai")
 
     async def propose_guidelines(
@@ -37,7 +42,7 @@ class GuidelineProposer:
 
         batches = self._create_batches(guidelines, batch_size=5)
 
-        with duration_logger(f"Total guideline proposal ({len(batches)} batches)"):
+        with duration_logger(self.logger, f"Total guideline proposal ({len(batches)} batches)"):
             batch_tasks = [
                 self._process_batch(
                     agents,
@@ -88,14 +93,14 @@ class GuidelineProposer:
             guidelines=batch,
         )
 
-        with duration_logger("Guideline batch proposal"):
+        with duration_logger(self.logger, "Guideline batch proposal"):
             llm_response = await self._generate_llm_response(prompt)
 
         propositions_json = json.loads(llm_response)["checks"]
 
         propositions = []
         for proposition in propositions_json:
-            logger.debug(
+            self.logger.debug(
                 f'Guideline proposer result for predicate "{batch[int(proposition["predicate_number"]) - 1].predicate}":\n'  # noqa
                 f'    applies_score: {proposition["applies_score"]},\n'
                 f'    rationale: "{proposition["rationale"]}"\n'

@@ -1,8 +1,8 @@
 from itertools import chain
 from typing import Mapping, Sequence, cast
-from loguru import logger
 
 from emcie.common.tools import Tool
+from emcie.server.logger import Logger
 from emcie.server.core.agents import Agent
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -18,10 +18,14 @@ from emcie.server.engines.common import ProducedEvent
 class ToolEventProducer:
     def __init__(
         self,
+        logger: Logger,
         tool_service: ToolService,
+        
     ) -> None:
+        self.logger = logger
+
         self._llm_client = make_llm_client("openai")
-        self.tool_caller = ToolCaller(tool_service)
+        self.tool_caller = ToolCaller(logger, tool_service)
 
     async def produce_events(
         self,
@@ -38,7 +42,7 @@ class ToolEventProducer:
         produced_events = []
 
         if not tool_enabled_guideline_propositions:
-            logger.debug("Skipping tool calling; no tools associated with guidelines found")
+            self.logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
 
         tool_calls = list(

@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from typing import Sequence, cast
+from lagom import Container
 from pytest import fixture, mark
 from emcie.server.core.agents import Agent, AgentId
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
@@ -16,20 +18,22 @@ from emcie.server.core.sessions import Event, EventId, EventSource
 class _TestContext:
     sync_await: SyncAwaiter
     guidelines: list[Guideline]
+    logger: Logger
 
 
 @fixture
 def context(
     sync_await: SyncAwaiter,
+    container: Container,
 ) -> _TestContext:
-    return _TestContext(sync_await, guidelines=list())
+    return _TestContext(sync_await, guidelines=list(), logger=container[Logger])
 
 
 def propose_guidelines(
     context: _TestContext,
     conversation_context: list[tuple[str, str]],
 ) -> Sequence[GuidelineProposition]:
-    guideline_filter = GuidelineProposer()
+    guideline_filter = GuidelineProposer(context.logger)
     agents = [
         Agent(
             id=AgentId("123"),
