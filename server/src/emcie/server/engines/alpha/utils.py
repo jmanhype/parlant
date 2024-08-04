@@ -1,14 +1,11 @@
-from contextlib import contextmanager
 import json
 import os
-import time
 from typing import Any, Literal, Sequence, cast
 from openai import AsyncClient
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event, ToolEventData
 from emcie.server.engines.common import ProducedEvent
-from emcie.server.logger import Logger
 
 
 def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:
@@ -19,20 +16,6 @@ def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:
             api_key=os.environ["TOGETHER_API_KEY"],
             base_url="https://api.together.xyz/v1",
         )
-
-
-@contextmanager
-def duration_logger(
-    logger: Logger,
-    operation_name: str,
-) -> Any:
-    t_start = time.time()
-
-    try:
-        yield
-    finally:
-        t_end = time.time()
-        logger.debug(f"{operation_name} took {round(t_end - t_start, 3)}s")
 
 
 def events_to_json(events: Sequence[Event]) -> str:

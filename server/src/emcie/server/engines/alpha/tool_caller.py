@@ -16,15 +16,12 @@ from emcie.server.core.tools import ToolService
 from emcie.server.core.terminology import Term
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.engines.alpha.prompt_builder import PromptBuilder
-from emcie.server.engines.alpha.utils import (
-    duration_logger,
-    make_llm_client,
-    produced_tool_events_to_dicts,
-)
+from emcie.server.engines.alpha.utils import make_llm_client, produced_tool_events_to_dicts
 from emcie.server.engines.common import (
     ProducedEvent,
 )
 from emcie.server.logger import Logger
+from emcie.server.utils import duration_logger
 
 ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)
