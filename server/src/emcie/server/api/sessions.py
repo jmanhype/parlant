@@ -22,10 +22,12 @@ from emcie.server.mc import MC
 class CreateSessionRequest(DefaultBaseModel):
     end_user_id: EndUserId
     agent_id: AgentId
+    title: Optional[str] = None
 
 
 class CreateSessionResponse(DefaultBaseModel):
     session_id: SessionId
+    title: Optional[str] = None
 
 
 class CreateMessageRequest(DefaultBaseModel):
@@ -67,6 +69,19 @@ class ListEventsResponse(DefaultBaseModel):
     events: List[EventDTO]
 
 
+class ListSessionDTO(DefaultBaseModel):
+    session_id: SessionId
+    title: Optional[str] = None
+
+
+class ListSessionsRequest(DefaultBaseModel):
+    agent_id: Optional[AgentId] = None
+
+
+class ListSessionsResponse(DefaultBaseModel):
+    sessions: List[ListSessionDTO]
+
+
 def create_router(
     mc: MC,
     session_store: SessionStore,
@@ -79,9 +94,10 @@ def create_router(
         session = await mc.create_end_user_session(
             end_user_id=request.end_user_id,
             agent_id=request.agent_id,
+            title=getattr(request, "title", None),
         )
 
-        return CreateSessionResponse(session_id=session.id)
+        return CreateSessionResponse(session_id=session.id, title=session.title)
 
     @router.get("/{session_id}")
     async def read_session(session_id: SessionId) -> ReadSessionResponse:
@@ -91,6 +107,14 @@ def create_router(
             consumption_offsets=ConsumptionOffsetsDTO(
                 client=session.consumption_offsets["client"],
             )
+        )
+
+    @router.get("/{session_id}")
+    async def list_sessions(agent_id: Optional[AgentId] = None) -> ListSessionsResponse:
+        sessions = await session_store.list_sessions(agent_id=agent_id)
+
+        return ListSessionsResponse(
+            sessions=[ListSessionDTO(session_id=s.id, title=s.title) for s in sessions]
         )
 
     @router.patch("/{session_id}")

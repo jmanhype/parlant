@@ -108,18 +108,44 @@ def event_is_according_to_params(
     return True
 
 
-def test_that_a_session_can_be_created(client: TestClient) -> None:
+def test_that_a_session_can_be_created(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
     response = client.post(
         "/sessions",
         json={
             "end_user_id": "test_user",
-            "agent_id": "test_agent",
+            "agent_id": agent_id,
         },
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 
     assert "session_id" in data
+    assert "title" in data
+    assert data["title"] is None
+
+
+def test_that_a_session_can_be_created_with_title(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    title = "Test Session Title"
+
+    response = client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user",
+            "agent_id": agent_id,
+            "title": title,
+        },
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert "session_id" in data
+    assert data["title"] == title
 
 
 async def test_that_events_can_be_listed(
