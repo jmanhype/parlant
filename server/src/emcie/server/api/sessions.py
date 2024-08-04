@@ -71,6 +71,7 @@ class ListEventsResponse(DefaultBaseModel):
 
 class ListSessionDTO(DefaultBaseModel):
     session_id: SessionId
+    end_user_id: EndUserId
     title: Optional[str] = None
 
 
@@ -109,12 +110,19 @@ def create_router(
             )
         )
 
-    @router.get("/{session_id}")
+    @router.get("/")
     async def list_sessions(agent_id: Optional[AgentId] = None) -> ListSessionsResponse:
         sessions = await session_store.list_sessions(agent_id=agent_id)
 
         return ListSessionsResponse(
-            sessions=[ListSessionDTO(session_id=s.id, title=s.title) for s in sessions]
+            sessions=[
+                ListSessionDTO(
+                    session_id=s.id,
+                    title=s.title,
+                    end_user_id=s.end_user_id,
+                )
+                for s in sessions
+            ]
         )
 
     @router.patch("/{session_id}")

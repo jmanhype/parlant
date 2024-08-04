@@ -148,6 +148,108 @@ def test_that_a_session_can_be_created_with_title(
     assert data["title"] == title
 
 
+def test_that_sessions_can_be_listed(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user1",
+            "agent_id": agent_id,
+            "title": "Test Session1 Title",
+        },
+    )
+
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user2",
+            "agent_id": agent_id,
+            "title": "Test Session2 Title",
+        },
+    )
+
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user2",
+            "agent_id": agent_id,
+            "title": "Test Session2 Title",
+        },
+    )
+
+    response = client.get(f"/sessions/?agent_id={agent_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data
+
+    sessions = data["sessions"]
+
+    assert len(sessions) == 3
+
+    assert sessions[0]["title"] == "Test Session1 Title"
+    assert sessions[1]["title"] == "Test Session2 Title"
+    assert sessions[2]["title"] == "Test Session2 Title"
+
+    assert sessions[0]["end_user_id"] == "test_user1"
+    assert sessions[1]["end_user_id"] == "test_user2"
+    assert sessions[2]["end_user_id"] == "test_user2"
+
+
+def test_that_sessions_can_be_listed(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user1",
+            "agent_id": agent_id,
+            "title": "Test Session1 Title",
+        },
+    )
+
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user2",
+            "agent_id": agent_id,
+            "title": "Test Session2 Title",
+        },
+    )
+
+    client.post(
+        "/sessions",
+        json={
+            "end_user_id": "test_user2",
+            "agent_id": agent_id,
+            "title": "Test Session2 Title",
+        },
+    )
+
+    response = client.get(f"/sessions/?agent_id={agent_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data
+
+    sessions = data["sessions"]
+
+    assert len(sessions) == 3
+
+    assert sessions[0]["title"] == "Test Session1 Title"
+    assert sessions[1]["title"] == "Test Session2 Title"
+    assert sessions[2]["title"] == "Test Session2 Title"
+
+    assert sessions[0]["end_user_id"] == "test_user1"
+    assert sessions[1]["end_user_id"] == "test_user2"
+    assert sessions[2]["end_user_id"] == "test_user2"
+
+
 async def test_that_events_can_be_listed(
     client: TestClient,
     container: Container,
