@@ -43,7 +43,7 @@ from emcie.server.core.sessions import (
     SessionStore,
 )
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
-from emcie.server.core.tools import ToolDocumentStore, ToolStore
+from emcie.server.core.tools import LocalToolService, ToolService
 from emcie.server.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
@@ -92,7 +92,7 @@ async def load_agents(c: Container, config: Any) -> None:
 
 
 async def load_tools(c: Container, config: Any) -> None:
-    tool_store = c[ToolStore]
+    tool_store = c[ToolService]
 
     for tool_name, tool in config["tools"].items():
         tool = await tool_store.create_tool(
@@ -164,7 +164,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
         c[EndUserStore] = EndUserDocumentStore(end_users_db)
         c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
-        c[ToolStore] = ToolDocumentStore(tools_db)
+        c[ToolService] = LocalToolService(tools_db)
         c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
             guideline_tool_associations_db
         )
