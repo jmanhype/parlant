@@ -1,10 +1,9 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
 from loguru import logger
 
 
 class Logger(ABC):
-
     def __init__(self) -> None:
         self.logger = logger
 
@@ -27,8 +26,8 @@ class Logger(ABC):
 class StdoutLogger(Logger):
     def __init__(self) -> None:
         super().__init__()
-        self.logger.remove()
-        self.logger.add(lambda msg: print(msg, end=""))
+        # self.logger.remove()
+        # self.logger.add(lambda msg: print(msg, end=""))
 
 
 class FileLogger(Logger):

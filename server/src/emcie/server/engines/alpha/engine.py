@@ -105,7 +105,6 @@ class AlphaEngine(Engine):
                     ),
                 )
             )
-
             if tool_events := await self.tool_event_producer.produce_events(
                 agents=[agent],
                 context_variables=context_variables,
