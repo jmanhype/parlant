@@ -23,7 +23,7 @@ class CreateAgentResponse(DefaultBaseModel):
 
 
 class ListAgentsResponse(DefaultBaseModel):
-    agents: List[AgentDTO]
+    agents: list[AgentDTO]
 
 
 def create_router(
