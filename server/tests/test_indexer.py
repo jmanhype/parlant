@@ -34,7 +34,6 @@ async def test_that_guidelines_written_in_the_cache_file(
     container: Container,
     agent_id: AgentId,
 ) -> None:
-
     guideline_store = container[GuidelineStore]
 
     first_guideline = await guideline_store.create_guideline(

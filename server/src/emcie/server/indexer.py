@@ -43,8 +43,8 @@ class GuidelineIndexer:
         return fresh_guidelines, retained_guidelines, deleted_guidelines
 
     async def _remove_deleted_guidelines_connections(
-            self,
-            deleted_guidelines: dict[str, str],
+        self,
+        deleted_guidelines: dict[str, str],
     ) -> None:
         for id in deleted_guidelines.values():
             try:
@@ -58,9 +58,8 @@ class GuidelineIndexer:
         cached_guidelines: dict[str, str],
     ) -> None:
         fresh, retained, deleted = self._assess_guideline_modifications(
-                guidelines,
-                cached_guidelines
-            )
+            guidelines, cached_guidelines
+        )
 
         await self._remove_deleted_guidelines_connections(deleted)
 
@@ -71,9 +70,8 @@ class GuidelineIndexer:
                 kind=p.kind,
             )
             for p in await self._guideline_proposer.propose_connections(
-                fresh_guidelines=fresh,
-                retained_guidelines=retained
-                )
+                fresh_guidelines=fresh, retained_guidelines=retained
+            )
         ]
 
         return
@@ -94,10 +92,7 @@ class GuidelineIndexer:
                 cached_guidelines.get(agent.id, {}),
             )
 
-            indexed_guidelines[str(agent.id)] = {
-                str(hash(g)): g.id
-                for g in agent_guidelines
-                }
+            indexed_guidelines[str(agent.id)] = {str(hash(g)): g.id for g in agent_guidelines}
 
         return indexed_guidelines
 
@@ -119,7 +114,10 @@ class Indexer:
                 return data
         return {}
 
-    def _write_cache(self, cache_data: dict[str, Any],) -> None:
+    def _write_cache(
+        self,
+        cache_data: dict[str, Any],
+    ) -> None:
         with open(self._cache_file, "w") as f:
             json.dump(cache_data, f, indent=2)
 
@@ -130,6 +128,6 @@ class Indexer:
 
         data["guidelines"] = await self._guideline_indexer.index(
             cached_guidelines=current_cache_data.get("guidelines", {}),
-            )
+        )
 
         self._write_cache(data)

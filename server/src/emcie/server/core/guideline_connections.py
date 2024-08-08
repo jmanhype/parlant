@@ -206,10 +206,14 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self,
         guideline_id: GuidelineId,
     ) -> None:
-        try:
-            document = await self._collection.find_one(filters={"source": {"$eq": guideline_id}})
-        except ValueError:
-            document = await self._collection.find_one(filters={"target": {"$eq": guideline_id}})
+        document = await self._collection.find_one(
+            filters={
+                "$or": [
+                    {"source": {"$eq": guideline_id}},
+                    {"target": {"$eq": guideline_id}}
+                ]
+            }
+        )
 
         (await self._get_graph()).remove_edge(document["source"], document["target"])
 
