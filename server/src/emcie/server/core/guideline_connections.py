@@ -44,6 +44,12 @@ class GuidelineConnectionStore(ABC):
         indirect: bool,
     ) -> Sequence[GuidelineConnection]: ...
 
+    @abstractmethod
+    async def delete_guideline_connections(
+        self,
+        guideline_id: GuidelineId,
+    ) -> None: ...
+
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     class GuidelineConnectionDocument(DefaultBaseModel):
@@ -195,3 +201,16 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 )
 
             return connections
+
+    async def delete_guideline_connections(
+        self,
+        guideline_id: GuidelineId,
+    ) -> None:
+        try:
+            document = await self._collection.find_one(filters={"source": {"$eq": guideline_id}})
+        except ValueError:
+            document = await self._collection.find_one(filters={"target": {"$eq": guideline_id}})
+
+        (await self._get_graph()).remove_edge(document["source"], document["target"])
+
+        await self._collection.delete_one(filters={"id": {"$eq": document["id"]}})

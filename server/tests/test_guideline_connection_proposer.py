@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from itertools import chain
 from lagom import Container
 from pytest import fixture, mark
 
@@ -7,6 +6,7 @@ from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 
 from emcie.server.guideline_connection_proposer import GuidelineConnectionProposer
+from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 
 
@@ -86,7 +86,7 @@ def test_that_entails_connection_has_been_proposed(
         )
     )
 
-    connection_proposer = GuidelineConnectionProposer()
+    connection_proposer = GuidelineConnectionProposer(context.container[Logger])
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
@@ -151,7 +151,7 @@ def test_that_suggets_connection_has_been_proposed(
         )
     )
 
-    connection_proposer = GuidelineConnectionProposer()
+    connection_proposer = GuidelineConnectionProposer(context.container[Logger])
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
@@ -223,7 +223,7 @@ def test_that_multiple_connection_propositions_have_been_proposed(
         )
     )
 
-    connection_proposer = GuidelineConnectionProposer()
+    connection_proposer = GuidelineConnectionProposer(context.container[Logger])
 
     connection_propositions = list(
         context.sync_await(connection_proposer.propose_connections(new_guidelines, []))
@@ -295,7 +295,7 @@ def test_that_connections_between_old_guidelines_are_not_being_proposed(
         )
     )
 
-    connection_proposer = GuidelineConnectionProposer()
+    connection_proposer = GuidelineConnectionProposer(context.container[Logger])
 
     connection_propositions = list(
         context.sync_await(connection_proposer.propose_connections([], old_guidelines))

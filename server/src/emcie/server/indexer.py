@@ -4,8 +4,8 @@ from lagom import Container
 from typing import Any, Sequence
 
 from emcie.server.core.agents import AgentStore
-from emcie.server.core.guideline_connections import GuidelineConnectionId, GuidelineConnectionStore
-from emcie.server.core.guidelines import Guideline, GuidelineStore
+from emcie.server.core.guideline_connections import GuidelineConnectionStore
+from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
 from emcie.server.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 
@@ -25,13 +25,13 @@ class GuidelineIndexer:
     def _assess_guideline_modifications(
         self,
         guidelines: Sequence[Guideline],
-        cached_guidelines: dict[int, str],
-    ) -> tuple[Sequence[Guideline], Sequence[Guideline], dict[int, str]]:
+        cached_guidelines: dict[str, str],
+    ) -> tuple[Sequence[Guideline], Sequence[Guideline], dict[str, str]]:
         fresh_guidelines, retained_guidelines = [], []
         deleted_guidelines = cached_guidelines.copy()
 
         for guideline in guidelines:
-            guideline_digest = hash(guideline)
+            guideline_digest = str(hash(guideline))
 
             if guideline_digest in cached_guidelines:
                 retained_guidelines.append(guideline)
@@ -44,18 +44,18 @@ class GuidelineIndexer:
 
     async def _remove_deleted_guidelines_connections(
             self,
-            deleted_guidelines: dict[int, str],
+            deleted_guidelines: dict[str, str],
     ) -> None:
         for id in deleted_guidelines.values():
             try:
-                await self._guideline_connection_store.delete_connection(GuidelineConnectionId(id))
+                await self._guideline_connection_store.delete_guideline_connections(GuidelineId(id))
             except ValueError:  # case that connections with the guideline id are not exists
                 pass
 
     async def _index_guideline_connections(
         self,
         guidelines: Sequence[Guideline],
-        cached_guidelines: dict[int, str],
+        cached_guidelines: dict[str, str],
     ) -> None:
         fresh, retained, deleted = self._assess_guideline_modifications(
                 guidelines,
@@ -91,11 +91,11 @@ class GuidelineIndexer:
 
             await self._index_guideline_connections(
                 agent_guidelines,
-                cached_guidelines.get(agent.name, {}),
+                cached_guidelines.get(agent.id, {}),
             )
 
             indexed_guidelines[str(agent.id)] = {
-                hash(g): g.id
+                str(hash(g)): g.id
                 for g in agent_guidelines
                 }
 

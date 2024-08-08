@@ -6,10 +6,10 @@ import json
 from typing import Any, Optional, Sequence
 
 from more_itertools import chunked
-from tenacity import retry, stop_after_attempt, wait_fixed
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.engines.alpha.utils import make_llm_client
+from emcie.server.logger import Logger
 from emcie.server.utils import duration_logger
 
 
@@ -23,28 +23,27 @@ class ConnectionProposition:
 
 
 class GuidelineConnectionProposer:
-    _llm_retry_wait_time_seconds = 3.5
-    _llm_max_retries = 100
 
-    def __init__(self) -> None:
+    def __init__(self, logger: Logger,) -> None:
+        self.logger = logger
         self._llm_client = make_llm_client("openai")
         self._batch_size = 5
 
     async def propose_connections(
         self,
-        new_guidelines: Sequence[Guideline],
-        old_guidelines: Optional[Sequence[Guideline]] = None,
+        fresh_guidelines: Sequence[Guideline],
+        retained_guidelines: Optional[Sequence[Guideline]] = None,
     ) -> Sequence[ConnectionProposition]:
         connection_proposition_tasks = []
         connection_classifiction_tasks = []
 
-        for i, proposed_guideline in enumerate(new_guidelines):
+        for i, proposed_guideline in enumerate(fresh_guidelines):
 
             filtered_existing_guidelines = [
                 g
                 for g in chain(
-                    new_guidelines[i + 1 :],
-                    old_guidelines if old_guidelines else [],
+                    fresh_guidelines[i + 1 :],
+                    retained_guidelines if retained_guidelines else [],
                 )
             ]
 
@@ -60,20 +59,19 @@ class GuidelineConnectionProposer:
                 ]
             )
 
-        with duration_logger(
-            f"Propose guideline connections for {len(connection_proposition_tasks)} "
-            f"batches (batch size={self._batch_size})"
-        ):
+        with duration_logger(self.logger,
+                             f"Propose guideline connections for {len(connection_proposition_tasks)} " # noqa
+                             f"batches (batch size={self._batch_size})", ):
             propositions = chain(await asyncio.gather(*connection_proposition_tasks))
 
         connection_classifiction_tasks.extend(
             [asyncio.create_task(self._classify_connections(batch)) for batch in propositions]
         )
 
-        with duration_logger(
-            f"Determine connections propositions for {len(connection_classifiction_tasks)} "
-            f"batches (batch size={self._batch_size})"
-        ):
+        with duration_logger(self.logger,
+                             f"Determine connections propositions for {len(connection_classifiction_tasks)} " # noqa
+                             f"batches (batch size={self._batch_size})"
+                             ):
             connections = list(
                 chain.from_iterable(await asyncio.gather(*connection_classifiction_tasks))
             )

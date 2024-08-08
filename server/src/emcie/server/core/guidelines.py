@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
 from emcie.server.core.persistence.document_database import DocumentDatabase
@@ -16,6 +17,9 @@ class Guideline:
     creation_utc: datetime
     predicate: str
     content: str
+
+    def __hash__(self) -> int:
+        return hash(f'{self.predicate}{self.content}')
 
 
 class GuidelineStore(ABC):

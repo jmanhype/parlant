@@ -10,8 +10,9 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.guidelines import Guideline, GuidelineId
-from emcie.server.engines.alpha.utils import duration_logger, make_llm_client
+from emcie.server.engines.alpha.utils import make_llm_client
 from emcie.server.logger import Logger
+from emcie.server.utils import duration_logger
 
 CoherenceContradictionId = NewType("CoherenceContradictionId", str)
 
