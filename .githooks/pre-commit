@@ -1,0 +1,19 @@
+#!/bin/bash
+# Run mypy on the src and tests directories
+
+for dir in common sdk server; do
+	pushd $dir
+	echo "Running MyPy on $dir..."
+	poetry run mypy
+	MYPY_EXIT_CODE=$?
+
+	if [ $MYPY_EXIT_CODE -ne 0 ]; then
+			echo "mypy found type errors. Commit aborted."
+			exit 1
+	fi
+	popd
+done
+
+
+echo "mypy checks passed. Proceeding with commit."
+exit 0
