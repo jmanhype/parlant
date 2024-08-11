@@ -1,0 +1,21 @@
+name: Pre-Push Hook
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/*'
+
+jobs:
+  run-pre-push-hook:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Make pre-push script executable
+        run: chmod +x .githooks/pre-commit
+
+      - name: Run pre-push script
+        run: ./.githooks/pre-commit
