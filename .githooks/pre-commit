@@ -4,6 +4,7 @@
 for dir in common sdk server; do
 	pushd $dir
 	echo "Running MyPy on $dir..."
+	poetry install --no-interaction --no-root
 	poetry run mypy
 	MYPY_EXIT_CODE=$?
 
