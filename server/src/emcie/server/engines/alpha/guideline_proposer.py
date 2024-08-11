@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import jsonfinder  # type: ignore
 from typing import Sequence
 from loguru import logger
@@ -59,7 +60,7 @@ class GuidelineProposer:
         batch_size: int,
     ) -> Sequence[Sequence[Guideline]]:
         batches = []
-        batch_count = len(guidelines) // batch_size + 1
+        batch_count = math.ceil(len(guidelines) / batch_size)
 
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
