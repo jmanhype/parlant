@@ -16,5 +16,5 @@ for dir in common sdk server; do
 done
 
 
-echo "mypy checks passed. Proceeding with commit."
+echo "MyPy checks passed. Proceeding with commit."
 exit 0
