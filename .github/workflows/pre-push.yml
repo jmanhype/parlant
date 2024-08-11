@@ -22,4 +22,4 @@ jobs:
 
       - name: Run Pre-commit Hook
         run: ./.githooks/pre-commit
-	continue-on-error: false
+        continue-on-error: false
