@@ -46,7 +46,7 @@ Feature: Terminology Integration
     Scenario: The agent responds with a term retrieved from tool content
         Given 50 random terms related to technology companies
         And the term "leaf" defined as a cryptocurrency wallet for walnut cryptocoins
-        And a guideline "explain_terry" to elaborate on Terry's offering when the user asks about Terry
+        And a guideline "explain_terry" to fully elaborate on Terry's offering when the user asks about Terry
         And the tool "get_terrys_offering"
         And an association between "explain_terry" and "get_terrys_offering"
         And a user message, "Tell me about Terry"

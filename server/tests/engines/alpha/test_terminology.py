@@ -9,7 +9,7 @@ from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import Event, MessageEventData, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService
+from emcie.server.core.tools import LocalToolService, MultiplexedToolService
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociation,
@@ -472,7 +472,13 @@ def given_a_tool(
 
     tool = sync_await(create_tool(**tools[tool_name]))
 
-    context.tools[tool_name] = tool
+    multiplexed_tool_service = container[MultiplexedToolService]
+
+    context.tools[tool_name] = sync_await(
+        multiplexed_tool_service.read_tool(
+            tool.id, next(iter(multiplexed_tool_service.services.keys()))
+        )
+    )
 
 
 @when("processing is triggered", target_fixture="produced_events")
