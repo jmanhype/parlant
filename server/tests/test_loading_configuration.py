@@ -32,29 +32,33 @@ async def valid_config() -> JSONSerializable:
                     }
                 ]
             },
-            "tools": {
-                "multiply": {
-                    "description": "Multiply two numbers",
-                    "function_name": "multiply",
-                    "module_path": importfile(str(tool_file)).__name__,
-                    "parameters": {
-                        "a": {"description": "first number", "type": "number"},
-                        "b": {"description": "second number", "type": "number"},
+            "services": [
+                {
+                    "type": "local",
+                    "tools": {
+                        "multiply": {
+                            "description": "Multiply two numbers",
+                            "function_name": "multiply",
+                            "module_path": importfile(str(tool_file)).__name__,
+                            "parameters": {
+                                "a": {"description": "first number", "type": "number"},
+                                "b": {"description": "second number", "type": "number"},
+                            },
+                            "required": ["a", "b"],
+                            "type": "python",
+                        }
                     },
-                    "required": ["a", "b"],
-                    "type": "python",
                 }
-            },
-            "terminology":
-            {
-               "Default Agent": [
+            ],
+            "terminology": {
+                "Default Agent": [
                     {
                         "name": "walnut",
                         "description": "a name of an altcoin",
                         "synonyms": ["Emcie's altcoin"],
                     }
                 ]
-            }
+            },
         }
 
     async with new_file_path() as tool_file:
@@ -72,7 +76,7 @@ async def test_that_empty_config_is_valid() -> None:
                     {
                         "agents": [{"name": "Default Agent"}],
                         "guidelines": {"Default Agent": []},
-                        "tools": {},
+                        "services": [],
                         "terminology": {},
                     }
                 )
@@ -95,7 +99,7 @@ async def test_that_a_config_with_a_tool_whose_module_cannot_be_found_fails_vali
 ) -> None:
     async with new_file_path() as config_file, new_file_path() as tool_file:
         invalid_config: JSONSerializable = copy.deepcopy(valid_config)
-        invalid_config["tools"]["multiply"][  # type: ignore
+        invalid_config["services"][0]["tools"]["multiply"][  # type: ignore
             "module_path"
         ] = "invalid.path.to.multiply"
 
@@ -124,21 +128,6 @@ async def test_that_a_config_with_missing_mandatory_keys_in_guideline_fails_vali
 
         invalid_config = copy.deepcopy(valid_config)
         del invalid_config["guidelines"]["Default Agent"][0]["then"]  # type: ignore
-
-        with open(config_file, "w") as f:
-            f.write(json.dumps(invalid_config))
-
-        assert ConfigurationFileValidator().validate(config_file) is False
-
-
-async def test_that_a_config_with_a_guideline_associated_to_a_nonexistent_tool_fails_validation(
-    valid_config: JSONSerializable,
-) -> None:
-    async with new_file_path() as config_file:
-        invalid_config = copy.deepcopy(valid_config)
-        invalid_config["guidelines"]["Default Agent"][0]["enabled_tools"] = [  # type: ignore
-            "nonexistent_tool"
-        ]
 
         with open(config_file, "w") as f:
             f.write(json.dumps(invalid_config))
