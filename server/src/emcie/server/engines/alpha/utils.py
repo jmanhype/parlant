@@ -3,12 +3,12 @@ import json
 import os
 import time
 from typing import Any, Literal, Sequence, cast
-from loguru import logger
 from openai import AsyncClient
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event, ToolEventData
 from emcie.server.engines.common import ProducedEvent
+from emcie.server.logger import Logger
 
 
 def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:
@@ -22,7 +22,10 @@ def make_llm_client(provider: Literal["openai", "together"]) -> AsyncClient:
 
 
 @contextmanager
-def duration_logger(operation_name: str) -> Any:
+def duration_logger(
+    logger: Logger,
+    operation_name: str,
+) -> Any:
     t_start = time.time()
 
     try:

@@ -8,7 +8,8 @@ import subprocess
 import sys
 import time
 from typing import Any, Iterator, Literal, TypedDict, Union, cast
-from loguru import logger
+
+from emcie.server.logger import Logger
 
 
 SERVER_PORT = 8089
@@ -38,6 +39,7 @@ CLI_PATH = get_package_path() / "bin/emcie-server"
 class _TestContext:
     home_dir: Path
     config_file: Path
+    logger: Logger
 
 
 class _Agent(TypedDict, total=False):
@@ -183,7 +185,7 @@ def run_server(context: _TestContext) -> Iterator[subprocess.Popen[str]]:
                 return
             time.sleep(0.5)
 
-        logger.error(
+        context.logger.error(
             "Server process had to be killed. stderr="
             + (process.stderr and process.stderr.read() or "None")
         )

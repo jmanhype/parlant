@@ -1,6 +1,5 @@
 import json
 from typing import Mapping, Optional, Sequence
-from loguru import logger
 
 from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent
@@ -13,12 +12,15 @@ from emcie.server.engines.alpha.utils import (
 )
 from emcie.server.engines.common import ProducedEvent
 from emcie.server.core.sessions import Event
+from emcie.server.logger import Logger
 
 
 class MessageEventProducer:
     def __init__(
         self,
+        logger: Logger,
     ) -> None:
+        self.logger = logger
         self._llm_client = make_llm_client("openai")
 
     async def produce_events(
@@ -40,7 +42,7 @@ class MessageEventProducer:
         ):
             # No interaction and no guidelines that could trigger
             # a proactive start of the interaction
-            logger.debug("Skipping response; interaction is empty and there are no guidelines")
+            self.logger.debug("Skipping response; interaction is empty and there are no guidelines")
             return []
 
         prompt = self._format_prompt(
@@ -54,7 +56,7 @@ class MessageEventProducer:
         )
 
         if response_message := await self._generate_response_message(prompt):
-            logger.debug(f'Message production result: "{response_message}"')
+            self.logger.debug(f'Message production result: "{response_message}"')
             return [
                 ProducedEvent(
                     source="server",
@@ -63,7 +65,7 @@ class MessageEventProducer:
                 )
             ]
         else:
-            logger.debug("Skipping response; no response deemed necessary")
+            self.logger.debug("Skipping response; no response deemed necessary")
 
         return []
 
@@ -249,7 +251,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
         if not json_content["produced_response"]:
             return None
 
-        logger.debug(
+        self.logger.debug(
             f'Message event producer response: {json.dumps(json_content["revisions"], indent=2)}'
         )
 
@@ -261,6 +263,6 @@ Example 4: Non-Adherence Due to Missing Data: ###
         )
 
         if not followed_all_rules and not rules_broken_due_to_prioritization:
-            logger.warning(f"PROBLEMATIC RESPONSE: {content}")
+            self.logger.warning(f"PROBLEMATIC RESPONSE: {content}")
 
         return str(final_revision["content"])

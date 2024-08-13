@@ -83,6 +83,10 @@ class TerminologyChromaStore(TerminologyStore):
         self,
         chroma_db: ChromaDatabase,
     ):
+        try:
+            chroma_db.delete_collection("terminology")
+        except ValueError:
+            pass
         self._collection: ChromaCollection = chroma_db.get_or_create_collection(
             name="terminology",
             schema=self.TermDocument,

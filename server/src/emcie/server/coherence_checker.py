@@ -11,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.engines.alpha.utils import duration_logger, make_llm_client
+from emcie.server.logger import Logger
 
 CoherenceContradictionId = NewType("CoherenceContradictionId", str)
 
@@ -76,8 +77,11 @@ class ContradictionEvaluator(ABC):
 class ContradictionEvaluatorBase(ABC):
     def __init__(
         self,
+        logger: Logger,
         contradiction_type: ContradictionType,
     ) -> None:
+        self.logger = logger
+
         self._llm_client = make_llm_client("openai")
         self.contradiction_type = contradiction_type
         self.contradiction_response_outcome_key = (
@@ -105,8 +109,9 @@ class ContradictionEvaluatorBase(ABC):
                 ]
             )
         with duration_logger(
-            f"Evaluating {self.contradiction_type} for {len(tasks)} "
-            f"batches (batch size={EVALUATION_BATCH_SIZE})"
+            logger=self.logger,
+            operation_name=f"Evaluating {self.contradiction_type} for {len(tasks)} "
+            f"batches (batch size={EVALUATION_BATCH_SIZE})",
         ):
             contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
 
@@ -223,8 +228,11 @@ class ContradictionEvaluatorBase(ABC):
 
 
 class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(self) -> None:
-        super().__init__(ContradictionType.HIERARCHICAL)
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        super().__init__(logger, ContradictionType.HIERARCHICAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -306,8 +314,11 @@ This type of Contradiction occurs when the application of a general guideline is
 
 class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
 
-    def __init__(self) -> None:
-        super().__init__(ContradictionType.PARALLEL)
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        super().__init__(logger, ContradictionType.PARALLEL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -388,8 +399,11 @@ This happens when conditions for both guidelines are met simultaneously, without
 
 
 class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(self) -> None:
-        super().__init__(ContradictionType.TEMPORAL)
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        super().__init__(logger, ContradictionType.TEMPORAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -470,8 +484,11 @@ This arises from a lack of clear prioritization or differentiation between actio
 
 
 class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(self) -> None:
-        super().__init__(ContradictionType.CONTEXTUAL)
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        super().__init__(logger, ContradictionType.CONTEXTUAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -552,12 +569,17 @@ These conflicts arise from different but potentially overlapping circumstances r
 
 
 class CoherenceChecker:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self.logger = logger
+
         self._llm_client = make_llm_client("openai")
-        self.hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator()
-        self.parallel_contradiction_evaluator = ParallelContradictionEvaluator()
-        self.temporal_contradiction_evaluator = TemporalContradictionEvaluator()
-        self.contextual_contradiction_evaluator = ContextualContradictionEvaluator()
+        self.hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(logger)
+        self.parallel_contradiction_evaluator = ParallelContradictionEvaluator(logger)
+        self.temporal_contradiction_evaluator = TemporalContradictionEvaluator(logger)
+        self.contextual_contradiction_evaluator = ContextualContradictionEvaluator(logger)
 
     async def evaluate_coherence(
         self,

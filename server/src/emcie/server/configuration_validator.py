@@ -4,15 +4,18 @@ from pathlib import Path
 import traceback
 import typing
 from jsonschema import ValidationError, validate
-from loguru import logger
 
 from emcie.server.core.common import JSONSerializable
+from emcie.server.logger import Logger
 
 
 class ConfigurationFileValidator:
     def __init__(
         self,
+        logger: Logger,
     ) -> None:
+        self.logger = logger
+
         self.schema = {
             "type": "object",
             "properties": {
@@ -204,5 +207,5 @@ class ConfigurationFileValidator:
             return True
         except Exception as e:
             traceback.print_exc()
-            logger.error(f"Configuration file invalid: {e.__class__.__name__}({str(e)})")
+            self.logger.error(f"Configuration file invalid: {e.__class__.__name__}({str(e)})")
             return False

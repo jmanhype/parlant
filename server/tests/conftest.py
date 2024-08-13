@@ -26,6 +26,7 @@ from emcie.server.core.tools import MultiplexedToolService, LocalToolService, To
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.engines.common import Engine
+from emcie.server.logger import Logger, StdoutLogger
 from emcie.server.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.persistence.document_database import (
@@ -53,6 +54,8 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
 async def container() -> AsyncIterator[Container]:
     container = Container(log_undefined_deps=True)
 
+    container[Logger] = StdoutLogger()
+
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)
@@ -70,7 +73,9 @@ async def container() -> AsyncIterator[Container]:
     container[Engine] = AlphaEngine
 
     with tempfile.TemporaryDirectory() as chroma_db_dir:
-        container[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(Path(chroma_db_dir)))
+        container[TerminologyStore] = TerminologyChromaStore(
+            ChromaDatabase(container[Logger], Path(chroma_db_dir))
+        )
         async with MC(container) as mc:
             container[MC] = mc
             yield container

@@ -1,9 +1,10 @@
 from collections import defaultdict
 from itertools import chain
 from typing import Mapping, Optional, Sequence
-from loguru import logger
 
 from emcie.common.tools import Tool
+from emcie.server.logger import Logger
+
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariable,
@@ -29,6 +30,7 @@ from emcie.server.core.sessions import Event, SessionId, SessionStore
 class AlphaEngine(Engine):
     def __init__(
         self,
+        logger: Logger,
         agent_store: AgentStore,
         session_store: SessionStore,
         context_variable_store: ContextVariableStore,
@@ -38,6 +40,8 @@ class AlphaEngine(Engine):
         tool_service: ToolService,
         guideline_tool_association_store: GuidelineToolAssociationStore,
     ) -> None:
+        self.logger = logger
+
         self.agent_store = agent_store
         self.session_store = session_store
         self.context_variable_store = context_variable_store
@@ -49,9 +53,9 @@ class AlphaEngine(Engine):
 
         self.max_tool_call_iterations = 5
 
-        self.guideline_proposer = GuidelineProposer()
-        self.tool_event_producer = ToolEventProducer(self.tool_service)
-        self.message_event_producer = MessageEventProducer()
+        self.guideline_proposer = GuidelineProposer(logger=self.logger)
+        self.tool_event_producer = ToolEventProducer(self.logger, self.tool_service)
+        self.message_event_producer = MessageEventProducer(logger=self.logger)
 
     async def process(
         self,
@@ -101,7 +105,6 @@ class AlphaEngine(Engine):
                     ),
                 )
             )
-
             if tool_events := await self.tool_event_producer.produce_events(
                 agents=[agent],
                 context_variables=context_variables,
@@ -125,7 +128,7 @@ class AlphaEngine(Engine):
                 break
 
             if tool_call_iterations == self.max_tool_call_iterations:
-                logger.warning(f"Reached max tool call iterations ({tool_call_iterations})")
+                self.logger.warning(f"Reached max tool call iterations ({tool_call_iterations})")
                 break
 
         message_events = await self.message_event_producer.produce_events(

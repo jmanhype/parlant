@@ -12,7 +12,6 @@ from typing import Any, AsyncIterator, Awaitable, Callable
 import click
 import click_completion
 import json
-from loguru import logger
 from pathlib import Path
 import sys
 import rich
@@ -52,6 +51,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.common import Engine
+from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
 
@@ -67,7 +67,9 @@ EXIT_STACK: AsyncExitStack
 
 sys.path.append(EMCIE_HOME_DIR.as_posix())
 
-logger.info(f"Using home directory '{EMCIE_HOME_DIR.absolute()}'")
+
+LOGGER = FileLogger(EMCIE_HOME_DIR / "emcie.log")
+LOGGER.info(f"Using home directory '{EMCIE_HOME_DIR.absolute()}'")
 
 
 @dataclass
@@ -159,22 +161,25 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
     c = Container()
 
+    c[Logger] = LOGGER
+
     async with JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "agents.json"
+        LOGGER, EMCIE_HOME_DIR / "agents.json"
     ) as agents_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "context_variables.json"
+        LOGGER, EMCIE_HOME_DIR / "context_variables.json"
     ) as context_variables_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "end_users.json"
+        LOGGER, EMCIE_HOME_DIR / "end_users.json"
     ) as end_users_db, JSONFileDocumentDatabase(
+        LOGGER,
         EMCIE_HOME_DIR / "sessions.json",
     ) as sessions_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "guidelines.json"
+        LOGGER, EMCIE_HOME_DIR / "guidelines.json"
     ) as guidelines_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "tools.json"
+        LOGGER, EMCIE_HOME_DIR / "tools.json"
     ) as tools_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "guideline_tool_associations.json"
+        LOGGER, EMCIE_HOME_DIR / "guideline_tool_associations.json"
     ) as guideline_tool_associations_db, JSONFileDocumentDatabase(
-        EMCIE_HOME_DIR / "guideline_connections.json"
+        LOGGER, EMCIE_HOME_DIR / "guideline_connections.json"
     ) as guideline_connections_db:
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
@@ -191,7 +196,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
         c[SessionStore] = SessionDocumentStore(sessions_db)
 
-        c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(EMCIE_HOME_DIR))
+        c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
 
         c[SessionListener] = PollingSessionListener
         c[Engine] = AlphaEngine
@@ -244,14 +249,14 @@ async def serve_app(
     except (KeyboardInterrupt, asyncio.CancelledError):
         return ShutdownReason.SHUTDOWN_REQUEST
     except BaseException as e:
-        logger.critical(e.__class__.__name__ + ": " + str(e))
+        LOGGER.critical(e.__class__.__name__ + ": " + str(e))
         sys.exit(1)
 
     return await shutdown_monitor_task
 
 
 async def start_server(params: CLIParams) -> None:
-    assert ConfigurationFileValidator().validate(config_file=params.config_file)
+    assert ConfigurationFileValidator(LOGGER).validate(config_file=params.config_file)
 
     last_config_update_time = os.path.getmtime(params.config_file)
 
@@ -260,7 +265,7 @@ async def start_server(params: CLIParams) -> None:
         current_mtime = os.path.getmtime(params.config_file)
 
         if current_mtime > last_config_update_time:
-            validated = ConfigurationFileValidator().validate(config_file=params.config_file)
+            validated = ConfigurationFileValidator(LOGGER).validate(config_file=params.config_file)
 
             last_config_update_time = current_mtime
 
@@ -279,7 +284,7 @@ async def start_server(params: CLIParams) -> None:
             if shutdown_reason == ShutdownReason.SHUTDOWN_REQUEST:
                 return
             elif shutdown_reason == ShutdownReason.HOT_RELOAD:
-                logger.info("***** HOT RELOAD *****")
+                LOGGER.info("***** HOT RELOAD *****")
 
                 with open(params.config_file) as f:
                     params.config = json.load(f)

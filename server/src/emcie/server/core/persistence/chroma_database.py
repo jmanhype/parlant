@@ -3,7 +3,6 @@ import asyncio
 import importlib
 import json
 import operator
-from loguru import logger
 import os
 from pathlib import Path
 from typing import Any, Mapping, Sequence, Type, cast
@@ -13,11 +12,14 @@ from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # type: 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.persistence.common import ObjectId, Where
 from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
+from emcie.server.logger import Logger
 
 
 class ChromaDatabase(DocumentDatabase):
 
-    def __init__(self, dir_path: Path) -> None:
+    def __init__(self, logger: Logger, dir_path: Path) -> None:
+        self.logger = logger
+
         self._chroma_client = chromadb.PersistentClient(str(dir_path))
         self._embedding_function = OpenAIEmbeddingFunction(
             api_key=os.environ.get("OPENAI_API_KEY"),
@@ -29,6 +31,7 @@ class ChromaDatabase(DocumentDatabase):
         collections: dict[str, ChromaCollection] = {}
         for chromadb_collection in self._chroma_client.list_collections():
             collections[chromadb_collection.name] = ChromaCollection(
+                logger=self.logger,
                 chromadb_collection=chromadb_collection,
                 name=chromadb_collection.name,
                 schema=operator.attrgetter(chromadb_collection.metadata["model_path"])(
@@ -44,8 +47,9 @@ class ChromaDatabase(DocumentDatabase):
     ) -> ChromaCollection:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
-        logger.debug(f'Creating chromadb collection "{name}"')
+        self.logger.debug(f'Creating chromadb collection "{name}"')
         new_collection = ChromaCollection(
+            self.logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
                 embedding_function=self._embedding_function,
@@ -75,8 +79,9 @@ class ChromaDatabase(DocumentDatabase):
     ) -> ChromaCollection:
         if collection := self._collections.get(name):
             return collection
-        logger.debug(f'Creating chromadb collection "{name}"')
+        self.logger.debug(f'Creating chromadb collection "{name}"')
         new_collection = ChromaCollection(
+            self.logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
                 embedding_function=self._embedding_function,
@@ -105,10 +110,13 @@ class ChromaCollection(DocumentCollection):
 
     def __init__(
         self,
+        logger: Logger,
         chromadb_collection: chromadb.Collection,
         name: str,
         schema: Type[DefaultBaseModel],
     ) -> None:
+        self.logger = logger
+
         self._name = name
         self._schema = schema
         self._lock = asyncio.Lock()
@@ -204,8 +212,8 @@ class ChromaCollection(DocumentCollection):
         )
 
         if metadatas := docs["metadatas"]:
-            logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
+            self.logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
 
             return [{k: v for k, v in m.items()} for m in metadatas[0]]
 
-        raise ValueError("No similar documents found.")
+        return []
