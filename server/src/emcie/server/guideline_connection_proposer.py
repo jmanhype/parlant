@@ -413,6 +413,57 @@ Example 13:###
 }}
 ###
 
+Example 14: ###
+{{
+    "source": {{"id": "115", "when": "The user asks for help with a recipe", "then": "explain the cooking steps in detail"}},
+    "target": {{"id": "215", "when": "explaining cooking steps", "then": "mention any special techniques involved"}},
+    "rationale": "Explaining the cooking steps in detail entails mentioning any special techniques involved.",
+    "score": 9,
+    "kind": "entails"
+}}
+###
+
+Example 15: ###
+{{
+    "source": {{"id": "116", "when": "The user inquires about data privacy", "then": "provide information on how their data is stored"}},
+    "target": {{ "id": "216", "when": "providing information on data storage", "then": "mention the security measures in place"}},
+    "rationale": "Providing information on how data is stored entails mentioning the security measures in place.",
+    "score": 10,
+    "kind": "entails"
+}}
+###
+
+Example 16: ###
+{{
+    "source": {{"id": "117", "when": "The user asks about product return policies", "then": "explain the steps for returning a product"}},
+    "target": {{"id": "217", "when": "explaining return steps", "then": "include details on how to package the return"}},
+    "rationale": "Explaining the steps for returning a product entails including details on how to package the return.",
+    "score": 8,
+    "kind": "entails"
+}}
+###
+
+Example 17: ###
+{{
+    "source": {{"id": "118", "when": "The user inquires about account management", "then": "provide instructions for changing account settings"}},
+    "target": {{"id": "218", "when": "providing account settings instructions", "then": "mention how to reset passwords"}},
+    "rationale": "Providing instructions for changing account settings entails mentioning how to reset passwords.",
+    "score": 8,
+    "kind": "entails"
+}}
+###
+
+Example 18: ###
+{{
+    "source": {{"id": "119", "when": "The user asks about troubleshooting a device", "then": "give them a step-by-step guide"}},
+    "target": {{"id": "219", "when": "providing a step-by-step guide", "then": "include a note on common issues and fixes"}},
+    "rationale": "Providing a step-by-step guide entails including a note on common issues and fixes.",
+    "score": 9,
+    "kind": "entails"
+}}
+###
+
+
 - Output:
 The output should be a JSON object with the following structure, where you need to fill in the rationale and kind: ###
 {{"propositions": {json.dumps(propositions_output_structure, indent=2)}}}
