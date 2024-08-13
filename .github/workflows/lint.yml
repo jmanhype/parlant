@@ -1,4 +1,4 @@
-name: CI
+name: Source 
 
 on: [push, pull_request]
 
@@ -20,6 +20,10 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
-      - name: Run Pre-commit Hook
-        run: ./.githooks/pre-commit
+      - name: Install packages
+        run: python scripts/install_packages.py
+        continue-on-error: false
+      
+      - name: Lint packages
+        run: python scripts/lint.py
         continue-on-error: false
