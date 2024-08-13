@@ -6,7 +6,10 @@ from emcie.server.logger import Logger
 
 
 @contextmanager
-def duration_logger(logger: Logger, operation_name: str,) -> Any:
+def duration_logger(
+    logger: Logger,
+    operation_name: str,
+) -> Any:
     t_start = time.time()
 
     try:

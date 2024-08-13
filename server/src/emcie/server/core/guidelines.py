@@ -18,9 +18,6 @@ class Guideline:
     predicate: str
     content: str
 
-    def __hash__(self) -> int:
-        return hash(f'{self.predicate}{self.content}')
-
 
 class GuidelineStore(ABC):
     @abstractmethod

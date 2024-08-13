@@ -36,6 +36,9 @@ class GuidelineConnectionProposer:
         fresh_guidelines: Sequence[Guideline],
         retained_guidelines: Optional[Sequence[Guideline]] = None,
     ) -> Sequence[ConnectionProposition]:
+        if not fresh_guidelines:
+            return []
+
         connection_proposition_tasks = []
         connection_classifiction_tasks = []
 

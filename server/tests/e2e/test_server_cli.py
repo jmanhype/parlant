@@ -1,6 +1,8 @@
 import asyncio
+import json
 import os
 import signal
+import time
 import traceback
 import httpx
 
@@ -8,6 +10,7 @@ from emcie.common.tools import ToolContext, ToolResult
 from emcie.common.plugin import PluginServer, tool
 
 from emcie.server.core.sessions import Event
+from emcie.server.indexer import GuidelineIndexer
 from tests.e2e.test_utilities import (
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
@@ -166,3 +169,78 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
 
         finally:
             await plugin_server.shutdown()
+
+
+def test_server_indexer_creates_cache_file_with_guidelines(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--index"]):
+        initial_guidelines = read_guideline_config(context.config_file)
+
+        new_guideline: _Guideline = {
+            "when": "talking about bananas",
+            "then": "say they're very tasty",
+        }
+
+        write_guideline_config(
+            new_guidelines=initial_guidelines + [new_guideline],
+            config_file=context.config_file,
+        )
+
+        time.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        cache_file = context.home_dir / "emcie.cache"
+        assert cache_file.exists()
+
+        with open(cache_file, "r") as f:
+            cache_data = json.load(f)
+
+        guidelines = read_guideline_config(context.config_file)
+        for guideline in guidelines:
+            assert (
+                f"{guideline["when"]}_{guideline["then"]}"
+                in cache_data["guidelines"][DEFAULT_AGENT_NAME]
+            )
+
+
+def test_server_indexer_modified_cache_file_with_the_changes_that_have_been_made(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--index"]):
+        time.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        initial_guidelines = read_guideline_config(context.config_file)
+
+        new_guideline: _Guideline = {
+            "when": "talking about bananas",
+            "then": "say they're very tasty",
+        }
+
+        write_guideline_config(
+            new_guidelines=initial_guidelines + [new_guideline],
+            config_file=context.config_file,
+        )
+
+        time.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        cache_file = context.home_dir / "emcie.cache"
+        assert cache_file.exists()
+
+        with open(cache_file, "r") as f:
+            cache_data = json.load(f)
+
+        for guideline in initial_guidelines + [new_guideline]:
+            assert (
+                f"{guideline["when"]}_{guideline["then"]}"
+                in cache_data["guidelines"][DEFAULT_AGENT_NAME]
+            )
+
+
+def test_force_flag_ignores_indexing_when_no_index_flag_is_set(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--no-index", "--force"]):
+        time.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        cache_file = context.home_dir / "emcie.cache"
+        assert not cache_file.exists()
