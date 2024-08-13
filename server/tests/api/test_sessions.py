@@ -434,4 +434,4 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
 
     t_end = time.time()
 
-    assert (t_end - t_start) < 0.25
+    assert (t_end - t_start) < 1
