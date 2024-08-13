@@ -57,14 +57,13 @@ from emcie.server.configuration_validator import ConfigurationFileValidator
 
 DEFAULT_PORT = 8000
 
+EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
+EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 MULTIPLEXED_TOOL_SERVICE = MultiplexedToolService()
 TOOL_NAME_TO_ID: dict[str, str] = {}
 
 EXIT_STACK: AsyncExitStack
-
-EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
-EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 sys.path.append(EMCIE_HOME_DIR.as_posix())
 
