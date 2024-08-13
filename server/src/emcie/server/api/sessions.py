@@ -22,10 +22,12 @@ from emcie.server.mc import MC
 class CreateSessionRequest(DefaultBaseModel):
     end_user_id: EndUserId
     agent_id: AgentId
+    title: Optional[str] = None
 
 
 class CreateSessionResponse(DefaultBaseModel):
     session_id: SessionId
+    title: Optional[str] = None
 
 
 class CreateMessageRequest(DefaultBaseModel):
@@ -42,8 +44,11 @@ class ConsumptionOffsetsDTO(DefaultBaseModel):
     client: int
 
 
-class ReadSessionResponse(DefaultBaseModel):
+class SessionDTO(DefaultBaseModel):
+    session_id: SessionId
+    end_user_id: EndUserId
     consumption_offsets: ConsumptionOffsetsDTO
+    title: Optional[str] = None
 
 
 class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
@@ -64,7 +69,11 @@ class EventDTO(DefaultBaseModel):
 
 
 class ListEventsResponse(DefaultBaseModel):
-    events: List[EventDTO]
+    events: list[EventDTO]
+
+
+class ListSessionsResponse(DefaultBaseModel):
+    sessions: list[SessionDTO]
 
 
 def create_router(
@@ -79,18 +88,40 @@ def create_router(
         session = await mc.create_end_user_session(
             end_user_id=request.end_user_id,
             agent_id=request.agent_id,
+            title=request.title,
         )
 
-        return CreateSessionResponse(session_id=session.id)
+        return CreateSessionResponse(session_id=session.id, title=session.title)
 
     @router.get("/{session_id}")
-    async def read_session(session_id: SessionId) -> ReadSessionResponse:
+    async def read_session(session_id: SessionId) -> SessionDTO:
         session = await session_store.read_session(session_id=session_id)
 
-        return ReadSessionResponse(
+        return SessionDTO(
+            session_id=session.id,
+            title=session.title,
+            end_user_id=session.end_user_id,
             consumption_offsets=ConsumptionOffsetsDTO(
                 client=session.consumption_offsets["client"],
-            )
+            ),
+        )
+
+    @router.get("/")
+    async def list_sessions(agent_id: Optional[AgentId] = None) -> ListSessionsResponse:
+        sessions = await session_store.list_sessions(agent_id=agent_id)
+
+        return ListSessionsResponse(
+            sessions=[
+                SessionDTO(
+                    session_id=s.id,
+                    title=s.title,
+                    end_user_id=s.end_user_id,
+                    consumption_offsets=ConsumptionOffsetsDTO(
+                        client=s.consumption_offsets["client"],
+                    ),
+                )
+                for s in sessions
+            ]
         )
 
     @router.patch("/{session_id}")

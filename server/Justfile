@@ -1,4 +1,5 @@
 set dotenv-load
+set positional-arguments
 
 EMCIE_HOME := "./cache"
 SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8000")
@@ -7,11 +8,11 @@ setup-cache:
   mkdir -p {{EMCIE_HOME}}
   cp _config.json {{EMCIE_HOME}}/config.json
 
-server *args: setup-cache
+@server *args: setup-cache
   EMCIE_HOME={{EMCIE_HOME}} poetry run python bin/emcie-server run {{args}}
 
-client *args:
-  EMCIE_HOME={{EMCIE_HOME}} poetry run python bin/emcie -s {{SERVER_ADDRESS}} {{args}}
+@client *args='':
+  EMCIE_HOME={{EMCIE_HOME}} poetry run python bin/emcie -s {{SERVER_ADDRESS}} "$@"
 
-validate *args: setup-cache
+@validate *args: setup-cache
   EMCIE_HOME={{EMCIE_HOME}} poetry run python bin/emcie-server check {{args}}

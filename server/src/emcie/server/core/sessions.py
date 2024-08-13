@@ -60,6 +60,7 @@ class Session:
     id: SessionId
     end_user_id: EndUserId
     agent_id: AgentId
+    title: Optional[str]
     consumption_offsets: dict[ConsumerId, int]
 
 
@@ -69,6 +70,7 @@ class SessionStore(ABC):
         self,
         end_user_id: EndUserId,
         agent_id: AgentId,
+        title: Optional[str] = None,
     ) -> Session: ...
 
     @abstractmethod
@@ -103,12 +105,19 @@ class SessionStore(ABC):
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]: ...
 
+    @abstractmethod
+    async def list_sessions(
+        self,
+        agent_id: Optional[AgentId],
+    ) -> Sequence[Session]: ...
+
 
 class SessionDocumentStore(SessionStore):
     class SessionDocument(DefaultBaseModel):
         id: SessionId
         end_user_id: EndUserId
         agent_id: AgentId
+        title: Optional[str] = None
         consumption_offsets: dict[ConsumerId, int]
 
     class EventDocument(DefaultBaseModel):
@@ -134,22 +143,28 @@ class SessionDocumentStore(SessionStore):
         self,
         end_user_id: EndUserId,
         agent_id: AgentId,
+        title: Optional[str] = None,
     ) -> Session:
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
-        session_id = await self._session_collection.insert_one(
-            document={
-                "id": common.generate_id(),
-                "end_user_id": end_user_id,
-                "agent_id": agent_id,
-                "consumption_offsets": consumption_offsets,
-            },
-        )
+
+        document = {
+            "id": common.generate_id(),
+            "end_user_id": end_user_id,
+            "agent_id": agent_id,
+            "consumption_offsets": consumption_offsets,
+        }
+
+        if title:
+            document["title"] = title
+
+        session_id = await self._session_collection.insert_one(document=document)
 
         return Session(
             id=SessionId(session_id),
             end_user_id=end_user_id,
             agent_id=agent_id,
             consumption_offsets=consumption_offsets,
+            title=title,
         )
 
     async def read_session(
@@ -165,6 +180,7 @@ class SessionDocumentStore(SessionStore):
             end_user_id=session_document["end_user_id"],
             agent_id=session_document["agent_id"],
             consumption_offsets=session_document["consumption_offsets"],
+            title=session_document.get("title"),
         )
 
     async def update_session(
@@ -241,6 +257,23 @@ class SessionDocumentStore(SessionStore):
                     **({"source": {"$eq": source}} if source else {}),
                     **({"offset": {"$gte": min_offset}} if min_offset else {}),
                 }
+            )
+        ]
+
+    async def list_sessions(
+        self,
+        agent_id: Optional[AgentId] = None,
+    ) -> Sequence[Session]:
+        return [
+            Session(
+                id=SessionId(s["id"]),
+                end_user_id=EndUserId(s["end_user_id"]),
+                agent_id=AgentId(s["agent_id"]),
+                consumption_offsets=s["consumption_offsets"],
+                title=s["title"],
+            )
+            for s in await self._session_collection.find(
+                filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
             )
         ]
 

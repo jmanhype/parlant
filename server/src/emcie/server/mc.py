@@ -49,10 +49,12 @@ class MC:
         self,
         end_user_id: EndUserId,
         agent_id: AgentId,
+        title: Optional[str] = None,
     ) -> Session:
         session = await self._session_store.create_session(
             end_user_id=end_user_id,
             agent_id=agent_id,
+            title=title,
         )
 
         await self._dispatch_session_update(session)
