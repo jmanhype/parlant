@@ -299,7 +299,7 @@ class SessionDocumentStore(SessionStore):
                 filters=cast(
                     Where,
                     {
-                        **{"session_id": {"$eq": session_id}},
+                        "session_id": {"$eq": session_id},
                         **({"source": {"$eq": source}} if source else {}),
                         **({"offset": {"$gte": min_offset}} if min_offset else {}),
                     },

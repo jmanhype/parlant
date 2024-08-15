@@ -14,7 +14,7 @@ from emcie.server.utils import duration_logger
 
 
 @dataclass(frozen=True)
-class ConnectionProposition:
+class GuidelineConnectionProposition:
     source: GuidelineId
     target: GuidelineId
     kind: ConnectionKind
@@ -33,21 +33,21 @@ class GuidelineConnectionProposer:
 
     async def propose_connections(
         self,
-        fresh_guidelines: Sequence[Guideline],
-        retained_guidelines: Optional[Sequence[Guideline]] = None,
-    ) -> Sequence[ConnectionProposition]:
-        if not fresh_guidelines:
+        introduced_guidelines: Sequence[Guideline],
+        existing_guidelines: Optional[Sequence[Guideline]] = None,
+    ) -> Sequence[GuidelineConnectionProposition]:
+        if not introduced_guidelines:
             return []
 
         connection_proposition_tasks = []
-        connection_classifiction_tasks = []
+        connection_kind_classification_tasks = []
 
-        for i, proposed_guideline in enumerate(fresh_guidelines):
+        for i, introduced_guideline in enumerate(introduced_guidelines):
             filtered_existing_guidelines = [
                 g
                 for g in chain(
-                    fresh_guidelines[i + 1 :],
-                    retained_guidelines if retained_guidelines else [],
+                    introduced_guidelines[i + 1 :],
+                    existing_guidelines if existing_guidelines else [],
                 )
             ]
 
@@ -58,7 +58,7 @@ class GuidelineConnectionProposer:
 
             connection_proposition_tasks.extend(
                 [
-                    asyncio.create_task(self._generate_propositions(proposed_guideline, batch))
+                    asyncio.create_task(self._generate_propositions(introduced_guideline, batch))
                     for batch in guideline_batches
                 ]
             )
@@ -70,17 +70,17 @@ class GuidelineConnectionProposer:
         ):
             propositions = chain(await asyncio.gather(*connection_proposition_tasks))
 
-        connection_classifiction_tasks.extend(
+        connection_kind_classification_tasks.extend(
             [asyncio.create_task(self._classify_connections(batch)) for batch in propositions]
         )
 
         with duration_logger(
             self.logger,
-            f"Determine connections propositions for {len(connection_classifiction_tasks)} "  # noqa
+            f"Determine connections propositions for {len(connection_kind_classification_tasks)} "  # noqa
             f"batches (batch size={self._batch_size})",
         ):
             connections = list(
-                chain.from_iterable(await asyncio.gather(*connection_classifiction_tasks))
+                chain.from_iterable(await asyncio.gather(*connection_kind_classification_tasks))
             )
 
         return connections
@@ -476,7 +476,7 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
     async def _classify_connections(
         self,
         connection_propositions: Sequence[dict[str, Any]],
-    ) -> Sequence[ConnectionProposition]:
+    ) -> Sequence[GuidelineConnectionProposition]:
         prompt = self._format_classification_connections(connection_propositions)
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
@@ -491,7 +491,7 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
         logger.debug(f"Connection Propositions Found: {json.dumps(connection_list, indent=2)}")
 
         propositions = [
-            ConnectionProposition(
+            GuidelineConnectionProposition(
                 source=c["source"]["id"],
                 target=c["target"]["id"],
                 kind=c["kind"],

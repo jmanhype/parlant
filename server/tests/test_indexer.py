@@ -30,7 +30,7 @@ def agent(
     return agent
 
 
-async def test_that_guidelines_written_in_the_cache_file(
+async def test_that_guidelines_written_in_the_index_file(
     container: Container,
     agent: Agent,
 ) -> None:
@@ -48,28 +48,28 @@ async def test_that_guidelines_written_in_the_cache_file(
         content="tell him it is pizza",
     )
 
-    async with new_file_path() as cache_file:
-        indexer = Indexer(cache_file=cache_file)
+    async with new_file_path() as index_file:
+        indexer = Indexer(index_json_file=index_file)
         await indexer.index(container)
-        with open(cache_file, "r") as f:
-            cache_dict = json.load(f)
+        with open(index_file, "r") as f:
+            indexes = json.load(f)
 
-            cached_guidelines = cache_dict["guidelines"][agent.name]
+            indexed_guidelines = indexes["guidelines"][agent.id]
 
-            assert GuidelineIndexer._guideline_checksum(first_guideline) in cached_guidelines
-            assert GuidelineIndexer._guideline_checksum(second_guideline) in cached_guidelines
+            assert GuidelineIndexer._guideline_checksum(first_guideline) in indexed_guidelines
+            assert GuidelineIndexer._guideline_checksum(second_guideline) in indexed_guidelines
 
             assert (
-                cached_guidelines[GuidelineIndexer._guideline_checksum(first_guideline)]
+                indexed_guidelines[GuidelineIndexer._guideline_checksum(first_guideline)]
                 == first_guideline.id
             )
             assert (
-                cached_guidelines[GuidelineIndexer._guideline_checksum(second_guideline)]
+                indexed_guidelines[GuidelineIndexer._guideline_checksum(second_guideline)]
                 == second_guideline.id
             )
 
 
-async def test_that_removed_guidelines_are_also_removed_from_the_cache_file(
+async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
     container: Container,
     agent: Agent,
 ) -> None:
@@ -87,24 +87,24 @@ async def test_that_removed_guidelines_are_also_removed_from_the_cache_file(
         content="tell him it is pizza",
     )
 
-    async with new_file_path() as cache_file:
-        await Indexer(cache_file=cache_file).index(container)
-        with open(cache_file, "r") as f:
-            cache_dict = json.load(f)
+    async with new_file_path() as index_file:
+        await Indexer(index_json_file=index_file).index(container)
+        with open(index_file, "r") as f:
+            indexes = json.load(f)
 
-            assert len(cache_dict["guidelines"][agent.name]) == 2
+            assert len(indexes["guidelines"][agent.id]) == 2
 
         await guideline_store.delete_guideline(
             guideline_set=agent.id,
             guideline_id=_guideline.id,
         )
 
-        await Indexer(cache_file=cache_file).index(container)
+        await Indexer(index_json_file=index_file).index(container)
 
-        with open(cache_file, "r") as f:
-            cache_dict = json.load(f)
+        with open(index_file, "r") as f:
+            indexes = json.load(f)
 
-            assert len(cache_dict["guidelines"][agent.name]) == 1
+            assert len(indexes["guidelines"][agent.id]) == 1
 
 
 async def test_that_guideline_connections_are_created(
@@ -126,11 +126,13 @@ async def test_that_guideline_connections_are_created(
         content="mention the best time to go for a walk",
     )
 
-    async with new_file_path() as cache_file:
-        indexer = Indexer(cache_file=cache_file)
+    async with new_file_path() as index_file:
+        indexer = Indexer(index_json_file=index_file)
         await indexer.index(container)
 
-        connections = await connection_store.list_connections(first_guideline.id, indirect=False)
+        connections = await connection_store.list_connections(
+            indirect=False, source=first_guideline.id
+        )
 
         assert len(connections) == 1
         assert connections[0].source == first_guideline.id
@@ -156,11 +158,13 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
         content="mention the best time to go for a walk",
     )
 
-    async with new_file_path() as cache_file:
-        indexer = Indexer(cache_file=cache_file)
+    async with new_file_path() as index_file:
+        indexer = Indexer(index_json_file=index_file)
         await indexer.index(container)
 
-        connections = await connection_store.list_connections(first_guideline.id, indirect=False)
+        connections = await connection_store.list_connections(
+            indirect=False, source=first_guideline.id
+        )
 
         assert len(connections) == 1
 
@@ -171,6 +175,8 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
 
         await indexer.index(container)
 
-        connections = await connection_store.list_connections(first_guideline.id, indirect=False)
+        connections = await connection_store.list_connections(
+            indirect=False, source=first_guideline.id
+        )
 
         assert len(connections) == 0

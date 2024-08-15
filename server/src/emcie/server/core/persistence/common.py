@@ -6,7 +6,9 @@ ObjectId = NewType("ObjectId", str)
 
 # Metadata Query Grammar
 LiteralValue = Union[str, int, float, bool]
+
 FieldName = str
+
 WhereOperator = TypedDict(
     "WhereOperator",
     {
@@ -19,6 +21,7 @@ WhereOperator = TypedDict(
     },
     total=False,
 )
+
 WhereExpression = dict[FieldName, WhereOperator]
 
 LogicalOperator = TypedDict(
@@ -29,10 +32,8 @@ LogicalOperator = TypedDict(
     },
     total=False,
 )
-Where = Union[WhereExpression, LogicalOperator]
 
-# {"id": {"$eq": "123"}}
-# {"$and": [{"id": {"$eq": "123"}}, {"name": {"$eq": "moshe"}}]}
+Where = Union[WhereExpression, LogicalOperator]
 
 
 def evaluate_filter(

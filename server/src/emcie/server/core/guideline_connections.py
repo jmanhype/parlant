@@ -40,15 +40,10 @@ class GuidelineConnectionStore(ABC):
     @abstractmethod
     async def list_connections(
         self,
-        source: GuidelineId,
         indirect: bool,
+        source: Optional[GuidelineId] = None,
+        target: Optional[GuidelineId] = None,
     ) -> Sequence[GuidelineConnection]: ...
-
-    @abstractmethod
-    async def delete_guideline_connections(
-        self,
-        guideline_id: GuidelineId,
-    ) -> None: ...
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
@@ -150,71 +145,68 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
     async def list_connections(
         self,
-        source: GuidelineId,
         indirect: bool,
+        source: Optional[GuidelineId] = None,
+        target: Optional[GuidelineId] = None,
     ) -> Sequence[GuidelineConnection]:
+        assert source or target
+
+        async def get_node_connections(node: GuidelineId) -> Sequence[GuidelineConnection]:
+            if not graph.has_node(node):
+                return []
+
+            if indirect:
+                descendant_edges = networkx.bfs_edges(graph, node)
+                connections = []
+
+                for edge_source, edge_target in descendant_edges:
+                    edge_data = graph.get_edge_data(edge_source, edge_target)
+
+                    connection = await self._collection.find_one(
+                        filters={"id": {"$eq": edge_data["id"]}},
+                    )
+
+                    connections.append(
+                        GuidelineConnection(
+                            id=connection["id"],
+                            source=connection["source"],
+                            target=connection["target"],
+                            kind=connection["kind"],
+                            creation_utc=connection["creation_utc"],
+                        )
+                    )
+
+                return connections
+
+            else:
+                successors = graph.succ[node]
+                connections = []
+
+                for source, data in successors.items():
+                    connection = await self._collection.find_one(
+                        filters={"id": {"$eq": data["id"]}},
+                    )
+
+                    connections.append(
+                        GuidelineConnection(
+                            id=connection["id"],
+                            source=connection["source"],
+                            target=connection["target"],
+                            kind=connection["kind"],
+                            creation_utc=connection["creation_utc"],
+                        )
+                    )
+
+                return connections
+
+        connections: list[GuidelineConnection] = []
+
         graph = await self._get_graph()
 
-        if not graph.has_node(source):
-            return []
+        if source:
+            connections.extend(await get_node_connections(source))
 
-        if indirect:
-            descendant_edges = networkx.bfs_edges(graph, source)
-            connections = []
+        if target:
+            connections.extend(await get_node_connections(target))
 
-            for edge_source, edge_target in descendant_edges:
-                edge_data = graph.get_edge_data(edge_source, edge_target)
-
-                connection = await self._collection.find_one(
-                    filters={"id": {"$eq": edge_data["id"]}},
-                )
-
-                connections.append(
-                    GuidelineConnection(
-                        id=connection["id"],
-                        source=connection["source"],
-                        target=connection["target"],
-                        kind=connection["kind"],
-                        creation_utc=connection["creation_utc"],
-                    )
-                )
-
-            return connections
-
-        else:
-            successors = graph.succ[source]
-            connections = []
-
-            for source, data in successors.items():
-                connection = await self._collection.find_one(
-                    filters={"id": {"$eq": data["id"]}},
-                )
-
-                connections.append(
-                    GuidelineConnection(
-                        id=connection["id"],
-                        source=connection["source"],
-                        target=connection["target"],
-                        kind=connection["kind"],
-                        creation_utc=connection["creation_utc"],
-                    )
-                )
-
-            return connections
-
-    async def delete_guideline_connections(
-        self,
-        guideline_id: GuidelineId,
-    ) -> None:
-        document = await self._collection.find_one(
-            filters={
-                "$or": [
-                    {"source": {"$eq": guideline_id}},
-                    {"target": {"$eq": guideline_id}}
-                ]
-            }
-        )
-
-        (await self._get_graph()).remove_edge(document["source"], document["target"])
-
-        await self._collection.delete_one(filters={"id": {"$eq": document["id"]}})
+        return connections

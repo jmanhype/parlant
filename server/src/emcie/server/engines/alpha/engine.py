@@ -235,8 +235,8 @@ class AlphaEngine(Engine):
             connected_guideline_ids = {
                 (c.target, c.kind)
                 for c in await self.guideline_connection_store.list_connections(
-                    proposition.guideline.id,
                     indirect=True,
+                    source=proposition.guideline.id,
                 )
             }
 

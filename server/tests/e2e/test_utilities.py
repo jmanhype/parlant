@@ -39,6 +39,7 @@ CLI_PATH = get_package_path() / "bin/emcie-server"
 class _TestContext:
     home_dir: Path
     config_file: Path
+    index_file: Path
     logger: Logger
 
 

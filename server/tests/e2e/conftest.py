@@ -21,4 +21,5 @@ def context() -> Iterator[_TestContext]:
             logger=StdoutLogger(),
             home_dir=home_dir_path,
             config_file=active_config_file_path,
+            index_file=home_dir_path / "index.json",
         )
