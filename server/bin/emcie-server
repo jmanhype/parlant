@@ -413,15 +413,15 @@ if __name__ == "__main__":
         ctx.obj.port = port
         ctx.obj.index = index
         ctx.obj.force = force
-        try:
-            asyncio.run(start_server(ctx.obj))
-        except StartupError as e:
-            print(f"error: {e}", file=sys.stderr)
-            exit(1)
-
+        asyncio.run(start_server(ctx.obj))
+        
     @cli.command(help="Check the configuration's validity and coherence")
     @click.pass_context
     def check(ctx: click.Context) -> None:
         asyncio.run(check_coherence(ctx.obj))
+    try:
+        cli()
+    except StartupError as e:
+            print(f"error: {e}", file=sys.stderr)
+            exit(1)
 
-    cli()
