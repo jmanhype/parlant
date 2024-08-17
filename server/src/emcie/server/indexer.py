@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import json
 from pathlib import Path
 from lagom import Container
@@ -130,46 +129,39 @@ class GuidelineIndexer:
 class Indexer:
     def __init__(
         self,
-        index_json_file: Path,
-        perform_indexing: bool = True,
-        force_disable_indexing: bool = False,
+        index_file: Path,
     ) -> None:
-        self._index_file = index_json_file
-        self._perform_indexing = perform_indexing
-        self._skip_indexing = force_disable_indexing
+        self._index_file = index_file
 
-    def _read_index_json_file(self) -> dict[str, Any]:
+    def _read_index_file(self) -> dict[str, Any]:
         if self._index_file.exists() and self._index_file.stat().st_size > 0:
             with open(self._index_file, "r") as f:
                 data: dict[str, Any] = json.load(f)
                 return data
         return {}
 
-    def _write_index_json_file(self, indexes: JSONSerializable) -> None:
+    def _write_index_file(self, indexes: JSONSerializable) -> None:
         with open(self._index_file, "w") as f:
             json.dump(indexes, f, indent=2)
 
-    async def index(self, container: Container) -> bool:
-        logger = container[Logger]
-
-        if not self._perform_indexing and self._skip_indexing:
-            logger.warning("Skipping indexing. This might cause unpredictable behavior.")
-            return True
-
+    async def should_index(
+        self,
+        container: Container,
+    ) -> bool:
         guideline_indexer = GuidelineIndexer(container)
 
-        indexed_data = self._read_index_json_file()
+        indexed_data = self._read_index_file()
 
-        if not self._perform_indexing and await guideline_indexer.should_index(
-            indexed_data.get("guidelines", {})
-        ):
-            return False
+        return await guideline_indexer.should_index(indexed_data.get("guidelines", {}))
+
+    async def index(self, container: Container) -> None:
+        guideline_indexer = GuidelineIndexer(container)
+
+        indexed_data = self._read_index_file()
 
         data = {}
         data["guidelines"] = await guideline_indexer.index(
             existing_indexed_guidelines=indexed_data.get("guidelines", {}),
         )
 
-        self._write_index_json_file(data)
-
-        return True
+        self._write_index_file(data)

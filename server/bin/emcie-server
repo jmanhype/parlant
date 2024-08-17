@@ -134,7 +134,7 @@ async def load_guidelines(c: Container, config: Any) -> None:
     guideline_tool_association_store = c[GuidelineToolAssociationStore]
 
     agents = await agent_store.list_agents()
-    
+
     for agent_name, guidelines in config["guidelines"].items():
         
         agent_id = next(a.id for a in agents if a.name == agent_name)
@@ -222,11 +222,19 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
     EXIT_STACK = AsyncExitStack()
 
-    indexer = Indexer(index_json_file=EMCIE_HOME_DIR / "index.json",perform_indexing=params.index, force_disable_indexing=params.force)
+    indexer = Indexer(index_file=EMCIE_HOME_DIR / "index.json")
 
     async with setup_container(params.config) as container, EXIT_STACK:
-        if not await indexer.index(container):
-            raise StartupError("indexing needs to be perform.")
+
+        if not params.index:
+            if params.force:
+                LOGGER.warning("Skipping indexing. This might cause unpredictable behavior.")
+
+            elif await indexer.should_index(container):
+                raise StartupError("indexing needs to be perform.")
+        else:
+            await indexer.index(container)
+        
         yield await create_app(container)
 
 
@@ -398,7 +406,7 @@ if __name__ == "__main__":
         type=bool,
         show_default=True,
         default=False,
-        help="Index entities on startup",
+        help="Index configuration changes on startup",
     )
     @click.option(
         "-f",

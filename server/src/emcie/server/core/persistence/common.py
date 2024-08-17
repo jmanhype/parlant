@@ -36,7 +36,7 @@ LogicalOperator = TypedDict(
 Where = Union[WhereExpression, LogicalOperator]
 
 
-def evaluate_filter(
+def _evaluate_fiter(
     operator: str,
     field_value: LiteralValue,
     filter_value: LiteralValue,
@@ -77,7 +77,7 @@ def matches_filters(
         field_filters = cast(WhereExpression, where)
         for field_name, field_filter in field_filters.items():
             for operator, filter_value in field_filter.items():
-                if not evaluate_filter(
+                if not _evaluate_fiter(
                     operator, candidate[field_name], cast(LiteralValue, filter_value)
                 ):
                     return False

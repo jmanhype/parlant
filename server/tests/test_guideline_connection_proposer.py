@@ -44,7 +44,7 @@ def context(
     [
         (
             {
-                "predicate": "The user asks about the weather",
+                "predicate": "the user asks about the weather",
                 "content": "provide the current weather update",
             },
             {
@@ -54,7 +54,7 @@ def context(
         ),
         (
             {
-                "predicate": "The user asks about nearby restaurants",
+                "predicate": "the user asks about nearby restaurants",
                 "content": "provide a list of popular restaurants",
             },
             {
@@ -64,7 +64,7 @@ def context(
         ),
     ],
 )
-def test_that_entails_connection_has_been_proposed(
+def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other(
     context: _TestContext,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
@@ -87,6 +87,7 @@ def test_that_entails_connection_has_been_proposed(
     )
 
     connection_proposer = GuidelineConnectionProposer(context.container[Logger])
+
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
@@ -129,7 +130,7 @@ def test_that_entails_connection_has_been_proposed(
         ),
     ],
 )
-def test_that_suggets_connection_has_been_proposed(
+def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other(
     context: _TestContext,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
@@ -166,7 +167,7 @@ def test_that_suggets_connection_has_been_proposed(
     assert connection_propositions[0].kind == "suggests"
 
 
-def test_that_multiple_connection_propositions_have_been_proposed(
+def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
     context: _TestContext,
 ) -> None:
     guideline_store = context.container[GuidelineStore]
@@ -180,7 +181,7 @@ def test_that_multiple_connection_propositions_have_been_proposed(
             )
         )
 
-    new_guidelines = list(
+    introduced_guidelines = list(
         map(
             lambda g: create_guideline(
                 g["when"],
@@ -226,19 +227,22 @@ def test_that_multiple_connection_propositions_have_been_proposed(
     connection_proposer = GuidelineConnectionProposer(context.container[Logger])
 
     connection_propositions = list(
-        context.sync_await(connection_proposer.propose_connections(new_guidelines, []))
+        context.sync_await(connection_proposer.propose_connections(introduced_guidelines, []))
     )
 
-    assert len(connection_propositions) == len(new_guidelines) // 2
+    assert len(connection_propositions) == len(introduced_guidelines) // 2
 
-    pairs = [(new_guidelines[i], new_guidelines[i + 1]) for i in range(0, len(new_guidelines), 2)]
+    pairs = [
+        (introduced_guidelines[i], introduced_guidelines[i + 1])
+        for i in range(0, len(introduced_guidelines), 2)
+    ]
 
     for i, connection in enumerate(connection_propositions):
         assert connection.source == pairs[i][0].id
         assert connection.target == pairs[i][1].id
 
 
-def test_that_connections_between_old_guidelines_are_not_being_proposed(
+def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     context: _TestContext,
 ) -> None:
     guideline_store = context.container[GuidelineStore]
@@ -252,7 +256,7 @@ def test_that_connections_between_old_guidelines_are_not_being_proposed(
             )
         )
 
-    old_guidelines = list(
+    existing_guidelines = list(
         map(
             lambda g: create_guideline(
                 predicate=g["when"],
@@ -298,7 +302,7 @@ def test_that_connections_between_old_guidelines_are_not_being_proposed(
     connection_proposer = GuidelineConnectionProposer(context.container[Logger])
 
     connection_propositions = list(
-        context.sync_await(connection_proposer.propose_connections([], old_guidelines))
+        context.sync_await(connection_proposer.propose_connections([], existing_guidelines))
     )
 
     assert len(connection_propositions) == 0

@@ -49,7 +49,7 @@ async def test_that_guidelines_written_in_the_index_file(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_json_file=index_file)
+        indexer = Indexer(index_file=index_file)
         await indexer.index(container)
         with open(index_file, "r") as f:
             indexes = json.load(f)
@@ -88,7 +88,7 @@ async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
     )
 
     async with new_file_path() as index_file:
-        await Indexer(index_json_file=index_file).index(container)
+        await Indexer(index_file=index_file).index(container)
         with open(index_file, "r") as f:
             indexes = json.load(f)
 
@@ -99,7 +99,7 @@ async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
             guideline_id=_guideline.id,
         )
 
-        await Indexer(index_json_file=index_file).index(container)
+        await Indexer(index_file=index_file).index(container)
 
         with open(index_file, "r") as f:
             indexes = json.load(f)
@@ -127,7 +127,7 @@ async def test_that_guideline_connections_are_created(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_json_file=index_file)
+        indexer = Indexer(index_file=index_file)
         await indexer.index(container)
 
         connections = await connection_store.list_connections(
@@ -159,7 +159,7 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_json_file=index_file)
+        indexer = Indexer(index_file=index_file)
         await indexer.index(container)
 
         connections = await connection_store.list_connections(

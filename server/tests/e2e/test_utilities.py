@@ -7,7 +7,7 @@ import signal
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, Literal, Optional, TypedDict, Union, cast
+from typing import Any, Iterator, Literal, TypedDict, Union, cast
 
 from emcie.server.logger import Logger
 
@@ -149,7 +149,7 @@ def find_guideline(guideline: _Guideline, within: list[_Guideline]) -> bool:
 @contextmanager
 def run_server(
     context: _TestContext,
-    extra_args: Optional[list[str]] = None,
+    extra_args: list[str] = [],
 ) -> Iterator[subprocess.Popen[str]]:
     exec_args = [
         "poetry",
@@ -163,7 +163,7 @@ def run_server(
         str(SERVER_PORT),
     ]
 
-    exec_args.extend(extra_args if extra_args else [])
+    exec_args.extend(extra_args)
 
     with subprocess.Popen(
         args=exec_args,

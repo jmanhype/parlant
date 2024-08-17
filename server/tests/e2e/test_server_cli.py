@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import signal
 import traceback
@@ -9,7 +8,6 @@ from emcie.common.tools import ToolContext, ToolResult
 from emcie.common.plugin import PluginServer, tool
 
 from emcie.server.core.sessions import Event
-from emcie.server.utils import md5_checksum
 from tests.e2e.test_utilities import (
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
@@ -170,74 +168,25 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
             await plugin_server.shutdown()
 
 
-async def test_server_indexer_creates_index_file_with_guidelines(
+async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_index(
     context: _TestContext,
 ) -> None:
-    with run_server(context, extra_args=["--index"]):
-        initial_guidelines = read_guideline_config(context.config_file)
-
-        new_guideline: _Guideline = {
-            "when": "talking about bananas",
-            "then": "say they're very tasty",
-        }
-
-        write_guideline_config(
-            new_guidelines=initial_guidelines + [new_guideline],
-            config_file=context.config_file,
-        )
-
+    with run_server(context, extra_args=["--no-index"]) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=DEFAULT_AGENT_NAME)
-
-        assert context.index_file.exists()
-
-        with open(context.index_file, "r") as f:
-            indexes = json.load(f)
-
-        guidelines = read_guideline_config(context.config_file)
-        for guideline in guidelines:
-            assert (
-                md5_checksum(f"{guideline["when"]}_{guideline["then"]}")
-                in indexes["guidelines"][agent["id"]]
-            )
+        assert server_process.returncode is None
 
 
-async def test_server_indexer_modified_index_file_with_the_changes_that_have_been_made(
+async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_to_index(
     context: _TestContext,
 ) -> None:
-    with run_server(context, extra_args=["--index"]):
+    with run_server(context, extra_args=["--index"]) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        initial_guidelines = read_guideline_config(context.config_file)
-
-        new_guideline: _Guideline = {
-            "when": "talking about bananas",
-            "then": "say they're very tasty",
-        }
-
-        write_guideline_config(
-            new_guidelines=initial_guidelines + [new_guideline],
-            config_file=context.config_file,
-        )
-
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=DEFAULT_AGENT_NAME)
-
-        assert context.index_file.exists()
-
-        with open(context.index_file, "r") as f:
-            indexes = json.load(f)
-
-        for guideline in initial_guidelines + [new_guideline]:
-            assert (
-                md5_checksum(f"{guideline["when"]}_{guideline["then"]}")
-                in indexes["guidelines"][agent["id"]]
-            )
+        assert server_process.returncode is None
 
 
-async def test_server_shutdown_on_index_required_with_no_index_flag(
+async def test_that_the_server_refuses_to_start_on_detecting_a_state_change_that_requires_indexing_if_told_not_to_index_changes(
     context: _TestContext,
 ) -> None:
     with run_server(context, extra_args=["--no-index"]) as server_process:
@@ -257,7 +206,7 @@ async def test_server_shutdown_on_index_required_with_no_index_flag(
         assert server_process.returncode == 1
 
 
-async def test_force_flag_ignores_indexing_when_no_index_flag_is_set(
+async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_start_and_told_not_to_index(
     context: _TestContext,
 ) -> None:
     with run_server(context, extra_args=["--no-index", "--force"]):
@@ -288,3 +237,34 @@ async def test_force_flag_ignores_indexing_when_no_index_flag_is_set(
         assert nlp_test(
             agent_reply, "It says that bananas are very tasty but not mentioning they blue"
         )
+
+
+async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to_index_changes(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--index"]):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        initial_guidelines = read_guideline_config(context.config_file)
+
+        new_guidelines: list[_Guideline] = [
+            {
+                "when": "talking about bananas",
+                "then": "say bananas are very tasty",
+            },
+            {
+                "when": "saying bananas are very tasty",
+                "then": "say also they are blue",
+            },
+        ]
+
+        write_guideline_config(
+            new_guidelines=initial_guidelines + new_guidelines,
+            config_file=context.config_file,
+        )
+
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+
+        assert nlp_test(agent_reply, "It says that bananas are very tasty and blue")
