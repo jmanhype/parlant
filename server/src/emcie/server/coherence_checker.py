@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from itertools import chain
 import json
-from typing import NewType, Sequence
+from typing import Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -12,8 +12,6 @@ from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.engines.alpha.utils import make_llm_client
 from emcie.server.logger import Logger
-
-CoherenceContradictionId = NewType("CoherenceContradictionId", str)
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
 LLM_MAX_RETRIES = 100
