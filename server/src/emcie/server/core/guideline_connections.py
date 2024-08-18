@@ -149,18 +149,23 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         source: Optional[GuidelineId] = None,
         target: Optional[GuidelineId] = None,
     ) -> Sequence[GuidelineConnection]:
-        assert source or target
+        assert (source or target) and not (source and target)
 
-        async def get_node_connections(node: GuidelineId) -> Sequence[GuidelineConnection]:
-            if not graph.has_node(node):
+        async def get_node_connections(
+            source: GuidelineId,
+            reversed_graph: bool = False,
+        ) -> Sequence[GuidelineConnection]:
+            if not graph.has_node(source):
                 return []
 
+            _graph = graph.reverse() if reversed_graph else graph
+
             if indirect:
-                descendant_edges = networkx.bfs_edges(graph, node)
+                descendant_edges = networkx.bfs_edges(_graph, source)
                 connections = []
 
                 for edge_source, edge_target in descendant_edges:
-                    edge_data = graph.get_edge_data(edge_source, edge_target)
+                    edge_data = _graph.get_edge_data(edge_source, edge_target)
 
                     connection = await self._collection.find_one(
                         filters={"id": {"$eq": edge_data["id"]}},
@@ -179,7 +184,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 return connections
 
             else:
-                successors = graph.succ[node]
+                successors = _graph.succ[source]
                 connections = []
 
                 for source, data in successors.items():
@@ -199,14 +204,11 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
                 return connections
 
-        connections: list[GuidelineConnection] = []
-
         graph = await self._get_graph()
 
         if source:
-            connections.extend(await get_node_connections(source))
-
-        if target:
-            connections.extend(await get_node_connections(target))
+            connections = await get_node_connections(source)
+        elif target:
+            connections = await get_node_connections(target, reversed_graph=True)
 
         return connections

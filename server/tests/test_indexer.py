@@ -11,6 +11,7 @@ from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.indexer import GuidelineIndexer, Indexer
+from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 
 
@@ -49,24 +50,32 @@ async def test_that_guidelines_written_in_the_index_file(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_file=index_file)
-        await indexer.index(container)
+        indexer = Indexer(
+            index_file=index_file,
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+        )
+        await indexer.index()
         with open(index_file, "r") as f:
             indexes = json.load(f)
 
-            indexed_guidelines = indexes["guidelines"][agent.id]
+            indexed_guidelines = indexes["guidelines"]
 
-            assert GuidelineIndexer._guideline_checksum(first_guideline) in indexed_guidelines
-            assert GuidelineIndexer._guideline_checksum(second_guideline) in indexed_guidelines
+            assert agent.id == indexes["guidelines"][0][0]
 
-            assert (
-                indexed_guidelines[GuidelineIndexer._guideline_checksum(first_guideline)]
-                == first_guideline.id
+            assert len(indexed_guidelines[0]) == 2
+
+            assert indexed_guidelines[0][1][0][1] == GuidelineIndexer._guideline_checksum(
+                first_guideline
             )
-            assert (
-                indexed_guidelines[GuidelineIndexer._guideline_checksum(second_guideline)]
-                == second_guideline.id
+            assert indexed_guidelines[0][1][0][0] == first_guideline.id
+
+            assert indexed_guidelines[0][1][1][1] == GuidelineIndexer._guideline_checksum(
+                second_guideline
             )
+            assert indexed_guidelines[0][1][1][0] == second_guideline.id
 
 
 async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
@@ -75,36 +84,54 @@ async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
 ) -> None:
     guideline_store = container[GuidelineStore]
 
-    await guideline_store.create_guideline(
+    first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="greeting the user",
         content="do your job when the user says hello",
     )
 
-    _guideline = await guideline_store.create_guideline(
+    second_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="the user asks what is your favourite food",
         content="tell him it is pizza",
     )
 
     async with new_file_path() as index_file:
-        await Indexer(index_file=index_file).index(container)
+        await Indexer(
+            index_file=index_file,
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+        ).index()
         with open(index_file, "r") as f:
             indexes = json.load(f)
 
-            assert len(indexes["guidelines"][agent.id]) == 2
+            assert len(indexes["guidelines"]) == 1
+            assert indexes["guidelines"][0][0] == agent.id
+            assert len(indexes["guidelines"][0][1]) == 2
 
         await guideline_store.delete_guideline(
             guideline_set=agent.id,
-            guideline_id=_guideline.id,
+            guideline_id=second_guideline.id,
         )
 
-        await Indexer(index_file=index_file).index(container)
+        await Indexer(
+            index_file=index_file,
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+        ).index()
 
         with open(index_file, "r") as f:
             indexes = json.load(f)
 
-            assert len(indexes["guidelines"][agent.id]) == 1
+            assert len(indexes["guidelines"]) == 1
+            assert indexes["guidelines"][0][0] == agent.id
+
+            assert len(indexes["guidelines"][0][1]) == 1
+            assert indexes["guidelines"][0][1][0][0] == first_guideline.id
 
 
 async def test_that_guideline_connections_are_created(
@@ -127,8 +154,14 @@ async def test_that_guideline_connections_are_created(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_file=index_file)
-        await indexer.index(container)
+        indexer = Indexer(
+            index_file=index_file,
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+        )
+        await indexer.index()
 
         connections = await connection_store.list_connections(
             indirect=False, source=first_guideline.id
@@ -159,8 +192,14 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
     )
 
     async with new_file_path() as index_file:
-        indexer = Indexer(index_file=index_file)
-        await indexer.index(container)
+        indexer = Indexer(
+            index_file=index_file,
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+        )
+        await indexer.index()
 
         connections = await connection_store.list_connections(
             indirect=False, source=first_guideline.id
@@ -173,7 +212,7 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
             guideline_id=first_guideline.id,
         )
 
-        await indexer.index(container)
+        await indexer.index()
 
         connections = await connection_store.list_connections(
             indirect=False, source=first_guideline.id

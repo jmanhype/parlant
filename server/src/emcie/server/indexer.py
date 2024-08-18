@@ -1,8 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
-from lagom import Container
-from typing import Any, Sequence
+from typing import Any, NamedTuple, Sequence
 
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import JSONSerializable
@@ -13,31 +12,46 @@ from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
 
 
-GuidelineSet = str
-GuidelineChecksum = str
+class GuidelineIndexEntryItem(NamedTuple):
+    guideline_id: GuidelineId
+    checksum: str
 
-IndexedGuideline = dict[GuidelineChecksum, GuidelineId]
-IndexedGuidelineSets = dict[GuidelineSet, IndexedGuideline]
+
+class GuidelineIndexEntry(NamedTuple):
+    guideline_set: str
+    items: list[GuidelineIndexEntryItem]
 
 
 class GuidelineIndexer:
-    def __init__(self, container: Container) -> None:
-        self.logger = container[Logger]
+    def __init__(
+        self,
+        logger: Logger,
+        guideline_store: GuidelineStore,
+        guideline_connection_store: GuidelineConnectionStore,
+        agent_store: AgentStore,
+    ) -> None:
+        self.logger = logger
+
+        self._guideline_store = guideline_store
+        self._guideline_connection_store = guideline_connection_store
+        self._agent_store = agent_store
+
         self._guideline_connection_proposer = GuidelineConnectionProposer(self.logger)
-        self._guideline_store = container[GuidelineStore]
-        self._guideline_connection_store = container[GuidelineConnectionStore]
-        self._agent_store = container[AgentStore]
 
     @staticmethod
-    def _guideline_checksum(guideline: Guideline) -> GuidelineChecksum:
+    def _guideline_checksum(guideline: Guideline) -> str:
         return md5_checksum(f"{guideline.predicate}_{guideline.content}")
 
-    async def should_index(self, indexed_guideline_sets: IndexedGuidelineSets) -> bool:
+    async def should_index(
+        self,
+        last_known_state: list[GuidelineIndexEntry],
+    ) -> bool:
         for agent in await self._agent_store.list_agents():
             agent_guidelines = await self._guideline_store.list_guidelines(agent.id)
 
             introduced, _, deleted = self._assess_guideline_modifications(
-                agent_guidelines, indexed_guideline_sets.get(agent.id, {})
+                agent_guidelines,
+                next(iter([e[1] for e in last_known_state if e[0] == agent.id]), []),
             )
 
             if introduced or deleted:
@@ -47,55 +61,70 @@ class GuidelineIndexer:
 
     async def index(
         self,
-        existing_indexed_guidelines: IndexedGuidelineSets,
-    ) -> IndexedGuidelineSets:
+        last_known_state: list[GuidelineIndexEntry],
+    ) -> list[GuidelineIndexEntry]:
         self.logger.info("Guideline indexing started")
 
-        indexed_guideline_sets: IndexedGuidelineSets = dict()
+        current_state: list[GuidelineIndexEntry] = []
 
         for agent in await self._agent_store.list_agents():
             agent_guidelines = await self._guideline_store.list_guidelines(agent.id)
 
             await self._index_guideline_connections(
                 agent_guidelines,
-                existing_indexed_guidelines.get(agent.id, {}),
+                next(iter([e[1] for e in last_known_state if e[0] == agent.id]), []),
             )
 
-            indexed_guideline_sets[agent.id] = {
-                self._guideline_checksum(g): g.id for g in agent_guidelines
-            }
+            current_state.append(
+                GuidelineIndexEntry(
+                    guideline_set=agent.id,
+                    items=[
+                        GuidelineIndexEntryItem(
+                            guideline_id=g.id, checksum=self._guideline_checksum(g)
+                        )
+                        for g in agent_guidelines
+                    ],
+                )
+            )
 
         self.logger.info("Guideline indexing finished")
 
-        return indexed_guideline_sets
+        return current_state
 
     def _assess_guideline_modifications(
         self,
         guidelines: Sequence[Guideline],
-        indexed_guideline_set: IndexedGuideline,
-    ) -> tuple[Sequence[Guideline], Sequence[Guideline], IndexedGuideline]:
+        last_know_state_of_set: list[GuidelineIndexEntryItem],
+    ) -> tuple[Sequence[Guideline], Sequence[Guideline], list[GuidelineIndexEntryItem]]:
         introduced_guidelines, existing_guidelines = [], []
-        deleted_guidelines = indexed_guideline_set.copy()
+        deleted_guidelines = {i[1]: i for i in last_know_state_of_set}
 
         for guideline in guidelines:
             guideline_checksum = self._guideline_checksum(guideline)
 
-            if guideline_checksum in indexed_guideline_set:
+            if guideline_checksum in deleted_guidelines:
                 existing_guidelines.append(guideline)
                 del deleted_guidelines[guideline_checksum]
             else:
                 introduced_guidelines.append(guideline)
 
-        return introduced_guidelines, existing_guidelines, deleted_guidelines
+        return introduced_guidelines, existing_guidelines, list(deleted_guidelines.values())
 
     async def _remove_deleted_guidelines_connections(
         self,
-        deleted_guidelines: IndexedGuideline,
+        deleted_guidelines: list[GuidelineIndexEntryItem],
     ) -> None:
-        for id in deleted_guidelines.values():
+        for item in deleted_guidelines:
             try:
-                connections = await self._guideline_connection_store.list_connections(
-                    indirect=False, source=id, target=id
+                connections = list(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False, source=item[0]
+                    )
+                )
+                connections.extend(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False, target=item[0]
+                    )
                 )
                 await asyncio.gather(
                     *(self._guideline_connection_store.delete_connection(c.id) for c in connections)
@@ -106,10 +135,10 @@ class GuidelineIndexer:
     async def _index_guideline_connections(
         self,
         guidelines: Sequence[Guideline],
-        indexed_guideline_set: IndexedGuideline,
+        last_know_state_of_set: list[GuidelineIndexEntryItem],
     ) -> None:
         introduced, existsing, deleted = self._assess_guideline_modifications(
-            guidelines, indexed_guideline_set
+            guidelines, last_know_state_of_set
         )
 
         await self._remove_deleted_guidelines_connections(deleted)
@@ -130,8 +159,18 @@ class Indexer:
     def __init__(
         self,
         index_file: Path,
+        logger: Logger,
+        guideline_store: GuidelineStore,
+        guideline_connection_store: GuidelineConnectionStore,
+        agent_store: AgentStore,
     ) -> None:
         self._index_file = index_file
+        self._guideline_indexer = GuidelineIndexer(
+            logger,
+            guideline_store,
+            guideline_connection_store,
+            agent_store,
+        )
 
     def _read_index_file(self) -> dict[str, Any]:
         if self._index_file.exists() and self._index_file.stat().st_size > 0:
@@ -144,24 +183,17 @@ class Indexer:
         with open(self._index_file, "w") as f:
             json.dump(indexes, f, indent=2)
 
-    async def should_index(
-        self,
-        container: Container,
-    ) -> bool:
-        guideline_indexer = GuidelineIndexer(container)
-
+    async def should_index(self) -> bool:
         indexed_data = self._read_index_file()
 
-        return await guideline_indexer.should_index(indexed_data.get("guidelines", {}))
+        return await self._guideline_indexer.should_index(indexed_data.get("guidelines", {}))
 
-    async def index(self, container: Container) -> None:
-        guideline_indexer = GuidelineIndexer(container)
-
+    async def index(self) -> None:
         indexed_data = self._read_index_file()
 
         data = {}
-        data["guidelines"] = await guideline_indexer.index(
-            existing_indexed_guidelines=indexed_data.get("guidelines", {}),
+        data["guidelines"] = await self._guideline_indexer.index(
+            indexed_data.get("guidelines", []),
         )
 
         self._write_index_file(data)

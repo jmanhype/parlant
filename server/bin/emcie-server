@@ -136,7 +136,7 @@ async def load_guidelines(c: Container, config: Any) -> None:
     agents = await agent_store.list_agents()
 
     for agent_name, guidelines in config["guidelines"].items():
-        
+
         agent_id = next(a.id for a in agents if a.name == agent_name)
 
         for guideline_spec in guidelines:
@@ -222,19 +222,24 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
     EXIT_STACK = AsyncExitStack()
 
-    indexer = Indexer(index_file=EMCIE_HOME_DIR / "index.json")
-
     async with setup_container(params.config) as container, EXIT_STACK:
+        indexer = Indexer(
+            index_file=EMCIE_HOME_DIR / "index.json",
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+            )
 
         if not params.index:
             if params.force:
                 LOGGER.warning("Skipping indexing. This might cause unpredictable behavior.")
 
-            elif await indexer.should_index(container):
+            elif await indexer.should_index():
                 raise StartupError("indexing needs to be perform.")
         else:
-            await indexer.index(container)
-        
+            await indexer.index()
+
         yield await create_app(container)
 
 
@@ -422,7 +427,7 @@ if __name__ == "__main__":
         ctx.obj.index = index
         ctx.obj.force = force
         asyncio.run(start_server(ctx.obj))
-        
+
     @cli.command(help="Check the configuration's validity and coherence")
     @click.pass_context
     def check(ctx: click.Context) -> None:

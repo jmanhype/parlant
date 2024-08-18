@@ -168,7 +168,7 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
             await plugin_server.shutdown()
 
 
-async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_index(
+async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_(
     context: _TestContext,
 ) -> None:
     with run_server(context, extra_args=["--no-index"]) as server_process:
