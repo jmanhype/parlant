@@ -99,7 +99,7 @@ async def test_that_the_server_starts_and_shuts_down_cleanly_on_interrupt(
 async def test_that_the_server_hot_reloads_guideline_changes(
     context: _TestContext,
 ) -> None:
-    with run_server(context):
+    with run_server(context, extra_args=["--no-index", "--force"]):
         initial_guidelines = read_guideline_config(context.config_file)
 
         new_guideline: _Guideline = {
@@ -157,7 +157,7 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
 
     async with PluginServer(name="my_plugin", tools=[about_dor], port=plugin_port) as plugin_server:
         try:
-            with run_server(context):
+            with run_server(context, extra_args=["--no-index", "--force"]):
                 await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
                 agent_reply = await get_quick_reply_from_agent(context, message="Hello")
@@ -166,3 +166,109 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
 
         finally:
             await plugin_server.shutdown()
+
+
+async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--no-index"]):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+
+        assert nlp_test(agent_reply, "It greeting the user")
+
+
+async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_to_index(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--index"]):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+
+        assert nlp_test(agent_reply, "It greeting the user")
+
+
+async def test_that_the_server_refuses_to_start_on_detecting_a_state_change_that_requires_indexing_if_told_not_to_index_changes(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--no-index"]) as server_process:
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        new_guideline: _Guideline = {
+            "when": "talking about bananas",
+            "then": "say they're very tasty",
+        }
+
+        write_guideline_config(
+            new_guidelines=[new_guideline],
+            config_file=context.config_file,
+        )
+
+        server_process.wait(timeout=REASONABLE_AMOUNT_OF_TIME)
+        assert server_process.returncode == 1
+
+
+async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_start_and_told_not_to_index(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--no-index", "--force"]):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        new_guidelines: list[_Guideline] = [
+            {
+                "when": "talking about bananas",
+                "then": "say bananas are very tasty",
+            },
+            {
+                "when": "saying bananas are very tasty",
+                "then": "say also they are blue",
+            },
+        ]
+
+        write_guideline_config(
+            new_guidelines=new_guidelines,
+            config_file=context.config_file,
+        )
+
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        assert not context.index_file.exists()
+
+        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+
+        assert nlp_test(
+            agent_reply, "It says that bananas are very tasty but not mentioning they blue"
+        )
+
+
+async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to_index_changes(
+    context: _TestContext,
+) -> None:
+    with run_server(context, extra_args=["--index"]):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        initial_guidelines = read_guideline_config(context.config_file)
+
+        new_guidelines: list[_Guideline] = [
+            {
+                "when": "talking about bananas",
+                "then": "say bananas are very tasty",
+            },
+            {
+                "when": "saying bananas are very tasty",
+                "then": "say also they are blue",
+            },
+        ]
+
+        write_guideline_config(
+            new_guidelines=initial_guidelines + new_guidelines,
+            config_file=context.config_file,
+        )
+
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+
+        assert nlp_test(agent_reply, "It says that bananas are very tasty and blue")

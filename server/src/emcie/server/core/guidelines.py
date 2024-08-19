@@ -41,6 +41,13 @@ class GuidelineStore(ABC):
         guideline_id: GuidelineId,
     ) -> Guideline: ...
 
+    @abstractmethod
+    async def delete_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> None: ...
+
 
 class GuidelineDocumentStore(GuidelineStore):
     class GuidelineDocument(DefaultBaseModel):
@@ -113,4 +120,16 @@ class GuidelineDocumentStore(GuidelineStore):
             predicate=guideline_document["predicate"],
             content=guideline_document["content"],
             creation_utc=guideline_document["creation_utc"],
+        )
+
+    async def delete_guideline(
+        self,
+        guideline_set: str,
+        guideline_id: GuidelineId,
+    ) -> None:
+        await self._collection.delete_one(
+            filters={
+                "guideline_set": {"$eq": guideline_set},
+                "id": {"$eq": guideline_id},
+            }
         )

@@ -39,6 +39,7 @@ CLI_PATH = get_package_path() / "bin/emcie-server"
 class _TestContext:
     home_dir: Path
     config_file: Path
+    index_file: Path
     logger: Logger
 
 
@@ -146,7 +147,10 @@ def find_guideline(guideline: _Guideline, within: list[_Guideline]) -> bool:
 
 
 @contextmanager
-def run_server(context: _TestContext) -> Iterator[subprocess.Popen[str]]:
+def run_server(
+    context: _TestContext,
+    extra_args: list[str] = [],
+) -> Iterator[subprocess.Popen[str]]:
     exec_args = [
         "poetry",
         "run",
@@ -158,6 +162,8 @@ def run_server(context: _TestContext) -> Iterator[subprocess.Popen[str]]:
         "-p",
         str(SERVER_PORT),
     ]
+
+    exec_args.extend(extra_args)
 
     with subprocess.Popen(
         args=exec_args,

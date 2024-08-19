@@ -51,6 +51,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.common import Engine
+from emcie.server.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
@@ -71,12 +72,17 @@ sys.path.append(EMCIE_HOME_DIR.as_posix())
 LOGGER = FileLogger(EMCIE_HOME_DIR / "emcie.log")
 LOGGER.info(f"Using home directory '{EMCIE_HOME_DIR.absolute()}'")
 
+class StartupError(Exception):
+    def __init__(self, message) -> None:
+        super().__init__(message)
 
 @dataclass
 class CLIParams:
     config_file: Path
     config: dict[str, Any]
     port: int
+    index: bool
+    force: bool
 
 
 class ShutdownReason(Enum):
@@ -130,6 +136,7 @@ async def load_guidelines(c: Container, config: Any) -> None:
     agents = await agent_store.list_agents()
 
     for agent_name, guidelines in config["guidelines"].items():
+
         agent_id = next(a.id for a in agents if a.name == agent_name)
 
         for guideline_spec in guidelines:
@@ -210,12 +217,29 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
 
 @asynccontextmanager
-async def load_app(config: Any) -> AsyncIterator[FastAPI]:
+async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
     global EXIT_STACK
 
     EXIT_STACK = AsyncExitStack()
 
-    async with setup_container(config) as container, EXIT_STACK:
+    async with setup_container(params.config) as container, EXIT_STACK:
+        indexer = Indexer(
+            index_file=EMCIE_HOME_DIR / "index.json",
+            logger=container[Logger],
+            guideline_store=container[GuidelineStore],
+            guideline_connection_store=container[GuidelineConnectionStore],
+            agent_store=container[AgentStore],
+            )
+
+        if not params.index:
+            if params.force:
+                LOGGER.warning("Skipping indexing. This might cause unpredictable behavior.")
+
+            elif await indexer.should_index():
+                raise StartupError("indexing needs to be perform.")
+        else:
+            await indexer.index()
+
         yield await create_app(container)
 
 
@@ -274,7 +298,7 @@ async def start_server(params: CLIParams) -> None:
         return False
 
     while True:
-        async with load_app(params.config) as app:
+        async with load_app(params) as app:
             shutdown_reason = await serve_app(
                 app,
                 params.port,
@@ -370,6 +394,8 @@ if __name__ == "__main__":
                     config_file=config_file_path,
                     config=config,
                     port=DEFAULT_PORT,
+                    index=False,
+                    force=True
                 )
 
     @cli.command(help="Run the Emcie server")
@@ -380,14 +406,35 @@ if __name__ == "__main__":
         default=DEFAULT_PORT,
         help="Server port",
     )
+    @click.option(
+        "--index/--no-index",
+        type=bool,
+        show_default=True,
+        default=False,
+        help="Index configuration changes on startup",
+    )
+    @click.option(
+        "-f",
+        "--force",
+        type=bool,
+        default=False,
+        is_flag=True,
+        help="Ignore warnings and checks",
+    )
     @click.pass_context
-    def run(ctx: click.Context, port: int) -> None:
+    def run(ctx: click.Context, port: int, index: bool, force: bool) -> None:
         ctx.obj.port = port
+        ctx.obj.index = index
+        ctx.obj.force = force
         asyncio.run(start_server(ctx.obj))
 
     @cli.command(help="Check the configuration's validity and coherence")
     @click.pass_context
     def check(ctx: click.Context) -> None:
         asyncio.run(check_coherence(ctx.obj))
+    try:
+        cli()
+    except StartupError as e:
+            print(f"error: {e}", file=sys.stderr)
+            exit(1)
 
-    cli()

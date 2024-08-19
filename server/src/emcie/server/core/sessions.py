@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Mapping, NewType, Optional, Sequence, TypedDict
+from typing import Any, Literal, Mapping, NewType, Optional, Sequence, TypedDict, cast
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
+from emcie.server.core.persistence.common import NoMatchingDocumentsError, Where
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 SessionId = NewType("SessionId", str)
@@ -296,11 +296,14 @@ class SessionDocumentStore(SessionStore):
                 data=d["data"],
             )
             for d in await self._event_collection.find(
-                filters={
-                    **{"session_id": {"$eq": session_id}},
-                    **({"source": {"$eq": source}} if source else {}),
-                    **({"offset": {"$gte": min_offset}} if min_offset else {}),
-                }
+                filters=cast(
+                    Where,
+                    {
+                        "session_id": {"$eq": session_id},
+                        **({"source": {"$eq": source}} if source else {}),
+                        **({"offset": {"$gte": min_offset}} if min_offset else {}),
+                    },
+                )
             )
         ]
 
