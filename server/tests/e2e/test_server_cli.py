@@ -171,19 +171,23 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
 async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_(
     context: _TestContext,
 ) -> None:
-    with run_server(context, extra_args=["--no-index"]) as server_process:
+    with run_server(context, extra_args=["--no-index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        assert server_process.returncode is None
+        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+
+        assert nlp_test(agent_reply, "It greeting the user")
 
 
 async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_to_index(
     context: _TestContext,
 ) -> None:
-    with run_server(context, extra_args=["--index"]) as server_process:
+    with run_server(context, extra_args=["--index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        assert server_process.returncode is None
+        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+
+        assert nlp_test(agent_reply, "It greeting the user")
 
 
 async def test_that_the_server_refuses_to_start_on_detecting_a_state_change_that_requires_indexing_if_told_not_to_index_changes(
