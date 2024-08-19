@@ -143,7 +143,7 @@ async def test_that_guideline_connections_are_created(
 
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="The user asks about the weather",
+        predicate="the user asks about the weather",
         content="provide the current weather update",
     )
 
@@ -181,7 +181,7 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
 
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="The user asks about the weather",
+        predicate="the user asks about the weather",
         content="provide the current weather update",
     )
 

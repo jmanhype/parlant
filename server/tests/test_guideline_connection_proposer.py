@@ -110,7 +110,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     [
         (
             {
-                "predicate": "The user requests technical support",
+                "predicate": "the user requests technical support",
                 "content": "provide the support contact details",
             },
             {
@@ -120,7 +120,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
         ),
         (
             {
-                "predicate": "The user inquires about office hours",
+                "predicate": "the user inquires about office hours",
                 "content": "tell them the office hours",
             },
             {
@@ -189,7 +189,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
             ),
             [
                 {
-                    "when": "The user requests technical support",
+                    "when": "the user requests technical support",
                     "then": "provide the support contact details",
                 },
                 {
@@ -197,7 +197,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                     "then": "consider checking the troubleshooting guide first",
                 },
                 {
-                    "when": "The user inquires about office hours",
+                    "when": "the user inquires about office hours",
                     "then": "tell them the office hours",
                 },
                 {
@@ -205,7 +205,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                     "then": "suggest the best time to visit for quicker service",
                 },
                 {
-                    "when": "The user asks about the weather",
+                    "when": "the user asks about the weather",
                     "then": "provide the current weather update",
                 },
                 {
@@ -213,7 +213,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                     "then": "mention the best time to go for a walk",
                 },
                 {
-                    "when": "The user asks about nearby restaurants",
+                    "when": "the user asks about nearby restaurants",
                     "then": "provide a list of popular restaurants",
                 },
                 {
@@ -264,7 +264,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
             ),
             [
                 {
-                    "when": "The user requests technical support",
+                    "when": "the user requests technical support",
                     "then": "provide the support contact details",
                 },
                 {
@@ -272,7 +272,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                     "then": "consider checking the troubleshooting guide first",
                 },
                 {
-                    "when": "The user inquires about office hours",
+                    "when": "the user inquires about office hours",
                     "then": "tell them the office hours",
                 },
                 {
@@ -280,7 +280,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                     "then": "suggest the best time to visit for quicker service",
                 },
                 {
-                    "when": "The user asks about the weather",
+                    "when": "the user asks about the weather",
                     "then": "provide the current weather update",
                 },
                 {
@@ -288,7 +288,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                     "then": "mention the best time to go for a walk",
                 },
                 {
-                    "when": "The user asks about nearby restaurants",
+                    "when": "the user asks about nearby restaurants",
                     "then": "provide a list of popular restaurants",
                 },
                 {
