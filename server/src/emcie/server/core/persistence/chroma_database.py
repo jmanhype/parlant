@@ -10,13 +10,12 @@ import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # type: ignore
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.persistence.common import ObjectId, Where
+from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId, Where
 from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
 from emcie.server.logger import Logger
 
 
 class ChromaDatabase(DocumentDatabase):
-
     def __init__(self, logger: Logger, dir_path: Path) -> None:
         self.logger = logger
 
@@ -107,7 +106,6 @@ class ChromaDatabase(DocumentDatabase):
 
 
 class ChromaCollection(DocumentCollection):
-
     def __init__(
         self,
         logger: Logger,
@@ -141,7 +139,7 @@ class ChromaCollection(DocumentCollection):
         ]:
             return {k: v for k, v in metadatas[0].items()}
 
-        raise ValueError("No document found matching the provided filters.")
+        raise NoMatchingDocumentsError(self._name, filters)
 
     async def insert_one(
         self,
@@ -190,7 +188,7 @@ class ChromaCollection(DocumentCollection):
                 )
                 return document_id
 
-            raise ValueError("No document found matching the provided filters.")
+            raise NoMatchingDocumentsError(self._name, filters)
 
     async def delete_one(
         self,

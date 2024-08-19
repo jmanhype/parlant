@@ -3,13 +3,13 @@ from typing import Sequence, cast
 from lagom import Container
 from pytest import fixture, mark
 from emcie.server.core.agents import Agent, AgentId
+from emcie.server.core.common import generate_id
 from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
-from emcie.server.core import common
 from emcie.server.core.guidelines import Guideline, GuidelineId
 from emcie.server.core.sessions import Event, EventId, EventSource
 
@@ -71,9 +71,8 @@ def create_event_message(
     source: EventSource,
     message: str,
 ) -> Event:
-
     event = Event(
-        id=EventId(common.generate_id()),
+        id=EventId(generate_id()),
         source=source,
         kind=Event.MESSAGE_KIND,
         offset=offset,
@@ -121,7 +120,7 @@ def create_guideline_by_name(
     }
 
     guideline = Guideline(
-        GuidelineId(common.generate_id()),
+        GuidelineId(generate_id()),
         predicate=guidelines[guideline_name]["predicate"],
         content=guidelines[guideline_name]["content"],
         creation_utc=datetime.now(timezone.utc),

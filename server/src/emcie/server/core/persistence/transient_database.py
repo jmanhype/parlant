@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Mapping, Optional, Sequence, Type
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.persistence.common import ObjectId, Where, matches_filters
+from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId, Where, matches_filters
 from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
 
 
@@ -80,7 +80,7 @@ class _TransientDocumentCollection(DocumentCollection):
         matched_documents = await self.find(filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
-        raise ValueError("No document found matching the provided filters.")
+        raise NoMatchingDocumentsError(self._name, filters)
 
     async def insert_one(
         self,
@@ -108,7 +108,7 @@ class _TransientDocumentCollection(DocumentCollection):
             document_id = await self.insert_one(updated_document)
             return document_id
 
-        raise ValueError("No document found matching the provided filters.")
+        raise NoMatchingDocumentsError(self._name, filters)
 
     async def delete_one(
         self,
@@ -118,4 +118,4 @@ class _TransientDocumentCollection(DocumentCollection):
             if matches_filters(filters, d):
                 del self._documents[i]
                 return
-        raise ValueError("No document found matching the provided filters.")
+        raise NoMatchingDocumentsError(self._name, filters)

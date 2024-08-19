@@ -435,3 +435,69 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     t_end = time.time()
 
     assert (t_end - t_start) < 1
+
+
+def test_that_deleting_a_nonexistent_session_returns_404(
+    client: TestClient,
+) -> None:
+    response = client.delete("/sessions/nonexistent-session-id")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_that_a_session_can_be_deleted(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    response = client.delete(f"/sessions/{session_id}")
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    get_response = client.get(f"/sessions/{session_id}")
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_that_a_deleted_session_is_removed_from_the_session_list(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    # Create a session
+    session_id = SessionId(
+        client.post(
+            "/sessions",
+            json={
+                "end_user_id": "test_user",
+                "agent_id": agent_id,
+                "title": "Session to be deleted",
+            },
+        )
+        .raise_for_status()
+        .json()["session_id"]
+    )
+
+    sessions = client.get("/sessions").raise_for_status().json()["sessions"]
+    assert any(session["session_id"] == str(session_id) for session in sessions)
+
+    client.delete(f"/sessions/{session_id}").raise_for_status()
+
+    sessions_after_deletion = client.get("/sessions").raise_for_status().json()["sessions"]
+    assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
+
+
+async def test_that_deleting_a_session_also_deletes_its_events(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+    ]
+    await populate_session_id(container, session_id, session_events)
+
+    events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
+    assert len(events) == len(session_events)
+
+    delete_response = client.delete(f"/sessions/{session_id}")
+    assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+
+    events_response_after = client.get(f"/sessions/{session_id}/events")
+    assert events_response_after.status_code == status.HTTP_404_NOT_FOUND

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Literal, Mapping, NewType, Union
+from typing import Any, Callable, Literal, Mapping, NewType, Optional, Union
 
 
 ObjectId = NewType("ObjectId", str)
@@ -36,3 +36,10 @@ def matches_filters(
             if not tests[filter_name](candidate.get(field_name), filter_value):
                 return False
     return True
+
+
+class NoMatchingDocumentsError(Exception):
+    def __init__(self, collection_name: str, filters: Where) -> None:
+        super().__init__(f"No matching documents were found")
+        self.collection_name = collection_name
+        self.filters = filters

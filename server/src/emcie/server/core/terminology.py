@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core import common
+from emcie.server.core.common import generate_id
 from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
 
 TermId = NewType("TermId", str)
@@ -109,7 +109,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        term_id = TermId(common.generate_id())
+        term_id = TermId(generate_id())
 
         document = {
             "id": term_id,
@@ -144,7 +144,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        term_id = TermId(common.generate_id())
+        term_id = TermId(generate_id())
 
         updated_document = {
             "id": term_id,

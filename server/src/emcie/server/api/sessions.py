@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 from fastapi import APIRouter, HTTPException, Response, status
 from datetime import datetime
 
@@ -138,6 +138,13 @@ def create_router(
                     new_offset=request.consumption_offsets.client,
                 )
 
+        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
+
+    @router.delete("/{session_id}")
+    async def delete_session(
+        session_id: SessionId,
+    ) -> Response:
+        await session_store.delete_session(session_id)
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     @router.post("/{session_id}/events")

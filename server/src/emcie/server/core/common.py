@@ -1,4 +1,4 @@
-from typing import NewType
+from typing import NewType, Optional
 import nanoid  # type: ignore
 
 import emcie.common.types
@@ -6,6 +6,11 @@ import emcie.common.types
 JSONSerializable = emcie.common.types.JSONSerializable
 
 UniqueId = NewType("UniqueId", str)
+
+
+class ItemNotFoundError(Exception):
+    def __init__(self, item_id: UniqueId, message: Optional[str] = None) -> None:
+        super().__init__(f"Item '{item_id}' not found" + (f": {message}" if message else ""))
 
 
 def generate_id() -> UniqueId:

@@ -5,7 +5,7 @@ from typing import NewType, Optional, Sequence
 
 from emcie.common.tools import ToolId
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core import common
+from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
@@ -57,7 +57,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         association_id = await self._collection.insert_one(
             document={
-                "id": common.generate_id(),
+                "id": generate_id(),
                 "creation_utc": creation_utc,
                 "guideline_id": guideline_id,
                 "tool_id": tool_id,
