@@ -7,6 +7,7 @@ from pytest import fixture, mark, raises
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.logger import Logger
 
 
@@ -146,7 +147,7 @@ async def test_that_update_one_without_upsert_and_no_existing_content_does_not_i
         "name": "new name",
     }
 
-    with raises(ValueError):
+    with raises(NoMatchingDocumentsError):
         await chroma_collection.update_one(
             {"name": {"$eq": "new name"}},
             updated_document,

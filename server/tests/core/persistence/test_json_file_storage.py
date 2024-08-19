@@ -10,6 +10,7 @@ import pytest
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
+from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
 )
@@ -18,6 +19,7 @@ from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineId,
 )
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.json_file_database import JSONFileDocumentDatabase
 from emcie.server.core.sessions import Event, SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
@@ -450,7 +452,7 @@ async def test_context_variable_deletion(
 
         assert all(var.id != variable.id for var in variables_after_deletion)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ItemNotFoundError):
             await context_variable_store.read_value(
                 variable_set=context.agent_id, key="test_user", variable_id=variable.id
             )

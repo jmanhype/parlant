@@ -1,15 +1,17 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal, Mapping, NewType, Optional, Sequence, TypedDict
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core import common
-from emcie.server.core.common import JSONSerializable
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 SessionId = NewType("SessionId", str)
@@ -80,6 +82,12 @@ class SessionStore(ABC):
     ) -> Session: ...
 
     @abstractmethod
+    async def delete_session(
+        self,
+        session_id: SessionId,
+    ) -> None: ...
+
+    @abstractmethod
     async def update_consumption_offset(
         self,
         session_id: SessionId,
@@ -96,6 +104,12 @@ class SessionStore(ABC):
         data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event: ...
+
+    @abstractmethod
+    async def delete_event(
+        self,
+        event_id: EventId,
+    ) -> None: ...
 
     @abstractmethod
     async def list_events(
@@ -167,13 +181,25 @@ class SessionDocumentStore(SessionStore):
             title=title,
         )
 
+    async def delete_session(
+        self,
+        session_id: SessionId,
+    ) -> None:
+        events_to_delete = await self.list_events(session_id=session_id)
+        asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
+
+        await self._session_collection.delete_one({"id": {"$eq": session_id}})
+
     async def read_session(
         self,
         session_id: SessionId,
     ) -> Session:
-        session_document = await self._session_collection.find_one(
-            filters={"id": {"$eq": session_id}}
-        )
+        try:
+            session_document = await self._session_collection.find_one(
+                filters={"id": {"$eq": session_id}}
+            )
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         return Session(
             id=session_document["id"],
@@ -211,6 +237,11 @@ class SessionDocumentStore(SessionStore):
         data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event:
+        try:
+            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(session_id))
+
         session_events = await self.list_events(session_id)
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
@@ -236,12 +267,26 @@ class SessionDocumentStore(SessionStore):
             data=data,
         )
 
+    async def delete_event(
+        self,
+        event_id: EventId,
+    ) -> None:
+        try:
+            await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(event_id))
+
     async def list_events(
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]:
+        try:
+            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(session_id))
+
         return [
             Event(
                 id=EventId(d["id"]),

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from emcie.common.tools import ToolId
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core import common
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 ContextVariableId = NewType("ContextVariableId", str)
@@ -196,18 +197,29 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         id: ContextVariableId,
     ) -> None:
-        await self._variable_collection.delete_one(
-            {
-                "id": {"$eq": id},
-                "variable_set": {"$eq": variable_set},
-            }
-        )
-        await self._value_collection.delete_one(
-            {
-                "variable_id": {"$eq": id},
-                "variable_set": {"$eq": variable_set},
-            }
-        )
+        try:
+            await self._variable_collection.delete_one(
+                {
+                    "id": {"$eq": id},
+                    "variable_set": {"$eq": variable_set},
+                }
+            )
+        except NoMatchingDocumentsError:
+            raise common.ItemNotFoundError(
+                item_id=common.UniqueId(id), message=f"variable_set={variable_set}"
+            )
+        try:
+            await self._value_collection.delete_one(
+                {
+                    "variable_id": {"$eq": id},
+                    "variable_set": {"$eq": variable_set},
+                }
+            )
+        except NoMatchingDocumentsError:
+            raise common.ItemNotFoundError(
+                item_id=common.UniqueId(id),
+                message=f"variable_set={variable_set} in values collection",
+            )
 
     async def list_variables(
         self,
@@ -229,12 +241,19 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         id: ContextVariableId,
     ) -> ContextVariable:
-        variable_document = await self._variable_collection.find_one(
-            {
-                "variable_set": {"$eq": variable_set},
-                "id": {"$eq": id},
-            }
-        )
+        try:
+            variable_document = await self._variable_collection.find_one(
+                {
+                    "variable_set": {"$eq": variable_set},
+                    "id": {"$eq": id},
+                }
+            )
+        except NoMatchingDocumentsError:
+            raise common.ItemNotFoundError(
+                item_id=common.UniqueId(id),
+                message=f"variable_set={variable_set}",
+            )
+
         return ContextVariable(
             id=ContextVariableId(variable_document["id"]),
             name=variable_document["name"],
@@ -249,13 +268,20 @@ class ContextVariableDocumentStore(ContextVariableStore):
         key: str,
         variable_id: ContextVariableId,
     ) -> ContextVariableValue:
-        value_document = await self._value_collection.find_one(
-            {
-                "variable_set": {"$eq": variable_set},
-                "variable_id": {"$eq": variable_id},
-                "key": {"$eq": key},
-            }
-        )
+        try:
+            value_document = await self._value_collection.find_one(
+                {
+                    "variable_set": {"$eq": variable_set},
+                    "variable_id": {"$eq": variable_id},
+                    "key": {"$eq": key},
+                }
+            )
+        except NoMatchingDocumentsError:
+            raise common.ItemNotFoundError(
+                item_id=common.UniqueId(variable_id),
+                message=f"variable_set={variable_set}, key={key}",
+            )
+
         return ContextVariableValue(
             id=ContextVariableValueId(value_document["id"]),
             variable_id=value_document["variable_id"],
