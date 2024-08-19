@@ -6,8 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, Mapping, NewType, Optional, Sequence, TypedDict
 
 from emcie.server.async_utils import Timeout
-from emcie.server.core import common
-from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
@@ -162,7 +161,7 @@ class SessionDocumentStore(SessionStore):
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
 
         document = {
-            "id": common.generate_id(),
+            "id": generate_id(),
             "end_user_id": end_user_id,
             "agent_id": agent_id,
             "consumption_offsets": consumption_offsets,
@@ -248,7 +247,7 @@ class SessionDocumentStore(SessionStore):
 
         event_id = await self._event_collection.insert_one(
             document={
-                "id": common.generate_id(),
+                "id": generate_id(),
                 "session_id": session_id,
                 "source": source,
                 "kind": kind,

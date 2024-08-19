@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import NewType, Optional
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core import common
+from emcie.server.core.common import generate_id
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 EndUserId = NewType("EndUserId", str)
@@ -59,7 +59,7 @@ class EndUserDocumentStore(EndUserStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         end_user_id = await self._collection.insert_one(
             document={
-                "id": common.generate_id(),
+                "id": generate_id(),
                 "name": name,
                 "email": email,
                 "creation_utc": creation_utc,

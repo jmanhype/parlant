@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from emcie.common.tools import ToolId
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core import common
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
@@ -54,7 +54,7 @@ class ContextVariableValue:
     id: ContextVariableValueId
     variable_id: ContextVariableId
     last_modified: datetime
-    data: common.JSONSerializable
+    data: JSONSerializable
 
 
 class ContextVariableStore(ABC):
@@ -74,7 +74,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-        data: common.JSONSerializable,
+        data: JSONSerializable,
     ) -> ContextVariableValue: ...
 
     @abstractmethod
@@ -141,7 +141,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         tool_id: ToolId,
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable:
-        variable_id = ContextVariableId(common.generate_id())
+        variable_id = ContextVariableId(generate_id())
 
         await self._variable_collection.insert_one(
             {
@@ -166,7 +166,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-        data: common.JSONSerializable,
+        data: JSONSerializable,
     ) -> ContextVariableValue:
         last_modified = datetime.now(timezone.utc)
         value_document_id = await self._value_collection.update_one(
@@ -176,7 +176,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "key": {"$eq": key},
             },
             {
-                "id": common.generate_id(),
+                "id": generate_id(),
                 "variable_set": variable_set,
                 "variable_id": variable_id,
                 "last_modified": last_modified,
@@ -205,9 +205,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 }
             )
         except NoMatchingDocumentsError:
-            raise common.ItemNotFoundError(
-                item_id=common.UniqueId(id), message=f"variable_set={variable_set}"
-            )
+            raise ItemNotFoundError(item_id=UniqueId(id), message=f"variable_set={variable_set}")
         try:
             await self._value_collection.delete_one(
                 {
@@ -216,8 +214,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 }
             )
         except NoMatchingDocumentsError:
-            raise common.ItemNotFoundError(
-                item_id=common.UniqueId(id),
+            raise ItemNotFoundError(
+                item_id=UniqueId(id),
                 message=f"variable_set={variable_set} in values collection",
             )
 
@@ -249,8 +247,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 }
             )
         except NoMatchingDocumentsError:
-            raise common.ItemNotFoundError(
-                item_id=common.UniqueId(id),
+            raise ItemNotFoundError(
+                item_id=UniqueId(id),
                 message=f"variable_set={variable_set}",
             )
 
@@ -277,8 +275,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 }
             )
         except NoMatchingDocumentsError:
-            raise common.ItemNotFoundError(
-                item_id=common.UniqueId(variable_id),
+            raise ItemNotFoundError(
+                item_id=UniqueId(variable_id),
                 message=f"variable_set={variable_set}, key={key}",
             )
 

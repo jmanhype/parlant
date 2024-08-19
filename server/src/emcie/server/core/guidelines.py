@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core import common
+from emcie.server.core.common import generate_id
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 GuidelineId = NewType("GuidelineId", str)
@@ -67,7 +67,7 @@ class GuidelineDocumentStore(GuidelineStore):
 
         guideline_id = await self._collection.insert_one(
             document={
-                "id": common.generate_id(),
+                "id": generate_id(),
                 "guideline_set": guideline_set,
                 "predicate": predicate,
                 "content": content,
