@@ -19,7 +19,6 @@ from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineId,
 )
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.json_file_database import JSONFileDocumentDatabase
 from emcie.server.core.sessions import Event, SessionDocumentStore
 from emcie.server.core.tools import LocalToolService

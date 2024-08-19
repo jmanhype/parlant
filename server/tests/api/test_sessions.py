@@ -3,12 +3,11 @@ from typing import Any
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
-from pytest import fixture, mark, raises
+from pytest import fixture, mark
 from datetime import datetime, timezone
 from itertools import count
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
 
 
