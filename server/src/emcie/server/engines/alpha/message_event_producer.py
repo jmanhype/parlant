@@ -1,3 +1,4 @@
+from itertools import chain
 import json
 from typing import Mapping, Optional, Sequence
 
@@ -44,6 +45,15 @@ class MessageEventProducer:
             # a proactive start of the interaction
             self.logger.debug("Skipping response; interaction is empty and there are no guidelines")
             return []
+
+        self.logger.debug(
+            f'Guidelines implemented: {json.dumps([{
+                "predicate": p.guideline.predicate,
+                "content": p.guideline.content,
+                "rationale": p.rationale,
+                "score": p.score}
+            for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}'
+        )
 
         prompt = self._format_prompt(
             agents=agents,
