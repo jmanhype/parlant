@@ -10,7 +10,7 @@
   // "forwardPorts": [],
 
   // 👇 Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "git config --global --add safe.directory /workspaces/emcie && python /workspaces/emcie/initialize_repo.py",
+  "postCreateCommand": "(cd /workspaces/emcie && git config --global --add safe.directory /workspaces/emcie && python ./initialize_repo.py)",
 
   // 👇 Configure tool-specific properties.
   "customizations": {
