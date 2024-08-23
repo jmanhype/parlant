@@ -27,6 +27,11 @@ from emcie.server.core.tools import MultiplexedToolService, LocalToolService, To
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.engines.common import Engine
+from emcie.server.evaluation_service import (
+    EvaluationDocumentStore,
+    EvaluationService,
+    EvaluationStore,
+)
 from emcie.server.logger import Logger, StdoutLogger
 from emcie.server.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
@@ -71,6 +76,9 @@ async def container() -> AsyncIterator[Container]:
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
+    container[EvaluationStore] = Singleton(EvaluationDocumentStore)
+    container[EvaluationService] = EvaluationService
+
     container[Engine] = AlphaEngine
 
     with tempfile.TemporaryDirectory() as chroma_db_dir:
