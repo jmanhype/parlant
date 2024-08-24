@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Sequence
 import tempfile
 from lagom import Container
 from pytest import fixture, mark
@@ -24,6 +24,14 @@ from emcie.server.core.sessions import SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
+)
+from emcie.server.evaluation_service import (
+    EvaluationDocumentStore,
+    EvaluationGuidelinePayload,
+    EvaluationInvoice,
+    EvaluationInvoiceData,
+    EvaluationInvoiceId,
+    EvaluationItem,
 )
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
@@ -536,3 +544,88 @@ async def test_successful_loading_of_an_empty_json_file(
 
     json_guideline = guidelines_from_json["guidelines"][0]
     assert json_guideline["guideline_set"] == context.agent_id
+
+
+async def test_evaluation_creation(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
+        evaluation_store = EvaluationDocumentStore(evaluation_db)
+
+        payloads: Sequence[EvaluationGuidelinePayload] = [
+            {
+                "type": "guideline",
+                "guideline_set": context.agent_id,
+                "predicate": "Test evaluation creation with invoice",
+                "content": "Ensure the evaluation with invoice is persisted in the JSON file",
+            }
+        ]
+
+        evaluation = await evaluation_store.create_evaluation(payloads=payloads)
+
+    with open(new_file) as f:
+        evaluations_from_json = json.load(f)
+
+    assert len(evaluations_from_json["evaluations"]) == 1
+    json_evaluation = evaluations_from_json["evaluations"][0]
+
+    assert json_evaluation["id"] == evaluation.id
+    assert json_evaluation["items"][0]["invoice"] is None
+
+
+async def test_evaluation_update(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
+        evaluation_store = EvaluationDocumentStore(evaluation_db)
+
+        payloads: Sequence[EvaluationGuidelinePayload] = [
+            {
+                "type": "guideline",
+                "guideline_set": context.agent_id,
+                "predicate": "Initial evaluation payload with invoice",
+                "content": "This content will be updated",
+            }
+        ]
+
+        evaluation = await evaluation_store.create_evaluation(payloads=payloads)
+
+        invoice_data: EvaluationInvoiceData = {
+            "type": "guideline",
+            "detail": {"type": "coherence_check", "data": []},
+        }
+
+        invoice: EvaluationInvoice = {
+            "id": EvaluationInvoiceId("123"),
+            "state_version": "1.0",
+            "checksum": "initial_checksum",
+            "approved": True,
+            "data": invoice_data,
+        }
+
+        updated_item: EvaluationItem = {
+            "id": evaluation.items[0]["id"],
+            "payload": evaluation.items[0]["payload"],
+            "invoice": invoice,
+            "error": None,
+        }
+
+        await evaluation_store.update_evaluation(
+            evaluation_id=evaluation.id,
+            item=updated_item,
+        )
+
+    with open(new_file) as f:
+        evaluations_from_json = json.load(f)
+
+    assert len(evaluations_from_json["evaluations"]) == 1
+    json_evaluation = evaluations_from_json["evaluations"][0]
+
+    assert json_evaluation["id"] == evaluation.id
+
+    assert json_evaluation["items"][0]["invoice"] is not None
+    assert json_evaluation["items"][0]["invoice"]["id"] == invoice["id"]
+    assert json_evaluation["items"][0]["invoice"]["checksum"] == "initial_checksum"
+    assert json_evaluation["items"][0]["invoice"]["approved"] is True

@@ -216,7 +216,7 @@ class JSONFileDocumentCollection(DocumentCollection):
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 async with self._lock:
-                    self._documents[i] = updated_document
+                    self._documents[i] = self._schema(**updated_document).model_dump(mode="json")
 
                 await self._database._sync_if_needed()
 
