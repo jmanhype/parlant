@@ -211,7 +211,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
 
     second_evaluation_id = await evaluation_service.create_evaluation_task(payloads=second_payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(reasonable_amount_of_time_until_task_starts)
 
     evaluation = await evaluation_store.read_evaluation(second_evaluation_id)
 
