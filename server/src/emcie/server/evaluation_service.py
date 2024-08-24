@@ -386,18 +386,18 @@ class EvaluationService:
     ) -> EvaluationId:
         evaluation = await self._evaluation_store.create_evaluation(payloads)
 
-        asyncio.create_task(self._run_evaluation(evaluation))
+        asyncio.create_task(self.run_evaluation(evaluation))
 
         return evaluation.id
 
-    async def _run_evaluation(self, evaluation: Evaluation) -> None:
+    async def run_evaluation(self, evaluation: Evaluation) -> None:
         self.logger.info(f"Starting evaluation task '{evaluation.id}'")
         try:
             if running_task := next(
                 iter(
                     e
                     for e in await self._evaluation_store.list_active_evaluations()
-                    if e.status == "running"
+                    if e.status == "running" and e.id != evaluation.id
                 ),
                 None,
             ):

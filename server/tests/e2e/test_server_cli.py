@@ -270,3 +270,62 @@ async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to
         agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
 
         assert nlp_test(agent_reply, "It says that bananas are very tasty and blue")
+
+
+async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
+    context: _TestContext,
+) -> None:
+    with run_server(context) as server_process:
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        payloads = {
+            "payloads": [
+                {
+                    "type": "guideline",
+                    "guideline_set": "test-agent",
+                    "predicate": "the user greets you",
+                    "content": "greet them back with 'Hello'",
+                },
+                {
+                    "type": "guideline",
+                    "guideline_set": "test-agent",
+                    "predicate": "the user greeting you",
+                    "content": "greet them back with 'Hola'",
+                },
+            ]
+        }
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            try:
+                evaluation_creation_response = await client.post(
+                    f"{SERVER_ADDRESS}/index/evaluations",
+                    json=payloads,
+                )
+                evaluation_creation_response.raise_for_status()
+                evaluation_id = evaluation_creation_response.json()["evaluation_id"]
+
+                server_process.send_signal(signal.SIGINT)
+                server_process.wait(timeout=REASONABLE_AMOUNT_OF_TIME)
+                assert server_process.returncode == os.EX_OK
+            except:
+                traceback.print_exc()
+                raise
+
+    with run_server(context) as server_process:
+        EXTRA_TIME_TO_LET_THE_TASK_COMPLETE = 5
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_LET_THE_TASK_COMPLETE)
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            try:
+                evaluation_response = await client.get(
+                    f"{SERVER_ADDRESS}/index/evaluations/{evaluation_id}",
+                )
+                evaluation_creation_response.raise_for_status()
+                assert evaluation_response.json()["status"] == "completed"
+            except:
+                traceback.print_exc()
+                raise

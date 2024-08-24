@@ -227,6 +227,8 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             c[MC] = mc
             yield c
 
+async def recover_server_tasks(evaluation_store=EvaluationStore, evaluation_service=EvaluationService,) -> None:
+    [asyncio.create_task(evaluation_service.run_evaluation(evaluation)) for evaluation in await evaluation_store.list_active_evaluations() ]
 
 @asynccontextmanager
 async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
@@ -251,6 +253,8 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
                 raise StartupError("indexing needs to be perform.")
         else:
             await indexer.index()
+
+        await recover_server_tasks(evaluation_store=container[EvaluationStore], evaluation_service=container[EvaluationService],)
 
         yield await create_app(container)
 
