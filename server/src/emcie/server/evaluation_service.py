@@ -18,8 +18,9 @@ from typing import (
 
 from emcie.common.base_models import DefaultBaseModel
 from emcie.server.coherence_checker import CoherenceChecker
-from emcie.server.core.common import UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 from emcie.server.logger import Logger
 
@@ -53,21 +54,19 @@ class CoherenceCheckResult(TypedDict):
 
 class GuidelineCoherenceCheckResult(TypedDict):
     type: Literal["coherence_check"]
-    data: Sequence[CoherenceCheckResult]
+    data: list[CoherenceCheckResult]
 
 
 class EvaluationInvoiceGuidelineData(TypedDict):
     type: Literal["guideline"]
-    detail: Union[Sequence[GuidelineCoherenceCheckResult]]
+    detail: Union[GuidelineCoherenceCheckResult]
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
 
 
-@dataclass(frozen=True)
-class EvaluationInvoice:
+class EvaluationInvoice(TypedDict):
     id: EvaluationInvoiceId
-    creation_utc: datetime
     state_version: str
     checksum: str
     approved: bool
@@ -177,7 +176,10 @@ class EvaluationDocumentStore(EvaluationStore):
         item: Optional[EvaluationItem] = None,
         error: Optional[str] = None,
     ) -> Evaluation:
-        evaluation = await self.read_evaluation(evaluation_id)
+        try:
+            evaluation = await self.read_evaluation(evaluation_id)
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
         status = status if status else evaluation.status
 
@@ -305,7 +307,7 @@ class GuidelineEvaluator:
     async def _check_for_coherence(
         self,
         payloads: Sequence[EvaluationPayload],
-    ) -> Iterable[list[GuidelineCoherenceCheckResult]]:
+    ) -> Iterable[GuidelineCoherenceCheckResult]:
         checker = CoherenceChecker(self.logger)
 
         proposed_guidelines = OrderedDict()
@@ -335,26 +337,30 @@ class GuidelineEvaluator:
             if contradiction.severity > 6
         ]
 
-        guideline_coherence_results: OrderedDict[
-            GuidelineId, list[GuidelineCoherenceCheckResult]
-        ] = OrderedDict({g_id: [] for g_id in proposed_guidelines})
+        guideline_coherence_results: OrderedDict[GuidelineId, GuidelineCoherenceCheckResult] = (
+            OrderedDict(
+                {
+                    g_id: GuidelineCoherenceCheckResult(type="coherence_check", data=[])
+                    for g_id in proposed_guidelines
+                }
+            )
+        )
 
         for contradiction in contradictions:
-            guideline_coherence_results[contradiction.proposed_guideline_id].append(
-                GuidelineCoherenceCheckResult(
-                    type="coherence_check",
-                    data=[
-                        CoherenceCheckResult(
-                            proposed=self._render_guideline(
-                                proposed_guidelines[contradiction.proposed_guideline_id]
-                            ),
-                            existing=self._render_guideline(
-                                existing_guidelines[contradiction.existing_guideline_id]
-                            ),
-                            issue=contradiction.rationale,
-                            severity=contradiction.severity,
-                        )
-                    ],
+            existing_guideline = (
+                existing_guidelines[contradiction.existing_guideline_id]
+                if contradiction.existing_guideline_id in existing_guidelines
+                else proposed_guidelines[contradiction.existing_guideline_id]
+            )
+
+            guideline_coherence_results[contradiction.proposed_guideline_id]["data"].append(
+                CoherenceCheckResult(
+                    proposed=self._render_guideline(
+                        proposed_guidelines[contradiction.proposed_guideline_id]
+                    ),
+                    existing=self._render_guideline(existing_guideline),
+                    issue=contradiction.rationale,
+                    severity=contradiction.severity,
                 )
             )
 
@@ -395,9 +401,12 @@ class EvaluationService:
                 ),
                 None,
             ):
-                raise EvaluationError(f"An evaluation task is already running: {running_task.id}")
+                raise EvaluationError(f"An evaluation task '{running_task.id}' is already running.")
 
-            await self._evaluation_store.update_evaluation(evaluation.id, "running")
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation.id,
+                status="running",
+            )
 
             results = await self._guideline_evaluator.evaluate(
                 [item["payload"] for item in evaluation.items]
@@ -408,10 +417,9 @@ class EvaluationService:
 
                 invoice = EvaluationInvoice(
                     id=invoice_id,
-                    creation_utc=datetime.now(timezone.utc),
                     state_version=str(hash(invoice_id)),
                     checksum=self._generate_checksum(evaluation.items[i]["payload"]),
-                    approved=True if len(result["detail"]) == 0 else False,
+                    approved=True if len(result["detail"]["data"]) == 0 else False,
                     data=result,
                 )
 
@@ -426,17 +434,26 @@ class EvaluationService:
                     ),
                 )
 
-            await self._evaluation_store.update_evaluation(evaluation.id, status="completed")
+            self.logger.info(f"evaluation task '{evaluation.id}' completed")
+
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation.id,
+                status="completed",
+            )
 
         except Exception as exc:
-            self.logger.info(
-                f"Evaluation task '{evaluation.id}' faild due to the following error: '{str(exc)}'"
+            logger_level = "info" if isinstance(exc, EvaluationError) else "error"
+            getattr(self.logger, logger_level)(
+                f"Evaluation task '{evaluation.id}' failed due to the following error: '{str(exc)}'"
             )
             await self._evaluation_store.update_evaluation(
-                evaluation_id=evaluation.id, status="failed", error=str(exc)
+                evaluation_id=evaluation.id,
+                status="failed",
+                error=str(exc),
             )
 
-    def _generate_checksum(self, payload: EvaluationGuidelinePayload) -> str:
+    @staticmethod
+    def _generate_checksum(payload: EvaluationGuidelinePayload) -> str:
         md5_hash = hashlib.md5()
         md5_hash.update(f"{json.dumps(payload)}".encode("utf-8"))
         return md5_hash.hexdigest()

@@ -54,6 +54,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.common import Engine
+from emcie.server.evaluation_service import EvaluationDocumentStore, EvaluationService, EvaluationStore
 from emcie.server.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
@@ -194,6 +195,9 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         JSONFileDocumentDatabase(
             LOGGER, EMCIE_HOME_DIR / "guideline_connections.json"
         ) as guideline_connections_db,
+        JSONFileDocumentDatabase(
+            LOGGER, EMCIE_HOME_DIR / "evaluations.json"
+        ) as evaluations_db
     ):
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
@@ -209,10 +213,11 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         )
         c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
         c[SessionStore] = SessionDocumentStore(sessions_db)
-
-        c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
-
         c[SessionListener] = PollingSessionListener
+        c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
+        c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
+        c[EvaluationService] = EvaluationService(LOGGER, c[EvaluationStore], c[GuidelineStore])
+
         c[Engine] = AlphaEngine
 
         for loader in load_agents, load_tools, load_guidelines:

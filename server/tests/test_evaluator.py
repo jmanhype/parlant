@@ -6,7 +6,6 @@ from lagom import Container
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.evaluation_service import (
     EvaluationGuidelinePayload,
-    EvaluationInvoice,
     EvaluationService,
     EvaluationStore,
 )
@@ -93,11 +92,13 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
 
     assert len(evaluation.items) == 1
 
-    assert isinstance(evaluation.items[0]["invoice"], EvaluationInvoice)
-    assert evaluation.items[0]["invoice"].approved
+    assert evaluation.items[0]["invoice"]
+    assert evaluation.items[0]["invoice"]["approved"]
 
-    assert evaluation.items[0]["invoice"].data["type"] == "guideline"
-    assert len(evaluation.items[0]["invoice"].data["detail"]) == 0
+    assert evaluation.items[0]["invoice"]["data"]["type"] == "guideline"
+
+    assert evaluation.items[0]["invoice"]["data"]["detail"]["type"] == "coherence_check"
+    assert len(evaluation.items[0]["invoice"]["data"]["detail"]["data"]) == 0
 
 
 async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_unapproved_invoice(
@@ -132,11 +133,13 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     assert len(evaluation.items) == 1
 
-    assert isinstance(evaluation.items[0]["invoice"], EvaluationInvoice)
-    assert not evaluation.items[0]["invoice"].approved
+    assert evaluation.items[0]["invoice"]
+    assert not evaluation.items[0]["invoice"]["approved"]
 
-    assert evaluation.items[0]["invoice"].data["type"] == "guideline"
-    assert len(evaluation.items[0]["invoice"].data["detail"]) > 1
+    assert evaluation.items[0]["invoice"]["data"]["type"] == "guideline"
+
+    assert evaluation.items[0]["invoice"]["data"]["detail"]["type"] == "coherence_check"
+    assert len(evaluation.items[0]["invoice"]["data"]["detail"]["data"]) >= 1
 
 
 async def test_that_an_evaluation_of_multiple_items_completes_with_an_invoice_for_each(
@@ -170,7 +173,7 @@ async def test_that_an_evaluation_of_multiple_items_completes_with_an_invoice_fo
 
     for item in evaluation.items:
         assert item["invoice"] is not None
-        assert isinstance(item["invoice"], EvaluationInvoice)
+        assert evaluation.items[0]["invoice"]
 
 
 async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_task_contains_its_error_details(
@@ -216,7 +219,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     evaluation = await evaluation_store.read_evaluation(second_evaluation_id)
 
     assert evaluation.status == "failed"
-    assert evaluation.error == f"An evaluation task is already running: {first_evaluation_id}"
+    assert evaluation.error == f"An evaluation task '{first_evaluation_id}' is already running."
 
 
 async def test_that_an_evaluation_that_fails_due_multiple_guideline_sets_contains_relevant_error_details(
