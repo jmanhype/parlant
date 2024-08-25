@@ -47,7 +47,7 @@ class MessageEventProducer:
             return []
 
         self.logger.debug(
-            f'Guidelines implemented: {json.dumps([{
+            f'Guidelines applied: {json.dumps([{
                 "predicate": p.guideline.predicate,
                 "content": p.guideline.content,
                 "rationale": p.rationale,
@@ -64,6 +64,8 @@ class MessageEventProducer:
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
             staged_events=staged_events,
         )
+
+        self.logger.debug(f"Message generation prompt: \n{prompt}")
 
         if response_message := await self._generate_response_message(prompt):
             self.logger.debug(f'Message production result: "{response_message}"')

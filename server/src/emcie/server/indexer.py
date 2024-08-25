@@ -143,9 +143,11 @@ class GuidelineIndexer:
 
         await self._remove_deleted_guidelines_connections(deleted)
 
-        for p in await self._guideline_connection_proposer.propose_connections(
+        proposed_connections = await self._guideline_connection_proposer.propose_connections(
             introduced_guidelines=introduced, existing_guidelines=existsing
-        ):
+        )
+
+        for p in proposed_connections:
             self.logger.debug(f"Add guideline connection between source: {p.source} and {p.target}")
 
             await self._guideline_connection_store.update_connection(
