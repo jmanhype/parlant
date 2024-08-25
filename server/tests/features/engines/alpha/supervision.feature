@@ -9,7 +9,7 @@ Feature: Supervision
         And that the "freeze_transactions" guideline is proposed with a priority of 9 because "An error in the last transaction occurred, which is unusual and raises concerns."
         And that the "process_refund" guideline is proposed with a priority of 7 because "The customer explicitly requested a refund."
         When messages are produced
-        Then the message should contain information that all transactions will be temporarily frozen and the refund will not be processed at this time.
+        Then the message should contain an explanation that the transaction is now on hold and the refund will not be processed at this time.
 
     Scenario: Prioritizing transferring the upset customer to the manager over offering pizza
         Given a guideline "selling_pizza", to sell pizza when a new customer arrives
