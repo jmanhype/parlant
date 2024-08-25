@@ -103,7 +103,12 @@ class GuidelineProposer:
                 f'    applies_score: {proposition["applies_score"]},\n'
                 f'    rationale: "{proposition["rationale"]}"\n'
             )
-            if proposition["applies_score"] >= 7:
+            if (proposition["applies_score"] >= 7) or (
+                proposition["applies_score"] >= 5
+                and not proposition[
+                    "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies"
+                ]
+            ):
                 propositions.append(
                     GuidelineProposition(
                         guideline=batch[int(proposition["predicate_number"]) - 1],
@@ -129,7 +134,8 @@ class GuidelineProposer:
             {
                 "predicate_number": i,
                 "predicate": "<THE PREDICATE TEXT>",
-                "was_already_handled_according_to_the_record_of_the_interaction": "<BOOL>",
+                "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": "<BOOL>",
+                "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": "<BOOL>",
                 "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE "
                 "CURRENT STATE OF THE INTERACTION>",
                 "applies_score": "<RELEVANCE SCORE>",
@@ -173,7 +179,8 @@ Process Description
 a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
 b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state.
 c. If the predicate has already been addressed, assess its continued applicability.
-d. Assign an applicability score to each predicate between 1 and 10, where 10 denotes the highest applicability score.
+d. Assign an applicability score to each predicate between 1 and 10.
+e. IMPORTANT: Note that some predicates are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure.
 
 ### Examples of Predicate Evaluations:
 
@@ -201,14 +208,16 @@ Is there anything else I can help you with?"}}}},
     {{
         "predicate_number": "1",
         "predicate": "the client initiates a purchase",
-        "was_already_handled_according_to_the_record_of_the_interaction": true,
+        "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": true,
+        "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
         "rationale": "The purchase-related guideline is irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
         "applies_score": 3
     }},
     {{
         "predicate_number": "2",
         "predicate": "the client asks about data security",
-        "was_already_handled_according_to_the_record_of_the_interaction": false,
+        "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+        "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
         "rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "applies_score": 9
     }}
@@ -237,21 +246,23 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         {{
             "predicate_number": "1",
             "predicate": "the client indicates they are in a hurry",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
             "applies_score": 8
         }},
         {{
             "predicate_number": "2",
             "predicate": "a client inquires about pricing plans",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "3",
             "predicate": "a client asks for a summary of the features of the three plans.",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
             "applies_score": 2
         }},
@@ -278,14 +289,16 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         {{
             "predicate_number": "1",
             "predicate": "the client asks for a recommendation",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "2",
             "predicate": "the client asks about movie genres",
-            "was_already_handled_according_to_the_record_of_the_interaction": true,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": true,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
             "applies_score": 3
         }}
@@ -313,14 +326,16 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         {{
             "predicate_number": "1",
             "predicate": "the client requests a modification to their order",
-            "was_already_handled_according_to_the_record_of_the_interaction": true,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": true,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
             "applies_score": 3
         }},
         {{
             "predicate_number": "2",
             "predicate": "the client asks for the store's location",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": true,
             "rationale": "The client asked for the store's location, making this guideline highly relevant.",
             "applies_score": 10
         }}
@@ -348,20 +363,58 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         {{
             "predicate_number": "1",
             "predicate": "the order does not exceed the limit of products",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
             "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "2",
             "predicate": "the client asks about product availability",
-            "was_already_handled_according_to_the_record_of_the_interaction": false,
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
             "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
             "applies_score": 10
         }}
     ]
 }}
 ```
+
+### Example #6:
+- Interaction Events: ###
+[{{"id": "54", "kind": "<message>", "source": "user",
+"data": {{"message": "I disagree with you about this point."}}}},
+{{"id": "66", "kind": "<message>", "source": "assistant",
+"data": {{"message": "But I fully disproved your thesis!"}}}},
+{{"id": "72", "kind": "<message>", "source": "user",
+"data": {{"message": "Okay, fine."}}}}]
+###
+- Predicates: ###
+1) the user is currently eating lunch
+2) the user agrees with you in the scope of an argument
+###
+- **Expected Result**:
+```json
+{{
+    "checks": [
+        {{
+            "predicate_number": "1",
+            "predicate": "the user is currently eating lunch",
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": false,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": false,
+            "rationale": "There's nothing to indicate that the user is eating, lunch or otherwise",
+            "applies_score": 1
+        }},
+        {{
+            "predicate_number": "2",
+            "predicate": "the user agrees with you in the scope of an argument",
+            "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": true,
+            "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": false,
+            "rationale": "The user said 'Okay, fine', but it's possible that they are still in disagreement internally",
+            "applies_score": 4
+        }}
+    ]
+}}
+```
+
 Expected Output
 ---------------------------
 - Specify the applicability of each predicate by filling in the rationale and applied score in the following list:
@@ -380,7 +433,7 @@ Expected Output
     async def _generate_llm_response(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o-mini",
+            model="gpt-4o",
             temperature=0.3,
             response_format={"type": "json_object"},
         )

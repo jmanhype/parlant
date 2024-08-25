@@ -108,7 +108,7 @@ def create_guideline_by_name(
             "content": "Inform the client that our address is at Sapir 2, Herzliya.",
         },
         "mood_support": {
-            "predicate": "the client expresses stress or dissatisfaction",
+            "predicate": "the client is experiencing stress or dissatisfaction",
             "content": "Provide comforting responses and suggest alternatives "
             "or support to alleviate the client's mood.",
         },
@@ -195,6 +195,7 @@ def create_guideline_by_name(
                     "Take care and see you soon at the meditation class. "
                     "Our gym is at Sapir 2, Herzliya, in case you need directions.",
                 ),
+                ("client", "Thank you!"),
             ],
             [
                 "class_booking",
