@@ -198,11 +198,13 @@ Is there anything else I can help you with?"}}}},
 {{ "checks": [
     {{
         "predicate_number": "1",
+        "predicate_concern_already_fully_addressed_in_the_interaction": true,
         "rationale": "The purchase-related guideline is irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
         "applies_score": 3
     }},
     {{
         "predicate_number": "2",
+        "predicate_concern_already_fully_addressed_in_the_interaction": false,
         "rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "applies_score": 9
     }}
@@ -230,16 +232,19 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "predicate_number": "1",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
             "applies_score": 8
         }},
         {{
             "predicate_number": "2",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "3",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
             "applies_score": 2
         }},
@@ -265,11 +270,13 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "predicate_number": "1",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "2",
+            "predicate_concern_already_fully_addressed_in_the_interaction": true,
             "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
             "applies_score": 3
         }}
@@ -296,11 +303,13 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "predicate_number": "1",
+            "predicate_concern_already_fully_addressed_in_the_interaction": true,
             "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
             "applies_score": 3
         }},
         {{
             "predicate_number": "2",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client asked for the store's location, making this guideline highly relevant.",
             "applies_score": 10
         }}
@@ -327,11 +336,13 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "predicate_number": "1",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
             "applies_score": 9
         }},
         {{
             "predicate_number": "2",
+            "predicate_concern_already_fully_addressed_in_the_interaction": false,
             "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
             "applies_score": 10
         }}
@@ -356,7 +367,7 @@ Expected Output
     async def _generate_llm_response(self, prompt: str) -> str:
         response = await self._llm_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o",
+            model="gpt-4o-mini",
             temperature=0.3,
             response_format={"type": "json_object"},
         )
