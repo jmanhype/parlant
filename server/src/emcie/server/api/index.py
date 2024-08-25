@@ -1,18 +1,17 @@
 from datetime import datetime
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
-from openai import BaseModel
+from pydantic import BaseModel
 
-from emcie.server.core.common import UniqueId
 from emcie.server.behavioral_change_evaluation import (
-    EvaluationInvoiceData,
-    EvaluationPayload,
     BehavioralChangeEvaluator,
     EvaluationGuidelinePayload,
     EvaluationId,
-    EvaluationStore,
+    EvaluationPayload,
 )
+from emcie.server.core.common import UniqueId
 from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.evaluations import EvaluationInvoiceData, EvaluationStore
 
 
 class CreateEvaluationRequest(DefaultBaseModel):

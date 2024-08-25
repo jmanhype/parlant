@@ -1,20 +1,43 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Sequence, TypeAlias, TypedDict, Union
+from typing import Literal, NewType, Optional, Sequence, TypeAlias, TypedDict, Union
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.behavioral_change_evaluation import (
-    EvaluationGuidelinePayload,
-    EvaluationId,
-    EvaluationInvoiceGuidelineData,
-    EvaluationInvoiceId,
-    EvaluationPayload,
-    EvaluationStatus,
-)
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
+
+EvaluationId = NewType("EvaluationId", str)
+EvaluationInvoiceId = NewType("EvaluationInvoiceId", str)
+EvaluationStatus = Literal["pending", "running", "completed", "failed"]
+
+
+class EvaluationGuidelinePayload(TypedDict):
+    type: Literal["guideline"]
+    guideline_set: str
+    predicate: str
+    content: str
+
+
+EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
+
+
+class CoherenceCheckResult(TypedDict):
+    proposed: str
+    existing: str
+    issue: str
+    severity: int
+
+
+class GuidelineCoherenceCheckResult(TypedDict):
+    type: Literal["coherence_check"]
+    data: list[CoherenceCheckResult]
+
+
+class EvaluationInvoiceGuidelineData(TypedDict):
+    type: Literal["guideline"]
+    detail: Union[GuidelineCoherenceCheckResult]
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
@@ -48,7 +71,7 @@ class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
         self,
-        payload: Sequence[EvaluationGuidelinePayload],
+        payload: Sequence[EvaluationPayload],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation: ...
 
@@ -89,7 +112,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
     async def create_evaluation(
         self,
-        payloads: Sequence[EvaluationGuidelinePayload],
+        payloads: Sequence[EvaluationPayload],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation:
         creation_utc = creation_utc or datetime.now(timezone.utc)

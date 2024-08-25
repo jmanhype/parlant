@@ -3,12 +3,12 @@ from typing import Sequence
 
 from lagom import Container
 
-from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.behavioral_change_evaluation import (
-    EvaluationGuidelinePayload,
     BehavioralChangeEvaluator,
-    EvaluationStore,
+    EvaluationGuidelinePayload,
 )
+from emcie.server.core.evaluations import EvaluationStore
+from emcie.server.core.guidelines import GuidelineStore
 from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
 
 

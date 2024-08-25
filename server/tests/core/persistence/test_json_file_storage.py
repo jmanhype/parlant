@@ -9,12 +9,22 @@ from pytest import fixture, mark
 import pytest
 
 from emcie.common.tools import ToolId
+from emcie.server.behavioral_change_evaluation import (
+    EvaluationGuidelinePayload,
+    EvaluationInvoiceId,
+)
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
 )
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
+from emcie.server.core.evaluations import (
+    EvaluationDocumentStore,
+    EvaluationInvoice,
+    EvaluationInvoiceData,
+    EvaluationItem,
+)
 from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineId,
@@ -24,14 +34,6 @@ from emcie.server.core.sessions import SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
-)
-from emcie.server.behavioral_change_evaluation import (
-    EvaluationDocumentStore,
-    EvaluationGuidelinePayload,
-    EvaluationInvoice,
-    EvaluationInvoiceData,
-    EvaluationInvoiceId,
-    EvaluationItem,
 )
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter

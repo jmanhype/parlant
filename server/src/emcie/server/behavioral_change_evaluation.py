@@ -2,24 +2,22 @@ import asyncio
 from datetime import datetime, timezone
 import hashlib
 import json
-from typing import (
-    Iterable,
-    Literal,
-    NewType,
-    OrderedDict,
-    Sequence,
-    TypeAlias,
-    TypedDict,
-    Union,
-)
+from typing import Iterable, OrderedDict, Sequence
 
 from emcie.server.coherence_checker import CoherenceChecker
 from emcie.server.core.common import generate_id
 from emcie.server.core.evaluations import (
+    CoherenceCheckResult,
     Evaluation,
+    EvaluationGuidelinePayload,
+    EvaluationId,
     EvaluationInvoice,
+    EvaluationInvoiceGuidelineData,
+    EvaluationInvoiceId,
     EvaluationItem,
+    EvaluationPayload,
     EvaluationStore,
+    GuidelineCoherenceCheckResult,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
 from emcie.server.logger import Logger
@@ -28,38 +26,6 @@ from emcie.server.logger import Logger
 class EvaluationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
-
-
-EvaluationId = NewType("EvaluationId", str)
-EvaluationInvoiceId = NewType("EvaluationInvoiceId", str)
-EvaluationStatus = Literal["pending", "running", "completed", "failed"]
-
-
-class EvaluationGuidelinePayload(TypedDict):
-    type: Literal["guideline"]
-    guideline_set: str
-    predicate: str
-    content: str
-
-
-EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
-
-
-class CoherenceCheckResult(TypedDict):
-    proposed: str
-    existing: str
-    issue: str
-    severity: int
-
-
-class GuidelineCoherenceCheckResult(TypedDict):
-    type: Literal["coherence_check"]
-    data: list[CoherenceCheckResult]
-
-
-class EvaluationInvoiceGuidelineData(TypedDict):
-    type: Literal["guideline"]
-    detail: Union[GuidelineCoherenceCheckResult]
 
 
 class GuidelineEvaluator:

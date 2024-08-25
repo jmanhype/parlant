@@ -3,10 +3,8 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
 
-from emcie.server.behavioral_change_evaluation import (
-    BehavioralChangeEvaluator,
-    EvaluationStore,
-)
+from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator
+from emcie.server.core.evaluations import EvaluationStore
 
 
 async def test_that_an_evaluation_can_be_created(
