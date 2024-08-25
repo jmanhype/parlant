@@ -1,3 +1,4 @@
+from itertools import chain
 import json
 from typing import Mapping, Optional, Sequence
 
@@ -45,6 +46,15 @@ class MessageEventProducer:
             self.logger.debug("Skipping response; interaction is empty and there are no guidelines")
             return []
 
+        self.logger.debug(
+            f'Guidelines applied: {json.dumps([{
+                "predicate": p.guideline.predicate,
+                "content": p.guideline.content,
+                "rationale": p.rationale,
+                "score": p.score}
+            for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}'
+        )
+
         prompt = self._format_prompt(
             agents=agents,
             context_variables=context_variables,
@@ -54,6 +64,8 @@ class MessageEventProducer:
             tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
             staged_events=staged_events,
         )
+
+        self.logger.debug(f"Message generation prompt: \n{prompt}")
 
         if response_message := await self._generate_response_message(prompt):
             self.logger.debug(f'Message production result: "{response_message}"')

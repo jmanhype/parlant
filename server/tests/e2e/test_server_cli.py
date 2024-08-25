@@ -266,7 +266,7 @@ async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to
             config_file=context.config_file,
         )
 
-        await asyncio.sleep(10)
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
 

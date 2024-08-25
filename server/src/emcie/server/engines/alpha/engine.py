@@ -1,5 +1,6 @@
 from collections import defaultdict
 from itertools import chain
+import json
 from typing import Mapping, Optional, Sequence
 
 from emcie.common.tools import Tool
@@ -354,11 +355,12 @@ class AlphaEngine(Engine):
         if staged_events:
             context += str([e.data for e in staged_events])
 
-        return (
-            await self.terminology_store.find_relevant_terms(
+        if context:
+            self.logger.debug(
+                f"Finding relevant terms for the context: {json.dumps(context, indent=2)}"
+            )
+            return await self.terminology_store.find_relevant_terms(
                 term_set=agent.name,
                 query=context,
             )
-            if context
-            else []
-        )
+        return []
