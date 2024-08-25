@@ -9,7 +9,7 @@ from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.sessions import SessionListener, SessionStore
-from emcie.server.evaluation_service import EvaluationService, EvaluationStore
+from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator, EvaluationStore
 from emcie.server.logger import Logger
 from emcie.server.mc import MC
 
@@ -21,7 +21,7 @@ async def create_app(container: Container) -> FastAPI:
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     mc = container[MC]
 
     app = FastAPI()

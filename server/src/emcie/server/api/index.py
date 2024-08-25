@@ -4,10 +4,10 @@ from fastapi import APIRouter, HTTPException, status
 from openai import BaseModel
 
 from emcie.server.core.common import UniqueId
-from emcie.server.evaluation_service import (
+from emcie.server.behavioral_change_evaluation import (
     EvaluationInvoiceData,
     EvaluationPayload,
-    EvaluationService,
+    BehavioralChangeEvaluator,
     EvaluationGuidelinePayload,
     EvaluationId,
     EvaluationStore,
@@ -46,7 +46,7 @@ class EvaluationDTO(BaseModel):
 
 
 def create_router(
-    evaluation_service: EvaluationService,
+    evaluation_service: BehavioralChangeEvaluator,
     evaluation_store: EvaluationStore,
 ) -> APIRouter:
     router = APIRouter()

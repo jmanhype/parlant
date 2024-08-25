@@ -25,7 +25,7 @@ from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
-from emcie.server.evaluation_service import (
+from emcie.server.behavioral_change_evaluation import (
     EvaluationDocumentStore,
     EvaluationGuidelinePayload,
     EvaluationInvoice,

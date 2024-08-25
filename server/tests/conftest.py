@@ -27,9 +27,9 @@ from emcie.server.core.tools import MultiplexedToolService, LocalToolService, To
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.engines.common import Engine
-from emcie.server.evaluation_service import (
+from emcie.server.behavioral_change_evaluation import (
     EvaluationDocumentStore,
-    EvaluationService,
+    BehavioralChangeEvaluator,
     EvaluationStore,
 )
 from emcie.server.logger import Logger, StdoutLogger
@@ -77,7 +77,7 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
-    container[EvaluationService] = EvaluationService
+    container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
 
     container[Engine] = AlphaEngine
 

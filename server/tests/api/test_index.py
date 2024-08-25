@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
 
-from emcie.server.evaluation_service import (
-    EvaluationService,
+from emcie.server.behavioral_change_evaluation import (
+    BehavioralChangeEvaluator,
     EvaluationStore,
 )
 
@@ -85,7 +85,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
     client: TestClient,
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
 
     payloads = {
         "payloads": [

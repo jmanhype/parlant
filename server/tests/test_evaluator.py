@@ -4,9 +4,9 @@ from typing import Sequence
 from lagom import Container
 
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.evaluation_service import (
+from emcie.server.behavioral_change_evaluation import (
     EvaluationGuidelinePayload,
-    EvaluationService,
+    BehavioralChangeEvaluator,
     EvaluationStore,
 )
 from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
@@ -15,7 +15,7 @@ from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
 async def test_that_a_new_evaluation_starts_with_a_pending_status(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     payloads: Sequence[EvaluationGuidelinePayload] = [
@@ -37,7 +37,7 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
 async def test_that_an_evaluation_completes_when_all_items_have_an_invoice(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     payloads: Sequence[EvaluationGuidelinePayload] = [
@@ -64,7 +64,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     container: Container,
 ) -> None:
     guideline_store = container[GuidelineStore]
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     await guideline_store.create_guideline(
@@ -105,7 +105,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     container: Container,
 ) -> None:
     guideline_store = container[GuidelineStore]
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     await guideline_store.create_guideline(
@@ -145,7 +145,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 async def test_that_an_evaluation_of_multiple_items_completes_with_an_invoice_for_each(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     payloads: Sequence[EvaluationGuidelinePayload] = [
@@ -179,7 +179,7 @@ async def test_that_an_evaluation_of_multiple_items_completes_with_an_invoice_fo
 async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_task_contains_its_error_details(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     payload_with_contradictions: Sequence[EvaluationGuidelinePayload] = [
@@ -225,7 +225,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
 async def test_that_an_evaluation_that_fails_due_multiple_guideline_sets_contains_relevant_error_details(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     payloads: Sequence[EvaluationGuidelinePayload] = [
@@ -256,7 +256,7 @@ async def test_that_an_evaluation_that_fails_due_multiple_guideline_sets_contain
 async def test_that_an_evaluation_that_fails_due_to_guidelines_duplication_in_the_payloads_contains_relevant_error_details(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     duplicate_payload: EvaluationGuidelinePayload = {
@@ -283,7 +283,7 @@ async def test_that_an_evaluation_that_fails_due_to_guidelines_duplication_in_th
 async def test_that_an_evaluation_that_fails_due_to_duplicate_guidelines_with_existing_contains_relevant_error_details(
     container: Container,
 ) -> None:
-    evaluation_service = container[EvaluationService]
+    evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
     guideline_store = container[GuidelineStore]
 

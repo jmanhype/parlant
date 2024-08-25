@@ -26,6 +26,7 @@ from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
+from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
 from emcie.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -54,7 +55,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.common import Engine
-from emcie.server.evaluation_service import EvaluationDocumentStore, EvaluationService, EvaluationStore
+from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
@@ -216,7 +217,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[SessionListener] = PollingSessionListener
         c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
         c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
-        c[EvaluationService] = EvaluationService(LOGGER, c[EvaluationStore], c[GuidelineStore])
+        c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(LOGGER, c[EvaluationStore], c[GuidelineStore])
 
         c[Engine] = AlphaEngine
 
@@ -227,7 +228,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             c[MC] = mc
             yield c
 
-async def recover_server_tasks(evaluation_store=EvaluationStore, evaluation_service=EvaluationService,) -> None:
+async def recover_server_tasks(evaluation_store=EvaluationStore, evaluation_service=BehavioralChangeEvaluator,) -> None:
     [asyncio.create_task(evaluation_service.run_evaluation(evaluation)) for evaluation in await evaluation_store.list_active_evaluations() ]
 
 @asynccontextmanager
@@ -254,7 +255,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
         else:
             await indexer.index()
 
-        await recover_server_tasks(evaluation_store=container[EvaluationStore], evaluation_service=container[EvaluationService],)
+        await recover_server_tasks(evaluation_store=container[EvaluationStore], evaluation_service=container[BehavioralChangeEvaluator],)
 
         yield await create_app(container)
 
