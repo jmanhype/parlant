@@ -600,7 +600,6 @@ async def test_evaluation_update(
         )
 
         invoice = EvaluationInvoice(
-            id=evaluation.invoices[0].id,
             payload=payloads[0],
             state_version="123",
             checksum="initial_checksum",
@@ -611,7 +610,7 @@ async def test_evaluation_update(
 
         await evaluation_store.update_evaluation_invoice(
             evaluation_id=evaluation.id,
-            invoice_id=invoice.id,
+            invoice_index=0,
             updated_invoice=invoice,
         )
 

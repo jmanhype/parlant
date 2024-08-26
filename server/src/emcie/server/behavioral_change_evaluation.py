@@ -210,7 +210,6 @@ class BehavioralChangeEvaluator:
                 state_version = str(hash("Temporarily"))
 
                 invoice = EvaluationInvoice(
-                    id=evaluation.invoices[i].id,
                     payload=evaluation.invoices[i].payload,
                     checksum=invoice_checksum,
                     state_version=state_version,
@@ -221,7 +220,7 @@ class BehavioralChangeEvaluator:
 
                 await self._evaluation_store.update_evaluation_invoice(
                     evaluation.id,
-                    invoice_id=evaluation.invoices[i].id,
+                    invoice_index=i,
                     updated_invoice=invoice,
                 )
 

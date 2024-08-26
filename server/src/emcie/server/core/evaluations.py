@@ -9,7 +9,6 @@ from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 EvaluationId = NewType("EvaluationId", str)
-EvaluationInvoiceId = NewType("EvaluationInvoiceId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
 
 
@@ -50,7 +49,6 @@ EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
 
 @dataclass(frozen=True)
 class EvaluationInvoice:
-    id: EvaluationInvoiceId
     payload: EvaluationPayload
     checksum: str
     state_version: str
@@ -80,7 +78,7 @@ class EvaluationStore(ABC):
     async def update_evaluation_invoice(
         self,
         evaluation_id: EvaluationId,
-        invoice_id: EvaluationInvoiceId,
+        invoice_index: int,
         updated_invoice: EvaluationInvoice,
     ) -> Evaluation: ...
 
@@ -129,7 +127,6 @@ class EvaluationDocumentStore(EvaluationStore):
 
         invoices = [
             EvaluationInvoice(
-                id=EvaluationInvoiceId(generate_id()),
                 payload=p,
                 state_version="",
                 checksum="",
@@ -161,7 +158,7 @@ class EvaluationDocumentStore(EvaluationStore):
     async def update_evaluation_invoice(
         self,
         evaluation_id: EvaluationId,
-        invoice_id: EvaluationInvoiceId,
+        invoice_index: int,
         updated_invoice: EvaluationInvoice,
     ) -> Evaluation:
         try:
@@ -170,8 +167,8 @@ class EvaluationDocumentStore(EvaluationStore):
             raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
         evaluation_invoices = [
-            invoice if invoice.id != invoice_id else updated_invoice
-            for invoice in evaluation.invoices
+            invoice if i != invoice_index else updated_invoice
+            for i, invoice in enumerate(evaluation.invoices)
         ]
 
         await self._evaluation_collection.update_one(
@@ -183,7 +180,6 @@ class EvaluationDocumentStore(EvaluationStore):
                 "error": evaluation.error,
                 "invoices": [
                     {
-                        "id": invoice.id,
                         "payload": {
                             "type": invoice.payload.type,
                             "guideline_set": invoice.payload.guideline_set,
@@ -229,7 +225,6 @@ class EvaluationDocumentStore(EvaluationStore):
                 "error": error,
                 "invoices": [
                     {
-                        "id": invoice.id,
                         "payload": {
                             "type": invoice.payload.type,
                             "guideline_set": invoice.payload.guideline_set,
@@ -270,7 +265,6 @@ class EvaluationDocumentStore(EvaluationStore):
             error=evaluation_document["error"],
             invoices=[
                 EvaluationInvoice(
-                    id=invoice["id"],
                     payload=EvaluationPayload(**invoice["payload"]),
                     checksum=invoice["checksum"],
                     state_version=invoice["state_version"],
@@ -293,7 +287,6 @@ class EvaluationDocumentStore(EvaluationStore):
                 error=e["error"],
                 invoices=[
                     EvaluationInvoice(
-                        id=invoice["id"],
                         payload=EvaluationPayload(**invoice["payload"]),
                         checksum=invoice["checksum"],
                         state_version=invoice["state_version"],

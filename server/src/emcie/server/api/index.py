@@ -12,7 +12,6 @@ from emcie.server.core.evaluations import (
     EvaluationGuidelinePayload,
     EvaluationId,
     EvaluationInvoiceData,
-    EvaluationInvoiceId,
     EvaluationPayload,
     EvaluationStatus,
     EvaluationStore,
@@ -28,7 +27,6 @@ class CreateEvaluationResponse(DefaultBaseModel):
 
 
 class EvaluationInvoiceDTO(DefaultBaseModel):
-    invoice_id: EvaluationInvoiceId
     payload: EvaluationPayload
     checksum: str
     approved: bool
@@ -74,7 +72,6 @@ def create_router(
             creation_utc=evaluation.creation_utc,
             invoices=[
                 EvaluationInvoiceDTO(
-                    invoice_id=invoice.id,
                     payload=invoice.payload,
                     checksum=invoice.checksum,
                     approved=invoice.approved,
