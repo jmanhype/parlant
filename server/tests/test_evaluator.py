@@ -33,7 +33,7 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
     assert evaluation.status == "pending"
 
 
-async def test_that_an_evaluation_completes_when_all_items_have_an_invoice(
+async def test_that_an_evaluation_completes_when_all_invoices_have_data(
     container: Container,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
@@ -142,7 +142,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert len(evaluation.invoices[0].data.detail["coherence_checks"]) >= 1
 
 
-async def test_that_an_evaluation_of_multiple_items_completes_with_an_invoice_for_each(
+async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice_containing_data_for_each(
     container: Container,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]

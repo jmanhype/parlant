@@ -4,7 +4,6 @@ from fastapi import status
 from lagom import Container
 
 from emcie.server.core.evaluations import EvaluationStore
-from emcie.server.utils import md5_checksum
 
 
 async def test_that_an_evaluation_can_be_created(

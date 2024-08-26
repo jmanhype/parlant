@@ -99,7 +99,7 @@ class EvaluationStore(ABC):
     ) -> Evaluation: ...
 
     @abstractmethod
-    async def list_active_evaluations(
+    async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]: ...
 
@@ -184,12 +184,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 "invoices": [
                     {
                         "id": invoice.id,
-                        "payload": {
-                            "type": invoice.payload.type,
-                            "guideline_set": invoice.payload.guideline_set,
-                            "predicate": invoice.payload.predicate,
-                            "content": invoice.payload.content,
-                        },
+                        "payload": invoice.payload,
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,
@@ -230,12 +225,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 "invoices": [
                     {
                         "id": invoice.id,
-                        "payload": {
-                            "type": invoice.payload.type,
-                            "guideline_set": invoice.payload.guideline_set,
-                            "predicate": invoice.payload.predicate,
-                            "content": invoice.payload.content,
-                        },
+                        "payload": invoice.payload,
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,
@@ -267,7 +257,7 @@ class EvaluationDocumentStore(EvaluationStore):
             id=evaluation_document["id"],
             status=evaluation_document["status"],
             creation_utc=evaluation_document["creation_utc"],
-            error=evaluation_document.get("error"),
+            error=evaluation_document["error"],
             invoices=[
                 EvaluationInvoice(
                     id=invoice["id"],
@@ -282,7 +272,7 @@ class EvaluationDocumentStore(EvaluationStore):
             ],
         )
 
-    async def list_active_evaluations(
+    async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
@@ -290,15 +280,19 @@ class EvaluationDocumentStore(EvaluationStore):
                 id=e["id"],
                 status=e["status"],
                 creation_utc=e["creation_utc"],
-                error=e.get("error"),
-                invoices=e["invoices"],
+                error=e["error"],
+                invoices=[
+                    EvaluationInvoice(
+                        id=invoice["id"],
+                        payload=EvaluationPayload(**invoice["payload"]),
+                        checksum=invoice["checksum"],
+                        state_version=invoice["state_version"],
+                        approved=invoice["approved"],
+                        data=invoice["data"],
+                        error=invoice["error"],
+                    )
+                    for invoice in e["invoices"]
+                ],
             )
-            for e in await self._evaluation_collection.find(
-                filters={
-                    "$or": [
-                        {"status": {"$eq": "pending"}},
-                        {"status": {"$eq": "running"}},
-                    ]
-                }
-            )
+            for e in await self._evaluation_collection.find(filters={})
         ]

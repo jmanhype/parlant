@@ -183,7 +183,7 @@ class BehavioralChangeEvaluator:
             if running_task := next(
                 iter(
                     e
-                    for e in await self._evaluation_store.list_active_evaluations()
+                    for e in await self._evaluation_store.list_evaluations()
                     if e.status == "running" and e.id != evaluation.id
                 ),
                 None,
@@ -195,6 +195,7 @@ class BehavioralChangeEvaluator:
                 status="running",
             )
 
+            self.logger.info(f"DorZo B: {evaluation.invoices}")
             guideline_results = await self._guideline_evaluator.evaluate(
                 [
                     invoice.payload
@@ -202,6 +203,7 @@ class BehavioralChangeEvaluator:
                     if invoice.payload.type == "guideline"
                 ]
             )
+            self.logger.info("DorZo C")
 
             for i, result in enumerate(guideline_results):
                 invoice_checksum = md5_checksum(str(evaluation.invoices[i].payload))

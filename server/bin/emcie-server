@@ -229,8 +229,9 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             yield c
 
 async def recover_server_tasks(evaluation_store=EvaluationStore, evaluator=BehavioralChangeEvaluator,) -> None:
-    for evaluation in await evaluation_store.list_active_evaluations():
-        await evaluator.run_evaluation(evaluation)
+    for evaluation in await evaluation_store.list_evaluations():
+        if evaluation.status in ["pending", "running"]:
+            await evaluator.run_evaluation(evaluation)
 
 @asynccontextmanager
 async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:

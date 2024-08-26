@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 
 
 from emcie.server.behavioral_change_evaluation import (
@@ -28,7 +27,7 @@ class CreateEvaluationResponse(DefaultBaseModel):
     evaluation_id: EvaluationId
 
 
-class EvaluationInvoiceDTO(BaseModel):
+class EvaluationInvoiceDTO(DefaultBaseModel):
     invoice_id: EvaluationInvoiceId
     payload: EvaluationPayload
     checksum: str
@@ -37,7 +36,7 @@ class EvaluationInvoiceDTO(BaseModel):
     error: Optional[str]
 
 
-class EvaluationDTO(DefaultBaseModel):
+class ReadEvaluationResponse(DefaultBaseModel):
     evaluation_id: EvaluationId
     status: EvaluationStatus
     creation_utc: datetime
@@ -66,10 +65,10 @@ def create_router(
         return CreateEvaluationResponse(evaluation_id=evaluation_id)
 
     @router.get("/evaluations/{evaluation_id}")
-    async def get_evaluation(evaluation_id: EvaluationId) -> EvaluationDTO:
+    async def get_evaluation(evaluation_id: EvaluationId) -> ReadEvaluationResponse:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
 
-        return EvaluationDTO(
+        return ReadEvaluationResponse(
             evaluation_id=evaluation.id,
             status=evaluation.status,
             creation_utc=evaluation.creation_utc,
