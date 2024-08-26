@@ -146,12 +146,12 @@ class ContradictionEvaluatorBase(ABC):
         )
         result_structure = [
             {
-                "compared_guideline_id": g.id,
-                "guideline_under_test_id": proposed_guideline.id,
+                "guideline_a_id": proposed_guideline.id,
+                "guideline_b_id": g.id,
                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the "
                 "contradiction arising from overlapping conditions>",
-                "rationale": "<Concise explanation of why the Guideline Under Test and the "
-                f"compared guideline exhibit a {self.contradiction_type.value}>",
+                "rationale": "<Concise explanation of why the Guideline A and the "
+                f"Guideline B exhibit a {self.contradiction_type.value}>",
             }
             for g in existing_guidelines
         ]
@@ -168,13 +168,13 @@ class ContradictionEvaluatorBase(ABC):
    - Guideline Comparison Set: ###
     {existing_guidelines_string}
    ###
-   - Guideline Under Test: ###
+   - Guideline A: ###
    {proposed_guideline_string}
    ###
 
 2. **Process**:
-   - Compare each of the {len(existing_guidelines)} guidelines in the Guideline Comparison Set with the Guideline Under Test.
-   - Determine if there is a {self.contradiction_type.value}, where the Guideline Under Test is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
+   - Compare each of the {len(existing_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
+   - Determine if there is a {self.contradiction_type.value}, where the Guideline A is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 
@@ -210,8 +210,8 @@ class ContradictionEvaluatorBase(ABC):
         contradictions = [
             ContradictionTest(
                 contradiction_type=self.contradiction_type,
-                guideline_a_id=json_contradiction["compared_guideline_id"],
-                guideline_b_id=json_contradiction["guideline_under_test_id"],
+                guideline_a_id=json_contradiction["guideline_b_id"],
+                guideline_b_id=json_contradiction["guideline_a_id"],
                 severity=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
                 creation_utc=datetime.now(timezone.utc),
@@ -238,15 +238,15 @@ This type of Contradiction occurs when the application of a general guideline is
     def _format_contradiction_type_examples(self) -> str:
         return f"""
 #### Example #1:
-- **Compared Guideline**: {{"id": 3, "guideline": "When a customer orders any item, Then prioritize shipping based on customer loyalty level."}}
-- **Guideline Under Test**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
+- **Guideline A**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
+- **Guideline B**: {{"id": 3, "guideline": "When a customer orders any item, Then prioritize shipping based on customer loyalty level."}}
 - **Expected Result**:
      ```json
      {{
          "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "3",
-                 "guideline_under_test_id": "4",
+                 "guideline_a_id": "4",
+                 "guideline_b_id": "3",
                  "severity_level": 9,
                  "rationale": "Shipping high-demand items immediately contradicts the policy of prioritizing shipments based on loyalty."
              }}
@@ -255,15 +255,15 @@ This type of Contradiction occurs when the application of a general guideline is
      ```
 
 #### Example #2:
-- **Compared Guideline**: {{"id": 1, "guideline": "When an employee qualifies for any reward, Then distribute rewards based on standard performance metrics."}}
-- **Guideline Under Test**: {{"id": 2, "guideline": "When an employee excels in a critical project, Then offer additional rewards beyond standard metrics."}}
+- **Guideline A**: {{"id": 2, "guideline": "When an employee excels in a critical project, Then offer additional rewards beyond standard metrics."}}
+- **Guideline B**: {{"id": 1, "guideline": "When an employee qualifies for any reward, Then distribute rewards based on standard performance metrics."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "1",
-                 "guideline_under_test_id": "2",
+                 "guideline_a_id": "2",
+                 "guideline_b_id": "1",
                  "severity_level": 8,
                  "rationale": "Offering extra rewards for specific projects directly conflicts with the uniform application of standard performance metrics."
              }}
@@ -272,15 +272,15 @@ This type of Contradiction occurs when the application of a general guideline is
      ```
 
 #### Example #3:
-- **Compared Guideline**: {{"id": 5, "guideline": "When a customer subscribes to a yearly plan, Then offer a 10% discount on the subscription fee."}}
-- **Guideline Under Test**: {{"id": 6, "guideline": "When a customer subscribes to any plan during a promotional period, Then offer an additional 5% discount on the subscription fee."}}
+- **Guideline A**: {{"id": 6, "guideline": "When a customer subscribes to any plan during a promotional period, Then offer an additional 5% discount on the subscription fee."}}
+- **Guideline B**: {{"id": 5, "guideline": "When a customer subscribes to a yearly plan, Then offer a 10% discount on the subscription fee."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "5",
-                 "guideline_under_test_id": "6",
+                 "guideline_a_id": "6",
+                 "guideline_b_id": "5",
                  "severity_level": 1,
                  "rationale": "The policies to offer discounts for yearly subscriptions and additional discounts during promotional periods complement each other rather than contradict. Both discounts can be applied simultaneously without undermining one another, enhancing the overall attractiveness of the subscription offers during promotions."
              }}
@@ -289,15 +289,15 @@ This type of Contradiction occurs when the application of a general guideline is
      ```
 
 #### Example #4:
-- **Compared Guideline**: {{"id": 7, "guideline": "When there is a software update, Then deploy it within 48 hours."}}
-- **Guideline Under Test**: {{"id": 8, "guideline": "When a software update includes major changes affecting user interfaces, Then delay deployment for additional user training."}}
+- **Guideline A**: {{"id": 8, "guideline": "When a software update includes major changes affecting user interfaces, Then delay deployment for additional user training."}}
+- **Guideline B**: {{"id": 7, "guideline": "When there is a software update, Then deploy it within 48 hours."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "7",
-                 "guideline_under_test_id": "8",
+                 "guideline_a_id": "8",
+                 "guideline_b_id": "7",
                  "severity_level": 9,
                  "rationale": "The need for additional training on major UI changes necessitates delaying rapid deployments, causing a conflict with established update protocols."
              }}
@@ -323,49 +323,49 @@ This happens when conditions for both guidelines are met simultaneously, without
     def _format_contradiction_type_examples(self) -> str:
         return f"""
 #### Example #1:
-- **Compared Guideline**: {{"id": 1, "guideline": "When a customer returns an item within 30 days, Then issue a full refund."}}
-- **Guideline Under Test**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
+- **Guideline A**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
+- **Guideline B**: {{"id": 1, "guideline": "When a customer returns an item within 30 days, Then issue a full refund."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "1",
-                 "guideline_under_test_id": "2",
-                 "severity_level": 9,
-                 "rationale": "Refund policy conflict: special orders returned within 30 days challenge the standard refund guideline, causing potential customer confusion."
+                "guideline_a_id": "2",
+                "guideline_b_id": "1",
+                "severity_level": 9,
+                "rationale": "Refund policy conflict: special orders returned within 30 days challenge the standard refund guideline, causing potential customer confusion."
              }}
          ]
      }}
      ```
 
 #### Example #2:
-- **Compared Guideline**: {{"id": 3, "guideline": "When a project deadline is imminent, Then allocate all available resources to complete the project."}}
-- **Guideline Under Test**: {{"id": 4, "guideline": "When multiple projects are nearing deadlines at the same time, Then distribute resources equally among projects."}}
+- **Guideline A**: {{"id": 4, "guideline": "When multiple projects are nearing deadlines at the same time, Then distribute resources equally among projects."}}
+- **Guideline B**: {{"id": 3, "guideline": "When a project deadline is imminent, Then allocate all available resources to complete the project."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "3",
-                 "guideline_under_test_id": "4",
-                 "severity_level": 8,
-                 "rationale": "Resource allocation conflict: The need to focus resources on imminent deadlines clashes with equal distribution policies during multiple simultaneous project deadlines."
+                "guideline_a_id": "4",
+                "guideline_b_id": "3",
+                "severity_level": 8,
+                "rationale": "Resource allocation conflict: The need to focus resources on imminent deadlines clashes with equal distribution policies during multiple simultaneous project deadlines."
              }}
          ]
      }}
      ```
 
 #### Example #3:
-- **Compared Guideline**: {{"id": 5, "guideline": "When an employee requests flexible working hours, Then approve to support work-life balance."}}
-- **Guideline Under Test**: {{"id": 6, "guideline": "When team collaboration is essential, Then require standard working hours for all team members."}}
+- **Guideline A**: {{"id": 6, "guideline": "When team collaboration is essential, Then require standard working hours for all team members."}}
+- **Guideline B**: {{"id": 5, "guideline": "When an employee requests flexible working hours, Then approve to support work-life balance."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "5",
-                 "guideline_under_test_id": "6",
+                 "guideline_a_id": "6",
+                 "guideline_b_id": "5",
                  "severity_level": 7,
                  "rationale": "Flexible vs. standard hours conflict: Approving flexible hours contradicts the necessity for standard hours required for effective team collaboration."
              }}
@@ -374,17 +374,17 @@ This happens when conditions for both guidelines are met simultaneously, without
      ```
 
 #### Example #4:
-- **Compared Guideline**: {{"id": 7, "guideline": "When a customer inquires about product features, Then provide detailed information and recommendations based on their needs."}}
-- **Guideline Under Test**: {{"id": 8, "guideline": "When a customer asks about compatibility with other products, Then offer guidance on compatible products and configurations."}}
+- **Guideline A**: {{"id": 8, "guideline": "When a customer asks about compatibility with other products, Then offer guidance on compatible products and configurations."}}
+- **Guideline B**: {{"id": 7, "guideline": "When a customer inquires about product features, Then provide detailed information and recommendations based on their needs."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "7",
-                 "guideline_under_test_id": "8",
-                 "severity_level": 1,
-                 "rationale": "These guidelines complement each other by addressing different customer needs: detailed product information and specific compatibility advice."
+                "guideline_a_id": "8",
+                "guideline_b_id": "7",
+                "severity_level": 1,
+                "rationale": "These guidelines complement each other by addressing different customer needs: detailed product information and specific compatibility advice."
              }}
          ]
      }}
@@ -408,68 +408,68 @@ This arises from a lack of clear prioritization or differentiation between actio
     def _format_contradiction_type_examples(self) -> str:
         return f"""
 #### Example #1:
-- **Compared Guideline**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
-- **Guideline Under Test**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
+- **Guideline A**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
+- **Guideline B**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "1",
-                 "guideline_under_test_id": "2",
-                 "severity_level": 9,
-                 "rationale": "Applying discounts during the holiday season directly contradicts withholding them during overlapping end-of-year sales, creating inconsistent pricing strategies."
+                "guideline_a_id": "2",
+                "guideline_b_id": "1",
+                "severity_level": 9,
+                "rationale": "Applying discounts during the holiday season directly contradicts withholding them during overlapping end-of-year sales, creating inconsistent pricing strategies."
              }}
          ]
      }}
      ```
 
 #### Example #2:
-- **Compared Guideline**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
-- **Guideline Under Test**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
+- **Guideline A**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
+- **Guideline B**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "3",
-                 "guideline_under_test_id": "4",
-                 "severity_level": 8,
-                 "rationale": "Reducing prices for expiring products conflicts with maintaining standard pricing during promotional campaigns, causing pricing conflicts."
+                "guideline_a_id": "4",
+                "guideline_b_id": "3",
+                "severity_level": 8,
+                "rationale": "Reducing prices for expiring products conflicts with maintaining standard pricing during promotional campaigns, causing pricing conflicts."
              }}
          ]
      }}
      ```
 
 #### Example #3:
-- **Compared Guideline**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
-- **Guideline Under Test**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
+- **Guideline A**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
+- **Guideline B**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "5",
-                 "guideline_under_test_id": "6",
-                 "severity_level": 9,
-                 "rationale": "Emergency protocol for severe weather contradicts the need for maximum capacity during major sales events, challenging management decisions."
+                "guideline_a_id": "6",
+                "guideline_b_id": "5",
+                "severity_level": 9,
+                "rationale": "Emergency protocol for severe weather contradicts the need for maximum capacity during major sales events, challenging management decisions."
              }}
          ]
      }}
      ```
 
 #### Example #4:
-- **Compared Guideline**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
-- **Guideline Under Test**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
+- **Guideline A**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
+- **Guideline B**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "7",
-                 "guideline_under_test_id": "8",
-                 "severity_level": 1,
-                 "rationale": "Both guidelines support enhancing customer service under different circumstances, effectively complementing each other without conflict."
+                "guideline_a_id": "8",
+                "guideline_b_id": "7",
+                "severity_level": 1,
+                "rationale": "Both guidelines support enhancing customer service under different circumstances, effectively complementing each other without conflict."
              }}
          ]
      }}
@@ -493,68 +493,68 @@ These conflicts arise from different but potentially overlapping circumstances r
     def _format_contradiction_type_examples(self) -> str:
         return f"""
 #### Example #1:
-- **Compared Guideline**: {{"id": 1, "guideline": "When operating in urban areas, Then offer free shipping."}}
-- **Guideline Under Test**: {{"id": 2, "guideline": "When operational costs need to be minimized, Then restrict free shipping."}}
+- **Guideline A**: {{"id": 2, "guideline": "When operational costs need to be minimized, Then restrict free shipping."}}
+- **Guideline B**: {{"id": 1, "guideline": "When operating in urban areas, Then offer free shipping."}}
 - **Expected Result**:
      ```json
      {{
          "contextual_contradictions": [
              {{
-                 "compared_guideline_id": "1",
-                 "guideline_under_test_id": "2",
-                 "severity_level": 9,
-                 "rationale": "Offering free shipping in urban areas directly conflicts with initiatives to minimize operational costs, leading to contradictory shipping policies when both conditions apply."
+                "guideline_a_id": "2",
+                "guideline_b_id": "1",
+                "severity_level": 9,
+                "rationale": "Offering free shipping in urban areas directly conflicts with initiatives to minimize operational costs, leading to contradictory shipping policies when both conditions apply."
              }}
          ]
      }}
      ```
 
 #### Example #2:
-- **Compared Guideline**: {{"id": 3, "guideline": "When customer surveys indicate a preference for environmentally friendly products, Then shift production to eco-friendly materials."}}
-- **Guideline Under Test**: {{"id": 4, "guideline": "When cost considerations drive decisions, Then continue using less expensive, traditional materials."}}
+- **Guideline A**: {{"id": 4, "guideline": "When cost considerations drive decisions, Then continue using less expensive, traditional materials."}}
+- **Guideline B**: {{"id": 3, "guideline": "When customer surveys indicate a preference for environmentally friendly products, Then shift production to eco-friendly materials."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "3",
-                 "guideline_under_test_id": "4",
-                 "severity_level": 8,
-                 "rationale": "The preference for eco-friendly products conflicts with cost-driven decisions to use cheaper materials, creating a strategic dilemma between sustainability and cost efficiency."
+                "guideline_a_id": "4",
+                "guideline_b_id": "3",
+                "severity_level": 8,
+                "rationale": "The preference for eco-friendly products conflicts with cost-driven decisions to use cheaper materials, creating a strategic dilemma between sustainability and cost efficiency."
              }}
          ]
      }}
      ```
 
 #### Example #3:
-- **Compared Guideline**: {{"id": 5, "guideline": "When market data shows customer preference for high-end products, Then focus on premium product lines."}}
-- **Guideline Under Test**: {{"id": 6, "guideline": "When internal strategy targets mass market appeal, Then increase production of lower-cost items."}}
+- **Guideline A**: {{"id": 6, "guideline": "When internal strategy targets mass market appeal, Then increase production of lower-cost items."}}
+- **Guideline B**: {{"id": 5, "guideline": "When market data shows customer preference for high-end products, Then focus on premium product lines."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "5",
-                 "guideline_under_test_id": "6",
-                 "severity_level": 9,
-                 "rationale": "Targeting premium product lines based on customer preferences contradicts strategies to enhance mass market appeal with lower-cost items, presenting a strategic conflict."
+                "guideline_a_id": "6",
+                "guideline_b_id": "5",
+                "severity_level": 9,
+                "rationale": "Targeting premium product lines based on customer preferences contradicts strategies to enhance mass market appeal with lower-cost items, presenting a strategic conflict."
              }}
          ]
      }}
      ```
 
 #### Example #4:
-- **Compared Guideline**: {{"id": 7, "guideline": "When a technology product is released, Then launch a marketing campaign to promote the new product."}}
-- **Guideline Under Test**: {{"id": 8, "guideline": "When a new software update is released, Then send notifications to existing customers to encourage updates."}}
+- **Guideline A**: {{"id": 8, "guideline": "When a new software update is released, Then send notifications to existing customers to encourage updates."}}
+- **Guideline B**: {{"id": 7, "guideline": "When a technology product is released, Then launch a marketing campaign to promote the new product."}}
 - **Expected Result**:
      ```json
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "compared_guideline_id": "7",
-                 "guideline_under_test_id": "8",
-                 "severity_level": 1,
-                 "rationale": "Marketing new products and notifying existing customers about updates serve complementary purposes without conflicting, effectively targeting different customer segments."
+                "guideline_a_id": "8",
+                "guideline_b_id": "7",
+                "severity_level": 1,
+                "rationale": "Marketing new products and notifying existing customers about updates serve complementary purposes without conflicting, effectively targeting different customer segments."
              }}
          ]
      }}
