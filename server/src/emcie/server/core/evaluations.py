@@ -184,7 +184,12 @@ class EvaluationDocumentStore(EvaluationStore):
                 "invoices": [
                     {
                         "id": invoice.id,
-                        "payload": invoice.payload,
+                        "payload": {
+                            "type": invoice.payload.type,
+                            "guideline_set": invoice.payload.guideline_set,
+                            "predicate": invoice.payload.predicate,
+                            "content": invoice.payload.content,
+                        },
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,
@@ -225,7 +230,12 @@ class EvaluationDocumentStore(EvaluationStore):
                 "invoices": [
                     {
                         "id": invoice.id,
-                        "payload": invoice.payload,
+                        "payload": {
+                            "type": invoice.payload.type,
+                            "guideline_set": invoice.payload.guideline_set,
+                            "predicate": invoice.payload.predicate,
+                            "content": invoice.payload.content,
+                        },
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,

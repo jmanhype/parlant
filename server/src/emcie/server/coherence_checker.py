@@ -27,8 +27,8 @@ class ContradictionType(Enum):
 
 class ContradictionTest(DefaultBaseModel):
     contradiction_type: ContradictionType
-    existing_guideline_id: GuidelineId
-    proposed_guideline_id: GuidelineId
+    guideline_a_id: GuidelineId
+    guideline_b_id: GuidelineId
     severity: int
     rationale: str
     creation_utc: datetime
@@ -54,9 +54,7 @@ def _filter_unique_contradictions(
     seen_keys = set()
     unique_contradictions = []
     for contradiction in contradictions:
-        key = _generate_key(
-            contradiction.existing_guideline_id, contradiction.proposed_guideline_id
-        )
+        key = _generate_key(contradiction.guideline_a_id, contradiction.guideline_b_id)
         if key not in seen_keys:
             seen_keys.add(key)
             unique_contradictions.append(contradiction)
@@ -212,8 +210,8 @@ class ContradictionEvaluatorBase(ABC):
         contradictions = [
             ContradictionTest(
                 contradiction_type=self.contradiction_type,
-                existing_guideline_id=json_contradiction["compared_guideline_id"],
-                proposed_guideline_id=json_contradiction["guideline_under_test_id"],
+                guideline_a_id=json_contradiction["compared_guideline_id"],
+                guideline_b_id=json_contradiction["guideline_under_test_id"],
                 severity=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
                 creation_utc=datetime.now(timezone.utc),
