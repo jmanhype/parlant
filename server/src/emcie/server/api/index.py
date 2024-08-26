@@ -3,15 +3,21 @@ from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
+
 from emcie.server.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
+    EvaluationValidationError,
+)
+from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.evaluations import (
     EvaluationGuidelinePayload,
     EvaluationId,
+    EvaluationInvoiceData,
+    EvaluationInvoiceId,
     EvaluationPayload,
+    EvaluationStatus,
+    EvaluationStore,
 )
-from emcie.server.core.common import UniqueId
-from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.evaluations import EvaluationInvoiceData, EvaluationStore
 
 
 class CreateEvaluationRequest(DefaultBaseModel):
@@ -22,26 +28,21 @@ class CreateEvaluationResponse(DefaultBaseModel):
     evaluation_id: EvaluationId
 
 
-class InvoiceDTO(BaseModel):
-    invoice_id: str
+class EvaluationInvoiceDTO(BaseModel):
+    invoice_id: EvaluationInvoiceId
+    payload: EvaluationPayload
     checksum: str
     approved: bool
-    data: EvaluationInvoiceData
-
-
-class EvaluationItemDTO(BaseModel):
-    item_id: UniqueId
-    payload: EvaluationPayload
-    invoice: Optional[InvoiceDTO]
+    data: Optional[EvaluationInvoiceData]
     error: Optional[str]
 
 
-class EvaluationDTO(BaseModel):
-    evaluation_id: str
-    status: str
+class EvaluationDTO(DefaultBaseModel):
+    evaluation_id: EvaluationId
+    status: EvaluationStatus
     creation_utc: datetime
     error: Optional[str]
-    items: list[EvaluationItemDTO]
+    invoices: list[EvaluationInvoiceDTO]
 
 
 def create_router(
@@ -50,20 +51,21 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/evaluations", response_model=CreateEvaluationResponse)
+    @router.post("/evaluations")
     async def create_evaluation(request: CreateEvaluationRequest) -> CreateEvaluationResponse:
-        if not request.payloads:
+        try:
+            evaluation_id = await evaluation_service.create_evaluation_task(
+                payloads=request.payloads,
+            )
+        except EvaluationValidationError as exc:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No payloads provided for the evaluation task.",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
             )
 
-        evaluation_id = await evaluation_service.create_evaluation_task(
-            payloads=request.payloads,
-        )
         return CreateEvaluationResponse(evaluation_id=evaluation_id)
 
-    @router.get("/evaluations/{evaluation_id}", response_model=EvaluationDTO)
+    @router.get("/evaluations/{evaluation_id}")
     async def get_evaluation(evaluation_id: EvaluationId) -> EvaluationDTO:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
 
@@ -71,21 +73,16 @@ def create_router(
             evaluation_id=evaluation.id,
             status=evaluation.status,
             creation_utc=evaluation.creation_utc,
-            items=[
-                EvaluationItemDTO(
-                    item_id=i["id"],
-                    payload=i["payload"],
-                    invoice=InvoiceDTO(
-                        invoice_id=i["invoice"]["id"],
-                        checksum=i["invoice"]["checksum"],
-                        approved=i["invoice"]["approved"],
-                        data=i["invoice"]["data"],
-                    )
-                    if i["invoice"]
-                    else None,
-                    error=i["error"],
+            invoices=[
+                EvaluationInvoiceDTO(
+                    invoice_id=invoice.id,
+                    payload=invoice.payload,
+                    checksum=invoice.checksum,
+                    approved=invoice.approved,
+                    data=invoice.data,
+                    error=invoice.error,
                 )
-                for i in evaluation.items
+                for invoice in evaluation.invoices
             ],
             error=evaluation.error,
         )

@@ -2,17 +2,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import Any, AsyncIterator, Sequence
+from typing import Any, AsyncIterator
 import tempfile
 from lagom import Container
 from pytest import fixture, mark
 import pytest
 
 from emcie.common.tools import ToolId
-from emcie.server.behavioral_change_evaluation import (
-    EvaluationGuidelinePayload,
-    EvaluationInvoiceId,
-)
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.context_variables import (
@@ -21,9 +17,10 @@ from emcie.server.core.context_variables import (
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
 from emcie.server.core.evaluations import (
     EvaluationDocumentStore,
+    EvaluationGuidelinePayload,
     EvaluationInvoice,
     EvaluationInvoiceData,
-    EvaluationItem,
+    GuidelineCoherenceCheckResult,
 )
 from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
@@ -555,13 +552,13 @@ async def test_evaluation_creation(
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
         evaluation_store = EvaluationDocumentStore(evaluation_db)
 
-        payloads: Sequence[EvaluationGuidelinePayload] = [
-            {
-                "type": "guideline",
-                "guideline_set": context.agent_id,
-                "predicate": "Test evaluation creation with invoice",
-                "content": "Ensure the evaluation with invoice is persisted in the JSON file",
-            }
+        payloads = [
+            EvaluationGuidelinePayload(
+                type="guideline",
+                guideline_set=context.agent_id,
+                predicate="Test evaluation creation with invoice",
+                content="Ensure the evaluation with invoice is persisted in the JSON file",
+            )
         ]
 
         evaluation = await evaluation_store.create_evaluation(payloads=payloads)
@@ -573,7 +570,8 @@ async def test_evaluation_creation(
     json_evaluation = evaluations_from_json["evaluations"][0]
 
     assert json_evaluation["id"] == evaluation.id
-    assert json_evaluation["items"][0]["invoice"] is None
+
+    assert len(json_evaluation["invoices"]) == 1
 
 
 async def test_evaluation_update(
@@ -583,40 +581,38 @@ async def test_evaluation_update(
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
         evaluation_store = EvaluationDocumentStore(evaluation_db)
 
-        payloads: Sequence[EvaluationGuidelinePayload] = [
-            {
-                "type": "guideline",
-                "guideline_set": context.agent_id,
-                "predicate": "Initial evaluation payload with invoice",
-                "content": "This content will be updated",
-            }
+        payloads = [
+            EvaluationGuidelinePayload(
+                type="guideline",
+                guideline_set=context.agent_id,
+                predicate="Initial evaluation payload with invoice",
+                content="This content will be updated",
+            )
         ]
 
         evaluation = await evaluation_store.create_evaluation(payloads=payloads)
 
-        invoice_data: EvaluationInvoiceData = {
-            "type": "guideline",
-            "detail": {"type": "coherence_check", "data": []},
-        }
+        invoice_data = EvaluationInvoiceData(
+            type="guideline",
+            detail=GuidelineCoherenceCheckResult(
+                coherence_checks=[],
+            ),
+        )
 
-        invoice: EvaluationInvoice = {
-            "id": EvaluationInvoiceId("123"),
-            "state_version": "1.0",
-            "checksum": "initial_checksum",
-            "approved": True,
-            "data": invoice_data,
-        }
+        invoice = EvaluationInvoice(
+            id=evaluation.invoices[0].id,
+            payload=payloads[0],
+            state_version="123",
+            checksum="initial_checksum",
+            approved=True,
+            data=invoice_data,
+            error=None,
+        )
 
-        updated_item: EvaluationItem = {
-            "id": evaluation.items[0]["id"],
-            "payload": evaluation.items[0]["payload"],
-            "invoice": invoice,
-            "error": None,
-        }
-
-        await evaluation_store.update_evaluation(
+        await evaluation_store.update_evaluation_invoice(
             evaluation_id=evaluation.id,
-            item=updated_item,
+            invoice_id=invoice.id,
+            updated_invoice=invoice,
         )
 
     with open(new_file) as f:
@@ -627,7 +623,6 @@ async def test_evaluation_update(
 
     assert json_evaluation["id"] == evaluation.id
 
-    assert json_evaluation["items"][0]["invoice"] is not None
-    assert json_evaluation["items"][0]["invoice"]["id"] == invoice["id"]
-    assert json_evaluation["items"][0]["invoice"]["checksum"] == "initial_checksum"
-    assert json_evaluation["items"][0]["invoice"]["approved"] is True
+    assert json_evaluation["invoices"][0]["data"] is not None
+    assert json_evaluation["invoices"][0]["checksum"] == "initial_checksum"
+    assert json_evaluation["invoices"][0]["approved"] is True

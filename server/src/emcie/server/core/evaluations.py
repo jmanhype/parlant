@@ -13,58 +13,59 @@ EvaluationInvoiceId = NewType("EvaluationInvoiceId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
 
 
-class EvaluationGuidelinePayload(TypedDict):
+@dataclass(frozen=True)
+class EvaluationGuidelinePayload:
     type: Literal["guideline"]
     guideline_set: str
     predicate: str
     content: str
 
+    def __repr__(self) -> str:
+        return f"type: {self.type}, guideline_set: {self.guideline_set}, predicate: {self.predicate}, content: {self.content}"
+
 
 EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
 
 
-class CoherenceCheckResult(TypedDict):
-    proposed: str
-    existing: str
+@dataclass(frozen=True)
+class CoherenceCheckResult:
+    guideline_a: str
+    guideline_b: str
     issue: str
     severity: int
 
 
 class GuidelineCoherenceCheckResult(TypedDict):
-    type: Literal["coherence_check"]
-    data: list[CoherenceCheckResult]
+    coherence_checks: list[CoherenceCheckResult]
 
 
-class EvaluationInvoiceGuidelineData(TypedDict):
+@dataclass(frozen=True)
+class EvaluationInvoiceGuidelineData:
     type: Literal["guideline"]
-    detail: Union[GuidelineCoherenceCheckResult]
+    detail: GuidelineCoherenceCheckResult
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
 
 
-class EvaluationInvoice(TypedDict):
+@dataclass(frozen=True)
+class EvaluationInvoice:
     id: EvaluationInvoiceId
-    state_version: str
-    checksum: str
-    approved: bool
-    data: EvaluationInvoiceData
-
-
-class EvaluationItem(TypedDict):
-    id: UniqueId
     payload: EvaluationPayload
-    invoice: Optional[EvaluationInvoice]
+    checksum: str
+    state_version: str
+    approved: bool
+    data: Optional[EvaluationInvoiceData]
     error: Optional[str]
 
 
 @dataclass(frozen=True)
 class Evaluation:
     id: EvaluationId
+    creation_utc: datetime
     status: EvaluationStatus
     error: Optional[str]
-    creation_utc: datetime
-    items: Sequence[EvaluationItem]
+    invoices: Sequence[EvaluationInvoice]
 
 
 class EvaluationStore(ABC):
@@ -76,11 +77,18 @@ class EvaluationStore(ABC):
     ) -> Evaluation: ...
 
     @abstractmethod
-    async def update_evaluation(
+    async def update_evaluation_invoice(
         self,
         evaluation_id: EvaluationId,
-        status: Optional[EvaluationStatus] = None,
-        item: Optional[EvaluationItem] = None,
+        invoice_id: EvaluationInvoiceId,
+        updated_invoice: EvaluationInvoice,
+    ) -> Evaluation: ...
+
+    @abstractmethod
+    async def update_evaluation_status(
+        self,
+        evaluation_id: EvaluationId,
+        status: EvaluationStatus,
         error: Optional[str] = None,
     ) -> Evaluation: ...
 
@@ -102,7 +110,7 @@ class EvaluationDocumentStore(EvaluationStore):
         status: EvaluationStatus
         creation_utc: datetime
         error: Optional[str]
-        items: list[EvaluationItem]
+        invoices: list[EvaluationInvoice]
 
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
@@ -119,13 +127,16 @@ class EvaluationDocumentStore(EvaluationStore):
 
         evaluation_id = EvaluationId(generate_id())
 
-        items: list[EvaluationItem] = [
-            {
-                "id": UniqueId(generate_id()),
-                "payload": p,
-                "invoice": None,
-                "error": None,
-            }
+        invoices = [
+            EvaluationInvoice(
+                id=EvaluationInvoiceId(generate_id()),
+                payload=p,
+                state_version="",
+                checksum="",
+                approved=False,
+                data=None,
+                error=None,
+            )
             for p in payloads
         ]
 
@@ -135,7 +146,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 "creation_utc": creation_utc,
                 "status": "pending",
                 "error": None,
-                "items": items,
+                "invoices": invoices,
             }
         )
 
@@ -144,33 +155,70 @@ class EvaluationDocumentStore(EvaluationStore):
             status="pending",
             creation_utc=creation_utc,
             error=None,
-            items=items,
+            invoices=invoices,
         )
 
-    async def update_evaluation(
+    async def update_evaluation_invoice(
         self,
         evaluation_id: EvaluationId,
-        status: Optional[EvaluationStatus] = None,
-        item: Optional[EvaluationItem] = None,
-        error: Optional[str] = None,
+        invoice_id: EvaluationInvoiceId,
+        updated_invoice: EvaluationInvoice,
     ) -> Evaluation:
         try:
             evaluation = await self.read_evaluation(evaluation_id)
         except NoMatchingDocumentsError:
             raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
-        status = status if status else evaluation.status
+        evaluation_invoices = [
+            invoice if invoice.id != invoice_id else updated_invoice
+            for invoice in evaluation.invoices
+        ]
 
-        items = []
+        await self._evaluation_collection.update_one(
+            filters={"id": {"$eq": evaluation.id}},
+            updated_document={
+                "id": evaluation.id,
+                "creation_utc": evaluation.creation_utc,
+                "status": evaluation.status,
+                "error": evaluation.error,
+                "invoices": [
+                    {
+                        "id": invoice.id,
+                        "payload": {
+                            "type": invoice.payload.type,
+                            "guideline_set": invoice.payload.guideline_set,
+                            "predicate": invoice.payload.predicate,
+                            "content": invoice.payload.content,
+                        },
+                        "state_version": invoice.state_version,
+                        "checksum": invoice.checksum,
+                        "approved": invoice.approved,
+                        "data": invoice.data,
+                        "error": invoice.error,
+                    }
+                    for invoice in evaluation_invoices
+                ],
+            },
+        )
 
-        if item:
-            for i in evaluation.items:
-                if i["id"] == item["id"]:
-                    items.append(item)
-                else:
-                    items.append(i)
+        return Evaluation(
+            id=evaluation.id,
+            status=evaluation.status,
+            creation_utc=evaluation.creation_utc,
+            error=evaluation.error,
+            invoices=evaluation_invoices,
+        )
 
-        evaluation_items: Sequence[EvaluationItem] = items if item else evaluation.items
+    async def update_evaluation_status(
+        self,
+        evaluation_id: EvaluationId,
+        status: EvaluationStatus,
+        error: Optional[str] = None,
+    ) -> Evaluation:
+        try:
+            evaluation = await self.read_evaluation(evaluation_id)
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
@@ -179,7 +227,23 @@ class EvaluationDocumentStore(EvaluationStore):
                 "creation_utc": evaluation.creation_utc,
                 "status": status,
                 "error": error,
-                "items": evaluation_items,
+                "invoices": [
+                    {
+                        "id": invoice.id,
+                        "payload": {
+                            "type": invoice.payload.type,
+                            "guideline_set": invoice.payload.guideline_set,
+                            "predicate": invoice.payload.predicate,
+                            "content": invoice.payload.content,
+                        },
+                        "state_version": invoice.state_version,
+                        "checksum": invoice.checksum,
+                        "approved": invoice.approved,
+                        "data": invoice.data,
+                        "error": invoice.error,
+                    }
+                    for invoice in evaluation.invoices
+                ],
             },
         )
 
@@ -188,7 +252,7 @@ class EvaluationDocumentStore(EvaluationStore):
             status=status,
             creation_utc=evaluation.creation_utc,
             error=error,
-            items=evaluation_items,
+            invoices=evaluation.invoices,
         )
 
     async def read_evaluation(
@@ -204,7 +268,18 @@ class EvaluationDocumentStore(EvaluationStore):
             status=evaluation_document["status"],
             creation_utc=evaluation_document["creation_utc"],
             error=evaluation_document.get("error"),
-            items=evaluation_document["items"],
+            invoices=[
+                EvaluationInvoice(
+                    id=invoice["id"],
+                    payload=EvaluationPayload(**invoice["payload"]),
+                    checksum=invoice["checksum"],
+                    state_version=invoice["state_version"],
+                    approved=invoice["approved"],
+                    data=invoice["data"],
+                    error=invoice["error"],
+                )
+                for invoice in evaluation_document["invoices"]
+            ],
         )
 
     async def list_active_evaluations(
@@ -216,7 +291,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 status=e["status"],
                 creation_utc=e["creation_utc"],
                 error=e.get("error"),
-                items=e["items"],
+                invoices=e["invoices"],
             )
             for e in await self._evaluation_collection.find(
                 filters={

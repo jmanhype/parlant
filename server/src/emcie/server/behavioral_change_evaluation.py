@@ -1,7 +1,5 @@
 import asyncio
 from datetime import datetime, timezone
-import hashlib
-import json
 from typing import Iterable, OrderedDict, Sequence
 
 from emcie.server.coherence_checker import CoherenceChecker
@@ -13,17 +11,21 @@ from emcie.server.core.evaluations import (
     EvaluationId,
     EvaluationInvoice,
     EvaluationInvoiceGuidelineData,
-    EvaluationInvoiceId,
-    EvaluationItem,
     EvaluationPayload,
     EvaluationStore,
     GuidelineCoherenceCheckResult,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
 from emcie.server.logger import Logger
+from emcie.server.utils import md5_checksum
 
 
 class EvaluationError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class EvaluationValidationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
 
@@ -37,49 +39,11 @@ class GuidelineEvaluator:
         self,
         payloads: Sequence[EvaluationPayload],
     ) -> Sequence[EvaluationInvoiceGuidelineData]:
-        if len({p["guideline_set"] for p in payloads}) > 1:
-            raise EvaluationError("Evaluation task must be processed for a single guideline_set.")
-
-        await self._check_for_duplications(payloads)
-
         coherence_results = await self._check_for_coherence(payloads)
 
         return [
             EvaluationInvoiceGuidelineData(type="guideline", detail=c) for c in coherence_results
         ]
-
-    async def _check_for_duplications(
-        self,
-        payloads: Sequence[EvaluationPayload],
-    ) -> None:
-        seen_guidelines = set(
-            (payload["guideline_set"], payload["predicate"], payload["content"])
-            for payload in payloads
-        )
-        if len(seen_guidelines) < len(payloads):
-            raise EvaluationError("Duplicate guideline found among the provided guidelines.")
-
-        guideline_set = payloads[0]["guideline_set"]
-        existing_guidelines = await self._guideline_store.list_guidelines(
-            guideline_set=guideline_set
-        )
-
-        if guideline := next(
-            iter(
-                g
-                for g in existing_guidelines
-                if (
-                    guideline_set,
-                    g.predicate,
-                    g.content,
-                )
-                in seen_guidelines
-            ),
-            None,
-        ):
-            raise EvaluationError(
-                f"Duplicate guideline found against existing guidelines: {self._render_guideline(guideline)} in {guideline_set} guideline_set"
-            )
 
     async def _check_for_coherence(
         self,
@@ -94,14 +58,14 @@ class GuidelineEvaluator:
             proposed_guidelines[id] = Guideline(
                 id=id,
                 creation_utc=datetime.now(timezone.utc),
-                predicate=p["predicate"],
-                content=p["content"],
+                predicate=p.predicate,
+                content=p.content,
             )
 
         existing_guidelines = {
             g.id: g
             for g in await self._guideline_store.list_guidelines(
-                guideline_set=payloads[0]["guideline_set"]
+                guideline_set=payloads[0].guideline_set
             )
         }
 
@@ -117,7 +81,7 @@ class GuidelineEvaluator:
         guideline_coherence_results: OrderedDict[GuidelineId, GuidelineCoherenceCheckResult] = (
             OrderedDict(
                 {
-                    g_id: GuidelineCoherenceCheckResult(type="coherence_check", data=[])
+                    g_id: GuidelineCoherenceCheckResult(coherence_checks=[])
                     for g_id in proposed_guidelines
                 }
             )
@@ -125,26 +89,21 @@ class GuidelineEvaluator:
 
         for contradiction in contradictions:
             existing_guideline = (
-                existing_guidelines[contradiction.existing_guideline_id]
-                if contradiction.existing_guideline_id in existing_guidelines
-                else proposed_guidelines[contradiction.existing_guideline_id]
+                existing_guidelines[contradiction.guideline_a_id]
+                if contradiction.guideline_a_id in existing_guidelines
+                else proposed_guidelines[contradiction.guideline_a_id]
             )
 
-            guideline_coherence_results[contradiction.proposed_guideline_id]["data"].append(
+            guideline_coherence_results[contradiction.guideline_b_id]["coherence_checks"].append(
                 CoherenceCheckResult(
-                    proposed=self._render_guideline(
-                        proposed_guidelines[contradiction.proposed_guideline_id]
-                    ),
-                    existing=self._render_guideline(existing_guideline),
+                    guideline_a=str(proposed_guidelines[contradiction.guideline_b_id]),
+                    guideline_b=str(existing_guideline),
                     issue=contradiction.rationale,
                     severity=contradiction.severity,
                 )
             )
 
         return guideline_coherence_results.values()
-
-    def _render_guideline(self, guideline: Guideline) -> str:
-        return f"When {guideline.predicate}, then {guideline.content}"
 
 
 class BehavioralChangeEvaluator:
@@ -153,14 +112,62 @@ class BehavioralChangeEvaluator:
     ) -> None:
         self.logger = logger
         self._evaluation_store = evaluation_store
+        self._guideline_store = guideline_store
         self._guideline_evaluator = GuidelineEvaluator(
             logger=logger, guideline_store=guideline_store
         )
+
+    async def validate_payloads(
+        self,
+        payloads: Sequence[EvaluationGuidelinePayload],
+    ) -> None:
+        if not payloads:
+            raise EvaluationValidationError("No payloads provided for the evaluation task.")
+
+        if len({p.guideline_set for p in payloads}) > 1:
+            raise EvaluationValidationError(
+                "Evaluation task must be processed for a single guideline_set."
+            )
+
+        async def _check_for_duplications() -> None:
+            seen_guidelines = set(
+                (payload.guideline_set, payload.predicate, payload.content) for payload in payloads
+            )
+            if len(seen_guidelines) < len(payloads):
+                raise EvaluationValidationError(
+                    "Duplicate guideline found among the provided guidelines."
+                )
+
+            guideline_set = payloads[0].guideline_set
+            existing_guidelines = await self._guideline_store.list_guidelines(
+                guideline_set=guideline_set
+            )
+
+            if guideline := next(
+                iter(
+                    g
+                    for g in existing_guidelines
+                    if (
+                        guideline_set,
+                        g.predicate,
+                        g.content,
+                    )
+                    in seen_guidelines
+                ),
+                None,
+            ):
+                raise EvaluationValidationError(
+                    f"Duplicate guideline found against existing guidelines: {str(guideline)} in {guideline_set} guideline_set"
+                )
+
+        await _check_for_duplications()
 
     async def create_evaluation_task(
         self,
         payloads: Sequence[EvaluationGuidelinePayload],
     ) -> EvaluationId:
+        await self.validate_payloads(payloads)
+
         evaluation = await self._evaluation_store.create_evaluation(payloads)
 
         asyncio.create_task(self.run_evaluation(evaluation))
@@ -183,40 +190,42 @@ class BehavioralChangeEvaluator:
             ):
                 raise EvaluationError(f"An evaluation task '{running_task.id}' is already running.")
 
-            await self._evaluation_store.update_evaluation(
+            await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
                 status="running",
             )
 
-            results = await self._guideline_evaluator.evaluate(
-                [item["payload"] for item in evaluation.items]
+            guideline_results = await self._guideline_evaluator.evaluate(
+                [
+                    invoice.payload
+                    for invoice in evaluation.invoices
+                    if invoice.payload.type == "guideline"
+                ]
             )
 
-            for i, result in enumerate(results):
-                invoice_id = EvaluationInvoiceId(generate_id())
+            for i, result in enumerate(guideline_results):
+                invoice_checksum = md5_checksum(str(evaluation.invoices[i].payload))
+                state_version = str(hash("Temporarily"))
 
                 invoice = EvaluationInvoice(
-                    id=invoice_id,
-                    state_version=str(hash(invoice_id)),
-                    checksum=self._generate_checksum(evaluation.items[i]["payload"]),
-                    approved=True if len(result["detail"]["data"]) == 0 else False,
+                    id=evaluation.invoices[i].id,
+                    payload=evaluation.invoices[i].payload,
+                    checksum=invoice_checksum,
+                    state_version=state_version,
+                    approved=True if len(result.detail["coherence_checks"]) == 0 else False,
                     data=result,
+                    error=None,
                 )
 
-                await self._evaluation_store.update_evaluation(
+                await self._evaluation_store.update_evaluation_invoice(
                     evaluation.id,
-                    status=evaluation.status,
-                    item=EvaluationItem(
-                        id=evaluation.items[i]["id"],
-                        payload=evaluation.items[i]["payload"],
-                        invoice=invoice,
-                        error=None,
-                    ),
+                    invoice_id=evaluation.invoices[i].id,
+                    updated_invoice=invoice,
                 )
 
             self.logger.info(f"evaluation task '{evaluation.id}' completed")
 
-            await self._evaluation_store.update_evaluation(
+            await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
                 status="completed",
             )
@@ -226,14 +235,8 @@ class BehavioralChangeEvaluator:
             getattr(self.logger, logger_level)(
                 f"Evaluation task '{evaluation.id}' failed due to the following error: '{str(exc)}'"
             )
-            await self._evaluation_store.update_evaluation(
+            await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
                 status="failed",
                 error=str(exc),
             )
-
-    @staticmethod
-    def _generate_checksum(payload: EvaluationGuidelinePayload) -> str:
-        md5_hash = hashlib.md5()
-        md5_hash.update(f"{json.dumps(payload)}".encode("utf-8"))
-        return md5_hash.hexdigest()

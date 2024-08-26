@@ -17,6 +17,9 @@ class Guideline:
     predicate: str
     content: str
 
+    def __str__(self) -> str:
+        return f"When {self.predicate}, then {self.content}"
+
 
 class GuidelineStore(ABC):
     @abstractmethod

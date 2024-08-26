@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
 
-from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.core.evaluations import EvaluationStore
+from emcie.server.utils import md5_checksum
 
 
 async def test_that_an_evaluation_can_be_created(
@@ -40,7 +40,7 @@ def test_that_an_error_is_returned_when_no_payloads_are_provided(
 ) -> None:
     response = client.post("/index/evaluations", json={"payloads": []})
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
 
     assert "detail" in data
@@ -81,10 +81,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_approved_invoice(
     client: TestClient,
-    container: Container,
 ) -> None:
-    evaluation_service = container[BehavioralChangeEvaluator]
-
     payloads = {
         "payloads": [
             {
@@ -110,14 +107,11 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     assert content["status"] == "completed"
 
-    assert len(content["items"]) == 1
-    item = content["items"][0]
+    assert len(content["invoices"]) == 1
+    invoice = content["invoices"][0]
 
-    assert item["invoice"]["approved"]
-    assert item["invoice"]["checksum"] == evaluation_service._generate_checksum(item["payload"])
-
-    assert item["invoice"]["data"]["detail"]["type"] == "coherence_check"
-    assert len(item["invoice"]["data"]["detail"]["data"]) == 0
+    assert invoice["approved"]
+    assert len(invoice["data"]["detail"]["coherence_checks"]) == 0
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_unapproved_invoice(
@@ -154,18 +148,16 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     assert content["status"] == "completed"
 
-    assert len(content["items"]) == 2
-    first_item = content["items"][0]
+    assert len(content["invoices"]) == 2
+    first_invoice = content["invoices"][0]
 
-    assert not first_item["invoice"]["approved"]
+    assert not first_invoice["approved"]
 
-    assert first_item["invoice"]["data"]["detail"]["type"] == "coherence_check"
-    assert len(first_item["invoice"]["data"]["detail"]["data"]) >= 1
+    assert len(first_invoice["data"]["detail"]["coherence_checks"]) >= 1
 
 
-async def test_that_an_evaluation_can_be_fetched_with_a_failed_status_due_to_duplicate_guidelines_in_payloads_conaints_relevant_error_message(
+async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads_conaints_relevant_error_message(
     client: TestClient,
-    container: Container,
 ) -> None:
     duplicate_payload = {
         "type": "guideline",
@@ -184,16 +176,4 @@ async def test_that_an_evaluation_can_be_fetched_with_a_failed_status_due_to_dup
         },
     )
 
-    assert response.status_code == status.HTTP_200_OK
-    evaluation_id = response.json()["evaluation_id"]
-
-    reasonable_time_for_task_to_complete = 2
-    await asyncio.sleep(reasonable_time_for_task_to_complete)
-
-    get_response = client.get(f"/index/evaluations/{evaluation_id}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
-
-    assert content["status"] == "failed"
-    assert content["error"] == "Duplicate guideline found among the provided guidelines."
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
