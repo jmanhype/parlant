@@ -1,8 +1,8 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Iterable, OrderedDict, Sequence
+from typing import Iterable, Optional, OrderedDict, Sequence
 
-from emcie.server.coherence_checker import CoherenceChecker
+from emcie.server.coherence_checker import CoherenceChecker, ContradictionTest
 from emcie.server.core.common import generate_id
 from emcie.server.core.evaluations import (
     CoherenceCheckResult,
@@ -14,8 +14,10 @@ from emcie.server.core.evaluations import (
     EvaluationPayload,
     EvaluationStore,
     GuidelineCoherenceCheckResult,
+    GuidelineConnectionPropositions,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
+from emcie.server.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
 
@@ -31,94 +33,158 @@ class EvaluationValidationError(Exception):
 
 
 class GuidelineEvaluator:
-    def __init__(self, logger: Logger, guideline_store: GuidelineStore) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+        guideline_store: GuidelineStore,
+        guideline_connection_proposer: GuidelineConnectionProposer,
+    ) -> None:
         self.logger = logger
         self._guideline_store = guideline_store
+        self._guideline_connection_proposer = guideline_connection_proposer
 
     async def evaluate(
         self,
+        guideline_set: str,
         payloads: Sequence[EvaluationPayload],
     ) -> Sequence[EvaluationInvoiceGuidelineData]:
-        coherence_results = await self._check_for_coherence(payloads)
-
-        return [
-            EvaluationInvoiceGuidelineData(type="guideline", detail=c) for c in coherence_results
-        ]
-
-    async def _check_for_coherence(
-        self,
-        payloads: Sequence[EvaluationPayload],
-    ) -> Iterable[GuidelineCoherenceCheckResult]:
-        checker = CoherenceChecker(self.logger)
-
-        proposed_guidelines = OrderedDict()
-
-        for p in payloads:
-            id = GuidelineId(generate_id())
-            proposed_guidelines[id] = Guideline(
-                id=id,
+        proposed_guidelines = [
+            Guideline(
+                id=GuidelineId(generate_id()),
                 creation_utc=datetime.now(timezone.utc),
                 predicate=p.predicate,
                 content=p.content,
             )
-
-        existing_guidelines = {
-            g.id: g
-            for g in await self._guideline_store.list_guidelines(
-                guideline_set=payloads[0].guideline_set
-            )
-        }
-
-        contradictions = [
-            contradiction
-            for contradiction in await checker.evaluate_coherence(
-                proposed_guidelines=list(proposed_guidelines.values()),
-                existing_guidelines=list(existing_guidelines.values()),
-            )
-            if contradiction.severity > 6
+            for p in payloads
         ]
 
-        guideline_coherence_results: OrderedDict[GuidelineId, GuidelineCoherenceCheckResult] = (
-            OrderedDict(
-                {
-                    g_id: GuidelineCoherenceCheckResult(coherence_checks=[])
-                    for g_id in proposed_guidelines
-                }
-            )
+        existing_guidelines = await self._guideline_store.list_guidelines(
+            guideline_set=guideline_set
         )
 
-        for contradiction in contradictions:
-            existing_guideline = (
-                existing_guidelines[contradiction.guideline_a_id]
-                if contradiction.guideline_a_id in existing_guidelines
-                else proposed_guidelines[contradiction.guideline_a_id]
-            )
+        coherence_results = await self._check_for_coherence(
+            proposed_guidelines, existing_guidelines
+        )
 
-            guideline_coherence_results[contradiction.guideline_b_id]["coherence_checks"].append(
+        if coherence_results:
+            return [
+                EvaluationInvoiceGuidelineData(type="guideline", detail=c)
+                for c in coherence_results
+            ]
+
+        connection_propositions = await self._propose_guideline_connections(
+            proposed_guidelines, existing_guidelines
+        )
+
+        return [
+            EvaluationInvoiceGuidelineData(type="guideline", detail=c) for c in connection_propositions
+        ]
+
+    async def _propose_guideline_connections(
+            self,
+        proposed_guidelines: Sequence[Guideline],
+        existing_guidelines: Sequence[Guideline],
+    ) -> Sequence[GuidelineConnectionPropositions]:
+        connection_propositions = await self._guideline_connection_proposer.propose_connections(
+            introduced_guidelines=proposed_guidelines,
+            existing_guidelines=existing_guidelines,
+        )
+
+        
+
+    )
+    async def _check_for_coherence(
+        self,
+        proposed_guidelines: Sequence[Guideline],
+        existing_guidelines: Sequence[Guideline],
+    ) -> Sequence[GuidelineCoherenceCheckResult]:
+        checker = CoherenceChecker(self.logger)
+
+        coherence_check_results = await checker.evaluate_coherence(
+            proposed_guidelines=proposed_guidelines,
+            existing_guidelines=existing_guidelines,
+        )
+
+        contradictions: dict[str, ContradictionTest] = {}
+
+        for c in coherence_check_results:
+            key = (
+                f"{c.guideline_a_id}_{c.guideline_b_id}"
+                if c.guideline_a_id > c.guideline_b_id
+                else f"{c.guideline_b_id}_{c.guideline_a_id}"
+            )
+            if (
+                c.severity >= 6
+                and key in contradictions
+                and c.severity > contradictions[key].severity
+            ):
+                contradictions[key] = c
+
+        if not contradictions:
+            return []
+
+        guideline_coherence_results: OrderedDict[
+            GuidelineId, tuple[Guideline, GuidelineCoherenceCheckResult]
+        ] = OrderedDict(
+            {
+                g.id: (g, GuidelineCoherenceCheckResult(coherence_checks=[]))
+                for g in proposed_guidelines
+            }
+        )
+
+        for c in contradictions.values():
+            if guideline := next(
+                iter(g for g in existing_guidelines if g.id == c.guideline_a_id), None
+            ):
+                guideline_b = guideline
+            else:
+                guideline_b = next(iter(g for g in proposed_guidelines if g.id == c.guideline_a_id))
+
+            guideline_coherence_results[c.guideline_a_id][1]["coherence_checks"].append(
                 CoherenceCheckResult(
-                    guideline_a=str(proposed_guidelines[contradiction.guideline_b_id]),
-                    guideline_b=str(existing_guideline),
-                    issue=contradiction.rationale,
-                    severity=contradiction.severity,
+                    guideline_a=str(guideline_coherence_results[c.guideline_a_id][0]),
+                    guideline_b=str(guideline_b),
+                    issue=c.rationale,
+                    severity=c.severity,
                 )
             )
 
-        return guideline_coherence_results.values()
+            if c.guideline_b_id in guideline_coherence_results:
+                guideline_coherence_results[c.guideline_b_id][1]["coherence_checks"].append(
+                    CoherenceCheckResult(
+                        guideline_a=str(guideline_coherence_results[c.guideline_a_id][0]),
+                        guideline_b=str(guideline_b),
+                        issue=c.rationale,
+                        severity=c.severity,
+                    )
+                )
+
+        return [
+            guideline_cohrence_check_result
+            for g, guideline_cohrence_check_result in guideline_coherence_results.values()
+        ]
 
 
 class BehavioralChangeEvaluator:
     def __init__(
-        self, logger: Logger, evaluation_store: EvaluationStore, guideline_store: GuidelineStore
+        self,
+        logger: Logger,
+        evaluation_store: EvaluationStore,
+        guideline_store: GuidelineStore,
+        guideline_connection_proposer: GuidelineConnectionProposer,
     ) -> None:
         self.logger = logger
         self._evaluation_store = evaluation_store
         self._guideline_store = guideline_store
         self._guideline_evaluator = GuidelineEvaluator(
-            logger=logger, guideline_store=guideline_store
+            logger=logger,
+            guideline_store=guideline_store,
+            guideline_connection_proposer=guideline_connection_proposer,
         )
 
     async def validate_payloads(
         self,
+        guideline_set: str,
         payloads: Sequence[EvaluationGuidelinePayload],
     ) -> None:
         if not payloads:
@@ -138,7 +204,6 @@ class BehavioralChangeEvaluator:
                     "Duplicate guideline found among the provided guidelines."
                 )
 
-            guideline_set = payloads[0].guideline_set
             existing_guidelines = await self._guideline_store.list_guidelines(
                 guideline_set=guideline_set
             )
@@ -166,17 +231,20 @@ class BehavioralChangeEvaluator:
         self,
         payloads: Sequence[EvaluationGuidelinePayload],
     ) -> EvaluationId:
-        await self.validate_payloads(payloads)
+        guideline_set = payloads[0].guideline_set
+
+        await self.validate_payloads(guideline_set, payloads)
 
         evaluation = await self._evaluation_store.create_evaluation(payloads)
 
-        asyncio.create_task(self.run_evaluation(evaluation))
+        asyncio.create_task(self.run_evaluation(evaluation, guideline_set))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
         evaluation: Evaluation,
+        guideline_set: str,
     ) -> None:
         self.logger.info(f"Starting evaluation task '{evaluation.id}'")
         try:
@@ -197,11 +265,12 @@ class BehavioralChangeEvaluator:
 
             self.logger.info(f"DorZo B: {evaluation.invoices}")
             guideline_results = await self._guideline_evaluator.evaluate(
-                [
+                guideline_set=guideline_set,
+                payloads=[
                     invoice.payload
                     for invoice in evaluation.invoices
                     if invoice.payload.type == "guideline"
-                ]
+                ],
             )
             self.logger.info("DorZo C")
 

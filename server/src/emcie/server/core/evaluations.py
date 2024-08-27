@@ -7,6 +7,7 @@ from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.guideline_connection_proposer import GuidelineConnectionProposition
 
 EvaluationId = NewType("EvaluationId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
@@ -38,10 +39,14 @@ class GuidelineCoherenceCheckResult(TypedDict):
     coherence_checks: list[CoherenceCheckResult]
 
 
+class GuidelineConnectionPropositions(TypedDict):
+    connection_propositions: list[GuidelineConnectionProposition]
+
+
 @dataclass(frozen=True)
 class EvaluationInvoiceGuidelineData:
     type: Literal["guideline"]
-    detail: GuidelineCoherenceCheckResult
+    detail: Union[GuidelineCoherenceCheckResult, GuidelineConnectionPropositions]
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]

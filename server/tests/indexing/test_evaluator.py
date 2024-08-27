@@ -139,7 +139,49 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
 
-    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) >= 1
+    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) == 1
+
+
+async def test_that_an_evaluation_of_an_incoherent_proposed_guidelines_completes_with_an_unapproved_invoice(
+    container: Container,
+) -> None:
+    evaluation_service = container[BehavioralChangeEvaluator]
+    evaluation_store = container[EvaluationStore]
+
+    payloads = [
+        EvaluationGuidelinePayload(
+            type="guideline",
+            guideline_set="test-agent",
+            predicate="any customer requests a feature not available in the current version",
+            content="inform them about the product roadmap and upcoming features",
+        ),
+        EvaluationGuidelinePayload(
+            type="guideline",
+            guideline_set="test-agent",
+            predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+            content="escalate the request to product management for special consideration",
+        ),
+    ]
+
+    evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
+
+    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+
+    assert evaluation.status == "completed"
+
+    assert len(evaluation.invoices) == 1
+
+    assert evaluation.invoices[0]
+    assert not evaluation.invoices[0].approved
+
+    assert evaluation.invoices[0].data
+    assert evaluation.invoices[0].data.type == "guideline"
+
+    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) == 1
+
+    assert len(evaluation.invoices[1].data.detail["coherence_checks"]) == 1
 
 
 async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice_containing_data_for_each(
