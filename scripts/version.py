@@ -32,14 +32,20 @@ def set_package_version(version: str, package: Package) -> None:
     project_file_content = project_file.read_text()
 
     with open(project_file, "w") as file:
-        new_content = re.sub(
+        project_file_content = re.sub(
             f'\nversion = "{current_version}"\n',
             f'\nversion = "{version}"\n',
             project_file_content,
             count=1,
         )
 
-        file.write(new_content)
+        project_file_content = re.sub(
+            f'\nemcie-(.+?) = "{current_version}"\n',
+            f'\nemcie-\\1 = "{version}"\n',
+            project_file_content,
+        )
+
+        file.write(project_file_content)
 
 
 def tag_repo(version: str) -> None:
