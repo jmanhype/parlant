@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
-packages = [{include = "emcie", from = "src"}]
+packages = [{ include = "emcie", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
