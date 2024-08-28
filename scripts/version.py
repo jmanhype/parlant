@@ -86,7 +86,24 @@ def update_version(
     return str(version)
 
 
+def there_are_pending_git_changes() -> bool:
+    status, _ = subprocess.getstatusoutput(
+        "git diff --quiet && git diff --cached --quiet && git ls-files --others --exclude-standard"
+    )
+    return status != 0
+
+
+def commit_version(version: str) -> None:
+    status, _ = subprocess.getstatusoutput(f"git commit -am 'Release {version}'")
+    return status != 0
+
+
 if __name__ == "__main__":
+    if there_are_pending_git_changes():
+        die(
+            "error: version bumps must take place on a clean tree with no pending changes"
+        )
+
     current_version = get_current_server_version()
 
     major = "--major" in sys.argv
@@ -99,13 +116,13 @@ if __name__ == "__main__":
     new_version = update_version(current_version, major, minor, patch, rc, beta, alpha)
 
     if current_version == new_version:
-        print("error: no component was selected to be bumped")
-        sys.exit(1)
+        die("error: no component was selected to be bumped")
 
     answer = input(f"Proceed with bumping {current_version} to {new_version} [N/y]?")
 
     if answer not in "yY":
-        print("Canceled.")
+        die("Canceled.")
 
     for_each_package(partial(set_package_version, new_version))
+    commit_version(new_version)
     tag_repo(new_version)
