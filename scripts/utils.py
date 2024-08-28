@@ -12,6 +12,7 @@ class Package:
     path: Path
     uses_poetry: bool
     cmd_prefix: str
+    publish: bool
     bin_files: list[Path] = field(default_factory=list)
 
     def run_cmd(self, cmd: str) -> tuple[int, str]:
@@ -38,18 +39,21 @@ def get_packages() -> list[Package]:
             path=root / "scripts",
             cmd_prefix="",
             uses_poetry=False,
+            publish=False,
         ),
         Package(
             name="common",
             path=root / "common",
             cmd_prefix="poetry run",
             uses_poetry=True,
+            publish=True,
         ),
         Package(
             name="sdk",
             path=root / "sdk",
             cmd_prefix="poetry run",
             uses_poetry=True,
+            publish=True,
         ),
         Package(
             name="server",
@@ -60,6 +64,7 @@ def get_packages() -> list[Package]:
                 root / "server" / "bin" / "emcie-server",
             ],
             uses_poetry=True,
+            publish=False,
         ),
     ]
 
