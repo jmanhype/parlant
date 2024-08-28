@@ -47,6 +47,12 @@ def set_package_version(version: str, package: Package) -> None:
 
         file.write(project_file_content)
 
+    status, output = package.run_cmd("poetry lock --no-update")
+
+    if status != 0:
+        print(output, file=sys.stderr)
+        die("error: failed to re-hash poetry lock file")
+
 
 def tag_repo(version: str) -> None:
     status, output = subprocess.getstatusoutput(f'git tag "v{version}"')
