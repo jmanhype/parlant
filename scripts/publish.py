@@ -8,7 +8,13 @@ def publish_package(package: Package) -> None:
         print(f"Skipping {package.path}...")
         return
 
-    status, output = package.run_cmd("poetry publish --build")
+    status, output = package.run_cmd("poetry build")
+
+    if status != 0:
+        print(output, file=sys.stderr)
+        die(f"error: package '{package.path}': build failed")
+
+    status, output = package.run_cmd("poetry publish")
 
     if status != 0:
         print(output, file=sys.stderr)
