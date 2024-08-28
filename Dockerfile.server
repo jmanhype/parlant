@@ -9,9 +9,6 @@ ENV PYTHONPATH=/app/server/src
 RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*
 RUN pip install poetry==$POETRY_VERSION
 
-# TODO: remove this once we migrate to proper SDK plugins
-RUN pip install "chromadb==0.5.3" "tinydb==4.8.0"
-
 COPY common/pyproject.toml common/poetry.lock common/README.md /app/common/
 COPY common/src /app/common/src
 WORKDIR /app/common
@@ -28,4 +25,4 @@ RUN poetry config virtualenvs.create false \
 # Expose the port your app runs on
 EXPOSE 8000
 
-CMD ["poetry", "run", "python", "bin/emcie-server", "run"]
+CMD ["poetry", "run", "python", "bin/emcie-server", "run", "--index"]
