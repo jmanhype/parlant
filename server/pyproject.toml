@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
-packages = [{include = "emcie", from = "src"}]
+packages = [{ include = "emcie", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -29,10 +29,10 @@ tenacity = "^8.4.2"
 loguru = "^0.7.2"
 jsonschema = "^4.23.0"
 types-jsonschema = "^4.22.0.20240610"
-networkx = {extras = ["default"], version = "^3.3"}
+networkx = { extras = ["default"], version = "^3.3" }
 chromadb = "^0.5.4"
 tokenizers = "^0.19.1"
-emcie-common = {path = "../common", develop = true}
+emcie-common = { path = "../common", develop = true }
 httpx = "^0.27.0"
 openapi3-parser = "^1.1.17"
 aiopenapi3 = "^0.6.0"
@@ -54,4 +54,3 @@ types-requests = "^2.32.0.20240712"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
