@@ -53,7 +53,8 @@ from emcie.server.core.guideline_tool_associations import (
 from emcie.server.engines.common import Engine
 from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.indexing.coherence_checker import CoherenceChecker
-from emcie.server.indexing.common import GuidelineData, StagedGuideline
+from emcie.server.indexing.common import GuidelineData
+from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.indexing.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
@@ -212,9 +213,13 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[SessionStore] = SessionDocumentStore(sessions_db)
         c[SessionListener] = PollingSessionListener
         c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
+
         c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
         c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
-            LOGGER, c[EvaluationStore], c[GuidelineStore]
+            LOGGER,
+            c[EvaluationStore],
+            c[GuidelineStore],
+            GuidelineConnectionProposer(LOGGER),
         )
 
         c[Engine] = AlphaEngine
@@ -228,8 +233,8 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
 
 async def recover_server_tasks(
-    evaluation_store=EvaluationStore,
-    evaluator=BehavioralChangeEvaluator,
+    evaluation_store: EvaluationStore,
+    evaluator: BehavioralChangeEvaluator,
 ) -> None:
     for evaluation in await evaluation_store.list_evaluations():
         if evaluation.status in ["pending", "running"]:
@@ -341,8 +346,8 @@ async def start_server(params: CLIParams) -> None:
 
 
 async def check_coherence(params: CLIParams) -> None:
-    def render_guideline(s: StagedGuideline) -> str:
-        return f"When {s['predicate']}, then {s['content']}"
+    def render_guideline(g: GuidelineData) -> str:
+        return f"When {g['predicate']}, then {g['content']}"
 
     checker = CoherenceChecker(logger=LOGGER)
 

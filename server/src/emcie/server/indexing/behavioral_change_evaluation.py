@@ -45,9 +45,10 @@ class GuidelineEvaluator:
 
     async def evaluate(
         self,
-        guideline_set: str,
         payloads: Sequence[EvaluationPayload],
     ) -> Sequence[EvaluationInvoiceGuidelineData]:
+        guideline_set = payloads[0].guideline_set
+
         guideline_to_evaluate = [
             GuidelineData(
                 predicate=p.predicate,
@@ -262,20 +263,18 @@ class BehavioralChangeEvaluator:
     ) -> EvaluationId:
         await self.validate_payloads(payloads)
 
-        guideline_set = payloads[0].guideline_set
-
         evaluation = await self._evaluation_store.create_evaluation(payloads)
 
-        asyncio.create_task(self.run_evaluation(evaluation, guideline_set))
+        asyncio.create_task(self.run_evaluation(evaluation))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
         evaluation: Evaluation,
-        guideline_set: str,
     ) -> None:
         self.logger.info(f"Starting evaluation task '{evaluation.id}'")
+
         try:
             if running_task := next(
                 iter(
@@ -293,7 +292,6 @@ class BehavioralChangeEvaluator:
             )
 
             guideline_results = await self._guideline_evaluator.evaluate(
-                guideline_set=guideline_set,
                 payloads=[
                     invoice.payload
                     for invoice in evaluation.invoices
