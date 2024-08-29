@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal, NewType, Optional, Sequence, TypeAlias, TypedDict, Union
+from typing import Literal, NewType, Optional, Sequence, TypeAlias, Union
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
-from emcie.server.guideline_connection_proposer import GuidelineConnectionProposition
+from emcie.server.indexing.common import GuidelineData
 
 EvaluationId = NewType("EvaluationId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
@@ -29,24 +30,38 @@ EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
 
 @dataclass(frozen=True)
 class CoherenceCheckResult:
-    guideline_a: str
-    guideline_b: str
+    type: Literal[
+        "Contradiction With Existing Guideline", "Contradiction With Other Proposed Guideline"
+    ]
+    first: GuidelineData
+    second: GuidelineData
     issue: str
     severity: int
 
 
-class GuidelineCoherenceCheckResult(TypedDict):
+@dataclass(frozen=True)
+class ConnectionPropositionResult:
+    type: Literal["Connection With Existing Guideline", "Connection With Other Proposed Guideline"]
+    source: GuidelineData
+    target: GuidelineData
+    kind: ConnectionKind
+
+
+@dataclass(frozen=True)
+class EvaluationGuidelineCoherenceCheckResult:
     coherence_checks: list[CoherenceCheckResult]
 
 
-class GuidelineConnectionPropositions(TypedDict):
-    connection_propositions: list[GuidelineConnectionProposition]
+@dataclass(frozen=True)
+class EvaluationGuidelineConnectionPropositionsResult:
+    connection_propositions: list[ConnectionPropositionResult]
 
 
 @dataclass(frozen=True)
 class EvaluationInvoiceGuidelineData:
     type: Literal["guideline"]
-    detail: Union[GuidelineCoherenceCheckResult, GuidelineConnectionPropositions]
+    coherence_check_detail: EvaluationGuidelineCoherenceCheckResult
+    connections_detail: EvaluationGuidelineConnectionPropositionsResult
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]

@@ -9,8 +9,9 @@ from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.guidelines import Guideline, GuidelineId
+from emcie.server.core.common import UniqueId, generate_id
 from emcie.server.engines.alpha.utils import make_llm_client
+from emcie.server.indexing.common import GuidelineData
 from emcie.server.logger import Logger
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
@@ -27,47 +28,11 @@ class ContradictionType(Enum):
 
 class ContradictionTest(DefaultBaseModel):
     contradiction_type: ContradictionType
-    guideline_a_id: GuidelineId
-    guideline_b_id: GuidelineId
+    guideline_a: GuidelineData
+    guideline_b: GuidelineData
     severity: int
     rationale: str
     creation_utc: datetime
-
-
-def _filter_unique_contradictions(
-    contradictions: Sequence[ContradictionTest],
-) -> Sequence[ContradictionTest]:
-    """
-    Filter unique contradictions based on the combination of existing and proposed guidelines.
-
-    Args:
-        contradictions: Sequence of Contradiction objects to filter.
-
-    Returns:
-        Sequence of unique Contradiction objects.
-    """
-
-    def _generate_key(g1_id: GuidelineId, g2_id: GuidelineId) -> tuple[GuidelineId, GuidelineId]:
-        _sorted_guidelines_tuple = tuple(sorted((g1_id, g2_id)))
-        return _sorted_guidelines_tuple  # type: ignore
-
-    seen_keys = set()
-    unique_contradictions = []
-    for contradiction in contradictions:
-        key = _generate_key(contradiction.guideline_a_id, contradiction.guideline_b_id)
-        if key not in seen_keys:
-            seen_keys.add(key)
-            unique_contradictions.append(contradiction)
-    return unique_contradictions
-
-
-class ContradictionEvaluator(ABC):
-    @abstractmethod
-    async def evaluate(
-        self,
-        proposed_guidelines: Sequence[Guideline],
-        existing_guidelines: Sequence[Guideline] = [],
-    ) -> Sequence[ContradictionTest]: ...
 
 
 class ContradictionEvaluatorBase(ABC):
@@ -86,21 +51,23 @@ class ContradictionEvaluatorBase(ABC):
 
     async def evaluate(
         self,
-        proposed_guidelines: Sequence[Guideline],
-        existing_guidelines: Sequence[Guideline] = [],
+        guidelines_to_evaluate: Sequence[GuidelineData],
+        comparison_guidelines: Sequence[GuidelineData] = [],
     ) -> Sequence[ContradictionTest]:
-        existing_guideline_list = list(existing_guidelines)
-        proposed_guidelines_list = list(proposed_guidelines)
+        comparison_guidelines_list = list(comparison_guidelines)
+        guidelines_to_evaluate_list = list(guidelines_to_evaluate)
         tasks = []
 
-        for i, proposed_guideline in enumerate(proposed_guidelines):
+        for i, guideline_to_evaluate in enumerate(guidelines_to_evaluate):
             filtered_existing_guidelines = [
-                g for g in proposed_guidelines_list[i + 1 :] + existing_guideline_list
+                g for g in guidelines_to_evaluate_list[i + 1 :] + comparison_guidelines_list
             ]
             guideline_batches = chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE)
             tasks.extend(
                 [
-                    asyncio.create_task(self._process_proposed_guideline(proposed_guideline, batch))
+                    asyncio.create_task(
+                        self._process_proposed_guideline(guideline_to_evaluate, batch)
+                    )
                     for batch in guideline_batches
                 ]
             )
@@ -110,19 +77,21 @@ class ContradictionEvaluatorBase(ABC):
         ):
             contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
 
-        distinct_contradictions = _filter_unique_contradictions(contradictions)
-        return distinct_contradictions
+        return contradictions
 
     async def _process_proposed_guideline(
         self,
-        proposed_guideline: Guideline,
-        existing_guidelines: Sequence[Guideline],
+        guideline_to_evaluate: GuidelineData,
+        comparison_guidelines: Sequence[GuidelineData],
     ) -> Sequence[ContradictionTest]:
+        indexed_comparison_guidelines = {generate_id(): c for c in comparison_guidelines}
         prompt = self._format_contradiction_prompt(
-            proposed_guideline,
-            list(existing_guidelines),
+            guideline_to_evaluate,
+            indexed_comparison_guidelines,
         )
-        contradictions = await self._generate_contradictions(prompt)
+        contradictions = await self._generate_contradictions(
+            guideline_to_evaluate, indexed_comparison_guidelines, prompt
+        )
         return contradictions
 
     @abstractmethod
@@ -133,27 +102,23 @@ class ContradictionEvaluatorBase(ABC):
 
     def _format_contradiction_prompt(
         self,
-        proposed_guideline: Guideline,
-        existing_guidelines: list[Guideline],
+        guideline_to_evaluate: GuidelineData,
+        comparison_guidelines: dict[UniqueId, GuidelineData],
     ) -> str:
-        existing_guidelines_string = "\n\t".join(
-            f"{i}) {{id: {g.id}, guideline: When {g.predicate}, then {g.content}}}"
-            for i, g in enumerate(existing_guidelines, start=1)
+        comparison_guidelines_string = "\n\t".join(
+            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id]['predicate']}, then {comparison_guidelines[id]['content']}}}"
+            for i, id in enumerate(comparison_guidelines, start=1)
         )
-        proposed_guideline_string = (
-            f"{{id: {proposed_guideline.id}, "
-            f"guideline: When {proposed_guideline.predicate}, then {proposed_guideline.content}}}"
-        )
+        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate['predicate']}, then {guideline_to_evaluate['content']}}}"
         result_structure = [
             {
-                "guideline_a_id": proposed_guideline.id,
-                "guideline_b_id": g.id,
+                "compared_guideline_id": id,
                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the "
                 "contradiction arising from overlapping conditions>",
                 "rationale": "<Concise explanation of why the Guideline A and the "
                 f"Guideline B exhibit a {self.contradiction_type.value}>",
             }
-            for g in existing_guidelines
+            for id in comparison_guidelines
         ]
 
         return f"""
@@ -166,14 +131,14 @@ class ContradictionEvaluatorBase(ABC):
 **Task Description**:
 1. **Input**:
    - Guideline Comparison Set: ###
-    {existing_guidelines_string}
+    {comparison_guidelines_string}
    ###
    - Guideline A: ###
-   {proposed_guideline_string}
+   {guideline_to_evaluate_string}
    ###
 
 2. **Process**:
-   - Compare each of the {len(existing_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
+   - Compare each of the {len(comparison_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
    - Determine if there is a {self.contradiction_type.value}, where the Guideline A is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
@@ -195,6 +160,8 @@ class ContradictionEvaluatorBase(ABC):
     @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def _generate_contradictions(
         self,
+        guideline_to_evaluate: GuidelineData,
+        indexed_compared_guidelines: dict[UniqueId, GuidelineData],
         prompt: str,
     ) -> Sequence[ContradictionTest]:
         response = await self._llm_client.chat.completions.create(
@@ -210,8 +177,10 @@ class ContradictionEvaluatorBase(ABC):
         contradictions = [
             ContradictionTest(
                 contradiction_type=self.contradiction_type,
-                guideline_a_id=json_contradiction["guideline_b_id"],
-                guideline_b_id=json_contradiction["guideline_a_id"],
+                guideline_a=guideline_to_evaluate,
+                guideline_b=indexed_compared_guidelines[
+                    json_contradiction["compared_guideline_id"]
+                ],
                 severity=json_contradiction["severity_level"],
                 rationale=json_contradiction["rationale"],
                 creation_utc=datetime.now(timezone.utc),
@@ -245,8 +214,7 @@ This type of Contradiction occurs when the application of a general guideline is
      {{
          "{self.contradiction_response_outcome_key}": [
              {{
-                 "guideline_a_id": "4",
-                 "guideline_b_id": "3",
+                 "compared_guideline_id": "3",
                  "severity_level": 9,
                  "rationale": "Shipping high-demand items immediately contradicts the policy of prioritizing shipments based on loyalty."
              }}
@@ -262,8 +230,7 @@ This type of Contradiction occurs when the application of a general guideline is
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "guideline_a_id": "2",
-                 "guideline_b_id": "1",
+                 "compared_guideline_id": "1",
                  "severity_level": 8,
                  "rationale": "Offering extra rewards for specific projects directly conflicts with the uniform application of standard performance metrics."
              }}
@@ -279,8 +246,7 @@ This type of Contradiction occurs when the application of a general guideline is
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "guideline_a_id": "6",
-                 "guideline_b_id": "5",
+                 "compared_guideline_id": "5",
                  "severity_level": 1,
                  "rationale": "The policies to offer discounts for yearly subscriptions and additional discounts during promotional periods complement each other rather than contradict. Both discounts can be applied simultaneously without undermining one another, enhancing the overall attractiveness of the subscription offers during promotions."
              }}
@@ -296,8 +262,7 @@ This type of Contradiction occurs when the application of a general guideline is
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "guideline_a_id": "8",
-                 "guideline_b_id": "7",
+                 "compared_guideline_id": "7",
                  "severity_level": 9,
                  "rationale": "The need for additional training on major UI changes necessitates delaying rapid deployments, causing a conflict with established update protocols."
              }}
@@ -330,8 +295,7 @@ This happens when conditions for both guidelines are met simultaneously, without
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "2",
-                "guideline_b_id": "1",
+                "compared_guideline_id": "1",
                 "severity_level": 9,
                 "rationale": "Refund policy conflict: special orders returned within 30 days challenge the standard refund guideline, causing potential customer confusion."
              }}
@@ -347,8 +311,7 @@ This happens when conditions for both guidelines are met simultaneously, without
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "4",
-                "guideline_b_id": "3",
+                "compared_guideline_id": "3",
                 "severity_level": 8,
                 "rationale": "Resource allocation conflict: The need to focus resources on imminent deadlines clashes with equal distribution policies during multiple simultaneous project deadlines."
              }}
@@ -364,8 +327,7 @@ This happens when conditions for both guidelines are met simultaneously, without
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                 "guideline_a_id": "6",
-                 "guideline_b_id": "5",
+                 "compared_guideline_id": "5",
                  "severity_level": 7,
                  "rationale": "Flexible vs. standard hours conflict: Approving flexible hours contradicts the necessity for standard hours required for effective team collaboration."
              }}
@@ -381,8 +343,7 @@ This happens when conditions for both guidelines are met simultaneously, without
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "8",
-                "guideline_b_id": "7",
+                "compared_guideline_id": "7",
                 "severity_level": 1,
                 "rationale": "These guidelines complement each other by addressing different customer needs: detailed product information and specific compatibility advice."
              }}
@@ -415,8 +376,7 @@ This arises from a lack of clear prioritization or differentiation between actio
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "2",
-                "guideline_b_id": "1",
+                "compared_guideline_id": "1",
                 "severity_level": 9,
                 "rationale": "Applying discounts during the holiday season directly contradicts withholding them during overlapping end-of-year sales, creating inconsistent pricing strategies."
              }}
@@ -432,8 +392,7 @@ This arises from a lack of clear prioritization or differentiation between actio
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "4",
-                "guideline_b_id": "3",
+                "compared_guideline_id": "3",
                 "severity_level": 8,
                 "rationale": "Reducing prices for expiring products conflicts with maintaining standard pricing during promotional campaigns, causing pricing conflicts."
              }}
@@ -449,8 +408,7 @@ This arises from a lack of clear prioritization or differentiation between actio
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "6",
-                "guideline_b_id": "5",
+                "compared_guideline_id": "5",
                 "severity_level": 9,
                 "rationale": "Emergency protocol for severe weather contradicts the need for maximum capacity during major sales events, challenging management decisions."
              }}
@@ -466,8 +424,7 @@ This arises from a lack of clear prioritization or differentiation between actio
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "8",
-                "guideline_b_id": "7",
+                "compared_guideline_id": "7",
                 "severity_level": 1,
                 "rationale": "Both guidelines support enhancing customer service under different circumstances, effectively complementing each other without conflict."
              }}
@@ -500,8 +457,7 @@ These conflicts arise from different but potentially overlapping circumstances r
      {{
          "contextual_contradictions": [
              {{
-                "guideline_a_id": "2",
-                "guideline_b_id": "1",
+                "compared_guideline_id": "1",
                 "severity_level": 9,
                 "rationale": "Offering free shipping in urban areas directly conflicts with initiatives to minimize operational costs, leading to contradictory shipping policies when both conditions apply."
              }}
@@ -517,8 +473,7 @@ These conflicts arise from different but potentially overlapping circumstances r
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "4",
-                "guideline_b_id": "3",
+                "compared_guideline_id": "3",
                 "severity_level": 8,
                 "rationale": "The preference for eco-friendly products conflicts with cost-driven decisions to use cheaper materials, creating a strategic dilemma between sustainability and cost efficiency."
              }}
@@ -534,8 +489,7 @@ These conflicts arise from different but potentially overlapping circumstances r
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "6",
-                "guideline_b_id": "5",
+                "compared_guideline_id": "5",
                 "severity_level": 9,
                 "rationale": "Targeting premium product lines based on customer preferences contradicts strategies to enhance mass market appeal with lower-cost items, presenting a strategic conflict."
              }}
@@ -551,8 +505,7 @@ These conflicts arise from different but potentially overlapping circumstances r
      {{
         "{self.contradiction_response_outcome_key}": [
              {{
-                "guideline_a_id": "8",
-                "guideline_b_id": "7",
+                "compared_guideline_id": "7",
                 "severity_level": 1,
                 "rationale": "Marketing new products and notifying existing customers about updates serve complementary purposes without conflicting, effectively targeting different customer segments."
              }}
@@ -577,24 +530,24 @@ class CoherenceChecker:
 
     async def evaluate_coherence(
         self,
-        proposed_guidelines: Sequence[Guideline],
-        existing_guidelines: Sequence[Guideline],
+        guidelines_to_evaluate: Sequence[GuidelineData],
+        comparison_guidelines: Sequence[GuidelineData] = [],
     ) -> Sequence[ContradictionTest]:
         hierarchical_contradictions_task = self.hierarchical_contradiction_evaluator.evaluate(
-            proposed_guidelines,
-            existing_guidelines,
+            guidelines_to_evaluate,
+            comparison_guidelines,
         )
         parallel_contradictions_task = self.parallel_contradiction_evaluator.evaluate(
-            proposed_guidelines,
-            existing_guidelines,
+            guidelines_to_evaluate,
+            comparison_guidelines,
         )
         temporal_contradictions_task = self.temporal_contradiction_evaluator.evaluate(
-            proposed_guidelines,
-            existing_guidelines,
+            guidelines_to_evaluate,
+            comparison_guidelines,
         )
         contextual_contradictions_task = self.contextual_contradiction_evaluator.evaluate(
-            proposed_guidelines,
-            existing_guidelines,
+            guidelines_to_evaluate,
+            comparison_guidelines,
         )
         combined_contradictions = list(
             chain.from_iterable(

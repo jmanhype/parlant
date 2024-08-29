@@ -1,7 +1,6 @@
 from typing import TypedDict
 
 
-class StagedGuideline(TypedDict):
-    guideline_set: str
+class GuidelineData(TypedDict):
     predicate: str
     content: str

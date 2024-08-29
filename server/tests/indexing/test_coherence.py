@@ -3,17 +3,17 @@ from lagom import Container
 from pytest import fixture, mark
 
 from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.coherence_checker import (
+from emcie.server.indexing.coherence_checker import (
     CoherenceChecker,
-    ContradictionType,
     ContextualContradictionEvaluator,
+    ContradictionType,
     HierarchicalContradictionEvaluator,
     ParallelContradictionEvaluator,
     TemporalContradictionEvaluator,
 )
-
+from emcie.server.indexing.common import GuidelineData
 from emcie.server.logger import Logger
+
 from tests.test_utilities import SyncAwaiter, nlp_test
 
 
@@ -44,21 +44,8 @@ def context(
 
 
 @fixture
-def guidelines_with_contradictions(
-    context: _TestContext,
-) -> list[Guideline]:
-    guideline_store = context.container[GuidelineStore]
-
-    def create_guideline(predicate: str, content: str) -> Guideline:
-        return context.sync_await(
-            guideline_store.create_guideline(
-                guideline_set=context.agent_id,
-                predicate=predicate,
-                content=content,
-            )
-        )
-
-    guidelines: list[Guideline] = []
+def guidelines_with_contradictions() -> list[GuidelineData]:
+    guidelines: list[GuidelineData] = []
 
     for guideline_params in [
         {
@@ -82,27 +69,18 @@ def guidelines_with_contradictions(
             "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
         },
     ]:
-        guidelines.append(create_guideline(**guideline_params))
+        guidelines.append(
+            GuidelineData(
+                predicate=guideline_params["predicate"], content=guideline_params["content"]
+            )
+        )
 
     return guidelines
 
 
 @fixture
-def guidelines_without_contradictions(
-    context: _TestContext,
-) -> list[Guideline]:
-    guideline_store = context.container[GuidelineStore]
-
-    def create_guideline(predicate: str, content: str) -> Guideline:
-        return context.sync_await(
-            guideline_store.create_guideline(
-                guideline_set=context.agent_id,
-                predicate=predicate,
-                content=content,
-            )
-        )
-
-    guidelines: list[Guideline] = []
+def guidelines_without_contradictions() -> list[GuidelineData]:
+    guidelines: list[GuidelineData] = []
 
     for guideline_params in [
         {
@@ -146,7 +124,11 @@ def guidelines_without_contradictions(
             "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
         },
     ]:
-        guidelines.append(create_guideline(**guideline_params))
+        guidelines.append(
+            GuidelineData(
+                predicate=guideline_params["predicate"], content=guideline_params["content"]
+            )
+        )
 
     return guidelines
 
@@ -184,20 +166,18 @@ def test_that_hierarchical_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
         context.container[Logger]
     )
+
     contradiction_results = list(
         context.sync_await(
             hierarchical_contradiction_evaluator.evaluate(
@@ -205,17 +185,20 @@ def test_that_hierarchical_evaluator_detects_contradictions(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity >= 5
+
     assert nlp_test(
         f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
         f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "A contradiction has been found and an explanation is provided as to why it is a "
@@ -256,20 +239,18 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
         context.container[Logger]
     )
+
     contradiction_results = list(
         context.sync_await(
             hierarchical_contradiction_evaluator.evaluate(
@@ -277,17 +258,20 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity < 5
+
     assert nlp_test(
         f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
         f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "No contradiction has been found between the two behavioral guidelines",
@@ -327,17 +311,14 @@ def test_that_parallel_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -347,17 +328,20 @@ def test_that_parallel_evaluator_detects_contradictions(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
     assert contradiction.severity >= 5
+
     assert nlp_test(
         f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
         f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "A contradiction has been found and an explanation is provided as to why it is a "
@@ -398,17 +382,14 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -418,17 +399,20 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
     assert contradiction.severity < 5
+
     assert nlp_test(
         f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
         f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "No contradiction has been found between the two behavioral guidelines",
@@ -468,17 +452,14 @@ def test_that_temporal_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -488,17 +469,20 @@ def test_that_temporal_evaluator_detects_contradictions(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
     assert contradiction.severity >= 5
+
     assert nlp_test(
         f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:\n"  # noqa
         f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "A contradiction has been found and an explanation is provided as to why it is a "
@@ -539,17 +523,14 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -559,17 +540,20 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
     assert contradiction.severity < 5
+
     assert nlp_test(
         f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
         f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "No contradiction has been found between the two behavioral guidelines",
@@ -609,17 +593,14 @@ def test_that_contextual_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -629,17 +610,20 @@ def test_that_contextual_evaluator_detects_contradictions(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL.value  # type: ignore
     assert contradiction.severity >= 5
+
     assert nlp_test(
         f"Here is an explanation of what {contextual_contradiction_evaluator.contradiction_type} type is:"  # noqa
         f"{contextual_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "A contradiction has been found and an explanation is provided as to why it is a "
@@ -680,17 +664,14 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_store = context.container.resolve(GuidelineStore)
-    guideline_a = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_a_definition["predicate"], guideline_a_definition["content"]
-        )
+    guideline_a = GuidelineData(
+        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
     )
-    guideline_b = context.sync_await(
-        guideline_store.create_guideline(
-            context.agent_id, guideline_b_definition["predicate"], guideline_b_definition["content"]
-        )
+
+    guideline_b = GuidelineData(
+        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
     )
+
     contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
@@ -700,15 +681,18 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
             )
         )
     )
+
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
+
     assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL.value  # type: ignore
     assert contradiction.severity < 5
+
     assert nlp_test(
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
-        f"1. {contradiction.guideline_a_id}\n"
-        f"2. {contradiction.guideline_b_id}\n"
+        f"1. {contradiction.guideline_a}\n"
+        f"2. {contradiction.guideline_b}\n"
         "Here is the output explanation generated by the contradiction test:"
         f"{contradiction.rationale}",
         "No contradiction has been found between the two behavioral guidelines",
@@ -718,70 +702,64 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
 def test_that_coherence_check_does_not_produce_false_positives(
     context: _TestContext,
     sync_await: SyncAwaiter,
-    guidelines_without_contradictions: list[Guideline],
+    guidelines_without_contradictions: list[GuidelineData],
 ) -> None:
     coherence_checker = CoherenceChecker(context.container[Logger])
+
     contradiction_results = sync_await(
         coherence_checker.evaluate_coherence(guidelines_without_contradictions, [])
     )
+
     assert len(list(filter(lambda c: c.severity >= 5, contradiction_results))) == 0
 
 
 def test_that_coherence_check_produces_multiple_contradictions(
     context: _TestContext,
     sync_await: SyncAwaiter,
-    guidelines_with_contradictions: list[Guideline],
+    guidelines_with_contradictions: list[GuidelineData],
 ) -> None:
     coherence_checker = CoherenceChecker(context.container[Logger])
+
     contradiction_results = list(
         sync_await(coherence_checker.evaluate_coherence(guidelines_with_contradictions, []))
     )
+
     n = len(guidelines_with_contradictions)
     pairs_per_evaluator = n * (n - 1) / 2
     num_contradiction_evaluators = 4
+
     assert len(contradiction_results) == num_contradiction_evaluators * pairs_per_evaluator
 
 
 def test_that_existing_guidelines_are_not_evaluated_as_proposed_guidelines(
     context: _TestContext,
 ) -> None:
-    guideline_store = context.container[GuidelineStore]
+    guideline_to_evaluate = GuidelineData(
+        predicate="A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+        content="Escalate the request to product management for special consideration",
+    )
 
-    def create_guideline(predicate: str, content: str) -> Guideline:
-        return context.sync_await(
-            guideline_store.create_guideline(
-                guideline_set=context.agent_id,
-                predicate=predicate,
-                content=content,
-            )
-        )
+    first_guideline_to_compare = GuidelineData(
+        predicate="Any customer requests a feature not available in the current version",
+        content="Inform them about the product roadmap and upcoming features",
+    )
 
-    proposed_guideline_definiton = {
-        "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
-        "content": "Escalate the request to product management for special consideration",
-    }
-    existing_guideline_definiton_1 = {
-        "predicate": "Any customer requests a feature not available in the current version",
-        "content": "Inform them about the product roadmap and upcoming features",
-    }
-    existing_guideline_definiton_2 = {
-        "predicate": "A customer with low ranking requests a specific feature that does not aligns the current product roadmap",  # noqa
-        "content": "Inform them about the current roadmap and advise them to inquire again in one year.",  # noqa
-    }
-    proposed_guideline = create_guideline(**proposed_guideline_definiton)
-    existing_guideline_1 = create_guideline(**existing_guideline_definiton_1)
-    existing_guideline_2 = create_guideline(**existing_guideline_definiton_2)
+    second_guideline_to_compare = GuidelineData(
+        predicate="A customer with low ranking requests a specific feature that does not aligns the current product roadmap",
+        content="Inform them about the current roadmap and advise them to inquire again in one year.",
+    )
 
     coherence_checker = CoherenceChecker(context.container[Logger])
     contradiction_results = list(
         context.sync_await(
             coherence_checker.evaluate_coherence(
-                [proposed_guideline], [existing_guideline_1, existing_guideline_2]
+                [guideline_to_evaluate], [first_guideline_to_compare, second_guideline_to_compare]
             )
         )
     )
+
     # Hierarchical and contradiction between each existing guideline, but not between them both.
-    assert contradiction_results[0].guideline_b_id == proposed_guideline.id
-    assert contradiction_results[1].guideline_b_id == proposed_guideline.id
-    assert contradiction_results[0].guideline_a_id == existing_guideline_1.id
-    assert contradiction_results[1].guideline_a_id == existing_guideline_2.id
+    assert contradiction_results[0].guideline_a == guideline_to_evaluate
+    assert contradiction_results[1].guideline_a == guideline_to_evaluate
+    assert contradiction_results[0].guideline_b == first_guideline_to_compare
+    assert contradiction_results[1].guideline_b == second_guideline_to_compare

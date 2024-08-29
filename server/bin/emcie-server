@@ -4,7 +4,6 @@
 import asyncio
 from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from enum import Enum, auto
 import os
 from fastapi import FastAPI
@@ -32,9 +31,7 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import (
-    Guideline,
     GuidelineDocumentStore,
-    GuidelineId,
     GuidelineStore,
 )
 from emcie.server.core.persistence.chroma_database import ChromaDatabase
@@ -48,15 +45,16 @@ from emcie.server.core.sessions import (
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.core.tools import LocalToolService, ToolService, MultiplexedToolService
 from emcie.server.core.services.plugins import PluginClient
-from emcie.server.coherence_checker import CoherenceChecker
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
 from emcie.server.engines.common import Engine
-from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator
-from emcie.server.indexer import Indexer
+from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
+from emcie.server.indexing.coherence_checker import CoherenceChecker
+from emcie.server.indexing.common import GuidelineData, StagedGuideline
+from emcie.server.indexing.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
@@ -196,9 +194,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         JSONFileDocumentDatabase(
             LOGGER, EMCIE_HOME_DIR / "guideline_connections.json"
         ) as guideline_connections_db,
-        JSONFileDocumentDatabase(
-            LOGGER, EMCIE_HOME_DIR / "evaluations.json"
-        ) as evaluations_db
+        JSONFileDocumentDatabase(LOGGER, EMCIE_HOME_DIR / "evaluations.json") as evaluations_db,
     ):
         c[AgentStore] = AgentDocumentStore(agents_db)
         c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
@@ -217,7 +213,9 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[SessionListener] = PollingSessionListener
         c[TerminologyStore] = TerminologyChromaStore(ChromaDatabase(LOGGER, EMCIE_HOME_DIR))
         c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
-        c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(LOGGER, c[EvaluationStore], c[GuidelineStore])
+        c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
+            LOGGER, c[EvaluationStore], c[GuidelineStore]
+        )
 
         c[Engine] = AlphaEngine
 
@@ -228,10 +226,15 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             c[MC] = mc
             yield c
 
-async def recover_server_tasks(evaluation_store=EvaluationStore, evaluator=BehavioralChangeEvaluator,) -> None:
+
+async def recover_server_tasks(
+    evaluation_store=EvaluationStore,
+    evaluator=BehavioralChangeEvaluator,
+) -> None:
     for evaluation in await evaluation_store.list_evaluations():
         if evaluation.status in ["pending", "running"]:
             await evaluator.run_evaluation(evaluation)
+
 
 @asynccontextmanager
 async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
@@ -257,7 +260,10 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
         else:
             await indexer.index()
 
-        await recover_server_tasks(evaluation_store=container[EvaluationStore], evaluator=container[BehavioralChangeEvaluator],)
+        await recover_server_tasks(
+            evaluation_store=container[EvaluationStore],
+            evaluator=container[BehavioralChangeEvaluator],
+        )
 
         yield await create_app(container)
 
@@ -335,29 +341,24 @@ async def start_server(params: CLIParams) -> None:
 
 
 async def check_coherence(params: CLIParams) -> None:
-    def render_guideline(g: Guideline) -> str:
-        return f"When {g.predicate}, then {g.content}"
+    def render_guideline(s: StagedGuideline) -> str:
+        return f"When {s['predicate']}, then {s['content']}"
 
     checker = CoherenceChecker(logger=LOGGER)
 
     for agent, guideline_specs in params.config["guidelines"].items():
-        guidelines = [
-            Guideline(
-                id=GuidelineId(str(index)),
-                creation_utc=datetime.now(timezone.utc),
+        guideline_to_evaluate = [
+            GuidelineData(
                 predicate=guideline["when"],
                 content=guideline["then"],
             )
-            for index, guideline in enumerate(guideline_specs)
+            for guideline in enumerate(guideline_specs)
         ]
-
-        guidelines_by_id = {g.id: g for g in guidelines}
 
         tests = [
             t
             for t in await checker.evaluate_coherence(
-                proposed_guidelines=guidelines,
-                existing_guidelines=[],
+                guidelines_to_evaluate=guideline_to_evaluate,
             )
             if t.severity >= 6
         ]
@@ -366,8 +367,8 @@ async def check_coherence(params: CLIParams) -> None:
             rich.print(Text(f'{len(tests)} issues found in "{agent}"\n', style="bold red"))
             entries = [
                 {
-                    "first": render_guideline(guidelines_by_id[t.guideline_a_id]),
-                    "second": render_guideline(guidelines_by_id[t.guideline_b_id]),
+                    "first": render_guideline(t.guideline_a),
+                    "second": render_guideline(t.guideline_b),
                     "issue": t.rationale,
                     "severity": t.severity,
                 }

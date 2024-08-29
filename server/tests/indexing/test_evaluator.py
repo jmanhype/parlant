@@ -2,13 +2,15 @@ import asyncio
 from lagom import Container
 from pytest import raises
 
-from emcie.server.behavioral_change_evaluation import (
+from emcie.server.core.evaluations import EvaluationGuidelinePayload, EvaluationStore
+from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from emcie.server.core.evaluations import EvaluationGuidelinePayload, EvaluationStore
-from emcie.server.core.guidelines import GuidelineStore
 from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
+
+EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS = 10
 
 
 async def test_that_a_new_evaluation_starts_with_a_pending_status(
@@ -98,7 +100,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
 
-    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) == 0
+    assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 0
 
 
 async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_unapproved_invoice(
@@ -139,7 +141,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
 
-    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) == 1
+    assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 1
 
 
 async def test_that_an_evaluation_of_an_incoherent_proposed_guidelines_completes_with_an_unapproved_invoice(
@@ -165,23 +167,24 @@ async def test_that_an_evaluation_of_an_incoherent_proposed_guidelines_completes
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == "completed"
 
-    assert len(evaluation.invoices) == 1
+    assert len(evaluation.invoices) == 2
 
     assert evaluation.invoices[0]
     assert not evaluation.invoices[0].approved
 
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
+    assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 1
 
-    assert len(evaluation.invoices[0].data.detail["coherence_checks"]) == 1
-
-    assert len(evaluation.invoices[1].data.detail["coherence_checks"]) == 1
+    assert evaluation.invoices[1].data
+    assert evaluation.invoices[1].data.type == "guideline"
+    assert len(evaluation.invoices[1].data.coherence_check_detail.coherence_checks) == 1
 
 
 async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice_containing_data_for_each(
@@ -344,4 +347,121 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
     assert (
         str(exc.value)
         == "Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in test-agent guideline_set"
+    )
+
+
+async def test_that_an_evaluation_completes_and_contains_a_connection_proposition_with_an_existing_guideline(
+    container: Container,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    evaluation_service = container[BehavioralChangeEvaluator]
+    evaluation_store = container[EvaluationStore]
+
+    await guideline_store.create_guideline(
+        guideline_set="test-agent",
+        predicate="the user asks about the weather",
+        content="provide the current weather update",
+    )
+
+    payloads = [
+        EvaluationGuidelinePayload(
+            type="guideline",
+            guideline_set="test-agent",
+            predicate="providing the weather update",
+            content="mention the best time to go for a walk",
+        )
+    ]
+
+    evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
+
+    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+
+    assert evaluation.status == "completed"
+
+    assert len(evaluation.invoices) == 1
+    assert evaluation.invoices[0].data
+    invoice_data = evaluation.invoices[0].data
+
+    assert len(invoice_data.connections_detail.connection_propositions) == 1
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].type
+        == "Connection With Existing Guideline"
+    )
+
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        == "the user asks about the weather"
+    )
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        == "providing the weather update"
+    )
+
+
+async def test_that_an_evaluation_completes_and_contains_connection_proposition_between_proposed_guidelines(
+    container: Container,
+) -> None:
+    evaluation_service = container[BehavioralChangeEvaluator]
+    evaluation_store = container[EvaluationStore]
+
+    payloads = [
+        EvaluationGuidelinePayload(
+            type="guideline",
+            guideline_set="test-agent",
+            predicate="the user asks about the weather",
+            content="provide the current weather update",
+        ),
+        EvaluationGuidelinePayload(
+            type="guideline",
+            guideline_set="test-agent",
+            predicate="providing the weather update",
+            content="mention the best time to go for a walk",
+        ),
+    ]
+
+    evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
+
+    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+
+    assert evaluation.status == "completed"
+
+    assert len(evaluation.invoices) == 2
+    assert evaluation.invoices[0].data
+    invoice_data = evaluation.invoices[0].data
+
+    assert len(invoice_data.connections_detail.connection_propositions) == 1
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].type
+        == "Connection With Other Proposed Guideline"
+    )
+
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        == "the user asks about the weather"
+    )
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        == "providing the weather update"
+    )
+
+    assert evaluation.invoices[1].data
+    invoice_data = evaluation.invoices[1].data
+
+    assert len(invoice_data.connections_detail.connection_propositions) == 1
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].type
+        == "Connection With Other Proposed Guideline"
+    )
+
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        == "the user asks about the weather"
+    )
+    assert (
+        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        == "providing the weather update"
     )

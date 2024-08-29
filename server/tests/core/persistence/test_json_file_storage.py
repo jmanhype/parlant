@@ -20,7 +20,8 @@ from emcie.server.core.evaluations import (
     EvaluationGuidelinePayload,
     EvaluationInvoice,
     EvaluationInvoiceData,
-    GuidelineCoherenceCheckResult,
+    EvaluationGuidelineCoherenceCheckResult,
+    EvaluationGuidelineConnectionPropositionsResult,
 )
 from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
@@ -594,8 +595,11 @@ async def test_evaluation_update(
 
         invoice_data = EvaluationInvoiceData(
             type="guideline",
-            detail=GuidelineCoherenceCheckResult(
+            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
                 coherence_checks=[],
+            ),
+            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
+                connection_propositions=[],
             ),
         )
 

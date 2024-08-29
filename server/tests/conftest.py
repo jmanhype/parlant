@@ -7,7 +7,6 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from emcie.server.api.app import create_app
-from emcie.server.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
@@ -29,6 +28,7 @@ from emcie.server.core.tools import MultiplexedToolService, LocalToolService, To
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.engines.common import Engine
+from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.logger import Logger, StdoutLogger
 from emcie.server.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore

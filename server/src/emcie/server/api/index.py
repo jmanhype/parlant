@@ -3,10 +3,6 @@ from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
 
-from emcie.server.behavioral_change_evaluation import (
-    BehavioralChangeEvaluator,
-    EvaluationValidationError,
-)
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.evaluations import (
     EvaluationGuidelinePayload,
@@ -15,6 +11,10 @@ from emcie.server.core.evaluations import (
     EvaluationPayload,
     EvaluationStatus,
     EvaluationStore,
+)
+from emcie.server.indexing.behavioral_change_evaluation import (
+    BehavioralChangeEvaluator,
+    EvaluationValidationError,
 )
 
 
