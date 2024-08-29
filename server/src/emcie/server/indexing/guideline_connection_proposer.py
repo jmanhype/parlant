@@ -493,14 +493,14 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
         self.logger.debug(f"Connection Propositions Found: {json.dumps(connection_list, indent=2)}")
 
         staged_guidelines = {
-            f'{s["predicate"]}_{s["content"]}': s
+            f'{s["predicate"]}_{s["content"]}'.lower(): s
             for s in chain(introduced_guidelines, existing_guidelines)
         }
 
         propositions = [
             GuidelineConnectionProposition(
-                source=staged_guidelines[f'{c["source"]["when"]}_{c["source"]["then"]}'],
-                target=staged_guidelines[f'{c["target"]["when"]}_{c["target"]["then"]}'],
+                source=staged_guidelines[f'{c["source"]["when"]}_{c["source"]["then"]}'.lower()],
+                target=staged_guidelines[f'{c["target"]["when"]}_{c["target"]["then"]}'.lower()],
                 kind=c["kind"],
                 rationale=c["rationale"],
                 score=c["score"],

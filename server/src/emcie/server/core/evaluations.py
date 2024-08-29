@@ -13,6 +13,13 @@ from emcie.server.indexing.common import GuidelineData
 EvaluationId = NewType("EvaluationId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
 
+EvaluationCoherenceCheckResultType = Literal[
+    "Contradiction With Existing Guideline", "Contradiction With Other Proposed Guideline"
+]
+EvaluationConnectionPropositionResultType = Literal[
+    "Connection With Existing Guideline", "Connection With Other Proposed Guideline"
+]
+
 
 @dataclass(frozen=True)
 class EvaluationGuidelinePayload:
@@ -30,9 +37,7 @@ EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
 
 @dataclass(frozen=True)
 class CoherenceCheckResult:
-    type: Literal[
-        "Contradiction With Existing Guideline", "Contradiction With Other Proposed Guideline"
-    ]
+    type: EvaluationCoherenceCheckResultType
     first: GuidelineData
     second: GuidelineData
     issue: str
@@ -41,7 +46,7 @@ class CoherenceCheckResult:
 
 @dataclass(frozen=True)
 class ConnectionPropositionResult:
-    type: Literal["Connection With Existing Guideline", "Connection With Other Proposed Guideline"]
+    type: EvaluationConnectionPropositionResultType
     source: GuidelineData
     target: GuidelineData
     kind: ConnectionKind

@@ -1,21 +1,53 @@
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Literal, Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.evaluations import (
+    EvaluationCoherenceCheckResultType,
+    EvaluationConnectionPropositionResultType,
     EvaluationGuidelinePayload,
     EvaluationId,
-    EvaluationInvoiceData,
     EvaluationPayload,
     EvaluationStatus,
     EvaluationStore,
 )
+from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
+from emcie.server.indexing.common import GuidelineData
+
+
+class CoherenceCheckResultDTO(DefaultBaseModel):
+    type: EvaluationCoherenceCheckResultType
+    first: GuidelineData
+    second: GuidelineData
+    issue: str
+    severity: int
+
+
+class ConnectionPropositionResultDTO(DefaultBaseModel):
+    type: EvaluationConnectionPropositionResultType
+    source: GuidelineData
+    target: GuidelineData
+    kind: ConnectionKind
+
+
+class EvaluationGuidelineCoherenceCheckResultDTO(DefaultBaseModel):
+    coherence_checks: list[CoherenceCheckResultDTO]
+
+
+class EvaluationGuidelineConnectionPropositionsResultDTO(DefaultBaseModel):
+    connection_propositions: list[ConnectionPropositionResultDTO]
+
+
+class EvaluationInvoiceGuidelineDataDTO(DefaultBaseModel):
+    type: Literal["guideline"]
+    coherence_check_detail: EvaluationGuidelineCoherenceCheckResultDTO
+    connections_detail: EvaluationGuidelineConnectionPropositionsResultDTO
 
 
 class CreateEvaluationRequest(DefaultBaseModel):
@@ -30,7 +62,7 @@ class EvaluationInvoiceDTO(DefaultBaseModel):
     payload: EvaluationPayload
     checksum: str
     approved: bool
-    data: Optional[EvaluationInvoiceData]
+    data: Optional[EvaluationInvoiceGuidelineDataDTO]
     error: Optional[str]
 
 
@@ -75,7 +107,34 @@ def create_router(
                     payload=invoice.payload,
                     checksum=invoice.checksum,
                     approved=invoice.approved,
-                    data=invoice.data,
+                    data=EvaluationInvoiceGuidelineDataDTO(
+                        type=invoice.data.type,
+                        coherence_check_detail=EvaluationGuidelineCoherenceCheckResultDTO(
+                            coherence_checks=[
+                                CoherenceCheckResultDTO(
+                                    type=c.type,
+                                    first=c.first,
+                                    second=c.second,
+                                    issue=c.issue,
+                                    severity=c.severity,
+                                )
+                                for c in invoice.data.coherence_check_detail.coherence_checks
+                            ]
+                        ),
+                        connections_detail=EvaluationGuidelineConnectionPropositionsResultDTO(
+                            connection_propositions=[
+                                ConnectionPropositionResultDTO(
+                                    type=c.type,
+                                    source=c.source,
+                                    target=c.target,
+                                    kind=c.kind,
+                                )
+                                for c in invoice.data.connections_detail.connection_propositions
+                            ]
+                        ),
+                    )
+                    if invoice.data
+                    else None,
                     error=invoice.error,
                 )
                 for invoice in evaluation.invoices

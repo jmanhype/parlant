@@ -212,11 +212,12 @@ class BehavioralChangeEvaluator:
 
     async def validate_payloads(
         self,
-        guideline_set: str,
         payloads: Sequence[EvaluationGuidelinePayload],
     ) -> None:
         if not payloads:
             raise EvaluationValidationError("No payloads provided for the evaluation task.")
+
+        guideline_set = payloads[0].guideline_set
 
         if len({p.guideline_set for p in payloads}) > 1:
             raise EvaluationValidationError(
@@ -259,9 +260,9 @@ class BehavioralChangeEvaluator:
         self,
         payloads: Sequence[EvaluationGuidelinePayload],
     ) -> EvaluationId:
-        guideline_set = payloads[0].guideline_set
+        await self.validate_payloads(payloads)
 
-        await self.validate_payloads(guideline_set, payloads)
+        guideline_set = payloads[0].guideline_set
 
         evaluation = await self._evaluation_store.create_evaluation(payloads)
 
