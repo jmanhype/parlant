@@ -307,7 +307,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
                 evaluation_id = evaluation_creation_response.json()["evaluation_id"]
 
                 server_process.send_signal(signal.SIGINT)
-                server_process.wait(timeout=REASONABLE_AMOUNT_OF_TIME)
+                server_process.wait(timeout=1)
                 assert server_process.returncode == os.EX_OK
             except:
                 traceback.print_exc()
@@ -316,6 +316,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
     with run_server(context) as server_process:
         EXTRA_TIME_TO_LET_THE_TASK_COMPLETE = 5
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_LET_THE_TASK_COMPLETE)
+
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),

@@ -294,7 +294,38 @@ class EvaluationDocumentStore(EvaluationStore):
                     checksum=invoice["checksum"],
                     state_version=invoice["state_version"],
                     approved=invoice["approved"],
-                    data=invoice["data"],
+                    data=EvaluationInvoiceData(
+                        type=invoice["data"]["type"],
+                        coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
+                            coherence_checks=[
+                                CoherenceCheckResult(
+                                    type=c["type"],
+                                    first=c["first"],
+                                    second=c["second"],
+                                    issue=c["issue"],
+                                    severity=c["severity"],
+                                )
+                                for c in invoice["data"]["coherence_check_detail"][
+                                    "coherence_checks"
+                                ]
+                            ]
+                        ),
+                        connections_detail=EvaluationGuidelineConnectionPropositionsResult(
+                            connection_propositions=[
+                                ConnectionPropositionResult(
+                                    type=c["type"],
+                                    source=c["source"],
+                                    target=c["target"],
+                                    kind=c["kind"],
+                                )
+                                for c in invoice["data"]["connections_detail"][
+                                    "connection_propositions"
+                                ]
+                            ]
+                        ),
+                    )
+                    if invoice["data"]
+                    else None,
                     error=invoice["error"],
                 )
                 for invoice in evaluation_document["invoices"]
@@ -316,7 +347,38 @@ class EvaluationDocumentStore(EvaluationStore):
                         checksum=invoice["checksum"],
                         state_version=invoice["state_version"],
                         approved=invoice["approved"],
-                        data=invoice["data"],
+                        data=EvaluationInvoiceData(
+                            type=invoice["data"]["type"],
+                            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
+                                coherence_checks=[
+                                    CoherenceCheckResult(
+                                        type=c["type"],
+                                        first=c["first"],
+                                        second=c["second"],
+                                        issue=c["issue"],
+                                        severity=c["severity"],
+                                    )
+                                    for c in invoice["data"]["coherence_check_detail"][
+                                        "coherence_checks"
+                                    ]
+                                ]
+                            ),
+                            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
+                                connection_propositions=[
+                                    ConnectionPropositionResult(
+                                        type=c["type"],
+                                        source=c["source"],
+                                        target=c["target"],
+                                        kind=c["kind"],
+                                    )
+                                    for c in invoice["data"]["connections_detail"][
+                                        "connection_propositions"
+                                    ]
+                                ]
+                            ),
+                        )
+                        if invoice["data"]
+                        else None,
                         error=invoice["error"],
                     )
                     for invoice in e["invoices"]

@@ -354,8 +354,8 @@ async def check_coherence(params: CLIParams) -> None:
     for agent, guideline_specs in params.config["guidelines"].items():
         guideline_to_evaluate = [
             GuidelineData(
-                predicate=guideline["when"],
-                content=guideline["then"],
+                predicate=guideline["when"],  # type: ignore
+                content=guideline["then"],  # type: ignore
             )
             for guideline in enumerate(guideline_specs)
         ]
