@@ -218,7 +218,7 @@ class SessionDocumentStore(SessionStore):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> Union[SessionId, None]:
+    ) -> Optional[SessionId]:
         events_to_delete = await self.list_events(session_id=session_id)
         asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
 

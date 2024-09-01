@@ -81,7 +81,7 @@ class ListSessionsResponse(DefaultBaseModel):
 
 
 class DeleteSessionResponse(DefaultBaseModel):
-    deleted_session_id: Union[SessionId, None]
+    deleted_session_id: Optional[SessionId]
 
 
 def create_router(
