@@ -3,7 +3,18 @@ from abc import ABC, abstractmethod
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Mapping, NewType, Optional, Sequence, TypeAlias, TypedDict, cast
+from typing import (
+    Any,
+    Literal,
+    Mapping,
+    NewType,
+    Optional,
+    Sequence,
+    TypeAlias,
+    TypedDict,
+    Union,
+    cast,
+)
 
 from emcie.server.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
@@ -100,7 +111,7 @@ class SessionStore(ABC):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> None: ...
+    ) -> Union[SessionId, None]: ...
 
     @abstractmethod
     async def update_consumption_offset(
@@ -207,11 +218,13 @@ class SessionDocumentStore(SessionStore):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> None:
+    ) -> Union[SessionId, None]:
         events_to_delete = await self.list_events(session_id=session_id)
         asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
 
         await self._session_collection.delete_one({"id": {"$eq": session_id}})
+
+        return session_id
 
     async def read_session(
         self,

@@ -80,6 +80,10 @@ class ListSessionsResponse(DefaultBaseModel):
     sessions: list[SessionDTO]
 
 
+class DeleteSessionResponse(DefaultBaseModel):
+    deleted_session_id: Union[SessionId, None]
+
+
 def create_router(
     mc: MC,
     session_store: SessionStore,
@@ -153,12 +157,12 @@ def create_router(
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
-    @router.delete("/{session_id}")
+    @router.delete("/{session_id}", response_model=DeleteSessionResponse)
     async def delete_session(
         session_id: SessionId,
-    ) -> Response:
-        await session_store.delete_session(session_id)
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
+    ) -> DeleteSessionResponse:
+        deleted_session_id = await session_store.delete_session(session_id)
+        return DeleteSessionResponse(deleted_session_id=deleted_session_id)
 
     @router.post("/{session_id}/events")
     async def create_event(
