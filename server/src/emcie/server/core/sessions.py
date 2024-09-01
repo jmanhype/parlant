@@ -12,7 +12,6 @@ from typing import (
     Sequence,
     TypeAlias,
     TypedDict,
-    Union,
     cast,
 )
 
@@ -111,7 +110,7 @@ class SessionStore(ABC):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> Union[SessionId, None]: ...
+    ) -> Optional[SessionId]: ...
 
     @abstractmethod
     async def update_consumption_offset(
