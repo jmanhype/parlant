@@ -189,7 +189,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
     content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
@@ -237,7 +237,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             },
         )
         .raise_for_status()
-        .json()
+        .json()["evaluation_id"]
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)

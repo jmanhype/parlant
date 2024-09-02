@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal, NewType, Optional, Sequence, TypeAlias, Union
+from typing import Any, Literal, NewType, Optional, Sequence, TypeAlias, Union
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
-from emcie.server.indexing.common import GuidelineData
 
 EvaluationId = NewType("EvaluationId", str)
 EvaluationStatus = Literal["pending", "running", "completed", "failed"]
@@ -65,8 +65,8 @@ class EvaluationGuidelineConnectionPropositionsResult:
 @dataclass(frozen=True)
 class EvaluationInvoiceGuidelineData:
     type: Literal["guideline"]
-    coherence_check_detail: EvaluationGuidelineCoherenceCheckResult
-    connections_detail: EvaluationGuidelineConnectionPropositionsResult
+    coherence_check_detail: Optional[EvaluationGuidelineCoherenceCheckResult]
+    connections_detail: Optional[EvaluationGuidelineConnectionPropositionsResult]
 
 
 EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
@@ -95,7 +95,7 @@ class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
         self,
-        payload: Sequence[EvaluationPayload],
+        payloads: Sequence[EvaluationPayload],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation: ...
 
@@ -139,6 +139,83 @@ class EvaluationDocumentStore(EvaluationStore):
         self._evaluation_collection = database.get_or_create_collection(
             name="evaluations",
             schema=self.EvaluationDocument,
+        )
+
+    @staticmethod
+    def _evaluation_invoice_guideline_data_to_dict(
+        e: EvaluationInvoiceGuidelineData,
+    ) -> dict[str, Any]:
+        coherence_checks = (
+            [
+                {
+                    "type": c.type,
+                    "first": c.first,
+                    "second": c.second,
+                    "issue": c.issue,
+                    "severity": c.severity,
+                }
+                for c in e.coherence_check_detail.coherence_checks
+            ]
+            if e.coherence_check_detail
+            else None
+        )
+        connection_propositions = (
+            [
+                {
+                    "type": c.type,
+                    "source": c.source,
+                    "target": c.target,
+                    "kind": c.kind,
+                }
+                for c in e.connections_detail.connection_propositions
+            ]
+            if e.connections_detail
+            else None
+        )
+
+        return {
+            "type": e.type,
+            "coherence_check_detail": {"coherence_checks": coherence_checks}
+            if e.coherence_check_detail
+            else None,
+            "connections_detail": {"connection_propositions": connection_propositions}
+            if e.connections_detail
+            else None,
+        }
+
+    @staticmethod
+    def _evaluation_invoice_guideline_data_from_dict(
+        d: dict[str, Any],
+    ) -> EvaluationInvoiceGuidelineData:
+        return EvaluationInvoiceGuidelineData(
+            type=d["type"],
+            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
+                coherence_checks=[
+                    CoherenceCheckResult(
+                        type=c["type"],
+                        first=c["first"],
+                        second=c["second"],
+                        issue=c["issue"],
+                        severity=c["severity"],
+                    )
+                    for c in d["coherence_check_detail"]["coherence_checks"]
+                ]
+            )
+            if d["coherence_check_detail"]
+            else None,
+            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
+                connection_propositions=[
+                    ConnectionPropositionResult(
+                        type=c["type"],
+                        source=c["source"],
+                        target=c["target"],
+                        kind=c["kind"],
+                    )
+                    for c in d["connections_detail"]["connection_propositions"]
+                ]
+            )
+            if d["connections_detail"]
+            else None,
         )
 
     async def create_evaluation(
@@ -214,7 +291,9 @@ class EvaluationDocumentStore(EvaluationStore):
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,
-                        "data": invoice.data,
+                        "data": self._evaluation_invoice_guideline_data_to_dict(invoice.data)
+                        if invoice.data
+                        else None,
                         "error": invoice.error,
                     }
                     for invoice in evaluation_invoices
@@ -259,7 +338,9 @@ class EvaluationDocumentStore(EvaluationStore):
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
                         "approved": invoice.approved,
-                        "data": invoice.data,
+                        "data": self._evaluation_invoice_guideline_data_to_dict(invoice.data)
+                        if invoice.data
+                        else None,
                         "error": invoice.error,
                     }
                     for invoice in evaluation.invoices
@@ -294,36 +375,7 @@ class EvaluationDocumentStore(EvaluationStore):
                     checksum=invoice["checksum"],
                     state_version=invoice["state_version"],
                     approved=invoice["approved"],
-                    data=EvaluationInvoiceData(
-                        type=invoice["data"]["type"],
-                        coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
-                            coherence_checks=[
-                                CoherenceCheckResult(
-                                    type=c["type"],
-                                    first=c["first"],
-                                    second=c["second"],
-                                    issue=c["issue"],
-                                    severity=c["severity"],
-                                )
-                                for c in invoice["data"]["coherence_check_detail"][
-                                    "coherence_checks"
-                                ]
-                            ]
-                        ),
-                        connections_detail=EvaluationGuidelineConnectionPropositionsResult(
-                            connection_propositions=[
-                                ConnectionPropositionResult(
-                                    type=c["type"],
-                                    source=c["source"],
-                                    target=c["target"],
-                                    kind=c["kind"],
-                                )
-                                for c in invoice["data"]["connections_detail"][
-                                    "connection_propositions"
-                                ]
-                            ]
-                        ),
-                    )
+                    data=self._evaluation_invoice_guideline_data_from_dict(invoice["data"])
                     if invoice["data"]
                     else None,
                     error=invoice["error"],
@@ -347,36 +399,7 @@ class EvaluationDocumentStore(EvaluationStore):
                         checksum=invoice["checksum"],
                         state_version=invoice["state_version"],
                         approved=invoice["approved"],
-                        data=EvaluationInvoiceData(
-                            type=invoice["data"]["type"],
-                            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
-                                coherence_checks=[
-                                    CoherenceCheckResult(
-                                        type=c["type"],
-                                        first=c["first"],
-                                        second=c["second"],
-                                        issue=c["issue"],
-                                        severity=c["severity"],
-                                    )
-                                    for c in invoice["data"]["coherence_check_detail"][
-                                        "coherence_checks"
-                                    ]
-                                ]
-                            ),
-                            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
-                                connection_propositions=[
-                                    ConnectionPropositionResult(
-                                        type=c["type"],
-                                        source=c["source"],
-                                        target=c["target"],
-                                        kind=c["kind"],
-                                    )
-                                    for c in invoice["data"]["connections_detail"][
-                                        "connection_propositions"
-                                    ]
-                                ]
-                            ),
-                        )
+                        data=self._evaluation_invoice_guideline_data_from_dict(invoice["data"])
                         if invoice["data"]
                         else None,
                         error=invoice["error"],

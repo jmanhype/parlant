@@ -7,8 +7,7 @@ from typing import Any, NamedTuple, Sequence
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
-from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
-from emcie.server.indexing.common import GuidelineData
+from emcie.server.core.guidelines import Guideline, GuidelineData, GuidelineId, GuidelineStore
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
@@ -166,8 +165,8 @@ class GuidelineIndexer:
             self.logger.debug(f"Add guideline connection between source: {p.source} and {p.target}")
 
             await self._guideline_connection_store.update_connection(
-                source=data_to_guideline[f"{p.source['predicate']}_{p.source['content']}"].id,
-                target=data_to_guideline[f"{p.target['predicate']}_{p.target['content']}"].id,
+                source=data_to_guideline[f"{p.source.predicate}_{p.source.content}"].id,
+                target=data_to_guideline[f"{p.target.predicate}_{p.target.content}"].id,
                 kind=p.kind,
             )
 

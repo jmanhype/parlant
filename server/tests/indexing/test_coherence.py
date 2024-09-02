@@ -3,6 +3,7 @@ from lagom import Container
 from pytest import fixture, mark
 
 from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.indexing.coherence_checker import (
     CoherenceChecker,
     ContextualContradictionEvaluator,
@@ -11,7 +12,6 @@ from emcie.server.indexing.coherence_checker import (
     ParallelContradictionEvaluator,
     TemporalContradictionEvaluator,
 )
-from emcie.server.indexing.common import GuidelineData
 from emcie.server.logger import Logger
 
 from tests.test_utilities import SyncAwaiter, nlp_test

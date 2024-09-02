@@ -1,5 +1,5 @@
 import asyncio
-from typing import OrderedDict, Sequence
+from typing import Optional, OrderedDict, Sequence
 
 from emcie.server.core.evaluations import (
     CoherenceCheckResult,
@@ -14,9 +14,8 @@ from emcie.server.core.evaluations import (
     EvaluationStore,
     EvaluationGuidelineConnectionPropositionsResult,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineData, GuidelineStore
 from emcie.server.indexing.coherence_checker import CoherenceChecker, ContradictionTest
-from emcie.server.indexing.common import GuidelineData
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
@@ -65,75 +64,45 @@ class GuidelineEvaluator:
             guideline_to_evaluate, existing_guidelines
         )
 
+        if coherence_results:
+            return [
+                EvaluationInvoiceGuidelineData(
+                    type="guideline",
+                    coherence_check_detail=coherence_result,
+                    connections_detail=None,
+                )
+                for coherence_result in coherence_results
+            ]
+
         connections_results = await self._propose_guideline_connections(
             guideline_to_evaluate, existing_guidelines
         )
 
-        return [
-            EvaluationInvoiceGuidelineData(
-                type="guideline",
-                coherence_check_detail=coherence_result,
-                connections_detail=connections_result,
-            )
-            for coherence_result, connections_result in zip(coherence_results, connections_results)
-        ]
-
-    async def _propose_guideline_connections(
-        self,
-        proposed_guidelines: Sequence[GuidelineData],
-        existing_guidelines: Sequence[Guideline],
-    ) -> Sequence[EvaluationGuidelineConnectionPropositionsResult]:
-        connection_propositions = (
-            p
-            for p in await self._guideline_connection_proposer.propose_connections(
-                introduced_guidelines=proposed_guidelines,
-                existing_guidelines=[
-                    GuidelineData(predicate=g.predicate, content=g.content)
-                    for g in existing_guidelines
-                ],
-            )
-            if p.score >= 6
-        )
-
-        connection_results: OrderedDict[str, list[ConnectionPropositionResult]] = OrderedDict(
-            {f"{g['predicate']}{g['content']}": [] for g in proposed_guidelines}
-        )
-
-        for c in connection_propositions:
-            if f"{c.source['predicate']}{c.source['content']}" in connection_results:
-                connection_results[f"{c.source['predicate']}{c.source['content']}"].append(
-                    ConnectionPropositionResult(
-                        type="Connection With Other Proposed Guideline"
-                        if f"{c.target['predicate']}{c.target['content']}" in connection_results
-                        else "Connection With Existing Guideline",
-                        source=c.source,
-                        target=c.target,
-                        kind=c.kind,
-                    )
+        if connections_results:
+            return [
+                EvaluationInvoiceGuidelineData(
+                    type="guideline",
+                    coherence_check_detail=None,
+                    connections_detail=connections_result,
                 )
+                for connections_result in connections_results
+            ]
 
-            if f"{c.target['predicate']}{c.target['content']}" in connection_results:
-                connection_results[f"{c.target['predicate']}{c.target['content']}"].append(
-                    ConnectionPropositionResult(
-                        type="Connection With Other Proposed Guideline"
-                        if f"{c.source['predicate']}{c.source['content']}" in connection_results
-                        else "Connection With Existing Guideline",
-                        source=c.source,
-                        target=c.target,
-                        kind=c.kind,
-                    )
+        else:
+            return [
+                EvaluationInvoiceGuidelineData(
+                    type="guideline",
+                    coherence_check_detail=None,
+                    connections_detail=None,
                 )
-
-        return [
-            EvaluationGuidelineConnectionPropositionsResult(connection_propositions=v)
-            for v in connection_results.values()
-        ]
+                for _ in range(len(payloads))
+            ]
 
     async def _check_for_coherence(
         self,
         guidelines_to_evaluate: Sequence[GuidelineData],
         existing_guidelines: Sequence[Guideline],
-    ) -> Sequence[EvaluationGuidelineCoherenceCheckResult]:
+    ) -> Optional[Sequence[EvaluationGuidelineCoherenceCheckResult]]:
         checker = CoherenceChecker(self.logger)
 
         coherence_check_results = await checker.evaluate_coherence(
@@ -146,23 +115,24 @@ class GuidelineEvaluator:
         contradictions: dict[str, ContradictionTest] = {}
 
         for c in coherence_check_results:
-            key = f"{c.guideline_a['predicate']}{c.guideline_a['content']}"
+            key = f"{c.guideline_a.predicate}{c.guideline_a.content}"
             if (c.severity >= 6) and (
                 key not in contradictions or c.severity > contradictions[key].severity
             ):
                 contradictions[key] = c
 
+        if not contradictions:
+            return None
+
         guideline_coherence_results: OrderedDict[str, list[CoherenceCheckResult]] = OrderedDict(
-            {f"{g['predicate']}{g['content']}": [] for g in guidelines_to_evaluate}
+            {f"{g.predicate}{g.content}": [] for g in guidelines_to_evaluate}
         )
 
         for c in contradictions.values():
-            guideline_coherence_results[
-                f"{c.guideline_a['predicate']}{c.guideline_a['content']}"
-            ].append(
+            guideline_coherence_results[f"{c.guideline_a.predicate}{c.guideline_a.content}"].append(
                 CoherenceCheckResult(
                     type="Contradiction With Other Proposed Guideline"
-                    if f"{c.guideline_b['predicate']}{c.guideline_b['content']}"
+                    if f"{c.guideline_b.predicate}{c.guideline_b.content}"
                     in guideline_coherence_results
                     else "Contradiction With Existing Guideline",
                     first=c.guideline_a,
@@ -172,12 +142,9 @@ class GuidelineEvaluator:
                 )
             )
 
-            if (
-                f"{c.guideline_b['predicate']}{c.guideline_b['content']}"
-                in guideline_coherence_results
-            ):
+            if f"{c.guideline_b.predicate}{c.guideline_b.content}" in guideline_coherence_results:
                 guideline_coherence_results[
-                    f"{c.guideline_b['predicate']}{c.guideline_b['content']}"
+                    f"{c.guideline_b.predicate}{c.guideline_b.content}"
                 ].append(
                     CoherenceCheckResult(
                         type="Contradiction With Other Proposed Guideline",
@@ -191,6 +158,60 @@ class GuidelineEvaluator:
         return [
             EvaluationGuidelineCoherenceCheckResult(coherence_checks=v)
             for v in guideline_coherence_results.values()
+        ]
+
+    async def _propose_guideline_connections(
+        self,
+        proposed_guidelines: Sequence[GuidelineData],
+        existing_guidelines: Sequence[Guideline],
+    ) -> Optional[Sequence[EvaluationGuidelineConnectionPropositionsResult]]:
+        connection_propositions = [
+            p
+            for p in await self._guideline_connection_proposer.propose_connections(
+                introduced_guidelines=proposed_guidelines,
+                existing_guidelines=[
+                    GuidelineData(predicate=g.predicate, content=g.content)
+                    for g in existing_guidelines
+                ],
+            )
+            if p.score >= 6
+        ]
+
+        if not connection_propositions:
+            return None
+
+        connection_results: OrderedDict[str, list[ConnectionPropositionResult]] = OrderedDict(
+            {f"{g.predicate}{g.content}": [] for g in proposed_guidelines}
+        )
+
+        for c in connection_propositions:
+            if f"{c.source.predicate}{c.source.content}" in connection_results:
+                connection_results[f"{c.source.predicate}{c.source.content}"].append(
+                    ConnectionPropositionResult(
+                        type="Connection With Other Proposed Guideline"
+                        if f"{c.target.predicate}{c.target.content}" in connection_results
+                        else "Connection With Existing Guideline",
+                        source=c.source,
+                        target=c.target,
+                        kind=c.kind,
+                    )
+                )
+
+            if f"{c.target.predicate}{c.target.content}" in connection_results:
+                connection_results[f"{c.target.predicate}{c.target.content}"].append(
+                    ConnectionPropositionResult(
+                        type="Connection With Other Proposed Guideline"
+                        if f"{c.source.predicate}{c.source.content}" in connection_results
+                        else "Connection With Existing Guideline",
+                        source=c.source,
+                        target=c.target,
+                        kind=c.kind,
+                    )
+                )
+
+        return [
+            EvaluationGuidelineConnectionPropositionsResult(connection_propositions=v)
+            for v in connection_results.values()
         ]
 
 
@@ -307,9 +328,7 @@ class BehavioralChangeEvaluator:
                     payload=evaluation.invoices[i].payload,
                     checksum=invoice_checksum,
                     state_version=state_version,
-                    approved=True
-                    if len(result.coherence_check_detail.coherence_checks) == 0
-                    else False,
+                    approved=True if not result.coherence_check_detail else False,
                     data=result,
                     error=None,
                 )

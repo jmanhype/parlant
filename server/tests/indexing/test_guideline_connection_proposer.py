@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
-from emcie.server.indexing.common import GuidelineData
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
@@ -127,38 +127,41 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
     context: _TestContext,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineData] = [
-        {
-            "predicate": "the user requests technical support",
-            "content": "provide the support contact details",
-        },
-        {
-            "predicate": "providing support contact details",
-            "content": "consider checking the troubleshooting guide first",
-        },
-        {
-            "predicate": "the user inquires about office hours",
-            "content": "tell them the office hours",
-        },
-        {
-            "predicate": "mentioning office hours",
-            "content": "suggest the best time to visit for quicker service",
-        },
-        {
-            "predicate": "the user asks about the weather",
-            "content": "provide the current weather update",
-        },
-        {
-            "predicate": "providing the weather update",
-            "content": "mention the best time to go for a walk",
-        },
-        {
-            "predicate": "the user asks about nearby restaurants",
-            "content": "provide a list of popular restaurants",
-        },
-        {
-            "predicate": "listing restaurants",
-            "content": "highlight the one with the best reviews",
-        },
+        GuidelineData(predicate=i["predicate"], content=i["content"])
+        for i in [
+            {
+                "predicate": "the user requests technical support",
+                "content": "provide the support contact details",
+            },
+            {
+                "predicate": "providing support contact details",
+                "content": "consider checking the troubleshooting guide first",
+            },
+            {
+                "predicate": "the user inquires about office hours",
+                "content": "tell them the office hours",
+            },
+            {
+                "predicate": "mentioning office hours",
+                "content": "suggest the best time to visit for quicker service",
+            },
+            {
+                "predicate": "the user asks about the weather",
+                "content": "provide the current weather update",
+            },
+            {
+                "predicate": "providing the weather update",
+                "content": "mention the best time to go for a walk",
+            },
+            {
+                "predicate": "the user asks about nearby restaurants",
+                "content": "provide a list of popular restaurants",
+            },
+            {
+                "predicate": "listing restaurants",
+                "content": "highlight the one with the best reviews",
+            },
+        ]
     ]
 
     connection_proposer = GuidelineConnectionProposer(context.container[Logger])
@@ -183,38 +186,41 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     context: _TestContext,
 ) -> None:
     existing_guidelines: Sequence[GuidelineData] = [
-        {
-            "predicate": "the user requests technical support",
-            "content": "provide the support contact details",
-        },
-        {
-            "predicate": "providing support contact details",
-            "content": "consider checking the troubleshooting guide first",
-        },
-        {
-            "predicate": "the user inquires about office hours",
-            "content": "tell them the office hours",
-        },
-        {
-            "predicate": "mentioning office hours",
-            "content": "suggest the best time to visit for quicker service",
-        },
-        {
-            "predicate": "the user asks about the weather",
-            "content": "provide the current weather update",
-        },
-        {
-            "predicate": "providing the weather update",
-            "content": "mention the best time to go for a walk",
-        },
-        {
-            "predicate": "the user asks about nearby restaurants",
-            "content": "provide a list of popular restaurants",
-        },
-        {
-            "predicate": "listing restaurants",
-            "content": "highlight the one with the best reviews",
-        },
+        GuidelineData(predicate=i["predicate"], content=i["content"])
+        for i in [
+            {
+                "predicate": "the user requests technical support",
+                "content": "provide the support contact details",
+            },
+            {
+                "predicate": "providing support contact details",
+                "content": "consider checking the troubleshooting guide first",
+            },
+            {
+                "predicate": "the user inquires about office hours",
+                "content": "tell them the office hours",
+            },
+            {
+                "predicate": "mentioning office hours",
+                "content": "suggest the best time to visit for quicker service",
+            },
+            {
+                "predicate": "the user asks about the weather",
+                "content": "provide the current weather update",
+            },
+            {
+                "predicate": "providing the weather update",
+                "content": "mention the best time to go for a walk",
+            },
+            {
+                "predicate": "the user asks about nearby restaurants",
+                "content": "provide a list of popular restaurants",
+            },
+            {
+                "predicate": "listing restaurants",
+                "content": "highlight the one with the best reviews",
+            },
+        ]
     ]
 
     connection_proposer = GuidelineConnectionProposer(context.container[Logger])

@@ -121,7 +121,7 @@ def create_guideline_by_name(
     }
 
     guideline = Guideline(
-        GuidelineId(generate_id()),
+        id=GuidelineId(generate_id()),
         predicate=guidelines[guideline_name]["predicate"],
         content=guidelines[guideline_name]["content"],
         creation_utc=datetime.now(timezone.utc),

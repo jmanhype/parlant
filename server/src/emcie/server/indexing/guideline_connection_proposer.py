@@ -7,7 +7,7 @@ from typing import Any, Sequence
 
 from more_itertools import chunked
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.indexing.common import GuidelineData
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.engines.alpha.utils import make_llm_client
 from emcie.server.logger import Logger
 
@@ -91,11 +91,11 @@ class GuidelineConnectionProposer:
         comparison_set: Sequence[GuidelineData],
     ) -> str:
         comparison_set_string = "\n\t".join(
-            f"{i}) {{when: {g['predicate']}, then: {g['content']}}}"
+            f"{i}) {{when: {g.predicate}, then: {g.content}}}"
             for i, g in enumerate(comparison_set, start=1)
         )
         evaluated_guideline_string = (
-            f"{{when: {evaluated_guideline['predicate']}, then: {evaluated_guideline['content']}}}"
+            f"{{when: {evaluated_guideline.predicate}, then: {evaluated_guideline.content}}}"
         )
 
         return f"""
@@ -493,7 +493,7 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
         self.logger.debug(f"Connection Propositions Found: {json.dumps(connection_list, indent=2)}")
 
         staged_guidelines = {
-            f'{s["predicate"]}_{s["content"]}'.lower(): s
+            f"{s.predicate}_{s.content}".lower(): s
             for s in chain(introduced_guidelines, existing_guidelines)
         }
 

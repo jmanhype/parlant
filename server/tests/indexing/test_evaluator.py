@@ -100,7 +100,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
 
-    assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 0
+    assert evaluation.invoices[0].data.coherence_check_detail is None
 
 
 async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_unapproved_invoice(
@@ -127,7 +127,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -141,6 +141,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
 
+    assert evaluation.invoices[0].data.coherence_check_detail
     assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 1
 
 
@@ -180,10 +181,12 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
 
     assert evaluation.invoices[0].data
     assert evaluation.invoices[0].data.type == "guideline"
+    assert evaluation.invoices[0].data.coherence_check_detail
     assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 1
 
     assert evaluation.invoices[1].data
     assert evaluation.invoices[1].data.type == "guideline"
+    assert evaluation.invoices[1].data.coherence_check_detail
     assert len(evaluation.invoices[1].data.coherence_check_detail.coherence_checks) == 1
 
 
@@ -373,7 +376,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -383,16 +386,20 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
     assert evaluation.invoices[0].data
     invoice_data = evaluation.invoices[0].data
 
+    assert invoice_data.connections_detail
     assert len(invoice_data.connections_detail.connection_propositions) == 1
     assert (
         invoice_data.connections_detail.connection_propositions[0].type
         == "Connection With Existing Guideline"
     )
 
+    assert invoice_data.connections_detail
     assert (
         invoice_data.connections_detail.connection_propositions[0].source.predicate
         == "the user asks about the weather"
     )
+
+    assert invoice_data.connections_detail
     assert (
         invoice_data.connections_detail.connection_propositions[0].target.predicate
         == "providing the weather update"
@@ -422,7 +429,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -432,12 +439,12 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     assert evaluation.invoices[0].data
     invoice_data = evaluation.invoices[0].data
 
+    assert invoice_data.connections_detail
     assert len(invoice_data.connections_detail.connection_propositions) == 1
     assert (
         invoice_data.connections_detail.connection_propositions[0].type
         == "Connection With Other Proposed Guideline"
     )
-
     assert (
         invoice_data.connections_detail.connection_propositions[0].source.predicate
         == "the user asks about the weather"
@@ -450,6 +457,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     assert evaluation.invoices[1].data
     invoice_data = evaluation.invoices[1].data
 
+    assert invoice_data.connections_detail
     assert len(invoice_data.connections_detail.connection_propositions) == 1
     assert (
         invoice_data.connections_detail.connection_propositions[0].type

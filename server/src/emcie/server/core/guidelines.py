@@ -11,11 +11,15 @@ GuidelineId = NewType("GuidelineId", str)
 
 
 @dataclass(frozen=True)
-class Guideline:
-    id: GuidelineId
-    creation_utc: datetime
+class GuidelineData:
     predicate: str
     content: str
+
+
+@dataclass(frozen=True)
+class Guideline(GuidelineData):
+    id: GuidelineId
+    creation_utc: datetime
 
     def __str__(self) -> str:
         return f"When {self.predicate}, then {self.content}"

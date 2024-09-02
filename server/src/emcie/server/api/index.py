@@ -14,11 +14,11 @@ from emcie.server.core.evaluations import (
     EvaluationStore,
 )
 from emcie.server.core.guideline_connections import ConnectionKind
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from emcie.server.indexing.common import GuidelineData
 
 
 class CoherenceCheckResultDTO(DefaultBaseModel):
@@ -37,11 +37,11 @@ class ConnectionPropositionResultDTO(DefaultBaseModel):
 
 
 class EvaluationGuidelineCoherenceCheckResultDTO(DefaultBaseModel):
-    coherence_checks: list[CoherenceCheckResultDTO]
+    coherence_checks: Optional[list[CoherenceCheckResultDTO]]
 
 
 class EvaluationGuidelineConnectionPropositionsResultDTO(DefaultBaseModel):
-    connection_propositions: list[ConnectionPropositionResultDTO]
+    connection_propositions: Optional[list[ConnectionPropositionResultDTO]]
 
 
 class EvaluationInvoiceGuidelineDataDTO(DefaultBaseModel):
@@ -120,6 +120,8 @@ def create_router(
                                 )
                                 for c in invoice.data.coherence_check_detail.coherence_checks
                             ]
+                            if invoice.data.coherence_check_detail
+                            else []
                         ),
                         connections_detail=EvaluationGuidelineConnectionPropositionsResultDTO(
                             connection_propositions=[
@@ -131,6 +133,8 @@ def create_router(
                                 )
                                 for c in invoice.data.connections_detail.connection_propositions
                             ]
+                            if invoice.data.connections_detail
+                            else []
                         ),
                     )
                     if invoice.data

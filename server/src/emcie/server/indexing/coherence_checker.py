@@ -10,8 +10,8 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import UniqueId, generate_id
+from emcie.server.core.guidelines import GuidelineData
 from emcie.server.engines.alpha.utils import make_llm_client
-from emcie.server.indexing.common import GuidelineData
 from emcie.server.logger import Logger
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
@@ -106,10 +106,10 @@ class ContradictionEvaluatorBase(ABC):
         comparison_guidelines: dict[UniqueId, GuidelineData],
     ) -> str:
         comparison_guidelines_string = "\n\t".join(
-            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id]['predicate']}, then {comparison_guidelines[id]['content']}}}"
+            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id].predicate}, then {comparison_guidelines[id].content}}}"
             for i, id in enumerate(comparison_guidelines, start=1)
         )
-        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate['predicate']}, then {guideline_to_evaluate['content']}}}"
+        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate.predicate}, then {guideline_to_evaluate.content}}}"
         result_structure = [
             {
                 "compared_guideline_id": id,
