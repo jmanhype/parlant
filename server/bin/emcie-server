@@ -31,6 +31,7 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import (
+    GuidelineData,
     GuidelineDocumentStore,
     GuidelineStore,
 )
@@ -53,7 +54,6 @@ from emcie.server.core.guideline_tool_associations import (
 from emcie.server.engines.common import Engine
 from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.indexing.coherence_checker import CoherenceChecker
-from emcie.server.indexing.common import GuidelineData
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.indexing.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
@@ -216,10 +216,10 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
         c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
         c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
-            LOGGER,
+            c[Logger],
             c[EvaluationStore],
             c[GuidelineStore],
-            GuidelineConnectionProposer(LOGGER),
+            GuidelineConnectionProposer(c[Logger]),
         )
 
         c[Engine] = AlphaEngine
@@ -354,8 +354,8 @@ async def check_coherence(params: CLIParams) -> None:
     for agent, guideline_specs in params.config["guidelines"].items():
         guideline_to_evaluate = [
             GuidelineData(
-                predicate=guideline["when"],  # type: ignore
-                content=guideline["then"],  # type: ignore
+                predicate=str(guideline["when"]),
+                content=str(guideline["then"]),
             )
             for guideline in enumerate(guideline_specs)
         ]
