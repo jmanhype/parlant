@@ -8,9 +8,9 @@ from emcie.server.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
 
-EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS = 10
+TIME_TO_WAIT_PER_PAYLOAD = 5
+AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
 
 
 async def test_that_a_new_evaluation_starts_with_a_pending_status(
@@ -51,7 +51,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
     ]
     evaluation_id = await evaluation_service.create_evaluation_task(payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -87,7 +87,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -127,7 +127,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -144,7 +144,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert len(evaluation.invoices[0].data.coherence_check_detail.coherence_checks) == 1
 
 
-async def test_that_an_evaluation_of_an_incoherent_proposed_guidelines_completes_with_an_unapproved_invoice(
+async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_with_an_unapproved_invoice(
     container: Container,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
@@ -167,7 +167,7 @@ async def test_that_an_evaluation_of_an_incoherent_proposed_guidelines_completes
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -209,7 +209,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
     ]
     evaluation_id = await evaluation_service.create_evaluation_task(payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -254,12 +254,11 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
         )
     ]
 
-    reasonable_amount_of_time_until_task_starts = 1
-    await asyncio.sleep(reasonable_amount_of_time_until_task_starts)
+    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     second_evaluation_id = await evaluation_service.create_evaluation_task(payloads=second_payloads)
 
-    await asyncio.sleep(reasonable_amount_of_time_until_task_starts)
+    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     evaluation = await evaluation_store.read_evaluation(second_evaluation_id)
 
@@ -289,7 +288,7 @@ async def test_that_an_evaluation_validation_failed_due_multiple_guideline_sets_
 
     with raises(EvaluationValidationError) as exc:
         await evaluation_service.create_evaluation_task(payloads=payloads)
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     assert str(exc.value) == "Evaluation task must be processed for a single guideline_set."
 
@@ -313,7 +312,7 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
                 duplicate_payload,
             ]
         )
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     assert str(exc.value) == "Duplicate guideline found among the provided guidelines."
 
@@ -342,7 +341,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                 duplicate_payload,
             ]
         )
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     assert (
         str(exc.value)
@@ -374,7 +373,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -391,11 +390,11 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
     )
 
     assert (
-        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].source.predicate
         == "the user asks about the weather"
     )
     assert (
-        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].target.predicate
         == "providing the weather update"
     )
 
@@ -423,7 +422,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
 
     evaluation_id = await evaluation_service.create_evaluation_task(payloads=payloads)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
@@ -440,11 +439,11 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     )
 
     assert (
-        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].source.predicate
         == "the user asks about the weather"
     )
     assert (
-        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].target.predicate
         == "providing the weather update"
     )
 
@@ -458,10 +457,10 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     )
 
     assert (
-        invoice_data.connections_detail.connection_propositions[0].source["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].source.predicate
         == "the user asks about the weather"
     )
     assert (
-        invoice_data.connections_detail.connection_propositions[0].target["predicate"]
+        invoice_data.connections_detail.connection_propositions[0].target.predicate
         == "providing the weather update"
     )

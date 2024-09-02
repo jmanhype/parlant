@@ -5,8 +5,10 @@ from lagom import Container
 
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guidelines import GuidelineStore
-from tests.indexing.test_evaluator import EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS
-from tests.test_mc import REASONABLE_AMOUNT_OF_TIME
+from tests.indexing.test_evaluator import (
+    AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
+    TIME_TO_WAIT_PER_PAYLOAD,
+)
 
 
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(
@@ -15,33 +17,30 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 ) -> None:
     evaluation_store = container[EvaluationStore]
 
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
-            }
-        ]
-    }
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greets you",
+                        "content": "greet them back with 'Hello'",
+                    }
+                ]
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
+    evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
+    assert evaluation.id == evaluation_id
 
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    assert "evaluation_id" in data
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id=data["evaluation_id"])
-    assert evaluation.id == data["evaluation_id"]
-
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-    get_response = client.get(f"/index/evaluations/{data['evaluation_id']}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
     assert len(content["invoices"]) == 1
@@ -54,60 +53,61 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 async def test_that_an_evaluation_can_be_fetched_with_running_status(
     client: TestClient,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greets you",
+                        "content": "greet them back with 'Hello'",
+                    },
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greeting you",
+                        "content": "greet them back with 'Hola'",
+                    },
+                ]
             },
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greeting you",
-                "content": "greet them back with 'Hola'",
-            },
-        ]
-    }
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
-    assert response.status_code == status.HTTP_200_OK
-    evaluation_id = response.json()["evaluation_id"]
+    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    reasonable_time_for_task_start_to_run = 0.25
-    await asyncio.sleep(reasonable_time_for_task_start_to_run)
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
-    get_response = client.get(f"/index/evaluations/{evaluation_id}")
-    assert get_response.status_code == status.HTTP_200_OK
-    assert get_response.json()["status"] == "running"
+    assert content["status"] == "running"
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_approved_invoice(
     client: TestClient,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
-            }
-        ]
-    }
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greets you",
+                        "content": "greet them back with 'Hello'",
+                    }
+                ]
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
-    assert response.status_code == status.HTTP_200_OK
-    evaluation_id = response.json()["evaluation_id"]
+    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    reasonable_time_for_task_start_to_run = 0.25
-    await asyncio.sleep(reasonable_time_for_task_start_to_run)
-
-    get_response = client.get(f"/index/evaluations/{evaluation_id}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -121,33 +121,33 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_unapproved_invoice(
     client: TestClient,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greets you",
+                        "content": "greet them back with 'Hello'",
+                    },
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user greeting you",
+                        "content": "greet them back with 'Hola'",
+                    },
+                ]
             },
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user greeting you",
-                "content": "greet them back with 'Hola'",
-            },
-        ]
-    }
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
-    assert response.status_code == status.HTTP_200_OK
-    evaluation_id = response.json()["evaluation_id"]
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS)
-
-    get_response = client.get(f"/index/evaluations/{evaluation_id}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -171,27 +171,27 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         content="provide the current weather update",
     )
 
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "providing the weather update",
-                "content": "mention the best time to go for a walk",
-            }
-        ]
-    }
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "providing the weather update",
+                        "content": "mention the best time to go for a walk",
+                    }
+                ]
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    assert response.status_code == status.HTTP_200_OK
-
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-    get_response = client.get(f"/index/evaluations/{response.json()['evaluation_id']}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert len(content["invoices"]) == 1
     invoice = content["invoices"][0]
@@ -216,32 +216,33 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     client: TestClient,
     container: Container,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "the user asks about nearby restaurants",
-                "content": "provide a list of popular restaurants",
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "the user asks about nearby restaurants",
+                        "content": "provide a list of popular restaurants",
+                    },
+                    {
+                        "type": "guideline",
+                        "guideline_set": "test-agent",
+                        "predicate": "listing restaurants",
+                        "content": "highlight the one with the best reviews",
+                    },
+                ]
             },
-            {
-                "type": "guideline",
-                "guideline_set": "test-agent",
-                "predicate": "listing restaurants",
-                "content": "highlight the one with the best reviews",
-            },
-        ]
-    }
+        )
+        .raise_for_status()
+        .json()
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
-    assert response.status_code == status.HTTP_200_OK
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME + EXTRA_TIME_TO_EVALUATE_MULTIPLE_PAYLOADS)
-
-    get_response = client.get(f"/index/evaluations/{response.json()["evaluation_id"]}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -336,24 +337,25 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
 async def test_that_an_evaluation_validation_fails_due_to_multiple_guideline_sets(
     client: TestClient,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "type": "guideline",
-                "guideline_set": "set-1",
-                "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
-            },
-            {
-                "type": "guideline",
-                "guideline_set": "set-2",
-                "predicate": "the user asks about the weather",
-                "content": "provide a weather update",
-            },
-        ]
-    }
-
-    response = client.post("/index/evaluations", json=payloads)
+    response = client.post(
+        "/index/evaluations",
+        json={
+            "payloads": [
+                {
+                    "type": "guideline",
+                    "guideline_set": "set-1",
+                    "predicate": "the user greets you",
+                    "content": "greet them back with 'Hello'",
+                },
+                {
+                    "type": "guideline",
+                    "guideline_set": "set-2",
+                    "predicate": "the user asks about the weather",
+                    "content": "provide a weather update",
+                },
+            ]
+        },
+    )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
@@ -393,21 +395,17 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
         ]
     }
 
-    response = client.post("/index/evaluations", json=payloads)
+    first_evaluation_id = (
+        client.post("/index/evaluations", json=payloads).raise_for_status().json()["evaluation_id"]
+    )
 
-    assert response.status_code == status.HTTP_200_OK
-    first_evaluation_id = response.json()["evaluation_id"]
+    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    await asyncio.sleep(0.25)
+    second_evaluation_id = (
+        client.post("/index/evaluations", json=payloads).raise_for_status().json()["evaluation_id"]
+    )
 
-    response = client.post("/index/evaluations", json=payloads)
-
-    assert response.status_code == status.HTTP_200_OK
-
-    get_response = client.get(f"/index/evaluations/{response.json()["evaluation_id"]}")
-    assert get_response.status_code == status.HTTP_200_OK
-
-    content = get_response.json()
+    content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "failed"
     assert content["error"] == f"An evaluation task '{first_evaluation_id}' is already running."
