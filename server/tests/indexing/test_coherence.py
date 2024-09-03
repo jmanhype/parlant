@@ -7,7 +7,7 @@ from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.indexing.coherence_checker import (
     CoherenceChecker,
     ContextualContradictionEvaluator,
-    ContradictionType,
+    ContradictionKind,
     HierarchicalContradictionEvaluator,
     ParallelContradictionEvaluator,
     TemporalContradictionEvaluator,
@@ -189,7 +189,7 @@ def test_that_hierarchical_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity >= 5
 
     assert nlp_test(
@@ -262,7 +262,7 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.HIERARCHICAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.HIERARCHICAL.value  # type: ignore
     assert contradiction.severity < 5
 
     assert nlp_test(
@@ -332,7 +332,7 @@ def test_that_parallel_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.PARALLEL.value  # type: ignore
     assert contradiction.severity >= 5
 
     assert nlp_test(
@@ -403,7 +403,7 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.PARALLEL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.PARALLEL.value  # type: ignore
     assert contradiction.severity < 5
 
     assert nlp_test(
@@ -473,7 +473,7 @@ def test_that_temporal_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.TEMPORAL.value  # type: ignore
     assert contradiction.severity >= 5
 
     assert nlp_test(
@@ -544,7 +544,7 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.TEMPORAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.TEMPORAL.value  # type: ignore
     assert contradiction.severity < 5
 
     assert nlp_test(
@@ -614,7 +614,7 @@ def test_that_contextual_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.CONTEXTUAL.value  # type: ignore
     assert contradiction.severity >= 5
 
     assert nlp_test(
@@ -685,7 +685,7 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.contradiction_type == ContradictionType.CONTEXTUAL.value  # type: ignore
+    assert contradiction.kind == ContradictionKind.CONTEXTUAL.value  # type: ignore
     assert contradiction.severity < 5
 
     assert nlp_test(

@@ -19,7 +19,7 @@ LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
 
 
-class ContradictionType(Enum):
+class ContradictionKind(Enum):
     HIERARCHICAL = "Hierarchical Contradiction"
     PARALLEL = "Parallel Contradiction"
     TEMPORAL = "Temporal Contradiction"
@@ -27,7 +27,7 @@ class ContradictionType(Enum):
 
 
 class ContradictionTest(DefaultBaseModel):
-    contradiction_type: ContradictionType
+    kind: ContradictionKind
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     severity: int
@@ -39,7 +39,7 @@ class ContradictionEvaluatorBase(ABC):
     def __init__(
         self,
         logger: Logger,
-        contradiction_type: ContradictionType,
+        contradiction_type: ContradictionKind,
     ) -> None:
         self.logger = logger
 
@@ -176,7 +176,7 @@ class ContradictionEvaluatorBase(ABC):
 
         contradictions = [
             ContradictionTest(
-                contradiction_type=self.contradiction_type,
+                kind=self.contradiction_type,
                 guideline_a=guideline_to_evaluate,
                 guideline_b=indexed_compared_guidelines[
                     json_contradiction["compared_guideline_id"]
@@ -196,7 +196,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
         self,
         logger: Logger,
     ) -> None:
-        super().__init__(logger, ContradictionType.HIERARCHICAL)
+        super().__init__(logger, ContradictionKind.HIERARCHICAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -277,7 +277,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
         self,
         logger: Logger,
     ) -> None:
-        super().__init__(logger, ContradictionType.PARALLEL)
+        super().__init__(logger, ContradictionKind.PARALLEL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -358,7 +358,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
         self,
         logger: Logger,
     ) -> None:
-        super().__init__(logger, ContradictionType.TEMPORAL)
+        super().__init__(logger, ContradictionKind.TEMPORAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
@@ -439,7 +439,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
         self,
         logger: Logger,
     ) -> None:
-        super().__init__(logger, ContradictionType.CONTEXTUAL)
+        super().__init__(logger, ContradictionKind.CONTEXTUAL)
 
     def _format_contradiction_type_definition(self) -> str:
         return """
