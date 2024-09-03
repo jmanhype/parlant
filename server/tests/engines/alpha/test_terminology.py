@@ -89,7 +89,7 @@ def given_a_guideline_to_when(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
-            content=do_something,
+            action=do_something,
         )
     )
 
@@ -433,7 +433,7 @@ def given_a_guideline_name_to_when(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
-            content=do_something,
+            action=do_something,
         )
     )
 

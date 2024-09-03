@@ -6,7 +6,7 @@ from typing import Any, Literal, NewType, Optional, Sequence, TypeAlias, Union
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineData
+from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
@@ -26,10 +26,10 @@ class EvaluationGuidelinePayload:
     type: Literal["guideline"]
     guideline_set: str
     predicate: str
-    content: str
+    action: str
 
     def __repr__(self) -> str:
-        return f"type: {self.type}, guideline_set: {self.guideline_set}, predicate: {self.predicate}, content: {self.content}"
+        return f"type: {self.type}, guideline_set: {self.guideline_set}, predicate: {self.predicate}, action: {self.action}"
 
 
 EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
@@ -38,8 +38,8 @@ EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
 @dataclass(frozen=True)
 class CoherenceCheckResult:
     type: EvaluationCoherenceCheckResultType
-    first: GuidelineData
-    second: GuidelineData
+    first: GuidelineContent
+    second: GuidelineContent
     issue: str
     severity: int
 
@@ -47,8 +47,8 @@ class CoherenceCheckResult:
 @dataclass(frozen=True)
 class ConnectionPropositionResult:
     type: EvaluationConnectionPropositionResultType
-    source: GuidelineData
-    target: GuidelineData
+    source: GuidelineContent
+    target: GuidelineContent
     kind: ConnectionKind
 
 
@@ -286,7 +286,7 @@ class EvaluationDocumentStore(EvaluationStore):
                             "type": invoice.payload.type,
                             "guideline_set": invoice.payload.guideline_set,
                             "predicate": invoice.payload.predicate,
-                            "content": invoice.payload.content,
+                            "action": invoice.payload.action,
                         },
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,
@@ -333,7 +333,7 @@ class EvaluationDocumentStore(EvaluationStore):
                             "type": invoice.payload.type,
                             "guideline_set": invoice.payload.guideline_set,
                             "predicate": invoice.payload.predicate,
-                            "content": invoice.payload.content,
+                            "action": invoice.payload.action,
                         },
                         "state_version": invoice.state_version,
                         "checksum": invoice.checksum,

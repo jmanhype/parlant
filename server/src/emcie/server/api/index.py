@@ -14,7 +14,7 @@ from emcie.server.core.evaluations import (
     EvaluationStore,
 )
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineData
+from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
@@ -23,16 +23,16 @@ from emcie.server.indexing.behavioral_change_evaluation import (
 
 class CoherenceCheckResultDTO(DefaultBaseModel):
     type: EvaluationCoherenceCheckResultType
-    first: GuidelineData
-    second: GuidelineData
+    first: GuidelineContent
+    second: GuidelineContent
     issue: str
     severity: int
 
 
 class ConnectionPropositionResultDTO(DefaultBaseModel):
     type: EvaluationConnectionPropositionResultType
-    source: GuidelineData
-    target: GuidelineData
+    source: GuidelineContent
+    target: GuidelineContent
     kind: ConnectionKind
 
 

@@ -118,21 +118,21 @@ def given_a_guideline_to(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
                 predicate="The user hasn't engaged yet",
-                content="Greet the user with the word 'Howdy'",
+                action="Greet the user with the word 'Howdy'",
             )
         ),
         "offer thirsty users a Pepsi": lambda: sync_await(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
                 predicate="The user is thirsty",
-                content="Offer the user a Pepsi",
+                action="Offer the user a Pepsi",
             )
         ),
         "do your job when the user says hello": lambda: sync_await(
             guideline_store.create_guideline(
                 guideline_set=agent_id,
                 predicate="greeting the user",
-                content="do your job when the user says hello",
+                action="do your job when the user says hello",
             )
         ),
     }
@@ -154,7 +154,7 @@ def given_a_guideline_to_when(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
-            content=do_something,
+            action=do_something,
         )
     )
 
@@ -167,11 +167,11 @@ def given_50_other_random_guidelines(
 ) -> list[Guideline]:
     guideline_store = container[GuidelineStore]
 
-    async def create_guideline(predicate: str, content: str) -> Guideline:
+    async def create_guideline(predicate: str, action: str) -> Guideline:
         return await guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=predicate,
-            content=content,
+            action=action,
         )
 
     guidelines: list[Guideline] = []
@@ -179,220 +179,220 @@ def given_50_other_random_guidelines(
     for guideline_params in [
         {
             "predicate": "The user mentions being hungry",
-            "content": "Suggest our pizza specials to the user",
+            "action": "Suggest our pizza specials to the user",
         },
         {
             "predicate": "The user asks about vegetarian options",
-            "content": "list all vegetarian pizza options",
+            "action": "list all vegetarian pizza options",
         },
         {
             "predicate": "The user inquires about delivery times",
-            "content": "Provide the estimated delivery time based on their location",
+            "action": "Provide the estimated delivery time based on their location",
         },
         {
             "predicate": "The user seems undecided",
-            "content": "Recommend our top three most popular pizzas",
+            "action": "Recommend our top three most popular pizzas",
         },
         {
             "predicate": "The user asks for discount or promotions",
-            "content": "Inform the user about current deals or coupons",
+            "action": "Inform the user about current deals or coupons",
         },
         {
             "predicate": "The conversation starts",
-            "content": "Greet the user and ask if they'd like to order a pizza",
+            "action": "Greet the user and ask if they'd like to order a pizza",
         },
         {
             "predicate": "The user mentions a food allergy",
-            "content": "Ask for specific allergies and recommend safe menu options",
+            "action": "Ask for specific allergies and recommend safe menu options",
         },
         {
             "predicate": "The user requests a custom pizza",
-            "content": "Guide the user through choosing base, sauce, toppings, and cheese",
+            "action": "Guide the user through choosing base, sauce, toppings, and cheese",
         },
         {
             "predicate": "The user wants to repeat a previous order",
-            "content": "Retrieve the user’s last order details and confirm if they want the same",
+            "action": "Retrieve the user’s last order details and confirm if they want the same",
         },
         {
             "predicate": "The user asks about portion sizes",
-            "content": "Describe the different pizza sizes and how many they typically serve",
+            "action": "Describe the different pizza sizes and how many they typically serve",
         },
         {
             "predicate": "The user requests a drink",
-            "content": "list available beverages and suggest popular pairings with "
+            "action": "list available beverages and suggest popular pairings with "
             "their pizza choice",
         },
         {
             "predicate": "The user asks for the price",
-            "content": "Provide the price of the selected items and any additional costs",
+            "action": "Provide the price of the selected items and any additional costs",
         },
         {
             "predicate": "The user expresses concern about calories",
-            "content": "Offer information on calorie content and suggest lighter "
+            "action": "Offer information on calorie content and suggest lighter "
             "options if desired",
         },
         {
             "predicate": "The user mentions a special occasion",
-            "content": "Suggest our party meal deals and ask if they would like "
+            "action": "Suggest our party meal deals and ask if they would like "
             "to include desserts",
         },
         {
             "predicate": "The user wants to know the waiting area",
-            "content": "Inform about the waiting facilities at our location or "
+            "action": "Inform about the waiting facilities at our location or "
             "suggest comfortable seating arrangements",
         },
         {
             "predicate": "The user is comparing pizza options",
-            "content": "Highlight the unique features of different pizzas we offer",
+            "action": "Highlight the unique features of different pizzas we offer",
         },
         {
             "predicate": "The user asks for recommendations",
-            "content": "Suggest pizzas based on their previous orders or popular trends",
+            "action": "Suggest pizzas based on their previous orders or popular trends",
         },
         {
             "predicate": "The user is interested in combo deals",
-            "content": "Explain the different combo offers and their benefits",
+            "action": "Explain the different combo offers and their benefits",
         },
         {
             "predicate": "The user asks if ingredients are fresh",
-            "content": "Assure them of the freshness and quality of our ingredients",
+            "action": "Assure them of the freshness and quality of our ingredients",
         },
         {
             "predicate": "The user wants to modify an order",
-            "content": "Assist in making the desired changes and confirm the new order details",
+            "action": "Assist in making the desired changes and confirm the new order details",
         },
         {
             "predicate": "The user has connectivity issues during ordering",
-            "content": "Suggest completing the order via a different method (phone, app)",
+            "action": "Suggest completing the order via a different method (phone, app)",
         },
         {
             "predicate": "The user expresses dissatisfaction with a previous order",
-            "content": "Apologize and offer a resolution (discount, replacement)",
+            "action": "Apologize and offer a resolution (discount, replacement)",
         },
         {
             "predicate": "The user inquires about loyalty programs",
-            "content": "Describe our loyalty program benefits and enrollment process",
+            "action": "Describe our loyalty program benefits and enrollment process",
         },
         {
             "predicate": "The user is about to end the conversation without ordering",
-            "content": "Offer a quick summary of unique selling points or a one-time "
+            "action": "Offer a quick summary of unique selling points or a one-time "
             "discount to encourage purchase",
         },
         {
             "predicate": "The user asks for gluten-free options",
-            "content": "list our gluten-free pizza bases and toppings",
+            "action": "list our gluten-free pizza bases and toppings",
         },
         {
             "predicate": "The user is looking for side orders",
-            "content": "Recommend complementary side dishes like garlic bread or salads",
+            "action": "Recommend complementary side dishes like garlic bread or salads",
         },
         {
             "predicate": "The user mentions children",
-            "content": "Suggest our kids' menu or family-friendly options",
+            "action": "Suggest our kids' menu or family-friendly options",
         },
         {
             "predicate": "The user is having trouble with the online payment",
-            "content": "Offer assistance with the payment process or propose an "
+            "action": "Offer assistance with the payment process or propose an "
             "alternative payment method",
         },
         {
             "predicate": "The user wants to know the origin of ingredients",
-            "content": "Provide information about the source and quality assurance "
+            "action": "Provide information about the source and quality assurance "
             "of our ingredients",
         },
         {
             "predicate": "The user asks for a faster delivery option",
-            "content": "Explain express delivery options and any associated costs",
+            "action": "Explain express delivery options and any associated costs",
         },
         {
             "predicate": "The user seems interested in healthy eating",
-            "content": "Highlight our health-conscious options like salads or "
+            "action": "Highlight our health-conscious options like salads or "
             "pizzas with whole wheat bases",
         },
         {
             "predicate": "The user wants a contactless delivery",
-            "content": "Confirm the address and explain the process for contactless delivery",
+            "action": "Confirm the address and explain the process for contactless delivery",
         },
         {
             "predicate": "The user is a returning customer",
-            "content": "Welcome them back and ask if they would like to order their "
+            "action": "Welcome them back and ask if they would like to order their "
             "usual or try something new",
         },
         {
             "predicate": "The user inquires about our environmental impact",
-            "content": "Share information about our sustainability practices and "
+            "action": "Share information about our sustainability practices and "
             "eco-friendly packaging",
         },
         {
             "predicate": "The user is planning a large event",
-            "content": "Offer catering services and discuss bulk order discounts",
+            "action": "Offer catering services and discuss bulk order discounts",
         },
         {
             "predicate": "The user seems in a rush",
-            "content": "Suggest our quickest delivery option and process the order promptly",
+            "action": "Suggest our quickest delivery option and process the order promptly",
         },
         {
             "predicate": "The user wants to pick up the order",
-            "content": "Provide the pickup location and expected time until the order is ready",
+            "action": "Provide the pickup location and expected time until the order is ready",
         },
         {
             "predicate": "The user expresses interest in a specific topping",
-            "content": "Offer additional information about that topping and suggest "
+            "action": "Offer additional information about that topping and suggest "
             "other complementary toppings",
         },
         {
             "predicate": "The user is making a business order",
-            "content": "Propose our corporate deals and ask about potential regular "
+            "action": "Propose our corporate deals and ask about potential regular "
             "orders for business meetings",
         },
         {
             "predicate": "The user asks for cooking instructions",
-            "content": "Provide details on how our pizzas are made or instructions "
+            "action": "Provide details on how our pizzas are made or instructions "
             "for reheating if applicable",
         },
         {
             "predicate": "The user inquires about the chefs",
-            "content": "Share background information on our chefs’ expertise and experience",
+            "action": "Share background information on our chefs’ expertise and experience",
         },
         {
             "predicate": "The user asks about non-dairy options",
-            "content": "list our vegan cheese alternatives and other non-dairy products",
+            "action": "list our vegan cheese alternatives and other non-dairy products",
         },
         {
             "predicate": "The user expresses excitement about a new menu item",
-            "content": "Provide more details about the item and suggest adding it to their order",
+            "action": "Provide more details about the item and suggest adding it to their order",
         },
         {
             "predicate": "The user wants a quiet place to eat",
-            "content": "Describe the ambiance of our quieter dining areas or "
+            "action": "Describe the ambiance of our quieter dining areas or "
             "recommend off-peak times",
         },
         {
             "predicate": "The user asks about our app",
-            "content": "Explain the features of our app and benefits of ordering through it",
+            "action": "Explain the features of our app and benefits of ordering through it",
         },
         {
             "predicate": "The user has difficulty deciding",
-            "content": "Offer to make a selection based on their preferences or "
+            "action": "Offer to make a selection based on their preferences or "
             "our chef’s recommendations",
         },
         {
             "predicate": "The user mentions they are in a specific location",
-            "content": "Check if we deliver to that location and inform them about "
+            "action": "Check if we deliver to that location and inform them about "
             "the nearest outlet",
         },
         {
             "predicate": "The user is concerned about food safety",
-            "content": "Reassure them about our health and safety certifications and practices",
+            "action": "Reassure them about our health and safety certifications and practices",
         },
         {
             "predicate": "The user is looking for a quiet place to eat",
-            "content": "Describe the ambiance of our quieter dining areas or "
+            "action": "Describe the ambiance of our quieter dining areas or "
             "recommend off-peak times",
         },
         {
             "predicate": "The user shows interest in repeat orders",
-            "content": "Introduce features like scheduled deliveries or subscription "
+            "action": "Introduce features like scheduled deliveries or subscription "
             "services to simplify their future orders",
         },
     ]:

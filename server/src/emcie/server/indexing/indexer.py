@@ -7,7 +7,7 @@ from typing import Any, NamedTuple, Sequence
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
-from emcie.server.core.guidelines import Guideline, GuidelineData, GuidelineId, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
@@ -41,7 +41,7 @@ class GuidelineIndexer:
 
     @staticmethod
     def _guideline_checksum(guideline: Guideline) -> str:
-        return md5_checksum(f"{guideline.predicate}_{guideline.content}")
+        return md5_checksum(f"{guideline.content.predicate}_{guideline.content.action}")
 
     async def should_index(
         self,
@@ -150,23 +150,27 @@ class GuidelineIndexer:
             p
             for p in await self._guideline_connection_proposer.propose_connections(
                 introduced_guidelines=[
-                    GuidelineData(predicate=s.predicate, content=s.content) for s in introduced
+                    GuidelineContent(predicate=s.content.predicate, action=s.content.action)
+                    for s in introduced
                 ],
                 existing_guidelines=[
-                    GuidelineData(predicate=s.predicate, content=s.content) for s in existsing
+                    GuidelineContent(predicate=s.content.predicate, action=s.content.action)
+                    for s in existsing
                 ],
             )
             if p.score >= 6
         )
 
-        data_to_guideline = {f"{s.predicate}_{s.content}": s for s in chain(introduced, existsing)}
+        data_to_guideline = {
+            f"{s.content.predicate}_{s.content.action}": s for s in chain(introduced, existsing)
+        }
 
         for p in proposed_connections:
             self.logger.debug(f"Add guideline connection between source: {p.source} and {p.target}")
 
             await self._guideline_connection_store.update_connection(
-                source=data_to_guideline[f"{p.source.predicate}_{p.source.content}"].id,
-                target=data_to_guideline[f"{p.target.predicate}_{p.target.content}"].id,
+                source=data_to_guideline[f"{p.source.predicate}_{p.source.action}"].id,
+                target=data_to_guideline[f"{p.target.predicate}_{p.target.action}"].id,
                 kind=p.kind,
             )
 

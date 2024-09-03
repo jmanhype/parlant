@@ -10,7 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import UniqueId, generate_id
-from emcie.server.core.guidelines import GuidelineData
+from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.engines.alpha.utils import make_llm_client
 from emcie.server.logger import Logger
 
@@ -28,8 +28,8 @@ class ContradictionType(Enum):
 
 class ContradictionTest(DefaultBaseModel):
     contradiction_type: ContradictionType
-    guideline_a: GuidelineData
-    guideline_b: GuidelineData
+    guideline_a: GuidelineContent
+    guideline_b: GuidelineContent
     severity: int
     rationale: str
     creation_utc: datetime
@@ -51,8 +51,8 @@ class ContradictionEvaluatorBase(ABC):
 
     async def evaluate(
         self,
-        guidelines_to_evaluate: Sequence[GuidelineData],
-        comparison_guidelines: Sequence[GuidelineData] = [],
+        guidelines_to_evaluate: Sequence[GuidelineContent],
+        comparison_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[ContradictionTest]:
         comparison_guidelines_list = list(comparison_guidelines)
         guidelines_to_evaluate_list = list(guidelines_to_evaluate)
@@ -81,8 +81,8 @@ class ContradictionEvaluatorBase(ABC):
 
     async def _process_proposed_guideline(
         self,
-        guideline_to_evaluate: GuidelineData,
-        comparison_guidelines: Sequence[GuidelineData],
+        guideline_to_evaluate: GuidelineContent,
+        comparison_guidelines: Sequence[GuidelineContent],
     ) -> Sequence[ContradictionTest]:
         indexed_comparison_guidelines = {generate_id(): c for c in comparison_guidelines}
         prompt = self._format_contradiction_prompt(
@@ -102,14 +102,14 @@ class ContradictionEvaluatorBase(ABC):
 
     def _format_contradiction_prompt(
         self,
-        guideline_to_evaluate: GuidelineData,
-        comparison_guidelines: dict[UniqueId, GuidelineData],
+        guideline_to_evaluate: GuidelineContent,
+        comparison_guidelines: dict[UniqueId, GuidelineContent],
     ) -> str:
         comparison_guidelines_string = "\n\t".join(
-            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id].predicate}, then {comparison_guidelines[id].content}}}"
+            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id].predicate}, then {comparison_guidelines[id].action}}}"
             for i, id in enumerate(comparison_guidelines, start=1)
         )
-        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate.predicate}, then {guideline_to_evaluate.content}}}"
+        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate.predicate}, then {guideline_to_evaluate.action}}}"
         result_structure = [
             {
                 "compared_guideline_id": id,
@@ -160,8 +160,8 @@ class ContradictionEvaluatorBase(ABC):
     @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def _generate_contradictions(
         self,
-        guideline_to_evaluate: GuidelineData,
-        indexed_compared_guidelines: dict[UniqueId, GuidelineData],
+        guideline_to_evaluate: GuidelineContent,
+        indexed_compared_guidelines: dict[UniqueId, GuidelineContent],
         prompt: str,
     ) -> Sequence[ContradictionTest]:
         response = await self._llm_client.chat.completions.create(
@@ -530,8 +530,8 @@ class CoherenceChecker:
 
     async def evaluate_coherence(
         self,
-        guidelines_to_evaluate: Sequence[GuidelineData],
-        comparison_guidelines: Sequence[GuidelineData] = [],
+        guidelines_to_evaluate: Sequence[GuidelineContent],
+        comparison_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[ContradictionTest]:
         hierarchical_contradictions_task = self.hierarchical_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,

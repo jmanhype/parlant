@@ -158,7 +158,7 @@ def given_a_guideline_to_when(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
-            content=do_something,
+            action=do_something,
         )
     )
 
@@ -179,7 +179,7 @@ def given_a_guideline_name_to_when(
         guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=a_condition_holds,
-            content=do_something,
+            action=do_something,
         )
     )
 
@@ -193,66 +193,66 @@ def given_a_guideline(
 ) -> Guideline:
     guideline_store = container[GuidelineStore]
 
-    async def create_guideline(predicate: str, content: str) -> Guideline:
+    async def create_guideline(predicate: str, action: str) -> Guideline:
         return await guideline_store.create_guideline(
             guideline_set=agent_id,
             predicate=predicate,
-            content=content,
+            action=action,
         )
 
     guidelines = {
         "check_drinks_in_stock": {
             "predicate": "a client asks for a drink",
-            "content": "check if the drink is available in stock",
+            "action": "check if the drink is available in stock",
         },
         "check_toppings_in_stock": {
             "predicate": "a client asks about toppings or order pizza with toppings",
-            "content": "check what toppings are available in stock",
+            "action": "check what toppings are available in stock",
         },
         "ask_expert_about_Spot": {
             "predicate": "a client asks for information about Spot",
-            "content": "ask and get the answer from the expert",
+            "action": "ask and get the answer from the expert",
         },
         "check_toppings_or_drinks_in_stock": {
             "predicate": "a client asks for toppings or drinks",
-            "content": "check if they are available in stock",
+            "action": "check if they are available in stock",
         },
         "calculate_sum": {
             "predicate": "an equation involves adding numbers",
-            "content": "calculate the sum",
+            "action": "calculate the sum",
         },
         "check_drinks_or_toppings_in_stock": {
             "predicate": "a client asks for a drink or toppings",
-            "content": "check what drinks or toppings are available in stock",
+            "action": "check what drinks or toppings are available in stock",
         },
         "calculate_addition_or_multiplication": {
             "predicate": "an equation contains addition or multiplication",
-            "content": "calculate it",
+            "action": "calculate it",
         },
         "retrieve_account_information": {
             "predicate": "asked for information about an account",
-            "content": "answer by retrieving the information from the database",
+            "action": "answer by retrieving the information from the database",
         },
         "calculate_addition": {
             "predicate": "an equation contains an add function",
-            "content": "get the result from the add tool",
+            "action": "get the result from the add tool",
         },
         "calculate_multiplication": {
             "predicate": "an equation contains a multiply function",
-            "content": "get the result from the multiply tool",
+            "action": "get the result from the multiply tool",
         },
         "transfer_money_between_accounts": {
             "predicate": "asked to transfer money from one account to another",
-            "content": "check if the account has enough balance to make the transfer"
+            "action": "check if the account has enough balance to make the transfer"
             "and then proceed with the transfer",
         },
         "retrieve_Spot_information": {
             "predicate": "asked for information about Spot",
-            "content": "answer by retrieving the information from the database",
+            "action": "answer by retrieving the information from the database",
         },
         "retrieve_account_balance": {
             "predicate": "asked for information about an account",
-            "content": "answer by retrieving the information from the database",
+            "action": "answer by retrieving the information from the database",
         },
     }
 

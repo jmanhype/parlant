@@ -26,7 +26,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
-                        "content": "greet them back with 'Hello'",
+                        "action": "greet them back with 'Hello'",
                     }
                 ]
             },
@@ -62,13 +62,13 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
-                        "content": "greet them back with 'Hello'",
+                        "action": "greet them back with 'Hello'",
                     },
                     {
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
-                        "content": "greet them back with 'Hola'",
+                        "action": "greet them back with 'Hola'",
                     },
                 ]
             },
@@ -96,7 +96,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
-                        "content": "greet them back with 'Hello'",
+                        "action": "greet them back with 'Hello'",
                     }
                 ]
             },
@@ -130,13 +130,13 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
-                        "content": "greet them back with 'Hello'",
+                        "action": "greet them back with 'Hello'",
                     },
                     {
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
-                        "content": "greet them back with 'Hola'",
+                        "action": "greet them back with 'Hola'",
                     },
                 ]
             },
@@ -168,7 +168,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     await guideline_store.create_guideline(
         guideline_set="test-agent",
         predicate="the user asks about the weather",
-        content="provide the current weather update",
+        action="provide the current weather update",
     )
 
     evaluation_id = (
@@ -180,7 +180,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "providing the weather update",
-                        "content": "mention the best time to go for a walk",
+                        "action": "mention the best time to go for a walk",
                     }
                 ]
             },
@@ -225,13 +225,13 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user asks about nearby restaurants",
-                        "content": "provide a list of popular restaurants",
+                        "action": "provide a list of popular restaurants",
                     },
                     {
                         "type": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "listing restaurants",
-                        "content": "highlight the one with the best reviews",
+                        "action": "highlight the one with the best reviews",
                     },
                 ]
             },
@@ -277,7 +277,7 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
         "type": "guideline",
         "guideline_set": "test-agent",
         "predicate": "the user greets you",
-        "content": "greet them back with 'Hello'",
+        "action": "greet them back with 'Hello'",
     }
 
     response = client.post(
@@ -306,14 +306,14 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
     await guideline_store.create_guideline(
         guideline_set="test-agent",
         predicate="the user greets you",
-        content="greet them back with 'Hello'",
+        action="greet them back with 'Hello'",
     )
 
     duplicate_payload = {
         "type": "guideline",
         "guideline_set": "test-agent",
         "predicate": "the user greets you",
-        "content": "greet them back with 'Hello'",
+        "action": "greet them back with 'Hello'",
     }
 
     response = client.post(
@@ -345,13 +345,13 @@ async def test_that_an_evaluation_validation_fails_due_to_multiple_guideline_set
                     "type": "guideline",
                     "guideline_set": "set-1",
                     "predicate": "the user greets you",
-                    "content": "greet them back with 'Hello'",
+                    "action": "greet them back with 'Hello'",
                 },
                 {
                     "type": "guideline",
                     "guideline_set": "set-2",
                     "predicate": "the user asks about the weather",
-                    "content": "provide a weather update",
+                    "action": "provide a weather update",
                 },
             ]
         },
@@ -384,13 +384,13 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
                 "type": "guideline",
                 "guideline_set": "test-agent",
                 "predicate": "the user greets you",
-                "content": "greet them back with 'Hello'",
+                "action": "greet them back with 'Hello'",
             },
             {
                 "type": "guideline",
                 "guideline_set": "test-agent",
                 "predicate": "the user asks about the weather",
-                "content": "provide a weather update",
+                "action": "provide a weather update",
             },
         ]
     }

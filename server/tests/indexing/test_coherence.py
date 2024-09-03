@@ -3,7 +3,7 @@ from lagom import Container
 from pytest import fixture, mark
 
 from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.guidelines import GuidelineData
+from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.indexing.coherence_checker import (
     CoherenceChecker,
     ContextualContradictionEvaluator,
@@ -44,34 +44,34 @@ def context(
 
 
 @fixture
-def guidelines_with_contradictions() -> list[GuidelineData]:
-    guidelines: list[GuidelineData] = []
+def guidelines_with_contradictions() -> list[GuidelineContent]:
+    guidelines: list[GuidelineContent] = []
 
     for guideline_params in [
         {
             "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
-            "content": "Escalate the request to product management for special consideration",
+            "action": "Escalate the request to product management for special consideration",
         },
         {
             "predicate": "Any customer requests a feature not available in the current version",
-            "content": "Inform them about the product roadmap and upcoming features",
+            "action": "Inform them about the product roadmap and upcoming features",
         },
         {
             "predicate": "Any customer reports a technical issue",
-            "content": "Queue the issue for resolution according to standard support protocols",
+            "action": "Queue the issue for resolution according to standard support protocols",
         },
         {
             "predicate": "The issue reported affects a critical operational feature for multiple clients",  # noqa
-            "content": "Escalate immediately to the highest priority for resolution",
+            "action": "Escalate immediately to the highest priority for resolution",
         },
         {
             "predicate": "Receiving feedback on a new feature",
-            "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
+            "action": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
         },
     ]:
         guidelines.append(
-            GuidelineData(
-                predicate=guideline_params["predicate"], content=guideline_params["content"]
+            GuidelineContent(
+                predicate=guideline_params["predicate"], action=guideline_params["action"]
             )
         )
 
@@ -79,54 +79,54 @@ def guidelines_with_contradictions() -> list[GuidelineData]:
 
 
 @fixture
-def guidelines_without_contradictions() -> list[GuidelineData]:
-    guidelines: list[GuidelineData] = []
+def guidelines_without_contradictions() -> list[GuidelineContent]:
+    guidelines: list[GuidelineContent] = []
 
     for guideline_params in [
         {
             "predicate": "A customer inquires about upgrading their service package",
-            "content": "Provide information on available upgrade options and benefits",
+            "action": "Provide information on available upgrade options and benefits",
         },
         {
             "predicate": "A customer needs assistance with understanding their billing statements",
-            "content": "Guide them through the billing details and explain any charges",
+            "action": "Guide them through the billing details and explain any charges",
         },
         {
             "predicate": "A customer expresses satisfaction with the service",
-            "content": "encourage them to leave a review or testimonial",
+            "action": "encourage them to leave a review or testimonial",
         },
         {
             "predicate": "A customer refers another potential client",
-            "content": "initiate the referral rewards process",
+            "action": "initiate the referral rewards process",
         },
         {
             "predicate": "A customer asks about the security of their data",
-            "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+            "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
         },
         {
             "predicate": "A customer inquires about compliance with specific regulations",
-            "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+            "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
         },
         {
             "predicate": "A customer requests faster support response times",
-            "content": "Explain the standard response times and efforts to improve them",
+            "action": "Explain the standard response times and efforts to improve them",
         },
         {
             "predicate": "A customer compliments the service on social media",
-            "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+            "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
         },
         {
             "predicate": "A customer asks about the security of their data",
-            "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+            "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
         },
         {
             "predicate": "A customer inquires about compliance with specific regulations",
-            "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+            "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
         },
     ]:
         guidelines.append(
-            GuidelineData(
-                predicate=guideline_params["predicate"], content=guideline_params["content"]
+            GuidelineContent(
+                predicate=guideline_params["predicate"], action=guideline_params["action"]
             )
         )
 
@@ -142,21 +142,21 @@ def guidelines_without_contradictions() -> list[GuidelineData]:
         (
             {
                 "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
-                "content": "Escalate the request to product management for special consideration",
+                "action": "Escalate the request to product management for special consideration",
             },
             {
                 "predicate": "Any customer requests a feature not available in the current version",
-                "content": "Inform them about the product roadmap and upcoming features",
+                "action": "Inform them about the product roadmap and upcoming features",
             },
         ),
         (
             {
                 "predicate": "Any customer reports a technical issue",
-                "content": "Queue the issue for resolution according to standard support protocols",
+                "action": "Queue the issue for resolution according to standard support protocols",
             },
             {
                 "predicate": "The issue reported affects a critical operational feature for multiple clients",  # noqa
-                "content": "Escalate immediately to the highest priority for resolution",
+                "action": "Escalate immediately to the highest priority for resolution",
             },
         ),
     ],
@@ -166,12 +166,12 @@ def test_that_hierarchical_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
@@ -215,21 +215,21 @@ def test_that_hierarchical_evaluator_detects_contradictions(
         (
             {
                 "predicate": "A customer inquires about upgrading their service package",
-                "content": "Provide information on available upgrade options and benefits",
+                "action": "Provide information on available upgrade options and benefits",
             },
             {
                 "predicate": "A customer needs assistance with understanding their billing statements",  # noqa
-                "content": "Guide them through the billing details and explain any charges",
+                "action": "Guide them through the billing details and explain any charges",
             },
         ),
         (
             {
                 "predicate": "A customer expresses satisfaction with the service",
-                "content": "encourage them to leave a review or testimonial",
+                "action": "encourage them to leave a review or testimonial",
             },
             {
                 "predicate": "A customer refers another potential client",
-                "content": "initiate the referral rewards process",
+                "action": "initiate the referral rewards process",
             },
         ),
     ],
@@ -239,12 +239,12 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
@@ -287,21 +287,21 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
         (
             {
                 "predicate": "A customer exceeds their data storage limit",
-                "content": "Prompt them to upgrade their subscription plan",
+                "action": "Prompt them to upgrade their subscription plan",
             },
             {
                 "predicate": "Promoting customer retention and satisfaction",
-                "content": "Offer a temporary data limit extension without requiring an upgrade",
+                "action": "Offer a temporary data limit extension without requiring an upgrade",
             },
         ),
         (
             {
                 "predicate": "Receiving feedback on a new feature",
-                "content": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
+                "action": "encourage users to adopt and adapt to the change as part of ongoing product",  # noqa
             },
             {
                 "predicate": "Users express significant resistance to a new feature",
-                "content": "Roll back or offer the option to revert to previous settings",
+                "action": "Roll back or offer the option to revert to previous settings",
             },
         ),
     ],
@@ -311,12 +311,12 @@ def test_that_parallel_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
@@ -358,21 +358,21 @@ def test_that_parallel_evaluator_detects_contradictions(
         (
             {
                 "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+                "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
             },
             {
                 "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+                "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
             },  # noqa
         ),
         (
             {
                 "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
+                "action": "Explain the standard response times and efforts to improve them",
             },
             {
                 "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+                "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
             },
         ),
     ],
@@ -382,12 +382,12 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     parallel_contradiction_evaluator = ParallelContradictionEvaluator(context.container[Logger])
@@ -428,21 +428,21 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
         (
             {
                 "predicate": "A new software update is scheduled for release",
-                "content": "Roll it out to all users to ensure everyone has the latest version",
+                "action": "Roll it out to all users to ensure everyone has the latest version",
             },
             {
                 "predicate": "Key clients are in the middle of a critical project",
-                "content": "Delay software updates to avoid disrupting their operations",
+                "action": "Delay software updates to avoid disrupting their operations",
             },
         ),
         (
             {
                 "predicate": "The financial quarter ends",
-                "content": "Finalize all pending transactions and close the books",
+                "action": "Finalize all pending transactions and close the books",
             },
             {
                 "predicate": "A new financial regulation is implemented at the end of the quarter",
-                "content": "re-evaluate all transactions from that quarter before closing the books",  # noqa
+                "action": "re-evaluate all transactions from that quarter before closing the books",  # noqa
             },
         ),
     ],
@@ -452,12 +452,12 @@ def test_that_temporal_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
@@ -499,21 +499,21 @@ def test_that_temporal_evaluator_detects_contradictions(
         (
             {
                 "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+                "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
             },
             {
                 "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+                "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
             },  # noqa
         ),
         (
             {
                 "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
+                "action": "Explain the standard response times and efforts to improve them",
             },
             {
                 "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+                "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
             },
         ),
     ],
@@ -523,12 +523,12 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     temporal_contradiction_evaluator = TemporalContradictionEvaluator(context.container[Logger])
@@ -569,21 +569,21 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
         (
             {
                 "predicate": "A customer is located in a region with strict data sovereignty laws",
-                "content": "Store and process all customer data locally as required by law",
+                "action": "Store and process all customer data locally as required by law",
             },
             {
                 "predicate": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
-                "content": "Consolidate data handling to enhance efficiency",
+                "action": "Consolidate data handling to enhance efficiency",
             },
         ),
         (
             {
                 "predicate": "A customer's contract is up for renewal during a market downturn",
-                "content": "Offer discounts and incentives to ensure renewal",
+                "action": "Offer discounts and incentives to ensure renewal",
             },
             {
                 "predicate": "The company’s financial performance targets require maximizing revenue",  # noqa
-                "content": "avoid discounts and push for higher-priced contracts",
+                "action": "avoid discounts and push for higher-priced contracts",
             },
         ),
     ],
@@ -593,12 +593,12 @@ def test_that_contextual_evaluator_detects_contradictions(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
@@ -640,21 +640,21 @@ def test_that_contextual_evaluator_detects_contradictions(
         (
             {
                 "predicate": "A customer asks about the security of their data",
-                "content": "Provide detailed information about the company’s security measures and certifications",  # noqa
+                "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
             },
             {
                 "predicate": "A customer inquires about compliance with specific regulations",
-                "content": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+                "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
             },
         ),
         (
             {
                 "predicate": "A customer requests faster support response times",
-                "content": "Explain the standard response times and efforts to improve them",
+                "action": "Explain the standard response times and efforts to improve them",
             },
             {
                 "predicate": "A customer compliments the service on social media",
-                "content": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+                "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
             },
         ),
     ],
@@ -664,12 +664,12 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
 ) -> None:
-    guideline_a = GuidelineData(
-        predicate=guideline_a_definition["predicate"], content=guideline_a_definition["content"]
+    guideline_a = GuidelineContent(
+        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
     )
 
-    guideline_b = GuidelineData(
-        predicate=guideline_b_definition["predicate"], content=guideline_b_definition["content"]
+    guideline_b = GuidelineContent(
+        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
     contextual_contradiction_evaluator = ContextualContradictionEvaluator(context.container[Logger])
@@ -702,7 +702,7 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
 def test_that_coherence_check_does_not_produce_false_positives(
     context: _TestContext,
     sync_await: SyncAwaiter,
-    guidelines_without_contradictions: list[GuidelineData],
+    guidelines_without_contradictions: list[GuidelineContent],
 ) -> None:
     coherence_checker = CoherenceChecker(context.container[Logger])
 
@@ -716,7 +716,7 @@ def test_that_coherence_check_does_not_produce_false_positives(
 def test_that_coherence_check_produces_multiple_contradictions(
     context: _TestContext,
     sync_await: SyncAwaiter,
-    guidelines_with_contradictions: list[GuidelineData],
+    guidelines_with_contradictions: list[GuidelineContent],
 ) -> None:
     coherence_checker = CoherenceChecker(context.container[Logger])
 
@@ -734,19 +734,19 @@ def test_that_coherence_check_produces_multiple_contradictions(
 def test_that_existing_guidelines_are_not_evaluated_as_proposed_guidelines(
     context: _TestContext,
 ) -> None:
-    guideline_to_evaluate = GuidelineData(
+    guideline_to_evaluate = GuidelineContent(
         predicate="A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
-        content="Escalate the request to product management for special consideration",
+        action="Escalate the request to product management for special consideration",
     )
 
-    first_guideline_to_compare = GuidelineData(
+    first_guideline_to_compare = GuidelineContent(
         predicate="Any customer requests a feature not available in the current version",
-        content="Inform them about the product roadmap and upcoming features",
+        action="Inform them about the product roadmap and upcoming features",
     )
 
-    second_guideline_to_compare = GuidelineData(
+    second_guideline_to_compare = GuidelineContent(
         predicate="A customer with low ranking requests a specific feature that does not aligns the current product roadmap",
-        content="Inform them about the current roadmap and advise them to inquire again in one year.",
+        action="Inform them about the current roadmap and advise them to inquire again in one year.",
     )
 
     coherence_checker = CoherenceChecker(context.container[Logger])

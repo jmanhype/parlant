@@ -54,8 +54,8 @@ class MessageEventProducer:
 
             self.logger.debug(
                 f'Guidelines applied: {json.dumps([{
-                    "predicate": p.guideline.predicate,
-                    "content": p.guideline.content,
+                    "predicate": p.guideline.content.predicate,
+                    "action": p.guideline.content.action,
                     "rationale": p.rationale,
                     "score": p.score}
                 for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}'

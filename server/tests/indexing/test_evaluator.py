@@ -24,7 +24,7 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
             type="guideline",
             guideline_set="test-agent",
             predicate="the user greets you",
-            content="greet them back with 'Hello'",
+            action="greet them back with 'Hello'",
         )
     ]
 
@@ -46,7 +46,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
             type="guideline",
             guideline_set="test-agent",
             predicate="the user greets you",
-            content="greet them back with 'Hello'",
+            action="greet them back with 'Hello'",
         )
     ]
     evaluation_id = await evaluation_service.create_evaluation_task(payloads)
@@ -73,7 +73,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     await guideline_store.create_guideline(
         guideline_set="test-set",
         predicate="a customer inquires about upgrading their service package",
-        content="provide information on available upgrade options and benefits",
+        action="provide information on available upgrade options and benefits",
     )
 
     payloads = [
@@ -81,7 +81,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
             type="guideline",
             guideline_set="test-agent",
             predicate="a customer needs assistance with understanding their billing statements",
-            content="guide them through the billing details and explain any charges",
+            action="guide them through the billing details and explain any charges",
         )
     ]
 
@@ -113,7 +113,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     await guideline_store.create_guideline(
         guideline_set="test-agent",
         predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
-        content="escalate the request to product management for special consideration",
+        action="escalate the request to product management for special consideration",
     )
 
     payloads = [
@@ -121,7 +121,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
             type="guideline",
             guideline_set="test-agent",
             predicate="any customer requests a feature not available in the current version",
-            content="inform them about the product roadmap and upcoming features",
+            action="inform them about the product roadmap and upcoming features",
         )
     ]
 
@@ -156,13 +156,13 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
             type="guideline",
             guideline_set="test-agent",
             predicate="any customer requests a feature not available in the current version",
-            content="inform them about the product roadmap and upcoming features",
+            action="inform them about the product roadmap and upcoming features",
         ),
         EvaluationGuidelinePayload(
             type="guideline",
             guideline_set="test-agent",
             predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
-            content="escalate the request to product management for special consideration",
+            action="escalate the request to product management for special consideration",
         ),
     ]
 
@@ -201,13 +201,13 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
             type="guideline",
             guideline_set="test-agent",
             predicate="the user greets you",
-            content="greet them back with 'Hello'",
+            action="greet them back with 'Hello'",
         ),
         EvaluationGuidelinePayload(
             type="guideline",
             guideline_set="test-agent",
             predicate="the user asks about the weather",
-            content="provide a weather update",
+            action="provide a weather update",
         ),
     ]
     evaluation_id = await evaluation_service.create_evaluation_task(payloads)
@@ -235,13 +235,13 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
             type="guideline",
             guideline_set="test-agent",
             predicate="the user greets you",
-            content="greet them back with 'Hello'",
+            action="greet them back with 'Hello'",
         ),
         EvaluationGuidelinePayload(
             type="guideline",
             guideline_set="test-agent",
             predicate="the user greets you",
-            content="greet them back with 'Hola'",
+            action="greet them back with 'Hola'",
         ),
     ]
     first_evaluation_id = await evaluation_service.create_evaluation_task(
@@ -253,7 +253,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
             type="guideline",
             guideline_set="test-agent",
             predicate="the user asks about the weather",
-            content="provide a weather update",
+            action="provide a weather update",
         )
     ]
 
@@ -279,13 +279,13 @@ async def test_that_an_evaluation_validation_failed_due_multiple_guideline_sets_
             type="guideline",
             guideline_set="set-1",
             predicate="the user greets you",
-            content="greet them back with 'Hello'",
+            action="greet them back with 'Hello'",
         ),
         EvaluationGuidelinePayload(
             type="guideline",
             guideline_set="set-2",
             predicate="the user asks about the weather",
-            content="provide a weather update",
+            action="provide a weather update",
         ),
     ]
 
@@ -305,7 +305,7 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
         type="guideline",
         guideline_set="test-agent",
         predicate="the user greets you",
-        content="greet them back with 'Hello'",
+        action="greet them back with 'Hello'",
     )
 
     with raises(EvaluationValidationError) as exc:
@@ -329,14 +329,14 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
     await guideline_store.create_guideline(
         guideline_set="test-agent",
         predicate="the user greets you",
-        content="greet them back with 'Hello'",
+        action="greet them back with 'Hello'",
     )
 
     duplicate_payload = EvaluationGuidelinePayload(
         type="guideline",
         guideline_set="test-agent",
         predicate="the user greets you",
-        content="greet them back with 'Hello'",
+        action="greet them back with 'Hello'",
     )
     with raises(EvaluationValidationError) as exc:
         await evaluation_service.create_evaluation_task(
@@ -362,7 +362,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
     await guideline_store.create_guideline(
         guideline_set="test-agent",
         predicate="the user asks about the weather",
-        content="provide the current weather update",
+        action="provide the current weather update",
     )
 
     payloads = [
@@ -370,7 +370,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
             type="guideline",
             guideline_set="test-agent",
             predicate="providing the weather update",
-            content="mention the best time to go for a walk",
+            action="mention the best time to go for a walk",
         )
     ]
 
@@ -417,13 +417,13 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
             type="guideline",
             guideline_set="test-agent",
             predicate="the user asks about the weather",
-            content="provide the current weather update",
+            action="provide the current weather update",
         ),
         EvaluationGuidelinePayload(
             type="guideline",
             guideline_set="test-agent",
             predicate="providing the weather update",
-            content="mention the best time to go for a walk",
+            action="mention the best time to go for a walk",
         ),
     ]
 

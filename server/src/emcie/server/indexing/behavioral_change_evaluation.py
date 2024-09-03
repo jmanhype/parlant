@@ -14,7 +14,7 @@ from emcie.server.core.evaluations import (
     EvaluationStore,
     EvaluationGuidelineConnectionPropositionsResult,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineData, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
 from emcie.server.indexing.coherence_checker import CoherenceChecker, ContradictionTest
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
@@ -49,9 +49,9 @@ class GuidelineEvaluator:
         guideline_set = payloads[0].guideline_set
 
         guideline_to_evaluate = [
-            GuidelineData(
+            GuidelineContent(
                 predicate=p.predicate,
-                content=p.content,
+                action=p.action,
             )
             for p in payloads
         ]
@@ -100,7 +100,7 @@ class GuidelineEvaluator:
 
     async def _check_for_coherence(
         self,
-        guidelines_to_evaluate: Sequence[GuidelineData],
+        guidelines_to_evaluate: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
     ) -> Optional[Sequence[EvaluationGuidelineCoherenceCheckResult]]:
         checker = CoherenceChecker(self.logger)
@@ -108,14 +108,15 @@ class GuidelineEvaluator:
         coherence_check_results = await checker.evaluate_coherence(
             guidelines_to_evaluate=guidelines_to_evaluate,
             comparison_guidelines=[
-                GuidelineData(predicate=g.predicate, content=g.content) for g in existing_guidelines
+                GuidelineContent(predicate=g.content.predicate, action=g.content.action)
+                for g in existing_guidelines
             ],
         )
 
         contradictions: dict[str, ContradictionTest] = {}
 
         for c in coherence_check_results:
-            key = f"{c.guideline_a.predicate}{c.guideline_a.content}"
+            key = f"{c.guideline_a.predicate}{c.guideline_a.action}"
             if (c.severity >= 6) and (
                 key not in contradictions or c.severity > contradictions[key].severity
             ):
@@ -125,14 +126,14 @@ class GuidelineEvaluator:
             return None
 
         guideline_coherence_results: OrderedDict[str, list[CoherenceCheckResult]] = OrderedDict(
-            {f"{g.predicate}{g.content}": [] for g in guidelines_to_evaluate}
+            {f"{g.predicate}{g.action}": [] for g in guidelines_to_evaluate}
         )
 
         for c in contradictions.values():
-            guideline_coherence_results[f"{c.guideline_a.predicate}{c.guideline_a.content}"].append(
+            guideline_coherence_results[f"{c.guideline_a.predicate}{c.guideline_a.action}"].append(
                 CoherenceCheckResult(
                     type="Contradiction With Other Proposed Guideline"
-                    if f"{c.guideline_b.predicate}{c.guideline_b.content}"
+                    if f"{c.guideline_b.predicate}{c.guideline_b.action}"
                     in guideline_coherence_results
                     else "Contradiction With Existing Guideline",
                     first=c.guideline_a,
@@ -142,9 +143,9 @@ class GuidelineEvaluator:
                 )
             )
 
-            if f"{c.guideline_b.predicate}{c.guideline_b.content}" in guideline_coherence_results:
+            if f"{c.guideline_b.predicate}{c.guideline_b.action}" in guideline_coherence_results:
                 guideline_coherence_results[
-                    f"{c.guideline_b.predicate}{c.guideline_b.content}"
+                    f"{c.guideline_b.predicate}{c.guideline_b.action}"
                 ].append(
                     CoherenceCheckResult(
                         type="Contradiction With Other Proposed Guideline",
@@ -162,7 +163,7 @@ class GuidelineEvaluator:
 
     async def _propose_guideline_connections(
         self,
-        proposed_guidelines: Sequence[GuidelineData],
+        proposed_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
     ) -> Optional[Sequence[EvaluationGuidelineConnectionPropositionsResult]]:
         connection_propositions = [
@@ -170,7 +171,7 @@ class GuidelineEvaluator:
             for p in await self._guideline_connection_proposer.propose_connections(
                 introduced_guidelines=proposed_guidelines,
                 existing_guidelines=[
-                    GuidelineData(predicate=g.predicate, content=g.content)
+                    GuidelineContent(predicate=g.content.predicate, action=g.content.action)
                     for g in existing_guidelines
                 ],
             )
@@ -181,15 +182,15 @@ class GuidelineEvaluator:
             return None
 
         connection_results: OrderedDict[str, list[ConnectionPropositionResult]] = OrderedDict(
-            {f"{g.predicate}{g.content}": [] for g in proposed_guidelines}
+            {f"{g.predicate}{g.action}": [] for g in proposed_guidelines}
         )
 
         for c in connection_propositions:
-            if f"{c.source.predicate}{c.source.content}" in connection_results:
-                connection_results[f"{c.source.predicate}{c.source.content}"].append(
+            if f"{c.source.predicate}{c.source.action}" in connection_results:
+                connection_results[f"{c.source.predicate}{c.source.action}"].append(
                     ConnectionPropositionResult(
                         type="Connection With Other Proposed Guideline"
-                        if f"{c.target.predicate}{c.target.content}" in connection_results
+                        if f"{c.target.predicate}{c.target.action}" in connection_results
                         else "Connection With Existing Guideline",
                         source=c.source,
                         target=c.target,
@@ -197,11 +198,11 @@ class GuidelineEvaluator:
                     )
                 )
 
-            if f"{c.target.predicate}{c.target.content}" in connection_results:
-                connection_results[f"{c.target.predicate}{c.target.content}"].append(
+            if f"{c.target.predicate}{c.target.action}" in connection_results:
+                connection_results[f"{c.target.predicate}{c.target.action}"].append(
                     ConnectionPropositionResult(
                         type="Connection With Other Proposed Guideline"
-                        if f"{c.source.predicate}{c.source.content}" in connection_results
+                        if f"{c.source.predicate}{c.source.action}" in connection_results
                         else "Connection With Existing Guideline",
                         source=c.source,
                         target=c.target,
@@ -248,7 +249,7 @@ class BehavioralChangeEvaluator:
 
         async def _check_for_duplications() -> None:
             seen_guidelines = set(
-                (payload.guideline_set, payload.predicate, payload.content) for payload in payloads
+                (payload.guideline_set, payload.predicate, payload.action) for payload in payloads
             )
             if len(seen_guidelines) < len(payloads):
                 raise EvaluationValidationError(
@@ -265,8 +266,8 @@ class BehavioralChangeEvaluator:
                     for g in existing_guidelines
                     if (
                         guideline_set,
-                        g.predicate,
-                        g.content,
+                        g.content.predicate,
+                        g.content.action,
                     )
                     in seen_guidelines
                 ),

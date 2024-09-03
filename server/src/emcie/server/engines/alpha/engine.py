@@ -447,7 +447,10 @@ class AlphaEngine(Engine):
 
         if propositions:
             context += str(
-                [f"When {p.guideline.predicate}, then {p.guideline.content}" for p in propositions]
+                [
+                    f"When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                    for p in propositions
+                ]
             )
 
         if staged_events:

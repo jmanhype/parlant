@@ -7,15 +7,15 @@ from typing import Any, Sequence
 
 from more_itertools import chunked
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineData
+from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.engines.alpha.utils import make_llm_client
 from emcie.server.logger import Logger
 
 
 @dataclass(frozen=True)
 class GuidelineConnectionProposition:
-    source: GuidelineData
-    target: GuidelineData
+    source: GuidelineContent
+    target: GuidelineContent
     kind: ConnectionKind
     score: int
     rationale: str
@@ -29,8 +29,8 @@ class GuidelineConnectionProposer:
 
     async def propose_connections(
         self,
-        introduced_guidelines: Sequence[GuidelineData],
-        existing_guidelines: Sequence[GuidelineData] = [],
+        introduced_guidelines: Sequence[GuidelineContent],
+        existing_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[GuidelineConnectionProposition]:
         if not introduced_guidelines:
             return []
@@ -87,15 +87,15 @@ class GuidelineConnectionProposer:
 
     def _format_connection_propositions(
         self,
-        evaluated_guideline: GuidelineData,
-        comparison_set: Sequence[GuidelineData],
+        evaluated_guideline: GuidelineContent,
+        comparison_set: Sequence[GuidelineContent],
     ) -> str:
         comparison_set_string = "\n\t".join(
-            f"{i}) {{when: {g.predicate}, then: {g.content}}}"
+            f"{i}) {{when: {g.predicate}, then: {g.action}}}"
             for i, g in enumerate(comparison_set, start=1)
         )
         evaluated_guideline_string = (
-            f"{{when: {evaluated_guideline.predicate}, then: {evaluated_guideline.content}}}"
+            f"{{when: {evaluated_guideline.predicate}, then: {evaluated_guideline.action}}}"
         )
 
         return f"""
@@ -230,8 +230,8 @@ Example 10:###
 
     async def _generate_propositions(
         self,
-        guideline_to_test: GuidelineData,
-        guidelines_to_compare: Sequence[GuidelineData],
+        guideline_to_test: GuidelineContent,
+        guidelines_to_compare: Sequence[GuidelineContent],
     ) -> list[dict[str, Any]]:
         prompt = self._format_connection_propositions(guideline_to_test, guidelines_to_compare)
         response = await self._llm_client.chat.completions.create(
@@ -476,8 +476,8 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
     async def _classify_connections(
         self,
         connection_propositions: Sequence[dict[str, Any]],
-        introduced_guidelines: Sequence[GuidelineData],
-        existing_guidelines: Sequence[GuidelineData],
+        introduced_guidelines: Sequence[GuidelineContent],
+        existing_guidelines: Sequence[GuidelineContent],
     ) -> Sequence[GuidelineConnectionProposition]:
         prompt = self._format_classification_connections(connection_propositions)
         response = await self._llm_client.chat.completions.create(
@@ -493,7 +493,7 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
         self.logger.debug(f"Connection Propositions Found: {json.dumps(connection_list, indent=2)}")
 
         staged_guidelines = {
-            f"{s.predicate}_{s.content}".lower(): s
+            f"{s.predicate}_{s.action}".lower(): s
             for s in chain(introduced_guidelines, existing_guidelines)
         }
 

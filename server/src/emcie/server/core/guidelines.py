@@ -11,18 +11,19 @@ GuidelineId = NewType("GuidelineId", str)
 
 
 @dataclass(frozen=True)
-class GuidelineData:
+class GuidelineContent:
     predicate: str
-    content: str
+    action: str
 
 
 @dataclass(frozen=True)
-class Guideline(GuidelineData):
+class Guideline:
     id: GuidelineId
     creation_utc: datetime
+    content: GuidelineContent
 
     def __str__(self) -> str:
-        return f"When {self.predicate}, then {self.content}"
+        return f"When {self.content.predicate}, then {self.content.action}"
 
 
 class GuidelineStore(ABC):
@@ -31,7 +32,7 @@ class GuidelineStore(ABC):
         self,
         guideline_set: str,
         predicate: str,
-        content: str,
+        action: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline: ...
 
@@ -61,7 +62,7 @@ class GuidelineDocumentStore(GuidelineStore):
         id: GuidelineId
         guideline_set: str
         predicate: str
-        content: str
+        action: str
         creation_utc: Optional[datetime] = None
 
     def __init__(self, database: DocumentDatabase):
@@ -74,7 +75,7 @@ class GuidelineDocumentStore(GuidelineStore):
         self,
         guideline_set: str,
         predicate: str,
-        content: str,
+        action: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
@@ -82,18 +83,20 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_id = await self._collection.insert_one(
             document={
                 "id": generate_id(),
+                "creation_utc": creation_utc,
                 "guideline_set": guideline_set,
                 "predicate": predicate,
-                "content": content,
-                "creation_utc": creation_utc,
+                "action": action,
             },
         )
 
         return Guideline(
             id=GuidelineId(guideline_id),
-            predicate=predicate,
-            content=content,
             creation_utc=creation_utc,
+            content=GuidelineContent(
+                predicate=predicate,
+                action=action,
+            ),
         )
 
     async def list_guidelines(
@@ -103,9 +106,11 @@ class GuidelineDocumentStore(GuidelineStore):
         return [
             Guideline(
                 id=GuidelineId(d["id"]),
-                predicate=d["predicate"],
-                content=d["content"],
                 creation_utc=d["creation_utc"],
+                content=GuidelineContent(
+                    predicate=d["predicate"],
+                    action=d["action"],
+                ),
             )
             for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
         ]
@@ -124,9 +129,11 @@ class GuidelineDocumentStore(GuidelineStore):
 
         return Guideline(
             id=GuidelineId(guideline_document["id"]),
-            predicate=guideline_document["predicate"],
-            content=guideline_document["content"],
             creation_utc=guideline_document["creation_utc"],
+            content=GuidelineContent(
+                predicate=guideline_document["predicate"],
+                action=guideline_document["action"],
+            ),
         )
 
     async def delete_guideline(
