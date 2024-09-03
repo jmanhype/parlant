@@ -31,7 +31,7 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import (
-    GuidelineData,
+    GuidelineContent,
     GuidelineDocumentStore,
     GuidelineStore,
 )
@@ -149,7 +149,7 @@ async def load_guidelines(c: Container, config: Any) -> None:
             guideline = await guideline_store.create_guideline(
                 guideline_set=agent_id,
                 predicate=guideline_spec["when"],
-                content=guideline_spec["then"],
+                action=guideline_spec["then"],
             )
 
             for tool_name in guideline_spec.get("enabled_tools", []):
@@ -346,18 +346,18 @@ async def start_server(params: CLIParams) -> None:
 
 
 async def check_coherence(params: CLIParams) -> None:
-    def render_guideline(g: GuidelineData) -> str:
-        return f"When {g['predicate']}, then {g['content']}"
+    def render_guideline(g: GuidelineContent) -> str:
+        return f"When {g.predicate}, then {g.action}"
 
     checker = CoherenceChecker(logger=LOGGER)
 
     for agent, guideline_specs in params.config["guidelines"].items():
         guideline_to_evaluate = [
-            GuidelineData(
+            GuidelineContent(
                 predicate=str(guideline["when"]),
-                content=str(guideline["then"]),
+                action=str(guideline["then"]),
             )
-            for guideline in enumerate(guideline_specs)
+            for guideline in guideline_specs
         ]
 
         tests = [
