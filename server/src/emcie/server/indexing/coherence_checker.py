@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import asyncio
 from datetime import datetime, timezone
-from enum import Enum
+from enum import Enum, auto
 from itertools import chain
 import json
 from typing import Sequence
@@ -20,10 +20,10 @@ EVALUATION_BATCH_SIZE = 5
 
 
 class ContradictionKind(Enum):
-    HIERARCHICAL = "Hierarchical Contradiction"
-    PARALLEL = "Parallel Contradiction"
-    TEMPORAL = "Temporal Contradiction"
-    CONTEXTUAL = "Contextual Contradiction"
+    HIERARCHICAL = auto()
+    PARALLEL = auto()
+    TEMPORAL = auto()
+    CONTEXTUAL = auto()
 
 
 class ContradictionTest(DefaultBaseModel):

@@ -189,11 +189,11 @@ def test_that_hierarchical_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.HIERARCHICAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.HIERARCHICAL
     assert contradiction.severity >= 5
 
     assert nlp_test(
-        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -262,11 +262,11 @@ def test_that_hierarchical_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.HIERARCHICAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.HIERARCHICAL
     assert contradiction.severity < 5
 
     assert nlp_test(
-        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"Here is an explanation of what {hierarchical_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{hierarchical_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -332,11 +332,11 @@ def test_that_parallel_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.PARALLEL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.PARALLEL
     assert contradiction.severity >= 5
 
     assert nlp_test(
-        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -403,11 +403,11 @@ def test_that_parallel_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.PARALLEL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.PARALLEL
     assert contradiction.severity < 5
 
     assert nlp_test(
-        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"Here is an explanation of what {parallel_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{parallel_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -473,11 +473,11 @@ def test_that_temporal_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.TEMPORAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.TEMPORAL
     assert contradiction.severity >= 5
 
     assert nlp_test(
-        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:\n"  # noqa
+        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_kind._describe()} type is:\n"  # noqa
         f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -544,11 +544,11 @@ def test_that_temporal_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.TEMPORAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.TEMPORAL
     assert contradiction.severity < 5
 
     assert nlp_test(
-        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_type.value} type is:"  # noqa
+        f"Here is an explanation of what {temporal_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{temporal_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -614,11 +614,11 @@ def test_that_contextual_evaluator_detects_contradictions(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.CONTEXTUAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.CONTEXTUAL
     assert contradiction.severity >= 5
 
     assert nlp_test(
-        f"Here is an explanation of what {contextual_contradiction_evaluator.contradiction_type} type is:"  # noqa
+        f"Here is an explanation of what {contextual_contradiction_evaluator.contradiction_kind._describe()} type is:"  # noqa
         f"{contextual_contradiction_evaluator._format_contradiction_type_definition()}"
         "Here are two behavioral guidelines:"
         "a semantic contradiction test was conducted, regarding the following two behavioral guidelines:"  # noqa
@@ -685,7 +685,7 @@ def test_that_contextual_evaluator_does_not_produce_false_positives(
     assert len(contradiction_results) == 1
     contradiction = contradiction_results[0]
 
-    assert contradiction.kind == ContradictionKind.CONTEXTUAL.value  # type: ignore
+    assert ContradictionKind(contradiction.kind) == ContradictionKind.CONTEXTUAL
     assert contradiction.severity < 5
 
     assert nlp_test(
