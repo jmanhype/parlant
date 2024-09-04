@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
+from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 from emcie.server.logger import Logger
@@ -85,7 +86,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == "entails"
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 @mark.parametrize(
@@ -151,7 +152,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == "suggests"
+    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
 def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(

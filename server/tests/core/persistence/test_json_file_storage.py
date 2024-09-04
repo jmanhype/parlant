@@ -17,11 +17,12 @@ from emcie.server.core.context_variables import (
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
 from emcie.server.core.evaluations import (
     EvaluationDocumentStore,
-    EvaluationGuidelinePayload,
-    EvaluationInvoice,
-    EvaluationInvoiceData,
-    EvaluationGuidelineCoherenceCheckResult,
-    EvaluationGuidelineConnectionPropositionsResult,
+    GuidelinePayload,
+    Invoice,
+    InvoiceData,
+    InvoiceGuidelineData,
+    PayloadDescriptor,
+    PayloadKind,
 )
 from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
@@ -554,15 +555,16 @@ async def test_evaluation_creation(
         evaluation_store = EvaluationDocumentStore(evaluation_db)
 
         payloads = [
-            EvaluationGuidelinePayload(
-                type="guideline",
+            GuidelinePayload(
                 guideline_set=context.agent_id,
                 predicate="Test evaluation creation with invoice",
                 action="Ensure the evaluation with invoice is persisted in the JSON file",
             )
         ]
 
-        evaluation = await evaluation_store.create_evaluation(payloads=payloads)
+        evaluation = await evaluation_store.create_evaluation(
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
+        )
 
     with open(new_file) as f:
         evaluations_from_json = json.load(f)
@@ -583,27 +585,24 @@ async def test_evaluation_update(
         evaluation_store = EvaluationDocumentStore(evaluation_db)
 
         payloads = [
-            EvaluationGuidelinePayload(
-                type="guideline",
+            GuidelinePayload(
                 guideline_set=context.agent_id,
                 predicate="Initial evaluation payload with invoice",
                 action="This content will be updated",
             )
         ]
 
-        evaluation = await evaluation_store.create_evaluation(payloads=payloads)
-
-        invoice_data = EvaluationInvoiceData(
-            type="guideline",
-            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
-                coherence_checks=[],
-            ),
-            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
-                connection_propositions=[],
-            ),
+        evaluation = await evaluation_store.create_evaluation(
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
         )
 
-        invoice = EvaluationInvoice(
+        invoice_data: InvoiceData = InvoiceGuidelineData(
+            coherence_checks=[],
+            connection_propositions=None,
+        )
+
+        invoice = Invoice(
+            kind=PayloadKind.GUIDELINE,
             payload=payloads[0],
             state_version="123",
             checksum="initial_checksum",

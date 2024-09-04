@@ -1,18 +1,18 @@
 import asyncio
-from typing import Optional, OrderedDict, Sequence
+from typing import Iterable, Optional, OrderedDict, Sequence
 
 from emcie.server.core.evaluations import (
-    CoherenceCheckResult,
-    ConnectionPropositionResult,
-    EvaluationGuidelineCoherenceCheckResult,
+    CoherenceCheck,
+    ConnectionProposition,
     Evaluation,
-    EvaluationGuidelinePayload,
+    EvaluationStatus,
     EvaluationId,
-    EvaluationInvoice,
-    EvaluationInvoiceGuidelineData,
-    EvaluationPayload,
+    Invoice,
+    InvoiceGuidelineData,
+    Payload,
     EvaluationStore,
-    EvaluationGuidelineConnectionPropositionsResult,
+    PayloadDescriptor,
+    PayloadKind,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
 from emcie.server.indexing.coherence_checker import CoherenceChecker, ContradictionTest
@@ -44,8 +44,8 @@ class GuidelineEvaluator:
 
     async def evaluate(
         self,
-        payloads: Sequence[EvaluationPayload],
-    ) -> Sequence[EvaluationInvoiceGuidelineData]:
+        payloads: Sequence[Payload],
+    ) -> Sequence[InvoiceGuidelineData]:
         guideline_set = payloads[0].guideline_set
 
         guideline_to_evaluate = [
@@ -60,52 +60,49 @@ class GuidelineEvaluator:
             guideline_set=guideline_set
         )
 
-        coherence_results = await self._check_for_coherence(
+        coherence_checks = await self._check_payloads_coherence(
             guideline_to_evaluate, existing_guidelines
         )
 
-        if coherence_results:
-            return [
-                EvaluationInvoiceGuidelineData(
-                    type="guideline",
-                    coherence_check_detail=coherence_result,
-                    connections_detail=None,
-                )
-                for coherence_result in coherence_results
-            ]
+        if not coherence_checks:
+            connection_propositions = await self._propose_payloads_connections(
+                guideline_to_evaluate, existing_guidelines
+            )
 
-        connections_results = await self._propose_guideline_connections(
-            guideline_to_evaluate, existing_guidelines
-        )
+            if connection_propositions:
+                return [
+                    InvoiceGuidelineData(
+                        coherence_checks=[],
+                        connection_propositions=payload_connection_propositions,
+                    )
+                    for payload_connection_propositions in connection_propositions
+                ]
 
-        if connections_results:
-            return [
-                EvaluationInvoiceGuidelineData(
-                    type="guideline",
-                    coherence_check_detail=None,
-                    connections_detail=connections_result,
-                )
-                for connections_result in connections_results
-            ]
+            else:
+                return [
+                    InvoiceGuidelineData(
+                        coherence_checks=[],
+                        connection_propositions=None,
+                    )
+                    for _ in range(len(payloads))
+                ]
 
-        else:
-            return [
-                EvaluationInvoiceGuidelineData(
-                    type="guideline",
-                    coherence_check_detail=None,
-                    connections_detail=None,
-                )
-                for _ in range(len(payloads))
-            ]
+        return [
+            InvoiceGuidelineData(
+                coherence_checks=payload_coherence_checks,
+                connection_propositions=None,
+            )
+            for payload_coherence_checks in coherence_checks
+        ]
 
-    async def _check_for_coherence(
+    async def _check_payloads_coherence(
         self,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
-    ) -> Optional[Sequence[EvaluationGuidelineCoherenceCheckResult]]:
+    ) -> Optional[Iterable[Sequence[CoherenceCheck]]]:
         checker = CoherenceChecker(self.logger)
 
-        coherence_check_results = await checker.evaluate_coherence(
+        coherence_checks = await checker.evaluate_coherence(
             guidelines_to_evaluate=guidelines_to_evaluate,
             comparison_guidelines=[
                 GuidelineContent(predicate=g.content.predicate, action=g.content.action)
@@ -115,7 +112,7 @@ class GuidelineEvaluator:
 
         contradictions: dict[str, ContradictionTest] = {}
 
-        for c in coherence_check_results:
+        for c in coherence_checks:
             key = f"{c.guideline_a.predicate}{c.guideline_a.action}"
             if (c.severity >= 6) and (
                 key not in contradictions or c.severity > contradictions[key].severity
@@ -125,17 +122,19 @@ class GuidelineEvaluator:
         if not contradictions:
             return None
 
-        guideline_coherence_results: OrderedDict[str, list[CoherenceCheckResult]] = OrderedDict(
+        coherence_checks_by_guideline_payload: OrderedDict[str, list[CoherenceCheck]] = OrderedDict(
             {f"{g.predicate}{g.action}": [] for g in guidelines_to_evaluate}
         )
 
         for c in contradictions.values():
-            guideline_coherence_results[f"{c.guideline_a.predicate}{c.guideline_a.action}"].append(
-                CoherenceCheckResult(
-                    type="Contradiction With Other Proposed Guideline"
+            coherence_checks_by_guideline_payload[
+                f"{c.guideline_a.predicate}{c.guideline_a.action}"
+            ].append(
+                CoherenceCheck(
+                    kind="contradiction_with_another_evaluated_guideline"
                     if f"{c.guideline_b.predicate}{c.guideline_b.action}"
-                    in guideline_coherence_results
-                    else "Contradiction With Existing Guideline",
+                    in coherence_checks_by_guideline_payload
+                    else "contradiction_with_existing_guideline",
                     first=c.guideline_a,
                     second=c.guideline_b,
                     issue=c.rationale,
@@ -143,12 +142,15 @@ class GuidelineEvaluator:
                 )
             )
 
-            if f"{c.guideline_b.predicate}{c.guideline_b.action}" in guideline_coherence_results:
-                guideline_coherence_results[
+            if (
+                f"{c.guideline_b.predicate}{c.guideline_b.action}"
+                in coherence_checks_by_guideline_payload
+            ):
+                coherence_checks_by_guideline_payload[
                     f"{c.guideline_b.predicate}{c.guideline_b.action}"
                 ].append(
-                    CoherenceCheckResult(
-                        type="Contradiction With Other Proposed Guideline",
+                    CoherenceCheck(
+                        kind="contradiction_with_another_evaluated_guideline",
                         first=c.guideline_a,
                         second=c.guideline_b,
                         issue=c.rationale,
@@ -156,16 +158,13 @@ class GuidelineEvaluator:
                     )
                 )
 
-        return [
-            EvaluationGuidelineCoherenceCheckResult(coherence_checks=v)
-            for v in guideline_coherence_results.values()
-        ]
+        return coherence_checks_by_guideline_payload.values()
 
-    async def _propose_guideline_connections(
+    async def _propose_payloads_connections(
         self,
         proposed_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
-    ) -> Optional[Sequence[EvaluationGuidelineConnectionPropositionsResult]]:
+    ) -> Optional[Iterable[Sequence[ConnectionProposition]]]:
         connection_propositions = [
             p
             for p in await self._guideline_connection_proposer.propose_connections(
@@ -181,39 +180,36 @@ class GuidelineEvaluator:
         if not connection_propositions:
             return None
 
-        connection_results: OrderedDict[str, list[ConnectionPropositionResult]] = OrderedDict(
+        connection_results: OrderedDict[str, list[ConnectionProposition]] = OrderedDict(
             {f"{g.predicate}{g.action}": [] for g in proposed_guidelines}
         )
 
         for c in connection_propositions:
             if f"{c.source.predicate}{c.source.action}" in connection_results:
                 connection_results[f"{c.source.predicate}{c.source.action}"].append(
-                    ConnectionPropositionResult(
-                        type="Connection With Other Proposed Guideline"
+                    ConnectionProposition(
+                        check_kind="connection_with_another_evaluated_guideline"
                         if f"{c.target.predicate}{c.target.action}" in connection_results
-                        else "Connection With Existing Guideline",
+                        else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
-                        kind=c.kind,
+                        connection_kind=c.kind,
                     )
                 )
 
             if f"{c.target.predicate}{c.target.action}" in connection_results:
                 connection_results[f"{c.target.predicate}{c.target.action}"].append(
-                    ConnectionPropositionResult(
-                        type="Connection With Other Proposed Guideline"
+                    ConnectionProposition(
+                        check_kind="connection_with_another_evaluated_guideline"
                         if f"{c.source.predicate}{c.source.action}" in connection_results
-                        else "Connection With Existing Guideline",
+                        else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
-                        kind=c.kind,
+                        connection_kind=c.kind,
                     )
                 )
 
-        return [
-            EvaluationGuidelineConnectionPropositionsResult(connection_propositions=v)
-            for v in connection_results.values()
-        ]
+        return connection_results.values()
 
 
 class BehavioralChangeEvaluator:
@@ -235,57 +231,65 @@ class BehavioralChangeEvaluator:
 
     async def validate_payloads(
         self,
-        payloads: Sequence[EvaluationGuidelinePayload],
+        payload_descriptors: Sequence[PayloadDescriptor],
     ) -> None:
-        if not payloads:
+        if not payload_descriptors:
             raise EvaluationValidationError("No payloads provided for the evaluation task.")
 
-        guideline_set = payloads[0].guideline_set
+        guideline_payloads = [p for k, p in payload_descriptors if k == PayloadKind.GUIDELINE]
 
-        if len({p.guideline_set for p in payloads}) > 1:
-            raise EvaluationValidationError(
-                "Evaluation task must be processed for a single guideline_set."
-            )
+        if guideline_payloads:
+            guideline_set = guideline_payloads[0].guideline_set
 
-        async def _check_for_duplications() -> None:
-            seen_guidelines = set(
-                (payload.guideline_set, payload.predicate, payload.action) for payload in payloads
-            )
-            if len(seen_guidelines) < len(payloads):
+            if len({p.guideline_set for p in guideline_payloads}) > 1:
                 raise EvaluationValidationError(
-                    "Duplicate guideline found among the provided guidelines."
+                    "Evaluation task must be processed for a single guideline_set."
                 )
 
-            existing_guidelines = await self._guideline_store.list_guidelines(
-                guideline_set=guideline_set
-            )
-
-            if guideline := next(
-                iter(
-                    g
-                    for g in existing_guidelines
-                    if (
-                        guideline_set,
-                        g.content.predicate,
-                        g.content.action,
+            async def _check_for_duplications() -> None:
+                seen_guidelines = set(
+                    (
+                        g.guideline_set,
+                        g.predicate,
+                        g.action,
                     )
-                    in seen_guidelines
-                ),
-                None,
-            ):
-                raise EvaluationValidationError(
-                    f"Duplicate guideline found against existing guidelines: {str(guideline)} in {guideline_set} guideline_set"
+                    for g in guideline_payloads
+                )
+                if len(seen_guidelines) < len(guideline_payloads):
+                    raise EvaluationValidationError(
+                        "Duplicate guideline found among the provided guidelines."
+                    )
+
+                existing_guidelines = await self._guideline_store.list_guidelines(
+                    guideline_set=guideline_set
                 )
 
-        await _check_for_duplications()
+                if guideline := next(
+                    iter(
+                        g
+                        for g in existing_guidelines
+                        if (
+                            guideline_set,
+                            g.content.predicate,
+                            g.content.action,
+                        )
+                        in seen_guidelines
+                    ),
+                    None,
+                ):
+                    raise EvaluationValidationError(
+                        f"Duplicate guideline found against existing guidelines: {str(guideline)} in {guideline_set} guideline_set"
+                    )
+
+            await _check_for_duplications()
 
     async def create_evaluation_task(
         self,
-        payloads: Sequence[EvaluationGuidelinePayload],
+        payload_descriptors: Sequence[PayloadDescriptor],
     ) -> EvaluationId:
-        await self.validate_payloads(payloads)
+        await self.validate_payloads(payload_descriptors)
 
-        evaluation = await self._evaluation_store.create_evaluation(payloads)
+        evaluation = await self._evaluation_store.create_evaluation(payload_descriptors)
 
         asyncio.create_task(self.run_evaluation(evaluation))
 
@@ -302,7 +306,7 @@ class BehavioralChangeEvaluator:
                 iter(
                     e
                     for e in await self._evaluation_store.list_evaluations()
-                    if e.status == "running" and e.id != evaluation.id
+                    if e.status == EvaluationStatus.RUNNING and e.id != evaluation.id
                 ),
                 None,
             ):
@@ -310,26 +314,27 @@ class BehavioralChangeEvaluator:
 
             await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
-                status="running",
+                status=EvaluationStatus.RUNNING,
             )
 
-            guideline_results = await self._guideline_evaluator.evaluate(
+            guideline_evaluation_data = await self._guideline_evaluator.evaluate(
                 payloads=[
                     invoice.payload
                     for invoice in evaluation.invoices
-                    if invoice.payload.type == "guideline"
+                    if invoice.kind == PayloadKind.GUIDELINE
                 ],
             )
 
-            for i, result in enumerate(guideline_results):
+            for i, result in enumerate(guideline_evaluation_data):
                 invoice_checksum = md5_checksum(str(evaluation.invoices[i].payload))
                 state_version = str(hash("Temporarily"))
 
-                invoice = EvaluationInvoice(
+                invoice = Invoice(
+                    kind=evaluation.invoices[i].kind,
                     payload=evaluation.invoices[i].payload,
                     checksum=invoice_checksum,
                     state_version=state_version,
-                    approved=True if not result.coherence_check_detail else False,
+                    approved=True if not result.coherence_checks else False,
                     data=result,
                     error=None,
                 )
@@ -344,7 +349,7 @@ class BehavioralChangeEvaluator:
 
             await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
-                status="completed",
+                status=EvaluationStatus.COMPLETED,
             )
 
         except Exception as exc:
@@ -354,6 +359,6 @@ class BehavioralChangeEvaluator:
             )
             await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
-                status="failed",
+                status=EvaluationStatus.FAILED,
                 error=str(exc),
             )

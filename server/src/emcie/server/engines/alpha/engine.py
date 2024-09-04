@@ -374,7 +374,10 @@ class AlphaEngine(Engine):
                     # priority of our connected guideline's proposition...
                     #
                     # Now try to read that out loud in one go :)
-                    if existing_connection[2] == "entails" and connection_kind == "suggests":
+                    if (
+                        existing_connection[2] == ConnectionKind.ENTAILS
+                        and connection_kind == ConnectionKind.SUGGESTS
+                    ):
                         continue  # Stay with existing one
                     elif existing_connection[0].score >= proposition.score:
                         continue  # Stay with existing one
@@ -394,9 +397,9 @@ class AlphaEngine(Engine):
             GuidelineProposition(
                 guideline=connection[1],
                 score={
-                    "suggests": connection[0].score // 2,
-                    "entails": connection[0].score,
-                }[connection[2]],
+                    ConnectionKind.SUGGESTS.name: connection[0].score // 2,
+                    ConnectionKind.ENTAILS.name: connection[0].score,
+                }[connection[2].name],
                 rationale="Automatically inferred from context",
             )
             for connection in proposition_and_inferred_guideline_guideline_pairs

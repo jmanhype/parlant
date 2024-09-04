@@ -281,16 +281,16 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
         payloads = {
             "payloads": [
                 {
-                    "type": "guideline",
+                    "kind": "guideline",
                     "guideline_set": "test-agent",
                     "predicate": "the user greets you",
-                    "content": "greet them back with 'Hello'",
+                    "action": "greet them back with 'Hello'",
                 },
                 {
-                    "type": "guideline",
+                    "kind": "guideline",
                     "guideline_set": "test-agent",
                     "predicate": "the user greeting you",
-                    "content": "greet them back with 'Hola'",
+                    "action": "greet them back with 'Hola'",
                 },
             ]
         }

@@ -25,7 +25,7 @@ from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
-from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
+from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
 from emcie.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -237,7 +237,7 @@ async def recover_server_tasks(
     evaluator: BehavioralChangeEvaluator,
 ) -> None:
     for evaluation in await evaluation_store.list_evaluations():
-        if evaluation.status in ["pending", "running"]:
+        if evaluation.status in [EvaluationStatus.PENDING, EvaluationStatus.RUNNING]:
             await evaluator.run_evaluation(evaluation)
 
 

@@ -23,7 +23,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
@@ -47,7 +47,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
     invoice = content["invoices"][0]
 
     assert invoice["approved"]
-    assert len(invoice["data"]["coherence_check_detail"]["coherence_checks"]) == 0
+    assert len(invoice["data"]["coherence_checks"]) == 0
 
 
 async def test_that_an_evaluation_can_be_fetched_with_running_status(
@@ -59,13 +59,13 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
                         "action": "greet them back with 'Hola'",
@@ -93,7 +93,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
@@ -115,7 +115,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
     invoice = content["invoices"][0]
 
     assert invoice["approved"]
-    assert len(invoice["data"]["coherence_check_detail"]["coherence_checks"]) == 0
+    assert len(invoice["data"]["coherence_checks"]) == 0
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_unapproved_invoice(
@@ -127,13 +127,13 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
                         "action": "greet them back with 'Hola'",
@@ -156,7 +156,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     assert not first_invoice["approved"]
 
-    assert len(first_invoice["data"]["coherence_check_detail"]["coherence_checks"]) >= 1
+    assert len(first_invoice["data"]["coherence_checks"]) >= 1
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoice_with_existing_guideline_connection_proposition(
@@ -177,7 +177,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "providing the weather update",
                         "action": "mention the best time to go for a walk",
@@ -196,18 +196,18 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     assert len(content["invoices"]) == 1
     invoice = content["invoices"][0]
 
-    assert len(invoice["data"]["connections_detail"]["connection_propositions"]) == 1
+    assert len(invoice["data"]["connection_propositions"]) == 1
     assert (
-        invoice["data"]["connections_detail"]["connection_propositions"][0]["type"]
-        == "Connection With Existing Guideline"
+        invoice["data"]["connection_propositions"][0]["check_kind"]
+        == "connection_with_existing_guideline"
     )
 
     assert (
-        invoice["data"]["connections_detail"]["connection_propositions"][0]["source"]["predicate"]
+        invoice["data"]["connection_propositions"][0]["source"]["predicate"]
         == "the user asks about the weather"
     )
     assert (
-        invoice["data"]["connections_detail"]["connection_propositions"][0]["target"]["predicate"]
+        invoice["data"]["connection_propositions"][0]["target"]["predicate"]
         == "providing the weather update"
     )
 
@@ -222,13 +222,13 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             json={
                 "payloads": [
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "the user asks about nearby restaurants",
                         "action": "provide a list of popular restaurants",
                     },
                     {
-                        "type": "guideline",
+                        "kind": "guideline",
                         "guideline_set": "test-agent",
                         "predicate": "listing restaurants",
                         "action": "highlight the one with the best reviews",
@@ -250,22 +250,18 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     first_invoice = content["invoices"][0]
 
     assert first_invoice["data"]
-    assert len(first_invoice["data"]["connections_detail"]["connection_propositions"]) == 1
+    assert len(first_invoice["data"]["connection_propositions"]) == 1
     assert (
-        first_invoice["data"]["connections_detail"]["connection_propositions"][0]["type"]
-        == "Connection With Other Proposed Guideline"
+        first_invoice["data"]["connection_propositions"][0]["check_kind"]
+        == "connection_with_another_evaluated_guideline"
     )
 
     assert (
-        first_invoice["data"]["connections_detail"]["connection_propositions"][0]["source"][
-            "predicate"
-        ]
+        first_invoice["data"]["connection_propositions"][0]["source"]["predicate"]
         == "the user asks about nearby restaurants"
     )
     assert (
-        first_invoice["data"]["connections_detail"]["connection_propositions"][0]["target"][
-            "predicate"
-        ]
+        first_invoice["data"]["connection_propositions"][0]["target"]["predicate"]
         == "listing restaurants"
     )
 
@@ -274,7 +270,7 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
     client: TestClient,
 ) -> None:
     duplicate_payload = {
-        "type": "guideline",
+        "kind": "guideline",
         "guideline_set": "test-agent",
         "predicate": "the user greets you",
         "action": "greet them back with 'Hello'",
@@ -310,7 +306,7 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
     )
 
     duplicate_payload = {
-        "type": "guideline",
+        "kind": "guideline",
         "guideline_set": "test-agent",
         "predicate": "the user greets you",
         "action": "greet them back with 'Hello'",
@@ -342,13 +338,13 @@ async def test_that_an_evaluation_validation_fails_due_to_multiple_guideline_set
         json={
             "payloads": [
                 {
-                    "type": "guideline",
+                    "kind": "guideline",
                     "guideline_set": "set-1",
                     "predicate": "the user greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 {
-                    "type": "guideline",
+                    "kind": "guideline",
                     "guideline_set": "set-2",
                     "predicate": "the user asks about the weather",
                     "action": "provide a weather update",
@@ -381,13 +377,13 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     payloads = {
         "payloads": [
             {
-                "type": "guideline",
+                "kind": "guideline",
                 "guideline_set": "test-agent",
                 "predicate": "the user greets you",
                 "action": "greet them back with 'Hello'",
             },
             {
-                "type": "guideline",
+                "kind": "guideline",
                 "guideline_set": "test-agent",
                 "predicate": "the user asks about the weather",
                 "action": "provide a weather update",

@@ -25,6 +25,14 @@ class ContradictionKind(Enum):
     TEMPORAL = auto()
     CONTEXTUAL = auto()
 
+    def _describe(self) -> str:
+        return {
+            ContradictionKind.HIERARCHICAL: "Hierarchical Contradiction",
+            ContradictionKind.PARALLEL: "Parallel Contradiction",
+            ContradictionKind.TEMPORAL: "Temporal Contradiction",
+            ContradictionKind.CONTEXTUAL: "Contextual Contradiction",
+        }[self]
+
 
 class ContradictionTest(DefaultBaseModel):
     kind: ContradictionKind
@@ -39,15 +47,12 @@ class ContradictionEvaluatorBase(ABC):
     def __init__(
         self,
         logger: Logger,
-        contradiction_type: ContradictionKind,
+        contradiction_kind: ContradictionKind,
     ) -> None:
         self.logger = logger
 
         self._llm_client = make_llm_client("openai")
-        self.contradiction_type = contradiction_type
-        self.contradiction_response_outcome_key = (
-            f'{self.contradiction_type.value.replace(" ", "_").lower()}s'
-        )
+        self.contradiction_kind = contradiction_kind
 
     async def evaluate(
         self,
@@ -72,7 +77,7 @@ class ContradictionEvaluatorBase(ABC):
                 ]
             )
         with self.logger.operation(
-            f"Evaluating {self.contradiction_type} for {len(tasks)} "
+            f"Evaluating {self.contradiction_kind} for {len(tasks)} "
             f"batches (batch size={EVALUATION_BATCH_SIZE})",
         ):
             contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
@@ -116,17 +121,17 @@ class ContradictionEvaluatorBase(ABC):
                 "severity_level": "<Severity Level (1-10): Indicates the intensity of the "
                 "contradiction arising from overlapping conditions>",
                 "rationale": "<Concise explanation of why the Guideline A and the "
-                f"Guideline B exhibit a {self.contradiction_type.value}>",
+                f"Guideline B exhibit a {self.contradiction_kind._describe()}>",
             }
             for id in comparison_guidelines
         ]
 
         return f"""
-### Definition of {self.contradiction_type.value}:
+### Definition of {self.contradiction_kind._describe()}:
 
 {self._format_contradiction_type_definition()}
 
-**Objective**: Evaluate potential {self.contradiction_type.value}s between the set of existing guidelines and the proposed guideline.
+**Objective**: Evaluate potential {self.contradiction_kind._describe()}s between the set of existing guidelines and the proposed guideline.
 
 **Task Description**:
 1. **Input**:
@@ -139,7 +144,7 @@ class ContradictionEvaluatorBase(ABC):
 
 2. **Process**:
    - Compare each of the {len(comparison_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
-   - Determine if there is a {self.contradiction_type.value}, where the Guideline A is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
+   - Determine if there is a {self.contradiction_kind._describe()}, where the Guideline A is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 
@@ -147,7 +152,7 @@ class ContradictionEvaluatorBase(ABC):
    - A list of results, each item detailing a potential contradiction, structured as follows:
      ```json
      {{
-         "{self.contradiction_response_outcome_key}":
+         "{self.contradiction_kind._describe()}":
             {result_structure}
      }}
      ```
@@ -172,11 +177,11 @@ class ContradictionEvaluatorBase(ABC):
         )
         content = response.choices[0].message.content or ""
 
-        json_content = json.loads(content)[self.contradiction_response_outcome_key]
+        json_content = json.loads(content)[self.contradiction_kind._describe()]
 
         contradictions = [
             ContradictionTest(
-                kind=self.contradiction_type,
+                kind=self.contradiction_kind,
                 guideline_a=guideline_to_evaluate,
                 guideline_b=indexed_compared_guidelines[
                     json_contradiction["compared_guideline_id"]
@@ -212,7 +217,7 @@ This type of Contradiction occurs when the application of a general guideline is
 - **Expected Result**:
      ```json
      {{
-         "{self.contradiction_response_outcome_key}": [
+         "{self.contradiction_kind._describe()}": [
              {{
                  "compared_guideline_id": "3",
                  "severity_level": 9,
@@ -228,7 +233,7 @@ This type of Contradiction occurs when the application of a general guideline is
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                  "compared_guideline_id": "1",
                  "severity_level": 8,
@@ -244,7 +249,7 @@ This type of Contradiction occurs when the application of a general guideline is
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                  "compared_guideline_id": "5",
                  "severity_level": 1,
@@ -260,7 +265,7 @@ This type of Contradiction occurs when the application of a general guideline is
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                  "compared_guideline_id": "7",
                  "severity_level": 9,
@@ -293,7 +298,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "1",
                 "severity_level": 9,
@@ -309,7 +314,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "3",
                 "severity_level": 8,
@@ -325,7 +330,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                  "compared_guideline_id": "5",
                  "severity_level": 7,
@@ -341,7 +346,7 @@ This happens when conditions for both guidelines are met simultaneously, without
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "7",
                 "severity_level": 1,
@@ -374,7 +379,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "1",
                 "severity_level": 9,
@@ -390,7 +395,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "3",
                 "severity_level": 8,
@@ -406,7 +411,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "5",
                 "severity_level": 9,
@@ -422,7 +427,7 @@ This arises from a lack of clear prioritization or differentiation between actio
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "7",
                 "severity_level": 1,
@@ -471,7 +476,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "3",
                 "severity_level": 8,
@@ -487,7 +492,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "5",
                 "severity_level": 9,
@@ -503,7 +508,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 - **Expected Result**:
      ```json
      {{
-        "{self.contradiction_response_outcome_key}": [
+        "{self.contradiction_kind._describe()}": [
              {{
                 "compared_guideline_id": "7",
                 "severity_level": 1,

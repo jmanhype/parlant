@@ -60,10 +60,10 @@ class GuidelineStore(ABC):
 class GuidelineDocumentStore(GuidelineStore):
     class GuidelineDocument(DefaultBaseModel):
         id: GuidelineId
+        creation_utc: datetime
         guideline_set: str
         predicate: str
         action: str
-        creation_utc: Optional[datetime] = None
 
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(

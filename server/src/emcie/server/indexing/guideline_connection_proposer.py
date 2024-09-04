@@ -501,7 +501,7 @@ Note: The evaluated guideline can be either of the kind "entails" or "suggests."
             GuidelineConnectionProposition(
                 source=staged_guidelines[f'{c["source"]["when"]}_{c["source"]["then"]}'.lower()],
                 target=staged_guidelines[f'{c["target"]["when"]}_{c["target"]["then"]}'.lower()],
-                kind=c["kind"],
+                kind=ConnectionKind[c["kind"].upper()],
                 rationale=c["rationale"],
                 score=c["score"],
             )

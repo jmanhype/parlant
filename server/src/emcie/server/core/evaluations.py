@@ -1,7 +1,18 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, NewType, Optional, Sequence, TypeAlias, Union
+from enum import Enum, auto
+from typing import (
+    Any,
+    NamedTuple,
+    NewType,
+    Optional,
+    Sequence,
+    TypeAlias,
+    Union,
+)
+from typing_extensions import Literal
 
 from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
@@ -11,33 +22,48 @@ from emcie.server.core.persistence.common import NoMatchingDocumentsError
 from emcie.server.core.persistence.document_database import DocumentDatabase
 
 EvaluationId = NewType("EvaluationId", str)
-EvaluationStatus = Literal["pending", "running", "completed", "failed"]
 
-EvaluationCoherenceCheckResultType = Literal[
-    "Contradiction With Existing Guideline", "Contradiction With Other Proposed Guideline"
+
+class EvaluationStatus(Enum):
+    PENDING = auto()
+    RUNNING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
+
+
+class PayloadKind(Enum):
+    GUIDELINE = auto()
+
+
+CoherenceCheckKind = Literal[
+    "contradiction_with_existing_guideline", "contradiction_with_another_evaluated_guideline"
 ]
-EvaluationConnectionPropositionResultType = Literal[
-    "Connection With Existing Guideline", "Connection With Other Proposed Guideline"
+ConnectionPropositionKind = Literal[
+    "connection_with_existing_guideline", "connection_with_another_evaluated_guideline"
 ]
 
 
 @dataclass(frozen=True)
-class EvaluationGuidelinePayload:
-    type: Literal["guideline"]
+class GuidelinePayload:
     guideline_set: str
     predicate: str
     action: str
 
     def __repr__(self) -> str:
-        return f"type: {self.type}, guideline_set: {self.guideline_set}, predicate: {self.predicate}, action: {self.action}"
+        return f"guideline_set: {self.guideline_set}, predicate: {self.predicate}, action: {self.action}"
 
 
-EvaluationPayload: TypeAlias = Union[EvaluationGuidelinePayload]
+Payload: TypeAlias = Union[GuidelinePayload]
+
+
+class PayloadDescriptor(NamedTuple):
+    kind: PayloadKind
+    payload: Payload
 
 
 @dataclass(frozen=True)
-class CoherenceCheckResult:
-    type: EvaluationCoherenceCheckResultType
+class CoherenceCheck:
+    kind: CoherenceCheckKind
     first: GuidelineContent
     second: GuidelineContent
     issue: str
@@ -45,40 +71,30 @@ class CoherenceCheckResult:
 
 
 @dataclass(frozen=True)
-class ConnectionPropositionResult:
-    type: EvaluationConnectionPropositionResultType
+class ConnectionProposition:
+    check_kind: ConnectionPropositionKind
     source: GuidelineContent
     target: GuidelineContent
-    kind: ConnectionKind
+    connection_kind: ConnectionKind
 
 
 @dataclass(frozen=True)
-class EvaluationGuidelineCoherenceCheckResult:
-    coherence_checks: list[CoherenceCheckResult]
+class InvoiceGuidelineData:
+    coherence_checks: Sequence[CoherenceCheck]
+    connection_propositions: Optional[Sequence[ConnectionProposition]]
+
+
+InvoiceData: TypeAlias = Union[InvoiceGuidelineData]
 
 
 @dataclass(frozen=True)
-class EvaluationGuidelineConnectionPropositionsResult:
-    connection_propositions: list[ConnectionPropositionResult]
-
-
-@dataclass(frozen=True)
-class EvaluationInvoiceGuidelineData:
-    type: Literal["guideline"]
-    coherence_check_detail: Optional[EvaluationGuidelineCoherenceCheckResult]
-    connections_detail: Optional[EvaluationGuidelineConnectionPropositionsResult]
-
-
-EvaluationInvoiceData: TypeAlias = Union[EvaluationInvoiceGuidelineData]
-
-
-@dataclass(frozen=True)
-class EvaluationInvoice:
-    payload: EvaluationPayload
+class Invoice:
+    kind: PayloadKind
+    payload: Payload
     checksum: str
     state_version: str
     approved: bool
-    data: Optional[EvaluationInvoiceData]
+    data: Optional[InvoiceData]
     error: Optional[str]
 
 
@@ -88,14 +104,14 @@ class Evaluation:
     creation_utc: datetime
     status: EvaluationStatus
     error: Optional[str]
-    invoices: Sequence[EvaluationInvoice]
+    invoices: Sequence[Invoice]
 
 
 class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
         self,
-        payloads: Sequence[EvaluationPayload],
+        payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation: ...
 
@@ -104,7 +120,7 @@ class EvaluationStore(ABC):
         self,
         evaluation_id: EvaluationId,
         invoice_index: int,
-        updated_invoice: EvaluationInvoice,
+        updated_invoice: Invoice,
     ) -> Evaluation: ...
 
     @abstractmethod
@@ -133,7 +149,7 @@ class EvaluationDocumentStore(EvaluationStore):
         status: EvaluationStatus
         creation_utc: datetime
         error: Optional[str]
-        invoices: list[EvaluationInvoice]
+        invoices: list[Invoice]
 
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
@@ -142,85 +158,38 @@ class EvaluationDocumentStore(EvaluationStore):
         )
 
     @staticmethod
-    def _evaluation_invoice_guideline_data_to_dict(
-        e: EvaluationInvoiceGuidelineData,
-    ) -> dict[str, Any]:
-        coherence_checks = (
-            [
-                {
-                    "type": c.type,
-                    "first": c.first,
-                    "second": c.second,
-                    "issue": c.issue,
-                    "severity": c.severity,
-                }
-                for c in e.coherence_check_detail.coherence_checks
-            ]
-            if e.coherence_check_detail
-            else None
-        )
-        connection_propositions = (
-            [
-                {
-                    "type": c.type,
-                    "source": c.source,
-                    "target": c.target,
-                    "kind": c.kind,
-                }
-                for c in e.connections_detail.connection_propositions
-            ]
-            if e.connections_detail
-            else None
-        )
-
-        return {
-            "type": e.type,
-            "coherence_check_detail": {"coherence_checks": coherence_checks}
-            if e.coherence_check_detail
-            else None,
-            "connections_detail": {"connection_propositions": connection_propositions}
-            if e.connections_detail
-            else None,
-        }
-
-    @staticmethod
-    def _evaluation_invoice_guideline_data_from_dict(
+    def _invoice_data_from_dict(
+        kind: PayloadKind,
         d: dict[str, Any],
-    ) -> EvaluationInvoiceGuidelineData:
-        return EvaluationInvoiceGuidelineData(
-            type=d["type"],
-            coherence_check_detail=EvaluationGuidelineCoherenceCheckResult(
+    ) -> InvoiceData:
+        if kind == PayloadKind.GUIDELINE:
+            return InvoiceGuidelineData(
                 coherence_checks=[
-                    CoherenceCheckResult(
-                        type=c["type"],
-                        first=c["first"],
-                        second=c["second"],
+                    CoherenceCheck(
+                        kind=c["kind"],
+                        first=GuidelineContent(**c["first"]),
+                        second=GuidelineContent(**c["second"]),
                         issue=c["issue"],
                         severity=c["severity"],
                     )
-                    for c in d["coherence_check_detail"]["coherence_checks"]
-                ]
-            )
-            if d["coherence_check_detail"]
-            else None,
-            connections_detail=EvaluationGuidelineConnectionPropositionsResult(
+                    for c in d["coherence_checks"]
+                ],
                 connection_propositions=[
-                    ConnectionPropositionResult(
-                        type=c["type"],
-                        source=c["source"],
-                        target=c["target"],
-                        kind=c["kind"],
+                    ConnectionProposition(
+                        check_kind=c["check_kind"],
+                        source=GuidelineContent(**c["source"]),
+                        target=GuidelineContent(**c["target"]),
+                        connection_kind=c["connection_kind"],
                     )
-                    for c in d["connections_detail"]["connection_propositions"]
+                    for c in d["connection_propositions"]
                 ]
+                if d["connection_propositions"]
+                else None,
             )
-            if d["connections_detail"]
-            else None,
-        )
 
     async def create_evaluation(
         self,
-        payloads: Sequence[EvaluationPayload],
+        payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
@@ -228,7 +197,8 @@ class EvaluationDocumentStore(EvaluationStore):
         evaluation_id = EvaluationId(generate_id())
 
         invoices = [
-            EvaluationInvoice(
+            Invoice(
+                kind=k,
                 payload=p,
                 state_version="",
                 checksum="",
@@ -236,22 +206,22 @@ class EvaluationDocumentStore(EvaluationStore):
                 data=None,
                 error=None,
             )
-            for p in payloads
+            for k, p in payload_descriptors
         ]
 
         await self._evaluation_collection.insert_one(
             document={
                 "id": evaluation_id,
                 "creation_utc": creation_utc,
-                "status": "pending",
+                "status": EvaluationStatus.PENDING,
                 "error": None,
-                "invoices": invoices,
+                "invoices": [asdict(i) for i in invoices],
             }
         )
 
         return Evaluation(
             id=evaluation_id,
-            status="pending",
+            status=EvaluationStatus.PENDING,
             creation_utc=creation_utc,
             error=None,
             invoices=invoices,
@@ -261,7 +231,7 @@ class EvaluationDocumentStore(EvaluationStore):
         self,
         evaluation_id: EvaluationId,
         invoice_index: int,
-        updated_invoice: EvaluationInvoice,
+        updated_invoice: Invoice,
     ) -> Evaluation:
         try:
             evaluation = await self.read_evaluation(evaluation_id)
@@ -276,28 +246,8 @@ class EvaluationDocumentStore(EvaluationStore):
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
             updated_document={
-                "id": evaluation.id,
-                "creation_utc": evaluation.creation_utc,
-                "status": evaluation.status,
-                "error": evaluation.error,
-                "invoices": [
-                    {
-                        "payload": {
-                            "type": invoice.payload.type,
-                            "guideline_set": invoice.payload.guideline_set,
-                            "predicate": invoice.payload.predicate,
-                            "action": invoice.payload.action,
-                        },
-                        "state_version": invoice.state_version,
-                        "checksum": invoice.checksum,
-                        "approved": invoice.approved,
-                        "data": self._evaluation_invoice_guideline_data_to_dict(invoice.data)
-                        if invoice.data
-                        else None,
-                        "error": invoice.error,
-                    }
-                    for invoice in evaluation_invoices
-                ],
+                **asdict(evaluation),
+                "invoices": [asdict(i) for i in evaluation_invoices],
             },
         )
 
@@ -322,30 +272,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={
-                "id": evaluation.id,
-                "creation_utc": evaluation.creation_utc,
-                "status": status,
-                "error": error,
-                "invoices": [
-                    {
-                        "payload": {
-                            "type": invoice.payload.type,
-                            "guideline_set": invoice.payload.guideline_set,
-                            "predicate": invoice.payload.predicate,
-                            "action": invoice.payload.action,
-                        },
-                        "state_version": invoice.state_version,
-                        "checksum": invoice.checksum,
-                        "approved": invoice.approved,
-                        "data": self._evaluation_invoice_guideline_data_to_dict(invoice.data)
-                        if invoice.data
-                        else None,
-                        "error": invoice.error,
-                    }
-                    for invoice in evaluation.invoices
-                ],
-            },
+            updated_document={**asdict(evaluation), "status": status, "error": error},
         )
 
         return Evaluation(
@@ -366,16 +293,17 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return Evaluation(
             id=evaluation_document["id"],
-            status=evaluation_document["status"],
+            status=EvaluationStatus(evaluation_document["status"]),
             creation_utc=evaluation_document["creation_utc"],
             error=evaluation_document["error"],
             invoices=[
-                EvaluationInvoice(
-                    payload=EvaluationPayload(**invoice["payload"]),
+                Invoice(
+                    kind=PayloadKind(invoice["kind"]),
+                    payload=Payload(**invoice["payload"]),
                     checksum=invoice["checksum"],
                     state_version=invoice["state_version"],
                     approved=invoice["approved"],
-                    data=self._evaluation_invoice_guideline_data_from_dict(invoice["data"])
+                    data=self._invoice_data_from_dict(PayloadKind(invoice["kind"]), invoice["data"])
                     if invoice["data"]
                     else None,
                     error=invoice["error"],
@@ -390,16 +318,19 @@ class EvaluationDocumentStore(EvaluationStore):
         return [
             Evaluation(
                 id=e["id"],
-                status=e["status"],
+                status=EvaluationStatus(e["status"]),
                 creation_utc=e["creation_utc"],
                 error=e["error"],
                 invoices=[
-                    EvaluationInvoice(
-                        payload=EvaluationPayload(**invoice["payload"]),
+                    Invoice(
+                        kind=PayloadKind(invoice["kind"]),
+                        payload=Payload(**invoice["payload"]),
                         checksum=invoice["checksum"],
                         state_version=invoice["state_version"],
                         approved=invoice["approved"],
-                        data=self._evaluation_invoice_guideline_data_from_dict(invoice["data"])
+                        data=self._invoice_data_from_dict(
+                            PayloadKind(invoice["kind"]), invoice["data"]
+                        )
                         if invoice["data"]
                         else None,
                         error=invoice["error"],
