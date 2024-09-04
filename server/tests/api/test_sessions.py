@@ -98,13 +98,13 @@ async def add_guideline(
     container: Container,
     agent_id: AgentId,
     predicate: str,
-    content: str,
+    action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
 ) -> None:
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate=predicate,
-        content=content,
+        action=action,
     )
 
     if tool_function:
@@ -366,7 +366,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
         container=container,
         agent_id=agent_id,
         predicate="a user says hello",
-        content="answer like a cow",
+        action="answer like a cow",
         tool_function=ToolFunctions.GET_COW_UTTERING,
     )
 
