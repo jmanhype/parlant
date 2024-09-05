@@ -90,6 +90,32 @@ def test_read_term(
     assert data["synonyms"] == synonyms
 
 
+def test_read_term_without_synonyms(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    name = "guideline"
+    description = "when and then statements"
+
+    create_response = client.post(
+        "/terminology",
+        json={
+            "agent_id": agent_id,
+            "name": name,
+            "description": description,
+        },
+    )
+    assert create_response.status_code == 201
+
+    read_response = client.get(f"/terminology/{agent_id}/{name}")
+    assert read_response.status_code == 200
+
+    data = read_response.json()
+    assert data["name"] == name
+    assert data["description"] == description
+    assert data["synonyms"] is None
+
+
 def test_list_terms(
     client: TestClient,
     agent_id: AgentId,

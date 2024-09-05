@@ -192,7 +192,7 @@ class TerminologyChromaStore(TerminologyStore):
             creation_utc=term_document["creation_utc"],
             name=term_document["name"],
             description=term_document["description"],
-            synonyms=term_document["synonyms"].split(", "),
+            synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else None,
         )
 
     async def list_terms(

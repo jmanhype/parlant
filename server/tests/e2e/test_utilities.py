@@ -32,7 +32,8 @@ def get_package_path() -> Path:
     return package_path
 
 
-CLI_PATH = get_package_path() / "bin/emcie-server"
+CLI_CLIENT_PATH = get_package_path() / "bin/emcie"
+CLI_SERVER_PATH = get_package_path() / "bin/emcie-server"
 
 
 @dataclass(frozen=True)
@@ -155,7 +156,7 @@ def run_server(
         "poetry",
         "run",
         "python",
-        CLI_PATH.as_posix(),
+        CLI_SERVER_PATH.as_posix(),
         "-c",
         context.config_file.as_posix(),
         "run",
