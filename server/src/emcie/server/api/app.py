@@ -5,11 +5,13 @@ from lagom import Container
 
 from emcie.server.api import agents, index
 from emcie.server.api import sessions
+from emcie.server.api import terminology
 from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.sessions import SessionListener, SessionStore
+from emcie.server.core.terminology import TerminologyStore
 from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.logger import Logger
 from emcie.server.mc import MC
@@ -23,6 +25,7 @@ async def create_app(container: Container) -> FastAPI:
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
     evaluation_service = container[BehavioralChangeEvaluator]
+    terminology_store = container[TerminologyStore]
     mc = container[MC]
 
     app = FastAPI()
@@ -70,6 +73,13 @@ async def create_app(container: Container) -> FastAPI:
         router=index.create_router(
             evaluation_service=evaluation_service,
             evaluation_store=evaluation_store,
+        ),
+    )
+
+    app.include_router(
+        prefix="/terminology",
+        router=terminology.create_router(
+            terminology_store=terminology_store,
         ),
     )
 

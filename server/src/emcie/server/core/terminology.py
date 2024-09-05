@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
 from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
+from emcie.server.core.persistence.common import NoMatchingDocumentsError
 
 TermId = NewType("TermId", str)
 
@@ -60,6 +61,13 @@ class TerminologyStore:
         self,
         term_set: str,
     ) -> Sequence[Term]: ...
+
+    @abstractmethod
+    async def delete_term(
+        self,
+        term_set: str,
+        name: str,
+    ) -> TermId: ...
 
     @abstractmethod
     async def find_relevant_terms(
@@ -144,10 +152,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        term_id = TermId(generate_id())
-
         updated_document = {
-            "id": term_id,
             "term_set": term_set,
             "content": content,
             "name": name,
@@ -155,15 +160,15 @@ class TerminologyChromaStore(TerminologyStore):
             "synonyms": ", ".join(synonyms) if synonyms else "",
         }
 
-        await self._collection.update_one(
-            filters={"term_set": {"$eq": term_set}, "term_name": {"$eq": name}},
+        term_id = await self._collection.update_one(
+            filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
             updated_document=updated_document,
         )
 
-        term_doc = await self._collection.find_one({"id": {"$eq": updated_document["id"]}})
+        term_doc = await self._collection.find_one({"id": {"$eq": term_id}})
 
         return Term(
-            id=term_id,
+            id=TermId(term_id),
             creation_utc=term_doc["creation_utc"],
             name=name,
             description=description,
@@ -175,12 +180,15 @@ class TerminologyChromaStore(TerminologyStore):
         term_set: str,
         name: str,
     ) -> Term:
-        term_document = await self._collection.find_one(
-            filters={"term_set": {"$eq": term_set}, "term_name": {"$eq": name}}
-        )
+        try:
+            term_document = await self._collection.find_one(
+                filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
+            )
+        except NoMatchingDocumentsError:
+            raise ItemNotFoundError(item_id=UniqueId(name), message=f"term_set={term_set}")
 
         return Term(
-            id=term_document["term_id"],
+            id=term_document["id"],
             creation_utc=term_document["creation_utc"],
             name=term_document["name"],
             description=term_document["description"],
@@ -201,6 +209,21 @@ class TerminologyChromaStore(TerminologyStore):
             )
             for d in await self._collection.find(filters={"term_set": {"$eq": term_set}})
         ]
+
+    async def delete_term(
+        self,
+        term_set: str,
+        name: str,
+    ) -> TermId:
+        term_document = await self._collection.find_one(
+            filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
+        )
+
+        await self._collection.delete_one(
+            filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
+        )
+
+        return TermId(term_document["id"])
 
     async def find_relevant_terms(
         self,

@@ -171,7 +171,7 @@ class ChromaCollection(DocumentCollection):
                     ids=[document_id],
                     documents=[updated_document["content"]],
                     metadatas=[
-                        {**docs[0], **self._schema(**updated_document).model_dump(mode="json")}
+                        self._schema(**{**docs[0], **updated_document}).model_dump(mode="json")
                     ],
                 )
                 return document_id

@@ -206,6 +206,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             )
         except NoMatchingDocumentsError:
             raise ItemNotFoundError(item_id=UniqueId(id), message=f"variable_set={variable_set}")
+
         try:
             await self._value_collection.delete_one(
                 {
