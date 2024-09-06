@@ -9,7 +9,6 @@ from itertools import count
 
 from emcie.common.tools import ToolId, ToolResult
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import generate_id
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
@@ -90,7 +89,6 @@ def make_event_params(
         "creation_utc": str(datetime.now(timezone.utc)),
         "correlation_id": "dummy_correlation_id",
         "data": data,
-        "correlation_id": generate_id(),
     }
 
 
