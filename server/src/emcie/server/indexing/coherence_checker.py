@@ -144,7 +144,7 @@ class ContradictionEvaluatorBase(ABC):
 
 2. **Process**:
    - Compare each of the {len(comparison_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
-   - Determine if there is a {self.contradiction_kind._describe()}, where the Guideline A is more specific and directly contradicts a more general guideline from the Guideline Comparison Set.
+   - Determine if there is a {self.contradiction_kind._describe()}, where Guideline A directly contradicts a guideline from the Guideline Comparison Set when both guidelines are based on the same input.
    - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
 
 
