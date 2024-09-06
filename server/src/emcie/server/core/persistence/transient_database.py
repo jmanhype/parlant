@@ -105,7 +105,7 @@ class _TransientDocumentCollection(DocumentCollection):
 
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                self._documents[i] = updated_document
+                self._documents[i] = self._schema(**updated_document).model_dump(mode="json")
                 document_id = updated_document["id"]
                 return document_id
 
