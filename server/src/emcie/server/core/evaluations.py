@@ -1,10 +1,12 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
+from pydantic.dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import (
     Any,
+    Mapping,
     NamedTuple,
     NewType,
     Optional,
@@ -82,6 +84,7 @@ class ConnectionProposition:
 class InvoiceGuidelineData:
     coherence_checks: Sequence[CoherenceCheck]
     connection_propositions: Optional[Sequence[ConnectionProposition]]
+    _type: Literal["guideline"] = "guideline"  # Union discrimator for Pydantic
 
 
 InvoiceData: TypeAlias = Union[InvoiceGuidelineData]
@@ -157,35 +160,16 @@ class EvaluationDocumentStore(EvaluationStore):
             schema=self.EvaluationDocument,
         )
 
-    @staticmethod
-    def _invoice_data_from_dict(
-        kind: PayloadKind,
-        d: dict[str, Any],
-    ) -> InvoiceData:
-        if kind == PayloadKind.GUIDELINE:
-            return InvoiceGuidelineData(
-                coherence_checks=[
-                    CoherenceCheck(
-                        kind=c["kind"],
-                        first=GuidelineContent(**c["first"]),
-                        second=GuidelineContent(**c["second"]),
-                        issue=c["issue"],
-                        severity=c["severity"],
-                    )
-                    for c in d["coherence_checks"]
-                ],
-                connection_propositions=[
-                    ConnectionProposition(
-                        check_kind=c["check_kind"],
-                        source=GuidelineContent(**c["source"]),
-                        target=GuidelineContent(**c["target"]),
-                        connection_kind=c["connection_kind"],
-                    )
-                    for c in d["connection_propositions"]
-                ]
-                if d["connection_propositions"]
-                else None,
-            )
+    def _document_to_evaluation(self, evaluation_document: Mapping[str, Any]) -> Evaluation:
+        evaluation_model = self.EvaluationDocument(**evaluation_document)
+
+        return Evaluation(
+            id=evaluation_model.id,
+            status=evaluation_model.status,
+            creation_utc=evaluation_model.creation_utc,
+            error=evaluation_model.error,
+            invoices=evaluation_model.invoices,
+        )
 
     async def create_evaluation(
         self,
@@ -215,7 +199,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 "creation_utc": creation_utc,
                 "status": EvaluationStatus.PENDING,
                 "error": None,
-                "invoices": [asdict(i) for i in invoices],
+                "invoices": invoices,
             }
         )
 
@@ -247,7 +231,7 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation.id}},
             updated_document={
                 **asdict(evaluation),
-                "invoices": [asdict(i) for i in evaluation_invoices],
+                "invoices": evaluation_invoices,
             },
         )
 
@@ -291,52 +275,12 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation_id}},
         )
 
-        return Evaluation(
-            id=evaluation_document["id"],
-            status=EvaluationStatus(evaluation_document["status"]),
-            creation_utc=evaluation_document["creation_utc"],
-            error=evaluation_document["error"],
-            invoices=[
-                Invoice(
-                    kind=PayloadKind(invoice["kind"]),
-                    payload=Payload(**invoice["payload"]),
-                    checksum=invoice["checksum"],
-                    state_version=invoice["state_version"],
-                    approved=invoice["approved"],
-                    data=self._invoice_data_from_dict(PayloadKind(invoice["kind"]), invoice["data"])
-                    if invoice["data"]
-                    else None,
-                    error=invoice["error"],
-                )
-                for invoice in evaluation_document["invoices"]
-            ],
-        )
+        return self._document_to_evaluation(evaluation_document)
 
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
-            Evaluation(
-                id=e["id"],
-                status=EvaluationStatus(e["status"]),
-                creation_utc=e["creation_utc"],
-                error=e["error"],
-                invoices=[
-                    Invoice(
-                        kind=PayloadKind(invoice["kind"]),
-                        payload=Payload(**invoice["payload"]),
-                        checksum=invoice["checksum"],
-                        state_version=invoice["state_version"],
-                        approved=invoice["approved"],
-                        data=self._invoice_data_from_dict(
-                            PayloadKind(invoice["kind"]), invoice["data"]
-                        )
-                        if invoice["data"]
-                        else None,
-                        error=invoice["error"],
-                    )
-                    for invoice in e["invoices"]
-                ],
-            )
+            self._document_to_evaluation(e)
             for e in await self._evaluation_collection.find(filters={})
         ]
