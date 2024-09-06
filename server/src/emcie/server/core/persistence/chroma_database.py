@@ -46,7 +46,6 @@ class ChromaDatabase(DocumentDatabase):
     ) -> ChromaCollection:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
-        self.logger.debug(f'Creating chromadb collection "{name}"')
         new_collection = ChromaCollection(
             self.logger,
             chromadb_collection=self._chroma_client.create_collection(
@@ -78,7 +77,6 @@ class ChromaDatabase(DocumentDatabase):
     ) -> ChromaCollection:
         if collection := self._collections.get(name):
             return collection
-        self.logger.debug(f'Creating chromadb collection "{name}"')
         new_collection = ChromaCollection(
             self.logger,
             chromadb_collection=self._chroma_client.create_collection(

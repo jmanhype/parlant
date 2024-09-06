@@ -133,7 +133,7 @@ def read_loaded_guidelines(
     return [
         {
             "when": g["predicate"],
-            "then": g["content"],
+            "then": g["action"],
         }
         for g in guideline_data["guidelines"]
         if g["guideline_set"] == agent_id

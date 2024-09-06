@@ -9,5 +9,4 @@ class DefaultBaseModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         validate_default=True,
-        use_enum_values=True,
     )

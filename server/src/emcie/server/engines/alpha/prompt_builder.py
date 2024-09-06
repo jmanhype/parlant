@@ -178,7 +178,9 @@ and let the user know if/when you assume they meant a term by their typo: ###
     ) -> PromptBuilder:
         assert guidelines
 
-        predicates = "\n".join(f"{i}) {g.predicate}" for i, g in enumerate(guidelines, start=1))
+        predicates = "\n".join(
+            f"{i}) {g.content.predicate}" for i, g in enumerate(guidelines, start=1)
+        )
 
         self.add_section(
             name=BuiltInSection.GUIDELINE_PREDICATES,
@@ -207,7 +209,9 @@ IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the lis
             rules = []
 
             for i, p in enumerate(all_propositions, start=1):
-                rule = f"{i}) When {p.guideline.predicate}, then {p.guideline.content}"
+                rule = (
+                    f"{i}) When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                )
 
                 if include_priority:
                     rule += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"

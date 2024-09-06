@@ -176,7 +176,7 @@ class JSONFileDocumentCollection(DocumentCollection):
         filters: Where,
     ) -> Sequence[Mapping[str, Any]]:
         return [
-            self._schema.model_validate(doc).model_dump()
+            self._schema.model_validate(doc).model_dump(mode="json")
             for doc in filter(
                 lambda d: matches_filters(filters, d),
                 self._documents,
@@ -193,7 +193,7 @@ class JSONFileDocumentCollection(DocumentCollection):
             raise NoMatchingDocumentsError(self._name, filters)
 
         result = matched_documents[0]
-        return self._schema.model_validate(result).model_dump()
+        return self._schema.model_validate(result).model_dump(mode="json")
 
     async def insert_one(
         self,
@@ -216,7 +216,7 @@ class JSONFileDocumentCollection(DocumentCollection):
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 async with self._lock:
-                    self._documents[i] = updated_document
+                    self._documents[i] = self._schema(**updated_document).model_dump(mode="json")
 
                 await self._database._sync_if_needed()
 

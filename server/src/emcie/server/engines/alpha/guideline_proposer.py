@@ -97,7 +97,7 @@ class GuidelineProposer:
         propositions = []
         for proposition in propositions_json:
             self.logger.debug(
-                f'Guideline proposer result for predicate "{batch[int(proposition["predicate_number"]) - 1].predicate}":\n'  # noqa
+                f'Guideline proposer result for predicate "{batch[int(proposition["predicate_number"]) - 1].content.predicate}":\n'  # noqa
                 f'    applies_score: {proposition["applies_score"]},\n'
                 f'    rationale: "{proposition["rationale"]}"\n'
             )

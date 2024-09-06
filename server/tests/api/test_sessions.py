@@ -9,7 +9,6 @@ from itertools import count
 
 from emcie.common.tools import ToolId, ToolResult
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import generate_id
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
@@ -90,7 +89,6 @@ def make_event_params(
         "creation_utc": str(datetime.now(timezone.utc)),
         "correlation_id": "dummy_correlation_id",
         "data": data,
-        "correlation_id": generate_id(),
     }
 
 
@@ -98,13 +96,13 @@ async def add_guideline(
     container: Container,
     agent_id: AgentId,
     predicate: str,
-    content: str,
+    action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
 ) -> None:
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate=predicate,
-        content=content,
+        action=action,
     )
 
     if tool_function:
@@ -366,7 +364,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
         container=container,
         agent_id=agent_id,
         predicate="a user says hello",
-        content="answer like a cow",
+        action="answer like a cow",
         tool_function=ToolFunctions.GET_COW_UTTERING,
     )
 

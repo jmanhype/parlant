@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal, NewType, Optional, Sequence
+from enum import Enum, auto
+from typing import NewType, Optional, Sequence
 import networkx  # type: ignore
 
 from emcie.server.base_models import DefaultBaseModel
@@ -10,7 +11,11 @@ from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
-ConnectionKind = Literal["entails", "suggests"]
+
+
+class ConnectionKind(Enum):
+    ENTAILS = auto()
+    SUGGESTS = auto()
 
 
 @dataclass(frozen=True)
@@ -52,7 +57,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         creation_utc: datetime
         source: GuidelineId
         target: GuidelineId
-        kind: ConnectionKind
+        kind: str
 
     def __init__(self, database: DocumentDatabase) -> None:
         self._collection: DocumentCollection = database.get_or_create_collection(
@@ -97,8 +102,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         kind: ConnectionKind,
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineConnection:
-        assert kind in ("entails", "suggests")
-
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         connection_id = await self._collection.update_one(
@@ -108,7 +111,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 "creation_utc": creation_utc,
                 "source": source,
                 "target": target,
-                "kind": kind,
+                "kind": kind.name,
             },
             upsert=True,
         )
@@ -121,7 +124,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         graph.add_edge(
             source,
             target,
-            kind=kind,
+            kind=kind.name,
             id=connection_id,
         )
 
@@ -176,7 +179,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                             id=connection["id"],
                             source=connection["source"],
                             target=connection["target"],
-                            kind=connection["kind"],
+                            kind=ConnectionKind[connection["kind"]],
                             creation_utc=connection["creation_utc"],
                         )
                     )
@@ -197,7 +200,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                             id=connection["id"],
                             source=connection["source"],
                             target=connection["target"],
-                            kind=connection["kind"],
+                            kind=ConnectionKind[connection["kind"]],
                             creation_utc=connection["creation_utc"],
                         )
                     )

@@ -48,7 +48,7 @@ async def proactive_agent_id(
     await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate="The user hasn't engaged yet",
-        content="Greet the user",
+        action="Greet the user",
     )
 
     return agent_id

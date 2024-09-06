@@ -10,7 +10,7 @@ from pytest import fixture
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
-from emcie.server.indexer import GuidelineIndexer, Indexer
+from emcie.server.indexing.indexer import GuidelineIndexer, Indexer
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 
@@ -40,13 +40,13 @@ async def test_that_guidelines_written_in_the_index_file(
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="greeting the user",
-        content="do your job when the user says hello",
+        action="do your job when the user says hello",
     )
 
     second_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="the user asks what is your favourite food",
-        content="tell him it is pizza",
+        action="tell him it is pizza",
     )
 
     async with new_file_path() as index_file:
@@ -87,13 +87,13 @@ async def test_that_removed_guidelines_are_also_removed_from_the_index_file(
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="greeting the user",
-        content="do your job when the user says hello",
+        action="do your job when the user says hello",
     )
 
     second_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="the user asks what is your favourite food",
-        content="tell him it is pizza",
+        action="tell him it is pizza",
     )
 
     async with new_file_path() as index_file:
@@ -144,13 +144,13 @@ async def test_that_guideline_connections_are_created(
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="the user asks about the weather",
-        content="provide the current weather update",
+        action="provide the current weather update",
     )
 
     second_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="providing the weather update",
-        content="mention the best time to go for a walk",
+        action="mention the best time to go for a walk",
     )
 
     async with new_file_path() as index_file:
@@ -182,13 +182,13 @@ async def test_that_guideline_connections_are_removed_when_guideline_deleted(
     first_guideline = await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="the user asks about the weather",
-        content="provide the current weather update",
+        action="provide the current weather update",
     )
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
         predicate="providing the weather update",
-        content="mention the best time to go for a walk",
+        action="mention the best time to go for a walk",
     )
 
     async with new_file_path() as index_file:

@@ -15,6 +15,15 @@ from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
 )
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
+from emcie.server.core.evaluations import (
+    EvaluationDocumentStore,
+    GuidelinePayload,
+    Invoice,
+    InvoiceData,
+    InvoiceGuidelineData,
+    PayloadDescriptor,
+    PayloadKind,
+)
 from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineId,
@@ -160,7 +169,7 @@ async def test_guideline_creation_and_loading_data_from_file(
         guideline = await guideline_store.create_guideline(
             guideline_set=context.agent_id,
             predicate="Creating a guideline with JSONFileDatabase implementation",
-            content="Expecting it to show in the guidelines json file",
+            action="Expecting it to show in the guidelines json file",
         )
 
     with open(new_file) as f:
@@ -171,8 +180,8 @@ async def test_guideline_creation_and_loading_data_from_file(
     json_guideline = guidelines_from_json["guidelines"][0]
     assert json_guideline["guideline_set"] == context.agent_id
 
-    assert json_guideline["predicate"] == guideline.predicate
-    assert json_guideline["content"] == guideline.content
+    assert json_guideline["predicate"] == guideline.content.predicate
+    assert json_guideline["action"] == guideline.content.action
     assert datetime.fromisoformat(json_guideline["creation_utc"]) == guideline.creation_utc
 
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as guideline_db:
@@ -181,7 +190,7 @@ async def test_guideline_creation_and_loading_data_from_file(
         second_guideline = await guideline_store.create_guideline(
             guideline_set=context.agent_id,
             predicate="Second guideline creation",
-            content="Additional test entry in the JSON file",
+            action="Additional test entry in the JSON file",
         )
 
     with open(new_file) as f:
@@ -192,8 +201,8 @@ async def test_guideline_creation_and_loading_data_from_file(
     second_json_guideline = guidelines_from_json["guidelines"][1]
     assert second_json_guideline["guideline_set"] == context.agent_id
 
-    assert second_json_guideline["predicate"] == second_guideline.predicate
-    assert second_json_guideline["content"] == second_guideline.content
+    assert second_json_guideline["predicate"] == second_guideline.content.predicate
+    assert second_json_guideline["action"] == second_guideline.content.action
     assert (
         datetime.fromisoformat(second_json_guideline["creation_utc"])
         == second_guideline.creation_utc
@@ -209,7 +218,7 @@ async def test_guideline_retrieval(
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
             predicate="Test predicate for loading",
-            content="Test content for loading guideline",
+            action="Test content for loading guideline",
         )
 
         loaded_guidelines = await guideline_store.list_guidelines(context.agent_id)
@@ -217,8 +226,8 @@ async def test_guideline_retrieval(
 
         assert len(loaded_guideline_list) == 1
         loaded_guideline = loaded_guideline_list[0]
-        assert loaded_guideline.predicate == "Test predicate for loading"
-        assert loaded_guideline.content == "Test content for loading guideline"
+        assert loaded_guideline.content.predicate == "Test predicate for loading"
+        assert loaded_guideline.content.action == "Test content for loading guideline"
 
 
 async def test_tool_creation(
@@ -526,7 +535,7 @@ async def test_successful_loading_of_an_empty_json_file(
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
             predicate="Create a guideline just for testing",
-            content="Expect it to appear in the guidelines JSON file eventually",
+            action="Expect it to appear in the guidelines JSON file eventually",
         )
 
     with open(new_file) as f:
@@ -536,3 +545,86 @@ async def test_successful_loading_of_an_empty_json_file(
 
     json_guideline = guidelines_from_json["guidelines"][0]
     assert json_guideline["guideline_set"] == context.agent_id
+
+
+async def test_evaluation_creation(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
+        evaluation_store = EvaluationDocumentStore(evaluation_db)
+
+        payloads = [
+            GuidelinePayload(
+                guideline_set=context.agent_id,
+                predicate="Test evaluation creation with invoice",
+                action="Ensure the evaluation with invoice is persisted in the JSON file",
+            )
+        ]
+
+        evaluation = await evaluation_store.create_evaluation(
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
+        )
+
+    with open(new_file) as f:
+        evaluations_from_json = json.load(f)
+
+    assert len(evaluations_from_json["evaluations"]) == 1
+    json_evaluation = evaluations_from_json["evaluations"][0]
+
+    assert json_evaluation["id"] == evaluation.id
+
+    assert len(json_evaluation["invoices"]) == 1
+
+
+async def test_evaluation_update(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as evaluation_db:
+        evaluation_store = EvaluationDocumentStore(evaluation_db)
+
+        payloads = [
+            GuidelinePayload(
+                guideline_set=context.agent_id,
+                predicate="Initial evaluation payload with invoice",
+                action="This content will be updated",
+            )
+        ]
+
+        evaluation = await evaluation_store.create_evaluation(
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
+        )
+
+        invoice_data: InvoiceData = InvoiceGuidelineData(
+            coherence_checks=[],
+            connection_propositions=None,
+        )
+
+        invoice = Invoice(
+            kind=PayloadKind.GUIDELINE,
+            payload=payloads[0],
+            state_version="123",
+            checksum="initial_checksum",
+            approved=True,
+            data=invoice_data,
+            error=None,
+        )
+
+        await evaluation_store.update_evaluation_invoice(
+            evaluation_id=evaluation.id,
+            invoice_index=0,
+            updated_invoice=invoice,
+        )
+
+    with open(new_file) as f:
+        evaluations_from_json = json.load(f)
+
+    assert len(evaluations_from_json["evaluations"]) == 1
+    json_evaluation = evaluations_from_json["evaluations"][0]
+
+    assert json_evaluation["id"] == evaluation.id
+
+    assert json_evaluation["invoices"][0]["data"] is not None
+    assert json_evaluation["invoices"][0]["checksum"] == "initial_checksum"
+    assert json_evaluation["invoices"][0]["approved"] is True

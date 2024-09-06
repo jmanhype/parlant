@@ -10,7 +10,7 @@ from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 
-from emcie.server.core.guidelines import Guideline, GuidelineId
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId
 from emcie.server.core.sessions import Event, EventId, EventSource
 
 
@@ -91,40 +91,42 @@ def create_guideline_by_name(
     guidelines = {
         "check_drinks_in_stock": {
             "predicate": "a client asks for a drink",
-            "content": "check if the drink is available in the following stock: "
+            "action": "check if the drink is available in the following stock: "
             "['Sprite', 'Coke', 'Fanta']",
         },
         "check_toppings_in_stock": {
             "predicate": "a client asks for toppings",
-            "content": "check if the toppings are available in the following stock: "
+            "action": "check if the toppings are available in the following stock: "
             "['Pepperoni', 'Tomatoes', 'Olives']",
         },
         "payment_process": {
             "predicate": "a client is in the payment process",
-            "content": "Follow the payment instructions, "
+            "action": "Follow the payment instructions, "
             "which are: 1. Pay in cash only, 2. Pay only at the location.",
         },
         "address_location": {
             "predicate": "the client needs to know our address",
-            "content": "Inform the client that our address is at Sapir 2, Herzliya.",
+            "action": "Inform the client that our address is at Sapir 2, Herzliya.",
         },
         "mood_support": {
             "predicate": "the client is experiencing stress or dissatisfaction",
-            "content": "Provide comforting responses and suggest alternatives "
+            "action": "Provide comforting responses and suggest alternatives "
             "or support to alleviate the client's mood.",
         },
         "class_booking": {
             "predicate": "the client asks about booking a class or an appointment",
-            "content": "Provide available times and facilitate the booking process, "
+            "action": "Provide available times and facilitate the booking process, "
             "ensuring to clarify any necessary details such as class type, date, and requirements.",
         },
     }
 
     guideline = Guideline(
-        GuidelineId(generate_id()),
-        predicate=guidelines[guideline_name]["predicate"],
-        content=guidelines[guideline_name]["content"],
+        id=GuidelineId(generate_id()),
         creation_utc=datetime.now(timezone.utc),
+        content=GuidelineContent(
+            predicate=guidelines[guideline_name]["predicate"],
+            action=guidelines[guideline_name]["action"],
+        ),
     )
     context.guidelines.append(guideline)
     return guideline

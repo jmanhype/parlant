@@ -3,12 +3,14 @@ from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from lagom import Container
 
-from emcie.server.api import agents
+from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
+from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.sessions import SessionListener, SessionStore
+from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
 from emcie.server.logger import Logger
 from emcie.server.mc import MC
 
@@ -19,6 +21,8 @@ async def create_app(container: Container) -> FastAPI:
     agent_store = container[AgentStore]
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
+    evaluation_store = container[EvaluationStore]
+    evaluation_service = container[BehavioralChangeEvaluator]
     mc = container[MC]
 
     app = FastAPI()
@@ -58,6 +62,14 @@ async def create_app(container: Container) -> FastAPI:
             mc=mc,
             session_store=session_store,
             session_listener=session_listener,
+        ),
+    )
+
+    app.include_router(
+        prefix="/index",
+        router=index.create_router(
+            evaluation_service=evaluation_service,
+            evaluation_store=evaluation_store,
         ),
     )
 
