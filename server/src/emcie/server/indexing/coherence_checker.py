@@ -131,7 +131,7 @@ class ContradictionEvaluatorBase(ABC):
 
 {self._format_contradiction_type_definition()}
 
-**Objective**: Evaluate potential {self.contradiction_kind._describe()}s between the set of existing guidelines and the proposed guideline.
+**Objective**: Evaluate potential {self.contradiction_kind._describe()}s between guideline A and the comparison guideline set.
 
 **Task Description**:
 1. **Input**:
