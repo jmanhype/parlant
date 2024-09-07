@@ -61,6 +61,7 @@ from emcie.server.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
 
 DEFAULT_PORT = 8000
+SERVER_ADDRESS = "https://localhost"
 
 EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
 EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)

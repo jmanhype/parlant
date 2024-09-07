@@ -171,7 +171,7 @@ class ChromaCollection(DocumentCollection):
                     ids=[document_id],
                     documents=[updated_document["content"]],
                     metadatas=[
-                        {**docs[0], **self._schema(**updated_document).model_dump(mode="json")}
+                        self._schema(**{**docs[0], **updated_document}).model_dump(mode="json")
                     ],
                 )
                 return document_id
@@ -193,7 +193,15 @@ class ChromaCollection(DocumentCollection):
         filters: Where,
     ) -> None:
         async with self._lock:
-            self._chroma_collection.delete(where=cast(chromadb.Where, filters))
+            docs = self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]
+            if docs:
+                if len(docs) > 1:
+                    raise ValueError(
+                        f"ChromaCollection delete_one: detected more than one document with filters '{filters}'. Aborting..."
+                    )
+                self._chroma_collection.delete(where=cast(chromadb.Where, filters))
+            else:
+                raise NoMatchingDocumentsError(self._name, filters)
 
     async def find_similar_documents(
         self,
