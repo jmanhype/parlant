@@ -558,9 +558,8 @@ def test_that_a_session_can_be_deleted(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    delete_response = client.delete(f"/sessions/{session_id}")
-    assert delete_response.status_code == status.HTTP_200_OK
-    assert delete_response.json()["deleted_session_id"] == session_id
+    delete_response = client.delete(f"/sessions/{session_id}").raise_for_status().json()
+    assert delete_response["deleted_session_id"] == session_id
 
     get_response = client.get(f"/sessions/{session_id}")
     assert get_response.status_code == status.HTTP_404_NOT_FOUND
@@ -570,7 +569,6 @@ def test_that_a_deleted_session_is_removed_from_the_session_list(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
-    # Create a session
     session_id = SessionId(
         client.post(
             "/sessions",

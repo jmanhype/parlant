@@ -157,7 +157,7 @@ def create_router(
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
-    @router.delete("/{session_id}", response_model=DeleteSessionResponse)
+    @router.delete("/{session_id}")
     async def delete_session(
         session_id: SessionId,
     ) -> DeleteSessionResponse:
