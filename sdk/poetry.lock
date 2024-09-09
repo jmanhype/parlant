@@ -58,7 +58,7 @@ files = [
 
 [[package]]
 name = "emcie-common"
-version = "0.2.0-alpha.2"
+version = "0.3.0-alpha.1"
 description = ""
 optional = false
 python-versions = "^3.12"
@@ -457,4 +457,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "d489c73de4f8242893d0963c28d3b7eab4c729821171e3f3dfbd791dcf1ee71f"
+content-hash = "fad13a0131251656a3f8d9a61317c310e8120558b6e03e92d39957fa20effc49"

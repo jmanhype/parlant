@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "emcie-common"
-version = "0.2.0-alpha.2"
+version = "0.3.0-alpha.1"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
