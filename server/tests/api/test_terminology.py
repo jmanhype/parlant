@@ -1,5 +1,7 @@
+from fastapi import status
 from fastapi.testclient import TestClient
 from pytest import fixture
+
 from emcie.server.core.agents import AgentId
 
 
@@ -30,7 +32,7 @@ def test_create_term(
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
 
     data = response.json()
     assert data["name"] == name
@@ -54,7 +56,7 @@ def test_create_term_without_synonyms(
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
 
     data = response.json()
     assert data["name"] == name
@@ -79,10 +81,10 @@ def test_read_term(
             "synonyms": synonyms,
         },
     )
-    assert create_response.status_code == 201
+    assert create_response.status_code == status.HTTP_201_CREATED
 
     read_response = client.get(f"/terminology/{agent_id}/{name}")
-    assert read_response.status_code == 200
+    assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
     assert data["name"] == name
@@ -105,10 +107,10 @@ def test_read_term_without_synonyms(
             "description": description,
         },
     )
-    assert create_response.status_code == 201
+    assert create_response.status_code == status.HTTP_201_CREATED
 
     read_response = client.get(f"/terminology/{agent_id}/{name}")
-    assert read_response.status_code == 200
+    assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
     assert data["name"] == name
@@ -135,10 +137,10 @@ def test_list_terms(
                 "synonyms": term["synonyms"],
             },
         )
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
 
     list_response = client.get(f"terminology/{agent_id}/")
-    assert list_response.status_code == 200
+    assert list_response.status_code == status.HTTP_200_OK
 
     data = list_response.json()
     returned_terms = data["terms"]
@@ -168,7 +170,7 @@ def test_update_term(
             "synonyms": synonyms,
         },
     )
-    assert create_response.status_code == 201
+    assert create_response.status_code == status.HTTP_201_CREATED
 
     updated_description = "Updated guideline description"
     updated_synonyms = ["rule", "updated"]
@@ -181,7 +183,7 @@ def test_update_term(
         },
     )
 
-    assert update_response.status_code == 200
+    assert update_response.status_code == status.HTTP_200_OK
 
     data = update_response.json()
     assert data["name"] == name
@@ -215,4 +217,4 @@ def test_delete_term(
     assert delete_response["deleted_term_id"] == create_response["term_id"]
 
     read_response = client.get(f"/terminology/{agent_id}/{name}")
-    assert read_response.status_code == 404
+    assert read_response.status_code == status.HTTP_404_NOT_FOUND

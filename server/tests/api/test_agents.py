@@ -10,7 +10,7 @@ def test_that_an_agent_can_be_created_without_description(
         json={"agent_name": "test-agent"},
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
 
     response = client.get("/agents")
 
@@ -31,7 +31,7 @@ def test_that_an_agent_can_be_created_with_description(
         json={"agent_name": "test-agent", "agent_description": "You are a test agent"},
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
 
     response = client.get("/agents")
 

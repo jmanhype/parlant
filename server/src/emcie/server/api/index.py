@@ -168,7 +168,7 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/evaluations")
+    @router.post("/evaluations", status_code=status.HTTP_201_CREATED)
     async def create_evaluation(request: CreateEvaluationRequest) -> CreateEvaluationResponse:
         try:
             evaluation_id = await evaluation_service.create_evaluation_task(
