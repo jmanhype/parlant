@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
 from emcie.common.tools import ToolId
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)
 
@@ -37,8 +39,7 @@ class GuidelineToolAssociationStore(ABC):
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
-    class GuidelineToolAssociationDocument(DefaultBaseModel):
-        id: GuidelineToolAssociationId
+    class GuidelineToolAssociationDocument(BaseDocument):
         creation_utc: datetime
         guideline_id: GuidelineId
         tool_id: ToolId
@@ -56,12 +57,12 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     ) -> GuidelineToolAssociation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
         association_id = await self._collection.insert_one(
-            document={
-                "id": generate_id(),
-                "creation_utc": creation_utc,
-                "guideline_id": guideline_id,
-                "tool_id": tool_id,
-            },
+            document=self.GuidelineToolAssociationDocument(
+                id=ObjectId(generate_id()),
+                creation_utc=creation_utc,
+                guideline_id=guideline_id,
+                tool_id=tool_id,
+            ),
         )
 
         return GuidelineToolAssociation(
@@ -74,10 +75,10 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [
             GuidelineToolAssociation(
-                id=GuidelineToolAssociationId(d["id"]),
-                creation_utc=d["creation_utc"],
-                guideline_id=d["guideline_id"],
-                tool_id=d["tool_id"],
+                id=GuidelineToolAssociationId(GuidelineToolAssociationId(d.id)),
+                creation_utc=d.creation_utc,
+                guideline_id=d.guideline_id,
+                tool_id=d.tool_id,
             )
             for d in await self._collection.find(filters={})
         ]

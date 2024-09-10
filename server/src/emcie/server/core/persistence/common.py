@@ -1,7 +1,13 @@
-from typing import Any, Callable, Literal, Mapping, NewType, TypedDict, Union, cast
+from typing import Any, Callable, Literal, NewType, TypedDict, Union, cast
+
+from emcie.server.base_models import DefaultBaseModel
 
 
 ObjectId = NewType("ObjectId", str)
+
+
+class BaseDocument(DefaultBaseModel):
+    id: ObjectId
 
 
 # Metadata Query Grammar
@@ -55,7 +61,7 @@ def _evaluate_fiter(
 
 def matches_filters(
     where: Where,
-    candidate: Mapping[str, Any],
+    candidate: BaseDocument,
 ) -> bool:
     if not where:
         return True
@@ -78,7 +84,7 @@ def matches_filters(
         for field_name, field_filter in field_filters.items():
             for operator, filter_value in field_filter.items():
                 if not _evaluate_fiter(
-                    operator, candidate[field_name], cast(LiteralValue, filter_value)
+                    operator, getattr(candidate, field_name), cast(LiteralValue, filter_value)
                 ):
                     return False
 

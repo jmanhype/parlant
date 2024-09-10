@@ -1,46 +1,51 @@
 from __future__ import annotations
-from typing import Any, Mapping, Optional, Sequence, Type
-from emcie.server.base_models import DefaultBaseModel
+from typing import Optional, Sequence, Type, cast
 from emcie.server.core.persistence.common import (
+    BaseDocument,
     NoMatchingDocumentsError,
     ObjectId,
     Where,
     matches_filters,
 )
-from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
+from emcie.server.core.persistence.document_database import (
+    DocumentCollection,
+    DocumentDatabase,
+    TDocument,
+)
 
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._collections: dict[str, _TransientDocumentCollection] = {}
+        self._collections: dict[str, _TransientDocumentCollection[BaseDocument]] = {}
 
     def create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> _TransientDocumentCollection:
-        collection = _TransientDocumentCollection(
+        schema: Type[TDocument],
+    ) -> _TransientDocumentCollection[TDocument]:
+        self._collections[name] = _TransientDocumentCollection(
             name=name,
             schema=schema,
         )
-        self._collections[name] = collection
-        return collection
+
+        return cast(_TransientDocumentCollection[TDocument], self._collections[name])
 
     def get_collection(
         self,
         name: str,
-    ) -> _TransientDocumentCollection:
+    ) -> _TransientDocumentCollection[TDocument]:
         if name in self._collections:
-            return self._collections[name]
+            return cast(_TransientDocumentCollection[TDocument], self._collections[name])
         raise ValueError(f'Collection "{name}" does not exist')
 
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> _TransientDocumentCollection:
+        schema: Type[TDocument],
+    ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return collection
+            return cast(_TransientDocumentCollection[TDocument], collection)
+
         return self.create_collection(
             name=name,
             schema=schema,
@@ -56,12 +61,12 @@ class TransientDocumentDatabase(DocumentDatabase):
             raise ValueError(f'Collection "{name}" does not exist')
 
 
-class _TransientDocumentCollection(DocumentCollection):
+class _TransientDocumentCollection(DocumentCollection[TDocument]):
     def __init__(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-        data: Optional[Sequence[Mapping[str, Any]]] = None,
+        schema: Type[TDocument],
+        data: Optional[Sequence[TDocument]] = None,
     ) -> None:
         self._name = name
         self._schema = schema
@@ -70,7 +75,7 @@ class _TransientDocumentCollection(DocumentCollection):
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[Mapping[str, Any]]:
+    ) -> Sequence[TDocument]:
         return list(
             filter(
                 lambda d: matches_filters(filters, d),
@@ -81,7 +86,7 @@ class _TransientDocumentCollection(DocumentCollection):
     async def find_one(
         self,
         filters: Where,
-    ) -> Mapping[str, Any]:
+    ) -> TDocument:
         matched_documents = await self.find(filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
@@ -89,25 +94,23 @@ class _TransientDocumentCollection(DocumentCollection):
 
     async def insert_one(
         self,
-        document: Mapping[str, Any],
+        document: TDocument,
     ) -> ObjectId:
-        self._documents.append(self._schema(**document).model_dump(mode="json"))
-        document_id: ObjectId = document["id"]
-        return document_id
+        self._documents.append(document)
+
+        return document.id
 
     async def update_one(
         self,
         filters: Where,
-        updated_document: Mapping[str, Any],
+        updated_document: TDocument,
         upsert: bool = False,
     ) -> ObjectId:
-        document_id: ObjectId
-
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                self._documents[i] = self._schema(**updated_document).model_dump(mode="json")
-                document_id = updated_document["id"]
-                return document_id
+                self._documents[i] = updated_document
+
+                return updated_document.id
 
         if upsert:
             document_id = await self.insert_one(updated_document)
@@ -118,9 +121,12 @@ class _TransientDocumentCollection(DocumentCollection):
     async def delete_one(
         self,
         filters: Where,
-    ) -> None:
+    ) -> TDocument:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
+                document = self._documents[i]
                 del self._documents[i]
-                return
+
+                return document
+
         raise NoMatchingDocumentsError(self._name, filters)

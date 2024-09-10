@@ -1,13 +1,15 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Literal, NewType, Optional, Sequence
+from typing import Any, Literal, NewType, Optional, Sequence, cast
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
 from emcie.common.tools import ToolId
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, NoMatchingDocumentsError, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 ContextVariableId = NewType("ContextVariableId", str)
 ContextVariableValueId = NewType("ContextVariableValueId", str)
@@ -107,16 +109,14 @@ class ContextVariableStore(ABC):
 
 
 class ContextVariableDocumentStore(ContextVariableStore):
-    class ContextVariableDocument(DefaultBaseModel):
-        id: str
+    class ContextVariableDocument(BaseDocument):
         variable_set: str
         name: str
         description: Optional[str] = None
         tool_id: ToolId
         freshness_rules: Optional[FreshnessRules]
 
-    class ContextVariableValueDocument(DefaultBaseModel):
-        id: str
+    class ContextVariableValueDocument(BaseDocument):
         last_modified: datetime
         variable_set: str
         variable_id: ContextVariableId
@@ -128,6 +128,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             name="variables",
             schema=self.ContextVariableDocument,
         )
+
         self._value_collection = database.get_or_create_collection(
             name="values",
             schema=self.ContextVariableValueDocument,
@@ -141,18 +142,19 @@ class ContextVariableDocumentStore(ContextVariableStore):
         tool_id: ToolId,
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable:
-        variable_id = ContextVariableId(generate_id())
+        variable_id = ObjectId(generate_id())
 
         await self._variable_collection.insert_one(
-            {
-                "id": variable_id,
-                "variable_set": variable_set,
-                "name": name,
-                "description": description,
-                "tool_id": tool_id,
-                "freshness_rules": freshness_rules,
-            },
+            self.ContextVariableDocument(
+                id=variable_id,
+                variable_set=variable_set,
+                name=name,
+                description=description,
+                tool_id=tool_id,
+                freshness_rules=freshness_rules,
+            )
         )
+
         return ContextVariable(
             id=ContextVariableId(variable_id),
             name=name,
@@ -175,16 +177,17 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "variable_id": {"$eq": variable_id},
                 "key": {"$eq": key},
             },
-            {
-                "id": generate_id(),
-                "variable_set": variable_set,
-                "variable_id": variable_id,
-                "last_modified": last_modified,
-                "data": data,
-                "key": key,
-            },
+            self.ContextVariableValueDocument(
+                id=ObjectId(generate_id()),
+                variable_set=variable_set,
+                variable_id=variable_id,
+                last_modified=last_modified,
+                data=cast(dict[str, Any], data),
+                key=key,
+            ),
             upsert=True,
         )
+
         return ContextVariableValue(
             id=ContextVariableValueId(value_document_id),
             variable_id=variable_id,
@@ -226,11 +229,11 @@ class ContextVariableDocumentStore(ContextVariableStore):
     ) -> Sequence[ContextVariable]:
         return [
             ContextVariable(
-                id=ContextVariableId(d["id"]),
-                name=d["name"],
-                description=d["description"],
-                tool_id=d["tool_id"],
-                freshness_rules=d["freshness_rules"],
+                id=ContextVariableId(d.id),
+                name=d.name,
+                description=d.description,
+                tool_id=d.tool_id,
+                freshness_rules=d.freshness_rules,
             )
             for d in await self._variable_collection.find({"variable_set": {"$eq": variable_set}})
         ]
@@ -254,11 +257,11 @@ class ContextVariableDocumentStore(ContextVariableStore):
             )
 
         return ContextVariable(
-            id=ContextVariableId(variable_document["id"]),
-            name=variable_document["name"],
-            description=variable_document["description"],
-            tool_id=variable_document["tool_id"],
-            freshness_rules=variable_document["freshness_rules"],
+            id=ContextVariableId(variable_document.id),
+            name=variable_document.name,
+            description=variable_document.description,
+            tool_id=variable_document.tool_id,
+            freshness_rules=variable_document.freshness_rules,
         )
 
     async def read_value(
@@ -282,8 +285,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
             )
 
         return ContextVariableValue(
-            id=ContextVariableValueId(value_document["id"]),
-            variable_id=value_document["variable_id"],
-            last_modified=value_document["last_modified"],
-            data=value_document["data"],
+            id=ContextVariableValueId(value_document.id),
+            variable_id=value_document.variable_id,
+            last_modified=value_document.last_modified,
+            data=value_document.data,
         )

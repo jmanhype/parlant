@@ -6,9 +6,11 @@ from typing import Mapping, Optional, Sequence
 from pydantic import ValidationError
 
 from emcie.common.tools import ToolId, ToolParameter, ToolResult, Tool, ToolContext
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import JSONSerializable, generate_id
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 
 class ToolError(Exception):
@@ -128,8 +130,7 @@ class MultiplexedToolService(ToolService):
 
 
 class LocalToolService(ToolService):
-    class ToolDocument(DefaultBaseModel):
-        id: ToolId
+    class ToolDocument(BaseDocument):
         creation_utc: datetime
         name: str
         module_path: str
@@ -162,16 +163,16 @@ class LocalToolService(ToolService):
 
         creation_utc = creation_utc or datetime.now(timezone.utc)
         tool_id = await self._collection.insert_one(
-            document={
-                "id": generate_id(),
-                "name": name,
-                "module_path": module_path,
-                "description": description,
-                "parameters": parameters,
-                "required": required,
-                "creation_utc": creation_utc,
-                "consequential": consequential,
-            },
+            document=self.ToolDocument(
+                id=ObjectId(generate_id()),
+                name=name,
+                module_path=module_path,
+                description=description,
+                parameters=parameters,
+                required=required,
+                creation_utc=creation_utc,
+                consequential=consequential,
+            ),
         )
 
         return Tool(
@@ -189,13 +190,13 @@ class LocalToolService(ToolService):
     ) -> Sequence[Tool]:
         return [
             Tool(
-                id=ToolId(d["id"]),
-                name=d["name"],
-                description=d["description"],
-                parameters=d["parameters"],
-                creation_utc=d["creation_utc"],
-                required=d["required"],
-                consequential=d["consequential"],
+                id=ToolId(d.id),
+                name=d.name,
+                description=d.description,
+                parameters={k: v for k, v in d.parameters.items()},
+                creation_utc=d.creation_utc,
+                required=[i for i in d.required],
+                consequential=d.consequential,
             )
             for d in await self._collection.find(filters={})
         ]
@@ -207,13 +208,13 @@ class LocalToolService(ToolService):
         tool_document = await self._collection.find_one(filters={"id": {"$eq": tool_id}})
 
         return Tool(
-            id=ToolId(tool_document["id"]),
-            name=tool_document["name"],
-            description=tool_document["description"],
-            parameters=tool_document["parameters"],
-            creation_utc=tool_document["creation_utc"],
-            required=tool_document["required"],
-            consequential=tool_document["consequential"],
+            id=ToolId(tool_document.id),
+            name=tool_document.name,
+            description=tool_document.description,
+            parameters={k: v for k, v in tool_document.parameters.items()},
+            creation_utc=tool_document.creation_utc,
+            required=[i for i in tool_document.required],
+            consequential=tool_document.consequential,
         )
 
     async def call_tool(
@@ -226,8 +227,8 @@ class LocalToolService(ToolService):
 
         try:
             tool_doc = await self._collection.find_one({"id": {"$eq": tool_id}})
-            module = importlib.import_module(tool_doc["module_path"])
-            func = getattr(module, tool_doc["name"])
+            module = importlib.import_module(tool_doc.module_path)
+            func = getattr(module, tool_doc.name)
         except Exception as e:
             raise ToolImportError(tool_id) from e
 

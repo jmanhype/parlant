@@ -1,12 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import asdict
 from pydantic.dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import (
-    Any,
-    Mapping,
     NamedTuple,
     NewType,
     Optional,
@@ -16,12 +13,13 @@ from typing import (
 )
 from typing_extensions import Literal
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, NoMatchingDocumentsError, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 EvaluationId = NewType("EvaluationId", str)
 
@@ -147,28 +145,16 @@ class EvaluationStore(ABC):
 
 
 class EvaluationDocumentStore(EvaluationStore):
-    class EvaluationDocument(DefaultBaseModel):
-        id: EvaluationId
+    class EvaluationDocument(BaseDocument):
         status: EvaluationStatus
         creation_utc: datetime
         error: Optional[str]
-        invoices: list[Invoice]
+        invoices: Sequence[Invoice]
 
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
             name="evaluations",
             schema=self.EvaluationDocument,
-        )
-
-    def _document_to_evaluation(self, evaluation_document: Mapping[str, Any]) -> Evaluation:
-        evaluation_model = self.EvaluationDocument(**evaluation_document)
-
-        return Evaluation(
-            id=evaluation_model.id,
-            status=evaluation_model.status,
-            creation_utc=evaluation_model.creation_utc,
-            error=evaluation_model.error,
-            invoices=evaluation_model.invoices,
         )
 
     async def create_evaluation(
@@ -194,13 +180,13 @@ class EvaluationDocumentStore(EvaluationStore):
         ]
 
         await self._evaluation_collection.insert_one(
-            document={
-                "id": evaluation_id,
-                "creation_utc": creation_utc,
-                "status": EvaluationStatus.PENDING,
-                "error": None,
-                "invoices": invoices,
-            }
+            self.EvaluationDocument(
+                id=ObjectId(evaluation_id),
+                creation_utc=creation_utc,
+                status=EvaluationStatus.PENDING,
+                error=None,
+                invoices=invoices,
+            )
         )
 
         return Evaluation(
@@ -229,10 +215,13 @@ class EvaluationDocumentStore(EvaluationStore):
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={
-                **asdict(evaluation),
-                "invoices": evaluation_invoices,
-            },
+            updated_document=self.EvaluationDocument(
+                id=ObjectId(evaluation.id),
+                creation_utc=evaluation.creation_utc,
+                status=evaluation.status,
+                error=evaluation.error,
+                invoices=evaluation_invoices,
+            ),
         )
 
         return Evaluation(
@@ -256,7 +245,13 @@ class EvaluationDocumentStore(EvaluationStore):
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={**asdict(evaluation), "status": status, "error": error},
+            updated_document=self.EvaluationDocument(
+                id=ObjectId(evaluation.id),
+                creation_utc=evaluation.creation_utc,
+                status=status,
+                error=error,
+                invoices=evaluation.invoices,
+            ),
         )
 
         return Evaluation(
@@ -275,12 +270,24 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation_id}},
         )
 
-        return self._document_to_evaluation(evaluation_document)
+        return Evaluation(
+            id=EvaluationId(evaluation_document.id),
+            status=evaluation_document.status,
+            creation_utc=evaluation_document.creation_utc,
+            error=evaluation_document.error,
+            invoices=evaluation_document.invoices,
+        )
 
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
-            self._document_to_evaluation(e)
+            Evaluation(
+                id=EvaluationId(e.id),
+                status=e.status,
+                creation_utc=e.creation_utc,
+                error=e.error,
+                invoices=e.invoices,
+            )
             for e in await self._evaluation_collection.find(filters={})
         ]

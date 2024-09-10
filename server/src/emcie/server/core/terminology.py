@@ -3,10 +3,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
-from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
+from emcie.server.core.persistence.chroma_database import (
+    ChromaDatabase,
+    ChromaDocument,
+)
+from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId
 
 TermId = NewType("TermId", str)
 
@@ -78,8 +80,8 @@ class TerminologyStore:
 
 
 class TerminologyChromaStore(TerminologyStore):
-    class TermDocument(DefaultBaseModel):
-        id: TermId
+    class TermDocument(ChromaDocument):
+        id: ObjectId
         term_set: str
         creation_utc: datetime
         name: str
@@ -95,7 +97,7 @@ class TerminologyChromaStore(TerminologyStore):
             chroma_db.delete_collection("terminology")
         except ValueError:
             pass
-        self._collection: ChromaCollection = chroma_db.get_or_create_collection(
+        self._collection = chroma_db.create_collection(
             name="terminology",
             schema=self.TermDocument,
         )
@@ -117,22 +119,20 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        term_id = TermId(generate_id())
-
-        document = {
-            "id": term_id,
-            "term_set": term_set,
-            "content": content,
-            "name": name,
-            "description": description,
-            "creation_utc": creation_utc,
-            "synonyms": ", ".join(synonyms) if synonyms else "",
-        }
-
-        await self._collection.insert_one(document=document)
+        term_id = await self._collection.insert_one(
+            document=self.TermDocument(
+                id=ObjectId(generate_id()),
+                term_set=term_set,
+                content=content,
+                name=name,
+                description=description,
+                creation_utc=creation_utc,
+                synonyms=", ".join(synonyms) if synonyms else "",
+            )
+        )
 
         return Term(
-            id=term_id,
+            id=TermId(term_id),
             creation_utc=creation_utc,
             name=name,
             description=description,
@@ -152,24 +152,26 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        updated_document = {
-            "term_set": term_set,
-            "content": content,
-            "name": name,
-            "description": description,
-            "synonyms": ", ".join(synonyms) if synonyms else "",
-        }
+        document_to_update = await self._collection.find_one(
+            {"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
+        )
 
         term_id = await self._collection.update_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
-            updated_document=updated_document,
+            updated_document=self.TermDocument(
+                id=document_to_update.id,
+                term_set=term_set,
+                content=content,
+                name=name,
+                description=description,
+                creation_utc=document_to_update.creation_utc,
+                synonyms=", ".join(synonyms) if synonyms else "",
+            ),
         )
-
-        term_doc = await self._collection.find_one({"id": {"$eq": term_id}})
 
         return Term(
             id=TermId(term_id),
-            creation_utc=term_doc["creation_utc"],
+            creation_utc=document_to_update.creation_utc,
             name=name,
             description=description,
             synonyms=list(synonyms) if synonyms else None,
@@ -188,11 +190,11 @@ class TerminologyChromaStore(TerminologyStore):
             raise ItemNotFoundError(item_id=UniqueId(name), message=f"term_set={term_set}")
 
         return Term(
-            id=term_document["id"],
-            creation_utc=term_document["creation_utc"],
-            name=term_document["name"],
-            description=term_document["description"],
-            synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else None,
+            id=TermId(term_document.id),
+            creation_utc=term_document.creation_utc,
+            name=term_document.name,
+            description=term_document.description,
+            synonyms=term_document.synonyms.split(", ") if term_document.synonyms else None,
         )
 
     async def list_terms(
@@ -201,11 +203,11 @@ class TerminologyChromaStore(TerminologyStore):
     ) -> Sequence[Term]:
         return [
             Term(
-                id=d["id"],
-                creation_utc=d["creation_utc"],
-                name=d["name"],
-                description=d["description"],
-                synonyms=d["synonyms"].split(", "),
+                id=TermId(d.id),
+                creation_utc=d.creation_utc,
+                name=d.name,
+                description=d.description,
+                synonyms=d.synonyms.split(", ") if d.synonyms else None,
             )
             for d in await self._collection.find(filters={"term_set": {"$eq": term_set}})
         ]
@@ -223,7 +225,7 @@ class TerminologyChromaStore(TerminologyStore):
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
         )
 
-        return TermId(term_document["id"])
+        return TermId(term_document.id)
 
     async def find_relevant_terms(
         self,
@@ -232,11 +234,11 @@ class TerminologyChromaStore(TerminologyStore):
     ) -> Sequence[Term]:
         return [
             Term(
-                id=d["id"],
-                creation_utc=d["creation_utc"],
-                name=d["name"],
-                description=d["description"],
-                synonyms=d["synonyms"].split(", "),
+                id=TermId(d.id),
+                creation_utc=d.creation_utc,
+                name=d.name,
+                description=d.description,
+                synonyms=d.synonyms.split(", ") if d.synonyms else None,
             )
             for d in await self._collection.find_similar_documents(
                 filters={"term_set": {"$eq": term_set}},

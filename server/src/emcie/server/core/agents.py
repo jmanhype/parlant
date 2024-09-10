@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 AgentId = NewType("AgentId", str)
 
@@ -31,15 +33,11 @@ class AgentStore(ABC):
     async def list_agents(self) -> Sequence[Agent]: ...
 
     @abstractmethod
-    async def read_agent(
-        self,
-        agent_id: AgentId,
-    ) -> Agent: ...
+    async def read_agent(self, agent_id: AgentId) -> Agent: ...
 
 
 class AgentDocumentStore(AgentStore):
-    class AgentDocument(DefaultBaseModel):
-        id: AgentId
+    class AgentDocument(BaseDocument):
         creation_utc: datetime
         name: str
         description: Optional[str]
@@ -61,12 +59,12 @@ class AgentDocumentStore(AgentStore):
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
         agent_id = await self._collection.insert_one(
-            document={
-                "id": generate_id(),
-                "name": name,
-                "description": description,
-                "creation_utc": creation_utc,
-            },
+            document=self.AgentDocument(
+                id=ObjectId(generate_id()),
+                name=name,
+                description=description,
+                creation_utc=creation_utc,
+            )
         )
         return Agent(
             id=AgentId(agent_id),
@@ -80,26 +78,23 @@ class AgentDocumentStore(AgentStore):
     ) -> Sequence[Agent]:
         return [
             Agent(
-                id=a["id"],
-                name=a["name"],
-                description=a.get("description"),
-                creation_utc=a["creation_utc"],
+                id=AgentId(a.id),
+                name=a.name,
+                description=getattr(a, "description"),
+                creation_utc=a.creation_utc,
             )
             for a in await self._collection.find(filters={})
         ]
 
-    async def read_agent(
-        self,
-        agent_id: AgentId,
-    ) -> Agent:
+    async def read_agent(self, agent_id: AgentId) -> Agent:
         agent_document = await self._collection.find_one(
             filters={
                 "id": {"$eq": agent_id},
             }
         )
         return Agent(
-            id=agent_document["id"],
-            name=agent_document["name"],
-            description=agent_document["description"],
-            creation_utc=agent_document["creation_utc"],
+            id=AgentId(agent_document.id),
+            name=agent_document.name,
+            description=agent_document.description,
+            creation_utc=agent_document.creation_utc,
         )

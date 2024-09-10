@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 EndUserId = NewType("EndUserId", str)
 
@@ -35,8 +37,7 @@ class EndUserStore(ABC):
 
 
 class EndUserDocumentStore(EndUserStore):
-    class EndUserDocument(DefaultBaseModel):
-        id: EndUserId
+    class EndUserDocument(BaseDocument):
         creation_utc: datetime
         name: str
         email: str
@@ -45,9 +46,11 @@ class EndUserDocumentStore(EndUserStore):
         self,
         database: DocumentDatabase,
     ) -> None:
-        self._collection = database.get_or_create_collection(
-            name="end_users",
-            schema=self.EndUserDocument,
+        self._collection = (
+            database.get_or_create_collection(
+                name="end_users",
+                schema=self.EndUserDocument,
+            )
         )
 
     async def create_end_user(
@@ -58,12 +61,12 @@ class EndUserDocumentStore(EndUserStore):
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
         end_user_id = await self._collection.insert_one(
-            document={
-                "id": generate_id(),
-                "name": name,
-                "email": email,
-                "creation_utc": creation_utc,
-            },
+            self.EndUserDocument(
+                id=ObjectId(generate_id()),
+                name=name,
+                email=email,
+                creation_utc=creation_utc,
+            )
         )
 
         return EndUser(
@@ -80,8 +83,8 @@ class EndUserDocumentStore(EndUserStore):
         end_user_document = await self._collection.find_one(filters={"id": {"$eq": end_user_id}})
 
         return EndUser(
-            id=EndUserId(end_user_document["id"]),
-            name=end_user_document["name"],
-            email=end_user_document["email"],
-            creation_utc=end_user_document["creation_utc"],
+            id=EndUserId(end_user_document.id),
+            name=end_user_document.name,
+            email=end_user_document.email,
+            creation_utc=end_user_document.creation_utc,
         )

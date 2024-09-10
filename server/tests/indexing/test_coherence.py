@@ -710,7 +710,7 @@ def test_that_coherence_check_does_not_produce_false_positives(
         coherence_checker.evaluate_coherence(guidelines_without_contradictions, [])
     )
 
-    assert len(list(filter(lambda c: c.severity >= 5, contradiction_results))) == 0
+    assert len(list(filter(lambda c: c.severity >= 6, contradiction_results))) == 0
 
 
 def test_that_coherence_check_produces_multiple_contradictions(

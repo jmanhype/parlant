@@ -5,10 +5,12 @@ from enum import Enum, auto
 from typing import NewType, Optional, Sequence
 import networkx  # type: ignore
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 
@@ -52,15 +54,14 @@ class GuidelineConnectionStore(ABC):
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
-    class GuidelineConnectionDocument(DefaultBaseModel):
-        id: GuidelineConnectionId
+    class GuidelineConnectionDocument(BaseDocument):
         creation_utc: datetime
         source: GuidelineId
         target: GuidelineId
-        kind: str
+        kind: ConnectionKind
 
     def __init__(self, database: DocumentDatabase) -> None:
-        self._collection: DocumentCollection = database.get_or_create_collection(
+        self._collection = database.get_or_create_collection(
             name="guideline_connections",
             schema=self.GuidelineConnectionDocument,
         )
@@ -76,15 +77,15 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             edges = list()
 
             for c in connections:
-                nodes.add(c["source"])
-                nodes.add(c["target"])
+                nodes.add(c.source)
+                nodes.add(c.target)
                 edges.append(
                     (
-                        c["source"],
-                        c["target"],
+                        c.source,
+                        c.target,
                         {
-                            "kind": c["kind"],
-                            "id": c["id"],
+                            "kind": c.kind,
+                            "id": c.id,
                         },
                     )
                 )
@@ -106,13 +107,13 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         connection_id = await self._collection.update_one(
             filters={"source": {"$eq": source}, "target": {"$eq": target}},
-            updated_document={
-                "id": generate_id(),
-                "creation_utc": creation_utc,
-                "source": source,
-                "target": target,
-                "kind": kind.name,
-            },
+            updated_document=self.GuidelineConnectionDocument(
+                id=ObjectId(generate_id()),
+                creation_utc=creation_utc,
+                source=source,
+                target=target,
+                kind=kind,
+            ),
             upsert=True,
         )
 
@@ -124,7 +125,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         graph.add_edge(
             source,
             target,
-            kind=kind.name,
+            kind=kind,
             id=connection_id,
         )
 
@@ -142,7 +143,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> None:
         document = await self._collection.find_one(filters={"id": {"$eq": id}})
 
-        (await self._get_graph()).remove_edge(document["source"], document["target"])
+        (await self._get_graph()).remove_edge(document.source, document.target)
 
         await self._collection.delete_one(filters={"id": {"$eq": id}})
 
@@ -176,11 +177,11 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
                     connections.append(
                         GuidelineConnection(
-                            id=connection["id"],
-                            source=connection["source"],
-                            target=connection["target"],
-                            kind=ConnectionKind[connection["kind"]],
-                            creation_utc=connection["creation_utc"],
+                            id=GuidelineConnectionId(connection.id),
+                            source=connection.source,
+                            target=connection.target,
+                            kind=connection.kind,
+                            creation_utc=connection.creation_utc,
                         )
                     )
 
@@ -197,11 +198,11 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
                     connections.append(
                         GuidelineConnection(
-                            id=connection["id"],
-                            source=connection["source"],
-                            target=connection["target"],
-                            kind=ConnectionKind[connection["kind"]],
-                            creation_utc=connection["creation_utc"],
+                            id=GuidelineConnectionId(connection.id),
+                            source=connection.source,
+                            target=connection.target,
+                            kind=connection.kind,
+                            creation_utc=connection.creation_utc,
                         )
                     )
 

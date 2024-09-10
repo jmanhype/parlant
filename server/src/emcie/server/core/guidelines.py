@@ -3,9 +3,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.common import generate_id
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 GuidelineId = NewType("GuidelineId", str)
 
@@ -54,12 +56,11 @@ class GuidelineStore(ABC):
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
-    ) -> None: ...
+    ) -> Guideline: ...
 
 
 class GuidelineDocumentStore(GuidelineStore):
-    class GuidelineDocument(DefaultBaseModel):
-        id: GuidelineId
+    class GuidelineDocument(BaseDocument):
         creation_utc: datetime
         guideline_set: str
         predicate: str
@@ -81,13 +82,13 @@ class GuidelineDocumentStore(GuidelineStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         guideline_id = await self._collection.insert_one(
-            document={
-                "id": generate_id(),
-                "creation_utc": creation_utc,
-                "guideline_set": guideline_set,
-                "predicate": predicate,
-                "action": action,
-            },
+            document=self.GuidelineDocument(
+                id=ObjectId(generate_id()),
+                creation_utc=creation_utc,
+                guideline_set=guideline_set,
+                predicate=predicate,
+                action=action,
+            ),
         )
 
         return Guideline(
@@ -105,11 +106,11 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Sequence[Guideline]:
         return [
             Guideline(
-                id=GuidelineId(d["id"]),
-                creation_utc=d["creation_utc"],
+                id=GuidelineId(d.id),
+                creation_utc=d.creation_utc,
                 content=GuidelineContent(
-                    predicate=d["predicate"],
-                    action=d["action"],
+                    predicate=d.predicate,
+                    action=d.action,
                 ),
             )
             for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
@@ -128,11 +129,11 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         return Guideline(
-            id=GuidelineId(guideline_document["id"]),
-            creation_utc=guideline_document["creation_utc"],
+            id=GuidelineId(guideline_document.id),
+            creation_utc=guideline_document.creation_utc,
             content=GuidelineContent(
-                predicate=guideline_document["predicate"],
-                action=guideline_document["action"],
+                predicate=guideline_document.predicate,
+                action=guideline_document.action,
             ),
         )
 
@@ -140,10 +141,19 @@ class GuidelineDocumentStore(GuidelineStore):
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
-    ) -> None:
-        await self._collection.delete_one(
+    ) -> Guideline:
+        deleted_document = await self._collection.delete_one(
             filters={
                 "guideline_set": {"$eq": guideline_set},
                 "id": {"$eq": guideline_id},
             }
+        )
+
+        return Guideline(
+            id=GuidelineId(deleted_document.id),
+            creation_utc=deleted_document.creation_utc,
+            content=GuidelineContent(
+                predicate=deleted_document.predicate,
+                action=deleted_document.action,
+            ),
         )
