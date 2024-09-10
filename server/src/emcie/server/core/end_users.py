@@ -46,11 +46,9 @@ class EndUserDocumentStore(EndUserStore):
         self,
         database: DocumentDatabase,
     ) -> None:
-        self._collection = (
-            database.get_or_create_collection(
-                name="end_users",
-                schema=self.EndUserDocument,
-            )
+        self._collection = database.get_or_create_collection(
+            name="end_users",
+            schema=self.EndUserDocument,
         )
 
     async def create_end_user(
