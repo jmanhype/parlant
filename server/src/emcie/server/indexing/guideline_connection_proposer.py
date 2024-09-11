@@ -104,6 +104,8 @@ When <X> then <Y>; When <Y> then <Z>.
 Meaning, that the "then" part of the first guideline (called the "source" guideline),
 by itself implies and makes true the "when" part of the second guideline (called the "target" guideline).
 We call this pattern an "implication".
+Please note that there is no implication when <Y> is something that *may* happen in the future following <X>.
+It is only about whether <Y> in itself is directly and immediately implied by <X>.
 
 There are two types of implication:
 - Entailed: This means that the source guideline's "then" necessarily entails
@@ -256,6 +258,24 @@ Example 10:###
     "is_target_then_suggestive_or_optional": false,
     "rationale": "If you tell the user about office hours, then the guideline for what to do when mentioning office hours should also apply",
     "implication_score": 9
+}}
+###
+
+Example 11: ###
+{{
+    "source": {{
+        "when": "The user asks if Google is a search engine",
+        "then": "First double check with Wikipedia, but then answer positively. Explain to them why."
+    }},
+    "target": {{
+        "when": "The user asks you to explain more",
+        "then": "Consult Wikipedia with the query 'information about Google'"
+    }},
+    "source_then": "First double check with Wikipedia, but then answer positively. Explain to them why."
+    "target_when": "The user asks you to explain more",
+    "is_target_when_implied_by_source_then": false,
+    "rationale": "While the user might then ask for more information, thus triggering the target's 'when', this is not certain in advance.",
+    "implication_score": 3
 }}
 ###
 
