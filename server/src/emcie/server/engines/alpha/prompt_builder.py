@@ -122,7 +122,7 @@ You, an AI assistant, are now present in an online session with a user.
 An interaction, addressing the user, may or may not be initiated by you now.
 
 Here's how to decide whether to initiate the interaction:
-A. If the rules below both apply to the context, as well as suggest that you should say something
+A. If the guidelines below both apply to the context, as well as suggest that you should say something
 to the user, then you should indeed initiate the interaction now.
 B. Otherwise, if no reason is provided that suggests you should say something to the user,
 then you should not initiate the interaction. Produce no reply in this case.
@@ -206,40 +206,40 @@ IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the lis
         all_propositions = list(chain(ordinary, tool_enabled))
 
         if all_propositions:
-            rules = []
+            guidelines = []
 
             for i, p in enumerate(all_propositions, start=1):
-                rule = (
+                guideline = (
                     f"{i}) When {p.guideline.content.predicate}, then {p.guideline.content.action}"
                 )
 
                 if include_priority:
-                    rule += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
+                    guideline += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
 
                 if include_tool_associations:
                     if p in tool_enabled:
                         tools = tool_enabled[p]
                         tool_names = ", ".join([f"'{t.name}'" for t in tools])
-                        rule += f"\n    [Associated Tools: {tool_names}]"
+                        guideline += f"\n    [Associated Tools: {tool_names}]"
 
-                rules.append(rule)
+                guidelines.append(guideline)
 
-            rule_list = "\n".join(rules)
+            guideline_list = "\n".join(guidelines)
 
             section_preface = """
-In formulating your reply, you are required to follow these behavioral rules,
+In formulating your reply, you are required to follow these behavioral guidelines,
 which are applicable to the latest state of the interaction.
 """
 
             if include_priority:
                 section_preface += """
-Each rule is accompanied by a priority score indicating its significance,
+Each guideline is accompanied by a priority score indicating its significance,
 and a rationale explaining why it is applicable.
 """.strip()
 
             if include_tool_associations:
                 section_preface += """
-Note also that each rule may be associated with one or more tools that it can utilize to achieve its goal, as needed. If a rule has associated tool(s), use your judgement, as well as the nature of that rule and the other rules provided, to decide whether any tools should be utilized.
+Note also that each guideline may be associated with one or more tools that it can utilize to achieve its goal, as needed. If a guideline has associated tool(s), use your judgement, as well as the nature of that guideline and the other guidelines provided, to decide whether any tools should be utilized.
 """.strip()  # noqa
 
             self.add_section(
@@ -247,8 +247,8 @@ Note also that each rule may be associated with one or more tools that it can ut
                 content=f"""
 {section_preface}
 
-Rules: ###
-{rule_list}
+Guidelines: ###
+{guideline_list}
 ###
 """,
                 status=SectionStatus.ACTIVE,
@@ -257,8 +257,8 @@ Rules: ###
             self.add_section(
                 name=BuiltInSection.GUIDELINE_PROPOSITIONS,
                 content="""
-In formulating your reply, you are normally required to follow a number of behavioral rules.
-However, in this case, no special behavrioal rules were provided.
+In formulating your reply, you are normally required to follow a number of behavioral guidelines.
+However, in this case, no special behavrioal guidelines were provided.
 """,
                 status=SectionStatus.PASSIVE,
             )
@@ -304,7 +304,7 @@ The following are the tool function definitions: ###
                 name=BuiltInSection.STAGED_EVENTS,
                 content=f"""
 For your information, here are some staged events that have just been emitted,
-to assist you with generating your reply message while following the rules above: ###
+to assist you with generating your reply message while following the guidelines above: ###
 {staged_events_as_dict}
 ###
 """,
