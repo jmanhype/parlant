@@ -629,7 +629,7 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "emcie-common"
-version = "0.3.1-alpha.1"
+version = "0.3.1-alpha.2"
 description = ""
 optional = false
 python-versions = "^3.12"
