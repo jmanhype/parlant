@@ -399,7 +399,7 @@ def given_a_guideline_connection(
     container: Container,
     source: str,
     target: str,
-    kind: ConnectionKind,
+    kind: str,
     context: _TestContext,
 ) -> GuidelineConnection:
     store = container[GuidelineConnectionStore]
@@ -411,7 +411,7 @@ def given_a_guideline_connection(
         store.update_connection(
             source=source_guideline.id,
             target=target_guideline.id,
-            kind=kind,
+            kind={"entails": ConnectionKind.ENTAILS, "suggests": ConnectionKind.SUGGESTS}[kind],
         )
     )
 
