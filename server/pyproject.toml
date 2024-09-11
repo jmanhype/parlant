@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "emcie-server"
-version = "0.3.1-alpha.2"
+version = "0.3.2-alpha.1"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
@@ -8,7 +8,7 @@ packages = [{ include = "emcie", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-emcie-common = "0.3.1-alpha.2"
+emcie-common = "0.3.2-alpha.1"
 fastapi = "^0.112.0"
 nanoid = "^2.0.0"
 python-dateutil = "^2.8.2"
