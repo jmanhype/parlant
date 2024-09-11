@@ -629,7 +629,7 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "emcie-common"
-version = "0.3.1-alpha.1"
+version = "0.3.1-alpha.2"
 description = ""
 optional = false
 python-versions = "^3.12"
@@ -4699,4 +4699,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "f2a93cbd82cb3be07193003fa634c8a960f91d26a6eb32282d4ab32742d9c81b"
+content-hash = "86c72be7534940d16094283b2b25d5a8f2090d21328a1e7e287bfb529bb1a17f"
