@@ -116,7 +116,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
             {
                 "guideline_set": "test-agent",
                 "predicate": "mentioning office hours",
-                "action": "suggest the best time to visit for quicker service",
+                "action": "you may suggest the best time to visit for quicker service",
             },
         ),
     ],
