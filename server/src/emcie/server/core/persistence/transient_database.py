@@ -107,7 +107,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> UpdateResult:
+    ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 self._documents[i] = updated_document
@@ -134,7 +134,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult:
+    ) -> DeleteResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 document = self._documents.pop(i)

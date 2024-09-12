@@ -1,11 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Generic, Optional, Sequence, Type, TypeVar
 
-from attr import dataclass
-
 from emcie.server.core.persistence.common import BaseDocument, ObjectId, Where
-
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
 
@@ -61,18 +59,18 @@ class InsertResult:
 
 
 @dataclass(frozen=True)
-class UpdateResult:
+class UpdateResult(Generic[TDocument]):
     matched_count: int
     modified_count: int
-    updated_document: BaseDocument
+    updated_document: TDocument
     acknowledged: bool = True
     upserted_id: Optional[ObjectId] = None
 
 
 @dataclass(frozen=True)
-class DeleteResult:
+class DeleteResult(Generic[TDocument]):
     deleted_count: int
-    deleted_document: BaseDocument
+    deleted_document: TDocument
     acknowledged: bool = True
 
 
@@ -107,7 +105,7 @@ class DocumentCollection(ABC, Generic[TDocument]):
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> UpdateResult:
+    ) -> UpdateResult[TDocument]:
         """Updates the first document that matches the query criteria. If upsert is True,
         inserts the document if it does not exist."""
         ...
@@ -116,6 +114,6 @@ class DocumentCollection(ABC, Generic[TDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult:
+    ) -> DeleteResult[TDocument]:
         """Deletes the first document that matches the query criteria."""
         ...

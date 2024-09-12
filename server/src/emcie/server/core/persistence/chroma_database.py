@@ -170,14 +170,14 @@ class ChromaCollection(Generic[TChromaDocument]):
                 metadatas=[document.model_dump(mode="json")],
             )
 
-        return InsertResult(document.id, acknowledged=True)
+        return InsertResult(inserted_id=document.id, acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
         updated_document: TChromaDocument,
         upsert: bool = False,
-    ) -> UpdateResult:
+    ) -> UpdateResult[TChromaDocument]:
         async with self._lock:
             if self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]:
                 self._chroma_collection.update(
@@ -212,7 +212,7 @@ class ChromaCollection(Generic[TChromaDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult:
+    ) -> DeleteResult[TChromaDocument]:
         async with self._lock:
             docs = self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]
             if docs:

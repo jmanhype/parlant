@@ -142,14 +142,7 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_set: str,
         guideline_id: GuidelineId,
     ) -> Guideline:
-        document = await self._collection.find_one(
-            filters={
-                "guideline_set": {"$eq": guideline_set},
-                "id": {"$eq": guideline_id},
-            }
-        )
-
-        await self._collection.delete_one(
+        result = await self._collection.delete_one(
             filters={
                 "guideline_set": {"$eq": guideline_set},
                 "id": {"$eq": guideline_id},
@@ -157,10 +150,10 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         return Guideline(
-            id=GuidelineId(document.id),
-            creation_utc=document.creation_utc,
+            id=GuidelineId(result.deleted_document.id),
+            creation_utc=result.deleted_document.creation_utc,
             content=GuidelineContent(
-                predicate=document.predicate,
-                action=document.action,
+                predicate=result.deleted_document.predicate,
+                action=result.deleted_document.action,
             ),
         )

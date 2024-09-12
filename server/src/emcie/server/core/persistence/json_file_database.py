@@ -212,14 +212,14 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
         await self._database._sync_if_needed()
 
-        return InsertResult(document.id, acknowledged=True)
+        return InsertResult(inserted_id=document.id, acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> UpdateResult:
+    ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
@@ -251,7 +251,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult:
+    ) -> DeleteResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
