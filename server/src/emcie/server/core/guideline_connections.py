@@ -117,6 +117,8 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             upsert=True,
         )
 
+        assert result.updated_document
+
         graph = await self._get_graph()
 
         graph.add_node(source)

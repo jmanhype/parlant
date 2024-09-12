@@ -171,6 +171,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         data: JSONSerializable,
     ) -> ContextVariableValue:
         last_modified = datetime.now(timezone.utc)
+
         result = await self._value_collection.update_one(
             {
                 "variable_set": {"$eq": variable_set},
@@ -187,6 +188,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
             ),
             upsert=True,
         )
+
+        assert result.updated_document
 
         return ContextVariableValue(
             id=ContextVariableValueId(result.updated_document.id),

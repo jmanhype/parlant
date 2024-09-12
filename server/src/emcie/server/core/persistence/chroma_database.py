@@ -207,10 +207,10 @@ class ChromaCollection(Generic[TChromaDocument]):
                 )
 
             return UpdateResult(
-                acknowledged=False,
+                acknowledged=True,
                 matched_count=0,
                 modified_count=0,
-                updated_document=updated_document,
+                updated_document=None,
             )
 
     async def delete_one(

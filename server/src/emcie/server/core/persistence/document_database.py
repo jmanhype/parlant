@@ -62,7 +62,7 @@ class UpdateResult(Generic[TDocument]):
     acknowledged: bool
     matched_count: int
     modified_count: int
-    updated_document: TDocument
+    updated_document: Optional[TDocument]
 
 
 @dataclass(frozen=True)
