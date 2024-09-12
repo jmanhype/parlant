@@ -81,18 +81,18 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        result = await self._collection.insert_one(
-            document=self.GuidelineDocument(
-                id=ObjectId(generate_id()),
-                creation_utc=creation_utc,
-                guideline_set=guideline_set,
-                predicate=predicate,
-                action=action,
-            ),
+        document = self.GuidelineDocument(
+            id=ObjectId(generate_id()),
+            creation_utc=creation_utc,
+            guideline_set=guideline_set,
+            predicate=predicate,
+            action=action,
         )
 
+        await self._collection.insert_one(document=document)
+
         return Guideline(
-            id=GuidelineId(result.inserted_id),
+            id=GuidelineId(document.id),
             creation_utc=creation_utc,
             content=GuidelineContent(
                 predicate=predicate,

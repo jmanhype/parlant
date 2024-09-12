@@ -58,17 +58,18 @@ class EndUserDocumentStore(EndUserStore):
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
-        result = await self._collection.insert_one(
-            self.EndUserDocument(
-                id=ObjectId(generate_id()),
-                name=name,
-                email=email,
-                creation_utc=creation_utc,
-            )
+
+        document = self.EndUserDocument(
+            id=ObjectId(generate_id()),
+            name=name,
+            email=email,
+            creation_utc=creation_utc,
         )
 
+        await self._collection.insert_one(document=document)
+
         return EndUser(
-            id=EndUserId(result.inserted_id),
+            id=EndUserId(document.id),
             name=name,
             email=email,
             creation_utc=creation_utc,

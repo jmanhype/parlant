@@ -119,20 +119,20 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        result = await self._collection.insert_one(
-            document=self.TermDocument(
-                id=ObjectId(generate_id()),
-                term_set=term_set,
-                content=content,
-                name=name,
-                description=description,
-                creation_utc=creation_utc,
-                synonyms=", ".join(synonyms) if synonyms else "",
-            )
+        document = self.TermDocument(
+            id=ObjectId(generate_id()),
+            term_set=term_set,
+            content=content,
+            name=name,
+            description=description,
+            creation_utc=creation_utc,
+            synonyms=", ".join(synonyms) if synonyms else "",
         )
 
+        await self._collection.insert_one(document=document)
+
         return Term(
-            id=TermId(result.inserted_id),
+            id=TermId(document.id),
             creation_utc=creation_utc,
             name=name,
             description=description,

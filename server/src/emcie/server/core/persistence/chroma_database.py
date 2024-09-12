@@ -169,7 +169,7 @@ class ChromaCollection(Generic[TChromaDocument]):
                 metadatas=[document.model_dump(mode="json")],
             )
 
-        return InsertResult(inserted_id=document.id, acknowledged=True)
+        return InsertResult(acknowledged=True)
 
     async def update_one(
         self,
@@ -189,7 +189,6 @@ class ChromaCollection(Generic[TChromaDocument]):
                     acknowledged=True,
                     matched_count=1,
                     modified_count=1,
-                    upserted_id=None,
                     updated_document=updated_document,
                 )
 
@@ -204,7 +203,6 @@ class ChromaCollection(Generic[TChromaDocument]):
                     acknowledged=True,
                     matched_count=0,
                     modified_count=0,
-                    upserted_id=updated_document.id,
                     updated_document=updated_document,
                 )
 
@@ -213,7 +211,6 @@ class ChromaCollection(Generic[TChromaDocument]):
                 matched_count=0,
                 modified_count=0,
                 updated_document=updated_document,
-                upserted_id=None,
             )
 
     async def delete_one(

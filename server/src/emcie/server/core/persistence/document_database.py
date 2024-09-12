@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Generic, Optional, Sequence, Type, TypeVar
 
-from emcie.server.core.persistence.common import BaseDocument, ObjectId, Where
+from emcie.server.core.persistence.common import BaseDocument, Where
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
 
@@ -55,7 +55,6 @@ class DocumentDatabase(ABC):
 @dataclass(frozen=True)
 class InsertResult:
     acknowledged: bool
-    inserted_id: ObjectId
 
 
 @dataclass(frozen=True)
@@ -64,7 +63,6 @@ class UpdateResult(Generic[TDocument]):
     matched_count: int
     modified_count: int
     updated_document: TDocument
-    upserted_id: Optional[ObjectId] = None
 
 
 @dataclass(frozen=True)
