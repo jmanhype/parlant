@@ -3,14 +3,16 @@ from typing import Optional, Sequence, Type, cast
 from emcie.server.core.persistence.common import (
     BaseDocument,
     NoMatchingDocumentsError,
-    ObjectId,
     Where,
     matches_filters,
 )
 from emcie.server.core.persistence.document_database import (
+    DeleteResult,
     DocumentCollection,
     DocumentDatabase,
+    InsertResult,
     TDocument,
+    UpdateResult,
 )
 
 
@@ -95,38 +97,46 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     async def insert_one(
         self,
         document: TDocument,
-    ) -> ObjectId:
+    ) -> InsertResult:
         self._documents.append(document)
 
-        return document.id
+        return InsertResult(inserted_id=document.id, acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> ObjectId:
+    ) -> UpdateResult:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 self._documents[i] = updated_document
 
-                return updated_document.id
+                return UpdateResult(
+                    matched_count=1,
+                    modified_count=1,
+                    upserted_id=None,
+                )
 
         if upsert:
-            document_id = await self.insert_one(updated_document)
-            return document_id
+            inserted_document = await self.insert_one(updated_document)
+
+            return UpdateResult(
+                matched_count=0,
+                modified_count=0,
+                upserted_id=inserted_document.inserted_id,
+            )
 
         raise NoMatchingDocumentsError(self._name, filters)
 
     async def delete_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> DeleteResult:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                document = self._documents[i]
                 del self._documents[i]
 
-                return document
+                return DeleteResult(deleted_count=1, acknowledged=True)
 
         raise NoMatchingDocumentsError(self._name, filters)

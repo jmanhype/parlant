@@ -15,6 +15,7 @@ from emcie.server.core.persistence.common import (
     ObjectId,
     Where,
 )
+from emcie.server.core.persistence.document_database import DeleteResult, InsertResult, UpdateResult
 from emcie.server.logger import Logger
 
 
@@ -92,6 +93,7 @@ class ChromaDatabase:
         schema: Type[TChromaDocument],
     ) -> ChromaCollection[TChromaDocument]:
         if collection := self._collections.get(name):
+            assert schema == collection._schema
             return cast(ChromaCollection[TChromaDocument], collection)
 
         assert issubclass(schema, ChromaDocument)
@@ -161,7 +163,7 @@ class ChromaCollection(Generic[TChromaDocument]):
     async def insert_one(
         self,
         document: TChromaDocument,
-    ) -> ObjectId:
+    ) -> InsertResult:
         async with self._lock:
             self._chroma_collection.add(
                 ids=[document.id],
@@ -169,14 +171,14 @@ class ChromaCollection(Generic[TChromaDocument]):
                 metadatas=[document.model_dump(mode="json")],
             )
 
-        return document.id
+        return InsertResult(document.id, acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
         updated_document: TChromaDocument,
         upsert: bool = False,
-    ) -> ObjectId:
+    ) -> UpdateResult:
         async with self._lock:
             if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
                 "metadatas"
@@ -192,7 +194,12 @@ class ChromaCollection(Generic[TChromaDocument]):
                         ).model_dump(mode="json")
                     ],
                 )
-                return document_id
+
+                return UpdateResult(
+                    matched_count=1,
+                    modified_count=1,
+                    upserted_id=None,
+                )
 
             elif upsert:
                 self._chroma_collection.add(
@@ -201,14 +208,18 @@ class ChromaCollection(Generic[TChromaDocument]):
                     metadatas=[updated_document.model_dump(mode="json")],
                 )
 
-                return updated_document.id
+                return UpdateResult(
+                    matched_count=0,
+                    modified_count=0,
+                    upserted_id=updated_document.id,
+                )
 
             raise NoMatchingDocumentsError(self._name, filters)
 
     async def delete_one(
         self,
         filters: Where,
-    ) -> TChromaDocument:
+    ) -> DeleteResult:
         async with self._lock:
             docs = self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]
             if docs:
@@ -217,11 +228,9 @@ class ChromaCollection(Generic[TChromaDocument]):
                         f"ChromaCollection delete_one: detected more than one document with filters '{filters}'. Aborting..."
                     )
 
-                deleted_document = docs[0]
-
                 self._chroma_collection.delete(where=cast(chromadb.Where, filters))
 
-                return self._schema.model_validate(deleted_document)
+                return DeleteResult(deleted_count=1, acknowledged=True)
 
             else:
                 raise NoMatchingDocumentsError(self._name, filters)

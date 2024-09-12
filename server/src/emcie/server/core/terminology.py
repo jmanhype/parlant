@@ -119,7 +119,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        term_id = await self._collection.insert_one(
+        inserted_term = await self._collection.insert_one(
             document=self.TermDocument(
                 id=ObjectId(generate_id()),
                 term_set=term_set,
@@ -132,7 +132,7 @@ class TerminologyChromaStore(TerminologyStore):
         )
 
         return Term(
-            id=TermId(term_id),
+            id=TermId(inserted_term.inserted_id),
             creation_utc=creation_utc,
             name=name,
             description=description,
@@ -156,7 +156,7 @@ class TerminologyChromaStore(TerminologyStore):
             {"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
         )
 
-        term_id = await self._collection.update_one(
+        await self._collection.update_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
             updated_document=self.TermDocument(
                 id=document_to_update.id,
@@ -170,7 +170,7 @@ class TerminologyChromaStore(TerminologyStore):
         )
 
         return Term(
-            id=TermId(term_id),
+            id=TermId(document_to_update.id),
             creation_utc=document_to_update.creation_utc,
             name=name,
             description=description,

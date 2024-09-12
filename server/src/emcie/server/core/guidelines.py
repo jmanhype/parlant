@@ -81,7 +81,7 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        guideline_id = await self._collection.insert_one(
+        inserted_guideline = await self._collection.insert_one(
             document=self.GuidelineDocument(
                 id=ObjectId(generate_id()),
                 creation_utc=creation_utc,
@@ -92,7 +92,7 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         return Guideline(
-            id=GuidelineId(guideline_id),
+            id=GuidelineId(inserted_guideline.inserted_id),
             creation_utc=creation_utc,
             content=GuidelineContent(
                 predicate=predicate,
@@ -142,7 +142,14 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_set: str,
         guideline_id: GuidelineId,
     ) -> Guideline:
-        deleted_document = await self._collection.delete_one(
+        document = await self._collection.find_one(
+            filters={
+                "guideline_set": {"$eq": guideline_set},
+                "id": {"$eq": guideline_id},
+            }
+        )
+
+        await self._collection.delete_one(
             filters={
                 "guideline_set": {"$eq": guideline_set},
                 "id": {"$eq": guideline_id},
@@ -150,10 +157,10 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         return Guideline(
-            id=GuidelineId(deleted_document.id),
-            creation_utc=deleted_document.creation_utc,
+            id=GuidelineId(document.id),
+            creation_utc=document.creation_utc,
             content=GuidelineContent(
-                predicate=deleted_document.predicate,
-                action=deleted_document.action,
+                predicate=document.predicate,
+                action=document.action,
             ),
         )

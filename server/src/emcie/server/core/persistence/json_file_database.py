@@ -10,14 +10,16 @@ import aiofiles
 from emcie.server.core.persistence.common import (
     BaseDocument,
     NoMatchingDocumentsError,
-    ObjectId,
     Where,
     matches_filters,
 )
 from emcie.server.core.persistence.document_database import (
+    DeleteResult,
     DocumentCollection,
     DocumentDatabase,
+    InsertResult,
     TDocument,
+    UpdateResult,
 )
 from emcie.server.logger import Logger
 
@@ -204,20 +206,20 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
     async def insert_one(
         self,
         document: TDocument,
-    ) -> ObjectId:
+    ) -> InsertResult:
         async with self._lock:
             self._documents.append(document.model_dump(mode="json"))
 
         await self._database._sync_if_needed()
 
-        return document.id
+        return InsertResult(document.id, acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> ObjectId:
+    ) -> UpdateResult:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
@@ -225,29 +227,35 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
                 await self._database._sync_if_needed()
 
-                return updated_document.id
+                return UpdateResult(
+                    matched_count=1,
+                    modified_count=1,
+                    upserted_id=None,
+                )
 
         if upsert:
-            document_id = await self.insert_one(updated_document)
+            inserted_document = await self.insert_one(updated_document)
 
             await self._database._sync_if_needed()
 
-            return document_id
+            return UpdateResult(
+                matched_count=0,
+                modified_count=0,
+                upserted_id=inserted_document.inserted_id,
+            )
 
         raise NoMatchingDocumentsError(self._name, filters)
 
     async def delete_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> DeleteResult:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
-                    document = self._schema.model_validate(self._documents[i])
-
                     del self._documents[i]
 
                 await self._database._sync_if_needed()
-                return document
+                return DeleteResult(deleted_count=1, acknowledged=True)
 
         raise NoMatchingDocumentsError(self._name, filters)

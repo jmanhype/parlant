@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Generic, Sequence, Type, TypeVar
+from typing import Generic, Optional, Sequence, Type, TypeVar
+
+from attr import dataclass
 
 from emcie.server.core.persistence.common import BaseDocument, ObjectId, Where
 
@@ -52,6 +54,32 @@ class DocumentDatabase(ABC):
         ...
 
 
+@dataclass(frozen=True)
+class InsertResult:
+    inserted_id: ObjectId
+    acknowledged: bool = True
+
+
+@dataclass(frozen=True)
+class UpdateResult:
+    matched_count: int
+    modified_count: int
+    upserted_id: Optional[ObjectId] = None
+    acknowledged: bool = True
+
+    def is_upsert(self) -> bool:
+        return self.upserted_id is not None
+
+
+@dataclass(frozen=True)
+class DeleteResult:
+    deleted_count: int
+    acknowledged: bool = True
+
+    def is_successful(self) -> bool:
+        return self.acknowledged and self.deleted_count > 0
+
+
 class DocumentCollection(ABC, Generic[TDocument]):
     @abstractmethod
     async def find(
@@ -73,7 +101,7 @@ class DocumentCollection(ABC, Generic[TDocument]):
     async def insert_one(
         self,
         document: TDocument,
-    ) -> ObjectId:
+    ) -> InsertResult:
         """Inserts a single document into the collection."""
         ...
 
@@ -83,7 +111,7 @@ class DocumentCollection(ABC, Generic[TDocument]):
         filters: Where,
         updated_document: TDocument,
         upsert: bool = False,
-    ) -> ObjectId:
+    ) -> UpdateResult:
         """Updates the first document that matches the query criteria. If upsert is True,
         inserts the document if it does not exist."""
         ...
@@ -92,6 +120,6 @@ class DocumentCollection(ABC, Generic[TDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> DeleteResult:
         """Deletes the first document that matches the query criteria."""
         ...

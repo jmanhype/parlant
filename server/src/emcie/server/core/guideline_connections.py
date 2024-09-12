@@ -105,7 +105,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> GuidelineConnection:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        connection_id = await self._collection.update_one(
+        updated_connection = await self._collection.update_one(
             filters={"source": {"$eq": source}, "target": {"$eq": target}},
             updated_document=self.GuidelineConnectionDocument(
                 id=ObjectId(generate_id()),
@@ -117,6 +117,14 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             upsert=True,
         )
 
+        if updated_connection.upserted_id:
+            doc_id = updated_connection.upserted_id
+        else:
+            doc = await self._collection.find_one(
+                {"source": {"$eq": source}, "target": {"$eq": target}}
+            )
+            doc_id = doc.id
+
         graph = await self._get_graph()
 
         graph.add_node(source)
@@ -126,11 +134,11 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             source,
             target,
             kind=kind,
-            id=connection_id,
+            id=doc_id,
         )
 
         return GuidelineConnection(
-            id=GuidelineConnectionId(connection_id),
+            id=GuidelineConnectionId(doc_id),
             creation_utc=creation_utc,
             source=source,
             target=target,
