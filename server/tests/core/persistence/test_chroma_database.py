@@ -169,7 +169,9 @@ async def test_delete_one(
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 1
 
-    await chroma_collection.delete_one({"id": {"$eq": "1"}})
+    deleted_result = await chroma_collection.delete_one({"id": {"$eq": "1"}})
+
+    assert deleted_result.deleted_document.id == ObjectId("1")
 
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 0
