@@ -16,7 +16,7 @@ from typing_extensions import Literal
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.persistence.common import BaseDocument, NoMatchingDocumentsError, ObjectId
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
 )
@@ -203,10 +203,7 @@ class EvaluationDocumentStore(EvaluationStore):
         invoice_index: int,
         updated_invoice: Invoice,
     ) -> Evaluation:
-        try:
-            evaluation = await self.read_evaluation(evaluation_id)
-        except NoMatchingDocumentsError:
-            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
+        evaluation = await self.read_evaluation(evaluation_id)
 
         evaluation_invoices = [
             invoice if i != invoice_index else updated_invoice
@@ -238,10 +235,7 @@ class EvaluationDocumentStore(EvaluationStore):
         status: EvaluationStatus,
         error: Optional[str] = None,
     ) -> Evaluation:
-        try:
-            evaluation = await self.read_evaluation(evaluation_id)
-        except NoMatchingDocumentsError:
-            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
+        evaluation = await self.read_evaluation(evaluation_id)
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
@@ -269,6 +263,9 @@ class EvaluationDocumentStore(EvaluationStore):
         evaluation_document = await self._evaluation_collection.find_one(
             filters={"id": {"$eq": evaluation_id}},
         )
+
+        if not evaluation_document:
+            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
         return Evaluation(
             id=EvaluationId(evaluation_document.id),

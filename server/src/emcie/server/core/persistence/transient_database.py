@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Optional, Sequence, Type, cast
 from emcie.server.core.persistence.common import (
     BaseDocument,
-    NoMatchingDocumentsError,
     Where,
     matches_filters,
 )
@@ -88,11 +87,11 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     async def find_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> Optional[TDocument]:
         matched_documents = await self.find(filters)
         if len(matched_documents) >= 1:
             return matched_documents[0]
-        raise NoMatchingDocumentsError(self._name, filters)
+        return None
 
     async def insert_one(
         self,
@@ -113,6 +112,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
                 self._documents[i] = updated_document
 
                 return UpdateResult(
+                    acknowledged=True,
                     matched_count=1,
                     modified_count=1,
                     upserted_id=None,
@@ -123,13 +123,20 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
             inserted_document = await self.insert_one(updated_document)
 
             return UpdateResult(
+                acknowledged=True,
                 matched_count=0,
                 modified_count=0,
                 upserted_id=inserted_document.inserted_id,
                 updated_document=updated_document,
             )
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return UpdateResult(
+            acknowledged=False,
+            matched_count=0,
+            modified_count=0,
+            updated_document=updated_document,
+            upserted_id=None,
+        )
 
     async def delete_one(
         self,
@@ -141,4 +148,8 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
 
                 return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return DeleteResult(
+            acknowledged=True,
+            deleted_count=0,
+            deleted_document=None,
+        )

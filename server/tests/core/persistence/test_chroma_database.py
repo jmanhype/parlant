@@ -3,14 +3,14 @@ from pathlib import Path
 import tempfile
 from typing import AsyncIterator, Iterator
 from lagom import Container
-from pytest import fixture, raises
+from pytest import fixture
 
 from emcie.server.core.persistence.chroma_database import (
     ChromaCollection,
     ChromaDatabase,
     ChromaDocument,
 )
-from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId
+from emcie.server.core.persistence.common import ObjectId
 from emcie.server.logger import Logger
 
 
@@ -126,12 +126,13 @@ async def test_that_update_one_without_upsert_and_no_existing_content_does_not_i
         name="test name",
     )
 
-    with raises(NoMatchingDocumentsError):
-        await chroma_collection.update_one(
-            {"name": {"$eq": "new name"}},
-            updated_document,
-            upsert=False,
-        )
+    result = await chroma_collection.update_one(
+        {"name": {"$eq": "new name"}},
+        updated_document,
+        upsert=False,
+    )
+
+    assert result.matched_count == 0
 
 
 async def test_that_update_one_with_upsert_and_no_existing_content_inserts_new_document(
@@ -171,7 +172,10 @@ async def test_delete_one(
 
     deleted_result = await chroma_collection.delete_one({"id": {"$eq": "1"}})
 
-    assert deleted_result.deleted_document.id == ObjectId("1")
+    assert deleted_result.deleted_count == 1
+
+    if deleted_result.deleted_document:
+        assert deleted_result.deleted_document.id == ObjectId("1")
 
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 0

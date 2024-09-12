@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional
 
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -79,6 +79,9 @@ class EndUserDocumentStore(EndUserStore):
         end_user_id: EndUserId,
     ) -> EndUser:
         end_user_document = await self._collection.find_one(filters={"id": {"$eq": end_user_id}})
+
+        if not end_user_document:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
         return EndUser(
             id=EndUserId(end_user_document.id),

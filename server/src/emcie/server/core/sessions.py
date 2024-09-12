@@ -21,7 +21,6 @@ from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.persistence.common import (
     BaseDocument,
-    NoMatchingDocumentsError,
     ObjectId,
     Where,
 )
@@ -233,11 +232,10 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
     ) -> Session:
-        try:
-            session_document = await self._session_collection.find_one(
-                filters={"id": {"$eq": session_id}}
-            )
-        except NoMatchingDocumentsError:
+        session_document = await self._session_collection.find_one(
+            filters={"id": {"$eq": session_id}}
+        )
+        if not session_document:
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         return Session(
@@ -285,9 +283,7 @@ class SessionDocumentStore(SessionStore):
         data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event:
-        try:
-            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
-        except NoMatchingDocumentsError:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         session_events = await self.list_events(session_id)
@@ -321,9 +317,8 @@ class SessionDocumentStore(SessionStore):
         self,
         event_id: EventId,
     ) -> None:
-        try:
-            await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
-        except NoMatchingDocumentsError:
+        result = await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
+        if not result.deleted_document:
             raise ItemNotFoundError(item_id=UniqueId(event_id))
 
     async def list_events(
@@ -332,9 +327,7 @@ class SessionDocumentStore(SessionStore):
         source: Optional[EventSource] = None,
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]:
-        try:
-            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
-        except NoMatchingDocumentsError:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         return [

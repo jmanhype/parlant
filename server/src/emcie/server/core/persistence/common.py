@@ -89,10 +89,3 @@ def matches_filters(
                     return False
 
     return True
-
-
-class NoMatchingDocumentsError(Exception):
-    def __init__(self, collection_name: str, filters: Where) -> None:
-        super().__init__("No matching documents were found")
-        self.collection_name = collection_name
-        self.filters = filters

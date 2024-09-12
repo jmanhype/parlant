@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence
 
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -93,6 +93,10 @@ class AgentDocumentStore(AgentStore):
                 "id": {"$eq": agent_id},
             }
         )
+
+        if not agent_document:
+            raise ItemNotFoundError(item_id=UniqueId(agent_id))
+
         return Agent(
             id=AgentId(agent_document.id),
             name=agent_document.name,

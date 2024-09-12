@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -128,6 +128,11 @@ class GuidelineDocumentStore(GuidelineStore):
             }
         )
 
+        if not guideline_document:
+            raise ItemNotFoundError(
+                item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
+            )
+
         return Guideline(
             id=GuidelineId(guideline_document.id),
             creation_utc=guideline_document.creation_utc,
@@ -148,6 +153,11 @@ class GuidelineDocumentStore(GuidelineStore):
                 "id": {"$eq": guideline_id},
             }
         )
+
+        if not result.deleted_document:
+            raise ItemNotFoundError(
+                item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
+            )
 
         return Guideline(
             id=GuidelineId(result.deleted_document.id),

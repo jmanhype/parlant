@@ -8,7 +8,7 @@ from emcie.server.core.persistence.chroma_database import (
     ChromaDatabase,
     ChromaDocument,
 )
-from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId
+from emcie.server.core.persistence.common import ObjectId
 
 TermId = NewType("TermId", str)
 
@@ -156,6 +156,9 @@ class TerminologyChromaStore(TerminologyStore):
             {"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
         )
 
+        if not document_to_update:
+            raise ItemNotFoundError(item_id=UniqueId(name))
+
         await self._collection.update_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
             updated_document=self.TermDocument(
@@ -182,11 +185,10 @@ class TerminologyChromaStore(TerminologyStore):
         term_set: str,
         name: str,
     ) -> Term:
-        try:
-            term_document = await self._collection.find_one(
-                filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
-            )
-        except NoMatchingDocumentsError:
+        term_document = await self._collection.find_one(
+            filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
+        )
+        if not term_document:
             raise ItemNotFoundError(item_id=UniqueId(name), message=f"term_set={term_set}")
 
         return Term(
@@ -220,6 +222,9 @@ class TerminologyChromaStore(TerminologyStore):
         term_document = await self._collection.find_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
         )
+
+        if not term_document:
+            raise ItemNotFoundError(item_id=UniqueId(name))
 
         await self._collection.delete_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}

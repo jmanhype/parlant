@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Sequence
 from pydantic import ValidationError
 
 from emcie.common.tools import ToolId, ToolParameter, ToolResult, Tool, ToolContext
-from emcie.server.core.common import JSONSerializable, generate_id
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -207,6 +207,9 @@ class LocalToolService(ToolService):
     ) -> Tool:
         tool_document = await self._collection.find_one(filters={"id": {"$eq": tool_id}})
 
+        if not tool_document:
+            raise ItemNotFoundError(item_id=UniqueId(tool_id))
+
         return Tool(
             id=ToolId(tool_document.id),
             name=tool_document.name,
@@ -226,9 +229,13 @@ class LocalToolService(ToolService):
         _ = context
 
         try:
-            tool_doc = await self._collection.find_one({"id": {"$eq": tool_id}})
-            module = importlib.import_module(tool_doc.module_path)
-            func = getattr(module, tool_doc.name)
+            tool_document = await self._collection.find_one({"id": {"$eq": tool_id}})
+
+            if not tool_document:
+                raise ItemNotFoundError(UniqueId(tool_id))
+
+            module = importlib.import_module(tool_document.module_path)
+            func = getattr(module, tool_document.name)
         except Exception as e:
             raise ToolImportError(tool_id) from e
 

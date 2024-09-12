@@ -54,24 +54,24 @@ class DocumentDatabase(ABC):
 
 @dataclass(frozen=True)
 class InsertResult:
+    acknowledged: bool
     inserted_id: ObjectId
-    acknowledged: bool = True
 
 
 @dataclass(frozen=True)
 class UpdateResult(Generic[TDocument]):
+    acknowledged: bool
     matched_count: int
     modified_count: int
     updated_document: TDocument
-    acknowledged: bool = True
     upserted_id: Optional[ObjectId] = None
 
 
 @dataclass(frozen=True)
 class DeleteResult(Generic[TDocument]):
+    acknowledged: bool
     deleted_count: int
-    deleted_document: TDocument
-    acknowledged: bool = True
+    deleted_document: Optional[TDocument]
 
 
 class DocumentCollection(ABC, Generic[TDocument]):
@@ -87,7 +87,7 @@ class DocumentCollection(ABC, Generic[TDocument]):
     async def find_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> Optional[TDocument]:
         """Returns the first document that matches the query criteria."""
         ...
 

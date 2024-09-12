@@ -9,7 +9,6 @@ import aiofiles
 
 from emcie.server.core.persistence.common import (
     BaseDocument,
-    NoMatchingDocumentsError,
     Where,
     matches_filters,
 )
@@ -194,11 +193,11 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
     async def find_one(
         self,
         filters: Where,
-    ) -> TDocument:
+    ) -> Optional[TDocument]:
         matched_documents = await self.find(filters)
 
         if not matched_documents:
-            raise NoMatchingDocumentsError(self._name, filters)
+            return None
 
         result = matched_documents[0]
         return self._schema.model_validate(result)
@@ -228,6 +227,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
                 await self._database._sync_if_needed()
 
                 return UpdateResult(
+                    acknowledged=True,
                     matched_count=1,
                     modified_count=1,
                     upserted_id=None,
@@ -240,13 +240,20 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
             await self._database._sync_if_needed()
 
             return UpdateResult(
+                acknowledged=True,
                 matched_count=0,
                 modified_count=0,
                 upserted_id=inserted_document.inserted_id,
                 updated_document=updated_document,
             )
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return UpdateResult(
+            acknowledged=False,
+            matched_count=0,
+            modified_count=0,
+            updated_document=updated_document,
+            upserted_id=None,
+        )
 
     async def delete_one(
         self,
@@ -262,4 +269,8 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
                 await self._database._sync_if_needed()
                 return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return DeleteResult(
+            acknowledged=True,
+            deleted_count=0,
+            deleted_document=None,
+        )
