@@ -291,7 +291,7 @@ async def main() -> None:
     @click.argument("agent_id", required=False)
     @click.pass_context
     def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
-        agent_id = agent_id if not agent_id else Interface.get_default_agent(ctx)
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
