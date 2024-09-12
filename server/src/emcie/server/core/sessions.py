@@ -207,10 +207,10 @@ class SessionDocumentStore(SessionStore):
         if title:
             document.title = title
 
-        inserted_session = await self._session_collection.insert_one(document=document)
+        result = await self._session_collection.insert_one(document=document)
 
         return Session(
-            id=SessionId(inserted_session.inserted_id),
+            id=SessionId(result.inserted_id),
             creation_utc=creation_utc,
             end_user_id=end_user_id,
             agent_id=agent_id,
@@ -294,7 +294,7 @@ class SessionDocumentStore(SessionStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
 
-        inserted_event = await self._event_collection.insert_one(
+        result = await self._event_collection.insert_one(
             self.EventDocument(
                 id=ObjectId(generate_id()),
                 session_id=session_id,
@@ -308,7 +308,7 @@ class SessionDocumentStore(SessionStore):
         )
 
         return Event(
-            id=EventId(inserted_event.inserted_id),
+            id=EventId(result.inserted_id),
             source=source,
             kind=kind,
             offset=offset,

@@ -231,6 +231,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
                     matched_count=1,
                     modified_count=1,
                     upserted_id=None,
+                    updated_document=updated_document,
                 )
 
         if upsert:
@@ -242,6 +243,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
                 matched_count=0,
                 modified_count=0,
                 upserted_id=inserted_document.inserted_id,
+                updated_document=updated_document,
             )
 
         raise NoMatchingDocumentsError(self._name, filters)
@@ -253,9 +255,11 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         for i, d in enumerate(self._documents):
             if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
+                    document = self._schema.model_validate(self._documents[i])
+
                     del self._documents[i]
 
                 await self._database._sync_if_needed()
-                return DeleteResult(deleted_count=1, acknowledged=True)
+                return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
 
         raise NoMatchingDocumentsError(self._name, filters)

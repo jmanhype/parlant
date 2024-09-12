@@ -64,20 +64,16 @@ class InsertResult:
 class UpdateResult:
     matched_count: int
     modified_count: int
-    upserted_id: Optional[ObjectId] = None
+    updated_document: BaseDocument
     acknowledged: bool = True
-
-    def is_upsert(self) -> bool:
-        return self.upserted_id is not None
+    upserted_id: Optional[ObjectId] = None
 
 
 @dataclass(frozen=True)
 class DeleteResult:
     deleted_count: int
+    deleted_document: BaseDocument
     acknowledged: bool = True
-
-    def is_successful(self) -> bool:
-        return self.acknowledged and self.deleted_count > 0
 
 
 class DocumentCollection(ABC, Generic[TDocument]):

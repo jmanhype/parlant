@@ -116,6 +116,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
                     matched_count=1,
                     modified_count=1,
                     upserted_id=None,
+                    updated_document=updated_document,
                 )
 
         if upsert:
@@ -125,6 +126,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
                 matched_count=0,
                 modified_count=0,
                 upserted_id=inserted_document.inserted_id,
+                updated_document=updated_document,
             )
 
         raise NoMatchingDocumentsError(self._name, filters)
@@ -135,8 +137,8 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     ) -> DeleteResult:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                del self._documents[i]
+                document = self._documents.pop(i)
 
-                return DeleteResult(deleted_count=1, acknowledged=True)
+                return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
 
         raise NoMatchingDocumentsError(self._name, filters)

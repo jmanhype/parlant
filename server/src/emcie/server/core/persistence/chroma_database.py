@@ -12,7 +12,6 @@ from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # type: 
 from emcie.server.core.persistence.common import (
     BaseDocument,
     NoMatchingDocumentsError,
-    ObjectId,
     Where,
 )
 from emcie.server.core.persistence.document_database import DeleteResult, InsertResult, UpdateResult
@@ -180,25 +179,18 @@ class ChromaCollection(Generic[TChromaDocument]):
         upsert: bool = False,
     ) -> UpdateResult:
         async with self._lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
-                "metadatas"
-            ]:
-                document_id = ObjectId(str(docs[0]["id"]))
-
+            if self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]:
                 self._chroma_collection.update(
-                    ids=[document_id],
+                    ids=[updated_document.id],
                     documents=[updated_document.content],
-                    metadatas=[
-                        self._schema(
-                            **{**docs[0], **updated_document.model_dump(mode="json")}
-                        ).model_dump(mode="json")
-                    ],
+                    metadatas=[updated_document.model_dump(mode="json")],
                 )
 
                 return UpdateResult(
                     matched_count=1,
                     modified_count=1,
                     upserted_id=None,
+                    updated_document=updated_document,
                 )
 
             elif upsert:
@@ -212,6 +204,7 @@ class ChromaCollection(Generic[TChromaDocument]):
                     matched_count=0,
                     modified_count=0,
                     upserted_id=updated_document.id,
+                    updated_document=updated_document,
                 )
 
             raise NoMatchingDocumentsError(self._name, filters)
@@ -227,10 +220,15 @@ class ChromaCollection(Generic[TChromaDocument]):
                     raise ValueError(
                         f"ChromaCollection delete_one: detected more than one document with filters '{filters}'. Aborting..."
                     )
+                deleted_document = docs[0]
 
                 self._chroma_collection.delete(where=cast(chromadb.Where, filters))
 
-                return DeleteResult(deleted_count=1, acknowledged=True)
+                return DeleteResult(
+                    deleted_count=1,
+                    acknowledged=True,
+                    deleted_document=self._schema.model_validate(deleted_document),
+                )
 
             else:
                 raise NoMatchingDocumentsError(self._name, filters)

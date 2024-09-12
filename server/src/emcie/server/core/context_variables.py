@@ -171,7 +171,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         data: JSONSerializable,
     ) -> ContextVariableValue:
         last_modified = datetime.now(timezone.utc)
-        updated_value = await self._value_collection.update_one(
+        result = await self._value_collection.update_one(
             {
                 "variable_set": {"$eq": variable_set},
                 "variable_id": {"$eq": variable_id},
@@ -188,20 +188,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
             upsert=True,
         )
 
-        if updated_value.upserted_id:
-            doc_id = updated_value.upserted_id
-        else:
-            doc = await self._value_collection.find_one(
-                {
-                    "variable_set": {"$eq": variable_set},
-                    "variable_id": {"$eq": variable_id},
-                    "key": {"$eq": key},
-                }
-            )
-            doc_id = doc.id
-
         return ContextVariableValue(
-            id=ContextVariableValueId(doc_id),
+            id=ContextVariableValueId(result.updated_document.id),
             variable_id=variable_id,
             last_modified=last_modified,
             data=data,

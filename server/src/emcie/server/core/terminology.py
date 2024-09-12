@@ -119,7 +119,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=synonyms,
         )
 
-        inserted_term = await self._collection.insert_one(
+        result = await self._collection.insert_one(
             document=self.TermDocument(
                 id=ObjectId(generate_id()),
                 term_set=term_set,
@@ -132,7 +132,7 @@ class TerminologyChromaStore(TerminologyStore):
         )
 
         return Term(
-            id=TermId(inserted_term.inserted_id),
+            id=TermId(result.inserted_id),
             creation_utc=creation_utc,
             name=name,
             description=description,

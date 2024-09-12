@@ -162,7 +162,7 @@ class LocalToolService(ToolService):
             raise ValidationError("Tool name must be unique within the tool set")
 
         creation_utc = creation_utc or datetime.now(timezone.utc)
-        inserted_tool = await self._collection.insert_one(
+        result = await self._collection.insert_one(
             document=self.ToolDocument(
                 id=ObjectId(generate_id()),
                 name=name,
@@ -176,7 +176,7 @@ class LocalToolService(ToolService):
         )
 
         return Tool(
-            id=ToolId(inserted_tool.inserted_id),
+            id=ToolId(result.inserted_id),
             name=name,
             description=description,
             parameters=dict(parameters),

@@ -58,7 +58,7 @@ class AgentDocumentStore(AgentStore):
         creation_utc: Optional[datetime] = None,
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
-        inserted_agent = await self._collection.insert_one(
+        result = await self._collection.insert_one(
             document=self.AgentDocument(
                 id=ObjectId(generate_id()),
                 name=name,
@@ -68,7 +68,7 @@ class AgentDocumentStore(AgentStore):
         )
 
         return Agent(
-            id=AgentId(inserted_agent.inserted_id),
+            id=AgentId(result.inserted_id),
             name=name,
             description=description,
             creation_utc=creation_utc,
