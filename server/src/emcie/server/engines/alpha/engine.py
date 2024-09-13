@@ -230,6 +230,8 @@ class AlphaEngine(Engine):
                 },
             )
 
+            self.logger.warning("Processing cancelled")
+
             raise
         finally:
             await event_emitter.emit_status_event(
