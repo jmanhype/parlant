@@ -12,6 +12,8 @@ from tests.e2e.test_utilities import (
     run_server,
 )
 
+REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
+
 
 async def test_that_a_term_can_be_created_with_synonyms(
     context: _TestContext,
@@ -173,7 +175,8 @@ async def test_that_terms_can_be_listed(
         ]
 
         await asyncio.create_subprocess_exec(*exec_args_1)
-        await asyncio.create_subprocess_exec(*exec_args_2)
+        result = await asyncio.create_subprocess_exec(*exec_args_2)
+        await result.wait()
 
         async with httpx.AsyncClient(
             follow_redirects=True,

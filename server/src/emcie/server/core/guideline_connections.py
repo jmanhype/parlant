@@ -5,10 +5,12 @@ from enum import Enum, auto
 from typing import NewType, Optional, Sequence
 import networkx  # type: ignore
 
-from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 
@@ -52,15 +54,14 @@ class GuidelineConnectionStore(ABC):
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
-    class GuidelineConnectionDocument(DefaultBaseModel):
-        id: GuidelineConnectionId
+    class GuidelineConnectionDocument(BaseDocument):
         creation_utc: datetime
         source: GuidelineId
         target: GuidelineId
-        kind: str
+        kind: ConnectionKind
 
     def __init__(self, database: DocumentDatabase) -> None:
-        self._collection: DocumentCollection = database.get_or_create_collection(
+        self._collection = database.get_or_create_collection(
             name="guideline_connections",
             schema=self.GuidelineConnectionDocument,
         )
@@ -76,15 +77,15 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             edges = list()
 
             for c in connections:
-                nodes.add(c["source"])
-                nodes.add(c["target"])
+                nodes.add(c.source)
+                nodes.add(c.target)
                 edges.append(
                     (
-                        c["source"],
-                        c["target"],
+                        c.source,
+                        c.target,
                         {
-                            "kind": c["kind"],
-                            "id": c["id"],
+                            "kind": c.kind,
+                            "id": c.id,
                         },
                     )
                 )
@@ -104,17 +105,19 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> GuidelineConnection:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        connection_id = await self._collection.update_one(
+        result = await self._collection.update_one(
             filters={"source": {"$eq": source}, "target": {"$eq": target}},
-            updated_document={
-                "id": generate_id(),
-                "creation_utc": creation_utc,
-                "source": source,
-                "target": target,
-                "kind": kind.name,
-            },
+            updated_document=self.GuidelineConnectionDocument(
+                id=ObjectId(generate_id()),
+                creation_utc=creation_utc,
+                source=source,
+                target=target,
+                kind=kind,
+            ),
             upsert=True,
         )
+
+        assert result.updated_document
 
         graph = await self._get_graph()
 
@@ -124,12 +127,12 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         graph.add_edge(
             source,
             target,
-            kind=kind.name,
-            id=connection_id,
+            kind=kind,
+            id=result.updated_document.id,
         )
 
         return GuidelineConnection(
-            id=GuidelineConnectionId(connection_id),
+            id=GuidelineConnectionId(result.updated_document.id),
             creation_utc=creation_utc,
             source=source,
             target=target,
@@ -140,9 +143,14 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self,
         id: GuidelineConnectionId,
     ) -> None:
-        document = await self._collection.find_one(filters={"id": {"$eq": id}})
+        connection_document = await self._collection.find_one(filters={"id": {"$eq": id}})
 
-        (await self._get_graph()).remove_edge(document["source"], document["target"])
+        if not connection_document:
+            raise ItemNotFoundError(item_id=UniqueId(id))
+
+        (await self._get_graph()).remove_edge(
+            connection_document.source, connection_document.target
+        )
 
         await self._collection.delete_one(filters={"id": {"$eq": id}})
 
@@ -170,17 +178,20 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 for edge_source, edge_target in descendant_edges:
                     edge_data = _graph.get_edge_data(edge_source, edge_target)
 
-                    connection = await self._collection.find_one(
+                    connection_document = await self._collection.find_one(
                         filters={"id": {"$eq": edge_data["id"]}},
                     )
 
+                    if not connection_document:
+                        raise ItemNotFoundError(item_id=UniqueId(edge_data["id"]))
+
                     connections.append(
                         GuidelineConnection(
-                            id=connection["id"],
-                            source=connection["source"],
-                            target=connection["target"],
-                            kind=ConnectionKind[connection["kind"]],
-                            creation_utc=connection["creation_utc"],
+                            id=GuidelineConnectionId(connection_document.id),
+                            source=connection_document.source,
+                            target=connection_document.target,
+                            kind=connection_document.kind,
+                            creation_utc=connection_document.creation_utc,
                         )
                     )
 
@@ -191,17 +202,20 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 connections = []
 
                 for source, data in successors.items():
-                    connection = await self._collection.find_one(
+                    connection_document = await self._collection.find_one(
                         filters={"id": {"$eq": data["id"]}},
                     )
 
+                    if not connection_document:
+                        raise ItemNotFoundError(item_id=UniqueId(data["id"]))
+
                     connections.append(
                         GuidelineConnection(
-                            id=connection["id"],
-                            source=connection["source"],
-                            target=connection["target"],
-                            kind=ConnectionKind[connection["kind"]],
-                            creation_utc=connection["creation_utc"],
+                            id=GuidelineConnectionId(connection_document.id),
+                            source=connection_document.source,
+                            target=connection_document.target,
+                            kind=connection_document.kind,
+                            creation_utc=connection_document.creation_utc,
                         )
                     )
 

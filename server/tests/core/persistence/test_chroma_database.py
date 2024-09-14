@@ -3,16 +3,19 @@ from pathlib import Path
 import tempfile
 from typing import AsyncIterator, Iterator
 from lagom import Container
-from pytest import fixture, mark, raises
+from pytest import fixture
 
-from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.persistence.chroma_database import ChromaCollection, ChromaDatabase
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
+from emcie.server.core.persistence.chroma_database import (
+    ChromaCollection,
+    ChromaDatabase,
+    ChromaDocument,
+)
+from emcie.server.core.persistence.common import ObjectId
 from emcie.server.logger import Logger
 
 
-class _TestModel(DefaultBaseModel):
-    id: str
+class _TestModel(ChromaDocument):
+    id: ObjectId
     content: str
     name: str
 
@@ -42,53 +45,39 @@ def chroma_database(context: _TestContext) -> ChromaDatabase:
 
 
 @fixture
-async def chroma_collection(chroma_database: ChromaDatabase) -> AsyncIterator[ChromaCollection]:
+async def chroma_collection(
+    chroma_database: ChromaDatabase,
+) -> AsyncIterator[ChromaCollection[_TestModel]]:
     collection = chroma_database.get_or_create_collection("test_collection", _TestModel)
     yield collection
     chroma_database.delete_collection("test_collection")
 
 
-@mark.asyncio
 async def test_that_create_document_and_find_with_metadata_field(
-    chroma_collection: ChromaCollection,
+    chroma_collection: ChromaCollection[_TestModel],
 ) -> None:
-    await chroma_collection.insert_one(
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        },
+    doc = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
     )
+
+    await chroma_collection.insert_one(doc)
 
     find_by_id_result = await chroma_collection.find({"id": {"$eq": "1"}})
 
     assert len(find_by_id_result) == 1
-    assert find_by_id_result == [
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        }
-    ]
+
+    assert find_by_id_result[0] == doc
 
     find_one_result = await chroma_collection.find_one({"id": {"$eq": "1"}})
 
-    assert find_one_result == {
-        "id": "1",
-        "content": "test content",
-        "name": "test name",
-    }
+    assert find_one_result == doc
 
     find_by_name_result = await chroma_collection.find({"name": {"$eq": "test name"}})
 
     assert len(find_by_name_result) == 1
-    assert find_by_name_result == [
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        }
-    ]
+    assert find_by_name_result[0] == doc
 
     find_by_not_existing_name_result = await chroma_collection.find(
         {"name": {"$eq": "not existing"}}
@@ -97,23 +86,22 @@ async def test_that_create_document_and_find_with_metadata_field(
     assert len(find_by_not_existing_name_result) == 0
 
 
-@mark.asyncio
 async def test_that_update_one_without_upsert_is_updating_existing_document(
-    chroma_collection: ChromaCollection,
+    chroma_collection: ChromaCollection[_TestModel],
 ) -> None:
-    await chroma_collection.insert_one(
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        },
+    document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
     )
 
-    updated_document = {
-        "id": "1",
-        "content": "test content",
-        "name": "new name",
-    }
+    await chroma_collection.insert_one(document)
+
+    updated_document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="new name",
+    )
 
     await chroma_collection.update_one(
         {"name": {"$eq": "test name"}},
@@ -122,98 +110,115 @@ async def test_that_update_one_without_upsert_is_updating_existing_document(
     )
 
     result = await chroma_collection.find({"name": {"$eq": "test name"}})
-
-    assert len(result) == 0  # didn't find since it got updated
+    assert len(result) == 0
 
     result = await chroma_collection.find({"name": {"$eq": "new name"}})
-
     assert len(result) == 1
-    assert result == [
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "new name",
-        }
-    ]
+    assert result[0] == updated_document
 
 
-@mark.asyncio
 async def test_that_update_one_without_upsert_and_no_existing_content_does_not_insert(
-    chroma_collection: ChromaCollection,
+    chroma_collection: ChromaCollection[_TestModel],
 ) -> None:
-    updated_document = {
-        "id": "1",
-        "content": "test content",
-        "name": "new name",
-    }
+    updated_document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
+    )
 
-    with raises(NoMatchingDocumentsError):
-        await chroma_collection.update_one(
-            {"name": {"$eq": "new name"}},
-            updated_document,
-            upsert=False,
-        )
+    result = await chroma_collection.update_one(
+        {"name": {"$eq": "new name"}},
+        updated_document,
+        upsert=False,
+    )
+
+    assert result.matched_count == 0
 
 
-@mark.asyncio
 async def test_that_update_one_with_upsert_and_no_existing_content_inserts_new_document(
-    chroma_collection: ChromaCollection,
+    chroma_collection: ChromaCollection[_TestModel],
 ) -> None:
-    updated_document = {
-        "id": "1",
-        "content": "test content",
-        "name": "new name",
-    }
+    updated_document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
+    )
 
     await chroma_collection.update_one(
-        {"name": {"$eq": "new name"}},
+        {"name": {"$eq": "test name"}},
         updated_document,
         upsert=True,
     )
 
-    result = await chroma_collection.find({"name": {"$eq": "new name"}})
+    result = await chroma_collection.find({"name": {"$eq": "test name"}})
 
     assert len(result) == 1
-    assert result == [
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "new name",
-        }
-    ]
+    assert result[0] == updated_document
 
 
-@mark.asyncio
-async def test_delete_one(chroma_collection: ChromaCollection) -> None:
-    await chroma_collection.insert_one(
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        },
+async def test_delete_one(
+    chroma_collection: ChromaCollection[_TestModel],
+) -> None:
+    document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
     )
+
+    await chroma_collection.insert_one(document)
 
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 1
 
-    await chroma_collection.delete_one({"id": {"$eq": "1"}})
+    deleted_result = await chroma_collection.delete_one({"id": {"$eq": "1"}})
+
+    assert deleted_result.deleted_count == 1
+
+    if deleted_result.deleted_document:
+        assert deleted_result.deleted_document.id == ObjectId("1")
 
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 0
 
 
-@mark.asyncio
-async def test_find_similar_documents(chroma_collection: ChromaCollection) -> None:
-    documents = [
-        {"id": "1", "content": "apple", "name": "Apple"},
-        {"id": "2", "content": "banana", "name": "Banana"},
-        {"id": "3", "content": "cherry", "name": "Cherry"},
-        {"id": "4", "content": "date", "name": "Date"},
-        {"id": "5", "content": "elderberry", "name": "Elderberry"},
-    ]
+async def test_find_similar_documents(
+    chroma_collection: ChromaCollection[_TestModel],
+) -> None:
+    apple_document = _TestModel(
+        id=ObjectId("1"),
+        content="apple",
+        name="Apple",
+    )
 
-    for doc in documents:
-        await chroma_collection.insert_one(doc)
+    banana_document = _TestModel(
+        id=ObjectId("2"),
+        content="banana",
+        name="Banana",
+    )
+
+    cherry_document = _TestModel(
+        id=ObjectId("3"),
+        content="cherry",
+        name="Cherry",
+    )
+
+    await chroma_collection.insert_one(apple_document)
+    await chroma_collection.insert_one(banana_document)
+    await chroma_collection.insert_one(cherry_document)
+    await chroma_collection.insert_one(
+        _TestModel(
+            id=ObjectId("4"),
+            content="date",
+            name="Date",
+        )
+    )
+    await chroma_collection.insert_one(
+        _TestModel(
+            id=ObjectId("5"),
+            content="elderberry",
+            name="Elderberry",
+        )
+    )
 
     query = "apple banana cherry"
     k = 3
@@ -221,34 +226,29 @@ async def test_find_similar_documents(chroma_collection: ChromaCollection) -> No
     result = await chroma_collection.find_similar_documents({}, query, k)
 
     assert len(result) == 3
-    assert {"id": "1", "content": "apple", "name": "Apple"} in result
-    assert {"id": "2", "content": "banana", "name": "Banana"} in result
-    assert {"id": "3", "content": "cherry", "name": "Cherry"} in result
+    assert apple_document in result
+    assert banana_document in result
+    assert cherry_document in result
 
 
-@mark.asyncio
 async def test_loading_collections_succeed(context: _TestContext) -> None:
-    # Step 1: Create initial database and collection, then insert a document
     chroma_database_1 = ChromaDatabase(logger=context.logger, dir_path=context.home_dir)
     chroma_collection_1 = chroma_database_1.get_or_create_collection("test_collection", _TestModel)
-    await chroma_collection_1.insert_one(
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        },
+
+    document = _TestModel(
+        id=ObjectId("1"),
+        content="test content",
+        name="test name",
     )
 
+    await chroma_collection_1.insert_one(document)
+
     chroma_database_2 = ChromaDatabase(logger=context.logger, dir_path=context.home_dir)
-    chroma_collection_2 = chroma_database_2.get_collection("test_collection")
+    chroma_collection_2: ChromaCollection[_TestModel] = chroma_database_2.get_collection(
+        "test_collection"
+    )
 
     result = await chroma_collection_2.find({"id": {"$eq": "1"}})
 
     assert len(result) == 1
-    assert result == [
-        {
-            "id": "1",
-            "content": "test content",
-            "name": "test name",
-        }
-    ]
+    assert result[0] == document

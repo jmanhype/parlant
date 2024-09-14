@@ -5,17 +5,26 @@ import json
 import operator
 import os
 from pathlib import Path
-from typing import Any, Mapping, Sequence, Type, cast
+from typing import Generic, Optional, Sequence, Type, TypeVar, cast
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # type: ignore
 
-from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.persistence.common import NoMatchingDocumentsError, ObjectId, Where
-from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
+from emcie.server.core.persistence.common import (
+    BaseDocument,
+    Where,
+)
+from emcie.server.core.persistence.document_database import DeleteResult, InsertResult, UpdateResult
 from emcie.server.logger import Logger
 
 
-class ChromaDatabase(DocumentDatabase):
+class ChromaDocument(BaseDocument):
+    content: str
+
+
+TChromaDocument = TypeVar("TChromaDocument", bound=ChromaDocument)
+
+
+class ChromaDatabase:
     def __init__(self, logger: Logger, dir_path: Path) -> None:
         self.logger = logger
 
@@ -24,10 +33,12 @@ class ChromaDatabase(DocumentDatabase):
             api_key=os.environ.get("OPENAI_API_KEY"),
             model_name="text-embedding-3-large",
         )
-        self._collections: dict[str, ChromaCollection] = self._load_chromadb_collections()
+        self._collections: dict[str, ChromaCollection[ChromaDocument]] = (
+            self._load_chromadb_collections()
+        )
 
-    def _load_chromadb_collections(self) -> dict[str, ChromaCollection]:
-        collections: dict[str, ChromaCollection] = {}
+    def _load_chromadb_collections(self) -> dict[str, ChromaCollection[ChromaDocument]]:
+        collections: dict[str, ChromaCollection[ChromaDocument]] = {}
         for chromadb_collection in self._chroma_client.list_collections():
             collections[chromadb_collection.name] = ChromaCollection(
                 logger=self.logger,
@@ -42,11 +53,14 @@ class ChromaDatabase(DocumentDatabase):
     def create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> ChromaCollection:
+        schema: Type[TChromaDocument],
+    ) -> ChromaCollection[TChromaDocument]:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
-        new_collection = ChromaCollection(
+
+        assert issubclass(schema, ChromaDocument)
+
+        self._collections[name] = ChromaCollection(
             self.logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
@@ -59,25 +73,30 @@ class ChromaDatabase(DocumentDatabase):
             name=name,
             schema=schema,
         )
-        self._collections[name] = new_collection
-        return new_collection
+
+        return cast(ChromaCollection[TChromaDocument], self._collections[name])
 
     def get_collection(
         self,
         name: str,
-    ) -> ChromaCollection:
+    ) -> ChromaCollection[TChromaDocument]:
         if collection := self._collections.get(name):
-            return collection
+            return cast(ChromaCollection[TChromaDocument], collection)
+
         raise ValueError(f'ChromaDB collection "{name}" not found.')
 
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> ChromaCollection:
+        schema: Type[TChromaDocument],
+    ) -> ChromaCollection[TChromaDocument]:
         if collection := self._collections.get(name):
-            return collection
-        new_collection = ChromaCollection(
+            assert schema == collection._schema
+            return cast(ChromaCollection[TChromaDocument], collection)
+
+        assert issubclass(schema, ChromaDocument)
+
+        self._collections[name] = ChromaCollection(
             self.logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
@@ -90,8 +109,8 @@ class ChromaDatabase(DocumentDatabase):
             name=name,
             schema=schema,
         )
-        self._collections[name] = new_collection
-        return new_collection
+
+        return cast(ChromaCollection[TChromaDocument], self._collections[name])
 
     def delete_collection(
         self,
@@ -103,16 +122,15 @@ class ChromaDatabase(DocumentDatabase):
         del self._collections[name]
 
 
-class ChromaCollection(DocumentCollection):
+class ChromaCollection(Generic[TChromaDocument]):
     def __init__(
         self,
         logger: Logger,
         chromadb_collection: chromadb.Collection,
         name: str,
-        schema: Type[DefaultBaseModel],
+        schema: Type[TChromaDocument],
     ) -> None:
         self.logger = logger
-
         self._name = name
         self._schema = schema
         self._lock = asyncio.Lock()
@@ -121,94 +139,114 @@ class ChromaCollection(DocumentCollection):
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[Mapping[str, Any]]:
+    ) -> Sequence[TChromaDocument]:
         if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
             "metadatas"
         ]:
-            return [{k: v for k, v in m.items()} for m in metadatas]
+            return [self._schema.model_validate(m) for m in metadatas]
+
         return []
 
     async def find_one(
         self,
         filters: Where,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[TChromaDocument]:
         if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
             "metadatas"
         ]:
-            return {k: v for k, v in metadatas[0].items()}
+            return self._schema.model_validate({k: v for k, v in metadatas[0].items()})
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return None
 
     async def insert_one(
         self,
-        document: Mapping[str, Any],
-    ) -> ObjectId:
+        document: TChromaDocument,
+    ) -> InsertResult:
         async with self._lock:
             self._chroma_collection.add(
-                ids=[document["id"]],
-                documents=[document["content"]],
-                metadatas=[self._schema(**document).model_dump(mode="json")],
+                ids=[document.id],
+                documents=[document.content],
+                metadatas=[document.model_dump(mode="json")],
             )
 
-        document_id: ObjectId = document["id"]
-        return document_id
+        return InsertResult(acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
-        updated_document: Mapping[str, Any],
+        updated_document: TChromaDocument,
         upsert: bool = False,
-    ) -> ObjectId:
-        document_id: ObjectId
-
+    ) -> UpdateResult[TChromaDocument]:
         async with self._lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
-                "metadatas"
-            ]:
-                document_id = ObjectId(str(docs[0]["id"]))
-
+            if self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]:
                 self._chroma_collection.update(
-                    ids=[document_id],
-                    documents=[updated_document["content"]],
-                    metadatas=[
-                        self._schema(**{**docs[0], **updated_document}).model_dump(mode="json")
-                    ],
+                    ids=[updated_document.id],
+                    documents=[updated_document.content],
+                    metadatas=[updated_document.model_dump(mode="json")],
                 )
-                return document_id
+
+                return UpdateResult(
+                    acknowledged=True,
+                    matched_count=1,
+                    modified_count=1,
+                    updated_document=updated_document,
+                )
 
             elif upsert:
-                document_id = updated_document["id"]
-
                 self._chroma_collection.add(
-                    ids=[updated_document["id"]],
-                    documents=[updated_document["content"]],
-                    metadatas=[self._schema(**updated_document).model_dump(mode="json")],
+                    ids=[updated_document.id],
+                    documents=[updated_document.content],
+                    metadatas=[updated_document.model_dump(mode="json")],
                 )
-                return document_id
 
-            raise NoMatchingDocumentsError(self._name, filters)
+                return UpdateResult(
+                    acknowledged=True,
+                    matched_count=0,
+                    modified_count=0,
+                    updated_document=updated_document,
+                )
+
+            return UpdateResult(
+                acknowledged=True,
+                matched_count=0,
+                modified_count=0,
+                updated_document=None,
+            )
 
     async def delete_one(
         self,
         filters: Where,
-    ) -> None:
+    ) -> DeleteResult[TChromaDocument]:
         async with self._lock:
-            docs = self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]
-            if docs:
+            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+                "metadatas"
+            ]:
                 if len(docs) > 1:
                     raise ValueError(
                         f"ChromaCollection delete_one: detected more than one document with filters '{filters}'. Aborting..."
                     )
+                deleted_document = docs[0]
+
                 self._chroma_collection.delete(where=cast(chromadb.Where, filters))
-            else:
-                raise NoMatchingDocumentsError(self._name, filters)
+
+                return DeleteResult(
+                    deleted_count=1,
+                    acknowledged=True,
+                    deleted_document=self._schema.model_validate(deleted_document),
+                )
+
+            return DeleteResult(
+                acknowledged=True,
+                deleted_count=0,
+                deleted_document=None,
+            )
 
     async def find_similar_documents(
         self,
         filters: Where,
         query: str,
         k: int,
-    ) -> Sequence[Mapping[str, Any]]:
+    ) -> Sequence[TChromaDocument]:
         docs = self._chroma_collection.query(
             where=cast(chromadb.Where, filters),
             query_texts=[query],
@@ -218,6 +256,6 @@ class ChromaCollection(DocumentCollection):
         if metadatas := docs["metadatas"]:
             self.logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
 
-            return [{k: v for k, v in m.items()} for m in metadatas[0]]
+            return [self._schema.model_validate(m) for m in metadatas[0]]
 
         return []

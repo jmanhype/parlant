@@ -4,17 +4,22 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, Type
+from typing import Any, Mapping, Optional, Sequence, Type, cast
 import aiofiles
 
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.persistence.common import (
-    NoMatchingDocumentsError,
-    ObjectId,
+    BaseDocument,
     Where,
     matches_filters,
 )
-from emcie.server.core.persistence.document_database import DocumentCollection, DocumentDatabase
+from emcie.server.core.persistence.document_database import (
+    DeleteResult,
+    DocumentCollection,
+    DocumentDatabase,
+    InsertResult,
+    TDocument,
+    UpdateResult,
+)
 from emcie.server.logger import Logger
 
 
@@ -31,7 +36,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self._op_counter = 0
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
-        self._collections: dict[str, JSONFileDocumentCollection]
+        self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
 
     async def _sync_if_needed(self) -> None:
         # FIXME: When the CLI can retrieve all different stores, reintroduce the modulo condition.
@@ -107,39 +112,41 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     def create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> JSONFileDocumentCollection:
+        schema: Type[TDocument],
+    ) -> JSONFileDocumentCollection[TDocument]:
         self.logger.debug(f'Create collection "{name}"')
-        new_collection = JSONFileDocumentCollection(
+
+        self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
             schema=schema,
         )
-        self._collections[name] = new_collection
-        return new_collection
+
+        return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
     def get_collection(
         self,
         name: str,
-    ) -> JSONFileDocumentCollection:
+    ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return collection
+            return cast(JSONFileDocumentCollection[TDocument], collection)
         raise ValueError(f'Collection "{name}" does not exists')
 
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> JSONFileDocumentCollection:
+        schema: Type[TDocument],
+    ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return collection
-        new_collection = JSONFileDocumentCollection(
+            return cast(JSONFileDocumentCollection[TDocument], collection)
+
+        self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
             schema=schema,
         )
-        self._collections[name] = new_collection
-        return new_collection
+
+        return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
     def delete_collection(
         self,
@@ -156,12 +163,12 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         await self._save_data(data)
 
 
-class JSONFileDocumentCollection(DocumentCollection):
+class JSONFileDocumentCollection(DocumentCollection[TDocument]):
     def __init__(
         self,
         database: JSONFileDocumentDatabase,
         name: str,
-        schema: Type[DefaultBaseModel],
+        schema: Type[TDocument],
         data: Optional[Sequence[Mapping[str, Any]]] = None,
     ) -> None:
         self._database = database
@@ -174,11 +181,11 @@ class JSONFileDocumentCollection(DocumentCollection):
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[Mapping[str, Any]]:
+    ) -> Sequence[TDocument]:
         return [
-            self._schema.model_validate(doc).model_dump(mode="json")
+            self._schema.model_validate(doc)
             for doc in filter(
-                lambda d: matches_filters(filters, d),
+                lambda d: matches_filters(filters, self._schema.model_validate(d)),
                 self._documents,
             )
         ]
@@ -186,62 +193,81 @@ class JSONFileDocumentCollection(DocumentCollection):
     async def find_one(
         self,
         filters: Where,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[TDocument]:
         matched_documents = await self.find(filters)
 
         if not matched_documents:
-            raise NoMatchingDocumentsError(self._name, filters)
+            return None
 
         result = matched_documents[0]
-        return self._schema.model_validate(result).model_dump(mode="json")
+        return self._schema.model_validate(result)
 
     async def insert_one(
         self,
-        document: Mapping[str, Any],
-    ) -> ObjectId:
+        document: TDocument,
+    ) -> InsertResult:
         async with self._lock:
-            self._documents.append(self._schema(**document).model_dump(mode="json"))
+            self._documents.append(document.model_dump(mode="json"))
 
         await self._database._sync_if_needed()
 
-        document_id: ObjectId = document["id"]
-        return document_id
+        return InsertResult(acknowledged=True)
 
     async def update_one(
         self,
         filters: Where,
-        updated_document: Mapping[str, Any],
+        updated_document: TDocument,
         upsert: bool = False,
-    ) -> ObjectId:
+    ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
-            if matches_filters(filters, d):
+            if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
-                    self._documents[i] = self._schema(**updated_document).model_dump(mode="json")
+                    self._documents[i] = updated_document.model_dump(mode="json")
 
                 await self._database._sync_if_needed()
 
-                document_id: ObjectId = updated_document["id"]
-                return document_id
+                return UpdateResult(
+                    acknowledged=True,
+                    matched_count=1,
+                    modified_count=1,
+                    updated_document=updated_document,
+                )
 
         if upsert:
-            document_id = await self.insert_one(updated_document)
+            await self.insert_one(updated_document)
 
             await self._database._sync_if_needed()
 
-            return document_id
+            return UpdateResult(
+                acknowledged=True,
+                matched_count=0,
+                modified_count=0,
+                updated_document=updated_document,
+            )
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return UpdateResult(
+            acknowledged=True,
+            matched_count=0,
+            modified_count=0,
+            updated_document=None,
+        )
 
     async def delete_one(
         self,
         filters: Where,
-    ) -> None:
+    ) -> DeleteResult[TDocument]:
         for i, d in enumerate(self._documents):
-            if matches_filters(filters, d):
+            if matches_filters(filters, self._schema.model_validate(d)):
                 async with self._lock:
+                    document = self._schema.model_validate(self._documents[i])
+
                     del self._documents[i]
 
                 await self._database._sync_if_needed()
-                return
+                return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
 
-        raise NoMatchingDocumentsError(self._name, filters)
+        return DeleteResult(
+            acknowledged=True,
+            deleted_count=0,
+            deleted_document=None,
+        )
