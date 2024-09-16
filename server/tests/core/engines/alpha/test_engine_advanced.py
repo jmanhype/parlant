@@ -34,7 +34,7 @@ from emcie.server.core.sessions import (
     ToolEventData,
 )
 
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from tests import tool_utilities
 from tests.test_utilities import EventBuffer, SyncAwaiter, nlp_test
 

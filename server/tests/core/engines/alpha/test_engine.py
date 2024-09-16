@@ -20,7 +20,7 @@ from emcie.server.core.sessions import (
     StatusEventData,
 )
 
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from tests.test_utilities import EventBuffer, SyncAwaiter, nlp_test
 
 scenarios(

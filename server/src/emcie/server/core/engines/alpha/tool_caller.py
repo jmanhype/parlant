@@ -19,7 +19,7 @@ from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from emcie.server.core.engines.emission import EmittedEvent
 from emcie.server.core.common import DefaultBaseModel
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)

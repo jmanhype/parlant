@@ -14,7 +14,7 @@ from emcie.server.core.services.indexing.coherence_checker import (
     ParallelContradictionEvaluator,
     TemporalContradictionEvaluator,
 )
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 from tests.test_utilities import SyncAwaiter, nlp_test
 

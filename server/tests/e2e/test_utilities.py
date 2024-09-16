@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Any, Iterator, Literal, TypedDict, Union, cast
 
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 SERVER_PORT = 8089

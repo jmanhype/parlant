@@ -4,7 +4,7 @@ from typing import Mapping, Sequence
 from emcie.common.tools import Tool, ToolContext
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event, SessionId, ToolEventData

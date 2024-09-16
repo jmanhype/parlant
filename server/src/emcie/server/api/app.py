@@ -15,7 +15,7 @@ from emcie.server.core.terminology import TerminologyStore
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from emcie.server.core.mc import MC
 
 

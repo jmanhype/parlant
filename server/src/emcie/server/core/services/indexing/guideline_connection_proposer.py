@@ -8,7 +8,7 @@ from more_itertools import chunked
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from emcie.server.core.common import DefaultBaseModel
 
 

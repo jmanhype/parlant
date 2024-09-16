@@ -24,7 +24,7 @@ from emcie.server.core.sessions import (
 )
 from emcie.server.core.engines.types import Context, Engine
 from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 class EventBuffer(EventEmitter):

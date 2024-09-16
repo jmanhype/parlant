@@ -20,7 +20,7 @@ from emcie.server.core.persistence.document_database import (
     TDocument,
     UpdateResult,
 )
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 class JSONFileDocumentDatabase(DocumentDatabase):

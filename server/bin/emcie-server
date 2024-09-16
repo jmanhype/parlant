@@ -80,7 +80,7 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionPropositionsSchema,
 )
 from emcie.server.core.services.indexing.indexer import Indexer
-from emcie.server.core.logger import FileLogger, Logger
+from emcie.server.core.logging import FileLogger, Logger
 from emcie.server.core.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
 

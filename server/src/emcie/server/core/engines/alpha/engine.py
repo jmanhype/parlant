@@ -34,7 +34,7 @@ from emcie.server.core.engines.alpha.utils import context_variables_to_json
 from emcie.server.core.engines.types import Context, Engine
 from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
 from emcie.server.core.contextual_correlator import ContextualCorrelator
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 class AlphaEngine(Engine):

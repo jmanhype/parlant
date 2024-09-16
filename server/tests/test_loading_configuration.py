@@ -11,7 +11,7 @@ from pytest import fixture
 
 from emcie.server.configuration_validator import ConfigurationFileValidator
 from emcie.server.core.common import JSONSerializable
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 @asynccontextmanager

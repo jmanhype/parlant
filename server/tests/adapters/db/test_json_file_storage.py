@@ -34,7 +34,7 @@ from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from tests.test_utilities import SyncAwaiter
 
 

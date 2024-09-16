@@ -12,7 +12,7 @@ from emcie.server.core.engines.alpha.guideline_proposer import (
 from emcie.server.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from tests.test_utilities import SyncAwaiter
 from datetime import datetime, timezone
 

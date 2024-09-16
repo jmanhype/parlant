@@ -13,7 +13,7 @@ from emcie.server.core.engines.alpha.message_event_producer import MessageEventP
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.engines.emission import EmittedEvent
 
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from emcie.server.core.mc import EventBuffer
 from tests.test_utilities import SyncAwaiter, nlp_test
 

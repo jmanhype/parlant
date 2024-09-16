@@ -11,7 +11,7 @@ from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.common import UniqueId, generate_id
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
 LLM_MAX_RETRIES = 100

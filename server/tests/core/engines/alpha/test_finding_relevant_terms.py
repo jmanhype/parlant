@@ -20,7 +20,7 @@ from emcie.server.core.guideline_tool_associations import (
 )
 from emcie.server.core.terminology import TerminologyStore
 
-from emcie.server.core.logger import Logger
+from emcie.server.core.logging import Logger
 from tests.test_utilities import EventBuffer, SyncAwaiter, nlp_test
 
 roles = Literal["client", "server"]

@@ -50,7 +50,7 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from emcie.server.core.logger import Logger, StdoutLogger
+from emcie.server.core.logging import Logger, StdoutLogger
 from emcie.server.core.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.persistence.document_database import (
