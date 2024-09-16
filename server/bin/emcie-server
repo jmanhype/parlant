@@ -193,13 +193,19 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
     c[ContextualCorrelator] = CORRELATOR
     c[Logger] = LOGGER
 
-    c[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[GuidelinePropositionsSchema]()
-    c[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema]()
-    c[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema]()
-    c[SchematicGenerator[ContradictionTestsSchema]] = GPT_4o[ContradictionTestsSchema]()
+    c[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[GuidelinePropositionsSchema](
+        logger=LOGGER
+    )
+    c[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](logger=LOGGER)
+    c[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema](
+        logger=LOGGER
+    )
+    c[SchematicGenerator[ContradictionTestsSchema]] = GPT_4o[ContradictionTestsSchema](
+        logger=LOGGER
+    )
     c[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
         GuidelineConnectionPropositionsSchema
-    ]()
+    ](logger=LOGGER)
 
     async with (
         JSONFileDocumentDatabase(LOGGER, EMCIE_HOME_DIR / "agents.json") as agents_db,
@@ -406,7 +412,7 @@ async def check_coherence(params: CLIParams) -> None:
 
     checker = CoherenceChecker(
         LOGGER,
-        GPT_4o[ContradictionTestsSchema](),
+        GPT_4o[ContradictionTestsSchema](logger=LOGGER),
     )
 
     for agent, guideline_specs in params.config["guidelines"].items():
