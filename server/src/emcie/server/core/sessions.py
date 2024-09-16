@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import (
     Any,
@@ -123,6 +123,13 @@ class SessionStore(ABC):
         session_id: SessionId,
         consumer_id: ConsumerId,
         new_offset: int,
+    ) -> None: ...
+
+    @abstractmethod
+    async def update_title(
+        self,
+        session_id: SessionId,
+        title: str,
     ) -> None: ...
 
     @abstractmethod
@@ -273,6 +280,14 @@ class SessionDocumentStore(SessionStore):
         session = await self.read_session(session_id)
         session.consumption_offsets[consumer_id] = new_offset
         await self.update_session(session_id, session)
+
+    async def update_title(
+        self,
+        session_id: SessionId,
+        title: str,
+    ) -> None:
+        session = await self.read_session(session_id)
+        await self.update_session(session_id, Session(**{**asdict(session), "title": title}))
 
     async def create_event(
         self,

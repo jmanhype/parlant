@@ -59,6 +59,7 @@ class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
 
 class PatchSessionRequest(DefaultBaseModel):
     consumption_offsets: Optional[ConsumptionOffsetsPatchDTO] = None
+    title: Optional[str] = None
 
 
 class EventDTO(DefaultBaseModel):
@@ -154,6 +155,8 @@ def create_router(
                     session=session,
                     new_offset=request.consumption_offsets.client,
                 )
+        if request.title:
+            await session_store.update_title(session_id=session_id, title=request.title)
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 

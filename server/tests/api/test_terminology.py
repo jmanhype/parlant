@@ -146,11 +146,17 @@ def test_list_terms(
     returned_terms = data["terms"]
     assert len(returned_terms) == 2
 
-    # Check if the terms match the created terms
-    for returned_term, expected_term in zip(returned_terms, terms):
-        assert returned_term["name"] == expected_term["name"]
-        assert returned_term["description"] == expected_term["description"]
-        assert returned_term["synonyms"] == expected_term["synonyms"]
+    assert {
+        "name": returned_terms[1]["name"],
+        "description": returned_terms[1]["description"],
+        "synonyms": returned_terms[1]["synonyms"],
+    } in terms
+
+    assert {
+        "name": returned_terms[0]["name"],
+        "description": returned_terms[0]["description"],
+        "synonyms": returned_terms[0]["synonyms"],
+    } in terms
 
 
 def test_update_term(

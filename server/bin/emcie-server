@@ -27,11 +27,7 @@ from emcie.server.core.context_variables import ContextVariableDocumentStore, Co
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
 from emcie.server.core.generation.embedding import EmbedderFactory, OpenAITextEmbedding3Large
-from emcie.server.core.generation.schematic import (
-    SchematicGenerator,
-    GPT_4o,
-    GPT_4o_Mini,
-)
+from emcie.server.core.generation.schematic import GPT_4o, GPT_4o_Mini, SchematicGenerator
 from emcie.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,

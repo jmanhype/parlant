@@ -458,6 +458,23 @@ def test_that_consumption_offsets_can_be_updated(
     assert data["consumption_offsets"][consumer_id] == 1
 
 
+def test_that_title_can_be_updated(
+    client: TestClient,
+    long_session_id: SessionId,
+) -> None:
+    response = client.patch(
+        f"/sessions/{long_session_id}",
+        json={"title": "new session title"},
+    )
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    response = client.get(f"/sessions/{long_session_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data["title"] == "new session title"
+
+
 @mark.parametrize("offset", (0, 2, 4))
 async def test_that_events_can_be_filtered_by_offset(
     client: TestClient,
