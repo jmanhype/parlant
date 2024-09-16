@@ -870,13 +870,13 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "emcie-common"
-version = "0.1.0"
+version = "0.3.0a1"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "emcie_common-0.1.0-py3-none-any.whl", hash = "sha256:473230a93f9412ae245d608e44efbb0d5c9ec0904597865aa1d485ccecda20d2"},
-    {file = "emcie_common-0.1.0.tar.gz", hash = "sha256:26ccab8837bbeb89937e228fd826de569fc84ab739a37f50a398e3c83025bbfc"},
+    {file = "emcie_common-0.3.0a1-py3-none-any.whl", hash = "sha256:d4558195a06c6bd37d76072495a17e729752b3a87fe9d23fe2e1dacd73722750"},
+    {file = "emcie_common-0.3.0a1.tar.gz", hash = "sha256:2a6ae0f04eefd23e52392ec3630f54d7819f42911cd76664d70e0d1fb1fd3465"},
 ]
 
 [package.dependencies]
@@ -5196,4 +5196,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "10ac7c147e3c5a7fea638e05fdf7bf2bdbb93430608ce94eba57dbf82a888beb"
+content-hash = "7ee0cea254dfb0a7c178f10db14361c9d58185614a7ef17c034d3704d26d1720"

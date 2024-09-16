@@ -37,7 +37,7 @@ aiopenapi3 = "^0.6.0"
 coloredlogs = "^15.0.1"
 contextvars = "^2.4"
 together = "^1.2.12"
-emcie-common = "^0.1.0"
+emcie-common = "0.3.0-alpha.1"
 
 
 [tool.poetry.group.dev.dependencies]
