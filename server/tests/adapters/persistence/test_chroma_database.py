@@ -5,8 +5,9 @@ from typing import AsyncIterator, Iterator
 from lagom import Container
 from pytest import fixture
 
-from emcie.server.core.generation.embedding import EmbedderFactory, OpenAITextEmbedding3Large
-from emcie.server.core.persistence.chroma_database import (
+from emcie.server.adapters.nlp.openai import OpenAITextEmbedding3Large
+from emcie.server.core.nlp.embedding import EmbedderFactory
+from emcie.server.adapters.db.chroma.database import (
     ChromaCollection,
     ChromaDatabase,
     ChromaDocument,

@@ -28,7 +28,7 @@ from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineId,
 )
-from emcie.server.core.persistence.json_file_database import JSONFileDocumentDatabase
+from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
 from emcie.server.core.sessions import SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (

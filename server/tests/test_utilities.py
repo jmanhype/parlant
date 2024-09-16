@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Awaitable, Generator, TypeVar
 
-from emcie.server.core.generation.schematic import GPT_4o
+from emcie.server.adapters.nlp.openai import GPT_4o
 from emcie.server.logger import Logger
 from emcie.server.mc import EventBuffer as EventBuffer
 from emcie.server.core.common import DefaultBaseModel

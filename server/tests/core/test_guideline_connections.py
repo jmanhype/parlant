@@ -9,7 +9,7 @@ from emcie.server.core.guideline_connections import (
 )
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import DocumentDatabase
-from emcie.server.core.persistence.transient_database import TransientDocumentDatabase
+from emcie.server.adapters.db.transient import TransientDocumentDatabase
 
 
 @fixture

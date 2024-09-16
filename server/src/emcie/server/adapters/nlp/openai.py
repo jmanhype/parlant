@@ -1,41 +1,14 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from functools import cached_property
-import json
-import os
-from typing import Any, Generic, Mapping, TypeVar, cast, get_args
-
-import jsonfinder  # type: ignore
 from openai import AsyncClient
+from typing import Any, Mapping
+import json
+import jsonfinder  # type: ignore
+import os
+
 from pydantic import ValidationError
-from together import AsyncTogether  # type: ignore
 
-from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.nlp.embedding import Embedder, EmbeddingResult
+from emcie.server.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
 from emcie.server.logger import Logger
-
-T = TypeVar("T", bound=DefaultBaseModel)
-
-
-@dataclass(frozen=True)
-class SchematicGenerationResult(Generic[T]):
-    content: T
-
-
-class SchematicGenerator(ABC, Generic[T]):
-    @abstractmethod
-    async def generate(
-        self,
-        prompt: str,
-        hints: Mapping[str, Any] = {},
-    ) -> SchematicGenerationResult[T]: ...
-
-
-class BaseSchematicGenerator(SchematicGenerator[T]):
-    @cached_property
-    def schema(self) -> type[T]:
-        orig_class = getattr(self, "__orig_class__")
-        generic_args = get_args(orig_class)
-        return cast(type[T], generic_args[0])
 
 
 class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -108,54 +81,35 @@ class GPT_4o_Mini(OpenAISchematicGenerator[T]):
         super().__init__(model_name="gpt-4o-mini", logger=logger)
 
 
-class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
-    supported_hints = ["temperature"]
+class OpenAIEmbedder(Embedder):
+    supported_arguments = ["dimensions"]
 
-    def __init__(
-        self,
-        model_name: str,
-        logger: Logger,
-    ) -> None:
+    def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self._logger = logger
-        self._client = AsyncTogether(api_key=os.environ.get("TOGETHER_API_KEY"))
+        self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
 
-    async def generate(
+    async def embed(
         self,
-        prompt: str,
+        texts: list[str],
         hints: Mapping[str, Any] = {},
-    ) -> SchematicGenerationResult[T]:
-        together_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
+    ) -> EmbeddingResult:
+        filtered_hints = {k: v for k, v in hints.items() if k in self.supported_arguments}
 
-        response = await self._client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
+        response = await self._client.embeddings.create(
             model=self.model_name,
-            **together_api_arguments,
+            input=texts,
+            **filtered_hints,
         )
 
-        raw_content = response.choices[0].message.content or "{}"
-
-        try:
-            json_content = jsonfinder.only_json(raw_content)[2]
-        except Exception:
-            self._logger.error(
-                f"Failed to extract JSON returned by {self.model_name}:\n{raw_content}"
-            )
-            raise
-
-        try:
-            content = self.schema.model_validate(json_content)
-            return SchematicGenerationResult(content=content)
-        except ValidationError:
-            self._logger.error(
-                f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
-            )
-            raise
+        vectors = [data_point.embedding for data_point in response.data]
+        return EmbeddingResult(vectors=vectors)
 
 
-class Llama3_1_8B(TogetherAISchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
-        super().__init__(
-            model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-            logger=logger,
-        )
+class OpenAITextEmbedding3Large(OpenAIEmbedder):
+    def __init__(self) -> None:
+        super().__init__(model_name="text-embedding-3-large")
+
+
+class OpenAITextEmbedding3Small(OpenAIEmbedder):
+    def __init__(self) -> None:
+        super().__init__(model_name="text-embedding-3-small")
