@@ -20,17 +20,19 @@ from tabulate import tabulate
 import uvicorn
 
 from emcie.common.tools import ToolId
+from emcie.server.adapters.db.chroma.terminology import TerminologyChromaStore
 from emcie.server.api.app import create_app
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
-from emcie.server.core.nlp.embedding import EmbedderFactory, OpenAITextEmbedding3Large
+from emcie.server.core.nlp.embedding import EmbedderFactory
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.adapters.nlp.openai import (
     GPT_4o,
     GPT_4o_Mini,
+    OpenAITextEmbedding3Large,
 )
 from emcie.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
@@ -49,7 +51,7 @@ from emcie.server.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
+from emcie.server.core.terminology import TerminologyStore
 from emcie.server.core.tools import LocalToolService, ToolService, MultiplexedToolService
 from emcie.server.core.services.tools.plugins import PluginClient
 from emcie.server.core.engines.alpha.engine import AlphaEngine
