@@ -7,7 +7,7 @@ from typing import Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.common import UniqueId, generate_id
 from emcie.server.core.generation.schematic import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent

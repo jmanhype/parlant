@@ -4,7 +4,7 @@ from typing import AsyncIterator, Optional
 from emcie.common.tools import ToolContext, ToolResult
 from emcie.common.plugin import PluginServer, ToolEntry, tool
 from pytest import fixture
-from emcie.server.core.services.plugins import PluginClient
+from emcie.server.core.services.tools.plugins import PluginClient
 from emcie.server.core.sessions import SessionId
 
 

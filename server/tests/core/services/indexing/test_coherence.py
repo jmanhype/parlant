@@ -5,7 +5,7 @@ from pytest import fixture, mark
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.generation.schematic import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.indexing.coherence_checker import (
+from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     ContextualContradictionEvaluator,
     ContradictionKind,

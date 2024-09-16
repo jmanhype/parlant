@@ -11,7 +11,7 @@ from emcie.server.core.terminology import Term
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.engines.event_emitter import EmittedEvent
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 
 

@@ -10,7 +10,7 @@ from openai import AsyncClient
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 
 T = TypeVar("T", bound=DefaultBaseModel)

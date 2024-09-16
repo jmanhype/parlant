@@ -5,7 +5,8 @@ from lagom import Container
 
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guidelines import GuidelineStore
-from tests.indexing.test_evaluator import (
+
+from tests.core.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
     TIME_TO_WAIT_PER_PAYLOAD,
 )

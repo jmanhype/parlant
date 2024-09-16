@@ -12,7 +12,9 @@ from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.sessions import SessionListener, SessionStore
 from emcie.server.core.terminology import TerminologyStore
-from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
+from emcie.server.core.services.indexing.behavioral_change_evaluation import (
+    BehavioralChangeEvaluator,
+)
 from emcie.server.logger import Logger
 from emcie.server.mc import MC
 

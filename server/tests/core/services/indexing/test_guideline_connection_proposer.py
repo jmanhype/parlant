@@ -4,7 +4,9 @@ from lagom import Container
 from pytest import fixture, mark
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
+    GuidelineConnectionProposer,
+)
 from tests.test_utilities import SyncAwaiter
 
 

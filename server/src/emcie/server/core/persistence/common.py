@@ -1,6 +1,6 @@
 from typing import Any, Callable, Literal, NewType, TypedDict, Union, cast
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 
 
 ObjectId = NewType("ObjectId", str)

@@ -9,7 +9,7 @@ from emcie.server.core.generation.schematic import SchematicGenerator
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.logger import Logger
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):

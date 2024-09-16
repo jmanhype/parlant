@@ -44,9 +44,11 @@ from emcie.server.engines.alpha.message_event_producer import (
 from emcie.server.engines.alpha.tool_caller import ToolCallInferenceSchema
 from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.common import Engine
-from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
-from emcie.server.indexing.coherence_checker import ContradictionTestsSchema
-from emcie.server.indexing.guideline_connection_proposer import (
+from emcie.server.core.services.indexing.behavioral_change_evaluation import (
+    BehavioralChangeEvaluator,
+)
+from emcie.server.core.services.indexing.coherence_checker import ContradictionTestsSchema
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )

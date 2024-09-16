@@ -10,8 +10,10 @@ from pytest import fixture
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
-from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
-from emcie.server.indexing.indexer import GuidelineIndexer, Indexer
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
+    GuidelineConnectionProposer,
+)
+from emcie.server.core.services.indexing.indexer import GuidelineIndexer, Indexer
 from emcie.server.logger import Logger
 from tests.test_utilities import SyncAwaiter
 

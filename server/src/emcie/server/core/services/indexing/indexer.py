@@ -8,7 +8,9 @@ from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
-from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
+    GuidelineConnectionProposer,
+)
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
 

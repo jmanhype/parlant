@@ -18,7 +18,7 @@ from emcie.server.engines.alpha.guideline_proposition import GuidelinePropositio
 from emcie.server.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.engines.alpha.utils import emitted_tool_events_to_dicts
 from emcie.server.engines.event_emitter import EmittedEvent
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 
 ToolCallId = NewType("ToolCallId", str)

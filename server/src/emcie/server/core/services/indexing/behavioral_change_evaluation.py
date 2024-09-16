@@ -15,8 +15,13 @@ from emcie.server.core.evaluations import (
     PayloadKind,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
-from emcie.server.indexing.coherence_checker import CoherenceChecker, ContradictionTest
-from emcie.server.indexing.guideline_connection_proposer import GuidelineConnectionProposer
+from emcie.server.core.services.indexing.coherence_checker import (
+    CoherenceChecker,
+    ContradictionTest,
+)
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
+    GuidelineConnectionProposer,
+)
 from emcie.server.logger import Logger
 from emcie.server.utils import md5_checksum
 

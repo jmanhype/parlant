@@ -12,7 +12,7 @@ from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuil
 from emcie.server.core.terminology import Term
 from emcie.server.engines.event_emitter import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 
 

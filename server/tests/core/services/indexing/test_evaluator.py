@@ -10,7 +10,7 @@ from emcie.server.core.evaluations import (
     PayloadKind,
 )
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.indexing.behavioral_change_evaluation import (
+from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )

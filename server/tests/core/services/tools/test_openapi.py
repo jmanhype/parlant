@@ -9,7 +9,7 @@ from pytest import mark
 import uvicorn
 
 from emcie.common.tools import ToolId, ToolContext
-from emcie.server.core.services.openapi import OpenAPIClient
+from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.common.base_models import DefaultBaseModel
 
 OPENAPI_SERVER_PORT = 8089
