@@ -11,14 +11,14 @@ from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import MessageEventData, SessionId, SessionStore
 from emcie.server.core.tools import LocalToolService, MultiplexedToolService
-from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.core.engines.types import Context
+from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
 from emcie.server.core.terminology import TerminologyStore
-from emcie.server.engines.common import Context
-from emcie.server.engines.event_emitter import EmittedEvent
 
 from emcie.server.logger import Logger
 from tests.test_utilities import EventBuffer, SyncAwaiter, nlp_test

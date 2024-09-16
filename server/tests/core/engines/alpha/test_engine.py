@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
-from emcie.server.engines.alpha.engine import AlphaEngine
-from emcie.server.engines.common import Context
-from emcie.server.engines.event_emitter import EmittedEvent
+from emcie.server.core.engines.alpha.engine import AlphaEngine
+from emcie.server.core.engines.types import Context
+from emcie.server.core.engines.emission import EmittedEvent
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.sessions import (
     MessageEventData,

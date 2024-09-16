@@ -29,19 +29,19 @@ from emcie.server.core.sessions import (
     SessionStore,
 )
 from emcie.server.core.tools import MultiplexedToolService, LocalToolService, ToolService
-from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.core.engines.alpha.engine import AlphaEngine
 from emcie.server.core.terminology import TerminologyStore
-from emcie.server.engines.alpha.guideline_proposer import (
+from emcie.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from emcie.server.engines.alpha.message_event_producer import (
+from emcie.server.core.engines.alpha.message_event_producer import (
     MessageEventProducer,
     MessageEventSchema,
 )
-from emcie.server.engines.alpha.tool_caller import ToolCallInferenceSchema
-from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
-from emcie.server.engines.common import Engine
+from emcie.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from emcie.server.core.engines.alpha.tool_event_producer import ToolEventProducer
+from emcie.server.core.engines.types import Engine
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )

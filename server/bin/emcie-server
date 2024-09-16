@@ -26,8 +26,8 @@ from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
-from emcie.server.core.generation.embedding import EmbedderFactory, OpenAITextEmbedding3Large
-from emcie.server.core.generation.schematic import (
+from emcie.server.core.nlp.embedding import EmbedderFactory, OpenAITextEmbedding3Large
+from emcie.server.core.nlp.generation import (
     SchematicGenerator,
     GPT_4o,
     GPT_4o_Mini,
@@ -42,7 +42,7 @@ from emcie.server.core.guidelines import (
     GuidelineStore,
 )
 from emcie.server.core.persistence.chroma_database import ChromaDatabase
-from emcie.server.core.persistence.json_file_database import JSONFileDocumentDatabase
+from emcie.server.adapters.persistence.json_file_database import JSONFileDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -51,7 +51,7 @@ from emcie.server.core.sessions import (
 )
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.core.tools import LocalToolService, ToolService, MultiplexedToolService
-from emcie.server.core.services.plugins import PluginClient
+from emcie.server.core.services.tools.plugins import PluginClient
 from emcie.server.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -68,13 +68,18 @@ from emcie.server.engines.alpha.message_event_producer import (
 )
 from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.engines.common import Engine
-from emcie.server.indexing.behavioral_change_evaluation import BehavioralChangeEvaluator
-from emcie.server.indexing.coherence_checker import CoherenceChecker, ContradictionTestsSchema
-from emcie.server.indexing.guideline_connection_proposer import (
+from emcie.server.core.services.indexing.behavioral_change_evaluation import (
+    BehavioralChangeEvaluator,
+)
+from emcie.server.core.services.indexing.coherence_checker import (
+    CoherenceChecker,
+    ContradictionTestsSchema,
+)
+from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from emcie.server.indexing.indexer import Indexer
+from emcie.server.core.services.indexing.indexer import Indexer
 from emcie.server.logger import FileLogger, Logger
 from emcie.server.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator

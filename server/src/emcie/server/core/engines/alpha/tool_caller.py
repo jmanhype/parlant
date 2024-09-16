@@ -14,10 +14,10 @@ from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.sessions import Event, ToolResult
 from emcie.server.core.tools import ToolService
 from emcie.server.core.terminology import Term
-from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.engines.alpha.prompt_builder import PromptBuilder
-from emcie.server.engines.alpha.utils import emitted_tool_events_to_dicts
-from emcie.server.engines.event_emitter import EmittedEvent
+from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
+from emcie.server.core.engines.alpha.utils import emitted_tool_events_to_dicts
+from emcie.server.core.engines.emission import EmittedEvent
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 

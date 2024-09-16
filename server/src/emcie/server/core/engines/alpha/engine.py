@@ -24,15 +24,15 @@ from emcie.server.core.sessions import (
     SessionId,
     SessionStore,
 )
-from emcie.server.engines.alpha.guideline_proposer import GuidelineProposer
-from emcie.server.engines.alpha.guideline_proposition import (
+from emcie.server.core.engines.alpha.guideline_proposer import GuidelineProposer
+from emcie.server.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from emcie.server.engines.alpha.message_event_producer import MessageEventProducer
-from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
-from emcie.server.engines.alpha.utils import context_variables_to_json
-from emcie.server.engines.common import Context, Engine
-from emcie.server.engines.event_emitter import EventEmitter, EmittedEvent
+from emcie.server.core.engines.alpha.message_event_producer import MessageEventProducer
+from emcie.server.core.engines.alpha.tool_event_producer import ToolEventProducer
+from emcie.server.core.engines.alpha.utils import context_variables_to_json
+from emcie.server.core.engines.types import Context, Engine
+from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
 from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.logger import Logger
 

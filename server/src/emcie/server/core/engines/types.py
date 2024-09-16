@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.sessions import SessionId
-from emcie.server.engines.event_emitter import EventEmitter
+from emcie.server.core.engines.emission import EventEmitter
 
 
 @dataclass(frozen=True)

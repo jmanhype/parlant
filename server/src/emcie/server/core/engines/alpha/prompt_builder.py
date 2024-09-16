@@ -9,14 +9,14 @@ from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
-from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.terminology import Term
-from emcie.server.engines.alpha.utils import (
+from emcie.server.core.engines.alpha.utils import (
     context_variables_to_json,
     events_to_json,
     emitted_tool_events_to_dicts,
 )
-from emcie.server.engines.event_emitter import EmittedEvent
+from emcie.server.core.engines.emission import EmittedEvent
 
 
 class BuiltInSection(Enum):

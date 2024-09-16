@@ -5,12 +5,12 @@ from typing import Sequence
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.engines.alpha.prompt_builder import PromptBuilder
+from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.terminology import Term
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
-from emcie.server.engines.event_emitter import EmittedEvent
+from emcie.server.core.engines.emission import EmittedEvent
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger
 

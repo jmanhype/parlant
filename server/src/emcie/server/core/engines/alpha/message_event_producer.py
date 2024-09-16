@@ -7,10 +7,14 @@ from emcie.server.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
+from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.engines.alpha.prompt_builder import (
+    BuiltInSection,
+    PromptBuilder,
+    SectionStatus,
+)
 from emcie.server.core.terminology import Term
-from emcie.server.engines.event_emitter import EmittedEvent, EventEmitter
+from emcie.server.core.engines.emission import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.logger import Logger

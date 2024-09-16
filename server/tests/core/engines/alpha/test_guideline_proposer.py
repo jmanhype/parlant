@@ -5,11 +5,11 @@ from pytest import fixture, mark
 from emcie.server.core.agents import Agent, AgentId
 from emcie.server.core.common import generate_id
 from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.engines.alpha.guideline_proposer import (
+from emcie.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from emcie.server.engines.alpha.guideline_proposition import (
+from emcie.server.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
 from emcie.server.logger import Logger

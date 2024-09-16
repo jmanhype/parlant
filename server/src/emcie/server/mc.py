@@ -22,8 +22,8 @@ from emcie.server.core.sessions import (
     StatusEventData,
     ToolEventData,
 )
-from emcie.server.engines.common import Context, Engine
-from emcie.server.engines.event_emitter import EventEmitter, EmittedEvent
+from emcie.server.core.engines.types import Context, Engine
+from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
 from emcie.server.logger import Logger
 
 
