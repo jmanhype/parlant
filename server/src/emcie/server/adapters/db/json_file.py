@@ -29,11 +29,12 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         logger: Logger,
         file_path: Path,
     ) -> None:
-        self.logger = logger
-
         self.file_path = file_path
+
+        self._logger = logger
         self._lock = asyncio.Lock()
         self._op_counter = 0
+
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
         self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
@@ -114,7 +115,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         name: str,
         schema: Type[TDocument],
     ) -> JSONFileDocumentCollection[TDocument]:
-        self.logger.debug(f'Create collection "{name}"')
+        self._logger.debug(f'Create collection "{name}"')
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,

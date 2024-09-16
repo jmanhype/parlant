@@ -54,22 +54,22 @@ class AlphaEngine(Engine):
         tool_event_producer: ToolEventProducer,
         message_event_producer: MessageEventProducer,
     ) -> None:
-        self.logger = logger
-        self.correlator = correlator
+        self._logger = logger
+        self._correlator = correlator
 
-        self.agent_store = agent_store
-        self.session_store = session_store
-        self.context_variable_store = context_variable_store
-        self.terminology_store = terminology_store
-        self.guideline_store = guideline_store
-        self.guideline_connection_store = guideline_connection_store
-        self.tool_service = tool_service
-        self.guideline_tool_association_store = guideline_tool_association_store
-        self.guideline_proposer = guideline_proposer
-        self.tool_event_producer = tool_event_producer
-        self.message_event_producer = message_event_producer
+        self._agent_store = agent_store
+        self._session_store = session_store
+        self._context_variable_store = context_variable_store
+        self._terminology_store = terminology_store
+        self._guideline_store = guideline_store
+        self._guideline_connection_store = guideline_connection_store
+        self._tool_service = tool_service
+        self._guideline_tool_association_store = guideline_tool_association_store
+        self._guideline_proposer = guideline_proposer
+        self._tool_event_producer = tool_event_producer
+        self._message_event_producer = message_event_producer
 
-        self.max_tool_call_iterations = 5
+        self._max_tool_call_iterations = 5
 
     async def process(
         self,
@@ -77,16 +77,16 @@ class AlphaEngine(Engine):
         event_emitter: EventEmitter,
     ) -> bool:
         try:
-            with self.correlator.correlation_scope(generate_id()):
+            with self._correlator.correlation_scope(generate_id()):
                 await self._do_process(context, event_emitter)
             return True
         except asyncio.CancelledError:
             return False
         except Exception as exc:
-            self.logger.error(f"Processing error: {traceback.format_exception(exc)}")
+            self._logger.error(f"Processing error: {traceback.format_exception(exc)}")
             raise
         except BaseException as exc:
-            self.logger.critical(f"Processing error: {traceback.format_exception(exc)}")
+            self._logger.critical(f"Processing error: {traceback.format_exception(exc)}")
             raise
 
     async def _do_process(
@@ -94,12 +94,12 @@ class AlphaEngine(Engine):
         context: Context,
         event_emitter: EventEmitter,
     ) -> None:
-        agent = await self.agent_store.read_agent(context.agent_id)
-        interaction_history = list(await self.session_store.list_events(context.session_id))
+        agent = await self._agent_store.read_agent(context.agent_id)
+        interaction_history = list(await self._session_store.list_events(context.session_id))
         last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
 
         await event_emitter.emit_status_event(
-            correlation_id=self.correlator.correlation_id,
+            correlation_id=self._correlator.correlation_id,
             data={
                 "acknowledged_offset": last_known_event_offset,
                 "status": "acknowledged",
@@ -122,7 +122,7 @@ class AlphaEngine(Engine):
             )
 
             await event_emitter.emit_status_event(
-                correlation_id=self.correlator.correlation_id,
+                correlation_id=self._correlator.correlation_id,
                 data={
                     "acknowledged_offset": last_known_event_offset,
                     "status": "processing",
@@ -158,7 +158,7 @@ class AlphaEngine(Engine):
                         ),
                     )
                 )
-                if tool_events := await self.tool_event_producer.produce_events(
+                if tool_events := await self._tool_event_producer.produce_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -182,13 +182,13 @@ class AlphaEngine(Engine):
                 else:
                     break
 
-                if tool_call_iterations == self.max_tool_call_iterations:
-                    self.logger.warning(
+                if tool_call_iterations == self._max_tool_call_iterations:
+                    self._logger.warning(
                         f"Reached max tool call iterations ({tool_call_iterations})"
                     )
                     break
 
-            await self.message_event_producer.produce_events(
+            await self._message_event_producer.produce_events(
                 event_emitter=event_emitter,
                 agents=[agent],
                 context_variables=context_variables,
@@ -200,7 +200,7 @@ class AlphaEngine(Engine):
             )
         except asyncio.CancelledError:
             await event_emitter.emit_status_event(
-                correlation_id=self.correlator.correlation_id,
+                correlation_id=self._correlator.correlation_id,
                 data={
                     "acknowledged_offset": last_known_event_offset,
                     "status": "cancelled",
@@ -208,12 +208,12 @@ class AlphaEngine(Engine):
                 },
             )
 
-            self.logger.warning("Processing cancelled")
+            self._logger.warning("Processing cancelled")
 
             raise
         finally:
             await event_emitter.emit_status_event(
-                correlation_id=self.correlator.correlation_id,
+                correlation_id=self._correlator.correlation_id,
                 data={
                     "acknowledged_offset": last_known_event_offset,
                     "status": "ready",
@@ -226,16 +226,16 @@ class AlphaEngine(Engine):
         agent_id: AgentId,
         session_id: SessionId,
     ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
-        session = await self.session_store.read_session(session_id)
+        session = await self._session_store.read_session(session_id)
 
-        variables = await self.context_variable_store.list_variables(
+        variables = await self._context_variable_store.list_variables(
             variable_set=agent_id,
         )
 
         return [
             (
                 variable,
-                await self.context_variable_store.read_value(
+                await self._context_variable_store.read_value(
                     variable_set=agent_id,
                     key=session.end_user_id,
                     variable_id=variable.id,
@@ -280,11 +280,11 @@ class AlphaEngine(Engine):
     ) -> Sequence[GuidelineProposition]:
         assert len(agents) == 1
 
-        all_possible_guidelines = await self.guideline_store.list_guidelines(
+        all_possible_guidelines = await self._guideline_store.list_guidelines(
             guideline_set=agents[0].id,
         )
 
-        direct_propositions = await self.guideline_proposer.propose_guidelines(
+        direct_propositions = await self._guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=list(all_possible_guidelines),
             context_variables=context_variables,
@@ -312,7 +312,7 @@ class AlphaEngine(Engine):
         for proposition in propositions:
             connected_guideline_ids = {
                 (c.target, c.kind)
-                for c in await self.guideline_connection_store.list_connections(
+                for c in await self._guideline_connection_store.list_connections(
                     indirect=True,
                     source=proposition.guideline.id,
                 )
@@ -323,7 +323,7 @@ class AlphaEngine(Engine):
                     # no need to add this connected one as it's already an assumed proposition
                     continue
 
-                connected_guideline = await self.guideline_store.read_guideline(
+                connected_guideline = await self._guideline_store.read_guideline(
                     guideline_set=guideline_set,
                     guideline_id=connected_guideline_id,
                 )
@@ -389,7 +389,7 @@ class AlphaEngine(Engine):
         guideline_propositions: Sequence[GuidelineProposition],
     ) -> Mapping[GuidelineProposition, Sequence[Tool]]:
         guideline_tool_associations = list(
-            await self.guideline_tool_association_store.list_associations()
+            await self._guideline_tool_association_store.list_associations()
         )
         guideline_propositions_by_id = {p.guideline.id: p for p in guideline_propositions}
 
@@ -400,7 +400,7 @@ class AlphaEngine(Engine):
         tools_for_guidelines: dict[GuidelineProposition, list[Tool]] = defaultdict(list)
 
         for association in relevant_associations:
-            tool = await self.tool_service.read_tool(association.tool_id)
+            tool = await self._tool_service.read_tool(association.tool_id)
             tools_for_guidelines[guideline_propositions_by_id[association.guideline_id]].append(
                 tool
             )
@@ -439,7 +439,7 @@ class AlphaEngine(Engine):
             context += str([e.data for e in staged_events])
 
         if context:
-            return await self.terminology_store.find_relevant_terms(
+            return await self._terminology_store.find_relevant_terms(
                 term_set=agent.id,
                 query=context,
             )

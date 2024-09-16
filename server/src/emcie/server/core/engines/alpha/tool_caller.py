@@ -63,7 +63,7 @@ class ToolCaller:
         schematic_generator: SchematicGenerator[ToolCallInferenceSchema],
     ) -> None:
         self._tool_service = tool_service
-        self.logger = logger
+        self._logger = logger
         self._schematic_generator = schematic_generator
 
     async def infer_tool_calls(
@@ -86,7 +86,7 @@ class ToolCaller:
             staged_events,
         )
 
-        with self.logger.operation("Tool classification"):
+        with self._logger.operation("Tool classification"):
             inference_output = await self._run_inference(inference_prompt)
 
         tool_calls_that_need_to_run = [
@@ -111,7 +111,7 @@ class ToolCaller:
     ) -> Sequence[ToolCallResult]:
         tools_by_name = {t.name: t for t in tools}
 
-        with self.logger.operation("Tool calls"):
+        with self._logger.operation("Tool calls"):
             tool_results = await asyncio.gather(
                 *(
                     self._run_tool(
@@ -299,14 +299,14 @@ There are no staged tool calls at this moment.
         self,
         prompt: str,
     ) -> Sequence[ToolCallEvaluation]:
-        self.logger.debug(f"Tool call inference prompt: {prompt}")
+        self._logger.debug(f"Tool call inference prompt: {prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.3},
         )
 
-        self.logger.debug(
+        self._logger.debug(
             f"Tool call request results: {json.dumps([t.model_dump(mode="json") for t in inference.content.tool_call_evaluations], indent=2),}"
         )
         return inference.content.tool_call_evaluations
@@ -318,13 +318,13 @@ There are no staged tool calls at this moment.
         tool: Tool,
     ) -> ToolCallResult:
         try:
-            self.logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
+            self._logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
             result = await self._tool_service.call_tool(
                 tool.id,
                 context,
                 tool_call.arguments,
             )
-            self.logger.debug(
+            self._logger.debug(
                 f"Tool call returned: {tool_call.name}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
             )
 
@@ -334,7 +334,7 @@ There are no staged tool calls at this moment.
                 result={"data": result.data, "metadata": result.metadata},
             )
         except Exception as e:
-            self.logger.error(
+            self._logger.error(
                 f"Tool execution error (tool='{tool_call.name}', "
                 "arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
             )

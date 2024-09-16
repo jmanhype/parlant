@@ -870,20 +870,18 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "emcie-common"
-version = "0.3.0-alpha.1"
+version = "0.1.0"
 description = ""
 optional = false
-python-versions = "^3.12"
-files = []
-develop = true
+python-versions = "<4.0,>=3.12"
+files = [
+    {file = "emcie_common-0.1.0-py3-none-any.whl", hash = "sha256:473230a93f9412ae245d608e44efbb0d5c9ec0904597865aa1d485ccecda20d2"},
+    {file = "emcie_common-0.1.0.tar.gz", hash = "sha256:26ccab8837bbeb89937e228fd826de569fc84ab739a37f50a398e3c83025bbfc"},
+]
 
 [package.dependencies]
-fastapi = "^0.112.0"
-uvicorn = "^0.30.5"
-
-[package.source]
-type = "directory"
-url = "../common"
+fastapi = ">=0.112.0,<0.113.0"
+uvicorn = ">=0.30.5,<0.31.0"
 
 [[package]]
 name = "eval-type-backport"
@@ -5198,4 +5196,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "c69d8717c8eaeb424ba6a18cc51f31bfe47f950ca1b1bddc419f01539b98f18e"
+content-hash = "10ac7c147e3c5a7fea638e05fdf7bf2bdbb93430608ce94eba57dbf82a888beb"
