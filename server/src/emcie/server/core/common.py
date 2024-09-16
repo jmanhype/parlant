@@ -1,9 +1,10 @@
-from typing import NewType, Optional, TypeAlias
+from typing import NewType, Optional
+import hashlib
 import nanoid  # type: ignore
 
-import emcie.common.types.common
 
-JSONSerializable: TypeAlias = emcie.common.types.common.JSONSerializable
+from emcie.common.base_models import DefaultBaseModel as DefaultBaseModel
+from emcie.common.types.common import JSONSerializable as JSONSerializable
 
 UniqueId = NewType("UniqueId", str)
 
@@ -15,3 +16,10 @@ class ItemNotFoundError(Exception):
 
 def generate_id() -> UniqueId:
     return UniqueId(nanoid.generate(size=10))
+
+
+def md5_checksum(input: str) -> str:
+    md5_hash = hashlib.md5()
+    md5_hash.update(input.encode("utf-8"))
+
+    return md5_hash.hexdigest()

@@ -3,7 +3,7 @@ from typing import Literal, Optional, Sequence, TypeAlias, TypedDict, Union, cas
 from fastapi import APIRouter, HTTPException, status
 
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.evaluations import (
     CoherenceCheckKind,
     ConnectionPropositionKind,
@@ -18,7 +18,7 @@ from emcie.server.core.evaluations import (
 )
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.indexing.behavioral_change_evaluation import (
+from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )

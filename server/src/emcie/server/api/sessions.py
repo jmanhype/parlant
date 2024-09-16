@@ -4,8 +4,8 @@ from typing import Any, Optional, Union
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
 
-from emcie.server.async_utils import Timeout
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.async_utils import Timeout
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
@@ -16,7 +16,7 @@ from emcie.server.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from emcie.server.mc import MC
+from emcie.server.core.mc import MC
 
 
 class CreateSessionRequest(DefaultBaseModel):

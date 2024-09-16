@@ -6,7 +6,7 @@ import typing
 from jsonschema import ValidationError, validate
 
 from emcie.server.core.common import JSONSerializable
-from emcie.server.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 class ConfigurationFileValidator:

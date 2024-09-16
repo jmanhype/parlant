@@ -4,8 +4,8 @@ import tempfile
 from typing import Iterator
 from pytest import fixture
 
-from emcie.server.contextual_correlator import ContextualCorrelator
-from emcie.server.logger import StdoutLogger
+from emcie.server.core.contextual_correlator import ContextualCorrelator
+from emcie.server.core.logging import StdoutLogger
 from tests.e2e.test_utilities import _TestContext, get_package_path
 
 
