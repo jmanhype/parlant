@@ -14,7 +14,7 @@ from emcie.server.core.persistence.common import (
     Where,
 )
 from emcie.server.core.persistence.document_database import DeleteResult, InsertResult, UpdateResult
-from emcie.server.logger import Logger
+from emcie.server.core.logger import Logger
 
 
 class ChromaDocument(BaseDocument):

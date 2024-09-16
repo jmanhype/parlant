@@ -13,7 +13,7 @@ from emcie.server.adapters.db.chroma.database import (
     ChromaDocument,
 )
 from emcie.server.core.persistence.common import ObjectId
-from emcie.server.logger import Logger
+from emcie.server.core.logger import Logger
 
 
 class _TestModel(ChromaDocument):

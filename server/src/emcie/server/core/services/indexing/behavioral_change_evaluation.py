@@ -22,8 +22,8 @@ from emcie.server.core.services.indexing.coherence_checker import (
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
-from emcie.server.logger import Logger
-from emcie.server.utils import md5_checksum
+from emcie.server.core.logger import Logger
+from emcie.server.core.common import md5_checksum
 
 
 class EvaluationError(Exception):

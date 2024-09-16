@@ -9,7 +9,7 @@ import coloredlogs  # type: ignore
 import logging
 import logging.handlers
 
-from emcie.server.contextual_correlator import ContextualCorrelator
+from emcie.server.core.contextual_correlator import ContextualCorrelator
 
 
 class CustomFormatter(logging.Formatter, ABC):

@@ -9,7 +9,7 @@ from pytest import fixture, Config
 from emcie.server.adapters.db.chroma.terminology import TerminologyChromaStore
 from emcie.server.adapters.nlp.openai import GPT_4o, GPT_4o_Mini, OpenAITextEmbedding3Large
 from emcie.server.api.app import create_app
-from emcie.server.contextual_correlator import ContextualCorrelator
+from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
@@ -50,8 +50,8 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from emcie.server.logger import Logger, StdoutLogger
-from emcie.server.mc import MC
+from emcie.server.core.logger import Logger, StdoutLogger
+from emcie.server.core.mc import MC
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,

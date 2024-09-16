@@ -3,7 +3,7 @@ import json
 from typing import Mapping, Optional, Sequence
 
 from emcie.common.tools import Tool
-from emcie.server.contextual_correlator import ContextualCorrelator
+from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.nlp.generation import SchematicGenerator
@@ -17,7 +17,7 @@ from emcie.server.core.terminology import Term
 from emcie.server.core.engines.emission import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
 from emcie.server.core.common import DefaultBaseModel
-from emcie.server.logger import Logger
+from emcie.server.core.logger import Logger
 
 
 class Revision(DefaultBaseModel):

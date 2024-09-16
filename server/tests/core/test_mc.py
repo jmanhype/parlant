@@ -4,9 +4,9 @@ from lagom import Container
 from pytest import fixture
 from datetime import datetime, timezone
 
-from emcie.server.async_utils import Timeout
-from emcie.server.logger import Logger
-from emcie.server.mc import MC
+from emcie.server.core.async_utils import Timeout
+from emcie.server.core.logger import Logger
+from emcie.server.core.mc import MC
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId, EndUserStore
 from emcie.server.core.guidelines import GuidelineStore

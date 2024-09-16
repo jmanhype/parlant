@@ -15,7 +15,7 @@ from typing import (
     cast,
 )
 
-from emcie.server.async_utils import Timeout
+from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId

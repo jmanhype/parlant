@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from emcie.server.core.nlp.embedding import Embedder, EmbeddingResult
 from emcie.server.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
-from emcie.server.logger import Logger
+from emcie.server.core.logger import Logger
 
 
 class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
