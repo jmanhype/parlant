@@ -21,14 +21,14 @@ import uvicorn
 
 from emcie.common.tools import ToolId
 from emcie.server.api.app import create_app
-from emcie.server.contextual_correlator import ContextualCorrelator
+from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
 from emcie.server.core.nlp.embedding import EmbedderFactory, OpenAITextEmbedding3Large
-from emcie.server.core.nlp.generation import (
-    SchematicGenerator,
+from emcie.server.core.nlp.generation import SchematicGenerator
+from emcie.server.adapters.nlp.openai import (
     GPT_4o,
     GPT_4o_Mini,
 )
@@ -41,8 +41,8 @@ from emcie.server.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineStore,
 )
-from emcie.server.core.persistence.chroma_database import ChromaDatabase
-from emcie.server.adapters.persistence.json_file_database import JSONFileDocumentDatabase
+from emcie.server.adapters.db.chroma.database import ChromaDatabase
+from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
 from emcie.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
@@ -52,22 +52,22 @@ from emcie.server.core.sessions import (
 from emcie.server.core.terminology import TerminologyChromaStore, TerminologyStore
 from emcie.server.core.tools import LocalToolService, ToolService, MultiplexedToolService
 from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.engines.alpha.engine import AlphaEngine
+from emcie.server.core.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
-from emcie.server.engines.alpha.tool_caller import ToolCallInferenceSchema
-from emcie.server.engines.alpha.guideline_proposer import (
+from emcie.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from emcie.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from emcie.server.engines.alpha.message_event_producer import (
+from emcie.server.core.engines.alpha.message_event_producer import (
     MessageEventProducer,
     MessageEventSchema,
 )
-from emcie.server.engines.alpha.tool_event_producer import ToolEventProducer
-from emcie.server.engines.common import Engine
+from emcie.server.core.engines.alpha.tool_event_producer import ToolEventProducer
+from emcie.server.core.engines.types import Engine
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
@@ -80,8 +80,8 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionPropositionsSchema,
 )
 from emcie.server.core.services.indexing.indexer import Indexer
-from emcie.server.logger import FileLogger, Logger
-from emcie.server.mc import MC
+from emcie.server.core.logger import FileLogger, Logger
+from emcie.server.core.mc import MC
 from emcie.server.configuration_validator import ConfigurationFileValidator
 
 DEFAULT_PORT = 8000
