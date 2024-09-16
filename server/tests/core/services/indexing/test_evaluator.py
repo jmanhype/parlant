@@ -371,7 +371,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
     guideline_store = container[GuidelineStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent.id,
         predicate="the user greets you",
         action="greet them back with 'Hello'",
     )
@@ -395,7 +395,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
 
     assert (
         str(exc.value)
-        == "Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in test-agent guideline_set"
+        == f"Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in {agent.id} guideline_set"
     )
 
 
