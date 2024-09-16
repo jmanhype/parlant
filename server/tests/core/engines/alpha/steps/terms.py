@@ -14,11 +14,10 @@ def given_the_term_definition(
     agent_id: AgentId,
 ) -> None:
     terminology_store = context.container[TerminologyStore]
-    agent_name = context.sync_await(context.container[AgentStore].read_agent(agent_id)).name
-
+    agent_id = context.sync_await(context.container[AgentStore].read_agent(agent_id)).id
     context.sync_await(
         terminology_store.create_term(
-            term_set=agent_name,
+            term_set=agent_id,
             name=term_name,
             description=term_description,
         )
@@ -30,7 +29,7 @@ def given_50_random_terms_related_to_technology_companies(
     context: ContextOfTest,
     agent_id: AgentId,
 ) -> None:
-    agent_name = context.sync_await(context.container[AgentStore].read_agent(agent_id)).name
+    agent_id = context.sync_await(context.container[AgentStore].read_agent(agent_id)).id
     terms = [
         {
             "name": "API",
@@ -284,7 +283,7 @@ def given_50_random_terms_related_to_technology_companies(
     for term in terms:
         context.sync_await(
             context.container[TerminologyStore].create_term(
-                term_set=agent_name,
+                term_set=agent_id,
                 name=term["name"],  # type: ignore
                 description=term["description"],  # type: ignore
                 synonyms=term["synonyms"],

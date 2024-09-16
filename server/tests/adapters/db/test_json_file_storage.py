@@ -25,6 +25,7 @@ from emcie.server.core.evaluations import (
     PayloadKind,
 )
 from emcie.server.core.guidelines import (
+    GuidelineContent,
     GuidelineDocumentStore,
     GuidelineId,
 )
@@ -560,14 +561,16 @@ async def test_evaluation_creation(
 
         payloads = [
             GuidelinePayload(
-                guideline_set=context.agent_id,
-                predicate="Test evaluation creation with invoice",
-                action="Ensure the evaluation with invoice is persisted in the JSON file",
+                content=GuidelineContent(
+                    predicate="Test evaluation creation with invoice",
+                    action="Ensure the evaluation with invoice is persisted in the JSON file",
+                )
             )
         ]
 
         evaluation = await evaluation_store.create_evaluation(
-            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
+            agent_id=context.agent_id,
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads],
         )
 
     with open(new_file) as f:
@@ -590,14 +593,16 @@ async def test_evaluation_update(
 
         payloads = [
             GuidelinePayload(
-                guideline_set=context.agent_id,
-                predicate="Initial evaluation payload with invoice",
-                action="This content will be updated",
+                content=GuidelineContent(
+                    predicate="Initial evaluation payload with invoice",
+                    action="This content will be updated",
+                )
             )
         ]
 
         evaluation = await evaluation_store.create_evaluation(
-            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads]
+            agent_id=context.agent_id,
+            payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads],
         )
 
         invoice_data: InvoiceData = InvoiceGuidelineData(

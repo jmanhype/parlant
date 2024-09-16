@@ -1,6 +1,7 @@
 import asyncio
 from typing import Iterable, Optional, OrderedDict, Sequence
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.evaluations import (
     CoherenceCheck,
     ConnectionProposition,
@@ -51,21 +52,12 @@ class GuidelineEvaluator:
 
     async def evaluate(
         self,
+        agent: Agent,
         payloads: Sequence[Payload],
     ) -> Sequence[InvoiceGuidelineData]:
-        guideline_set = payloads[0].guideline_set
+        guideline_to_evaluate = [p.content for p in payloads]
 
-        guideline_to_evaluate = [
-            GuidelineContent(
-                predicate=p.predicate,
-                action=p.action,
-            )
-            for p in payloads
-        ]
-
-        existing_guidelines = await self._guideline_store.list_guidelines(
-            guideline_set=guideline_set
-        )
+        existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
         coherence_checks = await self._check_payloads_coherence(
             guideline_to_evaluate,
@@ -74,7 +66,7 @@ class GuidelineEvaluator:
 
         if not coherence_checks:
             connection_propositions = await self._propose_payloads_connections(
-                guideline_to_evaluate, existing_guidelines
+                agent, guideline_to_evaluate, existing_guidelines
             )
 
             if connection_propositions:
@@ -168,12 +160,14 @@ class GuidelineEvaluator:
 
     async def _propose_payloads_connections(
         self,
+        agent: Agent,
         proposed_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
     ) -> Optional[Iterable[Sequence[ConnectionProposition]]]:
         connection_propositions = [
             p
             for p in await self._guideline_connection_proposer.propose_connections(
+                [agent],
                 introduced_guidelines=proposed_guidelines,
                 existing_guidelines=[
                     GuidelineContent(predicate=g.content.predicate, action=g.content.action)
@@ -239,6 +233,7 @@ class BehavioralChangeEvaluator:
 
     async def validate_payloads(
         self,
+        agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
     ) -> None:
         if not payload_descriptors:
@@ -247,64 +242,44 @@ class BehavioralChangeEvaluator:
         guideline_payloads = [p for k, p in payload_descriptors if k == PayloadKind.GUIDELINE]
 
         if guideline_payloads:
-            guideline_set = guideline_payloads[0].guideline_set
-
-            if len({p.guideline_set for p in guideline_payloads}) > 1:
-                raise EvaluationValidationError(
-                    "Evaluation task must be processed for a single guideline_set."
-                )
 
             async def _check_for_duplications() -> None:
-                seen_guidelines = set(
-                    (
-                        g.guideline_set,
-                        g.predicate,
-                        g.action,
-                    )
-                    for g in guideline_payloads
-                )
+                seen_guidelines = set((g.content) for g in guideline_payloads)
                 if len(seen_guidelines) < len(guideline_payloads):
                     raise EvaluationValidationError(
                         "Duplicate guideline found among the provided guidelines."
                     )
 
                 existing_guidelines = await self._guideline_store.list_guidelines(
-                    guideline_set=guideline_set
+                    guideline_set=agent.id,
                 )
 
                 if guideline := next(
-                    iter(
-                        g
-                        for g in existing_guidelines
-                        if (
-                            guideline_set,
-                            g.content.predicate,
-                            g.content.action,
-                        )
-                        in seen_guidelines
-                    ),
+                    iter(g for g in existing_guidelines if (g.content) in seen_guidelines),
                     None,
                 ):
                     raise EvaluationValidationError(
-                        f"Duplicate guideline found against existing guidelines: {str(guideline)} in {guideline_set} guideline_set"
+                        f"Duplicate guideline found against existing guidelines: {str(guideline)} in {agent.id} guideline_set"
                     )
 
             await _check_for_duplications()
 
     async def create_evaluation_task(
         self,
+        agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
     ) -> EvaluationId:
-        await self.validate_payloads(payload_descriptors)
+        await self.validate_payloads(agent, payload_descriptors)
 
-        evaluation = await self._evaluation_store.create_evaluation(payload_descriptors)
+        evaluation = await self._evaluation_store.create_evaluation(agent.id, payload_descriptors)
 
-        asyncio.create_task(self.run_evaluation(evaluation))
+        asyncio.create_task(self.run_evaluation(agent, evaluation))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
+        agent: Agent,
         evaluation: Evaluation,
     ) -> None:
         self.logger.info(f"Starting evaluation task '{evaluation.id}'")
@@ -326,6 +301,7 @@ class BehavioralChangeEvaluator:
             )
 
             guideline_evaluation_data = await self._guideline_evaluator.evaluate(
+                agent=agent,
                 payloads=[
                     invoice.payload
                     for invoice in evaluation.invoices

@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Literal, Optional, Sequence, TypeAlias, TypedDict, Union, cast
 from fastapi import APIRouter, HTTPException, status
 
-
 from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.evaluations import (
     CoherenceCheckKind,
     ConnectionPropositionKind,
@@ -58,7 +58,6 @@ PayloadKindDTO = Literal["guideline"]
 
 class GuidelinePayloadDTO(TypedDict):
     kind: PayloadKindDTO
-    guideline_set: str
     predicate: str
     action: str
 
@@ -69,9 +68,10 @@ PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]
 def _payload_from_dto(dto: PayloadDTO) -> Payload:
     return {
         "guideline": GuidelinePayload(
-            guideline_set=dto["guideline_set"],
-            predicate=dto["predicate"],
-            action=dto["action"],
+            content=GuidelineContent(
+                predicate=dto["predicate"],
+                action=dto["action"],
+            )
         )
     }[dto["kind"]]
 
@@ -80,9 +80,8 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     return {
         PayloadKind.GUIDELINE: PayloadDTO(
             kind="guideline",
-            guideline_set=descriptor.payload.guideline_set,
-            predicate=descriptor.payload.predicate,
-            action=descriptor.payload.action,
+            predicate=descriptor.payload.content.predicate,
+            action=descriptor.payload.content.action,
         )
     }[descriptor.kind]
 
@@ -111,6 +110,7 @@ InvoiceDataDTO: TypeAlias = Union[InvoiceGuidelineDataDTO]
 
 
 class CreateEvaluationRequest(DefaultBaseModel):
+    agent_id: AgentId
     payloads: Sequence[PayloadDTO]
 
 
@@ -165,18 +165,22 @@ class ReadEvaluationResponse(DefaultBaseModel):
 def create_router(
     evaluation_service: BehavioralChangeEvaluator,
     evaluation_store: EvaluationStore,
+    agent_store: AgentStore,
 ) -> APIRouter:
     router = APIRouter()
 
     @router.post("/evaluations", status_code=status.HTTP_201_CREATED)
     async def create_evaluation(request: CreateEvaluationRequest) -> CreateEvaluationResponse:
         try:
+            agent = await agent_store.read_agent(agent_id=request.agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
+                agent=agent,
                 payload_descriptors=[
                     PayloadDescriptor(PayloadKind.GUIDELINE, p)
                     for p in [_payload_from_dto(p) for p in request.payloads]
-                ]
+                ],
             )
+
         except EvaluationValidationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

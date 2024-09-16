@@ -75,6 +75,7 @@ async def create_app(container: Container) -> FastAPI:
         router=index.create_router(
             evaluation_service=evaluation_service,
             evaluation_store=evaluation_store,
+            agent_store=agent_store,
         ),
     )
 
