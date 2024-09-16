@@ -146,16 +146,16 @@ def test_list_terms(
     returned_terms = data["terms"]
     assert len(returned_terms) == 2
 
-    {
-        "name": returned_terms[0]["name"],
-        "description": returned_terms[0]["description"],
-        "synonyms": returned_terms[0]["synonyms"],
-    } in [terms.pop()]
-
-    {
+    assert {
         "name": returned_terms[1]["name"],
         "description": returned_terms[1]["description"],
         "synonyms": returned_terms[1]["synonyms"],
+    } in terms
+
+    assert {
+        "name": returned_terms[0]["name"],
+        "description": returned_terms[0]["description"],
+        "synonyms": returned_terms[0]["synonyms"],
     } in terms
 
 
