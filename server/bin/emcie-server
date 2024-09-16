@@ -263,6 +263,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineConnectionProposer] = GuidelineConnectionProposer(
             c[Logger],
             c[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
+            c[TerminologyStore],
         )
         c[ToolEventProducer] = ToolEventProducer(
             c[Logger],
@@ -283,6 +284,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
         c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
             c[Logger],
+            c[AgentStore],
             c[EvaluationStore],
             c[GuidelineStore],
             c[GuidelineConnectionProposer],

@@ -1,7 +1,7 @@
 import asyncio
 from typing import Iterable, Optional, OrderedDict, Sequence
 
-from emcie.server.core.agents import Agent
+from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.evaluations import (
     CoherenceCheck,
     ConnectionProposition,
@@ -45,7 +45,7 @@ class GuidelineEvaluator:
         guideline_connection_proposer: GuidelineConnectionProposer,
         coherence_checker: CoherenceChecker,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._guideline_store = guideline_store
         self._guideline_connection_proposer = guideline_connection_proposer
         self._coherence_checker = coherence_checker
@@ -66,7 +66,9 @@ class GuidelineEvaluator:
 
         if not coherence_checks:
             connection_propositions = await self._propose_payloads_connections(
-                agent, guideline_to_evaluate, existing_guidelines
+                agent,
+                guideline_to_evaluate,
+                existing_guidelines,
             )
 
             if connection_propositions:
@@ -216,12 +218,14 @@ class BehavioralChangeEvaluator:
     def __init__(
         self,
         logger: Logger,
+        agent_store: AgentStore,
         evaluation_store: EvaluationStore,
         guideline_store: GuidelineStore,
         guideline_connection_proposer: GuidelineConnectionProposer,
         coherence_checker: CoherenceChecker,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
+        self._agent_store = agent_store
         self._evaluation_store = evaluation_store
         self._guideline_store = guideline_store
         self._guideline_evaluator = GuidelineEvaluator(
@@ -273,16 +277,15 @@ class BehavioralChangeEvaluator:
 
         evaluation = await self._evaluation_store.create_evaluation(agent.id, payload_descriptors)
 
-        asyncio.create_task(self.run_evaluation(agent, evaluation))
+        asyncio.create_task(self.run_evaluation(evaluation))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
-        agent: Agent,
         evaluation: Evaluation,
     ) -> None:
-        self.logger.info(f"Starting evaluation task '{evaluation.id}'")
+        self._logger.info(f"Starting evaluation task '{evaluation.id}'")
 
         try:
             if running_task := next(
@@ -299,6 +302,8 @@ class BehavioralChangeEvaluator:
                 evaluation_id=evaluation.id,
                 status=EvaluationStatus.RUNNING,
             )
+
+            agent = await self._agent_store.read_agent(agent_id=evaluation.agent_id)
 
             guideline_evaluation_data = await self._guideline_evaluator.evaluate(
                 agent=agent,
@@ -329,7 +334,7 @@ class BehavioralChangeEvaluator:
                     updated_invoice=invoice,
                 )
 
-            self.logger.info(f"evaluation task '{evaluation.id}' completed")
+            self._logger.info(f"evaluation task '{evaluation.id}' completed")
 
             await self._evaluation_store.update_evaluation_status(
                 evaluation_id=evaluation.id,
@@ -338,7 +343,7 @@ class BehavioralChangeEvaluator:
 
         except Exception as exc:
             logger_level = "info" if isinstance(exc, EvaluationError) else "error"
-            getattr(self.logger, logger_level)(
+            getattr(self._logger, logger_level)(
                 f"Evaluation task '{evaluation.id}' failed due to the following error: '{str(exc)}'"
             )
             await self._evaluation_store.update_evaluation_status(
