@@ -2,7 +2,6 @@ import asyncio
 from dataclasses import dataclass
 from itertools import chain
 import json
-from logging import Logger
 from typing import Sequence
 
 from more_itertools import chunked
@@ -11,6 +10,7 @@ from emcie.server.core.agents import Agent
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
+from emcie.server.core.logging import Logger
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.terminology import TerminologyStore
 
@@ -46,7 +46,7 @@ class GuidelineConnectionProposer:
         schematic_generator: SchematicGenerator[GuidelineConnectionPropositionsSchema],
         terminology_store: TerminologyStore,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._terminology_store = terminology_store
         self._schematic_generator = schematic_generator
         self._batch_size = 5
@@ -82,7 +82,7 @@ class GuidelineConnectionProposer:
                 ]
             )
 
-        with self.logger.operation(
+        with self._logger.operation(
             f"Propose guideline connections for {len(connection_proposition_tasks)} "  # noqa
             f"batches (batch size={self._batch_size})",
         ):
@@ -351,7 +351,7 @@ Implication candidates: ###
             hints={"temperature": 0.0},
         )
 
-        self.logger.debug(
+        self._logger.debug(
             f"""
 ----------------------------------------
 Connection Propositions Found:
