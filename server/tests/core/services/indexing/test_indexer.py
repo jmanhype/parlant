@@ -5,7 +5,6 @@ import tempfile
 from typing import AsyncIterator
 
 from lagom import Container
-from pytest import fixture
 
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.guidelines import GuidelineStore
@@ -15,23 +14,12 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
 )
 from emcie.server.core.services.indexing.indexer import GuidelineIndexer, Indexer
 from emcie.server.core.logging import Logger
-from tests.test_utilities import SyncAwaiter
 
 
 @asynccontextmanager
 async def new_file_path() -> AsyncIterator[Path]:
     with tempfile.NamedTemporaryFile(delete=True) as new_file:
         yield Path(new_file.name)
-
-
-@fixture
-def agent(
-    container: Container,
-    sync_await: SyncAwaiter,
-) -> Agent:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent(name="test-agent"))
-    return agent
 
 
 async def test_that_guidelines_written_in_the_index_file(

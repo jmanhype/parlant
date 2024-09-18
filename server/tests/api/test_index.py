@@ -2,9 +2,8 @@ import asyncio
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
-from pytest import fixture
 
-from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.agents import AgentId
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guidelines import GuidelineStore
 
@@ -12,17 +11,6 @@ from tests.core.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
     TIME_TO_WAIT_PER_PAYLOAD,
 )
-from tests.test_utilities import SyncAwaiter
-
-
-@fixture
-def agent_id(
-    container: Container,
-    sync_await: SyncAwaiter,
-) -> AgentId:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent(name="test-agent"))
-    return agent.id
 
 
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(

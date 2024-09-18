@@ -55,19 +55,19 @@ class GuidelineEvaluator:
         agent: Agent,
         payloads: Sequence[Payload],
     ) -> Sequence[InvoiceGuidelineData]:
-        guideline_to_evaluate = [p.content for p in payloads]
+        guidelines_to_evaluate = [p.content for p in payloads]
 
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
         coherence_checks = await self._check_payloads_coherence(
-            guideline_to_evaluate,
+            guidelines_to_evaluate,
             existing_guidelines,
         )
 
         if not coherence_checks:
             connection_propositions = await self._propose_payloads_connections(
                 agent,
-                guideline_to_evaluate,
+                guidelines_to_evaluate,
                 existing_guidelines,
             )
 
@@ -169,7 +169,7 @@ class GuidelineEvaluator:
         connection_propositions = [
             p
             for p in await self._guideline_connection_proposer.propose_connections(
-                [agent],
+                agent,
                 introduced_guidelines=proposed_guidelines,
                 existing_guidelines=[
                     GuidelineContent(predicate=g.content.predicate, action=g.content.action)

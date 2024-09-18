@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
-from emcie.server.core.agents import Agent, AgentStore
+from emcie.server.core.agents import Agent
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
@@ -31,16 +31,6 @@ def _create_guideline_content(
     action: str,
 ) -> GuidelineContent:
     return GuidelineContent(predicate=predicate, action=action)
-
-
-@fixture
-def agent(
-    container: Container,
-    sync_await: SyncAwaiter,
-) -> Agent:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent(name="test-agent"))
-    return agent
 
 
 @mark.parametrize(
@@ -92,7 +82,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
-                [agent],
+                agent,
                 [source_guideline_content, target_guideline_content],
             )
         )
@@ -157,7 +147,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
-                [agent],
+                agent,
                 [
                     source_guideline_content,
                     target_guideline_content,
@@ -218,7 +208,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
 
     connection_propositions = list(
         context.sync_await(
-            connection_proposer.propose_connections([agent], introduced_guidelines, [])
+            connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
 
@@ -279,9 +269,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
-            connection_proposer.propose_connections([agent], [], existing_guidelines)
-        )
+        context.sync_await(connection_proposer.propose_connections(agent, [], existing_guidelines))
     )
 
     assert len(connection_propositions) == 0
@@ -315,7 +303,7 @@ def test_that_a_connection_is_proposed_based_on_given_terminology(
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
-                [agent],
+                agent,
                 [source_guideline_content, target_guideline_content],
             )
         )

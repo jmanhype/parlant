@@ -24,15 +24,6 @@ class ToolFunctions:
 
 
 @fixture
-def agent_id(client: TestClient) -> AgentId:
-    response = client.post(
-        "/agents",
-        json={"agent_name": "test-agent"},
-    )
-    return AgentId(response.json()["agent_id"])
-
-
-@fixture
 def session_id(
     client: TestClient,
     agent_id: AgentId,

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from itertools import chain
 import json
 from typing import Sequence
-
 from more_itertools import chunked
 
 from emcie.server.core.agents import Agent
@@ -53,7 +52,7 @@ class GuidelineConnectionProposer:
 
     async def propose_connections(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         introduced_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[GuidelineConnectionProposition]:
@@ -76,7 +75,7 @@ class GuidelineConnectionProposer:
             connection_proposition_tasks.extend(
                 [
                     asyncio.create_task(
-                        self._generate_propositions(agents, introduced_guideline, batch)
+                        self._generate_propositions(agent, introduced_guideline, batch)
                     )
                     for batch in guideline_batches
                 ]
@@ -91,13 +90,10 @@ class GuidelineConnectionProposer:
 
     async def _format_connection_propositions(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         evaluated_guideline: GuidelineContent,
         comparison_set: Sequence[GuidelineContent],
     ) -> str:
-        assert len(agents) == 1
-        agent = agents[0]
-
         implication_candidates = "\n\t".join(
             f"{i}) {{when: {g.predicate}, then: {g.action}}}"
             for i, g in enumerate(comparison_set, start=1)
@@ -338,12 +334,14 @@ Implication candidates: ###
 
     async def _generate_propositions(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         guideline_to_test: GuidelineContent,
         guidelines_to_compare: Sequence[GuidelineContent],
     ) -> list[GuidelineConnectionProposition]:
         prompt = await self._format_connection_propositions(
-            agents, guideline_to_test, guidelines_to_compare
+            agent,
+            guideline_to_test,
+            guidelines_to_compare,
         )
 
         response = await self._schematic_generator.generate(

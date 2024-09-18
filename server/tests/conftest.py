@@ -102,6 +102,7 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)
     container[GuidelineProposer] = Singleton(GuidelineProposer)
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
+    container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
     container[LocalToolService] = Singleton(LocalToolService)
     container[MultiplexedToolService] = MultiplexedToolService(
         services={"local": container[LocalToolService]}
@@ -124,7 +125,6 @@ async def container() -> AsyncIterator[Container]:
             ChromaDatabase(container[Logger], Path(chroma_db_dir), EmbedderFactory(container)),
             embedder_type=OpenAITextEmbedding3Large,
         )
-        container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
 
         async with MC(container) as mc:
             container[MC] = mc

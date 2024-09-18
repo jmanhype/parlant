@@ -1,8 +1,8 @@
 import asyncio
 from lagom import Container
-from pytest import fixture, raises
+from pytest import raises
 
-from emcie.server.core.agents import Agent, AgentStore
+from emcie.server.core.agents import Agent
 from emcie.server.core.evaluations import (
     EvaluationStatus,
     GuidelinePayload,
@@ -15,20 +15,9 @@ from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from tests.test_utilities import SyncAwaiter
 
 TIME_TO_WAIT_PER_PAYLOAD = 10
 AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
-
-
-@fixture
-def agent(
-    container: Container,
-    sync_await: SyncAwaiter,
-) -> Agent:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent(name="test-agent"))
-    return agent
 
 
 async def test_that_a_new_evaluation_starts_with_a_pending_status(

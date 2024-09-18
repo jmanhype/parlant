@@ -153,7 +153,7 @@ class GuidelineIndexer:
         proposed_connections = (
             p
             for p in await self._guideline_connection_proposer.propose_connections(
-                agents=[agent],
+                agent=agent,
                 introduced_guidelines=[
                     GuidelineContent(predicate=s.content.predicate, action=s.content.action)
                     for s in introduced
