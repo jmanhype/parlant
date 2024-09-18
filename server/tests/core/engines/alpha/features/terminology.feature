@@ -1,4 +1,4 @@
-Feature: Terminology Integration
+Feature: Terminology
     Background:
         Given the alpha engine
         And an agent

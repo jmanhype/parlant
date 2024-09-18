@@ -17,13 +17,12 @@ scenarios(
     *(
         f"core/engines/alpha/features/{feature}.feature"
         for feature in (
+            "conversation",
             "guideline_connections",
-            "message_agent_with_rules",
-            "proactive_agent",
-            "single_tool_event",
+            "proactivity",
             "supervision",
             "terminology",
-            "vanilla_agent",
+            "tools",
         )
     )
 )

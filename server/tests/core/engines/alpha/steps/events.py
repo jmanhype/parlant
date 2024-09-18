@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Optional, cast
 from pytest_bdd import given, then, parsers
 
 from emcie.common.tools import ToolId
@@ -112,16 +112,20 @@ def then_no_message_events_are_emitted(
 
 def _has_status_event(
     status: SessionStatus,
-    acknowledged_event_offset: int,
+    acknowledged_event_offset: Optional[int],
     events: list[EmittedEvent],
 ) -> bool:
     for e in (e for e in events if e.kind == "status"):
         data = cast(StatusEventData, e.data)
 
         has_same_status = data["status"] == status
-        has_same_acknowledged_offset = data["acknowledged_offset"] == acknowledged_event_offset
 
-        if has_same_status and has_same_acknowledged_offset:
+        if acknowledged_event_offset:
+            has_same_acknowledged_offset = data["acknowledged_offset"] == acknowledged_event_offset
+
+            if has_same_status and has_same_acknowledged_offset:
+                return True
+        elif has_same_status:
             return True
 
     return False
@@ -185,6 +189,14 @@ def then_a_ready_status_event_is_emitted(
     acknowledged_event_offset: int,
 ) -> None:
     assert _has_status_event("ready", acknowledged_event_offset, emitted_events)
+
+
+@step(then, parsers.parse("a {status_type} status event is not emitted"))
+def then_a_status_event_type_is_not_emitted(
+    emitted_events: list[EmittedEvent],
+    status_type: SessionStatus,
+) -> None:
+    assert not _has_status_event(status_type, None, emitted_events)
 
 
 @step(then, "no tool calls event is emitted")

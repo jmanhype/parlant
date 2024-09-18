@@ -2,6 +2,7 @@ from pytest_bdd import given, parsers
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
@@ -378,8 +379,35 @@ def given_a_guideline_proposition(
     rationale: str,
 ) -> None:
     guideline = context.guidelines[guideline_name]
+
     context.guideline_propositions[guideline_name] = GuidelineProposition(
         guideline=guideline,
         score=score,
         rationale=rationale,
+    )
+
+
+@step(
+    given,
+    parsers.parse(
+        'a guideline connection whereby "{guideline_a}" {connection_kind} "{guideline_b}"'
+    ),
+)
+def given_a_guideline_connection(
+    context: ContextOfTest,
+    guideline_a: str,
+    connection_kind: str,
+    guideline_b: str,
+) -> None:
+    store = context.container[GuidelineConnectionStore]
+
+    context.sync_await(
+        store.update_connection(
+            source=context.guidelines[guideline_a].id,
+            target=context.guidelines[guideline_b].id,
+            kind={
+                "entails": ConnectionKind.ENTAILS,
+                "suggests": ConnectionKind.SUGGESTS,
+            }[connection_kind],
+        )
     )

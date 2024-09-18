@@ -74,14 +74,12 @@ def when_messages_are_emitted(
     context: ContextOfTest,
     agent: Agent,
 ) -> list[EmittedEvent]:
-    agents = [agent]
-
     message_event_producer = context.container[MessageEventProducer]
 
     message_events = context.sync_await(
         message_event_producer.produce_events(
             event_emitter=EventBuffer(),
-            agents=agents,
+            agents=[agent],
             context_variables=[],
             interaction_history=context.events,
             terms=[],
