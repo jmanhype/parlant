@@ -8,6 +8,7 @@ packages = [{ include = "emcie", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
+emcie-common = "0.3.0-alpha.1"
 fastapi = "^0.112.0"
 nanoid = "^2.0.0"
 python-dateutil = "^2.8.2"
@@ -37,7 +38,6 @@ aiopenapi3 = "^0.6.0"
 coloredlogs = "^15.0.1"
 contextvars = "^2.4"
 together = "^1.2.12"
-emcie-common = "0.3.0-alpha.1"
 
 
 [tool.poetry.group.dev.dependencies]
