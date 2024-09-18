@@ -1,134 +1,21 @@
-from dataclasses import dataclass
-from typing import Any, Literal, cast
-from lagom import Container
-from pytest import fixture
-from pytest_bdd import scenarios, given, when, then, parsers
-from datetime import datetime, timezone
+from pytest_bdd import given, parsers
 
-from emcie.common.tools import Tool
 from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.end_users import EndUserId
-from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.sessions import MessageEventData, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService, MultiplexedToolService
-from emcie.server.core.engines.types import Context
-from emcie.server.core.engines.emission import EmittedEvent
-from emcie.server.core.engines.alpha.engine import AlphaEngine
-from emcie.server.core.guideline_tool_associations import (
-    GuidelineToolAssociation,
-    GuidelineToolAssociationStore,
-)
 from emcie.server.core.terminology import TerminologyStore
 
-from emcie.server.core.logging import Logger
-from tests.test_utilities import EventBuffer, SyncAwaiter, nlp_test
-
-roles = Literal["client", "server"]
-
-scenarios("engines/alpha/terminology.feature")
+from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
-@dataclass
-class _TestContext:
-    sync_await: SyncAwaiter
-    container: Container
-    agent_id: AgentId
-    guidelines: dict[str, Guideline]
-    tools: dict[str, Tool]
-
-
-@fixture
-def agent_id(container: Container, sync_await: SyncAwaiter) -> AgentId:
-    store = container[AgentStore]
-    agent = sync_await(store.create_agent(name="test-agent"))
-    return agent.id
-
-
-@fixture
-def context(sync_await: SyncAwaiter, container: Container, agent_id: AgentId) -> _TestContext:
-    return _TestContext(
-        sync_await,
-        container,
-        agent_id,
-        guidelines=dict(),
-        tools=dict(),
-    )
-
-
-@given("the alpha engine", target_fixture="engine")
-def given_the_alpha_engine(container: Container) -> AlphaEngine:
-    return container[AlphaEngine]
-
-
-@given("an agent", target_fixture="agent_id")
-def given_an_agent(agent_id: AgentId) -> AgentId:
-    return agent_id
-
-
-@given("an empty session", target_fixture="session_id")
-def given_an_empty_session(context: _TestContext) -> SessionId:
-    store = context.container[SessionStore]
-    utc_now = datetime.now(timezone.utc)
-    session = context.sync_await(
-        store.create_session(
-            creation_utc=utc_now,
-            end_user_id=EndUserId("test_user"),
-            agent_id=context.agent_id,
-        )
-    )
-    return session.id
-
-
-@given(parsers.parse("a guideline to {do_something} when {a_condition_holds}"))
-def given_a_guideline_to_when(
-    do_something: str,
-    a_condition_holds: str,
-    sync_await: SyncAwaiter,
-    container: Container,
-    agent_id: AgentId,
-) -> None:
-    guideline_store = container[GuidelineStore]
-
-    sync_await(
-        guideline_store.create_guideline(
-            guideline_set=agent_id,
-            predicate=a_condition_holds,
-            action=do_something,
-        )
-    )
-
-
-@given(parsers.parse('a user message, "{user_message}"'), target_fixture="session_id")
-def given_a_user_message(
-    context: _TestContext,
-    session_id: SessionId,
-    user_message: str,
-) -> SessionId:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
-
-    context.sync_await(
-        store.create_event(
-            session_id=session.id,
-            source="client",
-            kind="message",
-            correlation_id="test_correlation_id",
-            data={"message": user_message},
-        )
-    )
-
-    return session.id
-
-
-@given(parsers.parse('the term "{term_name}" defined as {term_description}'))
+@step(given, parsers.parse('the term "{term_name}" defined as {term_description}'))
 def given_the_term_definition(
-    context: _TestContext,
-    agent_id: AgentId,
+    context: ContextOfTest,
     term_name: str,
     term_description: str,
+    agent_id: AgentId,
 ) -> None:
     terminology_store = context.container[TerminologyStore]
     agent_name = context.sync_await(context.container[AgentStore].read_agent(agent_id)).name
+
     context.sync_await(
         terminology_store.create_term(
             term_set=agent_name,
@@ -138,9 +25,9 @@ def given_the_term_definition(
     )
 
 
-@given("50 random terms related to technology companies")
+@step(given, "50 random terms related to technology companies")
 def given_50_random_terms_related_to_technology_companies(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_id: AgentId,
 ) -> None:
     agent_name = context.sync_await(context.container[AgentStore].read_agent(agent_id)).name
@@ -403,131 +290,3 @@ def given_50_random_terms_related_to_technology_companies(
                 synonyms=term["synonyms"],
             )
         )
-
-
-@given(parsers.parse('an association between "{guideline_name}" and "{tool_name}"'))
-def given_a_guideline_tool_association(
-    context: _TestContext,
-    tool_name: str,
-    guideline_name: str,
-) -> GuidelineToolAssociation:
-    guideline_tool_association_store = context.container[GuidelineToolAssociationStore]
-
-    return context.sync_await(
-        guideline_tool_association_store.create_association(
-            guideline_id=context.guidelines[guideline_name].id,
-            tool_id=context.tools[tool_name].id,
-        )
-    )
-
-
-@given(parsers.parse('a guideline "{guideline_name}" to {do_something} when {a_condition_holds}'))
-def given_a_guideline_name_to_when(
-    guideline_name: str,
-    do_something: str,
-    a_condition_holds: str,
-    sync_await: SyncAwaiter,
-    container: Container,
-    agent_id: AgentId,
-    context: _TestContext,
-) -> None:
-    guideline_store = container[GuidelineStore]
-
-    context.guidelines[guideline_name] = sync_await(
-        guideline_store.create_guideline(
-            guideline_set=agent_id,
-            predicate=a_condition_holds,
-            action=do_something,
-        )
-    )
-
-
-@given(parsers.parse('the tool "{tool_name}"'))
-def given_a_tool(
-    sync_await: SyncAwaiter,
-    container: Container,
-    tool_name: str,
-    context: _TestContext,
-) -> None:
-    tool_store = container[LocalToolService]
-
-    async def create_tool(
-        name: str,
-        module_path: str,
-        description: str,
-        parameters: dict[str, Any],
-        required: list[str],
-    ) -> Tool:
-        return await tool_store.create_tool(
-            name=name,
-            module_path=module_path,
-            description=description,
-            parameters=parameters,
-            required=required,
-        )
-
-    tools: dict[str, dict[str, Any]] = {
-        "get_terrys_offering": {
-            "name": "get_terrys_offering",
-            "description": "Explain Terry's offering",
-            "module_path": "tests.tool_utilities",
-            "parameters": {},
-            "required": [],
-        },
-    }
-
-    tool = sync_await(create_tool(**tools[tool_name]))
-
-    multiplexed_tool_service = container[MultiplexedToolService]
-
-    context.tools[tool_name] = sync_await(
-        multiplexed_tool_service.read_tool(
-            tool.id, next(iter(multiplexed_tool_service.services.keys()))
-        )
-    )
-
-
-@when("processing is triggered", target_fixture="emitted_events")
-def when_processing_is_triggered(
-    context: _TestContext,
-    engine: AlphaEngine,
-    session_id: SessionId,
-) -> list[EmittedEvent]:
-    buffer = EventBuffer()
-
-    context.sync_await(
-        engine.process(
-            Context(
-                session_id=session_id,
-                agent_id=context.agent_id,
-            ),
-            buffer,
-        )
-    )
-
-    return buffer.events
-
-
-@then("a single message event is emitted")
-def then_a_single_message_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-) -> None:
-    assert len(list(filter(lambda e: e.kind == "message", emitted_events))) == 1
-
-
-@then(parsers.parse("the message contains {something}"))
-def then_the_message_contains(
-    context: _TestContext,
-    emitted_events: list[EmittedEvent],
-    something: str,
-) -> None:
-    message_event = next(e for e in emitted_events if e.kind == "message")
-    message = cast(MessageEventData, message_event.data)["message"]
-
-    assert context.sync_await(
-        nlp_test(
-            logger=context.container[Logger],
-            context=message,
-            predicate=f"the text contains {something}",
-        )
-    )
