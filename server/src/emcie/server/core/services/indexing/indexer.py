@@ -34,7 +34,7 @@ class GuidelineIndexer:
         agent_store: AgentStore,
         guideline_connection_proposer: GuidelineConnectionProposer,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
 
         self._guideline_store = guideline_store
         self._guideline_connection_store = guideline_connection_store
@@ -66,7 +66,7 @@ class GuidelineIndexer:
         self,
         last_known_state: list[GuidelineIndexEntry],
     ) -> list[GuidelineIndexEntry]:
-        self.logger.info("Guideline indexing started")
+        self._logger.info("Guideline indexing started")
 
         current_state: list[GuidelineIndexEntry] = []
 
@@ -93,7 +93,7 @@ class GuidelineIndexer:
                 )
             )
 
-        self.logger.info("Guideline indexing finished")
+        self._logger.info("Guideline indexing finished")
 
         return current_state
 
@@ -171,7 +171,9 @@ class GuidelineIndexer:
         }
 
         for p in proposed_connections:
-            self.logger.debug(f"Add guideline connection between source: {p.source} and {p.target}")
+            self._logger.debug(
+                f"Add guideline connection between source: {p.source} and {p.target}"
+            )
 
             await self._guideline_connection_store.update_connection(
                 source=data_to_guideline[f"{p.source.predicate}_{p.source.action}"].id,

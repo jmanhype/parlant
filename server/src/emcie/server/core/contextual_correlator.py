@@ -10,15 +10,15 @@ _UNINITIALIZED = 0xC0FFEE
 class ContextualCorrelator:
     def __init__(self) -> None:
         self._instance_id = generate_id()
-        self.scopes = contextvars.ContextVar[list[str]](f"scope_ids_{self._instance_id}")
+        self._scopes = contextvars.ContextVar[list[str]](f"scope_ids_{self._instance_id}")
 
     @contextmanager
     def correlation_scope(self, scope_id: str) -> Iterator[None]:
-        scopes: int | list[str] = self.scopes.get(_UNINITIALIZED)
+        scopes: int | list[str] = self._scopes.get(_UNINITIALIZED)
 
         if scopes == _UNINITIALIZED:
-            self.scopes.set([])
-            scopes = self.scopes.get()
+            self._scopes.set([])
+            scopes = self._scopes.get()
 
         assert isinstance(scopes, list)
 
@@ -28,7 +28,7 @@ class ContextualCorrelator:
 
     @property
     def correlation_id(self) -> str:
-        if scopes := self.scopes.get([]):
+        if scopes := self._scopes.get([]):
             chained_scopes = ".".join(scopes)
             return chained_scopes
         return "<main>"

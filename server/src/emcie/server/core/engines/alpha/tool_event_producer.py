@@ -23,10 +23,10 @@ class ToolEventProducer:
         tool_service: ToolService,
         schematic_generator: SchematicGenerator[ToolCallInferenceSchema],
     ) -> None:
-        self.logger = logger
-        self.correlator = correlator
+        self._logger = logger
+        self._correlator = correlator
 
-        self.tool_caller = ToolCaller(logger, tool_service, schematic_generator)
+        self._tool_caller = ToolCaller(logger, tool_service, schematic_generator)
 
     async def produce_events(
         self,
@@ -43,11 +43,11 @@ class ToolEventProducer:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
-            self.logger.debug("Skipping tool calling; no tools associated with guidelines found")
+            self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
 
         tool_calls = list(
-            await self.tool_caller.infer_tool_calls(
+            await self._tool_caller.infer_tool_calls(
                 agents,
                 context_variables,
                 interaction_history,
@@ -63,7 +63,7 @@ class ToolEventProducer:
 
         tools = list(chain(*tool_enabled_guideline_propositions.values()))
 
-        tool_results = await self.tool_caller.execute_tool_calls(
+        tool_results = await self._tool_caller.execute_tool_calls(
             ToolContext(session_id=session_id),
             tool_calls,
             tools,
@@ -84,7 +84,7 @@ class ToolEventProducer:
         }
 
         event = await event_emitter.emit_tool_event(
-            correlation_id=self.correlator.correlation_id,
+            correlation_id=self._correlator.correlation_id,
             data=event_data,
         )
 

@@ -24,7 +24,7 @@ class Logger(ABC):
         self._correlator = correlator
         self.logger = logging.getLogger("emcie")
         self.logger.setLevel(logging.DEBUG)
-        self.formatter = CustomFormatter()
+        self._formatter = CustomFormatter()
 
     def debug(self, message: str) -> None:
         self.logger.debug(self._add_correlation_id(message))
@@ -84,7 +84,7 @@ class FileLogger(Logger):
         ]
 
         for handler in handlers:
-            handler.setFormatter(self.formatter)
+            handler.setFormatter(self._formatter)
             self.logger.addHandler(handler)
 
         coloredlogs.install(level="DEBUG", logger=self.logger)

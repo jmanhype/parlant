@@ -59,7 +59,7 @@ class ContradictionEvaluatorBase(ABC):
         contradiction_kind: ContradictionKind,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._schematic_generator = schematic_generator
 
         self.contradiction_kind = contradiction_kind
@@ -86,7 +86,7 @@ class ContradictionEvaluatorBase(ABC):
                     for batch in guideline_batches
                 ]
             )
-        with self.logger.operation(
+        with self._logger.operation(
             f"Evaluating {self.contradiction_kind} for {len(tasks)} "
             f"batches (batch size={EVALUATION_BATCH_SIZE})",
         ):
@@ -110,7 +110,7 @@ class ContradictionEvaluatorBase(ABC):
         return contradictions
 
     @abstractmethod
-    def _format_contradiction_type_definition(self) -> str: ...
+    def format_contradiction_type_definition(self) -> str: ...
 
     @abstractmethod
     def _format_contradiction_type_examples(self) -> str: ...
@@ -139,7 +139,7 @@ class ContradictionEvaluatorBase(ABC):
         return f"""
 ### Definition of {self.contradiction_kind._describe()}:
 
-{self._format_contradiction_type_definition()}
+{self.format_contradiction_type_definition()}
 
 **Objective**: Evaluate potential {self.contradiction_kind._describe()}s between guideline A and the comparison guideline set.
 
@@ -207,7 +207,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
     ) -> None:
         super().__init__(logger, ContradictionKind.HIERARCHICAL, schematic_generator)
 
-    def _format_contradiction_type_definition(self) -> str:
+    def format_contradiction_type_definition(self) -> str:
         return """
 Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, with one being more specific or detailed than the other.
 This type of Contradiction occurs when the application of a general guideline is contradicted by a more specific guideline under certain conditions, leading to inconsistencies in decision-making.
@@ -289,7 +289,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
     ) -> None:
         super().__init__(logger, ContradictionKind.PARALLEL, schematic_generator)
 
-    def _format_contradiction_type_definition(self) -> str:
+    def format_contradiction_type_definition(self) -> str:
         return """
 Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions.
 This happens when conditions for both guidelines are met simultaneously, without a clear resolution mechanism to prioritize one over the other.
@@ -371,7 +371,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
     ) -> None:
         super().__init__(logger, ContradictionKind.TEMPORAL, schematic_generator)
 
-    def _format_contradiction_type_definition(self) -> str:
+    def format_contradiction_type_definition(self) -> str:
         return """
 Temporal Contradiction occurs when guidelines dependent on timing or sequence overlap in a way that leads to contradictions.
 This arises from a lack of clear prioritization or differentiation between actions required at the same time.
@@ -453,7 +453,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
     ) -> None:
         super().__init__(logger, ContradictionKind.CONTEXTUAL, schematic_generator)
 
-    def _format_contradiction_type_definition(self) -> str:
+    def format_contradiction_type_definition(self) -> str:
         return """
 Contextual Contradiction occurs when external conditions or operational contexts lead to contradictory actions.
 These conflicts arise from different but potentially overlapping circumstances requiring actions that are valid under each specific context yet oppose each other.
@@ -533,21 +533,21 @@ class CoherenceChecker:
         logger: Logger,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        self.logger = logger
+        self._logger = logger
 
-        self.hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
+        self._hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
             logger,
             schematic_generator,
         )
-        self.parallel_contradiction_evaluator = ParallelContradictionEvaluator(
+        self._parallel_contradiction_evaluator = ParallelContradictionEvaluator(
             logger,
             schematic_generator,
         )
-        self.temporal_contradiction_evaluator = TemporalContradictionEvaluator(
+        self._temporal_contradiction_evaluator = TemporalContradictionEvaluator(
             logger,
             schematic_generator,
         )
-        self.contextual_contradiction_evaluator = ContextualContradictionEvaluator(
+        self._contextual_contradiction_evaluator = ContextualContradictionEvaluator(
             logger,
             schematic_generator,
         )
@@ -557,19 +557,19 @@ class CoherenceChecker:
         guidelines_to_evaluate: Sequence[GuidelineContent],
         comparison_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[ContradictionTest]:
-        hierarchical_contradictions_task = self.hierarchical_contradiction_evaluator.evaluate(
+        hierarchical_contradictions_task = self._hierarchical_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
         )
-        parallel_contradictions_task = self.parallel_contradiction_evaluator.evaluate(
+        parallel_contradictions_task = self._parallel_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
         )
-        temporal_contradictions_task = self.temporal_contradiction_evaluator.evaluate(
+        temporal_contradictions_task = self._temporal_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
         )
-        contextual_contradictions_task = self.contextual_contradiction_evaluator.evaluate(
+        contextual_contradictions_task = self._contextual_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
         )

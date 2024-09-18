@@ -34,7 +34,7 @@ class GuidelineProposer:
         logger: Logger,
         schematic_generator: SchematicGenerator[GuidelinePropositionsSchema],
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._schematic_generator = schematic_generator
 
     async def propose_guidelines(
@@ -51,7 +51,7 @@ class GuidelineProposer:
 
         batches = self._create_batches(guidelines, batch_size=5)
 
-        with self.logger.operation(f"Total guideline proposal ({len(batches)} batches)"):
+        with self._logger.operation(f"Total guideline proposal ({len(batches)} batches)"):
             batch_tasks = [
                 self._process_batch(
                     agents,
@@ -101,7 +101,7 @@ class GuidelineProposer:
             guidelines=batch,
         )
 
-        with self.logger.operation("Guideline batch proposal"):
+        with self._logger.operation("Guideline batch proposal"):
             propositions_json = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
@@ -112,7 +112,7 @@ class GuidelineProposer:
         for proposition in propositions_json.content.checks:
             guideline = batch[int(proposition.predicate_number) - 1]
 
-            self.logger.debug(
+            self._logger.debug(
                 f'Guideline evaluation for "When {guideline.content.predicate}, Then {guideline.content.action}":\n'  # noqa
                 f'  score: {proposition.applies_score}/10; rationale: "{proposition.rationale}"'
             )

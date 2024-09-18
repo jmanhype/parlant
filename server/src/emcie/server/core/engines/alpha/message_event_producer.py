@@ -55,8 +55,8 @@ class MessageEventProducer:
         correlator: ContextualCorrelator,
         schematic_generator: SchematicGenerator[MessageEventSchema],
     ) -> None:
-        self.logger = logger
-        self.correlator = correlator
+        self._logger = logger
+        self._correlator = correlator
         self._schematic_generator = schematic_generator
 
     async def produce_events(
@@ -72,7 +72,7 @@ class MessageEventProducer:
     ) -> Sequence[EmittedEvent]:
         assert len(agents) == 1
 
-        with self.logger.operation("Message production"):
+        with self._logger.operation("Message production"):
             if (
                 not interaction_history
                 and not ordinary_guideline_propositions
@@ -80,12 +80,12 @@ class MessageEventProducer:
             ):
                 # No interaction and no guidelines that could trigger
                 # a proactive start of the interaction
-                self.logger.debug(
+                self._logger.debug(
                     "Skipping response; interaction is empty and there are no guidelines"
                 )
                 return []
 
-            self.logger.debug(
+            self._logger.debug(
                 f'Guidelines applied: {json.dumps([{
                     "predicate": p.guideline.content.predicate,
                     "action": p.guideline.content.action,
@@ -104,12 +104,12 @@ class MessageEventProducer:
                 staged_events=staged_events,
             )
 
-            self.logger.debug(f"Message production prompt:\n{prompt}")
+            self._logger.debug(f"Message production prompt:\n{prompt}")
 
             last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
 
             await event_emitter.emit_status_event(
-                correlation_id=self.correlator.correlation_id,
+                correlation_id=self._correlator.correlation_id,
                 data={
                     "acknowledged_offset": last_known_event_offset,
                     "status": "typing",
@@ -118,16 +118,16 @@ class MessageEventProducer:
             )
 
             if response_message := await self._generate_response_message(prompt):
-                self.logger.debug(f'Message production result: "{response_message}"')
+                self._logger.debug(f'Message production result: "{response_message}"')
 
                 event = await event_emitter.emit_message_event(
-                    correlation_id=self.correlator.correlation_id,
+                    correlation_id=self._correlator.correlation_id,
                     data={"message": response_message},
                 )
 
                 return [event]
             else:
-                self.logger.debug("Skipping response; no response deemed necessary")
+                self._logger.debug("Skipping response; no response deemed necessary")
 
             return []
 
@@ -385,7 +385,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
         if not message_event_response.content.produced_reply:
             return None
 
-        self.logger.debug(
+        self._logger.debug(
             f"Message event producer response: {json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
         )
 
@@ -409,6 +409,6 @@ Example 4: Non-Adherence Due to Missing Data: ###
             not final_revision.followed_all_guidelines
             and not final_revision.guidelines_broken_only_due_to_prioritization
         ):
-            self.logger.warning(f"PROBLEMATIC RESPONSE: {final_revision.content}")
+            self._logger.warning(f"PROBLEMATIC RESPONSE: {final_revision.content}")
 
         return str(final_revision.content)

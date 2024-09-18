@@ -31,7 +31,7 @@ class ChromaDatabase:
         dir_path: Path,
         embedder_factory: EmbedderFactory,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._embedder_factory = embedder_factory
 
         self._chroma_client = chromadb.PersistentClient(str(dir_path))
@@ -57,7 +57,7 @@ class ChromaDatabase:
             )
 
             collections[chromadb_collection.name] = ChromaCollection(
-                logger=self.logger,
+                logger=self._logger,
                 chromadb_collection=chroma_collection,
                 name=chromadb_collection.name,
                 schema=operator.attrgetter(chromadb_collection.metadata["schema_model_path"])(
@@ -79,7 +79,7 @@ class ChromaDatabase:
         assert issubclass(schema, ChromaDocument)
 
         self._collections[name] = ChromaCollection(
-            self.logger,
+            self._logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
                 metadata={
@@ -119,7 +119,7 @@ class ChromaDatabase:
         assert issubclass(schema, ChromaDocument)
 
         self._collections[name] = ChromaCollection(
-            self.logger,
+            self._logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
                 metadata={
@@ -156,7 +156,7 @@ class ChromaCollection(Generic[TChromaDocument]):
         schema: type[TChromaDocument],
         embedder: Embedder,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
         self._name = name
         self._schema = schema
         self._embedder = embedder
@@ -291,7 +291,7 @@ class ChromaCollection(Generic[TChromaDocument]):
         )
 
         if metadatas := docs["metadatas"]:
-            self.logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
+            self._logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
 
             return [self._schema.model_validate(m) for m in metadatas[0]]
 
