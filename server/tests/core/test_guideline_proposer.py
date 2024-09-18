@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Sequence, cast
 from lagom import Container
 from pytest import fixture, mark
+from datetime import datetime, timezone
+
 from emcie.server.core.agents import Agent, AgentId
 from emcie.server.core.common import generate_id
 from emcie.server.core.nlp.generation import SchematicGenerator
@@ -13,15 +15,14 @@ from emcie.server.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
 from emcie.server.core.logging import Logger
-from tests.test_utilities import SyncAwaiter
-from datetime import datetime, timezone
-
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId
 from emcie.server.core.sessions import Event, EventId, EventSource
 
+from tests.test_utilities import SyncAwaiter
+
 
 @dataclass
-class _TestContext:
+class ContextOfTest:
     sync_await: SyncAwaiter
     guidelines: list[Guideline]
     schematic_generator: SchematicGenerator[GuidelinePropositionsSchema]
@@ -32,8 +33,8 @@ class _TestContext:
 def context(
     sync_await: SyncAwaiter,
     container: Container,
-) -> _TestContext:
-    return _TestContext(
+) -> ContextOfTest:
+    return ContextOfTest(
         sync_await,
         guidelines=list(),
         logger=container[Logger],
@@ -42,7 +43,7 @@ def context(
 
 
 def propose_guidelines(
-    context: _TestContext,
+    context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
 ) -> Sequence[GuidelineProposition]:
     guideline_filter = GuidelineProposer(context.logger, context.schematic_generator)
@@ -97,7 +98,7 @@ def create_event_message(
 
 
 def create_guideline_by_name(
-    context: _TestContext,
+    context: ContextOfTest,
     guideline_name: str,
 ) -> Guideline:
     guidelines = {
@@ -224,7 +225,7 @@ def create_guideline_by_name(
     ],
 )
 def test_that_relevant_guidelines_are_proposed(
-    context: _TestContext,
+    context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
     relevant_guideline_names: list[str],
@@ -285,7 +286,7 @@ def test_that_relevant_guidelines_are_proposed(
     ],
 )
 def test_that_irrelevant_guidelines_are_not_proposed(
-    context: _TestContext,
+    context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
     irrelevant_guideline_names: list[str],

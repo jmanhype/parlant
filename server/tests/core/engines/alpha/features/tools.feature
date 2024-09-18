@@ -1,11 +1,11 @@
-Feature: Single Tool Event
+Feature: Tools
     Background:
         Given the alpha engine
         And an agent
         And an empty session
 
     Scenario Outline: Single tool is being called once
-        Given a guideline "<GUIDELINE>", to sell pizza when interacting with users
+        Given the guideline called "<GUIDELINE>"
         And the tool "<TOOL>"
         And an association between "<GUIDELINE>" and "<TOOL>"
         And a user message, "Hey, can I order a large pepperoni pizza with Sprite?"
