@@ -440,7 +440,7 @@ class AlphaEngine(Engine):
 
         if context:
             return await self.terminology_store.find_relevant_terms(
-                term_set=agent.name,
+                term_set=agent.id,
                 query=context,
             )
         return []

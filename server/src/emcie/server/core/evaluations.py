@@ -13,6 +13,7 @@ from typing import (
 )
 from typing_extensions import Literal
 
+from emcie.server.core.agents import AgentId
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
@@ -45,12 +46,10 @@ ConnectionPropositionKind = Literal[
 
 @dataclass(frozen=True)
 class GuidelinePayload:
-    guideline_set: str
-    predicate: str
-    action: str
+    content: GuidelineContent
 
     def __repr__(self) -> str:
-        return f"guideline_set: {self.guideline_set}, predicate: {self.predicate}, action: {self.action}"
+        return f"predicate: {self.content.predicate}, action: {self.content.action}"
 
 
 Payload: TypeAlias = Union[GuidelinePayload]
@@ -102,6 +101,7 @@ class Invoice:
 @dataclass(frozen=True)
 class Evaluation:
     id: EvaluationId
+    agent_id: AgentId
     creation_utc: datetime
     status: EvaluationStatus
     error: Optional[str]
@@ -112,6 +112,7 @@ class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
         self,
+        agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation: ...
@@ -146,6 +147,7 @@ class EvaluationStore(ABC):
 
 class EvaluationDocumentStore(EvaluationStore):
     class EvaluationDocument(BaseDocument):
+        agent_id: AgentId
         status: EvaluationStatus
         creation_utc: datetime
         error: Optional[str]
@@ -159,6 +161,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
     async def create_evaluation(
         self,
+        agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation:
@@ -182,6 +185,7 @@ class EvaluationDocumentStore(EvaluationStore):
         await self._evaluation_collection.insert_one(
             self.EvaluationDocument(
                 id=ObjectId(evaluation_id),
+                agent_id=agent_id,
                 creation_utc=creation_utc,
                 status=EvaluationStatus.PENDING,
                 error=None,
@@ -191,6 +195,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return Evaluation(
             id=evaluation_id,
+            agent_id=agent_id,
             status=EvaluationStatus.PENDING,
             creation_utc=creation_utc,
             error=None,
@@ -214,6 +219,7 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation.id}},
             updated_document=self.EvaluationDocument(
                 id=ObjectId(evaluation.id),
+                agent_id=evaluation.agent_id,
                 creation_utc=evaluation.creation_utc,
                 status=evaluation.status,
                 error=evaluation.error,
@@ -223,6 +229,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return Evaluation(
             id=evaluation.id,
+            agent_id=evaluation.agent_id,
             status=evaluation.status,
             creation_utc=evaluation.creation_utc,
             error=evaluation.error,
@@ -241,6 +248,7 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation.id}},
             updated_document=self.EvaluationDocument(
                 id=ObjectId(evaluation.id),
+                agent_id=evaluation.agent_id,
                 creation_utc=evaluation.creation_utc,
                 status=status,
                 error=error,
@@ -250,6 +258,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return Evaluation(
             id=evaluation.id,
+            agent_id=evaluation.agent_id,
             status=status,
             creation_utc=evaluation.creation_utc,
             error=error,
@@ -269,6 +278,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return Evaluation(
             id=EvaluationId(evaluation_document.id),
+            agent_id=evaluation_document.agent_id,
             status=evaluation_document.status,
             creation_utc=evaluation_document.creation_utc,
             error=evaluation_document.error,
@@ -281,6 +291,7 @@ class EvaluationDocumentStore(EvaluationStore):
         return [
             Evaluation(
                 id=EvaluationId(e.id),
+                agent_id=e.agent_id,
                 status=e.status,
                 creation_utc=e.creation_utc,
                 error=e.error,

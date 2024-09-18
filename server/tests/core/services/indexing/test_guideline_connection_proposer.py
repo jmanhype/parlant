@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
+from emcie.server.core.agents import Agent
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
+from emcie.server.core.terminology import TerminologyStore
 from tests.test_utilities import SyncAwaiter
 
 
@@ -61,6 +63,7 @@ def _create_guideline_content(
 )
 def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other(
     context: _TestContext,
+    agent: Agent,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
 ) -> None:
@@ -79,6 +82,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
+                agent,
                 [source_guideline_content, target_guideline_content],
             )
         )
@@ -124,6 +128,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
 )
 def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other(
     context: _TestContext,
+    agent: Agent,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
 ) -> None:
@@ -142,6 +147,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
     connection_propositions = list(
         context.sync_await(
             connection_proposer.propose_connections(
+                agent,
                 [
                     source_guideline_content,
                     target_guideline_content,
@@ -158,6 +164,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
 
 def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
     context: _TestContext,
+    agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
         GuidelineContent(predicate=i["predicate"], action=i["action"])
@@ -200,7 +207,9 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(connection_proposer.propose_connections(introduced_guidelines, []))
+        context.sync_await(
+            connection_proposer.propose_connections(agent, introduced_guidelines, [])
+        )
     )
 
     assert len(connection_propositions) == len(introduced_guidelines) // 2
@@ -217,6 +226,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
 
 def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     context: _TestContext,
+    agent: Agent,
 ) -> None:
     existing_guidelines: Sequence[GuidelineContent] = [
         GuidelineContent(predicate=i["predicate"], action=i["action"])
@@ -259,7 +269,47 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(connection_proposer.propose_connections([], existing_guidelines))
+        context.sync_await(connection_proposer.propose_connections(agent, [], existing_guidelines))
     )
 
     assert len(connection_propositions) == 0
+
+
+def test_that_a_connection_is_proposed_based_on_given_terminology(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+    terminology_store = context.container[TerminologyStore]
+
+    context.sync_await(
+        terminology_store.create_term(
+            term_set=agent.id,
+            name="walnut",
+            description="walnut is an altcoin",
+        )
+    )
+
+    source_guideline_content = _create_guideline_content(
+        "the user asks about walnut prices",
+        "provide the current walnut prices",
+    )
+
+    target_guideline_content = _create_guideline_content(
+        "providing altcoin prices",
+        "mention that between exchanges, there can be minor differences",
+    )
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
+
+    assert len(connection_propositions) == 1
+    assert connection_propositions[0].source == source_guideline_content
+    assert connection_propositions[0].target == target_guideline_content
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS

@@ -3,13 +3,15 @@ from dataclasses import dataclass
 from itertools import chain
 import json
 from typing import Sequence
-
 from more_itertools import chunked
-from emcie.server.core.nlp.generation import SchematicGenerator
+
+from emcie.server.core.agents import Agent
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
-from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.nlp.generation import SchematicGenerator
+from emcie.server.core.terminology import TerminologyStore
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):
@@ -41,14 +43,16 @@ class GuidelineConnectionProposer:
         self,
         logger: Logger,
         schematic_generator: SchematicGenerator[GuidelineConnectionPropositionsSchema],
+        terminology_store: TerminologyStore,
     ) -> None:
-        self.logger = logger
-        self._batch_size = 5
-
+        self._logger = logger
+        self._terminology_store = terminology_store
         self._schematic_generator = schematic_generator
+        self._batch_size = 5
 
     async def propose_connections(
         self,
+        agent: Agent,
         introduced_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[GuidelineContent] = [],
     ) -> Sequence[GuidelineConnectionProposition]:
@@ -70,20 +74,23 @@ class GuidelineConnectionProposer:
 
             connection_proposition_tasks.extend(
                 [
-                    asyncio.create_task(self._generate_propositions(introduced_guideline, batch))
+                    asyncio.create_task(
+                        self._generate_propositions(agent, introduced_guideline, batch)
+                    )
                     for batch in guideline_batches
                 ]
             )
 
-        with self.logger.operation(
+        with self._logger.operation(
             f"Propose guideline connections for {len(connection_proposition_tasks)} "  # noqa
             f"batches (batch size={self._batch_size})",
         ):
             propositions = chain.from_iterable(await asyncio.gather(*connection_proposition_tasks))
             return list(propositions)
 
-    def _format_connection_propositions(
+    async def _format_connection_propositions(
         self,
+        agent: Agent,
         evaluated_guideline: GuidelineContent,
         comparison_set: Sequence[GuidelineContent],
     ) -> str:
@@ -94,6 +101,12 @@ class GuidelineConnectionProposer:
         test_guideline = (
             f"{{when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
         )
+
+        terms = await self._terminology_store.find_relevant_terms(
+            agent.id,
+            query=test_guideline + implication_candidates,
+        )
+        terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
 
         return f"""
 In our system, the behavior of conversational AI agents is guided by "guidelines".
@@ -300,6 +313,12 @@ Example 11: ###
 }}
 ###
 
+The following is a terminology of the business.
+Please be tolerant of possible typos by the user with regards to these terms,
+and let the user know if/when you assume they meant a term by their typo: ###
+{terms_string}
+###
+
 Input:
 
 Test guideline: ###
@@ -315,17 +334,22 @@ Implication candidates: ###
 
     async def _generate_propositions(
         self,
+        agent: Agent,
         guideline_to_test: GuidelineContent,
         guidelines_to_compare: Sequence[GuidelineContent],
     ) -> list[GuidelineConnectionProposition]:
-        prompt = self._format_connection_propositions(guideline_to_test, guidelines_to_compare)
+        prompt = await self._format_connection_propositions(
+            agent,
+            guideline_to_test,
+            guidelines_to_compare,
+        )
 
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
         )
 
-        self.logger.debug(
+        self._logger.debug(
             f"""
 ----------------------------------------
 Connection Propositions Found:

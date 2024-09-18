@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from emcie.server.core.agents import AgentStore
+from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
@@ -74,6 +74,7 @@ class GuidelineIndexer:
             agent_guidelines = await self._guideline_store.list_guidelines(agent.id)
 
             await self._index_guideline_connections(
+                agent=agent,
                 guidelines=agent_guidelines,
                 last_know_state_of_set=next(
                     iter([e[1] for e in last_known_state if e[0] == agent.id]), []
@@ -139,6 +140,7 @@ class GuidelineIndexer:
 
     async def _index_guideline_connections(
         self,
+        agent: Agent,
         guidelines: Sequence[Guideline],
         last_know_state_of_set: list[GuidelineIndexEntryItem],
     ) -> None:
@@ -151,6 +153,7 @@ class GuidelineIndexer:
         proposed_connections = (
             p
             for p in await self._guideline_connection_proposer.propose_connections(
+                agent=agent,
                 introduced_guidelines=[
                     GuidelineContent(predicate=s.content.predicate, action=s.content.action)
                     for s in introduced

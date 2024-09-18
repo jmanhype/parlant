@@ -125,6 +125,7 @@ async def container() -> AsyncIterator[Container]:
             ChromaDatabase(container[Logger], Path(chroma_db_dir), EmbedderFactory(container)),
             embedder_type=OpenAITextEmbedding3Large,
         )
+
         async with MC(container) as mc:
             container[MC] = mc
             yield container

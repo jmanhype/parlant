@@ -2,6 +2,7 @@ import asyncio
 from lagom import Container
 from pytest import raises
 
+from emcie.server.core.agents import Agent
 from emcie.server.core.evaluations import (
     EvaluationStatus,
     GuidelinePayload,
@@ -9,7 +10,7 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.guidelines import GuidelineContent, GuidelineStore
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
@@ -21,21 +22,24 @@ AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
 
 async def test_that_a_new_evaluation_starts_with_a_pending_status(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user greets you",
-                    action="greet them back with 'Hello'",
+                    content=GuidelineContent(
+                        predicate="the user greets you",
+                        action="greet them back with 'Hello'",
+                    ),
                 ),
             )
-        ]
+        ],
     )
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
@@ -45,21 +49,24 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
 
 async def test_that_an_evaluation_completes_when_all_invoices_have_data(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user greets you",
-                    action="greet them back with 'Hello'",
+                    content=GuidelineContent(
+                        predicate="the user greets you",
+                        action="greet them back with 'Hello'",
+                    ),
                 ),
             )
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -79,28 +86,31 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
 
 async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_approved_invoice(
     container: Container,
+    agent: Agent,
 ) -> None:
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-set",
+        guideline_set=agent.id,
         predicate="a customer inquires about upgrading their service package",
         action="provide information on available upgrade options and benefits",
     )
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="a customer needs assistance with understanding their billing statements",
-                    action="guide them through the billing details and explain any charges",
+                    content=GuidelineContent(
+                        predicate="a customer needs assistance with understanding their billing statements",
+                        action="guide them through the billing details and explain any charges",
+                    ),
                 ),
             )
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -120,28 +130,31 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
 
 async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_unapproved_invoice(
     container: Container,
+    agent: Agent,
 ) -> None:
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent.id,
         predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
         action="escalate the request to product management for special consideration",
     )
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="any customer requests a feature not available in the current version",
-                    action="inform them about the product roadmap and upcoming features",
+                    content=GuidelineContent(
+                        predicate="any customer requests a feature not available in the current version",
+                        action="inform them about the product roadmap and upcoming features",
+                    ),
                 ),
             )
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -162,29 +175,33 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
 async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_with_an_unapproved_invoice(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="any customer requests a feature not available in the current version",
-                    action="inform them about the product roadmap and upcoming features",
+                    content=GuidelineContent(
+                        predicate="any customer requests a feature not available in the current version",
+                        action="inform them about the product roadmap and upcoming features",
+                    ),
                 ),
             ),
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
-                    action="escalate the request to product management for special consideration",
+                    content=GuidelineContent(
+                        predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+                        action="escalate the request to product management for special consideration",
+                    ),
                 ),
             ),
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -207,29 +224,33 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
 
 async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice_containing_data_for_each(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user greets you",
-                    action="greet them back with 'Hello'",
+                    content=GuidelineContent(
+                        predicate="the user greets you",
+                        action="greet them back with 'Hello'",
+                    ),
                 ),
             ),
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user asks about the weather",
-                    action="provide a weather update",
+                    content=GuidelineContent(
+                        predicate="the user asks about the weather",
+                        action="provide a weather update",
+                    ),
                 ),
             ),
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -249,43 +270,49 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
 
 async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_task_contains_its_error_details(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     first_evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user greets you",
-                    action="greet them back with 'Hello'",
+                    content=GuidelineContent(
+                        predicate="the user greets you",
+                        action="greet them back with 'Hello'",
+                    ),
                 ),
             ),
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user greets you",
-                    action="greet them back with 'Hola'",
+                    content=GuidelineContent(
+                        predicate="the user greets you",
+                        action="greet them back with 'Hola'",
+                    ),
                 ),
             ),
-        ]
+        ],
     )
 
     second_payloads = [
         GuidelinePayload(
-            guideline_set="test-agent",
-            predicate="the user asks about the weather",
-            action="provide a weather update",
+            content=GuidelineContent(
+                predicate="the user asks about the weather",
+                action="provide a weather update",
+            )
         )
     ]
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     second_evaluation_id = await evaluation_service.create_evaluation_task(
-        payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in second_payloads]
+        agent=agent,
+        payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in second_payloads],
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -296,57 +323,29 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     assert evaluation.error == f"An evaluation task '{first_evaluation_id}' is already running."
 
 
-async def test_that_an_evaluation_validation_failed_due_multiple_guideline_sets_contains_relevant_error_details(
-    container: Container,
-) -> None:
-    evaluation_service = container[BehavioralChangeEvaluator]
-
-    with raises(EvaluationValidationError) as exc:
-        await evaluation_service.create_evaluation_task(
-            payload_descriptors=[
-                PayloadDescriptor(
-                    PayloadKind.GUIDELINE,
-                    GuidelinePayload(
-                        guideline_set="set-1",
-                        predicate="the user greets you",
-                        action="greet them back with 'Hello'",
-                    ),
-                ),
-                PayloadDescriptor(
-                    PayloadKind.GUIDELINE,
-                    GuidelinePayload(
-                        guideline_set="set-2",
-                        predicate="the user greets you",
-                        action="greet them back with 'Hello'",
-                    ),
-                ),
-            ]
-        )
-        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    assert str(exc.value) == "Evaluation task must be processed for a single guideline_set."
-
-
 async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplication_in_the_payloads_contains_relevant_error_details(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
 
     duplicate_payload = GuidelinePayload(
-        guideline_set="test-agent",
-        predicate="the user greets you",
-        action="greet them back with 'Hello'",
+        content=GuidelineContent(
+            predicate="the user greets you",
+            action="greet them back with 'Hello'",
+        )
     )
 
     with raises(EvaluationValidationError) as exc:
         await evaluation_service.create_evaluation_task(
+            agent=agent,
             payload_descriptors=[
                 PayloadDescriptor(PayloadKind.GUIDELINE, p)
                 for p in [
                     duplicate_payload,
                     duplicate_payload,
                 ]
-            ]
+            ],
         )
         await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
@@ -355,25 +354,28 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
 
 async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_with_existing_contains_relevant_error_details(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     guideline_store = container[GuidelineStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent.id,
         predicate="the user greets you",
         action="greet them back with 'Hello'",
     )
 
     with raises(EvaluationValidationError) as exc:
         await evaluation_service.create_evaluation_task(
+            agent=agent,
             payload_descriptors=[
                 PayloadDescriptor(
                     PayloadKind.GUIDELINE,
                     GuidelinePayload(
-                        guideline_set="test-agent",
-                        predicate="the user greets you",
-                        action="greet them back with 'Hello'",
+                        content=GuidelineContent(
+                            predicate="the user greets you",
+                            action="greet them back with 'Hello'",
+                        ),
                     ),
                 )
             ],
@@ -382,34 +384,37 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
 
     assert (
         str(exc.value)
-        == "Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in test-agent guideline_set"
+        == f"Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in {agent.id} guideline_set"
     )
 
 
 async def test_that_an_evaluation_completes_and_contains_a_connection_proposition_with_an_existing_guideline(
     container: Container,
+    agent: Agent,
 ) -> None:
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent.id,
         predicate="the user asks about the weather",
         action="provide the current weather update",
     )
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="providing the weather update",
-                    action="mention the best time to go for a walk",
+                    content=GuidelineContent(
+                        predicate="providing the weather update",
+                        action="mention the best time to go for a walk",
+                    ),
                 ),
             )
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -440,29 +445,33 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
 async def test_that_an_evaluation_completes_and_contains_connection_proposition_between_evaluated_guidelines(
     container: Container,
+    agent: Agent,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
+        agent=agent,
         payload_descriptors=[
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="the user asks about the weather",
-                    action="provide the current weather update",
+                    content=GuidelineContent(
+                        predicate="the user asks about the weather",
+                        action="provide the current weather update",
+                    ),
                 ),
             ),
             PayloadDescriptor(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
-                    guideline_set="test-agent",
-                    predicate="providing the weather update",
-                    action="mention the best time to go for a walk",
+                    content=GuidelineContent(
+                        predicate="providing the weather update",
+                        action="mention the best time to go for a walk",
+                    ),
                 ),
             ),
-        ]
+        ],
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
