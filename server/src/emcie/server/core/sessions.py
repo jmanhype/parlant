@@ -231,9 +231,9 @@ class SessionDocumentStore(SessionStore):
         events_to_delete = await self.list_events(session_id=session_id)
         asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
 
-        await self._session_collection.delete_one({"id": {"$eq": session_id}})
+        result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
-        return session_id
+        return session_id if result.deleted_count else None
 
     async def read_session(
         self,

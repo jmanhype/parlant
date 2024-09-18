@@ -82,7 +82,7 @@ class ListSessionsResponse(DefaultBaseModel):
 
 
 class DeleteSessionResponse(DefaultBaseModel):
-    deleted_session_id: Optional[SessionId]
+    session_id: SessionId
 
 
 def create_router(
@@ -164,8 +164,10 @@ def create_router(
     async def delete_session(
         session_id: SessionId,
     ) -> DeleteSessionResponse:
-        deleted_session_id = await session_store.delete_session(session_id)
-        return DeleteSessionResponse(deleted_session_id=deleted_session_id)
+        if await session_store.delete_session(session_id):
+            return DeleteSessionResponse(session_id=session_id)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     @router.post("/{session_id}/events", status_code=status.HTTP_201_CREATED)
     async def create_event(
