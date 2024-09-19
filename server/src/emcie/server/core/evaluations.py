@@ -459,7 +459,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={"status": evaluation.status.name},
+            updated_document={"status": status.name, "error": error},
         )
 
         return Evaluation(

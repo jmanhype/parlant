@@ -21,7 +21,7 @@ from emcie.server.core.persistence.document_database import (
     validate_document,
 )
 from emcie.server.core.logging import Logger
-from emcie.common.types.common import JSONSerializable, is_json_serializable
+from emcie.common.types.common import JSONSerializable
 
 
 class JSONFileDocumentDatabase(DocumentDatabase):
@@ -107,7 +107,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                     **data,
                 },
                 ensure_ascii=False,
-                indent=4,
+                indent=2,
             )
             await file.write(json_string)
 
@@ -117,8 +117,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         schema: Type[TDocument],
     ) -> JSONFileDocumentCollection[TDocument]:
         self._logger.debug(f'Create collection "{name}"')
-
-        assert is_json_serializable(schema)
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
@@ -143,8 +141,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
-
-        assert is_json_serializable(schema)
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,

@@ -13,7 +13,7 @@ from emcie.server.core.persistence.document_database import (
     UpdateResult,
     validate_document,
 )
-from emcie.common.types.common import JSONSerializable, is_json_serializable
+from emcie.common.types.common import JSONSerializable
 
 
 class TransientDocumentDatabase(DocumentDatabase):
@@ -27,8 +27,6 @@ class TransientDocumentDatabase(DocumentDatabase):
         name: str,
         schema: Type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
-        assert is_json_serializable(schema)
-
         self._collections[name] = _TransientDocumentCollection(
             name=name,
             schema=schema,
@@ -51,8 +49,6 @@ class TransientDocumentDatabase(DocumentDatabase):
     ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(_TransientDocumentCollection[TDocument], collection)
-
-        assert is_json_serializable(schema)
 
         return self.create_collection(
             name=name,

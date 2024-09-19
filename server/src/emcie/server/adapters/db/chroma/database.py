@@ -23,7 +23,7 @@ from emcie.server.core.persistence.document_database import (
     validate_document,
 )
 from emcie.server.core.logging import Logger
-from emcie.common.types.common import JSONSerializable, is_json_serializable
+from emcie.common.types.common import JSONSerializable
 
 
 class ChromaDatabase:
@@ -80,8 +80,6 @@ class ChromaDatabase:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
 
-        assert is_json_serializable(schema)
-
         annotations = get_type_hints(schema)
         assert "id" in annotations and annotations["id"] == ObjectId
         assert "content" in annotations and annotations["content"] is str
@@ -123,8 +121,6 @@ class ChromaDatabase:
         if collection := self._collections.get(name):
             assert schema == collection._schema
             return cast(ChromaCollection[TDocument], collection)
-
-        assert is_json_serializable(schema)
 
         self._collections[name] = ChromaCollection(
             self._logger,
@@ -221,36 +217,24 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         assert validate_document(updated_document, self._schema, total=False)
 
         async with self._lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters)):
-                doc_id = docs["ids"][0]
+            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+                "metadatas"
+            ]:
+                doc = docs[0]
+
                 if "content" in updated_document:
                     embeddings = list(
                         (await self._embedder.embed([updated_document["content"]])).vectors
                     )
                     document = updated_document["content"]
                 else:
-                    if embeddings_list := docs.get("embeddings"):
-                        if len(embeddings_list) > 0:
-                            embeddings = [embeddings_list[0]]
-                        else:
-                            raise ValueError("Embeddings not found or empty")
-
-                    if documents := docs.get("documents"):
-                        if len(documents) > 0:
-                            document = documents[0]
-                        else:
-                            raise ValueError("Document not found or empty")
-
-                    if metadatas := docs.get("metadatas"):
-                        if len(metadatas) > 0:
-                            metadata = {**metadatas[0], **updated_document}
-                        else:
-                            raise ValueError("Metadata not found or empty")
+                    embeddings = list((await self._embedder.embed([str(doc["content"])])).vectors)
+                    document = doc["content"]
 
                 self._chroma_collection.update(
-                    ids=[doc_id],
+                    ids=[str(doc["id"])],
                     documents=[document],
-                    metadatas=[metadata],
+                    metadatas=[{**doc, **updated_document}],
                     embeddings=embeddings,
                 )
 
