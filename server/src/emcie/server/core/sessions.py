@@ -94,6 +94,13 @@ class Session:
     consumption_offsets: dict[ConsumerId, int]
 
 
+class SessionUpdateParams(TypedDict, total=False):
+    end_user_id: EndUserId
+    agent_id: AgentId
+    title: Optional[str]
+    consumption_offsets: dict[ConsumerId, int]
+
+
 class SessionStore(ABC):
     @abstractmethod
     async def create_session(
@@ -117,18 +124,10 @@ class SessionStore(ABC):
     ) -> Optional[SessionId]: ...
 
     @abstractmethod
-    async def update_consumption_offset(
+    async def update_session(
         self,
         session_id: SessionId,
-        consumer_id: ConsumerId,
-        new_offset: int,
-    ) -> None: ...
-
-    @abstractmethod
-    async def update_title(
-        self,
-        session_id: SessionId,
-        title: str,
+        params: SessionUpdateParams,
     ) -> None: ...
 
     @abstractmethod
@@ -298,15 +297,14 @@ class SessionDocumentStore(SessionStore):
 
         return _deserialize_session_documet(session_document)
 
-    async def update_consumption_offset(
+    async def update_session(
         self,
         session_id: SessionId,
-        consumer_id: ConsumerId,
-        new_offset: int,
+        params: SessionUpdateParams,
     ) -> None:
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
-            updated_document={"consumption_offsets": {consumer_id: new_offset}},
+            params=cast(SessionDocument, params),
         )
 
     async def update_title(
@@ -316,7 +314,7 @@ class SessionDocumentStore(SessionStore):
     ) -> None:
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
-            updated_document={"title": title},
+            params={"title": title},
         )
 
     async def create_event(

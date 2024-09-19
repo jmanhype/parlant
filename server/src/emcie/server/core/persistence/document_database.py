@@ -9,6 +9,7 @@ from typing import (
     Sequence,
     Type,
     TypeVar,
+    Union,
     get_args,
     get_origin,
     get_type_hints,
@@ -30,18 +31,22 @@ def validate_document(document: TDocument, schema: type[TDocument], total: bool 
     return True
 
 
-def is_instance_of_type(value: Any, expected_type: Any) -> bool:
+def is_instance_of_type(value: Any, expected_type: type) -> bool:
     origin = get_origin(expected_type)
     args = get_args(expected_type)
 
-    if origin is list:
-        if not isinstance(value, list):
+    if origin is Union:
+        return any(is_instance_of_type(value, arg) for arg in args)
+
+    if origin and issubclass(origin, Sequence):
+        if not issubclass(type(value), Sequence):
             return False
         if not args:
             return True
         return all(is_instance_of_type(item, args[0]) for item in value)
-    elif origin is dict:
-        if not isinstance(value, dict):
+
+    elif origin and issubclass(origin, Mapping):
+        if not issubclass(type(value), Mapping):
             return False
         if not args:
             return True
@@ -50,10 +55,7 @@ def is_instance_of_type(value: Any, expected_type: Any) -> bool:
             is_instance_of_type(k, key_type) and is_instance_of_type(v, val_type)
             for k, v in value.items()
         )
-    elif isinstance(expected_type, type):
-        return isinstance(value, expected_type)
-    else:
-        return True
+    return isinstance(value, expected_type)
 
 
 class DocumentDatabase(ABC):
@@ -149,7 +151,7 @@ class DocumentCollection(ABC, Generic[TDocument]):
     async def update_one(
         self,
         filters: Where,
-        updated_document: TDocument,
+        params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         """Updates the first document that matches the query criteria. If upsert is True,

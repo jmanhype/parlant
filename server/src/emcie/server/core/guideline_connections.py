@@ -31,7 +31,7 @@ class GuidelineConnection:
 
 class GuidelineConnectionStore(ABC):
     @abstractmethod
-    async def update_connection(
+    async def create_connection(
         self,
         source: GuidelineId,
         target: GuidelineId,
@@ -125,7 +125,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         return self._graph
 
-    async def update_connection(
+    async def create_connection(
         self,
         source: GuidelineId,
         target: GuidelineId,
@@ -144,7 +144,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         result = await self._collection.update_one(
             filters={"source": {"$eq": source}, "target": {"$eq": target}},
-            updated_document=_serialize_guideline_connection(guideline_connection),
+            params=_serialize_guideline_connection(guideline_connection),
             upsert=True,
         )
 

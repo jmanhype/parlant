@@ -114,30 +114,30 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     async def update_one(
         self,
         filters: Where,
-        updated_document: TDocument,
+        params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                validate_document(updated_document, self._schema, total=False)
+                validate_document(params, self._schema, total=False)
 
-                self._documents[i] = cast(TDocument, {**self._documents[i], **updated_document})
+                self._documents[i] = cast(TDocument, {**self._documents[i], **params})
 
                 return UpdateResult(
                     acknowledged=True,
                     matched_count=1,
                     modified_count=1,
-                    updated_document=updated_document,
+                    updated_document=self._documents[i],
                 )
 
         if upsert:
-            await self.insert_one(updated_document)
+            await self.insert_one(params)
 
             return UpdateResult(
                 acknowledged=True,
                 matched_count=0,
                 modified_count=0,
-                updated_document=updated_document,
+                updated_document=params,
             )
 
         return UpdateResult(

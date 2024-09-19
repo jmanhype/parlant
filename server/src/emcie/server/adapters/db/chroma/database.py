@@ -211,10 +211,10 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
     async def update_one(
         self,
         filters: Where,
-        updated_document: TDocument,
+        params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
-        assert validate_document(updated_document, self._schema, total=False)
+        assert validate_document(params, self._schema, total=False)
 
         async with self._lock:
             if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
@@ -222,19 +222,19 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
             ]:
                 doc = docs[0]
 
-                if "content" in updated_document:
-                    embeddings = list(
-                        (await self._embedder.embed([updated_document["content"]])).vectors
-                    )
-                    document = updated_document["content"]
+                if "content" in params:
+                    embeddings = list((await self._embedder.embed([params["content"]])).vectors)
+                    document = params["content"]
                 else:
                     embeddings = list((await self._embedder.embed([str(doc["content"])])).vectors)
                     document = doc["content"]
 
+                updated_document = {**doc, **params}
+
                 self._chroma_collection.update(
                     ids=[str(doc["id"])],
                     documents=[document],
-                    metadatas=[{**doc, **updated_document}],
+                    metadatas=[updated_document],
                     embeddings=embeddings,
                 )
 
@@ -242,20 +242,18 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                     acknowledged=True,
                     matched_count=1,
                     modified_count=1,
-                    updated_document=updated_document,
+                    updated_document=cast(TDocument, updated_document),
                 )
 
             elif upsert:
-                assert validate_document(updated_document, self._schema, total=True)
+                assert validate_document(params, self._schema, total=True)
 
-                embeddings = list(
-                    (await self._embedder.embed([updated_document["content"]])).vectors
-                )
+                embeddings = list((await self._embedder.embed([params["content"]])).vectors)
 
                 self._chroma_collection.add(
-                    ids=[updated_document["id"]],
-                    documents=[updated_document["content"]],
-                    metadatas=[updated_document],
+                    ids=[params["id"]],
+                    documents=[params["content"]],
+                    metadatas=[params],
                     embeddings=embeddings,
                 )
 
@@ -263,7 +261,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                     acknowledged=True,
                     matched_count=0,
                     modified_count=0,
-                    updated_document=updated_document,
+                    updated_document=params,
                 )
 
             return UpdateResult(

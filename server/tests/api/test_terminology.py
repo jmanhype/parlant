@@ -172,7 +172,7 @@ def test_update_term(
     updated_synonyms = ["rule", "updated"]
 
     update_response = client.patch(
-        f"/terminology/{agent_id}/{name}",
+        f"/terminology/agent_id={agent_id}/term_id={create_response.json()["term_id"]}",
         json={
             "description": updated_description,
             "synonyms": updated_synonyms,

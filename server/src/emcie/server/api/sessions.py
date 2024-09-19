@@ -17,8 +17,10 @@ from emcie.server.core.sessions import (
     SessionId,
     SessionListener,
     SessionStore,
+    SessionUpdateParams,
     ToolEventData,
 )
+
 from emcie.server.core.mc import MC
 
 
@@ -176,16 +178,21 @@ def create_router(
         session_id: SessionId,
         request: PatchSessionRequest,
     ) -> Response:
-        if request.consumption_offsets:
-            if request.consumption_offsets.client:
-                session = await session_store.read_session(session_id)
+        params: SessionUpdateParams = {}
 
-                await mc.update_consumption_offset(
-                    session=session,
-                    new_offset=request.consumption_offsets.client,
-                )
+        if request.consumption_offsets:
+            session = await session_store.read_session(session_id)
+
+            if request.consumption_offsets.client:
+                params["consumption_offsets"] = {
+                    **session.consumption_offsets,
+                    "client": request.consumption_offsets.client,
+                }
+
         if request.title:
-            await session_store.update_title(session_id=session_id, title=request.title)
+            params["title"] = request.title
+
+        await session_store.update_session(session_id=session_id, params=params)
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 

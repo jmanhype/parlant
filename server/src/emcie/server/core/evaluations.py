@@ -342,6 +342,12 @@ def _deserialize_evaluation_document(evaluation_document: EvaluationDocument) ->
     )
 
 
+class EvaluationUpdateParams(TypedDict, total=False):
+    status: EvaluationStatus
+    error: Optional[str]
+    invoices: Sequence[Invoice]
+
+
 class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
@@ -352,19 +358,10 @@ class EvaluationStore(ABC):
     ) -> Evaluation: ...
 
     @abstractmethod
-    async def update_evaluation_invoice(
+    async def update_evaluation(
         self,
         evaluation_id: EvaluationId,
-        invoice_index: int,
-        updated_invoice: Invoice,
-    ) -> Evaluation: ...
-
-    @abstractmethod
-    async def update_evaluation_status(
-        self,
-        evaluation_id: EvaluationId,
-        status: EvaluationStatus,
-        error: Optional[str] = None,
+        params: EvaluationUpdateParams,
     ) -> Evaluation: ...
 
     @abstractmethod
@@ -422,54 +419,29 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return evaluation
 
-    async def update_evaluation_invoice(
+    async def update_evaluation(
         self,
         evaluation_id: EvaluationId,
-        invoice_index: int,
-        updated_invoice: Invoice,
+        params: EvaluationUpdateParams,
     ) -> Evaluation:
         evaluation = await self.read_evaluation(evaluation_id)
 
-        evaluation_invoices = [
-            invoice if i != invoice_index else updated_invoice
-            for i, invoice in enumerate(evaluation.invoices)
-        ]
+        update_params: EvaluationDocument = {}
+        if "invoices" in params:
+            update_params["invoices"] = [_serialize_invoice(i) for i in params["invoices"]]
 
-        await self._evaluation_collection.update_one(
+        if "status" in params:
+            update_params["status"] = params["status"].name
+            update_params["error"] = params["error"]
+
+        result = await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={"invoices": [_serialize_invoice(i) for i in evaluation_invoices]},
+            params=update_params,
         )
 
-        return Evaluation(
-            id=evaluation.id,
-            agent_id=evaluation.agent_id,
-            status=evaluation.status,
-            creation_utc=evaluation.creation_utc,
-            error=evaluation.error,
-            invoices=evaluation_invoices,
-        )
+        assert result.updated_document
 
-    async def update_evaluation_status(
-        self,
-        evaluation_id: EvaluationId,
-        status: EvaluationStatus,
-        error: Optional[str] = None,
-    ) -> Evaluation:
-        evaluation = await self.read_evaluation(evaluation_id)
-
-        await self._evaluation_collection.update_one(
-            filters={"id": {"$eq": evaluation.id}},
-            updated_document={"status": status.name, "error": error},
-        )
-
-        return Evaluation(
-            id=evaluation.id,
-            agent_id=evaluation.agent_id,
-            status=status,
-            creation_utc=evaluation.creation_utc,
-            error=error,
-            invoices=evaluation.invoices,
-        )
+        return _deserialize_evaluation_document(result.updated_document)
 
     async def read_evaluation(
         self,

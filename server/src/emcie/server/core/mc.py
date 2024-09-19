@@ -146,17 +146,6 @@ class MC:
 
         return event
 
-    async def update_consumption_offset(
-        self,
-        session: Session,
-        new_offset: int,
-    ) -> None:
-        await self._session_store.update_consumption_offset(
-            session.id,
-            consumer_id="client",
-            new_offset=new_offset,
-        )
-
     async def _dispatch_processing_task(self, session: Session) -> None:
         async with self._lock:
             if session.id not in self._tasks_by_session:

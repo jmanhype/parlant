@@ -5,7 +5,7 @@ from emcie.server.adapters.db.chroma.database import ChromaDatabase
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.nlp.embedding import Embedder
 from emcie.server.core.persistence.common import ObjectId
-from emcie.server.core.terminology import Term, TermId, TerminologyStore
+from emcie.server.core.terminology import Term, TermId, TermUpdateParams, TerminologyStore
 
 
 class TermDocument(TypedDict, total=False):
@@ -80,26 +80,33 @@ class TerminologyChromaStore(TerminologyStore):
     async def update_term(
         self,
         term_set: str,
-        name: str,
-        description: str,
-        synonyms: Sequence[str],
+        term_id: str,
+        params: TermUpdateParams,
     ) -> Term:
+        document_to_update = await self._collection.find_one(
+            {"$and": [{"term_set": {"$eq": term_set}}, {"id": {"$eq": term_id}}]}
+        )
+
+        if not document_to_update:
+            raise ItemNotFoundError(item_id=UniqueId(term_id))
+
+        assert "name" in document_to_update
+        assert "description" in document_to_update
+        assert "synonyms" in document_to_update
+
+        name = params.get("name", document_to_update["name"])
+        description = params.get("description", document_to_update["description"])
+        synonyms = params.get("synonyms", document_to_update["synonyms"])
+
         content = self._assemble_term_content(
             name=name,
             description=description,
             synonyms=synonyms,
         )
 
-        document_to_update = await self._collection.find_one(
-            {"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]}
-        )
-
-        if not document_to_update:
-            raise ItemNotFoundError(item_id=UniqueId(name))
-
         update_result = await self._collection.update_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
-            updated_document={
+            params={
                 "content": content,
                 "name": name,
                 "description": description,
