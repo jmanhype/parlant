@@ -12,6 +12,7 @@ from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):
@@ -94,21 +95,9 @@ class GuidelineConnectionProposer:
         evaluated_guideline: GuidelineContent,
         comparison_set: Sequence[GuidelineContent],
     ) -> str:
-        implication_candidates = "\n\t".join(
-            f"{i}) {{when: {g.predicate}, then: {g.action}}}"
-            for i, g in enumerate(comparison_set, start=1)
-        )
-        test_guideline = (
-            f"{{when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
-        )
-
-        terms = await self._terminology_store.find_relevant_terms(
-            agent.id,
-            query=test_guideline + implication_candidates,
-        )
-        terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
-
-        return f"""
+        builder = PromptBuilder()
+        builder.add_section(
+            f"""
 In our system, the behavior of conversational AI agents is guided by "guidelines".
 
 Each guideline is composed of two parts:
@@ -311,14 +300,25 @@ Example 11: ###
     "rationale": "While the user might then ask for more information, thus triggering the target's 'when', this is not certain in advance.",
     "implication_score": 3
 }}
-###
+###"""  # noqa
+        )
 
-The following is a terminology of the business.
-Please be tolerant of possible typos by the user with regards to these terms,
-and let the user know if/when you assume they meant a term by their typo: ###
-{terms_string}
-###
+        # Find and add terminology to prompt
+        implication_candidates = "\n\t".join(
+            f"{i}) {{when: {g.predicate}, then: {g.action}}}"
+            for i, g in enumerate(comparison_set, start=1)
+        )
+        test_guideline = (
+            f"{{when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
+        )
+        terms = await self._terminology_store.find_relevant_terms(
+            agent.id,
+            query=test_guideline + implication_candidates,
+        )
+        builder.add_terminology(terms)
 
+        builder.add_section(  # TODO ask Dor: should this be handled through an added method in promptbuilder?
+            f"""
 Input:
 
 Test guideline: ###
@@ -327,10 +327,9 @@ Test guideline: ###
 
 Implication candidates: ###
 {implication_candidates}
-###
-
-
-"""  # noqa
+###"""
+        )
+        return builder.build()
 
     async def _generate_propositions(
         self,
