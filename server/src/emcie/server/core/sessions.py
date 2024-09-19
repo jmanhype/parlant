@@ -394,19 +394,7 @@ class SessionDocumentStore(SessionStore):
                 )
             )
 
-        return [
-            _deserialize_event_documet(d)
-            for d in await self._event_collection.find(
-                filters=cast(
-                    Where,
-                    {
-                        "session_id": {"$eq": session_id},
-                        **({"source": {"$eq": source}} if source else {}),
-                        **({"offset": {"$gte": min_offset}} if min_offset else {}),
-                    },
-                )
-            )
-        ]
+        return [_deserialize_event_documet(d) for d in event_documents]
 
     async def list_sessions(
         self,
