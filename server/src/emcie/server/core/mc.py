@@ -14,6 +14,7 @@ from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
     Event,
     EventKind,
+    EventSource,
     MessageEventData,
     Session,
     SessionId,
@@ -143,19 +144,22 @@ class MC:
         self,
         session_id: SessionId,
         min_offset: int,
-        timeout: Timeout,
+        kinds: Sequence[EventKind] = [],
+        source: Optional[EventSource] = None,
+        timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         await self._collect_garbage()
 
         return await self._session_listener.wait_for_events(
             session_id=session_id,
             min_offset=min_offset,
+            kinds=kinds,
+            source=source,
             timeout=timeout,
         )
 
     async def create_end_user_session(
         self,
-        creation_utc: datetime,
         end_user_id: EndUserId,
         agent_id: AgentId,
         title: Optional[str] = None,
@@ -164,7 +168,7 @@ class MC:
         await self._collect_garbage()
 
         session = await self._session_store.create_session(
-            creation_utc=creation_utc,
+            creation_utc=datetime.now(timezone.utc),
             end_user_id=end_user_id,
             agent_id=agent_id,
             title=title,

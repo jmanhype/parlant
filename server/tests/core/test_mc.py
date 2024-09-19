@@ -2,7 +2,6 @@ import asyncio
 from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture
-from datetime import datetime, timezone
 
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.logging import Logger
@@ -17,7 +16,7 @@ REASONABLE_AMOUNT_OF_TIME = 10
 
 
 @dataclass
-class _TestContext:
+class ContextOfTest:
     container: Container
     mc: MC
     end_user_id: EndUserId
@@ -27,8 +26,8 @@ class _TestContext:
 async def context(
     container: Container,
     end_user_id: EndUserId,
-) -> _TestContext:
-    return _TestContext(
+) -> ContextOfTest:
+    return ContextOfTest(
         container=container,
         mc=container[MC],
         end_user_id=end_user_id,
@@ -63,9 +62,7 @@ async def session(
     agent_id: AgentId,
 ) -> Session:
     store = container[SessionStore]
-    utc_now = datetime.now(timezone.utc)
     session = await store.create_session(
-        creation_utc=utc_now,
         end_user_id=end_user_id,
         agent_id=agent_id,
     )
@@ -80,12 +77,10 @@ async def end_user_id(container: Container) -> EndUserId:
 
 
 async def test_that_a_new_end_user_session_can_be_created(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_id: AgentId,
 ) -> None:
-    utc_now = datetime.now(timezone.utc)
     created_session = await context.mc.create_end_user_session(
-        creation_utc=utc_now,
         end_user_id=context.end_user_id,
         agent_id=agent_id,
     )
@@ -98,29 +93,29 @@ async def test_that_a_new_end_user_session_can_be_created(
 
 
 async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message(
-    context: _TestContext,
+    context: ContextOfTest,
     proactive_agent_id: AgentId,
 ) -> None:
-    utc_now = datetime.now(timezone.utc)
     session = await context.mc.create_end_user_session(
-        creation_utc=utc_now,
         end_user_id=context.end_user_id,
         agent_id=proactive_agent_id,
+        allow_greeting=True,
     )
 
     assert await context.mc.wait_for_update(
         session_id=session.id,
         min_offset=0,
+        kinds=["message"],
         timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
     )
 
     events = list(await context.container[SessionStore].list_events(session.id))
 
-    assert len(events) == 1
+    assert len([e for e in events if e.kind == "message"]) == 1
 
 
 async def test_that_when_a_client_event_is_posted_then_new_server_events_are_emitted(
-    context: _TestContext,
+    context: ContextOfTest,
     session: Session,
 ) -> None:
     event = await context.mc.post_client_event(
@@ -132,6 +127,7 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_emi
     await context.mc.wait_for_update(
         session_id=session.id,
         min_offset=1 + event.offset,
+        kinds=[],
         timeout=Timeout(REASONABLE_AMOUNT_OF_TIME),
     )
 
@@ -141,7 +137,7 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_emi
 
 
 async def test_that_a_session_update_is_detected_as_soon_as_a_client_event_is_posted(
-    context: _TestContext,
+    context: ContextOfTest,
     session: Session,
 ) -> None:
     event = await context.mc.post_client_event(
@@ -153,12 +149,13 @@ async def test_that_a_session_update_is_detected_as_soon_as_a_client_event_is_po
     assert await context.mc.wait_for_update(
         session_id=session.id,
         min_offset=event.offset,
+        kinds=[],
         timeout=Timeout.none(),
     )
 
 
 async def test_that_when_a_user_quickly_posts_more_than_one_message_then_only_one_message_is_emitted_as_a_reply_to_the_last_message(
-    context: _TestContext,
+    context: ContextOfTest,
     session: Session,
 ) -> None:
     messages = [
@@ -179,8 +176,9 @@ async def test_that_when_a_user_quickly_posts_more_than_one_message_then_only_on
     await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
     events = list(await context.container[SessionStore].list_events(session.id))
+    message_events = [e for e in events if e.kind == "message"]
 
-    assert len(events) == 4
+    assert len(message_events) == 4
     assert await nlp_test(
-        context.container[Logger], str(events[-1].data), "It talks about pineapples"
+        context.container[Logger], str(message_events[-1].data), "It talks about pineapples"
     )

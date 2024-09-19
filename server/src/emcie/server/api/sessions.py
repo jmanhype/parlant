@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
-from typing import Any, Optional, Union
+from datetime import datetime
+from itertools import chain, groupby
+from typing import Any, Literal, Mapping, Optional, Union, cast
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
@@ -12,9 +13,11 @@ from emcie.server.core.sessions import (
     EventId,
     EventKind,
     EventSource,
+    MessageEventData,
     SessionId,
     SessionListener,
     SessionStore,
+    ToolEventData,
 )
 from emcie.server.core.mc import MC
 
@@ -82,7 +85,34 @@ class ListSessionsResponse(DefaultBaseModel):
 
 
 class DeleteSessionResponse(DefaultBaseModel):
-    deleted_session_id: Optional[SessionId]
+    session_id: SessionId
+
+
+class ToolResultDTO(DefaultBaseModel):
+    data: Any
+    metadata: Mapping[str, Any]
+
+
+class ToolCallDTO(DefaultBaseModel):
+    tool_name: str
+    arguments: Mapping[str, Any]
+    result: ToolResultDTO
+
+
+class InteractionDTO(DefaultBaseModel):
+    kind: Literal["message"]
+    source: EventSource
+    correlation_id: str
+    data: Any = Field(
+        description="The data associated with this interaction's kind. "
+        "If kind is 'message', this is the message string."
+    )
+    tool_calls: list[ToolCallDTO]
+
+
+class ListInteractionsResponse(DefaultBaseModel):
+    session_id: SessionId
+    interactions: list[InteractionDTO]
 
 
 def create_router(
@@ -98,7 +128,6 @@ def create_router(
         allow_greeting: bool = Query(default=True),
     ) -> CreateSessionResponse:
         session = await mc.create_end_user_session(
-            creation_utc=datetime.now(timezone.utc),
             end_user_id=request.end_user_id,
             agent_id=request.agent_id,
             title=request.title,
@@ -164,8 +193,10 @@ def create_router(
     async def delete_session(
         session_id: SessionId,
     ) -> DeleteSessionResponse:
-        deleted_session_id = await session_store.delete_session(session_id)
-        return DeleteSessionResponse(deleted_session_id=deleted_session_id)
+        if await session_store.delete_session(session_id):
+            return DeleteSessionResponse(session_id=session_id)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     @router.post("/{session_id}/events", status_code=status.HTTP_201_CREATED)
     async def create_event(
@@ -193,6 +224,7 @@ def create_router(
             if not await session_listener.wait_for_events(
                 session_id=session_id,
                 min_offset=min_offset or 0,
+                kinds=[],
                 timeout=Timeout(60),
             ):
                 raise HTTPException(
@@ -220,6 +252,65 @@ def create_router(
                 )
                 for e in events
             ],
+        )
+
+    @router.get("/{session_id}/interactions")
+    async def list_interactions(
+        session_id: SessionId,
+        min_event_offset: int,
+        source: EventSource,
+        wait: bool = False,
+    ) -> ListInteractionsResponse:
+        if wait:
+            await mc.wait_for_update(
+                session_id=session_id,
+                min_offset=min_event_offset,
+                kinds=["message"],
+                source=source,
+                timeout=Timeout(300),
+            )
+
+        events = await session_store.list_events(
+            session_id=session_id,
+            kinds=["message", "tool"],
+            source=source,
+            min_offset=min_event_offset,
+        )
+
+        interactions = []
+
+        for correlation_id, correlated_events in groupby(events, key=lambda e: e.correlation_id):
+            message_events = [e for e in correlated_events if e.kind == "message"]
+            tool_events = [e for e in correlated_events if e.kind == "tool"]
+
+            tool_calls = list(
+                chain.from_iterable(cast(ToolEventData, e.data)["tool_calls"] for e in tool_events)
+            )
+
+            for e in message_events:
+                interactions.append(
+                    InteractionDTO(
+                        kind="message",
+                        source=e.source,
+                        correlation_id=correlation_id,
+                        data=cast(MessageEventData, e.data)["message"],
+                        tool_calls=[
+                            ToolCallDTO(
+                                tool_name=tc["tool_name"],
+                                arguments=tc["arguments"],
+                                result=ToolResultDTO(
+                                    data=tc["result"]["data"],
+                                    metadata=tc["result"]["metadata"],
+                                ),
+                            )
+                            for tc in tool_calls
+                        ],
+                    )
+                )
+
+        return ListInteractionsResponse(
+            session_id=session_id,
+            interactions=interactions,
         )
 
     return router

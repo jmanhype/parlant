@@ -154,6 +154,7 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]: ...
 
@@ -231,9 +232,9 @@ class SessionDocumentStore(SessionStore):
         events_to_delete = await self.list_events(session_id=session_id)
         asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
 
-        await self._session_collection.delete_one({"id": {"$eq": session_id}})
+        result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
-        return session_id
+        return session_id if result.deleted_count else None
 
     async def read_session(
         self,
@@ -340,10 +341,40 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
+
+        if kinds:
+            event_documents = await self._event_collection.find(
+                {
+                    "$or": [
+                        cast(
+                            Where,
+                            {
+                                "kind": {"$eq": k},
+                                "session_id": {"$eq": session_id},
+                                **({"source": {"$eq": source}} if source else {}),
+                                **({"offset": {"$gte": min_offset}} if min_offset else {}),
+                            },
+                        )
+                        for k in kinds
+                    ],
+                }
+            )
+        else:
+            event_documents = await self._event_collection.find(
+                cast(
+                    Where,
+                    {
+                        "session_id": {"$eq": session_id},
+                        **({"source": {"$eq": source}} if source else {}),
+                        **({"offset": {"$gte": min_offset}} if min_offset else {}),
+                    },
+                )
+            )
 
         return [
             Event(
@@ -355,16 +386,7 @@ class SessionDocumentStore(SessionStore):
                 correlation_id=d.correlation_id,
                 data=d.data,
             )
-            for d in await self._event_collection.find(
-                filters=cast(
-                    Where,
-                    {
-                        "session_id": {"$eq": session_id},
-                        **({"source": {"$eq": source}} if source else {}),
-                        **({"offset": {"$gte": min_offset}} if min_offset else {}),
-                    },
-                )
-            )
+            for d in event_documents
         ]
 
     async def list_sessions(
@@ -392,7 +414,9 @@ class SessionListener(ABC):
         self,
         session_id: SessionId,
         min_offset: int,
-        timeout: Timeout,
+        kinds: Sequence[EventKind],
+        source: Optional[EventSource] = None,
+        timeout: Timeout = Timeout.infinite(),
     ) -> bool: ...
 
 
@@ -404,14 +428,17 @@ class PollingSessionListener(SessionListener):
         self,
         session_id: SessionId,
         min_offset: int,
-        timeout: Timeout,
-        # TODO: allow filtering based on type (e.g. to filter out tool events)
+        kinds: Sequence[EventKind],
+        source: Optional[EventSource] = None,
+        timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         while True:
             events = list(
                 await self._session_store.list_events(
                     session_id,
                     min_offset=min_offset,
+                    source=source,
+                    kinds=kinds,
                 )
             )
 

@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Optional
+from typing import Any
 import dateutil
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -7,52 +7,19 @@ from lagom import Container
 from pytest import fixture, mark
 from datetime import datetime, timezone
 
-from emcie.common.tools import ToolId, ToolResult
+from emcie.common.tools import ToolResult
 from emcie.server.core.agents import AgentId
-from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
-from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.async_utils import Timeout
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService
-
-
-def _get_cow_uttering() -> ToolResult:
-    return ToolResult("moo")
-
-
-class ToolFunctions:
-    GET_COW_UTTERING = _get_cow_uttering
-
-
-@fixture
-def session_id(
-    client: TestClient,
-    agent_id: AgentId,
-) -> SessionId:
-    response = client.post(
-        "/sessions?allow_greeting=False",
-        json={
-            "end_user_id": "test_user",
-            "agent_id": agent_id,
-        },
-    ).raise_for_status()
-    return SessionId(response.json()["session_id"])
+from tests.api.utils import create_agent, create_guideline, create_session, post_message
 
 
 @fixture
 async def long_session_id(
     client: TestClient,
     container: Container,
-    agent_id: AgentId,
+    session_id: SessionId,
 ) -> SessionId:
-    response = client.post(
-        "/sessions?allow_greeting=False",
-        json={
-            "end_user_id": "test_user",
-            "agent_id": agent_id,
-        },
-    ).raise_for_status()
-    session_id = SessionId(response.json()["session_id"])
-
     await populate_session_id(
         container,
         session_id,
@@ -81,34 +48,6 @@ def make_event_params(
         "correlation_id": "dummy_correlation_id",
         "data": data,
     }
-
-
-async def add_guideline(
-    container: Container,
-    agent_id: AgentId,
-    predicate: str,
-    action: str,
-    tool_function: Optional[Callable[[], ToolResult]] = None,
-) -> None:
-    guideline = await container[GuidelineStore].create_guideline(
-        guideline_set=agent_id,
-        predicate=predicate,
-        action=action,
-    )
-
-    if tool_function:
-        tool = await container[LocalToolService].create_tool(
-            name=tool_function.__name__,
-            module_path=tool_function.__module__,
-            description="",
-            parameters={},
-            required=[],
-        )
-
-        await container[GuidelineToolAssociationStore].create_association(
-            guideline_id=guideline.id,
-            tool_id=ToolId(f"local__{tool.id}"),
-        )
 
 
 async def populate_session_id(
@@ -141,7 +80,12 @@ def event_is_according_to_params(
     return True
 
 
-def test_that_a_session_can_be_created(
+###############################################################################
+## Session CRUD API
+###############################################################################
+
+
+def test_that_a_session_can_be_created_without_a_title(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -181,21 +125,23 @@ def test_that_a_session_can_be_created_with_title(
     assert data["title"] == title
 
 
-def test_that_session_has_meaningful_creation_utc(
+def test_that_a_created_session_has_meaningful_creation_utc(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
     time_before_creation = datetime.now(timezone.utc)
 
-    response = client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user",
-            "agent_id": agent_id,
-        },
+    data = (
+        client.post(
+            "/sessions",
+            json={
+                "end_user_id": "test_user",
+                "agent_id": agent_id,
+            },
+        )
+        .raise_for_status()
+        .json()
     )
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
 
     assert "creation_utc" in data
     creation_utc = dateutil.parser.isoparse(data["creation_utc"])
@@ -208,218 +154,62 @@ def test_that_session_has_meaningful_creation_utc(
     )
 
 
-def test_that_sessions_can_be_listed(
-    client: TestClient,
-) -> None:
-    response = client.post(
-        "/agents",
-        json={"agent_name": "first_test-agent"},
-    )
-    first_agent_id = AgentId(response.json()["agent_id"])
-
-    response = client.post(
-        "/agents",
-        json={"agent_name": "second_test-agent"},
-    )
-    second_agent_id = AgentId(response.json()["agent_id"])
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user1",
-            "agent_id": first_agent_id,
-            "title": "Test Session1 Title",
-        },
-    )
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user2",
-            "agent_id": first_agent_id,
-            "title": "Test Session2 Title",
-        },
-    )
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user3",
-            "agent_id": second_agent_id,
-            "title": "Test Session3 Title",
-        },
-    )
-
-    response = client.get("/sessions")
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-
-    assert data
-
-    sessions = data["sessions"]
-
-    assert len(sessions) == 3
-
-    assert sessions[0]["title"] == "Test Session1 Title"
-    assert sessions[1]["title"] == "Test Session2 Title"
-    assert sessions[2]["title"] == "Test Session3 Title"
-
-    assert sessions[0]["end_user_id"] == "test_user1"
-    assert sessions[1]["end_user_id"] == "test_user2"
-    assert sessions[2]["end_user_id"] == "test_user3"
-
-
-def test_that_sessions_can_be_listed_by_agent_id(
-    client: TestClient,
-) -> None:
-    response = client.post(
-        "/agents",
-        json={"agent_name": "first_test-agent"},
-    )
-    first_agent_id = AgentId(response.json()["agent_id"])
-
-    response = client.post(
-        "/agents",
-        json={"agent_name": "second_test-agent"},
-    )
-    second_agent_id = AgentId(response.json()["agent_id"])
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user1",
-            "agent_id": first_agent_id,
-            "title": "Test Session1 Title",
-        },
-    )
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user2",
-            "agent_id": first_agent_id,
-            "title": "Test Session2 Title",
-        },
-    )
-
-    client.post(
-        "/sessions",
-        json={
-            "end_user_id": "test_user3",
-            "agent_id": second_agent_id,
-            "title": "Test Session3 Title",
-        },
-    )
-
-    response = client.get(f"/sessions/?agent_id={first_agent_id}")
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-
-    assert data
-
-    sessions = data["sessions"]
-
-    assert len(sessions) == 2
-
-    assert sessions[0]["title"] == "Test Session1 Title"
-    assert sessions[1]["title"] == "Test Session2 Title"
-
-    assert sessions[0]["end_user_id"] == "test_user1"
-    assert sessions[1]["end_user_id"] == "test_user2"
-
-    response = client.get(f"/sessions/?agent_id={second_agent_id}")
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-
-    assert data
-
-    sessions = data["sessions"]
-
-    assert len(sessions) == 1
-
-    assert sessions[0]["title"] == "Test Session3 Title"
-
-    assert sessions[0]["end_user_id"] == "test_user3"
-
-
-async def test_that_events_can_be_listed(
+async def test_that_sessions_can_be_listed(
     client: TestClient,
     container: Container,
-    session_id: SessionId,
 ) -> None:
-    session_events = [
-        make_event_params("client"),
-        make_event_params("server"),
-        make_event_params("server"),
-        make_event_params("client"),
-        make_event_params("server"),
+    agents = [
+        await create_agent(container, "first-agent"),
+        await create_agent(container, "second-agent"),
     ]
 
-    await populate_session_id(container, session_id, session_events)
+    sessions = [
+        await create_session(container, agent_id=agents[0].id, title="first-session"),
+        await create_session(container, agent_id=agents[0].id, title="second-session"),
+        await create_session(container, agent_id=agents[1].id, title="third-session"),
+    ]
 
-    response = client.get(f"/sessions/{session_id}/events")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = client.get("/sessions").raise_for_status().json()
 
-    assert data["session_id"] == session_id
+    assert len(data["sessions"]) == len(sessions)
 
-    assert len(data["events"]) == len(session_events)
-
-    for i, (event_params, listed_event) in enumerate(zip(session_events, data["events"])):
-        assert listed_event["offset"] == i
-        assert event_is_according_to_params(event=listed_event, params=event_params)
+    for listed_session, created_session in zip(data["sessions"], sessions):
+        assert listed_session["title"] == created_session.title
+        assert listed_session["end_user_id"] == created_session.end_user_id
 
 
-async def test_that_tool_events_are_correlated_with_message_events(
+async def test_that_sessions_can_be_listed_by_agent_id(
     client: TestClient,
     container: Container,
-    agent_id: AgentId,
-    session_id: SessionId,
 ) -> None:
-    await add_guideline(
-        container=container,
-        agent_id=agent_id,
-        predicate="a user says hello",
-        action="answer like a cow",
-        tool_function=ToolFunctions.GET_COW_UTTERING,
-    )
+    agents = [
+        await create_agent(container, "first-agent"),
+        await create_agent(container, "second-agent"),
+    ]
 
-    response = client.post(
-        f"/sessions/{session_id}/events",
-        json={"content": "Hello there!"},
-    )
+    sessions = [
+        await create_session(container, agent_id=agents[0].id, title="first-session"),
+        await create_session(container, agent_id=agents[0].id, title="second-session"),
+        await create_session(container, agent_id=agents[1].id, title="third-session"),
+    ]
 
-    assert response.status_code == status.HTTP_201_CREATED
+    for agent in agents:
+        agent_sessions = [s for s in sessions if s.agent_id == agent.id]
 
-    event_offset = response.json()["event_offset"]
+        data = client.get("/sessions", params={"agent_id": agent.id}).raise_for_status().json()
 
-    events_in_session = (
-        client.get(
-            f"/sessions/{session_id}/events",
-            params={
-                "min_offset": event_offset + 1,
-                "wait": True,
-            },
-        )
-        .raise_for_status()
-        .json()["events"]
-    )
+        assert len(data["sessions"]) == len(agent_sessions)
 
-    message_event = next(e for e in events_in_session if e["kind"] == "message")
-    tool_call_event = next(e for e in events_in_session if e["kind"] == "tool")
-    assert message_event["correlation_id"] == tool_call_event["correlation_id"]
+        for listed_session, created_session in zip(data["sessions"], agent_sessions):
+            assert listed_session["title"] == created_session.title
+            assert listed_session["end_user_id"] == created_session.end_user_id
 
 
 def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
     client: TestClient,
     long_session_id: SessionId,
 ) -> None:
-    response = client.get(f"/sessions/{long_session_id}")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = client.get(f"/sessions/{long_session_id}").raise_for_status().json()
 
     assert "consumption_offsets" in data
     assert "client" in data["consumption_offsets"]
@@ -442,28 +232,106 @@ def test_that_consumption_offsets_can_be_updated(
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    response = client.get(f"/sessions/{long_session_id}")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = client.get(f"/sessions/{long_session_id}").raise_for_status().json()
 
     assert data["consumption_offsets"][consumer_id] == 1
 
 
 def test_that_title_can_be_updated(
     client: TestClient,
-    long_session_id: SessionId,
+    session_id: SessionId,
 ) -> None:
     response = client.patch(
-        f"/sessions/{long_session_id}",
+        f"/sessions/{session_id}",
         json={"title": "new session title"},
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    response = client.get(f"/sessions/{long_session_id}")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
+    data = client.get(f"/sessions/{session_id}").raise_for_status().json()
 
     assert data["title"] == "new session title"
+
+
+def test_that_deleting_a_nonexistent_session_returns_404(
+    client: TestClient,
+) -> None:
+    response = client.delete("/sessions/nonexistent-session-id")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_that_a_session_can_be_deleted(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    delete_response = client.delete(f"/sessions/{session_id}").raise_for_status().json()
+    assert delete_response["session_id"] == session_id
+
+    get_response = client.get(f"/sessions/{session_id}")
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+async def test_that_a_deleted_session_is_removed_from_the_session_list(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    sessions = client.get("/sessions").raise_for_status().json()["sessions"]
+    assert any(session["session_id"] == str(session_id) for session in sessions)
+
+    client.delete(f"/sessions/{session_id}").raise_for_status()
+
+    sessions_after_deletion = client.get("/sessions").raise_for_status().json()["sessions"]
+    assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
+
+
+async def test_that_deleting_a_session_also_deletes_its_events(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+    ]
+
+    await populate_session_id(container, session_id, session_events)
+
+    events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
+    assert len(events) == len(session_events)
+
+    client.delete(f"/sessions/{session_id}").raise_for_status()
+
+    events_after_deletion = client.get(f"/sessions/{session_id}/events")
+    assert events_after_deletion.status_code == status.HTTP_404_NOT_FOUND
+
+
+###############################################################################
+## Events CRUD API
+###############################################################################
+
+
+async def test_that_events_can_be_listed(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("server"),
+        make_event_params("client"),
+        make_event_params("server"),
+    ]
+
+    await populate_session_id(container, session_id, session_events)
+
+    data = client.get(f"/sessions/{session_id}/events").raise_for_status().json()
+
+    assert data["session_id"] == session_id
+    assert len(data["events"]) == len(session_events)
+
+    for i, (event_params, listed_event) in enumerate(zip(session_events, data["events"])):
+        assert listed_event["offset"] == i
+        assert event_is_according_to_params(event=listed_event, params=event_params)
 
 
 @mark.parametrize("offset", (0, 2, 4))
@@ -555,68 +423,96 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     assert (t_end - t_start) < 1
 
 
-def test_that_deleting_a_nonexistent_session_returns_404(
+async def test_that_tool_events_are_correlated_with_message_events(
     client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    session_id: SessionId,
 ) -> None:
-    response = client.delete("/sessions/nonexistent-session-id")
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+    def get_cow_uttering() -> ToolResult:
+        return ToolResult("moo")
+
+    await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user says hello",
+        action="answer like a cow",
+        tool_function=get_cow_uttering,
+    )
+
+    event = await post_message(
+        container=container,
+        session_id=session_id,
+        message="Hello there!",
+        response_timeout=Timeout(30),
+    )
+
+    events_in_session = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={"min_offset": event.offset + 1},
+        )
+        .raise_for_status()
+        .json()["events"]
+    )
+
+    message_event = next(e for e in events_in_session if e["kind"] == "message")
+    tool_call_event = next(e for e in events_in_session if e["kind"] == "tool")
+    assert message_event["correlation_id"] == tool_call_event["correlation_id"]
 
 
-def test_that_a_session_can_be_deleted(
+###############################################################################
+## Interaction API
+###############################################################################
+
+
+def test_that_no_interaction_is_found_for_an_empty_session(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    delete_response = client.delete(f"/sessions/{session_id}").raise_for_status().json()
-    assert delete_response["deleted_session_id"] == session_id
-
-    get_response = client.get(f"/sessions/{session_id}")
-    assert get_response.status_code == status.HTTP_404_NOT_FOUND
-
-
-def test_that_a_deleted_session_is_removed_from_the_session_list(
-    client: TestClient,
-    agent_id: AgentId,
-) -> None:
-    session_id = SessionId(
-        client.post(
-            "/sessions",
-            json={
-                "end_user_id": "test_user",
-                "agent_id": agent_id,
-                "title": "Session to be deleted",
+    data = (
+        client.get(
+            f"/sessions/{session_id}/interactions",
+            params={
+                "min_event_offset": 0,
+                "source": "server",
             },
         )
         .raise_for_status()
-        .json()["session_id"]
+        .json()
     )
 
-    sessions = client.get("/sessions").raise_for_status().json()["sessions"]
-    assert any(session["session_id"] == str(session_id) for session in sessions)
-
-    delete_response = client.delete(f"/sessions/{session_id}").raise_for_status()
-    assert delete_response.json()["deleted_session_id"] == session_id
-
-    sessions_after_deletion = client.get("/sessions").raise_for_status().json()["sessions"]
-    assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
+    assert data["session_id"] == session_id
+    assert len(data["interactions"]) == 0
 
 
-async def test_that_deleting_a_session_also_deletes_its_events(
+async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_message(
     client: TestClient,
     container: Container,
     session_id: SessionId,
 ) -> None:
-    session_events = [
-        make_event_params("client"),
-        make_event_params("server"),
-    ]
-    await populate_session_id(container, session_id, session_events)
+    event = await post_message(
+        container=container,
+        session_id=session_id,
+        message="Hello there!",
+        response_timeout=Timeout(30),
+    )
 
-    events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
-    assert len(events) == len(session_events)
+    interactions = (
+        client.get(
+            f"/sessions/{session_id}/interactions",
+            params={
+                "min_event_offset": event.offset,
+                "source": "server",
+                "wait": True,
+            },
+        )
+        .raise_for_status()
+        .json()
+    )["interactions"]
 
-    delete_response = client.delete(f"/sessions/{session_id}")
-    assert delete_response.status_code == status.HTTP_200_OK
-    assert delete_response.json()["deleted_session_id"] == session_id
-
-    events_response_after = client.get(f"/sessions/{session_id}/events")
-    assert events_response_after.status_code == status.HTTP_404_NOT_FOUND
+    assert len(interactions) == 1
+    assert interactions[0]["source"] == "server"
+    assert interactions[0]["kind"] == "message"
+    assert isinstance(interactions[0]["data"], str)
+    assert len(interactions[0]["data"]) > 0
