@@ -218,13 +218,20 @@ def create_router(
     async def list_events(
         session_id: SessionId,
         min_offset: Optional[int] = None,
+        kinds: Optional[str] = Query(
+            default=None,
+            description="If set, only list events of the specified kinds (separated by commas)",
+        ),
         wait: Optional[bool] = None,
     ) -> ListEventsResponse:
+        kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
+        assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
+
         if wait:
             if not await session_listener.wait_for_events(
                 session_id=session_id,
                 min_offset=min_offset or 0,
-                kinds=[],
+                kinds=kind_list,
                 timeout=Timeout(60),
             ):
                 raise HTTPException(
@@ -235,6 +242,7 @@ def create_router(
         events = await session_store.list_events(
             session_id=session_id,
             source=None,
+            kinds=kind_list,
             min_offset=min_offset,
         )
 

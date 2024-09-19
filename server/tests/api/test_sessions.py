@@ -154,6 +154,13 @@ def test_that_a_created_session_has_meaningful_creation_utc(
     )
 
 
+async def test_that_a_session_can_be_read(
+    client: TestClient,
+    container: Container,
+) -> None:
+    pass
+
+
 async def test_that_sessions_can_be_listed(
     client: TestClient,
     container: Container,
@@ -392,6 +399,35 @@ def test_that_posting_a_message_elicits_a_response(
     )
 
     assert events_in_session
+
+
+async def test_that_status_updates_can_be_retrieved_separately_after_posting_a_message(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    event = await post_message(
+        container=container,
+        session_id=session_id,
+        message="Hello there!",
+        response_timeout=Timeout(30),
+    )
+
+    events = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={
+                "min_offset": event.offset + 1,
+                "kinds": "status",
+                "wait": True,
+            },
+        )
+        .raise_for_status()
+        .json()["events"]
+    )
+
+    assert events
+    assert all(e["kind"] == "status" for e in events)
 
 
 def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
