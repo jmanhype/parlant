@@ -23,7 +23,7 @@ Feature: Conversation
     Scenario: The agent greets the user
         Given an agent
         And an empty session
-        And a guideline to greet with 'Howdy'
+        And a guideline to greet with 'Howdy' when the session starts
         When processing is triggered
         Then a status event is emitted, acknowledging event -1
         And a status event is emitted, processing event -1
