@@ -1,11 +1,16 @@
 from __future__ import annotations
 import asyncio
+import math
 
 
 class Timeout:
     @staticmethod
     def none() -> Timeout:
         return Timeout(0)
+
+    @staticmethod
+    def infinite() -> Timeout:
+        return Timeout(math.inf)
 
     def __init__(self, seconds: float) -> None:
         self._creation = self._now()

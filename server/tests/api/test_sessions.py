@@ -459,3 +459,60 @@ async def test_that_tool_events_are_correlated_with_message_events(
     message_event = next(e for e in events_in_session if e["kind"] == "message")
     tool_call_event = next(e for e in events_in_session if e["kind"] == "tool")
     assert message_event["correlation_id"] == tool_call_event["correlation_id"]
+
+
+###############################################################################
+## Interaction API
+###############################################################################
+
+
+def test_that_no_interaction_is_found_for_an_empty_session(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    data = (
+        client.get(
+            f"/sessions/{session_id}/interactions",
+            params={
+                "min_event_offset": 0,
+                "source": "server",
+            },
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert data["session_id"] == session_id
+    assert len(data["interactions"]) == 0
+
+
+async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_message(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    event = await post_message(
+        container=container,
+        session_id=session_id,
+        message="Hello there!",
+        response_timeout=Timeout(30),
+    )
+
+    interactions = (
+        client.get(
+            f"/sessions/{session_id}/interactions",
+            params={
+                "min_event_offset": event.offset,
+                "source": "server",
+                "wait": True,
+            },
+        )
+        .raise_for_status()
+        .json()
+    )["interactions"]
+
+    assert len(interactions) == 1
+    assert interactions[0]["source"] == "server"
+    assert interactions[0]["kind"] == "message"
+    assert isinstance(interactions[0]["data"], str)
+    assert len(interactions[0]["data"]) > 0

@@ -83,6 +83,7 @@ async def post_message(
         await container[MC].wait_for_update(
             session_id=session_id,
             min_offset=event.offset + 1,
+            kinds=["message"],
             timeout=response_timeout,
         )
 
