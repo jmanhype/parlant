@@ -2,12 +2,12 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 import importlib
 import inspect
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, TypedDict
 from pydantic import ValidationError
 
 from emcie.common.tools import ToolId, ToolParameter, ToolResult, Tool, ToolContext
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
-from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
 )
@@ -129,23 +129,55 @@ class MultiplexedToolService(ToolService):
         )
 
 
-class LocalToolService(ToolService):
-    class ToolDocument(BaseDocument):
-        creation_utc: datetime
-        name: str
-        module_path: str
-        description: str
-        parameters: Mapping[str, ToolParameter]
-        required: Sequence[str]
-        consequential: bool
+class ToolDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    name: str
+    module_path: str
+    description: str
+    parameters: Mapping[str, ToolParameter]
+    required: Sequence[str]
+    consequential: bool
 
+
+def _serialize_tool(
+    tool: Tool,
+    module_path: str,
+) -> ToolDocument:
+    return ToolDocument(
+        id=ObjectId(tool.id),
+        creation_utc=tool.creation_utc.isoformat(),
+        name=tool.name,
+        module_path=module_path,
+        description=tool.description,
+        parameters=tool.parameters,
+        required=tool.required,
+        consequential=tool.consequential,
+    )
+
+
+def _deserialize_tool_documet(
+    tool_document: ToolDocument,
+) -> Tool:
+    return Tool(
+        id=ToolId(tool_document["id"]),
+        creation_utc=datetime.fromisoformat(tool_document["creation_utc"]),
+        name=tool_document["name"],
+        description=tool_document["description"],
+        parameters=dict(**tool_document["parameters"]),
+        required=list(tool_document["required"]),
+        consequential=tool_document["consequential"],
+    )
+
+
+class LocalToolService(ToolService):
     def __init__(
         self,
         database: DocumentDatabase,
     ) -> None:
         self._collection = database.get_or_create_collection(
             name="tools",
-            schema=self.ToolDocument,
+            schema=ToolDocument,
         )
 
     async def create_tool(
@@ -163,21 +195,8 @@ class LocalToolService(ToolService):
 
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        document = self.ToolDocument(
-            id=ObjectId(generate_id()),
-            name=name,
-            module_path=module_path,
-            description=description,
-            parameters=parameters,
-            required=required,
-            creation_utc=creation_utc,
-            consequential=consequential,
-        )
-
-        await self._collection.insert_one(document=document)
-
-        return Tool(
-            id=ToolId(document.id),
+        tool = Tool(
+            id=ToolId(generate_id()),
             name=name,
             description=description,
             parameters=dict(parameters),
@@ -186,21 +205,14 @@ class LocalToolService(ToolService):
             consequential=consequential,
         )
 
+        await self._collection.insert_one(document=_serialize_tool(tool, module_path))
+
+        return tool
+
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
-        return [
-            Tool(
-                id=ToolId(d.id),
-                name=d.name,
-                description=d.description,
-                parameters={k: v for k, v in d.parameters.items()},
-                creation_utc=d.creation_utc,
-                required=[i for i in d.required],
-                consequential=d.consequential,
-            )
-            for d in await self._collection.find(filters={})
-        ]
+        return [_deserialize_tool_documet(d) for d in await self._collection.find(filters={})]
 
     async def read_tool(
         self,
@@ -211,15 +223,7 @@ class LocalToolService(ToolService):
         if not tool_document:
             raise ItemNotFoundError(item_id=UniqueId(tool_id))
 
-        return Tool(
-            id=ToolId(tool_document.id),
-            name=tool_document.name,
-            description=tool_document.description,
-            parameters={k: v for k, v in tool_document.parameters.items()},
-            creation_utc=tool_document.creation_utc,
-            required=[i for i in tool_document.required],
-            consequential=tool_document.consequential,
-        )
+        return _deserialize_tool_documet(tool_document)
 
     async def call_tool(
         self,
@@ -235,8 +239,8 @@ class LocalToolService(ToolService):
             if not tool_document:
                 raise ItemNotFoundError(UniqueId(tool_id))
 
-            module = importlib.import_module(tool_document.module_path)
-            func = getattr(module, tool_document.name)
+            module = importlib.import_module(tool_document["module_path"])
+            func = getattr(module, tool_document["name"])
         except Exception as e:
             raise ToolImportError(tool_id) from e
 

@@ -4,24 +4,26 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Generic, Optional, Sequence, TypeVar, cast
+from typing import Generic, Mapping, Optional, Sequence, cast
+from typing_extensions import get_type_hints
 
 import chromadb
 
 from emcie.server.core.nlp.embedding import Embedder, EmbedderFactory
 from emcie.server.core.persistence.common import (
-    BaseDocument,
+    ObjectId,
     Where,
 )
-from emcie.server.core.persistence.document_database import DeleteResult, InsertResult, UpdateResult
+from emcie.server.core.persistence.document_database import (
+    DeleteResult,
+    DocumentCollection,
+    InsertResult,
+    TDocument,
+    UpdateResult,
+    validate_document,
+)
 from emcie.server.core.logging import Logger
-
-
-class ChromaDocument(BaseDocument):
-    content: str
-
-
-TChromaDocument = TypeVar("TChromaDocument", bound=ChromaDocument)
+from emcie.common.types.common import JSONSerializable, is_json_serializable
 
 
 class ChromaDatabase:
@@ -35,12 +37,14 @@ class ChromaDatabase:
         self._embedder_factory = embedder_factory
 
         self._chroma_client = chromadb.PersistentClient(str(dir_path))
-        self._collections: dict[str, ChromaCollection[ChromaDocument]] = (
+        self._collections: dict[str, ChromaCollection[Mapping[str, JSONSerializable]]] = (
             self._load_chromadb_collections()
         )
 
-    def _load_chromadb_collections(self) -> dict[str, ChromaCollection[ChromaDocument]]:
-        collections: dict[str, ChromaCollection[ChromaDocument]] = {}
+    def _load_chromadb_collections(
+        self,
+    ) -> dict[str, ChromaCollection[Mapping[str, JSONSerializable]]]:
+        collections: dict[str, ChromaCollection[Mapping[str, JSONSerializable]]] = {}
         for chromadb_collection in self._chroma_client.list_collections():
             embedder_module = importlib.import_module(
                 chromadb_collection.metadata["embedder_module_path"]
@@ -70,13 +74,17 @@ class ChromaDatabase:
     def create_collection(
         self,
         name: str,
-        schema: type[TChromaDocument],
+        schema: type[TDocument],
         embedder_type: type[Embedder],
-    ) -> ChromaCollection[TChromaDocument]:
+    ) -> ChromaCollection[TDocument]:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
 
-        assert issubclass(schema, ChromaDocument)
+        assert is_json_serializable(schema)
+
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
+        assert "content" in annotations and annotations["content"] is str
 
         self._collections[name] = ChromaCollection(
             self._logger,
@@ -95,28 +103,28 @@ class ChromaDatabase:
             embedder=self._embedder_factory.create_embedder(embedder_type),
         )
 
-        return cast(ChromaCollection[TChromaDocument], self._collections[name])
+        return cast(ChromaCollection[TDocument], self._collections[name])
 
     def get_collection(
         self,
         name: str,
-    ) -> ChromaCollection[TChromaDocument]:
+    ) -> ChromaCollection[TDocument]:
         if collection := self._collections.get(name):
-            return cast(ChromaCollection[TChromaDocument], collection)
+            return cast(ChromaCollection[TDocument], collection)
 
         raise ValueError(f'ChromaDB collection "{name}" not found.')
 
     def get_or_create_collection(
         self,
         name: str,
-        schema: type[TChromaDocument],
+        schema: type[TDocument],
         embedder_type: type[Embedder],
-    ) -> ChromaCollection[TChromaDocument]:
+    ) -> ChromaCollection[TDocument]:
         if collection := self._collections.get(name):
             assert schema == collection._schema
-            return cast(ChromaCollection[TChromaDocument], collection)
+            return cast(ChromaCollection[TDocument], collection)
 
-        assert issubclass(schema, ChromaDocument)
+        assert is_json_serializable(schema)
 
         self._collections[name] = ChromaCollection(
             self._logger,
@@ -135,7 +143,7 @@ class ChromaDatabase:
             embedder=self._embedder_factory.create_embedder(embedder_type),
         )
 
-        return cast(ChromaCollection[TChromaDocument], self._collections[name])
+        return cast(ChromaCollection[TDocument], self._collections[name])
 
     def delete_collection(
         self,
@@ -147,13 +155,13 @@ class ChromaDatabase:
         del self._collections[name]
 
 
-class ChromaCollection(Generic[TChromaDocument]):
+class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
     def __init__(
         self,
         logger: Logger,
         chromadb_collection: chromadb.Collection,
         name: str,
-        schema: type[TChromaDocument],
+        schema: type[TDocument],
         embedder: Embedder,
     ) -> None:
         self._logger = logger
@@ -167,36 +175,38 @@ class ChromaCollection(Generic[TChromaDocument]):
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[TChromaDocument]:
+    ) -> Sequence[TDocument]:
         if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
             "metadatas"
         ]:
-            return [self._schema.model_validate(m) for m in metadatas]
+            return [cast(TDocument, m) for m in metadatas]
 
         return []
 
     async def find_one(
         self,
         filters: Where,
-    ) -> Optional[TChromaDocument]:
+    ) -> Optional[TDocument]:
         if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
             "metadatas"
         ]:
-            return self._schema.model_validate({k: v for k, v in metadatas[0].items()})
+            return cast(TDocument, {k: v for k, v in metadatas[0].items()})
 
         return None
 
     async def insert_one(
         self,
-        document: TChromaDocument,
+        document: TDocument,
     ) -> InsertResult:
-        embeddings = list((await self._embedder.embed([document.content])).vectors)
+        assert validate_document(document, self._schema, total=True)
+
+        embeddings = list((await self._embedder.embed([document["content"]])).vectors)
 
         async with self._lock:
             self._chroma_collection.add(
-                ids=[document.id],
-                documents=[document.content],
-                metadatas=[document.model_dump(mode="json")],
+                ids=[document["id"]],
+                documents=[document["content"]],
+                metadatas=[document],
                 embeddings=embeddings,
             )
 
@@ -205,17 +215,42 @@ class ChromaCollection(Generic[TChromaDocument]):
     async def update_one(
         self,
         filters: Where,
-        updated_document: TChromaDocument,
+        updated_document: TDocument,
         upsert: bool = False,
-    ) -> UpdateResult[TChromaDocument]:
-        embeddings = list((await self._embedder.embed([updated_document.content])).vectors)
+    ) -> UpdateResult[TDocument]:
+        assert validate_document(updated_document, self._schema, total=False)
 
         async with self._lock:
-            if self._chroma_collection.get(where=cast(chromadb.Where, filters))["metadatas"]:
+            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters)):
+                doc_id = docs["ids"][0]
+                if "content" in updated_document:
+                    embeddings = list(
+                        (await self._embedder.embed([updated_document["content"]])).vectors
+                    )
+                    document = updated_document["content"]
+                else:
+                    if embeddings_list := docs.get("embeddings"):
+                        if len(embeddings_list) > 0:
+                            embeddings = [embeddings_list[0]]
+                        else:
+                            raise ValueError("Embeddings not found or empty")
+
+                    if documents := docs.get("documents"):
+                        if len(documents) > 0:
+                            document = documents[0]
+                        else:
+                            raise ValueError("Document not found or empty")
+
+                    if metadatas := docs.get("metadatas"):
+                        if len(metadatas) > 0:
+                            metadata = {**metadatas[0], **updated_document}
+                        else:
+                            raise ValueError("Metadata not found or empty")
+
                 self._chroma_collection.update(
-                    ids=[updated_document.id],
-                    documents=[updated_document.content],
-                    metadatas=[updated_document.model_dump(mode="json")],
+                    ids=[doc_id],
+                    documents=[document],
+                    metadatas=[metadata],
                     embeddings=embeddings,
                 )
 
@@ -227,10 +262,16 @@ class ChromaCollection(Generic[TChromaDocument]):
                 )
 
             elif upsert:
+                assert validate_document(updated_document, self._schema, total=True)
+
+                embeddings = list(
+                    (await self._embedder.embed([updated_document["content"]])).vectors
+                )
+
                 self._chroma_collection.add(
-                    ids=[updated_document.id],
-                    documents=[updated_document.content],
-                    metadatas=[updated_document.model_dump(mode="json")],
+                    ids=[updated_document["id"]],
+                    documents=[updated_document["content"]],
+                    metadatas=[updated_document],
                     embeddings=embeddings,
                 )
 
@@ -251,7 +292,7 @@ class ChromaCollection(Generic[TChromaDocument]):
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult[TChromaDocument]:
+    ) -> DeleteResult[TDocument]:
         async with self._lock:
             if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
                 "metadatas"
@@ -267,7 +308,7 @@ class ChromaCollection(Generic[TChromaDocument]):
                 return DeleteResult(
                     deleted_count=1,
                     acknowledged=True,
-                    deleted_document=self._schema.model_validate(deleted_document),
+                    deleted_document=cast(TDocument, deleted_document),
                 )
 
             return DeleteResult(
@@ -281,7 +322,7 @@ class ChromaCollection(Generic[TChromaDocument]):
         filters: Where,
         query: str,
         k: int,
-    ) -> Sequence[TChromaDocument]:
+    ) -> Sequence[TDocument]:
         query_embeddings = list((await self._embedder.embed([query])).vectors)
 
         docs = self._chroma_collection.query(
@@ -293,6 +334,6 @@ class ChromaCollection(Generic[TChromaDocument]):
         if metadatas := docs["metadatas"]:
             self._logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
 
-            return [self._schema.model_validate(m) for m in metadatas[0]]
+            return [cast(TDocument, m) for m in metadatas[0]]
 
         return []

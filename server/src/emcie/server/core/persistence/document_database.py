@@ -1,11 +1,59 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Optional, Sequence, Type, TypeVar
+from typing import (
+    Any,
+    Generic,
+    Mapping,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
-from emcie.server.core.persistence.common import BaseDocument, Where
+from emcie.server.core.persistence.common import Where
 
-TDocument = TypeVar("TDocument", bound=BaseDocument)
+
+TDocument = TypeVar("TDocument", bound=Mapping[str, Any])
+
+
+def validate_document(document: TDocument, schema: type[TDocument], total: bool = False) -> bool:
+    annotations = get_type_hints(schema)
+    for key, expected_type in annotations.items():
+        if total and key not in document:
+            raise TypeError(f"key '{key}' did not provided.")
+        if key in document and not is_instance_of_type(document[key], expected_type):
+            raise ValueError(f"value '{document[key]}' expected to be '{expected_type}'.")
+    return True
+
+
+def is_instance_of_type(value: Any, expected_type: Any) -> bool:
+    origin = get_origin(expected_type)
+    args = get_args(expected_type)
+
+    if origin is list:
+        if not isinstance(value, list):
+            return False
+        if not args:
+            return True
+        return all(is_instance_of_type(item, args[0]) for item in value)
+    elif origin is dict:
+        if not isinstance(value, dict):
+            return False
+        if not args:
+            return True
+        key_type, val_type = args
+        return all(
+            is_instance_of_type(k, key_type) and is_instance_of_type(v, val_type)
+            for k, v in value.items()
+        )
+    elif isinstance(expected_type, type):
+        return isinstance(value, expected_type)
+    else:
+        return True
 
 
 class DocumentDatabase(ABC):

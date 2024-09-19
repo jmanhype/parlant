@@ -8,7 +8,6 @@ from typing import Any, Mapping, Optional, Sequence, Type, cast
 import aiofiles
 
 from emcie.server.core.persistence.common import (
-    BaseDocument,
     Where,
     matches_filters,
 )
@@ -19,8 +18,10 @@ from emcie.server.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
+    validate_document,
 )
 from emcie.server.core.logging import Logger
+from emcie.common.types.common import JSONSerializable, is_json_serializable
 
 
 class JSONFileDocumentDatabase(DocumentDatabase):
@@ -37,7 +38,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
-        self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
+        self._collections: dict[str, JSONFileDocumentCollection[Mapping[str, JSONSerializable]]]
 
     async def _sync_if_needed(self) -> None:
         # FIXME: When the CLI can retrieve all different stores, reintroduce the modulo condition.
@@ -117,6 +118,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         self._logger.debug(f'Create collection "{name}"')
 
+        assert is_json_serializable(schema)
+
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
@@ -140,6 +143,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
+
+        assert is_json_serializable(schema)
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
@@ -175,7 +180,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self._database = database
         self._name = name
         self._schema = schema
-        self._documents = [doc for doc in data] if data else []
+        self._documents = [cast(TDocument, doc) for doc in data] if data else []
         self._op_counter = 0
         self._lock = asyncio.Lock()
 
@@ -183,32 +188,35 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Sequence[TDocument]:
-        return [
-            self._schema.model_validate(doc)
-            for doc in filter(
-                lambda d: matches_filters(filters, self._schema.model_validate(d)),
-                self._documents,
-            )
-        ]
+        result = []
+        for doc in filter(
+            lambda d: matches_filters(filters, d),
+            self._documents,
+        ):
+            assert validate_document(doc, self._schema, total=True)
+            result.append(doc)
+
+        return result
 
     async def find_one(
         self,
         filters: Where,
     ) -> Optional[TDocument]:
-        matched_documents = await self.find(filters)
+        for doc in self._documents:
+            if matches_filters(filters, doc):
+                assert validate_document(doc, self._schema, total=True)
+                return doc
 
-        if not matched_documents:
-            return None
-
-        result = matched_documents[0]
-        return self._schema.model_validate(result)
+        return None
 
     async def insert_one(
         self,
         document: TDocument,
     ) -> InsertResult:
+        validate_document(document, self._schema, total=True)
+
         async with self._lock:
-            self._documents.append(document.model_dump(mode="json"))
+            self._documents.append(document)
 
         await self._database._sync_if_needed()
 
@@ -221,9 +229,11 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
-            if matches_filters(filters, self._schema.model_validate(d)):
+            if matches_filters(filters, d):
                 async with self._lock:
-                    self._documents[i] = updated_document.model_dump(mode="json")
+                    validate_document(updated_document, self._schema, total=False)
+
+                    self._documents[i] = cast(TDocument, {**self._documents[i], **updated_document})
 
                 await self._database._sync_if_needed()
 
@@ -258,11 +268,9 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         filters: Where,
     ) -> DeleteResult[TDocument]:
         for i, d in enumerate(self._documents):
-            if matches_filters(filters, self._schema.model_validate(d)):
+            if matches_filters(filters, d):
                 async with self._lock:
-                    document = self._schema.model_validate(self._documents[i])
-
-                    del self._documents[i]
+                    document = self._documents.pop(i)
 
                 await self._database._sync_if_needed()
                 return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)

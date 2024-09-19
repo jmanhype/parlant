@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Type, cast
+from typing import Mapping, Optional, Sequence, Type, cast
 from emcie.server.core.persistence.common import (
-    BaseDocument,
     Where,
     matches_filters,
 )
@@ -12,18 +11,24 @@ from emcie.server.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
+    validate_document,
 )
+from emcie.common.types.common import JSONSerializable, is_json_serializable
 
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._collections: dict[str, _TransientDocumentCollection[BaseDocument]] = {}
+        self._collections: dict[
+            str, _TransientDocumentCollection[Mapping[str, JSONSerializable]]
+        ] = {}
 
     def create_collection(
         self,
         name: str,
         schema: Type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
+        assert is_json_serializable(schema)
+
         self._collections[name] = _TransientDocumentCollection(
             name=name,
             schema=schema,
@@ -46,6 +51,8 @@ class TransientDocumentDatabase(DocumentDatabase):
     ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(_TransientDocumentCollection[TDocument], collection)
+
+        assert is_json_serializable(schema)
 
         return self.create_collection(
             name=name,
@@ -77,26 +84,33 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Sequence[TDocument]:
-        return list(
-            filter(
-                lambda d: matches_filters(filters, d),
-                self._documents,
-            )
-        )
+        result = []
+        for doc in filter(
+            lambda d: matches_filters(filters, d),
+            self._documents,
+        ):
+            assert validate_document(doc, self._schema, total=True)
+            result.append(doc)
+
+        return result
 
     async def find_one(
         self,
         filters: Where,
     ) -> Optional[TDocument]:
-        matched_documents = await self.find(filters)
-        if len(matched_documents) >= 1:
-            return matched_documents[0]
+        for doc in self._documents:
+            if matches_filters(filters, doc):
+                assert validate_document(doc, self._schema, total=True)
+                return doc
+
         return None
 
     async def insert_one(
         self,
         document: TDocument,
     ) -> InsertResult:
+        validate_document(document, self._schema, total=True)
+
         self._documents.append(document)
 
         return InsertResult(acknowledged=True)
@@ -109,7 +123,9 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                self._documents[i] = updated_document
+                validate_document(updated_document, self._schema, total=False)
+
+                self._documents[i] = cast(TDocument, {**self._documents[i], **updated_document})
 
                 return UpdateResult(
                     acknowledged=True,

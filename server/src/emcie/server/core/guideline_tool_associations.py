@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, TypedDict
 
 from emcie.common.tools import ToolId
 from emcie.server.core.common import generate_id
 from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
 )
@@ -38,15 +38,39 @@ class GuidelineToolAssociationStore(ABC):
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]: ...
 
 
-class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
-    class GuidelineToolAssociationDocument(BaseDocument):
-        creation_utc: datetime
-        guideline_id: GuidelineId
-        tool_id: ToolId
+class GuidelineToolAssociationDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    guideline_id: GuidelineId
+    tool_id: ToolId
 
+
+def _serialize_association(
+    association: GuidelineToolAssociation,
+) -> GuidelineToolAssociationDocument:
+    return GuidelineToolAssociationDocument(
+        id=ObjectId(association.id),
+        creation_utc=association.creation_utc.isoformat(),
+        guideline_id=association.guideline_id,
+        tool_id=association.tool_id,
+    )
+
+
+def _deserialize_association_documet(
+    association_document: GuidelineToolAssociationDocument,
+) -> GuidelineToolAssociation:
+    return GuidelineToolAssociation(
+        id=GuidelineToolAssociationId(association_document["id"]),
+        creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
+        guideline_id=association_document["guideline_id"],
+        tool_id=association_document["tool_id"],
+    )
+
+
+class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
-            name="associations", schema=self.GuidelineToolAssociationDocument
+            name="associations", schema=GuidelineToolAssociationDocument
         )
 
     async def create_association(
@@ -57,29 +81,18 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     ) -> GuidelineToolAssociation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        document = self.GuidelineToolAssociationDocument(
-            id=ObjectId(generate_id()),
+        association = GuidelineToolAssociation(
+            id=GuidelineToolAssociationId(generate_id()),
             creation_utc=creation_utc,
             guideline_id=guideline_id,
             tool_id=tool_id,
         )
 
-        await self._collection.insert_one(document=document)
+        await self._collection.insert_one(document=_serialize_association(association))
 
-        return GuidelineToolAssociation(
-            id=GuidelineToolAssociationId(document.id),
-            creation_utc=creation_utc,
-            guideline_id=guideline_id,
-            tool_id=tool_id,
-        )
+        return association
 
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [
-            GuidelineToolAssociation(
-                id=GuidelineToolAssociationId(GuidelineToolAssociationId(d.id)),
-                creation_utc=d.creation_utc,
-                guideline_id=d.guideline_id,
-                tool_id=d.tool_id,
-            )
-            for d in await self._collection.find(filters={})
+            _deserialize_association_documet(d) for d in await self._collection.find(filters={})
         ]
