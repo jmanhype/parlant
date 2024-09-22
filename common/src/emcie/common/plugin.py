@@ -208,12 +208,10 @@ class CallToolResponse(BaseModel):
 class PluginServer:
     def __init__(
         self,
-        name: str,
         tools: Sequence[ToolEntry],
         port: int = 8089,
         host: str = "0.0.0.0",
     ) -> None:
-        self.name = name
         self.tools = {entry.tool.id: entry for entry in tools}
         self.host = host
         self.port = port

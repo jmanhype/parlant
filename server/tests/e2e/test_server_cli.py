@@ -155,7 +155,7 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
         config_file=context.config_file,
     )
 
-    async with PluginServer(name="my_plugin", tools=[about_dor], port=plugin_port) as plugin_server:
+    async with PluginServer(tools=[about_dor], port=plugin_port) as plugin_server:
         try:
             with run_server(context, extra_args=["--no-index", "--force"]):
                 await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)

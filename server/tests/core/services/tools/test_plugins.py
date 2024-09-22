@@ -15,7 +15,10 @@ def context() -> ToolContext:
 
 @asynccontextmanager
 async def run_plugin_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
-    async with PluginServer(name="test_plugin", tools=tools, host="127.0.0.1") as server:
+    async with PluginServer(
+        tools=tools,
+        host="127.0.0.1",
+    ) as server:
         try:
             yield server
         finally:
