@@ -12,7 +12,7 @@ from emcie.server.core.tools import ToolService
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.terminology import Term
 from emcie.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCaller
-from emcie.server.core.engines.emission import EmittedEvent, EventEmitter
+from emcie.server.core.emissions import EmittedEvent, EventEmitter
 
 
 class ToolEventProducer:

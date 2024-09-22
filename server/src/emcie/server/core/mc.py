@@ -3,82 +3,26 @@ import asyncio
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Any, Mapping, Optional, Sequence, Type, TypeAlias, cast
+from typing import Any, Mapping, Optional, Sequence, Type, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import JSONSerializable
+from emcie.server.core.emission.event_buffer import EventBuffer
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
     Event,
     EventKind,
     EventSource,
-    MessageEventData,
     Session,
     SessionId,
     SessionListener,
     SessionStore,
-    StatusEventData,
-    ToolEventData,
 )
 from emcie.server.core.engines.types import Context, Engine
-from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.logging import Logger
-
-
-class EventBuffer(EventEmitter):
-    def __init__(self) -> None:
-        self.events: list[EmittedEvent] = []
-
-    async def emit_status_event(
-        self,
-        correlation_id: str,
-        data: StatusEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="status",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
-
-    async def emit_message_event(
-        self,
-        correlation_id: str,
-        data: MessageEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="message",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
-
-    async def emit_tool_event(
-        self,
-        correlation_id: str,
-        data: ToolEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="tool",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
 
 
 TaskQueue: TypeAlias = list[asyncio.Task[None]]

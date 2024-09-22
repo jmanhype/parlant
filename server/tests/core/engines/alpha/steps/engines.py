@@ -5,7 +5,7 @@ from emcie.server.core.agents import Agent, AgentId
 from emcie.server.core.engines.alpha.engine import AlphaEngine
 
 from emcie.server.core.engines.alpha.message_event_producer import MessageEventProducer
-from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.engines.types import Context
 from emcie.server.core.mc import EventBuffer
 from emcie.server.core.sessions import SessionId

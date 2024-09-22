@@ -3,7 +3,7 @@ from typing import Any, Sequence, cast
 
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event, ToolEventData
-from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 
 
 def events_to_json(events: Sequence[Event]) -> str:
