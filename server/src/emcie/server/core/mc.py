@@ -9,7 +9,7 @@ from lagom import Container
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
-from emcie.server.core.emission.event_buffer import EventBuffer
+from emcie.server.core.emission.event_publisher import EventPublisher
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
     Event,
@@ -21,7 +21,6 @@ from emcie.server.core.sessions import (
     SessionStore,
 )
 from emcie.server.core.engines.types import Context, Engine
-from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.logging import Logger
 
 
@@ -169,34 +168,15 @@ class MC:
             )
 
     async def _process_session(self, session: Session) -> None:
-        emitter = EventBuffer()
+        publisher = EventPublisher(
+            session_store=self._session_store,
+            session_id=session.id,
+        )
 
         await self._engine.process(
             Context(
                 session_id=session.id,
                 agent_id=session.agent_id,
             ),
-            emitter,
+            event_emitter=publisher,
         )
-
-        await self._add_events_to_session(
-            session_id=session.id,
-            events=emitter.events,
-        )
-
-    async def _add_events_to_session(
-        self,
-        session_id: SessionId,
-        events: Sequence[EmittedEvent],
-    ) -> None:
-        utc_now = datetime.now(timezone.utc)
-
-        for e in events:
-            await self._session_store.create_event(
-                session_id=session_id,
-                source=e.source,
-                kind=e.kind,
-                data=e.data,
-                correlation_id=e.correlation_id,
-                creation_utc=utc_now,
-            )
