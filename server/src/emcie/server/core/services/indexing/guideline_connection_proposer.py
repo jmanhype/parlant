@@ -16,8 +16,8 @@ from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):
-    source: dict[str, str]
-    target: dict[str, str]
+    source_id: int
+    target_id: int
     source_then: str
     target_when: str
     is_target_when_implied_by_source_then: bool
@@ -93,7 +93,7 @@ class GuidelineConnectionProposer:
         self,
         agent: Agent,
         evaluated_guideline: GuidelineContent,
-        comparison_set: Sequence[GuidelineContent],
+        comparison_set: dict[int, GuidelineContent],
     ) -> str:
         builder = PromptBuilder()
         builder.add_section(
@@ -133,7 +133,7 @@ It is only about whether <Y> in itself is directly and immediately implied by <X
 There are two types of implication:
 - Entailed: This means that the source guideline's "then" necessarily entails
             the target guideline's "when".
-- Optional: This is the same as "entailed", except in these cases the target's
+- Suggested: This is the same as "entailed", except in these cases the target's
             "then" is suggestive instead of necessary. For example, in cases such as
              source="When <X> then <Y>", target="When <Y> then consider <Z>".
 
@@ -141,13 +141,13 @@ You will now receive a test guideline to evaluate against a set of other guideli
 implication. For each candidate, the test guideline may be found as either the source or the target in the
 connection, or neither.
 
-Please output JSON structured as per the following examples:
+Please output JSON structured as per the following examples. The output should have one json per every ordered pair of guidelines:
 
 {{
     "propositions": [
         {{
-            "source": <The source guideline in its entirety>,
-            "target": <The target guideline in its entirety>,
+            "source_id": <id of the source guideline>,
+            "target_id": <id of the target guideline>,
             "source_then": <The source guideline's 'then'>,
             "target_when": <The target guideline's 'when'>,
             "is_target_when_implied_by_source_then": <BOOL>,
@@ -159,167 +159,68 @@ Please output JSON structured as per the following examples:
     ]
 }}
 
-Examples:
-
-Example 1: ###
-{{
-    "source": {{"when": "The user asks about the weather", "then": "provide the current weather update"}},
-    "target": {{"when": "providing the weather update", "then": "mention the best time to go for a walk"}},
-    "source_then": "provide the current weather update",
-    "target_when": "providing the weather update",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": false,
-    "rationale": "Mentioning the best time to go for a walk follows logically from providing a weather update.",
-    "implication_score": 10
-}}
-###
-
-Example 2: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for directions", "then": "provide step-by-step directions"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for directions",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for directions is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 3: ###
-{{
-    "source": {{"when": "The user asks for a book recommendation", "then": "suggest a book"}},
-    "target": {{"when": "suggesting a book", "then": "mention its availability in the local library"}},
-    "source_then": "suggest a book",
-    "target_when": "suggesting a book",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The source's 'then' directly makes the target's 'when' apply",
-    "implication_score": 10
-}}
-###
-
-Example 4: ###
-{{
-    "source": {{"when": "The user asks about nearby restaurants", "then": "provide a list of popular restaurants"}},
-    "target": {{"when": "listing restaurants", "then": "consider highlighting the one with the best reviews"}},
-    "source_then": "provide a list of popular restaurants",
-    "target_when": "listing restaurants",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": true,
-    "rationale": "The source's 'then' is a specific case of the target's 'when'",
-    "implication_score": 9
-}}
-###
-
-Example 5: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks about the weather", "then": "provide the current weather update"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks about the weather",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking about the weather is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 6: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for a book recommendation", "then": "suggest a popular book"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for a book recommendation",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for a book recommendation is not implied by the agent's greeting the user",
-    "implication_score": 1
-}}
-###
-
-Example 7: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user mentions being tired", "then": "suggest taking a break"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user mentions being tired",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's mentioning being tired is not implied by the agent's greeting the user",
-    "implication_score": 1
-}}
-###
-
-Example 8: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user mentions being new to the area", "then": "offer a local guide"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user mentions being new to the area",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's mentioning being new to the area is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 9: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for tech support", "then": "provide the tech support contact"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for tech support",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for tech support is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 10:###
-{{
-    "source": {{"when": "The user inquires about office hours", "then": "tell them the office hours"}},
-    "target": {{"when": "mentioning office hours", "then": "suggest the best time to visit for quicker service"}},
-    "source_then": "tell them the office hours",
-    "target_when": "mentioning office hours",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": false,
-    "rationale": "If you tell the user about office hours, then the guideline for what to do when mentioning office hours should also apply",
-    "implication_score": 9
-}}
-###
-
-Example 11: ###
-{{
-    "source": {{
-        "when": "The user asks if Google is a search engine",
-        "then": "First double check with Wikipedia, but then answer positively. Explain to them why."
-    }},
-    "target": {{
-        "when": "The user asks you to explain more",
-        "then": "Consult Wikipedia with the query 'information about Google'"
-    }},
-    "source_then": "First double check with Wikipedia, but then answer positively. Explain to them why."
-    "target_when": "The user asks you to explain more",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "While the user might then ask for more information, thus triggering the target's 'when', this is not certain in advance.",
-    "implication_score": 3
-}}
+The following are examples of expected outputs for a given input:
 ###"""  # noqa
         )
 
         # Find and add terminology to prompt
         implication_candidates = "\n\t".join(
-            f"{i}) {{when: {g.predicate}, then: {g.action}}}"
-            for i, g in enumerate(comparison_set, start=1)
+            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            for id, g in comparison_set.items()
         )
-        test_guideline = (
-            f"{{when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
-        )
+        test_guideline = f"{{id: 0, when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
         terms = await self._terminology_store.find_relevant_terms(
             agent.id,
             query=test_guideline + implication_candidates,
         )
         builder.add_terminology(terms)
 
-        builder.add_section(  # TODO ask Dor: should this be handled through an added method in promptbuilder?
+        builder.add_section(
             f"""
-Input:
+Example 1: ###
+{{
+**Input**:
+
+Test guideline: ###
+{{"id": 0, "when": "providing the weather update", "then": "mention the best time to go for a walk"}}
+###
+
+Implication candidates: ###
+{{"id": 1, "when": "the user asks about the weather", "then": "provide the current weather update"}}
+###
+
+**Expected Output**
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "mention the best time to go for a walk",
+            "target_when": "the user asks about the weather",
+            "is_target_when_implied_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "asking about the weather is not entailed from mentioning the best time for a walk",
+            "implication_score": 1
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "provide the current weather update",
+            "target_when": "providing the weather update",
+            "is_target_when_implied_by_source_then": true,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "Mentioning the best time to go for a walk follows logically from providing a weather update",
+            "implication_score": 10
+        }}
+    ]
+}}
+```
+###
+
+
+The guidelines you should check for connections are:
 
 Test guideline: ###
 {test_guideline}
@@ -337,10 +238,12 @@ Implication candidates: ###
         guideline_to_test: GuidelineContent,
         guidelines_to_compare: Sequence[GuidelineContent],
     ) -> list[GuidelineConnectionProposition]:
+        guidelines_dict = {i: g for i, g in enumerate(guidelines_to_compare, start=1)}
+        guidelines_dict[0] = guideline_to_test
         prompt = await self._format_connection_propositions(
             agent,
             guideline_to_test,
-            guidelines_to_compare,
+            {k: v for k, v in guidelines_dict.items() if k != 0},
         )
 
         response = await self._schematic_generator.generate(
@@ -358,10 +261,10 @@ Connection Propositions Found:
 """
         )
 
-        relevant_propositions = [
+        relevant_propositions = [  # TODO I was here
             GuidelineConnectionProposition(
-                source=GuidelineContent(predicate=p.source["when"], action=p.source["then"]),
-                target=GuidelineContent(predicate=p.target["when"], action=p.target["then"]),
+                source=guidelines_dict[p.source_id],
+                target=guidelines_dict[p.target_id],
                 kind={
                     False: ConnectionKind.ENTAILS,
                     True: ConnectionKind.SUGGESTS,
