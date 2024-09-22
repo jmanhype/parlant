@@ -391,6 +391,7 @@ def test_that_posting_a_message_elicits_a_response(
             f"/sessions/{session_id}/events",
             params={
                 "min_offset": event_offset + 1,
+                "kinds": "message",
                 "wait": True,
             },
         )
