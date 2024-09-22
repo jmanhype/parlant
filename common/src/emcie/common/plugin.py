@@ -99,9 +99,15 @@ def _tool_decorator_impl(
 ) -> Callable[[ToolFunction], ToolEntry]:
     def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
         if not param.annotation.__name__ == "Optional":
-            return _ResolvedToolParameterTyped(t=param.annotation, is_optional=False)
+            return _ResolvedToolParameterTyped(
+                t=param.annotation,
+                is_optional=False,
+            )
         else:
-            return _ResolvedToolParameterTyped(t=get_args(param.annotation)[0], is_optional=True)
+            return _ResolvedToolParameterTyped(
+                t=get_args(param.annotation)[0],
+                is_optional=True,
+            )
 
     def _ensure_valid_tool_signature(func: ToolFunction) -> None:
         signature = inspect.signature(func)
