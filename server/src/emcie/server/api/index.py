@@ -1,12 +1,19 @@
 from datetime import datetime
-from typing import Literal, Optional, Sequence, TypeAlias, TypedDict, Union, cast
+from typing import Optional, Sequence, cast
 from fastapi import APIRouter, HTTPException, status
 
+from emcie.server.api.common import (
+    CoherenceCheckDTO,
+    ConnectionKindDTO,
+    ConnectionPropositionDTO,
+    EvaluationStatusDTO,
+    InvoiceDataDTO,
+    InvoiceGuidelineDataDTO,
+    PayloadDTO,
+)
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.evaluations import (
-    CoherenceCheckKind,
-    ConnectionPropositionKind,
     EvaluationId,
     EvaluationStatus,
     EvaluationStore,
@@ -23,8 +30,6 @@ from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     EvaluationValidationError,
 )
 
-EvaluationStatusDTO = Literal["pending", "running", "completed", "failed"]
-
 
 def _evaluation_status_to_dto(
     status: EvaluationStatus,
@@ -40,9 +45,6 @@ def _evaluation_status_to_dto(
     )
 
 
-ConnectionKindDTO = Literal["entails", "suggests"]
-
-
 def _connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
     return cast(
         ConnectionKindDTO,
@@ -51,18 +53,6 @@ def _connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
             ConnectionKind.SUGGESTS: "suggests",
         }[kind],
     )
-
-
-PayloadKindDTO = Literal["guideline"]
-
-
-class GuidelinePayloadDTO(TypedDict):
-    kind: PayloadKindDTO
-    predicate: str
-    action: str
-
-
-PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]
 
 
 def _payload_from_dto(dto: PayloadDTO) -> Payload:
@@ -86,36 +76,44 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     }[descriptor.kind]
 
 
-class CoherenceCheckDTO(DefaultBaseModel):
-    kind: CoherenceCheckKind
-    first: GuidelineContent
-    second: GuidelineContent
-    issue: str
-    severity: int
-
-
-class ConnectionPropositionDTO(DefaultBaseModel):
-    check_kind: ConnectionPropositionKind
-    source: GuidelineContent
-    target: GuidelineContent
-    connection_kind: ConnectionKindDTO
-
-
-class InvoiceGuidelineDataDTO(DefaultBaseModel):
-    coherence_checks: list[CoherenceCheckDTO]
-    connection_propositions: Optional[list[ConnectionPropositionDTO]]
-
-
-InvoiceDataDTO: TypeAlias = Union[InvoiceGuidelineDataDTO]
-
-
-class CreateEvaluationRequest(DefaultBaseModel):
-    agent_id: AgentId
-    payloads: Sequence[PayloadDTO]
-
-
-class CreateEvaluationResponse(DefaultBaseModel):
-    evaluation_id: EvaluationId
+def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
+    return {
+        PayloadKind.GUIDELINE: InvoiceGuidelineDataDTO(
+            coherence_checks=[
+                CoherenceCheckDTO(
+                    kind=c.kind,
+                    first=GuidelineContent(
+                        predicate=c.first.predicate,
+                        action=c.first.action,
+                    ),
+                    second=GuidelineContent(
+                        predicate=c.second.predicate,
+                        action=c.second.action,
+                    ),
+                    issue=c.issue,
+                    severity=c.severity,
+                )
+                for c in invoice_data.coherence_checks
+            ],
+            connection_propositions=[
+                ConnectionPropositionDTO(
+                    check_kind=c.check_kind,
+                    source=GuidelineContent(
+                        predicate=c.source.predicate,
+                        action=c.source.action,
+                    ),
+                    target=GuidelineContent(
+                        predicate=c.target.predicate,
+                        action=c.target.action,
+                    ),
+                    connection_kind=_connection_kind_to_dto(c.connection_kind),
+                )
+                for c in invoice_data.connection_propositions
+            ]
+            if invoice_data.connection_propositions
+            else None,
+        )
+    }[kind]
 
 
 class InvoiceDTO(DefaultBaseModel):
@@ -126,32 +124,13 @@ class InvoiceDTO(DefaultBaseModel):
     error: Optional[str]
 
 
-def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
-    return {
-        PayloadKind.GUIDELINE: InvoiceGuidelineDataDTO(
-            coherence_checks=[
-                CoherenceCheckDTO(
-                    kind=c.kind,
-                    first=c.first,
-                    second=c.second,
-                    issue=c.issue,
-                    severity=c.severity,
-                )
-                for c in invoice_data.coherence_checks
-            ],
-            connection_propositions=[
-                ConnectionPropositionDTO(
-                    check_kind=c.check_kind,
-                    source=c.source,
-                    target=c.target,
-                    connection_kind=_connection_kind_to_dto(c.connection_kind),
-                )
-                for c in invoice_data.connection_propositions
-            ]
-            if invoice_data.connection_propositions
-            else None,
-        )
-    }[kind]
+class CreateEvaluationRequest(DefaultBaseModel):
+    agent_id: AgentId
+    payloads: Sequence[PayloadDTO]
+
+
+class CreateEvaluationResponse(DefaultBaseModel):
+    evaluation_id: EvaluationId
 
 
 class ReadEvaluationResponse(DefaultBaseModel):
