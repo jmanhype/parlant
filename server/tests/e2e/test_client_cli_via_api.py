@@ -7,7 +7,7 @@ from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
-    _TestContext,
+    ContextOfTest,
     load_active_agent,
     run_server,
 )
@@ -16,7 +16,7 @@ REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 
 async def test_that_a_term_can_be_created_with_synonyms(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_name: str = DEFAULT_AGENT_NAME,
 ) -> None:
     term_name = "guideline"
@@ -71,7 +71,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
 
 
 async def test_that_a_term_can_be_created_without_synonyms(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_name: str = DEFAULT_AGENT_NAME,
 ) -> None:
     term_name = "guideline_no_synonyms"
@@ -125,7 +125,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
 
 
 async def test_that_terms_can_be_listed(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_name: str = DEFAULT_AGENT_NAME,
 ) -> None:
     guideline_term_name = "guideline"
@@ -201,7 +201,7 @@ async def test_that_terms_can_be_listed(
 
 
 async def test_that_a_term_can_be_deleted(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_name: str = DEFAULT_AGENT_NAME,
 ) -> None:
     name = "guideline_delete"
@@ -274,7 +274,7 @@ async def test_that_a_term_can_be_deleted(
 
 
 async def test_that_terms_are_loaded_on_server_startup(
-    context: _TestContext,
+    context: ContextOfTest,
     agent_name: str = DEFAULT_AGENT_NAME,
 ) -> None:
     term_name = "guideline_no_synonyms"
