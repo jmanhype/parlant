@@ -226,3 +226,56 @@ async def test_that_connection_between_existing_guideline_is_created(
 
     assert connection.source == existing_guideline.id
     assert connection.target == guideline["id"]
+
+
+async def test_that_a_guideline_can_be_read_by_id(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    existing_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks about the weather",
+        action="provide the current weather update",
+    )
+
+    read_response = client.get(f"/guidelines/{agent_id}/{existing_guideline.id}")
+    assert read_response.status_code == status.HTTP_200_OK
+
+    read_guideline = read_response.json()
+    assert read_guideline["guideline_set"] == agent_id
+    assert read_guideline["id"] == existing_guideline.id
+    assert read_guideline["predicate"] == "the user asks about the weather"
+    assert read_guideline["action"] == "provide the current weather update"
+
+
+async def test_that_guidelines_can_be_listed_for_an_agent(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    first = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks about the weather",
+        action="provide the current weather update",
+    )
+
+    second = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks about pizza",
+        action="provide what pizza is made of",
+    )
+
+    response = client.get(f"/guidelines/{agent_id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    guidelines = response.json()["guidelines"]
+    assert len(guidelines) == 2
+
+    ids = [g["id"] for g in guidelines]
+
+    assert first.id in ids
+    assert second.id in ids

@@ -22,7 +22,7 @@ from emcie.server.core.guidelines import GuidelineContent, GuidelineId, Guidelin
 from emcie.server.core.mc import MC
 
 
-class GuidelineDTO(TypedDict):
+class GuidelineDTO(DefaultBaseModel):
     id: GuidelineId
     guideline_set: str
     predicate: str
@@ -56,6 +56,10 @@ class DeleteGuidelineRequest(DefaultBaseModel):
 
 class DeleteGuidelineResponse(DefaultBaseModel):
     deleted_guideline_id: Optional[GuidelineId]
+
+
+class ListGuidelinesResponse(DefaultBaseModel):
+    guidelines: list[GuidelineDTO]
 
 
 def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
@@ -159,6 +163,36 @@ def create_router(
             guidelines=[
                 GuidelineDTO(
                     guideline_set=request.agent_id,
+                    id=g.id,
+                    predicate=g.content.predicate,
+                    action=g.content.action,
+                )
+                for g in guidelines
+            ]
+        )
+
+    @router.get("/{agent_id}/{guideline_id}")
+    async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
+        guideline = await guideline_store.read_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
+        return GuidelineDTO(
+            guideline_set=agent_id,
+            id=guideline.id,
+            predicate=guideline.content.predicate,
+            action=guideline.content.action,
+        )
+
+    @router.get("/{agent_id}")
+    async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
+        guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
+
+        return ListGuidelinesResponse(
+            guidelines=[
+                GuidelineDTO(
+                    guideline_set=agent_id,
                     id=g.id,
                     predicate=g.content.predicate,
                     action=g.content.action,
