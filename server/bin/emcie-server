@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import os
 from fastapi import FastAPI
-from lagom import Container
+from lagom import Container, Singleton
 from typing import Any, AsyncIterator, Awaitable, Callable
 import click
 import click_completion
@@ -26,6 +26,8 @@ from emcie.server.api.app import create_app
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentDocumentStore, AgentStore
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from emcie.server.core.emission.event_publisher import EventPublisherFactory
+from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStatus, EvaluationStore
 from emcie.server.core.guideline_connections import (
@@ -152,7 +154,12 @@ async def load_tools(c: Container, config: Any) -> None:
             name = str(service["name"])
             url = str(service["url"])
 
-            client = PluginClient(url)
+            client = PluginClient(
+                url=url,
+                event_emitter_factory=c[EventEmitterFactory],
+                correlator=CORRELATOR,
+            )
+
             await EXIT_STACK.enter_async_context(client)
 
             MULTIPLEXED_TOOL_SERVICE.add_service(name, client)
@@ -290,6 +297,8 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             c[GuidelineConnectionProposer],
             c[CoherenceChecker],
         )
+
+        c[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
         c[Engine] = AlphaEngine
 

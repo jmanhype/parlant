@@ -11,6 +11,8 @@ from emcie.server.adapters.nlp.openai import GPT_4o, GPT_4o_Mini, OpenAITextEmbe
 from emcie.server.api.app import create_app
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from emcie.server.core.emission.event_publisher import EventPublisherFactory
+from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
 from emcie.server.core.nlp.embedding import EmbedderFactory
@@ -117,7 +119,7 @@ async def container() -> AsyncIterator[Container]:
     container[MessageEventProducer] = Singleton(MessageEventProducer)
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
-
+    container[EventEmitterFactory] = Singleton(EventPublisherFactory)
     container[Engine] = AlphaEngine
 
     with tempfile.TemporaryDirectory() as chroma_db_dir:

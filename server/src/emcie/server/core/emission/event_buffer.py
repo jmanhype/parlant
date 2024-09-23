@@ -1,8 +1,13 @@
 from typing import cast
 
 from emcie.common.types.common import JSONSerializable
-from emcie.server.core.emissions import EmittedEvent, EventEmitter
-from emcie.server.core.sessions import MessageEventData, StatusEventData, ToolEventData
+from emcie.server.core.emissions import EmittedEvent, EventEmitter, EventEmitterFactory
+from emcie.server.core.sessions import (
+    MessageEventData,
+    SessionId,
+    StatusEventData,
+    ToolEventData,
+)
 
 
 class EventBuffer(EventEmitter):
@@ -56,3 +61,9 @@ class EventBuffer(EventEmitter):
         self.events.append(event)
 
         return event
+
+
+class EventBufferFactory(EventEmitterFactory):
+    def create_event_emitter(self, session_id: SessionId) -> EventEmitter:
+        _ = session_id
+        return EventBuffer()

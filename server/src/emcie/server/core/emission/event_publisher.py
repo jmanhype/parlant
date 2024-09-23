@@ -1,7 +1,7 @@
 from typing import cast
 
 from emcie.common.types.common import JSONSerializable
-from emcie.server.core.emissions import EmittedEvent, EventEmitter
+from emcie.server.core.emissions import EmittedEvent, EventEmitter, EventEmitterFactory
 from emcie.server.core.sessions import (
     MessageEventData,
     SessionId,
@@ -79,3 +79,11 @@ class EventPublisher(EventEmitter):
             correlation_id=event.correlation_id,
             data=event.data,
         )
+
+
+class EventPublisherFactory(EventEmitterFactory):
+    def __init__(self, session_store: SessionStore) -> None:
+        self._session_store = session_store
+
+    def create_event_emitter(self, session_id: SessionId) -> EventEmitter:
+        return EventPublisher(self._session_store, session_id)

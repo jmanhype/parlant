@@ -3,9 +3,11 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import inspect
+import json
 from types import TracebackType
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     NamedTuple,
@@ -18,6 +20,7 @@ from typing import (
     overload,
 )
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -207,10 +210,6 @@ class CallToolRequest(BaseModel):
     arguments: dict[str, _ToolParameterType]
 
 
-class CallToolResponse(BaseModel):
-    result: object
-
-
 class PluginServer:
     def __init__(
         self,
@@ -292,14 +291,82 @@ class PluginServer:
         async def call_tool(
             tool_id: ToolId,
             request: CallToolRequest,
-        ) -> CallToolResponse:
-            context = ToolContext(session_id=request.session_id)
+        ) -> StreamingResponse:
+            end = asyncio.Event()
+            chunks_received = asyncio.Semaphore(value=0)
+            lock = asyncio.Lock()
+            chunks: list[str] = []
+
+            async def chunk_generator(
+                result_future: Awaitable[ToolResult],
+            ) -> AsyncIterator[str]:
+                while True:
+                    end_future = asyncio.ensure_future(end.wait())
+                    chunks_received_future = asyncio.ensure_future(chunks_received.acquire())
+
+                    await asyncio.wait(
+                        [end_future, chunks_received_future],
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+
+                    if chunks_received_future.done():
+                        async with lock:
+                            next_chunk = chunks.pop(0)
+                        yield next_chunk
+                        # proceed to next potential acquire/end,
+                        # skipping the end-check, otherwise
+                        # we may skip emitted chunks.
+                        continue
+                    else:
+                        # Release the acquire we performed to skip it
+                        chunks_received.release()
+                        await chunks_received_future
+
+                    if end_future.done():
+                        try:
+                            result = await result_future
+
+                            final_result_chunk = json.dumps(
+                                {
+                                    "data": result.data,
+                                    "metadata": result.metadata,
+                                }
+                            )
+
+                            yield final_result_chunk
+                        except Exception as exc:
+                            yield json.dumps({"error": str(exc)})
+
+                        return
+                    else:
+                        end_future.cancel()
+                        await asyncio.gather(end_future, return_exceptions=True)
+
+            async def emit_message(message: str) -> None:
+                async with lock:
+                    chunks.append(json.dumps({"message": message}))
+                chunks_received.release()
+
+            context = ToolContext(
+                session_id=request.session_id,
+                emit_message=emit_message,
+            )
 
             result = self.tools[tool_id].function(context, **request.arguments)  # type: ignore
 
-            if inspect.isawaitable(result):
-                result = await result
+            result_future: asyncio.Future[ToolResult]
 
-            return CallToolResponse(result=result)
+            if inspect.isawaitable(result):
+                result_future = asyncio.ensure_future(result)
+            else:
+                result_future = asyncio.Future[ToolResult]()
+                result_future.set_result(result)
+
+            result_future.add_done_callback(lambda _: end.set())
+
+            return StreamingResponse(
+                content=chunk_generator(result_future),
+                media_type="text/plain",
+            )
 
         return app

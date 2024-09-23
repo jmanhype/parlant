@@ -9,7 +9,7 @@ from lagom import Container
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
-from emcie.server.core.emission.event_publisher import EventPublisher
+from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
     Event,
@@ -34,6 +34,8 @@ class MC:
         self._session_store = container[SessionStore]
         self._session_listener = container[SessionListener]
         self._engine = container[Engine]
+        self._event_emitter_factory = container[EventEmitterFactory]
+
         self._tasks_by_session = dict[SessionId, TaskQueue]()
         self._lock = asyncio.Lock()
         self._last_garbage_collection = 0.0
@@ -168,15 +170,12 @@ class MC:
             )
 
     async def _process_session(self, session: Session) -> None:
-        publisher = EventPublisher(
-            session_store=self._session_store,
-            session_id=session.id,
-        )
+        event_emitter = self._event_emitter_factory.create_event_emitter(session.id)
 
         await self._engine.process(
             Context(
                 session_id=session.id,
                 agent_id=session.agent_id,
             ),
-            event_emitter=publisher,
+            event_emitter=event_emitter,
         )
