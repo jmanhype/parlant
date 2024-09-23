@@ -32,7 +32,7 @@ from emcie.server.core.engines.alpha.message_event_producer import MessageEventP
 from emcie.server.core.engines.alpha.tool_event_producer import ToolEventProducer
 from emcie.server.core.engines.alpha.utils import context_variables_to_json
 from emcie.server.core.engines.types import Context, Engine
-from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
+from emcie.server.core.emissions import EventEmitter, EmittedEvent
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.logging import Logger
 

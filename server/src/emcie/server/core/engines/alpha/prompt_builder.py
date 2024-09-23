@@ -16,7 +16,7 @@ from emcie.server.core.engines.alpha.utils import (
     events_to_json,
     emitted_tool_events_to_dicts,
 )
-from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 
 
 class BuiltInSection(Enum):

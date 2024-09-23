@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import dateutil.parser
 from types import TracebackType
 from typing import Mapping, Optional, Sequence
@@ -7,12 +8,22 @@ from urllib.parse import urljoin
 
 from emcie.common.tools import Tool, ToolId, ToolResult, ToolContext
 from emcie.server.core.common import JSONSerializable
+from emcie.server.core.contextual_correlator import ContextualCorrelator
+from emcie.server.core.emissions import EventEmitterFactory
+from emcie.server.core.sessions import SessionId
 from emcie.server.core.tools import ToolExecutionError, ToolService
 
 
 class PluginClient(ToolService):
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        event_emitter_factory: EventEmitterFactory,
+        correlator: ContextualCorrelator,
+    ) -> None:
         self.url = url
+        self._event_emitter_factory = event_emitter_factory
+        self._correlator = correlator
 
     async def __aenter__(self) -> PluginClient:
         self._http_client = await httpx.AsyncClient(
@@ -66,20 +77,43 @@ class PluginClient(ToolService):
         context: ToolContext,
         arguments: Mapping[str, JSONSerializable],
     ) -> ToolResult:
-        response = await self._http_client.post(
-            self._get_url(f"/tools/{tool_id}/calls"),
-            json={
-                "session_id": context.session_id,
-                "arguments": arguments,
-            },
-        )
+        try:
+            async with self._http_client.stream(
+                method="post",
+                url=self._get_url(f"/tools/{tool_id}/calls"),
+                json={
+                    "session_id": context.session_id,
+                    "arguments": arguments,
+                },
+            ) as response:
+                if response.is_error:
+                    raise ToolExecutionError(tool_id)
 
-        if response.is_error:
-            raise ToolExecutionError(tool_id)
+                event_emitter = self._event_emitter_factory.create_event_emitter(
+                    session_id=SessionId(context.session_id),
+                )
 
-        content = response.json()
+                async for chunk in response.aiter_text():
+                    chunk_dict = json.loads(chunk)
 
-        return ToolResult(**content["result"])
+                    if "data" and "metadata" in chunk_dict:
+                        return ToolResult(
+                            data=chunk_dict["data"],
+                            metadata=chunk_dict["metadata"],
+                        )
+                    elif "message" in chunk_dict:
+                        await event_emitter.emit_message_event(
+                            correlation_id=self._correlator.correlation_id,
+                            data={"message": chunk_dict["message"]},
+                        )
+                    elif "error" in chunk_dict:
+                        raise ToolExecutionError(tool_id, chunk_dict["error"])
+                    else:
+                        raise ToolExecutionError(tool_id, f"Unexpected chunk dict: {chunk_dict}")
+        except Exception as exc:
+            raise ToolExecutionError(tool_id) from exc
+
+        raise ToolExecutionError(tool_id, "Unexpected response (no result chunk)")
 
     def _get_url(self, path: str) -> str:
         return urljoin(f"{self.url}", path)

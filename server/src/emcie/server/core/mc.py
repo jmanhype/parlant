@@ -3,82 +3,25 @@ import asyncio
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Any, Mapping, Optional, Sequence, Type, TypeAlias, cast
+from typing import Any, Mapping, Optional, Sequence, Type, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import JSONSerializable
+from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import (
     Event,
     EventKind,
     EventSource,
-    MessageEventData,
     Session,
     SessionId,
     SessionListener,
     SessionStore,
-    StatusEventData,
-    ToolEventData,
 )
 from emcie.server.core.engines.types import Context, Engine
-from emcie.server.core.engines.emission import EventEmitter, EmittedEvent
 from emcie.server.core.logging import Logger
-
-
-class EventBuffer(EventEmitter):
-    def __init__(self) -> None:
-        self.events: list[EmittedEvent] = []
-
-    async def emit_status_event(
-        self,
-        correlation_id: str,
-        data: StatusEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="status",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
-
-    async def emit_message_event(
-        self,
-        correlation_id: str,
-        data: MessageEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="message",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
-
-    async def emit_tool_event(
-        self,
-        correlation_id: str,
-        data: ToolEventData,
-    ) -> EmittedEvent:
-        event = EmittedEvent(
-            source="server",
-            kind="tool",
-            correlation_id=correlation_id,
-            data=cast(JSONSerializable, data),
-        )
-
-        self.events.append(event)
-
-        return event
 
 
 TaskQueue: TypeAlias = list[asyncio.Task[None]]
@@ -91,6 +34,8 @@ class MC:
         self._session_store = container[SessionStore]
         self._session_listener = container[SessionListener]
         self._engine = container[Engine]
+        self._event_emitter_factory = container[EventEmitterFactory]
+
         self._tasks_by_session = dict[SessionId, TaskQueue]()
         self._lock = asyncio.Lock()
         self._last_garbage_collection = 0.0
@@ -225,34 +170,12 @@ class MC:
             )
 
     async def _process_session(self, session: Session) -> None:
-        emitter = EventBuffer()
+        event_emitter = self._event_emitter_factory.create_event_emitter(session.id)
 
         await self._engine.process(
             Context(
                 session_id=session.id,
                 agent_id=session.agent_id,
             ),
-            emitter,
+            event_emitter=event_emitter,
         )
-
-        await self._add_events_to_session(
-            session_id=session.id,
-            events=emitter.events,
-        )
-
-    async def _add_events_to_session(
-        self,
-        session_id: SessionId,
-        events: Sequence[EmittedEvent],
-    ) -> None:
-        utc_now = datetime.now(timezone.utc)
-
-        for e in events:
-            await self._session_store.create_event(
-                session_id=session_id,
-                source=e.source,
-                kind=e.kind,
-                data=e.data,
-                correlation_id=e.correlation_id,
-                creation_utc=utc_now,
-            )

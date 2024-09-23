@@ -10,7 +10,7 @@ from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.terminology import Term
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
-from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.logging import Logger
 

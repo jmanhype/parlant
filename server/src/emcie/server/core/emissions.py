@@ -6,6 +6,7 @@ from emcie.server.core.sessions import (
     EventKind,
     EventSource,
     MessageEventData,
+    SessionId,
     StatusEventData,
     ToolEventData,
 )
@@ -40,3 +41,11 @@ class EventEmitter(ABC):
         correlation_id: str,
         data: ToolEventData,
     ) -> EmittedEvent: ...
+
+
+class EventEmitterFactory(ABC):
+    @abstractmethod
+    def create_event_emitter(
+        self,
+        session_id: SessionId,
+    ) -> EventEmitter: ...

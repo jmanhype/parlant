@@ -3,7 +3,7 @@ from pytest_bdd import given, then, parsers
 
 from emcie.common.tools import ToolId
 from emcie.server.core.engines.alpha.utils import emitted_tool_event_to_dict
-from emcie.server.core.engines.emission import EmittedEvent
+from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.logging import Logger
 from emcie.server.core.sessions import (
     MessageEventData,

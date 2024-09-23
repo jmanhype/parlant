@@ -14,7 +14,7 @@ from emcie.server.core.engines.alpha.prompt_builder import (
     SectionStatus,
 )
 from emcie.server.core.terminology import Term
-from emcie.server.core.engines.emission import EmittedEvent, EventEmitter
+from emcie.server.core.emissions import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.logging import Logger
