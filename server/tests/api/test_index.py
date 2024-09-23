@@ -31,6 +31,8 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
                     "action": "greet them back with 'Hello'",
                 }
             ],
+            "check": True,
+            "index": True,
         },
     )
 
@@ -74,6 +76,8 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "action": "greet them back with 'Hola'",
                     },
                 ],
+                "check": True,
+                "index": True,
             },
         )
         .raise_for_status()
@@ -103,6 +107,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "action": "greet them back with 'Hello'",
                     }
                 ],
+                "check": True,
+                "index": True,
             },
         )
         .raise_for_status()
@@ -143,6 +149,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "action": "greet them back with 'Hola'",
                     },
                 ],
+                "check": True,
+                "index": True,
             },
         )
         .raise_for_status()
@@ -188,6 +196,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "action": "mention the best time to go for a walk",
                     }
                 ],
+                "check": True,
+                "index": True,
             },
         )
         .raise_for_status()
@@ -238,6 +248,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "action": "highlight the one with the best reviews",
                     },
                 ],
+                "check": True,
+                "index": True,
             },
         )
         .raise_for_status()
@@ -288,6 +300,8 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
                 duplicate_payload,
                 duplicate_payload,
             ],
+            "check": True,
+            "index": True,
         },
     )
 
@@ -324,6 +338,8 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
             "payloads": [
                 duplicate_payload,
             ],
+            "check": True,
+            "index": True,
         },
     )
 
@@ -375,6 +391,8 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
                 "action": "provide a weather update",
             },
         ],
+        "check": True,
+        "index": True,
     }
 
     first_evaluation_id = (
@@ -391,3 +409,143 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
 
     assert content["status"] == "failed"
     assert content["error"] == f"An evaluation task '{first_evaluation_id}' is already running."
+
+
+async def test_that_evaluation_task_with_payload_containing_contradictions_is_approved_when_check_flag_is_false(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "agent_id": agent_id,
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "predicate": "the user greets you",
+                        "action": "ignore the user",
+                    },
+                    {
+                        "kind": "guideline",
+                        "predicate": "the user greets you",
+                        "action": "greet them back with 'Hello'",
+                    },
+                ],
+                "check": False,
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "completed"
+    assert len(content["invoices"]) == 2
+
+    for invoice in content["invoices"]:
+        assert invoice["approved"]
+
+
+async def test_that_evaluation_task_skips_proposing_guideline_connections_when_index_flag_is_false(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "agent_id": agent_id,
+                "index": False,
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "predicate": "the user asks for help",
+                        "action": "provide assistance",
+                    },
+                    {
+                        "kind": "guideline",
+                        "predicate": "provide assistance",
+                        "action": "offer support resources",
+                    },
+                ],
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    assert content["status"] == "completed"
+
+    assert len(content["invoices"]) == 2
+
+    assert content["invoices"][0]["data"]
+    assert content["invoices"][0]["data"]["connection_propositions"] is None
+
+    assert content["invoices"][1]["data"]
+    assert content["invoices"][1]["data"]["connection_propositions"] is None
+
+
+async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_indexing_when_check_and_index_flags_are_false(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    evaluation_id = (
+        client.post(
+            "/index/evaluations",
+            json={
+                "agent_id": agent_id,
+                "check": False,
+                "index": False,
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "predicate": "the user says 'goodbye'",
+                        "action": "say 'farewell'",
+                    },
+                    {
+                        "kind": "guideline",
+                        "predicate": "the user says 'goodbye'",
+                        "action": "ignore the user",
+                    },
+                    {
+                        "kind": "guideline",
+                        "predicate": "ignoring the user",
+                        "action": "say that your favorite pizza topping is pineapple.",
+                    },
+                ],
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    assert content["status"] == "completed"
+
+    assert len(content["invoices"]) == 3
+
+    assert content["invoices"][0]["approved"]
+    assert content["invoices"][0]["data"]
+    assert content["invoices"][0]["data"]["coherence_checks"] == []
+    assert content["invoices"][0]["data"]["connection_propositions"] is None
+
+    assert content["invoices"][1]["approved"]
+    assert content["invoices"][1]["data"]
+    assert content["invoices"][1]["data"]["coherence_checks"] == []
+    assert content["invoices"][1]["data"]["connection_propositions"] is None
+
+    assert content["invoices"][2]["approved"]
+    assert content["invoices"][2]["data"]
+    assert content["invoices"][2]["data"]["coherence_checks"] == []
+    assert content["invoices"][2]["data"]["connection_propositions"] is None

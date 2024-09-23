@@ -54,21 +54,31 @@ class GuidelineEvaluator:
         self,
         agent: Agent,
         payloads: Sequence[Payload],
+        check: bool,
+        index: bool,
     ) -> Sequence[InvoiceGuidelineData]:
         guidelines_to_evaluate = [p.content for p in payloads]
 
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
-        coherence_checks = await self._check_payloads_coherence(
-            guidelines_to_evaluate,
-            existing_guidelines,
+        coherence_checks = (
+            await self._check_payloads_coherence(
+                guidelines_to_evaluate,
+                existing_guidelines,
+            )
+            if check
+            else []
         )
 
         if not coherence_checks:
-            connection_propositions = await self._propose_payloads_connections(
-                agent,
-                guidelines_to_evaluate,
-                existing_guidelines,
+            connection_propositions = (
+                await self._propose_payloads_connections(
+                    agent,
+                    guidelines_to_evaluate,
+                    existing_guidelines,
+                )
+                if index
+                else None
             )
 
             if connection_propositions:
@@ -272,18 +282,22 @@ class BehavioralChangeEvaluator:
         self,
         agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
+        check: bool,
+        index: bool,
     ) -> EvaluationId:
         await self.validate_payloads(agent, payload_descriptors)
 
         evaluation = await self._evaluation_store.create_evaluation(agent.id, payload_descriptors)
 
-        asyncio.create_task(self.run_evaluation(evaluation))
+        asyncio.create_task(self.run_evaluation(evaluation, check, index))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
         evaluation: Evaluation,
+        check: bool,
+        index: bool,
     ) -> None:
         self._logger.info(f"Starting evaluation task '{evaluation.id}'")
 
@@ -312,6 +326,8 @@ class BehavioralChangeEvaluator:
                     for invoice in evaluation.invoices
                     if invoice.kind == PayloadKind.GUIDELINE
                 ],
+                check=check,
+                index=index,
             )
 
             invoices: list[Invoice] = []

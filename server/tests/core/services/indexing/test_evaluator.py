@@ -40,6 +40,8 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
                 ),
             )
         ],
+        check=True,
+        index=True,
     )
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
@@ -67,6 +69,8 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
                 ),
             )
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -111,6 +115,8 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
                 ),
             )
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -155,6 +161,8 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
                 ),
             )
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -202,6 +210,8 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                 ),
             ),
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -251,6 +261,8 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                 ),
             ),
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -297,6 +309,8 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                 ),
             ),
         ],
+        check=True,
+        index=True,
     )
 
     second_payloads = [
@@ -313,6 +327,8 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     second_evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
         payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in second_payloads],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -346,6 +362,8 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
                     duplicate_payload,
                 ]
             ],
+            check=True,
+            index=True,
         )
         await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
@@ -379,6 +397,8 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                     ),
                 )
             ],
+            check=True,
+            index=True,
         )
         await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
@@ -415,6 +435,8 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
                 ),
             )
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -472,6 +494,8 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                 ),
             ),
         ],
+        check=True,
+        index=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)

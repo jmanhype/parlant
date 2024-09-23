@@ -127,6 +127,8 @@ class InvoiceDTO(DefaultBaseModel):
 class CreateEvaluationRequest(DefaultBaseModel):
     agent_id: AgentId
     payloads: Sequence[PayloadDTO]
+    check: bool = True
+    index: bool = True
 
 
 class CreateEvaluationResponse(DefaultBaseModel):
@@ -158,6 +160,8 @@ def create_router(
                     PayloadDescriptor(PayloadKind.GUIDELINE, p)
                     for p in [_payload_from_dto(p) for p in request.payloads]
                 ],
+                check=request.check,
+                index=request.index,
             )
 
         except EvaluationValidationError as exc:
