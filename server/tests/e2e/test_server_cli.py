@@ -8,13 +8,13 @@ from emcie.common.tools import ToolContext, ToolResult
 from emcie.common.plugin import PluginServer, tool
 
 from emcie.server.core.async_utils import Timeout
+from emcie.server.core.agents import Agent
+
 from tests.e2e.test_utilities import (
-    DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
     _Guideline,
     ContextOfTest,
     find_guideline,
-    load_active_agent,
     read_guideline_config,
     read_loaded_guidelines,
     run_server,
@@ -28,14 +28,37 @@ REASONABLE_AMOUNT_OF_TIME = 5
 EXTENDED_AMOUNT_OF_TIME = 10
 
 
+async def get_first_agent() -> Agent:
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=httpx.Timeout(30),
+    ) as client:
+        try:
+            agents_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/",
+            )
+            agents_response.raise_for_status()
+
+            assert len(agents_response.json()["agents"]) > 0
+            agent = agents_response.json()["agents"][0]
+
+            return Agent(
+                id=agent["id"],
+                name=agent["name"],
+                description=agent["description"],
+                creation_utc=agent["creation_utc"],
+            )
+        except:
+            traceback.print_exc()
+            raise
+
+
 async def get_agent_replies(
     context: ContextOfTest,
     message: str,
     number_of_replies_to_expect: int,
-    agent_name: str = DEFAULT_AGENT_NAME,
+    agent: Agent,
 ) -> list[str]:
-    agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
-
     async with httpx.AsyncClient(
         follow_redirects=True,
         timeout=httpx.Timeout(30),
@@ -45,7 +68,7 @@ async def get_agent_replies(
                 f"{SERVER_ADDRESS}/sessions",
                 json={
                     "end_user_id": "test_user",
-                    "agent_id": agent["id"],
+                    "agent_id": agent.id,
                 },
             )
             session_creation_response.raise_for_status()
@@ -125,9 +148,12 @@ async def test_that_the_server_hot_reloads_guideline_changes(
 
         assert find_guideline(new_guideline, within=loaded_guidelines)
 
+        agent = await get_first_agent()
+
         agent_replies = await get_agent_replies(
             context,
             message="what are bananas?",
+            agent=agent,
             number_of_replies_to_expect=1,
         )
 
@@ -177,13 +203,14 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
             with run_server(context, extra_args=["--no-index", "--force"]):
                 await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
+                agent = await get_first_agent()
+
                 agent_replies = await get_agent_replies(
                     context,
                     message="Hello",
+                    agent=agent,
                     number_of_replies_to_expect=2,
                 )
-
-                assert len(agent_replies) == 2
 
                 assert await nlp_test(
                     context.logger,
@@ -207,9 +234,12 @@ async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_n
     with run_server(context, extra_args=["--no-index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
+        agent = await get_first_agent()
+
         agent_replies = await get_agent_replies(
             context,
             message="Hello",
+            agent=agent,
             number_of_replies_to_expect=1,
         )
 
@@ -226,9 +256,12 @@ async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_t
     with run_server(context, extra_args=["--index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
+        agent = await get_first_agent()
+
         agent_replies = await get_agent_replies(
             context,
             message="Hello",
+            agent=agent,
             number_of_replies_to_expect=1,
         )
 
@@ -285,9 +318,12 @@ async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_st
 
         assert not context.index_file.exists()
 
+        agent = await get_first_agent()
+
         agent_replies = await get_agent_replies(
             context,
             message="what are bananas?",
+            agent=agent,
             number_of_replies_to_expect=1,
         )
 
@@ -324,9 +360,12 @@ async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to
 
         await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
 
+        agent = await get_first_agent()
+
         agent_replies = await get_agent_replies(
             context,
             message="what are bananas?",
+            agent=agent,
             number_of_replies_to_expect=1,
         )
 
@@ -343,21 +382,22 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
     with run_server(context) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
+        agent = await get_first_agent()
+
         payloads = {
+            "agent_id": agent.id,
             "payloads": [
                 {
                     "kind": "guideline",
-                    "guideline_set": "test-agent",
                     "predicate": "the user greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 {
                     "kind": "guideline",
-                    "guideline_set": "test-agent",
                     "predicate": "the user greeting you",
                     "action": "greet them back with 'Hola'",
                 },
-            ]
+            ],
         }
         async with httpx.AsyncClient(
             follow_redirects=True,

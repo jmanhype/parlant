@@ -3,8 +3,10 @@
 
 import asyncio
 from dataclasses import dataclass
+from itertools import chain
 import os
-from typing import Any, Optional
+import time
+from typing import Any, Optional, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -14,6 +16,11 @@ import rich
 from rich.text import Text
 from tabulate import tabulate
 from textwrap import wrap
+
+from emcie.server.core.services.indexing.behavioral_change_evaluation import EvaluationError
+
+# from emcie.server.core.agents import AgentId
+# from emcie.server.core.guidelines import GuidelineContent
 
 
 class Actions:
@@ -88,8 +95,101 @@ class Actions:
     def list_terms(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
         response = requests.get(urljoin(ctx.obj.server_address, f"terminology/{agent_id}"))
         response.raise_for_status()
-        print(f"DOrZO: {response.json()}")
         return response.json()  # type: ignore
+
+    @staticmethod
+    def create_guideline(
+        ctx: click.Context, agent_id: str, predicate: str, action: str, check: bool, index: bool
+    ) -> dict[str, Any]:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, "index/evaluations"),
+            json={
+                "agent_id": agent_id,
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "predicate": predicate,
+                        "action": action,
+                    }
+                ],
+                "check": check,
+                "index": index,
+            },
+        )
+        response.raise_for_status()
+        evaluation_id = response.json()["evaluation_id"]
+
+        while True:
+            time.sleep(0.15)
+            response = requests.get(
+                urljoin(ctx.obj.server_address, f"index/evaluations/{evaluation_id}")
+            )
+            response.raise_for_status()
+            evaluation = response.json()
+
+            if evaluation["status"] in ["pending", "running"]:
+                continue
+
+            if evaluation["status"] == "completed":
+                invoice = evaluation["invoices"][0]
+                if invoice["approved"]:
+                    guideline_response = requests.post(
+                        urljoin(ctx.obj.server_address, "guidelines"),
+                        json={
+                            "agent_id": agent_id,
+                            "invoices": [invoice],
+                        },
+                    )
+                    guideline_response.raise_for_status()
+
+                    if connections := invoice["data"]["connection_propositions"]:
+                        print("Connections that will be added:")
+                        for connection in connections:
+                            print(f"- {connection}")
+
+                    return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
+
+                else:
+                    raise ValueError(invoice["data"]["coherence_checks"])
+
+            elif evaluation["status"] == "failed":
+                raise EvaluationError(evaluation["error"])
+
+    @staticmethod
+    def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
+        guideline_response = requests.get(
+            urljoin(ctx.obj.server_address, f"guidelines/{agent_id}/{guideline_id}")
+        )
+        guideline_response.raise_for_status()
+
+        source_connections_response = requests.get(
+            urljoin(
+                ctx.obj.server_address,
+                f"/connections/?source_guideline_id={guideline_id}&indirect=false",
+            ),
+        )
+        source_connections_response.raise_for_status()
+
+        target_connections_response = requests.get(
+            urljoin(
+                ctx.obj.server_address,
+                f"/connections/?target_guideline_id={guideline_id}&indirect=false",
+            ),
+        )
+
+        target_connections_response.raise_for_status()
+
+        res = {
+            **guideline_response.json(),
+            "connections": list(
+                chain(
+                    source_connections_response.json()["connections"],
+                    target_connections_response.json()["connections"],
+                )
+            ),
+        }
+
+        return res
 
 
 class Interface:
@@ -252,6 +352,70 @@ class Interface:
 
         rich.print(tabulate(terms, headers="keys"))
 
+    @staticmethod
+    def create_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        try:
+            guideline = Actions.create_guideline(ctx, agent_id, predicate, action, check, index)
+            rich.print(f"Guideline created: {guideline}")
+        except ValueError as e:
+            contradictions = e.args[0]
+            rich.print("Contradictions found:")
+            for contradiction in contradictions:
+                issue = contradiction.get("issue", "No issue description provided.")
+                first = contradiction.get("first", {})
+                second = contradiction.get("second", {})
+                rich.print(f"- Issue: {issue}")
+                rich.print("  Between:")
+                rich.print(f"    - Predicate: {first['predicate']}")
+                rich.print(f"      Action: {first['action']}")
+                rich.print(f"    - Predicate: {second['predicate']}")
+                rich.print(f"      Action: {second['action']}")
+        except EvaluationError as e:
+            error_message = str(e)
+            rich.print(f"Evaluation failed: {error_message}")
+        except requests.HTTPError as e:
+            rich.print(f"HTTP error occurred: {e}")
+        except Exception as e:
+            rich.print(f"An unexpected error occurred: {e}")
+
+    @staticmethod
+    def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+        try:
+            guideline = Actions.get_guideline(ctx, agent_id, guideline_id)
+            rich.print(f"Guideline ID: {guideline['id']}")
+            rich.print(f"Guideline Set: {guideline['guideline_set']}")
+            rich.print(f"Predicate: {guideline['predicate']}")
+            rich.print(f"Action: {guideline['action']}")
+
+            if guideline["connections"]:
+                rich.print("\nConnections:")
+                rich.print(
+                    tabulate(
+                        [
+                            {
+                                "id": c["id"],  # type: ignore
+                                "source": c["source"],  # type: ignore
+                                "target": c["target"],  # type: ignore
+                                "connection_kind": c["kind"],  # type: ignore
+                            }
+                            for c in guideline["connections"]
+                        ],
+                        headers="keys",
+                        maxcolwidths=[None, None, None, None, 40],
+                    )
+                )
+        except requests.HTTPError as e:
+            rich.print(f"HTTP error occurred: {e}")
+        except Exception as e:
+            rich.print(f"An unexpected error occurred: {e}")
+
 
 async def main() -> None:
     click_completion.init()
@@ -374,6 +538,63 @@ async def main() -> None:
         agent_id: str,
     ) -> None:
         Interface.list_terms(ctx, agent_id)
+
+    @cli.group(help="Manage Guidelines")
+    def guidelines() -> None:
+        pass
+
+    @guidelines.command("add", help="Add a new guideline")
+    @click.option(
+        "--check/--no-check",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Check for contradictions between existing guidelines",
+    )
+    @click.option(
+        "--index/--no-index",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Determine if guideline connections should be indexed",
+    )
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.pass_context
+    def guideline_add(
+        ctx: click.Context,
+        check: bool,
+        index: bool,
+        agent_id: str,
+        predicate: str,
+        action: str,
+    ) -> None:
+        agent_id = agent_id if agent_id is not None else Interface.get_default_agent(ctx)
+
+        Interface.create_guideline(
+            ctx=ctx,
+            check=check,
+            index=index,
+            agent_id=agent_id,
+            predicate=predicate,
+            action=action,
+        )
+
+    @guidelines.command("view", help="View a guideline and its connections")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.argument("guideline_id", type=str)
+    @click.pass_context
+    def guideline_view(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
+        Interface.view_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+        )
 
     cli()
 

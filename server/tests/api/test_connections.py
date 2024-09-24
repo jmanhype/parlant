@@ -29,7 +29,6 @@ async def test_that_a_connection_can_be_added_between_guidelines(
     response = client.post(
         "/connections",
         json={
-            "agent_id": agent_id,
             "source_guideline_id": source.id,
             "target_guideline_id": target.id,
             "kind": "entails",

@@ -6,7 +6,6 @@ from emcie.server.api.common import (
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
-from emcie.server.core.agents import AgentId
 from emcie.server.core.guideline_connections import GuidelineConnectionId, GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.common import DefaultBaseModel
@@ -20,7 +19,6 @@ class GuidelineConnectionDTO(DefaultBaseModel):
 
 
 class AddConnectionRequest(DefaultBaseModel):
-    agent_id: AgentId
     source_guideline_id: GuidelineId
     target_guideline_id: GuidelineId
     kind: ConnectionKindDTO
