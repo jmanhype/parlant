@@ -1,5 +1,6 @@
 from itertools import chain
 import json
+import traceback
 from typing import Mapping, Optional, Sequence
 
 from emcie.common.tools import Tool
@@ -38,6 +39,11 @@ class GuidelineEvaluation(DefaultBaseModel):
     evaluation: str
     adds_value: str
     data_available: str
+
+
+class MessageGenerationError(Exception):
+    def __init__(self, message: str = "Message generation failed") -> None:
+        super().__init__(message)
 
 
 class MessageEventSchema(DefaultBaseModel):
@@ -117,19 +123,38 @@ class MessageEventProducer:
                 },
             )
 
-            if response_message := await self._generate_response_message(prompt):
-                self._logger.debug(f'Message production result: "{response_message}"')
+            generation_attempt_temperatures = {
+                0: 0.5,
+                1: 1,
+                2: 0.1,
+            }
 
-                event = await event_emitter.emit_message_event(
-                    correlation_id=self._correlator.correlation_id,
-                    data={"message": response_message},
-                )
+            last_generation_exception: Exception | None = None
 
-                return [event]
-            else:
-                self._logger.debug("Skipping response; no response deemed necessary")
+            for generation_attempt in range(3):
+                try:
+                    if response_message := await self._generate_response_message(
+                        prompt,
+                        temperature=generation_attempt_temperatures[generation_attempt],
+                    ):
+                        self._logger.debug(f'Message production result: "{response_message}"')
 
-            return []
+                        event = await event_emitter.emit_message_event(
+                            correlation_id=self._correlator.correlation_id,
+                            data={"message": response_message},
+                        )
+
+                        return [event]
+                    else:
+                        self._logger.debug("Skipping response; no response deemed necessary")
+                        return []
+                except Exception as exc:
+                    self._logger.warning(
+                        f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
+                    )
+                    last_generation_exception = exc
+
+            raise MessageGenerationError() from last_generation_exception
 
     def _format_prompt(
         self,
@@ -378,10 +403,14 @@ Example 4: Non-Adherence Due to Missing Data: ###
 
         return builder.build()
 
-    async def _generate_response_message(self, prompt: str) -> Optional[str]:
+    async def _generate_response_message(
+        self,
+        prompt: str,
+        temperature: float,
+    ) -> Optional[str]:
         message_event_response = await self._schematic_generator.generate(
             prompt=prompt,
-            hints={"temperature": 0.5},
+            hints={"temperature": temperature},
         )
 
         if not message_event_response.content.produced_reply:
