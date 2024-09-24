@@ -1,9 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Mapping, Sequence, Type
+from dataclasses import dataclass
+from typing import Generic, Optional, Sequence, Type, TypeVar
 
-from emcie.server.base_models import DefaultBaseModel
-from emcie.server.core.persistence.common import ObjectId, Where
+from emcie.server.core.persistence.common import BaseDocument, Where
+
+TDocument = TypeVar("TDocument", bound=BaseDocument)
 
 
 class DocumentDatabase(ABC):
@@ -11,8 +13,8 @@ class DocumentDatabase(ABC):
     def create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> DocumentCollection:
+        schema: Type[TDocument],
+    ) -> DocumentCollection[TDocument]:
         """
         Creates a new collection with the given name and returns the collection.
         """
@@ -22,7 +24,7 @@ class DocumentDatabase(ABC):
     def get_collection(
         self,
         name: str,
-    ) -> DocumentCollection:
+    ) -> DocumentCollection[TDocument]:
         """
         Retrieves an existing collection by its name.
         """
@@ -32,8 +34,8 @@ class DocumentDatabase(ABC):
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[DefaultBaseModel],
-    ) -> DocumentCollection:
+        schema: Type[TDocument],
+    ) -> DocumentCollection[TDocument]:
         """
         Retrieves an existing collection by its name or creates a new one if it does not exist.
         """
@@ -50,70 +52,66 @@ class DocumentDatabase(ABC):
         ...
 
 
-class DocumentCollection(ABC):
+@dataclass(frozen=True)
+class InsertResult:
+    acknowledged: bool
+
+
+@dataclass(frozen=True)
+class UpdateResult(Generic[TDocument]):
+    acknowledged: bool
+    matched_count: int
+    modified_count: int
+    updated_document: Optional[TDocument]
+
+
+@dataclass(frozen=True)
+class DeleteResult(Generic[TDocument]):
+    acknowledged: bool
+    deleted_count: int
+    deleted_document: Optional[TDocument]
+
+
+class DocumentCollection(ABC, Generic[TDocument]):
     @abstractmethod
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[Mapping[str, Any]]:
-        """
-        Finds all documents that match the given filters.
-        """
+    ) -> Sequence[TDocument]:
+        """Finds all documents that match the given filters."""
         ...
 
     @abstractmethod
     async def find_one(
         self,
         filters: Where,
-    ) -> Mapping[str, Any]:
-        """
-        Returns the first document that matches the query criteria.
-        """
+    ) -> Optional[TDocument]:
+        """Returns the first document that matches the query criteria."""
         ...
 
     @abstractmethod
     async def insert_one(
         self,
-        document: Mapping[str, Any],
-    ) -> ObjectId:
-        """
-        Inserts a single document into the collection.
-        """
+        document: TDocument,
+    ) -> InsertResult:
+        """Inserts a single document into the collection."""
         ...
 
     @abstractmethod
     async def update_one(
         self,
         filters: Where,
-        updated_document: Mapping[str, Any],
+        updated_document: TDocument,
         upsert: bool = False,
-    ) -> ObjectId:
-        """
-        Updates the first document that matches the query criteria. If upsert is True,
-        inserts the document if it does not exist.
-        """
+    ) -> UpdateResult[TDocument]:
+        """Updates the first document that matches the query criteria. If upsert is True,
+        inserts the document if it does not exist."""
         ...
 
     @abstractmethod
     async def delete_one(
         self,
         filters: Where,
-    ) -> None:
-        """
-        Deletes the first document that matches the query criteria.
-        """
-        ...
-
-
-class VectorCollection(DocumentCollection):
-    @abstractmethod
-    async def find_similar_documents(
-        self,
-        filters: Where,
-        query: str,
-        k: int,
-    ) -> Sequence[Mapping[str, Any]]:
-        """
-        Finds the k most similar documents to the given query in the collection.
-        """
+    ) -> DeleteResult[TDocument]:
+        """Deletes the first document that matches the query criteria."""
         ...

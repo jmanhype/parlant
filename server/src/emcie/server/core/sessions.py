@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import (
     Any,
@@ -15,13 +15,18 @@ from typing import (
     cast,
 )
 
-from emcie.server.async_utils import Timeout
+from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
-from emcie.server.base_models import DefaultBaseModel
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence.common import NoMatchingDocumentsError, Where
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import (
+    BaseDocument,
+    ObjectId,
+    Where,
+)
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 SessionId = NewType("SessionId", str)
 EventId = NewType("EventId", str)
@@ -67,6 +72,7 @@ SessionStatus: TypeAlias = Literal[
     "processing",
     "ready",
     "typing",
+    "error",
 ]
 
 
@@ -121,6 +127,13 @@ class SessionStore(ABC):
     ) -> None: ...
 
     @abstractmethod
+    async def update_title(
+        self,
+        session_id: SessionId,
+        title: str,
+    ) -> None: ...
+
+    @abstractmethod
     async def create_event(
         self,
         session_id: SessionId,
@@ -142,6 +155,7 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]: ...
 
@@ -153,20 +167,18 @@ class SessionStore(ABC):
 
 
 class SessionDocumentStore(SessionStore):
-    class SessionDocument(DefaultBaseModel):
-        id: SessionId
+    class SessionDocument(BaseDocument):
         creation_utc: datetime
         end_user_id: EndUserId
         agent_id: AgentId
         title: Optional[str] = None
         consumption_offsets: dict[ConsumerId, int]
 
-    class EventDocument(DefaultBaseModel):
-        id: EventId
+    class EventDocument(BaseDocument):
         creation_utc: datetime
         session_id: SessionId
         source: EventSource
-        kind: str
+        kind: EventKind
         offset: int
         correlation_id: str
         data: Any
@@ -192,21 +204,21 @@ class SessionDocumentStore(SessionStore):
 
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
 
-        document = {
-            "id": generate_id(),
-            "creation_utc": creation_utc,
-            "end_user_id": end_user_id,
-            "agent_id": agent_id,
-            "consumption_offsets": consumption_offsets,
-        }
+        document = self.SessionDocument(
+            id=ObjectId(generate_id()),
+            creation_utc=creation_utc,
+            end_user_id=end_user_id,
+            agent_id=agent_id,
+            consumption_offsets=consumption_offsets,
+        )
 
         if title:
-            document["title"] = title
+            document.title = title
 
-        session_id = await self._session_collection.insert_one(document=document)
+        await self._session_collection.insert_one(document=document)
 
         return Session(
-            id=SessionId(session_id),
+            id=SessionId(document.id),
             creation_utc=creation_utc,
             end_user_id=end_user_id,
             agent_id=agent_id,
@@ -221,28 +233,27 @@ class SessionDocumentStore(SessionStore):
         events_to_delete = await self.list_events(session_id=session_id)
         asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
 
-        await self._session_collection.delete_one({"id": {"$eq": session_id}})
+        result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
-        return session_id
+        return session_id if result.deleted_count else None
 
     async def read_session(
         self,
         session_id: SessionId,
     ) -> Session:
-        try:
-            session_document = await self._session_collection.find_one(
-                filters={"id": {"$eq": session_id}}
-            )
-        except NoMatchingDocumentsError:
+        session_document = await self._session_collection.find_one(
+            filters={"id": {"$eq": session_id}}
+        )
+        if not session_document:
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         return Session(
-            id=session_document["id"],
-            creation_utc=session_document["creation_utc"],
-            end_user_id=session_document["end_user_id"],
-            agent_id=session_document["agent_id"],
-            consumption_offsets=session_document["consumption_offsets"],
-            title=session_document.get("title"),
+            id=SessionId(session_document.id),
+            creation_utc=session_document.creation_utc,
+            end_user_id=session_document.end_user_id,
+            agent_id=session_document.agent_id,
+            consumption_offsets=session_document.consumption_offsets,
+            title=getattr(session_document, "title"),
         )
 
     async def update_session(
@@ -252,7 +263,14 @@ class SessionDocumentStore(SessionStore):
     ) -> None:
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
-            updated_document=updated_session.__dict__,
+            updated_document=self.SessionDocument(
+                id=ObjectId(updated_session.id),
+                creation_utc=updated_session.creation_utc,
+                end_user_id=updated_session.end_user_id,
+                agent_id=updated_session.agent_id,
+                consumption_offsets=updated_session.consumption_offsets,
+                title=getattr(updated_session, "title"),
+            ),
         )
 
     async def update_consumption_offset(
@@ -265,6 +283,14 @@ class SessionDocumentStore(SessionStore):
         session.consumption_offsets[consumer_id] = new_offset
         await self.update_session(session_id, session)
 
+    async def update_title(
+        self,
+        session_id: SessionId,
+        title: str,
+    ) -> None:
+        session = await self.read_session(session_id)
+        await self.update_session(session_id, Session(**{**asdict(session), "title": title}))
+
     async def create_event(
         self,
         session_id: SessionId,
@@ -274,30 +300,28 @@ class SessionDocumentStore(SessionStore):
         data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
     ) -> Event:
-        try:
-            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
-        except NoMatchingDocumentsError:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         session_events = await self.list_events(session_id)
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
 
-        event_id = await self._event_collection.insert_one(
-            document={
-                "id": generate_id(),
-                "session_id": session_id,
-                "source": source,
-                "kind": kind,
-                "offset": offset,
-                "creation_utc": creation_utc,
-                "correlation_id": correlation_id,
-                "data": data,
-            },
+        document = self.EventDocument(
+            id=ObjectId(generate_id()),
+            session_id=session_id,
+            source=source,
+            kind=kind,
+            offset=offset,
+            creation_utc=creation_utc,
+            correlation_id=correlation_id,
+            data=data,
         )
 
+        await self._event_collection.insert_one(document=document)
+
         return Event(
-            id=EventId(event_id),
+            id=EventId(document.id),
             source=source,
             kind=kind,
             offset=offset,
@@ -310,34 +334,40 @@ class SessionDocumentStore(SessionStore):
         self,
         event_id: EventId,
     ) -> None:
-        try:
-            await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
-        except NoMatchingDocumentsError:
+        result = await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
+        if not result.deleted_document:
             raise ItemNotFoundError(item_id=UniqueId(event_id))
 
     async def list_events(
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
     ) -> Sequence[Event]:
-        try:
-            await self._session_collection.find_one(filters={"id": {"$eq": session_id}})
-        except NoMatchingDocumentsError:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
-        return [
-            Event(
-                id=EventId(d["id"]),
-                source=d["source"],
-                kind=d["kind"],
-                offset=d["offset"],
-                creation_utc=d["creation_utc"],
-                correlation_id=d["correlation_id"],
-                data=d["data"],
+        if kinds:
+            event_documents = await self._event_collection.find(
+                {
+                    "$or": [
+                        cast(
+                            Where,
+                            {
+                                "kind": {"$eq": k},
+                                "session_id": {"$eq": session_id},
+                                **({"source": {"$eq": source}} if source else {}),
+                                **({"offset": {"$gte": min_offset}} if min_offset else {}),
+                            },
+                        )
+                        for k in kinds
+                    ],
+                }
             )
-            for d in await self._event_collection.find(
-                filters=cast(
+        else:
+            event_documents = await self._event_collection.find(
+                cast(
                     Where,
                     {
                         "session_id": {"$eq": session_id},
@@ -346,6 +376,18 @@ class SessionDocumentStore(SessionStore):
                     },
                 )
             )
+
+        return [
+            Event(
+                id=EventId(d.id),
+                source=d.source,
+                kind=d.kind,
+                offset=d.offset,
+                creation_utc=d.creation_utc,
+                correlation_id=d.correlation_id,
+                data=d.data,
+            )
+            for d in event_documents
         ]
 
     async def list_sessions(
@@ -354,12 +396,12 @@ class SessionDocumentStore(SessionStore):
     ) -> Sequence[Session]:
         return [
             Session(
-                id=SessionId(s["id"]),
-                creation_utc=s["creation_utc"],
-                end_user_id=EndUserId(s["end_user_id"]),
-                agent_id=AgentId(s["agent_id"]),
-                consumption_offsets=s["consumption_offsets"],
-                title=s["title"],
+                id=SessionId(s.id),
+                creation_utc=s.creation_utc,
+                end_user_id=EndUserId(s.end_user_id),
+                agent_id=AgentId(s.agent_id),
+                consumption_offsets=s.consumption_offsets,
+                title=s.title,
             )
             for s in await self._session_collection.find(
                 filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
@@ -373,7 +415,9 @@ class SessionListener(ABC):
         self,
         session_id: SessionId,
         min_offset: int,
-        timeout: Timeout,
+        kinds: Sequence[EventKind],
+        source: Optional[EventSource] = None,
+        timeout: Timeout = Timeout.infinite(),
     ) -> bool: ...
 
 
@@ -385,14 +429,17 @@ class PollingSessionListener(SessionListener):
         self,
         session_id: SessionId,
         min_offset: int,
-        timeout: Timeout,
-        # TODO: allow filtering based on type (e.g. to filter out tool events)
+        kinds: Sequence[EventKind],
+        source: Optional[EventSource] = None,
+        timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         while True:
             events = list(
                 await self._session_store.list_events(
                     session_id,
                     min_offset=min_offset,
+                    source=source,
+                    kinds=kinds,
                 )
             )
 

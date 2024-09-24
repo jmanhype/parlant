@@ -1,17 +1,15 @@
 import asyncio
-import os
-from textwrap import dedent
 from typing import Any, Awaitable, Generator, TypeVar
-from openai import Client
-import tiktoken
 
-from emcie.server.mc import EventBuffer as EventBuffer
+from emcie.server.adapters.nlp.openai import GPT_4o
+from emcie.server.core.logging import Logger
+from emcie.server.core.common import DefaultBaseModel
 
 T = TypeVar("T")
 
-llm_client = Client(api_key=os.environ["OPENAI_API_KEY"])
-llm_name = "gpt-4o"
-tokenizer = tiktoken.encoding_for_model(llm_name)
+
+class NLPTestSchema(DefaultBaseModel):
+    answer: bool
 
 
 class SyncAwaiter:
@@ -22,43 +20,43 @@ class SyncAwaiter:
         return self.event_loop.run_until_complete(awaitable)  # type: ignore
 
 
-def nlp_test(context: str, predicate: str) -> bool:
-    response = llm_client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": dedent(
-                    f"""\
-                    Given a context and a predicate, determine whether the
-                    predicate applies with respect to the given context.
+async def nlp_test(logger: Logger, context: str, predicate: str) -> bool:
+    schematic_generator = GPT_4o[NLPTestSchema](logger=logger)
 
-                    Context: ###
-                    {context}
-                    ###
+    inference = await schematic_generator.generate(
+        prompt=f"""\
+Given a context and a predicate, determine whether the
+predicate applies with respect to the given context.
+If the predicate applies, the answer is true;
+otherwise, the answer is false.
 
-                    Predicate: ###
-                    {predicate}
-                    ###
+Context: ###
+{context}
+###
 
-                    If the answer is YES, answer "y".
-                    If the answer is NO, answer "n".
-                """
-                ),
-            }
-        ],
-        model=llm_name,
-        logit_bias={
-            tokenizer.encode_single_token("y"): 100,  # type: ignore
-            tokenizer.encode_single_token("n"): 100,  # type: ignore
-        },
-        max_tokens=1,
+Predicate: ###
+{predicate}
+###
+
+Output JSON structure: ###
+{{
+    answer: <BOOL>
+}}
+###
+
+Example #1: ###
+{{
+    answer: true
+}}
+###
+
+Example #2: ###
+{{
+    answer: false
+}}
+###
+""",
+        hints={"temperature": 0.0, "strict": True},
     )
 
-    answer = response.choices[0].message.content
-
-    if answer == "y":
-        return True
-    elif answer == "n":
-        return False
-
-    raise Exception(f"NLP test error. Invalid answer '{answer}'.")
+    return inference.content.answer

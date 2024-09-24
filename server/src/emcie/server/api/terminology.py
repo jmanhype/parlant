@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from typing import Optional
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.terminology import TerminologyStore, TermId
 
 
@@ -19,7 +19,7 @@ class TermDTO(DefaultBaseModel):
     synonyms: Optional[list[str]] = []
 
 
-class listTermsResponse(DefaultBaseModel):
+class ListTermsResponse(DefaultBaseModel):
     terms: list[TermDTO]
 
 
@@ -65,10 +65,10 @@ def create_router(
         )
 
     @router.get("/{agent_id}/")
-    async def list_terms(agent_id: str) -> listTermsResponse:
+    async def list_terms(agent_id: str) -> ListTermsResponse:
         terms = await terminology_store.list_terms(term_set=agent_id)
 
-        return listTermsResponse(
+        return ListTermsResponse(
             terms=[
                 TermDTO(
                     term_id=term.id,

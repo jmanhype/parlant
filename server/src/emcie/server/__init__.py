@@ -1,5 +1,1 @@
-import os
-
-API_KEYS = {
-    "openai": os.environ["OPENAI_API_KEY"],
-}
+VERSION = "0.4.0-alpha.1"

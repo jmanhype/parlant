@@ -7,11 +7,12 @@ import httpx
 from emcie.common.tools import ToolContext, ToolResult
 from emcie.common.plugin import PluginServer, tool
 
+from emcie.server.core.async_utils import Timeout
 from tests.e2e.test_utilities import (
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
     _Guideline,
-    _TestContext,
+    ContextOfTest,
     find_guideline,
     load_active_agent,
     read_guideline_config,
@@ -27,11 +28,12 @@ REASONABLE_AMOUNT_OF_TIME = 5
 EXTENDED_AMOUNT_OF_TIME = 10
 
 
-async def get_quick_reply_from_agent(
-    context: _TestContext,
+async def get_agent_replies(
+    context: ContextOfTest,
     message: str,
+    number_of_replies_to_expect: int,
     agent_name: str = DEFAULT_AGENT_NAME,
-) -> str:
+) -> list[str]:
     agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
 
     async with httpx.AsyncClient(
@@ -62,32 +64,37 @@ async def get_quick_reply_from_agent(
 
             last_known_offset = user_message_offset
 
-            for _ in range(10):
+            replies: list[str] = []
+            timeout = Timeout(300)
+
+            while len(replies) < number_of_replies_to_expect:
                 response = await client.get(
                     f"{SERVER_ADDRESS}/sessions/{session_id}/events",
                     params={
                         "min_offset": last_known_offset + 1,
+                        "kinds": "message",
                         "wait": True,
                     },
                 )
-
                 response.raise_for_status()
-
                 events = response.json()["events"]
 
                 if message_events := [e for e in events if e["kind"] == "message"]:
-                    return str(message_events[0]["data"]["message"])
-                else:
-                    last_known_offset = events[-1]["offset"]
+                    replies.append(str(message_events[0]["data"]["message"]))
 
-            raise TimeoutError()
+                last_known_offset = events[-1]["offset"]
+
+                if timeout.expired():
+                    raise TimeoutError()
+
+            return replies
         except:
             traceback.print_exc()
             raise
 
 
 async def test_that_the_server_starts_and_shuts_down_cleanly_on_interrupt(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -97,7 +104,7 @@ async def test_that_the_server_starts_and_shuts_down_cleanly_on_interrupt(
 
 
 async def test_that_the_server_hot_reloads_guideline_changes(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--no-index", "--force"]):
         initial_guidelines = read_guideline_config(context.config_file)
@@ -118,17 +125,27 @@ async def test_that_the_server_hot_reloads_guideline_changes(
 
         assert find_guideline(new_guideline, within=loaded_guidelines)
 
-        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+        agent_replies = await get_agent_replies(
+            context,
+            message="what are bananas?",
+            number_of_replies_to_expect=1,
+        )
 
-        assert nlp_test(agent_reply, "It says that bananas are very tasty")
+        assert await nlp_test(
+            context.logger,
+            agent_replies[0],
+            "It says that bananas are very tasty",
+        )
 
 
 async def test_that_the_server_loads_and_interacts_with_a_plugin(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     @tool(id="about_dor", name="about_dor")
-    def about_dor(context: ToolContext) -> ToolResult:
+    async def about_dor(context: ToolContext) -> ToolResult:
         """Gets information about Dor"""
+        await context.emit_message("Dor makes the worst pizza")
+        await asyncio.sleep(1)
         return ToolResult("Dor makes great pizza", {"metadata_item": 123})
 
     plugin_port = 8090
@@ -155,43 +172,75 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
         config_file=context.config_file,
     )
 
-    async with PluginServer(name="my_plugin", tools=[about_dor], port=plugin_port) as plugin_server:
+    async with PluginServer(tools=[about_dor], port=plugin_port) as plugin_server:
         try:
             with run_server(context, extra_args=["--no-index", "--force"]):
                 await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-                agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+                agent_replies = await get_agent_replies(
+                    context,
+                    message="Hello",
+                    number_of_replies_to_expect=2,
+                )
 
-                assert nlp_test(agent_reply, "It says that Dor makes great pizza")
+                assert len(agent_replies) == 2
+
+                assert await nlp_test(
+                    context.logger,
+                    agent_replies[0],
+                    "It says that Dor makes the worst pizza",
+                )
+
+                assert await nlp_test(
+                    context.logger,
+                    agent_replies[1],
+                    "It says that Dor makes great pizza",
+                )
 
         finally:
             await plugin_server.shutdown()
 
 
 async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--no-index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+        agent_replies = await get_agent_replies(
+            context,
+            message="Hello",
+            number_of_replies_to_expect=1,
+        )
 
-        assert nlp_test(agent_reply, "It greeting the user")
+        assert await nlp_test(
+            context.logger,
+            agent_replies[0],
+            "It greeting the user",
+        )
 
 
 async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_to_index(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_reply = await get_quick_reply_from_agent(context, message="Hello")
+        agent_replies = await get_agent_replies(
+            context,
+            message="Hello",
+            number_of_replies_to_expect=1,
+        )
 
-        assert nlp_test(agent_reply, "It greeting the user")
+        assert await nlp_test(
+            context.logger,
+            agent_replies[0],
+            "It greeting the user",
+        )
 
 
 async def test_that_the_server_refuses_to_start_on_detecting_a_state_change_that_requires_indexing_if_told_not_to_index_changes(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--no-index"]) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -211,7 +260,7 @@ async def test_that_the_server_refuses_to_start_on_detecting_a_state_change_that
 
 
 async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_start_and_told_not_to_index(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--no-index", "--force"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -236,15 +285,21 @@ async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_st
 
         assert not context.index_file.exists()
 
-        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+        agent_replies = await get_agent_replies(
+            context,
+            message="what are bananas?",
+            number_of_replies_to_expect=1,
+        )
 
-        assert nlp_test(
-            agent_reply, "It says that bananas are very tasty but not mentioning they blue"
+        assert await nlp_test(
+            context.logger,
+            agent_replies[0],
+            "It says that bananas are very tasty but not mentioning they blue",
         )
 
 
 async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to_index_changes(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context, extra_args=["--index"]):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -269,13 +324,21 @@ async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to
 
         await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
 
-        agent_reply = await get_quick_reply_from_agent(context, message="what are bananas?")
+        agent_replies = await get_agent_replies(
+            context,
+            message="what are bananas?",
+            number_of_replies_to_expect=1,
+        )
 
-        assert nlp_test(agent_reply, "It says that bananas are very tasty and blue")
+        assert await nlp_test(
+            context.logger,
+            agent_replies[0],
+            "It says that bananas are very tasty and blue",
+        )
 
 
 async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
-    context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     with run_server(context) as server_process:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)

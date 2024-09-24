@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Any, Iterator, Literal, TypedDict, Union, cast
 
-from emcie.server.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 SERVER_PORT = 8089
@@ -37,7 +37,7 @@ CLI_SERVER_PATH = get_package_path() / "bin/emcie-server"
 
 
 @dataclass(frozen=True)
-class _TestContext:
+class ContextOfTest:
     home_dir: Path
     config_file: Path
     index_file: Path
@@ -149,7 +149,7 @@ def find_guideline(guideline: _Guideline, within: list[_Guideline]) -> bool:
 
 @contextmanager
 def run_server(
-    context: _TestContext,
+    context: ContextOfTest,
     extra_args: list[str] = [],
 ) -> Iterator[subprocess.Popen[str]]:
     exec_args = [

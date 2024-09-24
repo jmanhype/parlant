@@ -6,7 +6,7 @@ import typing
 from jsonschema import ValidationError, validate
 
 from emcie.server.core.common import JSONSerializable
-from emcie.server.logger import Logger
+from emcie.server.core.logging import Logger
 
 
 class ConfigurationFileValidator:
@@ -14,9 +14,9 @@ class ConfigurationFileValidator:
         self,
         logger: Logger,
     ) -> None:
-        self.logger = logger
+        self._logger = logger
 
-        self.schema = {
+        self._schema = {
             "type": "object",
             "properties": {
                 "agents": {
@@ -146,7 +146,7 @@ class ConfigurationFileValidator:
         self,
         config: JSONSerializable,
     ) -> None:
-        validate(instance=config, schema=self.schema)
+        validate(instance=config, schema=self._schema)
 
     def validate_local_tools(
         self,
@@ -207,5 +207,5 @@ class ConfigurationFileValidator:
             return True
         except Exception as e:
             traceback.print_exc()
-            self.logger.error(f"Configuration file invalid: {e.__class__.__name__}({str(e)})")
+            self._logger.error(f"Configuration file invalid: {e.__class__.__name__}({str(e)})")
             return False

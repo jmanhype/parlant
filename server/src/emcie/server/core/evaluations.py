@@ -1,12 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import asdict
 from pydantic.dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import (
-    Any,
-    Mapping,
     NamedTuple,
     NewType,
     Optional,
@@ -16,12 +13,14 @@ from typing import (
 )
 from typing_extensions import Literal
 
-from emcie.server.base_models import DefaultBaseModel
+from emcie.server.core.agents import AgentId
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.persistence.common import NoMatchingDocumentsError
-from emcie.server.core.persistence.document_database import DocumentDatabase
+from emcie.server.core.persistence.common import BaseDocument, ObjectId
+from emcie.server.core.persistence.document_database import (
+    DocumentDatabase,
+)
 
 EvaluationId = NewType("EvaluationId", str)
 
@@ -47,12 +46,10 @@ ConnectionPropositionKind = Literal[
 
 @dataclass(frozen=True)
 class GuidelinePayload:
-    guideline_set: str
-    predicate: str
-    action: str
+    content: GuidelineContent
 
     def __repr__(self) -> str:
-        return f"guideline_set: {self.guideline_set}, predicate: {self.predicate}, action: {self.action}"
+        return f"predicate: {self.content.predicate}, action: {self.content.action}"
 
 
 Payload: TypeAlias = Union[GuidelinePayload]
@@ -104,6 +101,7 @@ class Invoice:
 @dataclass(frozen=True)
 class Evaluation:
     id: EvaluationId
+    agent_id: AgentId
     creation_utc: datetime
     status: EvaluationStatus
     error: Optional[str]
@@ -114,6 +112,7 @@ class EvaluationStore(ABC):
     @abstractmethod
     async def create_evaluation(
         self,
+        agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation: ...
@@ -147,12 +146,12 @@ class EvaluationStore(ABC):
 
 
 class EvaluationDocumentStore(EvaluationStore):
-    class EvaluationDocument(DefaultBaseModel):
-        id: EvaluationId
+    class EvaluationDocument(BaseDocument):
+        agent_id: AgentId
         status: EvaluationStatus
         creation_utc: datetime
         error: Optional[str]
-        invoices: list[Invoice]
+        invoices: Sequence[Invoice]
 
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
@@ -160,19 +159,9 @@ class EvaluationDocumentStore(EvaluationStore):
             schema=self.EvaluationDocument,
         )
 
-    def _document_to_evaluation(self, evaluation_document: Mapping[str, Any]) -> Evaluation:
-        evaluation_model = self.EvaluationDocument(**evaluation_document)
-
-        return Evaluation(
-            id=evaluation_model.id,
-            status=evaluation_model.status,
-            creation_utc=evaluation_model.creation_utc,
-            error=evaluation_model.error,
-            invoices=evaluation_model.invoices,
-        )
-
     async def create_evaluation(
         self,
+        agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
     ) -> Evaluation:
@@ -194,17 +183,19 @@ class EvaluationDocumentStore(EvaluationStore):
         ]
 
         await self._evaluation_collection.insert_one(
-            document={
-                "id": evaluation_id,
-                "creation_utc": creation_utc,
-                "status": EvaluationStatus.PENDING,
-                "error": None,
-                "invoices": invoices,
-            }
+            self.EvaluationDocument(
+                id=ObjectId(evaluation_id),
+                agent_id=agent_id,
+                creation_utc=creation_utc,
+                status=EvaluationStatus.PENDING,
+                error=None,
+                invoices=invoices,
+            )
         )
 
         return Evaluation(
             id=evaluation_id,
+            agent_id=agent_id,
             status=EvaluationStatus.PENDING,
             creation_utc=creation_utc,
             error=None,
@@ -217,10 +208,7 @@ class EvaluationDocumentStore(EvaluationStore):
         invoice_index: int,
         updated_invoice: Invoice,
     ) -> Evaluation:
-        try:
-            evaluation = await self.read_evaluation(evaluation_id)
-        except NoMatchingDocumentsError:
-            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
+        evaluation = await self.read_evaluation(evaluation_id)
 
         evaluation_invoices = [
             invoice if i != invoice_index else updated_invoice
@@ -229,14 +217,19 @@ class EvaluationDocumentStore(EvaluationStore):
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={
-                **asdict(evaluation),
-                "invoices": evaluation_invoices,
-            },
+            updated_document=self.EvaluationDocument(
+                id=ObjectId(evaluation.id),
+                agent_id=evaluation.agent_id,
+                creation_utc=evaluation.creation_utc,
+                status=evaluation.status,
+                error=evaluation.error,
+                invoices=evaluation_invoices,
+            ),
         )
 
         return Evaluation(
             id=evaluation.id,
+            agent_id=evaluation.agent_id,
             status=evaluation.status,
             creation_utc=evaluation.creation_utc,
             error=evaluation.error,
@@ -249,18 +242,23 @@ class EvaluationDocumentStore(EvaluationStore):
         status: EvaluationStatus,
         error: Optional[str] = None,
     ) -> Evaluation:
-        try:
-            evaluation = await self.read_evaluation(evaluation_id)
-        except NoMatchingDocumentsError:
-            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
+        evaluation = await self.read_evaluation(evaluation_id)
 
         await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
-            updated_document={**asdict(evaluation), "status": status, "error": error},
+            updated_document=self.EvaluationDocument(
+                id=ObjectId(evaluation.id),
+                agent_id=evaluation.agent_id,
+                creation_utc=evaluation.creation_utc,
+                status=status,
+                error=error,
+                invoices=evaluation.invoices,
+            ),
         )
 
         return Evaluation(
             id=evaluation.id,
+            agent_id=evaluation.agent_id,
             status=status,
             creation_utc=evaluation.creation_utc,
             error=error,
@@ -275,12 +273,29 @@ class EvaluationDocumentStore(EvaluationStore):
             filters={"id": {"$eq": evaluation_id}},
         )
 
-        return self._document_to_evaluation(evaluation_document)
+        if not evaluation_document:
+            raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
+
+        return Evaluation(
+            id=EvaluationId(evaluation_document.id),
+            agent_id=evaluation_document.agent_id,
+            status=evaluation_document.status,
+            creation_utc=evaluation_document.creation_utc,
+            error=evaluation_document.error,
+            invoices=evaluation_document.invoices,
+        )
 
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
-            self._document_to_evaluation(e)
+            Evaluation(
+                id=EvaluationId(e.id),
+                agent_id=e.agent_id,
+                status=e.status,
+                creation_utc=e.creation_utc,
+                error=e.error,
+                invoices=e.invoices,
+            )
             for e in await self._evaluation_collection.find(filters={})
         ]

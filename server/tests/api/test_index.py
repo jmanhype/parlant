@@ -3,9 +3,11 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
 
+from emcie.server.core.agents import AgentId
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guidelines import GuidelineStore
-from tests.indexing.test_evaluator import (
+
+from tests.core.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
     TIME_TO_WAIT_PER_PAYLOAD,
 )
@@ -14,26 +16,27 @@ from tests.indexing.test_evaluator import (
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(
     client: TestClient,
     container: Container,
+    agent_id: AgentId,
 ) -> None:
     evaluation_store = container[EvaluationStore]
 
-    evaluation_id = (
-        client.post(
-            "/index/evaluations",
-            json={
-                "payloads": [
-                    {
-                        "kind": "guideline",
-                        "guideline_set": "test-agent",
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
-                    }
-                ]
-            },
-        )
-        .raise_for_status()
-        .json()["evaluation_id"]
+    response = client.post(
+        "/index/evaluations",
+        json={
+            "agent_id": agent_id,
+            "payloads": [
+                {
+                    "kind": "guideline",
+                    "predicate": "the user greets you",
+                    "action": "greet them back with 'Hello'",
+                }
+            ],
+        },
     )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    evaluation_id = response.json()["evaluation_id"]
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
     assert evaluation.id == evaluation_id
@@ -52,25 +55,25 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
 async def test_that_an_evaluation_can_be_fetched_with_running_status(
     client: TestClient,
+    agent_id: AgentId,
 ) -> None:
     evaluation_id = (
         client.post(
             "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
                         "action": "greet them back with 'Hola'",
                     },
-                ]
+                ],
             },
         )
         .raise_for_status()
@@ -86,19 +89,20 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_approved_invoice(
     client: TestClient,
+    agent_id: AgentId,
 ) -> None:
     evaluation_id = (
         client.post(
             "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     }
-                ]
+                ],
             },
         )
         .raise_for_status()
@@ -120,32 +124,32 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_unapproved_invoice(
     client: TestClient,
+    agent_id: AgentId,
 ) -> None:
     evaluation_id = (
         client.post(
             "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user greeting you",
                         "action": "greet them back with 'Hola'",
                     },
-                ]
+                ],
             },
         )
         .raise_for_status()
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
     content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
@@ -162,11 +166,12 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoice_with_existing_guideline_connection_proposition(
     client: TestClient,
     container: Container,
+    agent_id: AgentId,
 ) -> None:
     guideline_store = container[GuidelineStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent_id,
         predicate="the user asks about the weather",
         action="provide the current weather update",
     )
@@ -175,14 +180,14 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         client.post(
             "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "providing the weather update",
                         "action": "mention the best time to go for a walk",
                     }
-                ]
+                ],
             },
         )
         .raise_for_status()
@@ -214,26 +219,25 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
 async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoice_with_other_proposed_guideline_connection_proposition(
     client: TestClient,
-    container: Container,
+    agent_id: AgentId,
 ) -> None:
     evaluation_id = (
         client.post(
             "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "the user asks about nearby restaurants",
                         "action": "provide a list of popular restaurants",
                     },
                     {
                         "kind": "guideline",
-                        "guideline_set": "test-agent",
                         "predicate": "listing restaurants",
                         "action": "highlight the one with the best reviews",
                     },
-                ]
+                ],
             },
         )
         .raise_for_status()
@@ -268,10 +272,10 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
 async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads_contains_relevant_error_message(
     client: TestClient,
+    agent_id: AgentId,
 ) -> None:
     duplicate_payload = {
         "kind": "guideline",
-        "guideline_set": "test-agent",
         "predicate": "the user greets you",
         "action": "greet them back with 'Hello'",
     }
@@ -279,10 +283,11 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
     response = client.post(
         "/index/evaluations",
         json={
+            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
                 duplicate_payload,
-            ]
+            ],
         },
     )
 
@@ -296,18 +301,18 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
 async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_existing_guidelines_contains_relevant_error_message(
     client: TestClient,
     container: Container,
+    agent_id: AgentId,
 ) -> None:
     guideline_store = container[GuidelineStore]
 
     await guideline_store.create_guideline(
-        guideline_set="test-agent",
+        guideline_set=agent_id,
         predicate="the user greets you",
         action="greet them back with 'Hello'",
     )
 
     duplicate_payload = {
         "kind": "guideline",
-        "guideline_set": "test-agent",
         "predicate": "the user greets you",
         "action": "greet them back with 'Hello'",
     }
@@ -315,9 +320,10 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
     response = client.post(
         "/index/evaluations",
         json={
+            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
-            ]
+            ],
         },
     )
 
@@ -326,43 +332,15 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
 
     assert (
         data["detail"]
-        == "Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in test-agent guideline_set"
+        == f"Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in {agent_id} guideline_set"
     )
-
-
-async def test_that_an_evaluation_validation_fails_due_to_multiple_guideline_sets(
-    client: TestClient,
-) -> None:
-    response = client.post(
-        "/index/evaluations",
-        json={
-            "payloads": [
-                {
-                    "kind": "guideline",
-                    "guideline_set": "set-1",
-                    "predicate": "the user greets you",
-                    "action": "greet them back with 'Hello'",
-                },
-                {
-                    "kind": "guideline",
-                    "guideline_set": "set-2",
-                    "predicate": "the user asks about the weather",
-                    "action": "provide a weather update",
-                },
-            ]
-        },
-    )
-
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    data = response.json()
-
-    assert data["detail"] == "Evaluation task must be processed for a single guideline_set."
 
 
 async def test_that_an_error_is_returned_when_no_payloads_are_provided(
     client: TestClient,
+    agent_id: AgentId,
 ) -> None:
-    response = client.post("/index/evaluations", json={"payloads": []})
+    response = client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": []})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
@@ -371,24 +349,32 @@ async def test_that_an_error_is_returned_when_no_payloads_are_provided(
     assert data["detail"] == "No payloads provided for the evaluation task."
 
 
-async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
+async def test_that_an_error_is_returned_when_no_agent_id_provided(
     client: TestClient,
 ) -> None:
+    response = client.post("/index/evaluations", json={"payloads": []})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
     payloads = {
+        "agent_id": agent_id,
         "payloads": [
             {
                 "kind": "guideline",
-                "guideline_set": "test-agent",
                 "predicate": "the user greets you",
                 "action": "greet them back with 'Hello'",
             },
             {
                 "kind": "guideline",
-                "guideline_set": "test-agent",
                 "predicate": "the user asks about the weather",
                 "action": "provide a weather update",
             },
-        ]
+        ],
     }
 
     first_evaluation_id = (
