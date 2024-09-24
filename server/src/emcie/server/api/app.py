@@ -7,10 +7,12 @@ from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.api import terminology
 from emcie.server.api import guidelines
+from emcie.server.api import connections
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.evaluations import EvaluationStore
+from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionListener, SessionStore
 from emcie.server.core.terminology import TerminologyStore
@@ -31,6 +33,7 @@ async def create_app(container: Container) -> FastAPI:
     evaluation_service = container[BehavioralChangeEvaluator]
     terminology_store = container[TerminologyStore]
     guideline_store = container[GuidelineStore]
+    guideline_connection_store = container[GuidelineConnectionStore]
     mc = container[MC]
 
     app = FastAPI()
@@ -94,6 +97,13 @@ async def create_app(container: Container) -> FastAPI:
         router=guidelines.create_router(
             mc=mc,
             guideline_store=guideline_store,
+        ),
+    )
+
+    app.include_router(
+        prefix="/connections",
+        router=connections.create_router(
+            guideline_connection_store=guideline_connection_store,
         ),
     )
 

@@ -4,12 +4,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from emcie.server.api.common import (
     CoherenceCheckDTO,
-    ConnectionKindDTO,
     ConnectionPropositionDTO,
     EvaluationStatusDTO,
     InvoiceDataDTO,
     InvoiceGuidelineDataDTO,
     PayloadDTO,
+    connection_kind_to_dto,
 )
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
@@ -23,7 +23,6 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
@@ -42,16 +41,6 @@ def _evaluation_status_to_dto(
             EvaluationStatus.COMPLETED: "completed",
             EvaluationStatus.FAILED: "failed",
         }[status],
-    )
-
-
-def _connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
-    return cast(
-        ConnectionKindDTO,
-        {
-            ConnectionKind.ENTAILS: "entails",
-            ConnectionKind.SUGGESTS: "suggests",
-        }[kind],
     )
 
 
@@ -106,7 +95,7 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
                         predicate=c.target.predicate,
                         action=c.target.action,
                     ),
-                    connection_kind=_connection_kind_to_dto(c.connection_kind),
+                    connection_kind=connection_kind_to_dto(c.connection_kind),
                 )
                 for c in invoice_data.connection_propositions
             ]

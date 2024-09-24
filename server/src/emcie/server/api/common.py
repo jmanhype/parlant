@@ -1,9 +1,10 @@
-from typing import Literal, Optional, TypeAlias, TypedDict, Union
+from typing import Literal, Optional, TypeAlias, TypedDict, Union, cast
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.evaluations import (
     CoherenceCheckKind,
     ConnectionPropositionKind,
 )
+from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 
 EvaluationStatusDTO = Literal["pending", "running", "completed", "failed"]
@@ -43,3 +44,20 @@ class InvoiceGuidelineDataDTO(DefaultBaseModel):
 
 
 InvoiceDataDTO: TypeAlias = Union[InvoiceGuidelineDataDTO]
+
+
+def connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
+    return cast(
+        ConnectionKindDTO,
+        {
+            ConnectionKind.ENTAILS: "entails",
+            ConnectionKind.SUGGESTS: "suggests",
+        }[kind],
+    )
+
+
+def connection_kind_dto_to_connection_kind(dto: ConnectionKindDTO) -> ConnectionKind:
+    return {
+        "entails": ConnectionKind.ENTAILS,
+        "suggests": ConnectionKind.SUGGESTS,
+    }[dto]

@@ -3,7 +3,7 @@ from fastapi import status
 from lagom import Container
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.guideline_connections import GuidelineConnectionStore
+from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineStore
 
 

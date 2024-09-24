@@ -1,11 +1,11 @@
-from typing import Optional, Sequence, TypedDict
+from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
 
 from emcie.server.api.common import (
-    ConnectionKindDTO,
     GuidelinePayloadDTO,
     InvoiceGuidelineDataDTO,
+    connection_kind_dto_to_connection_kind,
 )
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
@@ -17,7 +17,6 @@ from emcie.server.core.evaluations import (
     InvoiceGuidelineData,
     PayloadKind,
 )
-from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.core.mc import MC
 
@@ -91,13 +90,6 @@ def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
     )
 
 
-def _connection_kind_dto_to_connection_kind(dto: ConnectionKindDTO) -> ConnectionKind:
-    return {
-        "entails": ConnectionKind.ENTAILS,
-        "suggests": ConnectionKind.SUGGESTS,
-    }[dto]
-
-
 def _invoice_data_dto_to_invoice_data(dto: InvoiceGuidelineDataDTO) -> InvoiceGuidelineData:
     try:
         coherence_checks = [
@@ -123,7 +115,7 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceGuidelineDataDTO) -> InvoiceGu
                     target=GuidelineContent(
                         predicate=prop.target.predicate, action=prop.target.action
                     ),
-                    connection_kind=_connection_kind_dto_to_connection_kind(prop.connection_kind),
+                    connection_kind=connection_kind_dto_to_connection_kind(prop.connection_kind),
                 )
                 for prop in dto.connection_propositions
             ]
@@ -171,20 +163,6 @@ def create_router(
             ]
         )
 
-    @router.get("/{agent_id}/{guideline_id}")
-    async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
-        guideline = await guideline_store.read_guideline(
-            guideline_set=agent_id,
-            guideline_id=guideline_id,
-        )
-
-        return GuidelineDTO(
-            guideline_set=agent_id,
-            id=guideline.id,
-            predicate=guideline.content.predicate,
-            action=guideline.content.action,
-        )
-
     @router.get("/{agent_id}")
     async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
@@ -199,6 +177,20 @@ def create_router(
                 )
                 for g in guidelines
             ]
+        )
+
+    @router.get("/{agent_id}/{guideline_id}")
+    async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
+        guideline = await guideline_store.read_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
+        return GuidelineDTO(
+            guideline_set=agent_id,
+            id=guideline.id,
+            predicate=guideline.content.predicate,
+            action=guideline.content.action,
         )
 
     return router
