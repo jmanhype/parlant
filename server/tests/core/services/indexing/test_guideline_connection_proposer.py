@@ -333,7 +333,7 @@ def test_that_a_connection_is_proposed_based_on_multiple_terminology_terms(  # T
         terminology_store.create_term(
             term_set=agent.id,
             name="the tall tree",
-            description="the tall tree is a German website for virtual goods",
+            description="the tall tree is a German website for purchasing virtual goods",
         )
     )
 
@@ -412,18 +412,18 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
                 "action": "direct the user to the electronic store",
             },
             {
-                "predicate": "an order is being place",
+                "predicate": "the user is ordering electronic goods",
                 "action": "remind the user about our discounts",
             },
         ),
         (
             {
-                "predicate": "A language other than English is used",
+                "predicate": "Asked about supported languages",
                 "action": "Explain that English is the only supported language",
             },
             {
-                "predicate": "Asked something in French",
-                "action": "Ask the user to speak English",
+                "predicate": "the user uses a language other than English",
+                "action": "Refer them to our international website",
             },
         ),
     ],
@@ -525,7 +525,7 @@ def test_that_entailing_thens_are_not_connected(
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one(
     context: _TestContext,
     agent: Agent,
-) -> None:
+) -> None:  # TODO ask Dor about this test, maybe the first predicate causes it to be too ambiguous
     introduced_guidelines: Sequence[GuidelineContent] = [
         GuidelineContent(predicate=i["predicate"], action=i["action"])
         for i in [
@@ -539,7 +539,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
             },
             {
                 "predicate": "checking a guide",
-                "action": "Make sure that it was updated within the last year",
+                "action": "Make sure that the guide was updated within the last year",
             },
         ]
     ]
@@ -566,19 +566,19 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggest
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(predicate=i["predicate"], action=i["action"])  # TODO rewrite test
         for i in [
             {
                 "predicate": "discussing sandwiches",
-                "action": "consider suggesting the daily specials",
+                "action": "recommend the daily specials",
             },
             {
                 "predicate": "listing the daily specials",
-                "action": "mention ingridients that may cause allergic reactions, if discussed earlier in the conversation",
+                "action": "consider mentioning ingredients that may cause allergic reactions",
             },
             {
-                "predicate": "discussing anything related to a peanut allergy",  # TODO ask if this is a valid suggest connection
-                "action": "Note that all dishes may contain peanut residues",
+                "predicate": "discussing anything related to a food allergies",
+                "action": "you may note that all dishes may contain peanut residues",
             },
         ]
     ]
@@ -630,11 +630,11 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
         )
     )
 
-    assert len(connection_propositions) == 3
-    for i, p in enumerate(connection_propositions):
-        assert p.source == introduced_guidelines[i]
-        assert p.target == introduced_guidelines[(1 + 1) % 3]
-        assert p.kind == ConnectionKind.ENTAILS
+    correct_propositions_set = {
+        (introduced_guidelines[i], introduced_guidelines[(i + 1) % 3]) for i in range(3)
+    }
+    suggested_propositions_set = {(p.source, p.target) for p in connection_propositions}
+    assert correct_propositions_set == suggested_propositions_set
 
 
 @mark.parametrize(
@@ -744,16 +744,16 @@ def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_ano
         (
             {
                 "predicate": "the user refers to a past interaction",
-                "action": "ask the user for the date of this previous interaction",
+                "action": "ask the user for the date of this interaction",
             },
             {
-                "predicate": "the user asks about a past conversation with this agent",
-                "action": "ask when that conversation occured",
+                "predicate": "the user asks about a solution suggested in a previous interaction",
+                "action": "ask when that conversation occurred",
             },
         ),
     ],
 )
-def test_that_two_rephrased_guidelines_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
+def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
@@ -829,7 +829,7 @@ def test_that_identical_actions_arent_connected(  # Tests both that entailing pr
     assert len(connection_propositions) == 0
 
 
-def test_that_mispelled_entailing_guidelines_are_connected(
+def test_that_misspelled_entailing_guidelines_are_connected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
