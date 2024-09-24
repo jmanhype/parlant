@@ -157,7 +157,9 @@ class MessageEventProducer:
         builder.add_section(
             """
 You must generate your reply message to the current (latest) state of the interaction.
-IMPORTANT: Strive to continue the interaction/conversation in the most natural way for a normal human conversation.
+IMPORTANT: Strive to continue the interaction/conversation in the most natural way for a normal human conversation,
+and when replying—if you're asked a question you've already been asked—try to avoid repeating yourself
+word-for-word and prefer to slightly adjust the answer in a natural way each time you're asked the same question.
 """
         )
 
