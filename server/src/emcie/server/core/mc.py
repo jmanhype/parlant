@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Iterable
+from typing import Any, Iterable, Mapping, Optional, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
@@ -52,7 +52,7 @@ class MC:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
     ) -> bool:
