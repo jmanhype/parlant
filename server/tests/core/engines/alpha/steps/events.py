@@ -191,6 +191,19 @@ def then_a_ready_status_event_is_emitted(
     assert _has_status_event("ready", acknowledged_event_offset, emitted_events)
 
 
+@step(
+    then,
+    parsers.parse(
+        "a status event is emitted, encountering an error while processing event {acknowledged_event_offset:d}"
+    ),
+)
+def then_an_error_status_event_is_emitted(
+    emitted_events: list[EmittedEvent],
+    acknowledged_event_offset: int,
+) -> None:
+    assert _has_status_event("error", acknowledged_event_offset, emitted_events)
+
+
 @step(then, parsers.parse("a {status_type} status event is not emitted"))
 def then_a_status_event_type_is_not_emitted(
     emitted_events: list[EmittedEvent],

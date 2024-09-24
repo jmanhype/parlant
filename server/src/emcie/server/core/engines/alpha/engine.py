@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from dataclasses import dataclass
 from itertools import chain
 import traceback
 from typing import Mapping, Optional, Sequence
@@ -35,6 +36,12 @@ from emcie.server.core.engines.types import Context, Engine
 from emcie.server.core.emissions import EventEmitter, EmittedEvent
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.logging import Logger
+
+
+@dataclass(frozen=True)
+class _InteractionState:
+    history: Sequence[Event]
+    last_known_event_offset: int
 
 
 class AlphaEngine(Engine):
@@ -76,32 +83,50 @@ class AlphaEngine(Engine):
         context: Context,
         event_emitter: EventEmitter,
     ) -> bool:
+        interaction_state = await self._load_interaction_state(context)
+
         try:
             with self._correlator.correlation_scope(generate_id()):
-                await self._do_process(context, event_emitter)
+                await self._do_process(context, interaction_state, event_emitter)
             return True
         except asyncio.CancelledError:
             return False
         except Exception as exc:
             self._logger.error(f"Processing error: {traceback.format_exception(exc)}")
-            raise
+            await event_emitter.emit_status_event(
+                correlation_id=self._correlator.correlation_id,
+                data={
+                    "status": "error",
+                    "acknowledged_offset": interaction_state.last_known_event_offset,
+                    "data": {},
+                },
+            )
+            return False
         except BaseException as exc:
-            self._logger.critical(f"Processing error: {traceback.format_exception(exc)}")
+            self._logger.critical(f"Critical processing error: {traceback.format_exception(exc)}")
             raise
+
+    async def _load_interaction_state(self, context: Context) -> _InteractionState:
+        history = list(await self._session_store.list_events(context.session_id))
+        last_known_event_offset = history[-1].offset if history else -1
+
+        return _InteractionState(
+            history=history,
+            last_known_event_offset=last_known_event_offset,
+        )
 
     async def _do_process(
         self,
         context: Context,
+        interaction: _InteractionState,
         event_emitter: EventEmitter,
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
-        interaction_history = list(await self._session_store.list_events(context.session_id))
-        last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
             data={
-                "acknowledged_offset": last_known_event_offset,
+                "acknowledged_offset": interaction.last_known_event_offset,
                 "status": "acknowledged",
                 "data": {},
             },
@@ -117,14 +142,14 @@ class AlphaEngine(Engine):
                 await self._load_relevant_terms(
                     agents=[agent],
                     context_variables=context_variables,
-                    interaction_history=interaction_history,
+                    interaction_history=interaction.history,
                 )
             )
 
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
-                    "acknowledged_offset": last_known_event_offset,
+                    "acknowledged_offset": interaction.last_known_event_offset,
                     "status": "processing",
                     "data": {},
                 },
@@ -142,7 +167,7 @@ class AlphaEngine(Engine):
                 ) = await self._load_guideline_propositions(
                     agents=[agent],
                     context_variables=context_variables,
-                    interaction_history=interaction_history,
+                    interaction_history=interaction.history,
                     terms=list(terms),
                     staged_events=all_tool_events,
                 )
@@ -163,7 +188,7 @@ class AlphaEngine(Engine):
                     session_id=context.session_id,
                     agents=[agent],
                     context_variables=context_variables,
-                    interaction_history=interaction_history,
+                    interaction_history=interaction.history,
                     terms=list(terms),
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
@@ -192,7 +217,7 @@ class AlphaEngine(Engine):
                 event_emitter=event_emitter,
                 agents=[agent],
                 context_variables=context_variables,
-                interaction_history=interaction_history,
+                interaction_history=interaction.history,
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
@@ -202,7 +227,7 @@ class AlphaEngine(Engine):
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
-                    "acknowledged_offset": last_known_event_offset,
+                    "acknowledged_offset": interaction.last_known_event_offset,
                     "status": "cancelled",
                     "data": {},
                 },
@@ -215,7 +240,7 @@ class AlphaEngine(Engine):
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
-                    "acknowledged_offset": last_known_event_offset,
+                    "acknowledged_offset": interaction.last_known_event_offset,
                     "status": "ready",
                     "data": {},
                 },

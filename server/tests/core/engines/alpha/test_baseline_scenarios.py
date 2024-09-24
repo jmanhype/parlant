@@ -18,6 +18,7 @@ scenarios(
         f"core/engines/alpha/features/{feature}.feature"
         for feature in (
             "conversation",
+            "errors",
             "guideline_connections",
             "proactivity",
             "supervision",
