@@ -72,6 +72,7 @@ SessionStatus: TypeAlias = Literal[
     "processing",
     "ready",
     "typing",
+    "error",
 ]
 
 

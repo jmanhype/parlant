@@ -20,6 +20,7 @@ from tabulate import tabulate
 import uvicorn
 
 from emcie.common.tools import ToolId
+from emcie.server import VERSION
 from emcie.server.adapters.db.chroma.terminology import TerminologyChromaStore
 from emcie.server.adapters.nlp.openai import GPT_4o, GPT_4o_Mini, OpenAITextEmbedding3Large
 from emcie.server.api.app import create_app
@@ -100,6 +101,8 @@ sys.path.append(EMCIE_HOME_DIR.as_posix())
 
 CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(EMCIE_HOME_DIR / "emcie.log", CORRELATOR)
+
+LOGGER.info(f"Emcie server version {VERSION}")
 LOGGER.info(f"Using home directory '{EMCIE_HOME_DIR.absolute()}'")
 
 

@@ -80,6 +80,7 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
 async def container() -> AsyncIterator[Container]:
     container = Container(log_undefined_deps=True)
 
+    container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
     container[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[
@@ -98,7 +99,6 @@ async def container() -> AsyncIterator[Container]:
         GuidelineConnectionPropositionsSchema
     ](logger=container[Logger])
 
-    container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)

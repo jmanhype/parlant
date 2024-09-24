@@ -54,6 +54,22 @@ def set_package_version(version: str, package: Package) -> None:
         die("error: failed to re-hash poetry lock file")
 
 
+def update_version_variable_in_code(version: str) -> None:
+    server_package = next(p for p in get_packages() if p.name == "server")
+    init_file: Path = server_package.path / "src/emcie/server/__init__.py"
+
+    init_file_content = init_file.read_text()
+    current_version = get_current_version(server_package)
+
+    init_file_content = re.sub(
+        f'VERSION = "{current_version}"',
+        f'VERSION = "{version}"',
+        init_file_content,
+    )
+
+    init_file.write_text(init_file_content)
+
+
 def tag_repo(version: str) -> None:
     status, output = subprocess.getstatusoutput(f'git tag "v{version}"')
 
@@ -135,6 +151,7 @@ if __name__ == "__main__":
     if answer not in "yY":
         die("Canceled.")
 
+    update_version_variable_in_code(new_version)
     for_each_package(partial(set_package_version, new_version))
     commit_version(new_version)
     tag_repo(new_version)
