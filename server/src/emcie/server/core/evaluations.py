@@ -164,184 +164,6 @@ class EvaluationDocument(TypedDict, total=False):
     invoices: Sequence[_InvoiceDocument]
 
 
-def _serialize_invoice(invoice: Invoice) -> _InvoiceDocument:
-    def serialize_coherence_check(check: CoherenceCheck) -> _CoherenceCheckDocument:
-        return _CoherenceCheckDocument(
-            kind=check.kind,
-            first=_GuidelineContentDocument(
-                predicate=check.first.predicate,
-                action=check.first.action,
-            ),
-            second=_GuidelineContentDocument(
-                predicate=check.second.predicate,
-                action=check.second.action,
-            ),
-            issue=check.issue,
-            severity=check.severity,
-        )
-
-    def serialize_connection_proposition(
-        cp: ConnectionProposition,
-    ) -> _ConnectionPropositionDocument:
-        return _ConnectionPropositionDocument(
-            check_kind=cp.check_kind,
-            source=_GuidelineContentDocument(
-                predicate=cp.source.predicate,
-                action=cp.source.action,
-            ),
-            target=_GuidelineContentDocument(
-                predicate=cp.target.predicate,
-                action=cp.target.action,
-            ),
-            connection_kind=cp.connection_kind.name,
-        )
-
-    def serialize_invoice_guideline_data(
-        data: InvoiceGuidelineData,
-    ) -> _InvoiceGuidelineDataDocument:
-        return _InvoiceGuidelineDataDocument(
-            coherence_checks=[serialize_coherence_check(cc) for cc in data.coherence_checks],
-            connection_propositions=(
-                [serialize_connection_proposition(cp) for cp in data.connection_propositions]
-                if data.connection_propositions
-                else None
-            ),
-        )
-
-    def serialize_payload(payload: Payload) -> _PayloadDocument:
-        if isinstance(payload, GuidelinePayload):
-            return _GuidelinePayloadDocument(
-                predicate=payload.content.predicate,
-                action=payload.content.action,
-            )
-        else:
-            raise TypeError(f"Unknown payload type: {type(payload)}")
-
-    kind = invoice.kind.name  # Convert Enum to string
-    if kind == "GUIDELINE":
-        return _InvoiceDocument(
-            kind=kind,
-            payload=serialize_payload(invoice.payload),
-            checksum=invoice.checksum,
-            state_version=invoice.state_version,
-            approved=invoice.approved,
-            data=serialize_invoice_guideline_data(invoice.data) if invoice.data else None,
-            error=invoice.error,
-        )
-    else:
-        raise ValueError(f"Unsupported invoice kind: {kind}")
-
-
-def _serialize_evaluation(evaluation: Evaluation) -> EvaluationDocument:
-    return EvaluationDocument(
-        id=ObjectId(evaluation.id),
-        agent_id=evaluation.agent_id,
-        creation_utc=evaluation.creation_utc.isoformat(),
-        status=evaluation.status.name,
-        error=evaluation.error,
-        invoices=[_serialize_invoice(inv) for inv in evaluation.invoices],
-    )
-
-
-def _deserialize_evaluation_document(evaluation_document: EvaluationDocument) -> Evaluation:
-    def deserialize_guideline_content_document(
-        gc_doc: _GuidelineContentDocument,
-    ) -> GuidelineContent:
-        return GuidelineContent(
-            predicate=gc_doc["predicate"],
-            action=gc_doc["action"],
-        )
-
-    def deserialize_coherence_check_document(cc_doc: _CoherenceCheckDocument) -> CoherenceCheck:
-        return CoherenceCheck(
-            kind=cc_doc["kind"],
-            first=deserialize_guideline_content_document(cc_doc["first"]),
-            second=deserialize_guideline_content_document(cc_doc["second"]),
-            issue=cc_doc["issue"],
-            severity=cc_doc["severity"],
-        )
-
-    def deserialize_connection_proposition_document(
-        cp_doc: _ConnectionPropositionDocument,
-    ) -> ConnectionProposition:
-        connection_kind = ConnectionKind[cp_doc["connection_kind"]]
-
-        return ConnectionProposition(
-            check_kind=cp_doc["check_kind"],
-            source=deserialize_guideline_content_document(cp_doc["source"]),
-            target=deserialize_guideline_content_document(cp_doc["target"]),
-            connection_kind=connection_kind,
-        )
-
-    def deserialize_invoice_guideline_data(
-        data_doc: _InvoiceGuidelineDataDocument,
-    ) -> InvoiceGuidelineData:
-        return InvoiceGuidelineData(
-            coherence_checks=[
-                deserialize_coherence_check_document(cc_doc)
-                for cc_doc in data_doc["coherence_checks"]
-            ],
-            connection_propositions=(
-                [
-                    deserialize_connection_proposition_document(cp_doc)
-                    for cp_doc in data_doc["connection_propositions"]
-                ]
-                if data_doc["connection_propositions"] is not None
-                else None
-            ),
-        )
-
-    def deserialize_payload_document(kind: PayloadKind, payload_doc: _PayloadDocument) -> Payload:
-        if kind == PayloadKind.GUIDELINE:
-            return GuidelinePayload(
-                content=GuidelineContent(
-                    predicate=payload_doc["predicate"],
-                    action=payload_doc["action"],
-                )
-            )
-        else:
-            raise ValueError(f"Unsupported payload kind: {kind}")
-
-    def deserialize_invoice_document(invoice_doc: _InvoiceDocument) -> Invoice:
-        kind = PayloadKind[invoice_doc["kind"]]
-
-        payload = deserialize_payload_document(kind, invoice_doc["payload"])
-
-        data_doc = invoice_doc.get("data")
-        if data_doc is not None:
-            data = deserialize_invoice_guideline_data(data_doc)
-        else:
-            data = None
-
-        return Invoice(
-            kind=kind,
-            payload=payload,
-            checksum=invoice_doc["checksum"],
-            state_version=invoice_doc["state_version"],
-            approved=invoice_doc["approved"],
-            data=data,
-            error=invoice_doc.get("error"),
-        )
-
-    evaluation_id = EvaluationId(evaluation_document["id"])
-    creation_utc = datetime.fromisoformat(evaluation_document["creation_utc"])
-
-    status = EvaluationStatus[evaluation_document["status"]]
-
-    invoices = [
-        deserialize_invoice_document(inv_doc) for inv_doc in evaluation_document["invoices"]
-    ]
-
-    return Evaluation(
-        id=evaluation_id,
-        agent_id=AgentId(evaluation_document["agent_id"]),
-        creation_utc=creation_utc,
-        status=status,
-        error=evaluation_document.get("error"),
-        invoices=invoices,
-    )
-
-
 class EvaluationUpdateParams(TypedDict, total=False):
     status: EvaluationStatus
     error: Optional[str]
@@ -383,6 +205,185 @@ class EvaluationDocumentStore(EvaluationStore):
             schema=EvaluationDocument,
         )
 
+    def _serialize_invoice(self, invoice: Invoice) -> _InvoiceDocument:
+        def serialize_coherence_check(check: CoherenceCheck) -> _CoherenceCheckDocument:
+            return _CoherenceCheckDocument(
+                kind=check.kind,
+                first=_GuidelineContentDocument(
+                    predicate=check.first.predicate,
+                    action=check.first.action,
+                ),
+                second=_GuidelineContentDocument(
+                    predicate=check.second.predicate,
+                    action=check.second.action,
+                ),
+                issue=check.issue,
+                severity=check.severity,
+            )
+
+        def serialize_connection_proposition(
+            cp: ConnectionProposition,
+        ) -> _ConnectionPropositionDocument:
+            return _ConnectionPropositionDocument(
+                check_kind=cp.check_kind,
+                source=_GuidelineContentDocument(
+                    predicate=cp.source.predicate,
+                    action=cp.source.action,
+                ),
+                target=_GuidelineContentDocument(
+                    predicate=cp.target.predicate,
+                    action=cp.target.action,
+                ),
+                connection_kind=cp.connection_kind.name,
+            )
+
+        def serialize_invoice_guideline_data(
+            data: InvoiceGuidelineData,
+        ) -> _InvoiceGuidelineDataDocument:
+            return _InvoiceGuidelineDataDocument(
+                coherence_checks=[serialize_coherence_check(cc) for cc in data.coherence_checks],
+                connection_propositions=(
+                    [serialize_connection_proposition(cp) for cp in data.connection_propositions]
+                    if data.connection_propositions
+                    else None
+                ),
+            )
+
+        def serialize_payload(payload: Payload) -> _PayloadDocument:
+            if isinstance(payload, GuidelinePayload):
+                return _GuidelinePayloadDocument(
+                    predicate=payload.content.predicate,
+                    action=payload.content.action,
+                )
+            else:
+                raise TypeError(f"Unknown payload type: {type(payload)}")
+
+        kind = invoice.kind.name  # Convert Enum to string
+        if kind == "GUIDELINE":
+            return _InvoiceDocument(
+                kind=kind,
+                payload=serialize_payload(invoice.payload),
+                checksum=invoice.checksum,
+                state_version=invoice.state_version,
+                approved=invoice.approved,
+                data=serialize_invoice_guideline_data(invoice.data) if invoice.data else None,
+                error=invoice.error,
+            )
+        else:
+            raise ValueError(f"Unsupported invoice kind: {kind}")
+
+    def _serialize_evaluation(self, evaluation: Evaluation) -> EvaluationDocument:
+        return EvaluationDocument(
+            id=ObjectId(evaluation.id),
+            agent_id=evaluation.agent_id,
+            creation_utc=evaluation.creation_utc.isoformat(),
+            status=evaluation.status.name,
+            error=evaluation.error,
+            invoices=[self._serialize_invoice(inv) for inv in evaluation.invoices],
+        )
+
+    def _deserialize_evaluation_document(
+        self, evaluation_document: EvaluationDocument
+    ) -> Evaluation:
+        def deserialize_guideline_content_document(
+            gc_doc: _GuidelineContentDocument,
+        ) -> GuidelineContent:
+            return GuidelineContent(
+                predicate=gc_doc["predicate"],
+                action=gc_doc["action"],
+            )
+
+        def deserialize_coherence_check_document(cc_doc: _CoherenceCheckDocument) -> CoherenceCheck:
+            return CoherenceCheck(
+                kind=cc_doc["kind"],
+                first=deserialize_guideline_content_document(cc_doc["first"]),
+                second=deserialize_guideline_content_document(cc_doc["second"]),
+                issue=cc_doc["issue"],
+                severity=cc_doc["severity"],
+            )
+
+        def deserialize_connection_proposition_document(
+            cp_doc: _ConnectionPropositionDocument,
+        ) -> ConnectionProposition:
+            connection_kind = ConnectionKind[cp_doc["connection_kind"]]
+
+            return ConnectionProposition(
+                check_kind=cp_doc["check_kind"],
+                source=deserialize_guideline_content_document(cp_doc["source"]),
+                target=deserialize_guideline_content_document(cp_doc["target"]),
+                connection_kind=connection_kind,
+            )
+
+        def deserialize_invoice_guideline_data(
+            data_doc: _InvoiceGuidelineDataDocument,
+        ) -> InvoiceGuidelineData:
+            return InvoiceGuidelineData(
+                coherence_checks=[
+                    deserialize_coherence_check_document(cc_doc)
+                    for cc_doc in data_doc["coherence_checks"]
+                ],
+                connection_propositions=(
+                    [
+                        deserialize_connection_proposition_document(cp_doc)
+                        for cp_doc in data_doc["connection_propositions"]
+                    ]
+                    if data_doc["connection_propositions"] is not None
+                    else None
+                ),
+            )
+
+        def deserialize_payload_document(
+            kind: PayloadKind, payload_doc: _PayloadDocument
+        ) -> Payload:
+            if kind == PayloadKind.GUIDELINE:
+                return GuidelinePayload(
+                    content=GuidelineContent(
+                        predicate=payload_doc["predicate"],
+                        action=payload_doc["action"],
+                    )
+                )
+            else:
+                raise ValueError(f"Unsupported payload kind: {kind}")
+
+        def deserialize_invoice_document(invoice_doc: _InvoiceDocument) -> Invoice:
+            kind = PayloadKind[invoice_doc["kind"]]
+
+            payload = deserialize_payload_document(kind, invoice_doc["payload"])
+
+            data_doc = invoice_doc.get("data")
+            if data_doc is not None:
+                data = deserialize_invoice_guideline_data(data_doc)
+            else:
+                data = None
+
+            return Invoice(
+                kind=kind,
+                payload=payload,
+                checksum=invoice_doc["checksum"],
+                state_version=invoice_doc["state_version"],
+                approved=invoice_doc["approved"],
+                data=data,
+                error=invoice_doc.get("error"),
+            )
+
+        evaluation_id = EvaluationId(evaluation_document["id"])
+        creation_utc = datetime.fromisoformat(evaluation_document["creation_utc"])
+
+        status = EvaluationStatus[evaluation_document["status"]]
+
+        invoices = [
+            deserialize_invoice_document(inv_doc) for inv_doc in evaluation_document["invoices"]
+        ]
+
+        return Evaluation(
+            id=evaluation_id,
+            agent_id=AgentId(evaluation_document["agent_id"]),
+            creation_utc=creation_utc,
+            status=status,
+            error=evaluation_document.get("error"),
+            invoices=invoices,
+        )
+
     async def create_evaluation(
         self,
         agent_id: AgentId,
@@ -415,7 +416,9 @@ class EvaluationDocumentStore(EvaluationStore):
             invoices=invoices,
         )
 
-        await self._evaluation_collection.insert_one(_serialize_evaluation(evaluation=evaluation))
+        await self._evaluation_collection.insert_one(
+            self._serialize_evaluation(evaluation=evaluation)
+        )
 
         return evaluation
 
@@ -428,7 +431,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         update_params: EvaluationDocument = {}
         if "invoices" in params:
-            update_params["invoices"] = [_serialize_invoice(i) for i in params["invoices"]]
+            update_params["invoices"] = [self._serialize_invoice(i) for i in params["invoices"]]
 
         if "status" in params:
             update_params["status"] = params["status"].name
@@ -441,7 +444,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         assert result.updated_document
 
-        return _deserialize_evaluation_document(result.updated_document)
+        return self._deserialize_evaluation_document(result.updated_document)
 
     async def read_evaluation(
         self,
@@ -454,12 +457,12 @@ class EvaluationDocumentStore(EvaluationStore):
         if not evaluation_document:
             raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
-        return _deserialize_evaluation_document(evaluation_document=evaluation_document)
+        return self._deserialize_evaluation_document(evaluation_document=evaluation_document)
 
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
-            _deserialize_evaluation_document(evaluation_document=e)
+            self._deserialize_evaluation_document(evaluation_document=e)
             for e in await self._evaluation_collection.find(filters={})
         ]

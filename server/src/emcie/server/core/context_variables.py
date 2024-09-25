@@ -147,83 +147,6 @@ class ContextVariableValueDocument(TypedDict, total=False):
     data: JSONSerializable
 
 
-def _serialize_freshness_rules(freshness_rules: FreshnessRules) -> FreshnessRulesDocument:
-    return FreshnessRulesDocument(
-        months=freshness_rules.months,
-        days_of_month=freshness_rules.days_of_month,
-        days_of_week=freshness_rules.days_of_week,
-        hours=freshness_rules.hours,
-        minutes=freshness_rules.minutes,
-        seconds=freshness_rules.seconds,
-    )
-
-
-def _serialize_context_variable(
-    context_variable: ContextVariable, variable_set: str
-) -> ContextVariableDocument:
-    return ContextVariableDocument(
-        id=ObjectId(context_variable.id),
-        variable_set=variable_set,
-        name=context_variable.name,
-        description=context_variable.description,
-        tool_id=context_variable.tool_id,
-        freshness_rules=_serialize_freshness_rules(context_variable.freshness_rules)
-        if context_variable.freshness_rules
-        else None,
-    )
-
-
-def _serialize_context_variable_value(
-    context_variable_value: ContextVariableValue, variable_set: str, key: str
-) -> ContextVariableValueDocument:
-    return ContextVariableValueDocument(
-        id=ObjectId(context_variable_value.id),
-        last_modified=context_variable_value.last_modified.isoformat(),
-        variable_set=variable_set,
-        variable_id=context_variable_value.variable_id,
-        key=key,
-        data=context_variable_value.data,
-    )
-
-
-def _deserialize_freshness_rules(
-    freshness_rules_document: FreshnessRulesDocument,
-) -> FreshnessRules:
-    return FreshnessRules(
-        months=freshness_rules_document["months"],
-        days_of_month=freshness_rules_document["days_of_month"],
-        days_of_week=freshness_rules_document["days_of_week"],
-        hours=freshness_rules_document["hours"],
-        minutes=freshness_rules_document["minutes"],
-        seconds=freshness_rules_document["seconds"],
-    )
-
-
-def _deserialize_context_variable(
-    context_variable_document: ContextVariableDocument,
-) -> ContextVariable:
-    return ContextVariable(
-        id=ContextVariableId(context_variable_document["id"]),
-        name=context_variable_document["name"],
-        description=context_variable_document.get("description"),
-        tool_id=context_variable_document["tool_id"],
-        freshness_rules=_deserialize_freshness_rules(context_variable_document["freshness_rules"])
-        if context_variable_document["freshness_rules"]
-        else None,
-    )
-
-
-def _deserialize_context_variable_value(
-    context_variable_value_document: ContextVariableValueDocument,
-) -> ContextVariableValue:
-    return ContextVariableValue(
-        id=ContextVariableValueId(context_variable_value_document["id"]),
-        last_modified=datetime.fromisoformat(context_variable_value_document["last_modified"]),
-        variable_id=context_variable_value_document["variable_id"],
-        data=context_variable_value_document["data"],
-    )
-
-
 class ContextVariableDocumentStore(ContextVariableStore):
     def __init__(self, database: DocumentDatabase):
         self._variable_collection = database.get_or_create_collection(
@@ -234,6 +157,87 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self._value_collection = database.get_or_create_collection(
             name="values",
             schema=ContextVariableValueDocument,
+        )
+
+    def _serialize_freshness_rules(self, freshness_rules: FreshnessRules) -> FreshnessRulesDocument:
+        return FreshnessRulesDocument(
+            months=freshness_rules.months,
+            days_of_month=freshness_rules.days_of_month,
+            days_of_week=freshness_rules.days_of_week,
+            hours=freshness_rules.hours,
+            minutes=freshness_rules.minutes,
+            seconds=freshness_rules.seconds,
+        )
+
+    def _serialize_context_variable(
+        self,
+        context_variable: ContextVariable,
+        variable_set: str,
+    ) -> ContextVariableDocument:
+        return ContextVariableDocument(
+            id=ObjectId(context_variable.id),
+            variable_set=variable_set,
+            name=context_variable.name,
+            description=context_variable.description,
+            tool_id=context_variable.tool_id,
+            freshness_rules=self._serialize_freshness_rules(context_variable.freshness_rules)
+            if context_variable.freshness_rules
+            else None,
+        )
+
+    def _serialize_context_variable_value(
+        self,
+        context_variable_value: ContextVariableValue,
+        variable_set: str,
+        key: str,
+    ) -> ContextVariableValueDocument:
+        return ContextVariableValueDocument(
+            id=ObjectId(context_variable_value.id),
+            last_modified=context_variable_value.last_modified.isoformat(),
+            variable_set=variable_set,
+            variable_id=context_variable_value.variable_id,
+            key=key,
+            data=context_variable_value.data,
+        )
+
+    def _deserialize_freshness_rules(
+        self,
+        freshness_rules_document: FreshnessRulesDocument,
+    ) -> FreshnessRules:
+        return FreshnessRules(
+            months=freshness_rules_document["months"],
+            days_of_month=freshness_rules_document["days_of_month"],
+            days_of_week=freshness_rules_document["days_of_week"],
+            hours=freshness_rules_document["hours"],
+            minutes=freshness_rules_document["minutes"],
+            seconds=freshness_rules_document["seconds"],
+        )
+
+    def _deserialize_context_variable(
+        self,
+        context_variable_document: ContextVariableDocument,
+    ) -> ContextVariable:
+        return ContextVariable(
+            id=ContextVariableId(context_variable_document["id"]),
+            name=context_variable_document["name"],
+            description=context_variable_document.get("description"),
+            tool_id=context_variable_document["tool_id"],
+            freshness_rules=self._deserialize_freshness_rules(
+                context_variable_document["freshness_rules"]
+            )
+            if context_variable_document["freshness_rules"]
+            else None,
+        )
+
+    def _deserialize_context_variable_value(
+        self,
+        context_variable_value_document: ContextVariableValueDocument,
+    ) -> ContextVariableValue:
+        return ContextVariableValue(
+            id=ContextVariableValueId(context_variable_value_document["id"]),
+            last_modified=datetime.fromisoformat(context_variable_value_document["last_modified"]),
+            variable_id=context_variable_value_document["variable_id"],
+            data=context_variable_value_document["data"],
         )
 
     async def create_variable(
@@ -253,7 +257,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         )
 
         await self._variable_collection.insert_one(
-            _serialize_context_variable(context_variable, variable_set)
+            self._serialize_context_variable(context_variable, variable_set)
         )
 
         return context_variable
@@ -280,7 +284,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "variable_id": {"$eq": variable_id},
                 "key": {"$eq": key},
             },
-            _serialize_context_variable_value(
+            self._serialize_context_variable_value(
                 context_variable_value=value, variable_set=variable_set, key=key
             ),
             upsert=True,
@@ -322,7 +326,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
     ) -> Sequence[ContextVariable]:
         return [
-            _deserialize_context_variable(d)
+            self._deserialize_context_variable(d)
             for d in await self._variable_collection.find({"variable_set": {"$eq": variable_set}})
         ]
 
@@ -343,7 +347,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 message=f"variable_set={variable_set}",
             )
 
-        return _deserialize_context_variable(variable_document)
+        return self._deserialize_context_variable(variable_document)
 
     async def read_value(
         self,
@@ -364,4 +368,4 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 message=f"variable_set={variable_set}, key={key}",
             )
 
-        return _deserialize_context_variable_value(value_document)
+        return self._deserialize_context_variable_value(value_document)

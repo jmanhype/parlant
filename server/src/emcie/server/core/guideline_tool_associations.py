@@ -45,32 +45,32 @@ class GuidelineToolAssociationDocument(TypedDict, total=False):
     tool_id: ToolId
 
 
-def _serialize_association(
-    association: GuidelineToolAssociation,
-) -> GuidelineToolAssociationDocument:
-    return GuidelineToolAssociationDocument(
-        id=ObjectId(association.id),
-        creation_utc=association.creation_utc.isoformat(),
-        guideline_id=association.guideline_id,
-        tool_id=association.tool_id,
-    )
-
-
-def _deserialize_association_documet(
-    association_document: GuidelineToolAssociationDocument,
-) -> GuidelineToolAssociation:
-    return GuidelineToolAssociation(
-        id=GuidelineToolAssociationId(association_document["id"]),
-        creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
-        guideline_id=association_document["guideline_id"],
-        tool_id=association_document["tool_id"],
-    )
-
-
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
             name="associations", schema=GuidelineToolAssociationDocument
+        )
+
+    def _serialize_association(
+        self,
+        association: GuidelineToolAssociation,
+    ) -> GuidelineToolAssociationDocument:
+        return GuidelineToolAssociationDocument(
+            id=ObjectId(association.id),
+            creation_utc=association.creation_utc.isoformat(),
+            guideline_id=association.guideline_id,
+            tool_id=association.tool_id,
+        )
+
+    def _deserialize_association_documet(
+        self,
+        association_document: GuidelineToolAssociationDocument,
+    ) -> GuidelineToolAssociation:
+        return GuidelineToolAssociation(
+            id=GuidelineToolAssociationId(association_document["id"]),
+            creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
+            guideline_id=association_document["guideline_id"],
+            tool_id=association_document["tool_id"],
         )
 
     async def create_association(
@@ -88,11 +88,12 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             tool_id=tool_id,
         )
 
-        await self._collection.insert_one(document=_serialize_association(association))
+        await self._collection.insert_one(document=self._serialize_association(association))
 
         return association
 
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [
-            _deserialize_association_documet(d) for d in await self._collection.find(filters={})
+            self._deserialize_association_documet(d)
+            for d in await self._collection.find(filters={})
         ]

@@ -67,31 +67,36 @@ class GuidelineDocument(TypedDict, total=False):
     action: str
 
 
-def _serialize_guideline(guideline: Guideline, guideline_set: str) -> GuidelineDocument:
-    return GuidelineDocument(
-        id=ObjectId(guideline.id),
-        creation_utc=guideline.creation_utc.isoformat(),
-        guideline_set=guideline_set,
-        predicate=guideline.content.predicate,
-        action=guideline.content.action,
-    )
-
-
-def _deserialize_guideline_documet(guideline_document: GuidelineDocument) -> Guideline:
-    return Guideline(
-        id=GuidelineId(guideline_document["id"]),
-        creation_utc=datetime.fromisoformat(guideline_document["creation_utc"]),
-        content=GuidelineContent(
-            predicate=guideline_document["predicate"], action=guideline_document["action"]
-        ),
-    )
-
-
 class GuidelineDocumentStore(GuidelineStore):
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
             name="guidelines",
             schema=GuidelineDocument,
+        )
+
+    def _serialize_guideline(
+        self,
+        guideline: Guideline,
+        guideline_set: str,
+    ) -> GuidelineDocument:
+        return GuidelineDocument(
+            id=ObjectId(guideline.id),
+            creation_utc=guideline.creation_utc.isoformat(),
+            guideline_set=guideline_set,
+            predicate=guideline.content.predicate,
+            action=guideline.content.action,
+        )
+
+    def _deserialize_guideline_documet(
+        self,
+        guideline_document: GuidelineDocument,
+    ) -> Guideline:
+        return Guideline(
+            id=GuidelineId(guideline_document["id"]),
+            creation_utc=datetime.fromisoformat(guideline_document["creation_utc"]),
+            content=GuidelineContent(
+                predicate=guideline_document["predicate"], action=guideline_document["action"]
+            ),
         )
 
     async def create_guideline(
@@ -113,7 +118,7 @@ class GuidelineDocumentStore(GuidelineStore):
         )
 
         await self._collection.insert_one(
-            document=_serialize_guideline(
+            document=self._serialize_guideline(
                 guideline=guideline,
                 guideline_set=guideline_set,
             )
@@ -126,7 +131,7 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_set: str,
     ) -> Sequence[Guideline]:
         return [
-            _deserialize_guideline_documet(d)
+            self._deserialize_guideline_documet(d)
             for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
         ]
 
@@ -147,7 +152,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
 
-        return _deserialize_guideline_documet(guideline_document)
+        return self._deserialize_guideline_documet(guideline_document)
 
     async def delete_guideline(
         self,
@@ -166,4 +171,4 @@ class GuidelineDocumentStore(GuidelineStore):
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
 
-        return _deserialize_guideline_documet(result.deleted_document)
+        return self._deserialize_guideline_documet(result.deleted_document)

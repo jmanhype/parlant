@@ -183,62 +183,6 @@ class EventDocument(TypedDict, total=False):
     data: JSONSerializable
 
 
-def _serialize_session(
-    session: Session,
-) -> SessionDocument:
-    return SessionDocument(
-        id=ObjectId(session.id),
-        creation_utc=session.creation_utc.isoformat(),
-        end_user_id=session.end_user_id,
-        agent_id=session.agent_id,
-        title=session.title if session.title else None,
-        consumption_offsets=session.consumption_offsets,
-    )
-
-
-def _deserialize_session_documet(
-    session_document: SessionDocument,
-) -> Session:
-    return Session(
-        id=SessionId(session_document["id"]),
-        creation_utc=datetime.fromisoformat(session_document["creation_utc"]),
-        end_user_id=session_document["end_user_id"],
-        agent_id=session_document["agent_id"],
-        title=session_document["title"],
-        consumption_offsets=session_document["consumption_offsets"],
-    )
-
-
-def _serialize_event(
-    event: Event,
-    session_id: SessionId,
-) -> EventDocument:
-    return EventDocument(
-        id=ObjectId(event.id),
-        creation_utc=event.creation_utc.isoformat(),
-        session_id=session_id,
-        source=event.source,
-        kind=event.kind,
-        offset=event.offset,
-        correlation_id=event.correlation_id,
-        data=event.data,
-    )
-
-
-def _deserialize_event_documet(
-    event_document: EventDocument,
-) -> Event:
-    return Event(
-        id=EventId(event_document["id"]),
-        creation_utc=datetime.fromisoformat(event_document["creation_utc"]),
-        source=event_document["source"],
-        kind=event_document["kind"],
-        offset=event_document["offset"],
-        correlation_id=event_document["correlation_id"],
-        data=event_document["data"],
-    )
-
-
 class SessionDocumentStore(SessionStore):
     def __init__(self, database: DocumentDatabase):
         self._session_collection = database.get_or_create_collection(
@@ -248,6 +192,62 @@ class SessionDocumentStore(SessionStore):
         self._event_collection = database.get_or_create_collection(
             name="events",
             schema=EventDocument,
+        )
+
+    def _serialize_session(
+        self,
+        session: Session,
+    ) -> SessionDocument:
+        return SessionDocument(
+            id=ObjectId(session.id),
+            creation_utc=session.creation_utc.isoformat(),
+            end_user_id=session.end_user_id,
+            agent_id=session.agent_id,
+            title=session.title if session.title else None,
+            consumption_offsets=session.consumption_offsets,
+        )
+
+    def _deserialize_session_documet(
+        self,
+        session_document: SessionDocument,
+    ) -> Session:
+        return Session(
+            id=SessionId(session_document["id"]),
+            creation_utc=datetime.fromisoformat(session_document["creation_utc"]),
+            end_user_id=session_document["end_user_id"],
+            agent_id=session_document["agent_id"],
+            title=session_document["title"],
+            consumption_offsets=session_document["consumption_offsets"],
+        )
+
+    def _serialize_event(
+        self,
+        event: Event,
+        session_id: SessionId,
+    ) -> EventDocument:
+        return EventDocument(
+            id=ObjectId(event.id),
+            creation_utc=event.creation_utc.isoformat(),
+            session_id=session_id,
+            source=event.source,
+            kind=event.kind,
+            offset=event.offset,
+            correlation_id=event.correlation_id,
+            data=event.data,
+        )
+
+    def _deserialize_event_documet(
+        self,
+        event_document: EventDocument,
+    ) -> Event:
+        return Event(
+            id=EventId(event_document["id"]),
+            creation_utc=datetime.fromisoformat(event_document["creation_utc"]),
+            source=event_document["source"],
+            kind=event_document["kind"],
+            offset=event_document["offset"],
+            correlation_id=event_document["correlation_id"],
+            data=event_document["data"],
         )
 
     async def create_session(
@@ -270,7 +270,7 @@ class SessionDocumentStore(SessionStore):
             title=title,
         )
 
-        await self._session_collection.insert_one(document=_serialize_session(session))
+        await self._session_collection.insert_one(document=self._serialize_session(session))
 
         return session
 
@@ -295,7 +295,7 @@ class SessionDocumentStore(SessionStore):
         if not session_document:
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
-        return _deserialize_session_documet(session_document)
+        return self._deserialize_session_documet(session_document)
 
     async def update_session(
         self,
@@ -343,7 +343,7 @@ class SessionDocumentStore(SessionStore):
             data=data,
         )
 
-        await self._event_collection.insert_one(document=_serialize_event(event, session_id))
+        await self._event_collection.insert_one(document=self._serialize_event(event, session_id))
 
         return event
 
@@ -394,14 +394,14 @@ class SessionDocumentStore(SessionStore):
                 )
             )
 
-        return [_deserialize_event_documet(d) for d in event_documents]
+        return [self._deserialize_event_documet(d) for d in event_documents]
 
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
     ) -> Sequence[Session]:
         return [
-            _deserialize_session_documet(d)
+            self._deserialize_session_documet(d)
             for d in await self._session_collection.find(
                 filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
             )

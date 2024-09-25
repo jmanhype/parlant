@@ -43,24 +43,6 @@ class EndUserDocument(TypedDict, total=False):
     email: str
 
 
-def _serialize_end_user(end_user: EndUser) -> EndUserDocument:
-    return EndUserDocument(
-        id=ObjectId(end_user.id),
-        creation_utc=end_user.creation_utc.isoformat(),
-        name=end_user.name,
-        email=end_user.email,
-    )
-
-
-def _deserialize_end_user_documet(end_user_document: EndUserDocument) -> EndUser:
-    return EndUser(
-        id=EndUserId(end_user_document["id"]),
-        creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
-        name=end_user_document["name"],
-        email=end_user_document["email"],
-    )
-
-
 class EndUserDocumentStore(EndUserStore):
     def __init__(
         self,
@@ -69,6 +51,22 @@ class EndUserDocumentStore(EndUserStore):
         self._collection = database.get_or_create_collection(
             name="end_users",
             schema=EndUserDocument,
+        )
+
+    def _serialize_end_user(self, end_user: EndUser) -> EndUserDocument:
+        return EndUserDocument(
+            id=ObjectId(end_user.id),
+            creation_utc=end_user.creation_utc.isoformat(),
+            name=end_user.name,
+            email=end_user.email,
+        )
+
+    def _deserialize_end_user_documet(self, end_user_document: EndUserDocument) -> EndUser:
+        return EndUser(
+            id=EndUserId(end_user_document["id"]),
+            creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
+            name=end_user_document["name"],
+            email=end_user_document["email"],
         )
 
     async def create_end_user(
@@ -86,7 +84,7 @@ class EndUserDocumentStore(EndUserStore):
             creation_utc=creation_utc,
         )
 
-        await self._collection.insert_one(document=_serialize_end_user(end_user=end_user))
+        await self._collection.insert_one(document=self._serialize_end_user(end_user=end_user))
 
         return end_user
 
@@ -99,4 +97,4 @@ class EndUserDocumentStore(EndUserStore):
         if not end_user_document:
             raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
-        return _deserialize_end_user_documet(end_user_document)
+        return self._deserialize_end_user_documet(end_user_document)

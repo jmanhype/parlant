@@ -140,36 +140,6 @@ class ToolDocument(TypedDict, total=False):
     consequential: bool
 
 
-def _serialize_tool(
-    tool: Tool,
-    module_path: str,
-) -> ToolDocument:
-    return ToolDocument(
-        id=ObjectId(tool.id),
-        creation_utc=tool.creation_utc.isoformat(),
-        name=tool.name,
-        module_path=module_path,
-        description=tool.description,
-        parameters=tool.parameters,
-        required=tool.required,
-        consequential=tool.consequential,
-    )
-
-
-def _deserialize_tool_documet(
-    tool_document: ToolDocument,
-) -> Tool:
-    return Tool(
-        id=ToolId(tool_document["id"]),
-        creation_utc=datetime.fromisoformat(tool_document["creation_utc"]),
-        name=tool_document["name"],
-        description=tool_document["description"],
-        parameters=dict(**tool_document["parameters"]),
-        required=list(tool_document["required"]),
-        consequential=tool_document["consequential"],
-    )
-
-
 class LocalToolService(ToolService):
     def __init__(
         self,
@@ -178,6 +148,36 @@ class LocalToolService(ToolService):
         self._collection = database.get_or_create_collection(
             name="tools",
             schema=ToolDocument,
+        )
+
+    def _serialize_tool(
+        self,
+        tool: Tool,
+        module_path: str,
+    ) -> ToolDocument:
+        return ToolDocument(
+            id=ObjectId(tool.id),
+            creation_utc=tool.creation_utc.isoformat(),
+            name=tool.name,
+            module_path=module_path,
+            description=tool.description,
+            parameters=tool.parameters,
+            required=tool.required,
+            consequential=tool.consequential,
+        )
+
+    def _deserialize_tool_documet(
+        self,
+        tool_document: ToolDocument,
+    ) -> Tool:
+        return Tool(
+            id=ToolId(tool_document["id"]),
+            creation_utc=datetime.fromisoformat(tool_document["creation_utc"]),
+            name=tool_document["name"],
+            description=tool_document["description"],
+            parameters=dict(**tool_document["parameters"]),
+            required=list(tool_document["required"]),
+            consequential=tool_document["consequential"],
         )
 
     async def create_tool(
@@ -205,14 +205,14 @@ class LocalToolService(ToolService):
             consequential=consequential,
         )
 
-        await self._collection.insert_one(document=_serialize_tool(tool, module_path))
+        await self._collection.insert_one(document=self._serialize_tool(tool, module_path))
 
         return tool
 
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
-        return [_deserialize_tool_documet(d) for d in await self._collection.find(filters={})]
+        return [self._deserialize_tool_documet(d) for d in await self._collection.find(filters={})]
 
     async def read_tool(
         self,
@@ -223,7 +223,7 @@ class LocalToolService(ToolService):
         if not tool_document:
             raise ItemNotFoundError(item_id=UniqueId(tool_id))
 
-        return _deserialize_tool_documet(tool_document)
+        return self._deserialize_tool_documet(tool_document)
 
     async def call_tool(
         self,
