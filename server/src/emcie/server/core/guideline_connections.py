@@ -2,14 +2,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, TypedDict
 import networkx  # type: ignore
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
@@ -31,7 +31,7 @@ class GuidelineConnection:
 
 class GuidelineConnectionStore(ABC):
     @abstractmethod
-    async def update_connection(
+    async def create_connection(
         self,
         source: GuidelineId,
         target: GuidelineId,
@@ -53,25 +53,51 @@ class GuidelineConnectionStore(ABC):
     ) -> Sequence[GuidelineConnection]: ...
 
 
-class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
-    class GuidelineConnectionDocument(BaseDocument):
-        creation_utc: datetime
-        source: GuidelineId
-        target: GuidelineId
-        kind: ConnectionKind
+class _GuidelineConnectionDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    source: GuidelineId
+    target: GuidelineId
+    kind: str
 
+
+class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     def __init__(self, database: DocumentDatabase) -> None:
         self._collection = database.get_or_create_collection(
             name="guideline_connections",
-            schema=self.GuidelineConnectionDocument,
+            schema=_GuidelineConnectionDocument,
         )
         self._graph: networkx.DiGraph | None = None
+
+    def _serialize(
+        self,
+        guideline_connection: GuidelineConnection,
+    ) -> _GuidelineConnectionDocument:
+        return _GuidelineConnectionDocument(
+            id=ObjectId(guideline_connection.id),
+            creation_utc=guideline_connection.creation_utc.isoformat(),
+            source=guideline_connection.source,
+            target=guideline_connection.target,
+            kind=guideline_connection.kind.name,
+        )
+
+    def _deserialize(
+        self,
+        guideline_connection_document: _GuidelineConnectionDocument,
+    ) -> GuidelineConnection:
+        return GuidelineConnection(
+            id=GuidelineConnectionId(guideline_connection_document["id"]),
+            creation_utc=datetime.fromisoformat(guideline_connection_document["creation_utc"]),
+            source=guideline_connection_document["source"],
+            target=guideline_connection_document["target"],
+            kind=ConnectionKind[guideline_connection_document["kind"]],
+        )
 
     async def _get_graph(self) -> networkx.DiGraph:
         if not self._graph:
             g = networkx.DiGraph()
 
-            connections = await self._collection.find(filters={})
+            connections = [self._deserialize(d) for d in await self._collection.find(filters={})]
 
             nodes = set()
             edges = list()
@@ -96,7 +122,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         return self._graph
 
-    async def update_connection(
+    async def create_connection(
         self,
         source: GuidelineId,
         target: GuidelineId,
@@ -105,15 +131,17 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> GuidelineConnection:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
+        guideline_connection = GuidelineConnection(
+            id=GuidelineConnectionId(generate_id()),
+            creation_utc=creation_utc,
+            source=source,
+            target=target,
+            kind=kind,
+        )
+
         result = await self._collection.update_one(
             filters={"source": {"$eq": source}, "target": {"$eq": target}},
-            updated_document=self.GuidelineConnectionDocument(
-                id=ObjectId(generate_id()),
-                creation_utc=creation_utc,
-                source=source,
-                target=target,
-                kind=kind,
-            ),
+            params=self._serialize(guideline_connection),
             upsert=True,
         )
 
@@ -128,16 +156,10 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             source,
             target,
             kind=kind,
-            id=result.updated_document.id,
+            id=guideline_connection.id,
         )
 
-        return GuidelineConnection(
-            id=GuidelineConnectionId(result.updated_document.id),
-            creation_utc=creation_utc,
-            source=source,
-            target=target,
-            kind=kind,
-        )
+        return guideline_connection
 
     async def delete_connection(
         self,
@@ -148,9 +170,9 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         if not connection_document:
             raise ItemNotFoundError(item_id=UniqueId(id))
 
-        (await self._get_graph()).remove_edge(
-            connection_document.source, connection_document.target
-        )
+        connection = self._deserialize(connection_document)
+
+        (await self._get_graph()).remove_edge(connection.source, connection.target)
 
         await self._collection.delete_one(filters={"id": {"$eq": id}})
 
@@ -185,15 +207,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                     if not connection_document:
                         raise ItemNotFoundError(item_id=UniqueId(edge_data["id"]))
 
-                    connections.append(
-                        GuidelineConnection(
-                            id=GuidelineConnectionId(connection_document.id),
-                            source=connection_document.source,
-                            target=connection_document.target,
-                            kind=connection_document.kind,
-                            creation_utc=connection_document.creation_utc,
-                        )
-                    )
+                    connections.append(self._deserialize(connection_document))
 
                 return connections
 
@@ -209,15 +223,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                     if not connection_document:
                         raise ItemNotFoundError(item_id=UniqueId(data["id"]))
 
-                    connections.append(
-                        GuidelineConnection(
-                            id=GuidelineConnectionId(connection_document.id),
-                            source=connection_document.source,
-                            target=connection_document.target,
-                            kind=connection_document.kind,
-                            creation_utc=connection_document.creation_utc,
-                        )
-                    )
+                    connections.append(self._deserialize(connection_document))
 
                 return connections
 

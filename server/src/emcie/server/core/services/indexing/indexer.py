@@ -175,7 +175,7 @@ class GuidelineIndexer:
                 f"Add guideline connection between source: {p.source} and {p.target}"
             )
 
-            await self._guideline_connection_store.update_connection(
+            await self._guideline_connection_store.create_connection(
                 source=data_to_guideline[f"{p.source.predicate}_{p.source.action}"].id,
                 target=data_to_guideline[f"{p.target.predicate}_{p.target.action}"].id,
                 kind=p.kind,

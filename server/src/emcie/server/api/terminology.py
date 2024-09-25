@@ -1,12 +1,13 @@
 from fastapi import APIRouter, status
 from typing import Optional
 
+from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
-from emcie.server.core.terminology import TerminologyStore, TermId
+from emcie.server.core.terminology import TermUpdateParams, TerminologyStore, TermId
 
 
 class CreateTermRequest(DefaultBaseModel):
-    agent_id: str
+    agent_id: AgentId
     name: str
     description: str
     synonyms: Optional[list[str]] = []
@@ -24,8 +25,9 @@ class ListTermsResponse(DefaultBaseModel):
 
 
 class PatchTermRequest(DefaultBaseModel):
-    description: str
-    synonyms: list[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    synonyms: Optional[list[str]] = None
 
 
 class DeleteTermResponse(DefaultBaseModel):
@@ -80,13 +82,20 @@ def create_router(
             ]
         )
 
-    @router.patch("/{agent_id}/{name}")
-    async def patch_term(agent_id: str, name: str, request: PatchTermRequest) -> TermDTO:
+    @router.patch("/agent_id={agent_id}/term_id={term_id}")
+    async def patch_term(agent_id: str, term_id: str, request: PatchTermRequest) -> TermDTO:
+        params: TermUpdateParams = {}
+        if request.name:
+            params["name"] = request.name
+        if request.description:
+            params["description"] = request.description
+        if request.synonyms:
+            params["synonyms"] = request.synonyms
+
         term = await terminology_store.update_term(
             term_set=agent_id,
-            name=name,
-            description=request.description,
-            synonyms=request.synonyms,
+            term_id=term_id,
+            params=params,
         )
 
         return TermDTO(

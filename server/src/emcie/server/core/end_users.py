@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional
+from typing import NewType, Optional, TypedDict
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
-from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 EndUserId = NewType("EndUserId", str)
@@ -36,19 +36,37 @@ class EndUserStore(ABC):
     ) -> EndUser: ...
 
 
-class EndUserDocumentStore(EndUserStore):
-    class EndUserDocument(BaseDocument):
-        creation_utc: datetime
-        name: str
-        email: str
+class _EndUserDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    name: str
+    email: str
 
+
+class EndUserDocumentStore(EndUserStore):
     def __init__(
         self,
         database: DocumentDatabase,
     ) -> None:
         self._collection = database.get_or_create_collection(
             name="end_users",
-            schema=self.EndUserDocument,
+            schema=_EndUserDocument,
+        )
+
+    def _serialize(self, end_user: EndUser) -> _EndUserDocument:
+        return _EndUserDocument(
+            id=ObjectId(end_user.id),
+            creation_utc=end_user.creation_utc.isoformat(),
+            name=end_user.name,
+            email=end_user.email,
+        )
+
+    def _deserialize(self, end_user_document: _EndUserDocument) -> EndUser:
+        return EndUser(
+            id=EndUserId(end_user_document["id"]),
+            creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
+            name=end_user_document["name"],
+            email=end_user_document["email"],
         )
 
     async def create_end_user(
@@ -59,21 +77,16 @@ class EndUserDocumentStore(EndUserStore):
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        document = self.EndUserDocument(
-            id=ObjectId(generate_id()),
+        end_user = EndUser(
+            id=EndUserId(generate_id()),
             name=name,
             email=email,
             creation_utc=creation_utc,
         )
 
-        await self._collection.insert_one(document=document)
+        await self._collection.insert_one(document=self._serialize(end_user=end_user))
 
-        return EndUser(
-            id=EndUserId(document.id),
-            name=name,
-            email=email,
-            creation_utc=creation_utc,
-        )
+        return end_user
 
     async def read_end_user(
         self,
@@ -84,9 +97,4 @@ class EndUserDocumentStore(EndUserStore):
         if not end_user_document:
             raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
-        return EndUser(
-            id=EndUserId(end_user_document.id),
-            name=end_user_document.name,
-            email=end_user_document.email,
-            creation_utc=end_user_document.creation_utc,
-        )
+        return self._deserialize(end_user_document)

@@ -1,17 +1,18 @@
 from __future__ import annotations
 from typing import Optional, Sequence, Type, cast
-from emcie.server.core.persistence.common import (
-    BaseDocument,
-    Where,
-    matches_filters,
-)
+from typing_extensions import get_type_hints
 from emcie.server.core.persistence.document_database import (
+    BaseDocument,
     DeleteResult,
     DocumentCollection,
     DocumentDatabase,
     InsertResult,
+    ObjectId,
     TDocument,
     UpdateResult,
+    Where,
+    ensure_is_total,
+    matches_filters,
 )
 
 
@@ -24,6 +25,9 @@ class TransientDocumentDatabase(DocumentDatabase):
         name: str,
         schema: Type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
+
         self._collections[name] = _TransientDocumentCollection(
             name=name,
             schema=schema,
@@ -46,6 +50,9 @@ class TransientDocumentDatabase(DocumentDatabase):
     ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(_TransientDocumentCollection[TDocument], collection)
+
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
 
         return self.create_collection(
             name=name,
@@ -77,26 +84,31 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Sequence[TDocument]:
-        return list(
-            filter(
-                lambda d: matches_filters(filters, d),
-                self._documents,
-            )
-        )
+        result = []
+        for doc in filter(
+            lambda d: matches_filters(filters, d),
+            self._documents,
+        ):
+            result.append(doc)
+
+        return result
 
     async def find_one(
         self,
         filters: Where,
     ) -> Optional[TDocument]:
-        matched_documents = await self.find(filters)
-        if len(matched_documents) >= 1:
-            return matched_documents[0]
+        for doc in self._documents:
+            if matches_filters(filters, doc):
+                return doc
+
         return None
 
     async def insert_one(
         self,
         document: TDocument,
     ) -> InsertResult:
+        ensure_is_total(document, self._schema)
+
         self._documents.append(document)
 
         return InsertResult(acknowledged=True)
@@ -104,28 +116,28 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     async def update_one(
         self,
         filters: Where,
-        updated_document: TDocument,
+        params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                self._documents[i] = updated_document
+                self._documents[i] = cast(TDocument, {**self._documents[i], **params})
 
                 return UpdateResult(
                     acknowledged=True,
                     matched_count=1,
                     modified_count=1,
-                    updated_document=updated_document,
+                    updated_document=self._documents[i],
                 )
 
         if upsert:
-            await self.insert_one(updated_document)
+            await self.insert_one(params)
 
             return UpdateResult(
                 acknowledged=True,
                 matched_count=0,
                 modified_count=0,
-                updated_document=updated_document,
+                updated_document=params,
             )
 
         return UpdateResult(

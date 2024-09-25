@@ -1,12 +1,12 @@
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, TypedDict
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
-from emcie.server.core.persistence.common import BaseDocument, ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 GuidelineId = NewType("GuidelineId", str)
@@ -59,17 +59,44 @@ class GuidelineStore(ABC):
     ) -> Guideline: ...
 
 
-class GuidelineDocumentStore(GuidelineStore):
-    class GuidelineDocument(BaseDocument):
-        creation_utc: datetime
-        guideline_set: str
-        predicate: str
-        action: str
+class _GuidelineDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    guideline_set: str
+    predicate: str
+    action: str
 
+
+class GuidelineDocumentStore(GuidelineStore):
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
             name="guidelines",
-            schema=self.GuidelineDocument,
+            schema=_GuidelineDocument,
+        )
+
+    def _serialize(
+        self,
+        guideline: Guideline,
+        guideline_set: str,
+    ) -> _GuidelineDocument:
+        return _GuidelineDocument(
+            id=ObjectId(guideline.id),
+            creation_utc=guideline.creation_utc.isoformat(),
+            guideline_set=guideline_set,
+            predicate=guideline.content.predicate,
+            action=guideline.content.action,
+        )
+
+    def _deserialize(
+        self,
+        guideline_document: _GuidelineDocument,
+    ) -> Guideline:
+        return Guideline(
+            id=GuidelineId(guideline_document["id"]),
+            creation_utc=datetime.fromisoformat(guideline_document["creation_utc"]),
+            content=GuidelineContent(
+                predicate=guideline_document["predicate"], action=guideline_document["action"]
+            ),
         )
 
     async def create_guideline(
@@ -81,18 +108,8 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> Guideline:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        document = self.GuidelineDocument(
-            id=ObjectId(generate_id()),
-            creation_utc=creation_utc,
-            guideline_set=guideline_set,
-            predicate=predicate,
-            action=action,
-        )
-
-        await self._collection.insert_one(document=document)
-
-        return Guideline(
-            id=GuidelineId(document.id),
+        guideline = Guideline(
+            id=GuidelineId(generate_id()),
             creation_utc=creation_utc,
             content=GuidelineContent(
                 predicate=predicate,
@@ -100,19 +117,21 @@ class GuidelineDocumentStore(GuidelineStore):
             ),
         )
 
+        await self._collection.insert_one(
+            document=self._serialize(
+                guideline=guideline,
+                guideline_set=guideline_set,
+            )
+        )
+
+        return guideline
+
     async def list_guidelines(
         self,
         guideline_set: str,
     ) -> Sequence[Guideline]:
         return [
-            Guideline(
-                id=GuidelineId(d.id),
-                creation_utc=d.creation_utc,
-                content=GuidelineContent(
-                    predicate=d.predicate,
-                    action=d.action,
-                ),
-            )
+            self._deserialize(d)
             for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
         ]
 
@@ -133,14 +152,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
 
-        return Guideline(
-            id=GuidelineId(guideline_document.id),
-            creation_utc=guideline_document.creation_utc,
-            content=GuidelineContent(
-                predicate=guideline_document.predicate,
-                action=guideline_document.action,
-            ),
-        )
+        return self._deserialize(guideline_document)
 
     async def delete_guideline(
         self,
@@ -159,11 +171,4 @@ class GuidelineDocumentStore(GuidelineStore):
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
 
-        return Guideline(
-            id=GuidelineId(result.deleted_document.id),
-            creation_utc=result.deleted_document.creation_utc,
-            content=GuidelineContent(
-                predicate=result.deleted_document.predicate,
-                action=result.deleted_document.action,
-            ),
-        )
+        return self._deserialize(result.deleted_document)

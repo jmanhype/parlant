@@ -620,10 +620,8 @@ async def test_evaluation_update(
             error=None,
         )
 
-        await evaluation_store.update_evaluation_invoice(
-            evaluation_id=evaluation.id,
-            invoice_index=0,
-            updated_invoice=invoice,
+        await evaluation_store.update_evaluation(
+            evaluation_id=evaluation.id, params={"invoices": [invoice]}
         )
 
     with open(new_file) as f:

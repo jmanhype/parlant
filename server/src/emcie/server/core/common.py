@@ -1,10 +1,14 @@
-from typing import NewType, Optional
+from typing import NewType, Optional, TypeAlias
 import hashlib
 import nanoid  # type: ignore
 
 
-from emcie.common.base_models import DefaultBaseModel as DefaultBaseModel
-from emcie.common.types.common import JSONSerializable as JSONSerializable
+from emcie.common.base_models import DefaultBaseModel as _DefaultBaseModel
+from emcie.common.types.common import JSONSerializable as _JSONSerializable
+
+
+DefaultBaseModel: TypeAlias = _DefaultBaseModel
+JSONSerializable: TypeAlias = _JSONSerializable
 
 UniqueId = NewType("UniqueId", str)
 
