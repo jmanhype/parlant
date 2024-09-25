@@ -115,7 +115,9 @@ Guideline 1: When <X>, then <Y>.
 Guideline 2: When <W>, then <Z>.
 Sometimes, applying the "then" of Guideline 1 (<Y>) may directly cause the "when" of Guideline 2 (<W>) to hold true, forming what we call a "causal connection" or simply "causation" from Guideline 1 to Guideline 2. This causation can only happen if the agent's action in <Y> directly causes the "when" in Guideline 2 (<W>) to become true.
 
-Important clarification: Causation only occurs if applying the source's "then" action directly and immediately causes the the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation. 
+Important clarification: An action taken by the agent can never cause the user to do anything. Causation only occurs if applying the source's "then" action directly and immediately causes the the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation. 
+As a result of this, if there's any scenerio where the source's "then" can be applied while the target's "when" is false - then causation neccesarily isn't fulfilled.
+
 
 There are two types of causal connections:
 - Entailed: This means that the source guideline's "then" necessarily entails
@@ -140,7 +142,7 @@ Please output JSON structured in the following format:
             "target_when": <The target guideline's 'when'>,
             "is_target_when_caused_by_source_then": <BOOL>,
             "is_target_then_suggestive_or_optional": <BOOL>,
-            "rationale": <Explanation for if and how the source's 'then' causes the target's 'when'>,
+            "rationale": <Explanation for if and how the source's 'then' causes the target's 'when'. The explanation should revolve around the word 'cause' or a conjugation of it>,
             "causation_score": <Score between 1-10 indicating the strength of the connection>
         }},
         ...
@@ -176,7 +178,7 @@ Expected Output:
             "target_when": "the user asked about the weather",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "mentioning the likelihood of rain does not cause the user ask about the weather retrospectively",
+            "rationale": "the agent's mentioning the likelihood of rain does not cause the user ask about the weather retrospectively",
             "causation_score": 3
         }},
         {{
@@ -186,7 +188,7 @@ Expected Output:
             "target_when": "providing the weather update",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "providing a current weather update necessarily makes the target's 'when' apply",
+            "rationale": "the agent's providing a current weather update necessarily causes a weather update to be provided",
             "causation_score": 10
         }},
         {{
@@ -196,7 +198,7 @@ Expected Output:
             "target_when": "discussing whether an umbrella is needed",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "mentioning the chances for rain does not retrospectively make the discussion about umbrellas",
+            "rationale": "the agent's mentioning the chances for rain does not retrospectively make the discussion about umbrellas",
             "causation_score": 3
         }},
         {{
@@ -206,7 +208,7 @@ Expected Output:
             "target_when": "providing the weather update",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "referring to the electronic store does not cause a weather update to be provided",
+            "rationale": "the agent's referring to the electronic store does not cause a weather update to be provided",
             "causation_score": 1
         }}
     ]
@@ -235,7 +237,7 @@ Expected Output:
             "source_then": "suggest a book",
             "target_when": "suggesting a book",
             "is_target_when_caused_by_source_then": true,
-            "rationale": "the source's 'then' and the target's 'when' are equivalent",
+            "rationale": "the agent's suggusting a book causes the suggestion of a book",
             "causation_score": 10
         }},
         {{
@@ -244,7 +246,7 @@ Expected Output:
             "source_then": "mention its availability in the local library",
             "target_when": "The user asks for a book recommendation",
             "is_target_when_caused_by_source_then": false,
-            "rationale": "mentioning library availability does not retrospectively make the user ask for book recommendations",
+            "rationale": "the agent's mentioning library availability does not retrospectively make the user ask for book recommendations",
             "causation_score": 1
         }},
         {{
@@ -254,7 +256,7 @@ Expected Output:
             "target_when": "recommending books",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": true,
-            "rationale": "by applying 'suggest a book' we are recommending books",
+            "rationale": "the agent's applying of 'suggest a book' causes the recommendation of books to occur",
             "causation_score": 9
         }},
         {{
@@ -264,7 +266,7 @@ Expected Output:
             "target_when": "The user asks for a book recommendation",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "highlighting review does not make the user retrospectively ask for anything",
+            "rationale": "the agent's highlighting reviews does not cause the user to retrospectively ask for anything",
             "causation_score": 1
         }},
         {{
@@ -274,7 +276,7 @@ Expected Output:
             "target_when": "the user greets you",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "suggesting a book does not mean that the user has greeted you",
+            "rationale": "the agent's suggesting a book does not cause the user to greet the agent retrospectively",
             "causation_score": 1
         }},
         {{
@@ -284,7 +286,7 @@ Expected Output:
             "target_when": "The user asks for a book recommendation",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "greeting the user does not cause them to ask for a book recommendation retrospectively",
+            "rationale": "the agent's greeting the user does not cause them to ask for a book recommendation retrospectively",
             "causation_score": 1
         }},
         {{
@@ -294,7 +296,7 @@ Expected Output:
             "target_when": "suggesting products",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": true,
-            "rationale": "by suggesting a book, we are necessarily suggesting a product",
+            "rationale": "the agent's suggesting a book, necessarily causes the suggestion of a product",
             "causation_score": 9
         }},
         {{
@@ -304,7 +306,7 @@ Expected Output:
             "target_when": "The user asks for a book recommendation",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "checking product availability does not cause the user to ask for book recommendations retrospectively",
+            "rationale": "the agent's checking product availability does not cause the user to ask for book recommendations retrospectively",
             "causation_score": 2
         }}
     ]
@@ -332,7 +334,7 @@ Expected Output:
             "source_then": "announce that the suggestion will be forwarded to management for consideration",
             "target_when": "discussing opening hours",
             "is_target_when_caused_by_source_then": false,
-            "rationale": "forwarding something to management has nothing to do with opening hours",
+            "rationale": "the agent's forwarding something to management has nothing to do with opening hours",
             "causation_score": 1
         }},
         {{
@@ -341,7 +343,7 @@ Expected Output:
             "source_then": "mention that the store closes early on Sundays",
             "target_when": "a new topping is suggested",
             "is_target_when_caused_by_source_then": false,
-            "rationale": "store hours discussion does not cause any new topping suggestion to occur",
+            "rationale": "the agent's store hours discussion does not cause any new topping suggestion to occur",
             "causation_score": 1
         }},
         {{
@@ -350,7 +352,7 @@ Expected Output:
             "source_then": "announce that the suggestion will be forwarded to management for consideration",
             "target_when": "the user asks for a topping we do not offer",
             "is_target_when_caused_by_source_then": false,
-            "rationale": "announcing something does not cause the user to have retrospectively asked about anything regarding toppings",
+            "rationale": "the agent's announcing something does not cause the user to have retrospectively asked about anything regarding toppings",
             "causation_score": 2
         }},
         {{
@@ -360,7 +362,7 @@ Expected Output:
             "target_when": "a new topping is suggested",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "by suggesting to add the topping to the menu, a new topping is being suggested",
+            "rationale": "the agent's suggesting to add the topping to the menu is causing a new topping is being suggested",
             "causation_score": 9
         }},
         {{
@@ -370,7 +372,7 @@ Expected Output:
             "target_when": "forwarding messages to management",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "the announcement from the source's 'then' should cause a message to be forwarded to management",
+            "rationale": "the agent's' announcement from the source's 'then' should cause a message to be forwarded to management",
             "causation_score": 8
         }},
         {{
@@ -379,7 +381,7 @@ Expected Output:
             "source_then": "forward the message via email",
             "target_when": "a new topping is suggested",
             "is_target_when_caused_by_source_then": false,
-            "rationale": "emailing a message is not necessarily a new topping suggestion",
+            "rationale": "the agent's emailing a message is not necessarily a new topping suggestion",
             "causation_score": 2
         }}
     ]
@@ -388,7 +390,6 @@ Expected Output:
 ```
 ###
 Example 4:
-{{
 Input:
 
 Test guideline: ###
@@ -411,8 +412,8 @@ Expected Output:
             "target_when": "Asked where our biggest venues is",
             "is_target_when_caused_by_source_then": false,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "Replying about our largest venue does not cause any question to be asked retrospectively",
-            "causation_score": 4
+            "rationale": "The agent's replying about our largest venue does not cause any question to be asked retrospectively",
+            "causation_score": 3
         }},
         {{
             "source_id": 1,
@@ -421,14 +422,133 @@ Expected Output:
             "target_when": "Asking about our venues in New York",
             "is_target_when_caused_by_source_then": true,
             "is_target_then_suggestive_or_optional": false,
-            "rationale": "Replying something to the user doesn't make them ask any questions retrospectively",
-            "causation_score": 10
+            "rationale": "The agent's replying something to the user doesn't make them ask any questions retrospectively",
+            "causation_score": 3
         }}
     ]
 }}
+###
+Example 5:
+Input:
 
+Test guideline: ###
+{{"id": 0, "when": "the user asks for something yellow", "then": "add bananas to the order"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "the user orders bananas", "then": "compliment the user for their choice"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "add bananas to the order",
+            "target_when": "the user orders bananas",
+            "is_target_when_caused_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "adding bananas to the order does not retrospectively cause the user to order bananas, even though it implies that it happened in the past",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "compliment the user for their choice",
+            "target_when": "the user asks for something yellow",
+            "is_target_when_caused_by_source_then": true,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "complimenting the user for their choice does not retrospectively cause them to ask for anything",
+            "causation_score": 3
+        }}
+    ]
+}}
+###
+Example 6:
+Input:
+
+Test guideline: ###
+{{"id": 0, "when": "the user asks what's the tallest building in the world", "then": "reply that it's the Burj Khalifa"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "asked for a building that starts with a B", "then": "reply Burj Khalifa"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "reply that it's the Burj Khalifa",
+            "target_when": "asked for a building that starts with a B",
+            "is_target_when_caused_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's replying 'Burj Khalifa' does not cause the user to retrospectively ask for anything, even though the user might've asked a question earlier",
+            "causation_score": 3
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "reply Burj Khalifa",
+            "target_when": "the user asks what's the tallest building in the world",
+            "is_target_when_caused_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's replying 'Burj Khalifa' does not cause the user to retrospectively ask for anything, even though the user might've asked a question earlier",
+            "causation_score": 3
+        }}
+    ]
+}}
 ```
-###"""  # noqa
+
+###
+Example 7:
+Input:
+
+Test guideline: ###
+{{"id": 0, "when": "the user requests a refund", "then": "ask the user for the date of their purchase"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "the user mentions a past purchase", "then": "ask for the order number"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "ask the user for the date of their purchase",
+            "target_when": "the user mentions a past purchase",
+            "is_target_when_caused_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "actions taken by the agent cannot ever cause the user to do anything",
+            "causation_score": 3
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "ask for the order number",
+            "target_when": "the user requests a refund",
+            "is_target_when_caused_by_source_then": false,
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "actions taken by the agent cannot ever cause the user to do anything",
+            "causation_score": 3
+        }}
+    ]
+}}
+```
+###
+"""  # noqa
         )
         # Find and add terminology to prompt
         causation_candidates = "\n\t".join(
