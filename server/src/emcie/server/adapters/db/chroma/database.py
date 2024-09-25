@@ -4,26 +4,28 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Generic, Mapping, Optional, Sequence, cast
-from typing_extensions import get_type_hints
-
+from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast
 import chromadb
 
 from emcie.server.core.nlp.embedding import Embedder, EmbedderFactory
-from emcie.server.core.persistence.common import (
-    ObjectId,
-    Where,
-)
 from emcie.server.core.persistence.document_database import (
     DeleteResult,
     DocumentCollection,
     InsertResult,
-    TDocument,
+    ObjectId,
     UpdateResult,
-    is_total,
+    Where,
+    ensure_is_total,
 )
 from emcie.server.core.logging import Logger
-from emcie.common.types.common import JSONSerializable
+
+
+class BaseDocument(TypedDict, total=False):
+    id: ObjectId
+    content: str
+
+
+TDocument = TypeVar("TDocument", bound=BaseDocument)
 
 
 class ChromaDatabase:
@@ -37,14 +39,14 @@ class ChromaDatabase:
         self._embedder_factory = embedder_factory
 
         self._chroma_client = chromadb.PersistentClient(str(dir_path))
-        self._collections: dict[str, ChromaCollection[Mapping[str, JSONSerializable]]] = (
+        self._collections: dict[str, ChromaCollection[BaseDocument]] = (
             self._load_chromadb_collections()
         )
 
     def _load_chromadb_collections(
         self,
-    ) -> dict[str, ChromaCollection[Mapping[str, JSONSerializable]]]:
-        collections: dict[str, ChromaCollection[Mapping[str, JSONSerializable]]] = {}
+    ) -> dict[str, ChromaCollection[BaseDocument]]:
+        collections: dict[str, ChromaCollection[BaseDocument]] = {}
         for chromadb_collection in self._chroma_client.list_collections():
             embedder_module = importlib.import_module(
                 chromadb_collection.metadata["embedder_module_path"]
@@ -79,10 +81,6 @@ class ChromaDatabase:
     ) -> ChromaCollection[TDocument]:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
-
-        annotations = get_type_hints(schema)
-        assert "id" in annotations and annotations["id"] == ObjectId
-        assert "content" in annotations and annotations["content"] is str
 
         self._collections[name] = ChromaCollection(
             self._logger,
@@ -121,10 +119,6 @@ class ChromaDatabase:
         if collection := self._collections.get(name):
             assert schema == collection._schema
             return cast(ChromaCollection[TDocument], collection)
-
-        annotations = get_type_hints(schema)
-        assert "id" in annotations and annotations["id"] == ObjectId
-        assert "content" in annotations and annotations["content"] is str
 
         self._collections[name] = ChromaCollection(
             self._logger,
@@ -198,7 +192,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        assert is_total(document, self._schema)
+        ensure_is_total(document, self._schema)
 
         embeddings = list((await self._embedder.embed([document["content"]])).vectors)
 
@@ -206,7 +200,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
             self._chroma_collection.add(
                 ids=[document["id"]],
                 documents=[document["content"]],
-                metadatas=[document],
+                metadatas=[cast(chromadb.Metadata, document)],
                 embeddings=embeddings,
             )
 
@@ -229,14 +223,14 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                     document = params["content"]
                 else:
                     embeddings = list((await self._embedder.embed([str(doc["content"])])).vectors)
-                    document = doc["content"]
+                    document = str(doc["content"])
 
                 updated_document = {**doc, **params}
 
                 self._chroma_collection.update(
                     ids=[str(doc["id"])],
                     documents=[document],
-                    metadatas=[updated_document],
+                    metadatas=[cast(chromadb.Metadata, updated_document)],
                     embeddings=embeddings,
                 )
 
@@ -248,14 +242,14 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                 )
 
             elif upsert:
-                assert is_total(params, self._schema)
+                ensure_is_total(params, self._schema)
 
                 embeddings = list((await self._embedder.embed([params["content"]])).vectors)
 
                 self._chroma_collection.add(
                     ids=[params["id"]],
                     documents=[params["content"]],
-                    metadatas=[params],
+                    metadatas=[cast(chromadb.Metadata, params)],
                     embeddings=embeddings,
                 )
 

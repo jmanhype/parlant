@@ -18,12 +18,10 @@ from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence.common import (
-    ObjectId,
-    Where,
-)
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
+    Where,
 )
 
 SessionId = NewType("SessionId", str)
@@ -163,7 +161,7 @@ class SessionStore(ABC):
     ) -> Sequence[Session]: ...
 
 
-class SessionDocument(TypedDict, total=False):
+class _SessionDocument(TypedDict, total=False):
     id: ObjectId
     creation_utc: str
     end_user_id: EndUserId
@@ -172,7 +170,7 @@ class SessionDocument(TypedDict, total=False):
     consumption_offsets: dict[ConsumerId, int]
 
 
-class EventDocument(TypedDict, total=False):
+class _EventDocument(TypedDict, total=False):
     id: ObjectId
     creation_utc: str
     session_id: SessionId
@@ -187,18 +185,18 @@ class SessionDocumentStore(SessionStore):
     def __init__(self, database: DocumentDatabase):
         self._session_collection = database.get_or_create_collection(
             name="sessions",
-            schema=SessionDocument,
+            schema=_SessionDocument,
         )
         self._event_collection = database.get_or_create_collection(
             name="events",
-            schema=EventDocument,
+            schema=_EventDocument,
         )
 
     def _serialize_session(
         self,
         session: Session,
-    ) -> SessionDocument:
-        return SessionDocument(
+    ) -> _SessionDocument:
+        return _SessionDocument(
             id=ObjectId(session.id),
             creation_utc=session.creation_utc.isoformat(),
             end_user_id=session.end_user_id,
@@ -207,9 +205,9 @@ class SessionDocumentStore(SessionStore):
             consumption_offsets=session.consumption_offsets,
         )
 
-    def _deserialize_session_documet(
+    def _deserialize_session(
         self,
-        session_document: SessionDocument,
+        session_document: _SessionDocument,
     ) -> Session:
         return Session(
             id=SessionId(session_document["id"]),
@@ -224,8 +222,8 @@ class SessionDocumentStore(SessionStore):
         self,
         event: Event,
         session_id: SessionId,
-    ) -> EventDocument:
-        return EventDocument(
+    ) -> _EventDocument:
+        return _EventDocument(
             id=ObjectId(event.id),
             creation_utc=event.creation_utc.isoformat(),
             session_id=session_id,
@@ -236,9 +234,9 @@ class SessionDocumentStore(SessionStore):
             data=event.data,
         )
 
-    def _deserialize_event_documet(
+    def _deserialize_event(
         self,
-        event_document: EventDocument,
+        event_document: _EventDocument,
     ) -> Event:
         return Event(
             id=EventId(event_document["id"]),
@@ -295,7 +293,7 @@ class SessionDocumentStore(SessionStore):
         if not session_document:
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
-        return self._deserialize_session_documet(session_document)
+        return self._deserialize_session(session_document)
 
     async def update_session(
         self,
@@ -304,7 +302,7 @@ class SessionDocumentStore(SessionStore):
     ) -> None:
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
-            params=cast(SessionDocument, params),
+            params=cast(_SessionDocument, params),
         )
 
     async def update_title(
@@ -394,14 +392,14 @@ class SessionDocumentStore(SessionStore):
                 )
             )
 
-        return [self._deserialize_event_documet(d) for d in event_documents]
+        return [self._deserialize_event(d) for d in event_documents]
 
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
     ) -> Sequence[Session]:
         return [
-            self._deserialize_session_documet(d)
+            self._deserialize_session(d)
             for d in await self._session_collection.find(
                 filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
             )

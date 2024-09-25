@@ -4,11 +4,11 @@ from typing import Optional, Sequence, TypedDict
 from emcie.server.adapters.db.chroma.database import ChromaDatabase
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.nlp.embedding import Embedder
-from emcie.server.core.persistence.common import ObjectId
+from emcie.server.core.persistence.document_database import ObjectId
 from emcie.server.core.terminology import Term, TermId, TermUpdateParams, TerminologyStore
 
 
-class TermDocument(TypedDict, total=False):
+class _TermDocument(TypedDict, total=False):
     id: ObjectId
     term_set: str
     creation_utc: str
@@ -22,13 +22,13 @@ class TerminologyChromaStore(TerminologyStore):
     def __init__(self, chroma_db: ChromaDatabase, embedder_type: type[Embedder]):
         self._collection = chroma_db.get_or_create_collection(
             name="terminology",
-            schema=TermDocument,
+            schema=_TermDocument,
             embedder_type=embedder_type,
         )
         self._n_results = 20
 
-    def _serialize_term(self, term: Term, term_set: str, content: str) -> TermDocument:
-        return TermDocument(
+    def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
+        return _TermDocument(
             id=ObjectId(term.id),
             term_set=term_set,
             creation_utc=term.creation_utc.isoformat(),
@@ -38,7 +38,7 @@ class TerminologyChromaStore(TerminologyStore):
             content=content,
         )
 
-    def _deserialize_term_documet(self, term_document: TermDocument) -> Term:
+    def _deserialize(self, term_document: _TermDocument) -> Term:
         return Term(
             id=TermId(term_document["id"]),
             creation_utc=datetime.fromisoformat(term_document["creation_utc"]),
@@ -71,7 +71,7 @@ class TerminologyChromaStore(TerminologyStore):
             synonyms=list(synonyms) if synonyms else None,
         )
 
-        await self._collection.insert_one(document=self._serialize_term(term, term_set, content))
+        await self._collection.insert_one(document=self._serialize(term, term_set, content))
 
         return term
 
@@ -114,7 +114,7 @@ class TerminologyChromaStore(TerminologyStore):
 
         assert update_result.updated_document
 
-        return self._deserialize_term_documet(term_document=update_result.updated_document)
+        return self._deserialize(term_document=update_result.updated_document)
 
     async def read_term(
         self,
@@ -127,14 +127,14 @@ class TerminologyChromaStore(TerminologyStore):
         if not term_document:
             raise ItemNotFoundError(item_id=UniqueId(name), message=f"term_set={term_set}")
 
-        return self._deserialize_term_documet(term_document=term_document)
+        return self._deserialize(term_document=term_document)
 
     async def list_terms(
         self,
         term_set: str,
     ) -> Sequence[Term]:
         return [
-            self._deserialize_term_documet(term_document=d)
+            self._deserialize(term_document=d)
             for d in await self._collection.find(filters={"term_set": {"$eq": term_set}})
         ]
 
@@ -162,7 +162,7 @@ class TerminologyChromaStore(TerminologyStore):
         query: str,
     ) -> Sequence[Term]:
         return [
-            self._deserialize_term_documet(d)
+            self._deserialize(d)
             for d in await self._collection.find_similar_documents(
                 filters={"term_set": {"$eq": term_set}},
                 query=query,

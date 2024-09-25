@@ -5,25 +5,21 @@ import json
 import operator
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Type, cast
-from typing_extensions import get_type_hints
 import aiofiles
 
-from emcie.server.core.persistence.common import (
-    ObjectId,
-    Where,
-    matches_filters,
-)
 from emcie.server.core.persistence.document_database import (
+    BaseDocument,
     DeleteResult,
     DocumentCollection,
     DocumentDatabase,
     InsertResult,
     TDocument,
     UpdateResult,
-    is_total,
+    Where,
+    ensure_is_total,
+    matches_filters,
 )
 from emcie.server.core.logging import Logger
-from emcie.common.types.common import JSONSerializable
 
 
 class JSONFileDocumentDatabase(DocumentDatabase):
@@ -40,7 +36,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
-        self._collections: dict[str, JSONFileDocumentCollection[Mapping[str, JSONSerializable]]]
+        self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
 
     async def _sync_if_needed(self) -> None:
         # FIXME: When the CLI can retrieve all different stores, reintroduce the modulo condition.
@@ -120,9 +116,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         self._logger.debug(f'Create collection "{name}"')
 
-        annotations = get_type_hints(schema)
-        assert "id" in annotations and annotations["id"] == ObjectId
-
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
@@ -146,9 +139,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
-
-        annotations = get_type_hints(schema)
-        assert "id" in annotations and annotations["id"] == ObjectId
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
@@ -215,7 +205,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        is_total(document, self._schema)
+        ensure_is_total(document, self._schema)
 
         async with self._lock:
             self._documents.append(document)

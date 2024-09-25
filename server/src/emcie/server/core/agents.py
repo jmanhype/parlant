@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence, TypedDict
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 AgentId = NewType("AgentId", str)
@@ -36,7 +36,7 @@ class AgentStore(ABC):
     async def read_agent(self, agent_id: AgentId) -> Agent: ...
 
 
-class AgentDocument(TypedDict, total=False):
+class _AgentDocument(TypedDict, total=False):
     id: ObjectId
     creation_utc: str
     name: str
@@ -50,18 +50,18 @@ class AgentDocumentStore(AgentStore):
     ):
         self._collection = database.get_or_create_collection(
             name="agents",
-            schema=AgentDocument,
+            schema=_AgentDocument,
         )
 
-    def _serialize_agent(self, agent: Agent) -> AgentDocument:
-        return AgentDocument(
+    def _serialize(self, agent: Agent) -> _AgentDocument:
+        return _AgentDocument(
             id=ObjectId(agent.id),
             creation_utc=agent.creation_utc.isoformat(),
             name=agent.name,
             description=agent.description,
         )
 
-    def _deserialize_agent_documet(self, agent_document: AgentDocument) -> Agent:
+    def _deserialize(self, agent_document: _AgentDocument) -> Agent:
         return Agent(
             id=AgentId(agent_document["id"]),
             creation_utc=datetime.fromisoformat(agent_document["creation_utc"]),
@@ -84,14 +84,14 @@ class AgentDocumentStore(AgentStore):
             creation_utc=creation_utc,
         )
 
-        await self._collection.insert_one(document=self._serialize_agent(agent=agent))
+        await self._collection.insert_one(document=self._serialize(agent=agent))
 
         return agent
 
     async def list_agents(
         self,
     ) -> Sequence[Agent]:
-        return [self._deserialize_agent_documet(d) for d in await self._collection.find(filters={})]
+        return [self._deserialize(d) for d in await self._collection.find(filters={})]
 
     async def read_agent(self, agent_id: AgentId) -> Agent:
         agent_document = await self._collection.find_one(
@@ -103,4 +103,4 @@ class AgentDocumentStore(AgentStore):
         if not agent_document:
             raise ItemNotFoundError(item_id=UniqueId(agent_id))
 
-        return self._deserialize_agent_documet(agent_document)
+        return self._deserialize(agent_document)

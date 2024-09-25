@@ -3,59 +3,117 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import (
     Any,
+    Callable,
     Generic,
+    Literal,
     Mapping,
+    NewType,
     Optional,
     Sequence,
-    Type,
     TypeVar,
+    TypedDict,
     Union,
-    get_args,
-    get_origin,
+    cast,
     get_type_hints,
 )
 
-from emcie.server.core.persistence.common import Where
+
+ObjectId = NewType("ObjectId", str)
 
 
-TDocument = TypeVar("TDocument", bound=Mapping[str, Any])
+# Metadata Query Grammar
+LiteralValue = Union[str, int, float, bool]
+
+FieldName = str
+
+WhereOperator = TypedDict(
+    "WhereOperator",
+    {
+        "$gt": LiteralValue,
+        "$gte": LiteralValue,
+        "$lt": LiteralValue,
+        "$lte": LiteralValue,
+        "$ne": LiteralValue,
+        "$eq": LiteralValue,
+    },
+    total=False,
+)
+
+WhereExpression = dict[FieldName, WhereOperator]
+
+LogicalOperator = TypedDict(
+    "LogicalOperator",
+    {
+        "$and": list[Union[WhereExpression, "LogicalOperator"]],
+        "$or": list[Union[WhereExpression, "LogicalOperator"]],
+    },
+    total=False,
+)
+
+Where = Union[WhereExpression, LogicalOperator]
 
 
-def is_total(document: TDocument, schema: type[TDocument]) -> bool:
-    annotations = get_type_hints(schema)
-    for key, expected_type in annotations.items():
-        if key not in document:
-            raise TypeError(f"key '{key}' did not provided.")
-        if key in document and not _is_instance_of_type(document[key], expected_type):
-            raise TypeError(f"value '{document[key]}' expected to be '{expected_type}'.")
+def _evaluate_filter(
+    operator: str,
+    field_value: LiteralValue,
+    filter_value: LiteralValue,
+) -> bool:
+    tests: dict[str, Callable[[Any, Any], bool]] = {
+        "$eq": lambda field_value, filter_value: field_value == filter_value,
+        "$ne": lambda field_value, filter_value: field_value != filter_value,
+        "$gt": lambda field_value, filter_value: field_value > filter_value,
+        "$gte": lambda field_value, filter_value: field_value >= filter_value,
+        "$lt": lambda field_value, filter_value: field_value < filter_value,
+        "$lte": lambda field_value, filter_value: field_value <= filter_value,
+    }
+
+    return tests[operator](field_value, filter_value)
+
+
+def matches_filters(
+    where: Where,
+    candidate: Mapping[str, Any],
+) -> bool:
+    if not where:
+        return True
+
+    if next(iter(where.keys())) in ("$and", "$or"):
+        op = cast(LogicalOperator, where)
+        for operator in op:
+            operands: list[Union[WhereExpression, LogicalOperator]] = op[
+                cast(Literal["$and", "$or"], operator)
+            ]
+            if operator == "$and":
+                if not all(matches_filters(sub_filter, candidate) for sub_filter in operands):
+                    return False
+            elif operator == "$or":
+                if not any(matches_filters(sub_filter, candidate) for sub_filter in operands):
+                    return False
+
+    else:
+        field_filters = cast(WhereExpression, where)
+        for field_name, field_filter in field_filters.items():
+            for operator, filter_value in field_filter.items():
+                if not _evaluate_filter(
+                    operator, candidate[field_name], cast(LiteralValue, filter_value)
+                ):
+                    return False
+
     return True
 
 
-def _is_instance_of_type(value: Any, expected_type: type) -> bool:
-    origin = get_origin(expected_type)
-    args = get_args(expected_type)
+class BaseDocument(TypedDict, total=False):
+    id: ObjectId
 
-    if origin is Union:
-        return any(_is_instance_of_type(value, arg) for arg in args)
 
-    if origin and issubclass(origin, Sequence):
-        if not issubclass(type(value), Sequence):
-            return False
-        if not args:
-            return True
-        return all(_is_instance_of_type(item, args[0]) for item in value)
+TDocument = TypeVar("TDocument", bound=BaseDocument)
 
-    elif origin and issubclass(origin, Mapping):
-        if not issubclass(type(value), Mapping):
-            return False
-        if not args:
-            return True
-        key_type, val_type = args
-        return all(
-            _is_instance_of_type(k, key_type) and _is_instance_of_type(v, val_type)
-            for k, v in value.items()
-        )
-    return isinstance(value, expected_type)
+
+def ensure_is_total(document: Mapping[str, Any], schema: type[Mapping[str, Any]]) -> None:
+    type_hints = get_type_hints(schema)
+
+    if list(document.keys()) != list(type_hints):
+        raise TypeError(f"Provided TypedDict {schema.__qualname__} is missing required keys")
 
 
 class DocumentDatabase(ABC):
@@ -63,7 +121,7 @@ class DocumentDatabase(ABC):
     def create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> DocumentCollection[TDocument]:
         """
         Creates a new collection with the given name and returns the collection.
@@ -84,7 +142,7 @@ class DocumentDatabase(ABC):
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> DocumentCollection[TDocument]:
         """
         Retrieves an existing collection by its name or creates a new one if it does not exist.

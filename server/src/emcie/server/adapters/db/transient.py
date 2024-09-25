@@ -1,28 +1,24 @@
 from __future__ import annotations
-from typing import Mapping, Optional, Sequence, Type, cast
+from typing import Optional, Sequence, Type, cast
 from typing_extensions import get_type_hints
-from emcie.server.core.persistence.common import (
-    ObjectId,
-    Where,
-    matches_filters,
-)
 from emcie.server.core.persistence.document_database import (
+    BaseDocument,
     DeleteResult,
     DocumentCollection,
     DocumentDatabase,
     InsertResult,
+    ObjectId,
     TDocument,
     UpdateResult,
-    is_total,
+    Where,
+    ensure_is_total,
+    matches_filters,
 )
-from emcie.common.types.common import JSONSerializable
 
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._collections: dict[
-            str, _TransientDocumentCollection[Mapping[str, JSONSerializable]]
-        ] = {}
+        self._collections: dict[str, _TransientDocumentCollection[BaseDocument]] = {}
 
     def create_collection(
         self,
@@ -111,7 +107,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        is_total(document, self._schema)
+        ensure_is_total(document, self._schema)
 
         self._documents.append(document)
 

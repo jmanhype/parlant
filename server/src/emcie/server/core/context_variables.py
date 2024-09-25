@@ -6,9 +6,9 @@ from dataclasses import dataclass
 
 from emcie.common.tools import ToolId
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 ContextVariableId = NewType("ContextVariableId", str)
@@ -108,7 +108,7 @@ class ContextVariableStore(ABC):
     ) -> ContextVariableValue: ...
 
 
-class FreshnessRulesDocument(TypedDict, total=False):
+class _FreshnessRulesDocument(TypedDict, total=False):
     months: Optional[list[int]]
     days_of_month: Optional[list[int]]
     days_of_week: Optional[
@@ -129,16 +129,16 @@ class FreshnessRulesDocument(TypedDict, total=False):
     seconds: Optional[list[int]]
 
 
-class ContextVariableDocument(TypedDict, total=False):
+class _ContextVariableDocument(TypedDict, total=False):
     id: ObjectId
     variable_set: str
     name: str
     description: Optional[str]
     tool_id: ToolId
-    freshness_rules: Optional[FreshnessRulesDocument]
+    freshness_rules: Optional[_FreshnessRulesDocument]
 
 
-class ContextVariableValueDocument(TypedDict, total=False):
+class _ContextVariableValueDocument(TypedDict, total=False):
     id: ObjectId
     last_modified: str
     variable_set: str
@@ -151,16 +151,18 @@ class ContextVariableDocumentStore(ContextVariableStore):
     def __init__(self, database: DocumentDatabase):
         self._variable_collection = database.get_or_create_collection(
             name="variables",
-            schema=ContextVariableDocument,
+            schema=_ContextVariableDocument,
         )
 
         self._value_collection = database.get_or_create_collection(
             name="values",
-            schema=ContextVariableValueDocument,
+            schema=_ContextVariableValueDocument,
         )
 
-    def _serialize_freshness_rules(self, freshness_rules: FreshnessRules) -> FreshnessRulesDocument:
-        return FreshnessRulesDocument(
+    def _serialize_freshness_rules(
+        self, freshness_rules: FreshnessRules
+    ) -> _FreshnessRulesDocument:
+        return _FreshnessRulesDocument(
             months=freshness_rules.months,
             days_of_month=freshness_rules.days_of_month,
             days_of_week=freshness_rules.days_of_week,
@@ -173,8 +175,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         context_variable: ContextVariable,
         variable_set: str,
-    ) -> ContextVariableDocument:
-        return ContextVariableDocument(
+    ) -> _ContextVariableDocument:
+        return _ContextVariableDocument(
             id=ObjectId(context_variable.id),
             variable_set=variable_set,
             name=context_variable.name,
@@ -190,8 +192,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
         context_variable_value: ContextVariableValue,
         variable_set: str,
         key: str,
-    ) -> ContextVariableValueDocument:
-        return ContextVariableValueDocument(
+    ) -> _ContextVariableValueDocument:
+        return _ContextVariableValueDocument(
             id=ObjectId(context_variable_value.id),
             last_modified=context_variable_value.last_modified.isoformat(),
             variable_set=variable_set,
@@ -202,7 +204,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
     def _deserialize_freshness_rules(
         self,
-        freshness_rules_document: FreshnessRulesDocument,
+        freshness_rules_document: _FreshnessRulesDocument,
     ) -> FreshnessRules:
         return FreshnessRules(
             months=freshness_rules_document["months"],
@@ -215,7 +217,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
     def _deserialize_context_variable(
         self,
-        context_variable_document: ContextVariableDocument,
+        context_variable_document: _ContextVariableDocument,
     ) -> ContextVariable:
         return ContextVariable(
             id=ContextVariableId(context_variable_document["id"]),
@@ -231,7 +233,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
     def _deserialize_context_variable_value(
         self,
-        context_variable_value_document: ContextVariableValueDocument,
+        context_variable_value_document: _ContextVariableValueDocument,
     ) -> ContextVariableValue:
         return ContextVariableValue(
             id=ContextVariableValueId(context_variable_value_document["id"]),

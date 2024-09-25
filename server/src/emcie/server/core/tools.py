@@ -7,9 +7,9 @@ from pydantic import ValidationError
 
 from emcie.common.tools import ToolId, ToolParameter, ToolResult, Tool, ToolContext
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 
@@ -129,7 +129,7 @@ class MultiplexedToolService(ToolService):
         )
 
 
-class ToolDocument(TypedDict, total=False):
+class _ToolDocument(TypedDict, total=False):
     id: ObjectId
     creation_utc: str
     name: str
@@ -147,15 +147,15 @@ class LocalToolService(ToolService):
     ) -> None:
         self._collection = database.get_or_create_collection(
             name="tools",
-            schema=ToolDocument,
+            schema=_ToolDocument,
         )
 
-    def _serialize_tool(
+    def _serialize(
         self,
         tool: Tool,
         module_path: str,
-    ) -> ToolDocument:
-        return ToolDocument(
+    ) -> _ToolDocument:
+        return _ToolDocument(
             id=ObjectId(tool.id),
             creation_utc=tool.creation_utc.isoformat(),
             name=tool.name,
@@ -166,9 +166,9 @@ class LocalToolService(ToolService):
             consequential=tool.consequential,
         )
 
-    def _deserialize_tool_documet(
+    def _deserialize(
         self,
-        tool_document: ToolDocument,
+        tool_document: _ToolDocument,
     ) -> Tool:
         return Tool(
             id=ToolId(tool_document["id"]),
@@ -205,14 +205,14 @@ class LocalToolService(ToolService):
             consequential=consequential,
         )
 
-        await self._collection.insert_one(document=self._serialize_tool(tool, module_path))
+        await self._collection.insert_one(document=self._serialize(tool, module_path))
 
         return tool
 
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
-        return [self._deserialize_tool_documet(d) for d in await self._collection.find(filters={})]
+        return [self._deserialize(d) for d in await self._collection.find(filters={})]
 
     async def read_tool(
         self,
@@ -223,7 +223,7 @@ class LocalToolService(ToolService):
         if not tool_document:
             raise ItemNotFoundError(item_id=UniqueId(tool_id))
 
-        return self._deserialize_tool_documet(tool_document)
+        return self._deserialize(tool_document)
 
     async def call_tool(
         self,

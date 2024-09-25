@@ -18,9 +18,9 @@ from emcie.server.core.agents import AgentId
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 EvaluationId = NewType("EvaluationId", str)
@@ -109,6 +109,40 @@ class Evaluation:
     invoices: Sequence[Invoice]
 
 
+class EvaluationUpdateParams(TypedDict, total=False):
+    status: EvaluationStatus
+    error: Optional[str]
+    invoices: Sequence[Invoice]
+
+
+class EvaluationStore(ABC):
+    @abstractmethod
+    async def create_evaluation(
+        self,
+        agent_id: AgentId,
+        payload_descriptors: Sequence[PayloadDescriptor],
+        creation_utc: Optional[datetime] = None,
+    ) -> Evaluation: ...
+
+    @abstractmethod
+    async def update_evaluation(
+        self,
+        evaluation_id: EvaluationId,
+        params: EvaluationUpdateParams,
+    ) -> Evaluation: ...
+
+    @abstractmethod
+    async def read_evaluation(
+        self,
+        evaluation_id: EvaluationId,
+    ) -> Evaluation: ...
+
+    @abstractmethod
+    async def list_evaluations(
+        self,
+    ) -> Sequence[Evaluation]: ...
+
+
 class _GuidelineContentDocument(TypedDict):
     predicate: str
     action: str
@@ -155,7 +189,7 @@ class _InvoiceDocument(TypedDict, total=False):
     error: Optional[str]
 
 
-class EvaluationDocument(TypedDict, total=False):
+class _EvaluationDocument(TypedDict, total=False):
     id: ObjectId
     agent_id: AgentId
     creation_utc: str
@@ -164,45 +198,11 @@ class EvaluationDocument(TypedDict, total=False):
     invoices: Sequence[_InvoiceDocument]
 
 
-class EvaluationUpdateParams(TypedDict, total=False):
-    status: EvaluationStatus
-    error: Optional[str]
-    invoices: Sequence[Invoice]
-
-
-class EvaluationStore(ABC):
-    @abstractmethod
-    async def create_evaluation(
-        self,
-        agent_id: AgentId,
-        payload_descriptors: Sequence[PayloadDescriptor],
-        creation_utc: Optional[datetime] = None,
-    ) -> Evaluation: ...
-
-    @abstractmethod
-    async def update_evaluation(
-        self,
-        evaluation_id: EvaluationId,
-        params: EvaluationUpdateParams,
-    ) -> Evaluation: ...
-
-    @abstractmethod
-    async def read_evaluation(
-        self,
-        evaluation_id: EvaluationId,
-    ) -> Evaluation: ...
-
-    @abstractmethod
-    async def list_evaluations(
-        self,
-    ) -> Sequence[Evaluation]: ...
-
-
 class EvaluationDocumentStore(EvaluationStore):
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
             name="evaluations",
-            schema=EvaluationDocument,
+            schema=_EvaluationDocument,
         )
 
     def _serialize_invoice(self, invoice: Invoice) -> _InvoiceDocument:
@@ -272,8 +272,8 @@ class EvaluationDocumentStore(EvaluationStore):
         else:
             raise ValueError(f"Unsupported invoice kind: {kind}")
 
-    def _serialize_evaluation(self, evaluation: Evaluation) -> EvaluationDocument:
-        return EvaluationDocument(
+    def _serialize_evaluation(self, evaluation: Evaluation) -> _EvaluationDocument:
+        return _EvaluationDocument(
             id=ObjectId(evaluation.id),
             agent_id=evaluation.agent_id,
             creation_utc=evaluation.creation_utc.isoformat(),
@@ -282,9 +282,7 @@ class EvaluationDocumentStore(EvaluationStore):
             invoices=[self._serialize_invoice(inv) for inv in evaluation.invoices],
         )
 
-    def _deserialize_evaluation_document(
-        self, evaluation_document: EvaluationDocument
-    ) -> Evaluation:
+    def _deserialize_evaluation(self, evaluation_document: _EvaluationDocument) -> Evaluation:
         def deserialize_guideline_content_document(
             gc_doc: _GuidelineContentDocument,
         ) -> GuidelineContent:
@@ -429,7 +427,7 @@ class EvaluationDocumentStore(EvaluationStore):
     ) -> Evaluation:
         evaluation = await self.read_evaluation(evaluation_id)
 
-        update_params: EvaluationDocument = {}
+        update_params: _EvaluationDocument = {}
         if "invoices" in params:
             update_params["invoices"] = [self._serialize_invoice(i) for i in params["invoices"]]
 
@@ -444,7 +442,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         assert result.updated_document
 
-        return self._deserialize_evaluation_document(result.updated_document)
+        return self._deserialize_evaluation(result.updated_document)
 
     async def read_evaluation(
         self,
@@ -457,12 +455,12 @@ class EvaluationDocumentStore(EvaluationStore):
         if not evaluation_document:
             raise ItemNotFoundError(item_id=UniqueId(evaluation_id))
 
-        return self._deserialize_evaluation_document(evaluation_document=evaluation_document)
+        return self._deserialize_evaluation(evaluation_document=evaluation_document)
 
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:
         return [
-            self._deserialize_evaluation_document(evaluation_document=e)
+            self._deserialize_evaluation(evaluation_document=e)
             for e in await self._evaluation_collection.find(filters={})
         ]

@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, TypedDict
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
 )
 
 EndUserId = NewType("EndUserId", str)
@@ -36,7 +36,7 @@ class EndUserStore(ABC):
     ) -> EndUser: ...
 
 
-class EndUserDocument(TypedDict, total=False):
+class _EndUserDocument(TypedDict, total=False):
     id: ObjectId
     creation_utc: str
     name: str
@@ -50,18 +50,18 @@ class EndUserDocumentStore(EndUserStore):
     ) -> None:
         self._collection = database.get_or_create_collection(
             name="end_users",
-            schema=EndUserDocument,
+            schema=_EndUserDocument,
         )
 
-    def _serialize_end_user(self, end_user: EndUser) -> EndUserDocument:
-        return EndUserDocument(
+    def _serialize(self, end_user: EndUser) -> _EndUserDocument:
+        return _EndUserDocument(
             id=ObjectId(end_user.id),
             creation_utc=end_user.creation_utc.isoformat(),
             name=end_user.name,
             email=end_user.email,
         )
 
-    def _deserialize_end_user_documet(self, end_user_document: EndUserDocument) -> EndUser:
+    def _deserialize(self, end_user_document: _EndUserDocument) -> EndUser:
         return EndUser(
             id=EndUserId(end_user_document["id"]),
             creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
@@ -84,7 +84,7 @@ class EndUserDocumentStore(EndUserStore):
             creation_utc=creation_utc,
         )
 
-        await self._collection.insert_one(document=self._serialize_end_user(end_user=end_user))
+        await self._collection.insert_one(document=self._serialize(end_user=end_user))
 
         return end_user
 
@@ -97,4 +97,4 @@ class EndUserDocumentStore(EndUserStore):
         if not end_user_document:
             raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
-        return self._deserialize_end_user_documet(end_user_document)
+        return self._deserialize(end_user_document)

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import Any, AsyncIterator, Mapping, Sequence, TypedDict
+from typing import Any, AsyncIterator
 import tempfile
 from lagom import Container
 from pytest import fixture, mark
@@ -30,7 +30,6 @@ from emcie.server.core.guidelines import (
     GuidelineId,
 )
 from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
-from emcie.server.core.persistence.document_database import is_total
 from emcie.server.core.sessions import SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
@@ -38,7 +37,6 @@ from emcie.server.core.guideline_tool_associations import (
 )
 from emcie.server.core.logging import Logger
 from tests.test_utilities import SyncAwaiter
-from emcie.common.types.common import JSONSerializable
 
 
 @fixture
@@ -71,13 +69,6 @@ def context(
 async def new_file() -> AsyncIterator[Path]:
     with tempfile.NamedTemporaryFile() as file:
         yield Path(file.name)
-
-
-class SampleSchema(TypedDict, total=False):
-    name: str
-    age: int
-    tags: Sequence[str]
-    preferences: Mapping[str, JSONSerializable]
 
 
 @mark.parametrize(
@@ -644,38 +635,3 @@ async def test_evaluation_update(
     assert json_evaluation["invoices"][0]["data"] is not None
     assert json_evaluation["invoices"][0]["checksum"] == "initial_checksum"
     assert json_evaluation["invoices"][0]["approved"] is True
-
-
-async def test_that_validate_document_missing_key_total_true() -> None:
-    document = {"name": "Alice", "age": 30, "preferences": {"theme": "dark"}}
-
-    with pytest.raises(TypeError, match="key 'tags' did not provided."):
-        is_total(document, SampleSchema)
-
-
-async def test_validate_document_incorrect_type() -> None:
-    document = {
-        "name": "Bob",
-        "age": "thirty",
-        "tags": ["user", "admin"],
-        "preferences": {"theme": "light"},
-    }
-
-    with pytest.raises(ValueError, match="value 'thirty' expected to be '<class 'int'>'"):
-        is_total(document, SampleSchema)
-
-
-async def test_that_validate_document_supports_contains_nested_types() -> None:
-    document = {
-        "name": "Dana",
-        "age": 28,
-        "tags": ["developer", "python"],
-        "preferences": {"theme": "light", "notifications": True},
-    }
-
-    assert is_total(document, SampleSchema) is True
-
-    document["tags"] = ["developer", 123]
-
-    with pytest.raises(ValueError):
-        is_total(document, SampleSchema)

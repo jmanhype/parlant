@@ -11,8 +11,8 @@ from emcie.server.adapters.db.chroma.database import (
     ChromaCollection,
     ChromaDatabase,
 )
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.logging import Logger
+from emcie.server.core.persistence.document_database import ObjectId
 
 
 class _TestDocument(TypedDict, total=False):
