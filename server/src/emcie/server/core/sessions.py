@@ -8,6 +8,7 @@ from typing import (
     Literal,
     Mapping,
     NewType,
+    NotRequired,
     Optional,
     Sequence,
     TypeAlias,
@@ -77,7 +78,7 @@ SessionStatus: TypeAlias = Literal[
 
 
 class StatusEventData(TypedDict):
-    acknowledged_offset: int
+    acknowledged_offset: NotRequired[int]
     status: SessionStatus
     data: JSONSerializable
 

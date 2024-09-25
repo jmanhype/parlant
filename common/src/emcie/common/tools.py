@@ -31,18 +31,36 @@ class ToolParameter(TypedDict):
     enum: NotRequired[list[Union[str, int, float, bool]]]
 
 
+_SessionStatus = Literal["typing", "processing", "ready"]
+
+
 class ToolContext:
     def __init__(
         self,
         session_id: str,
         emit_message: Optional[Callable[[str], Awaitable[None]]] = None,
-    ) -> None:  # noqa: F821
+        emit_status: Optional[
+            Callable[
+                [_SessionStatus, JSONSerializable],
+                Awaitable[None],
+            ]
+        ] = None,
+    ) -> None:
         self.session_id = session_id
         self._emit_message = emit_message
+        self._emit_status = emit_status
 
     async def emit_message(self, message: str) -> None:
         assert self._emit_message
         await self._emit_message(message)
+
+    async def emit_status(
+        self,
+        status: _SessionStatus,
+        data: JSONSerializable,
+    ) -> None:
+        assert self._emit_status
+        await self._emit_status(status, data)
 
 
 @dataclass(frozen=True)
