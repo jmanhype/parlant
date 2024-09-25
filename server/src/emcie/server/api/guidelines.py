@@ -1,11 +1,14 @@
+from itertools import chain
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
 
 from emcie.server.api.common import (
+    ConnectionKindDTO,
     GuidelinePayloadDTO,
     InvoiceGuidelineDataDTO,
     connection_kind_dto_to_connection_kind,
+    connection_kind_to_dto,
 )
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
@@ -17,8 +20,20 @@ from emcie.server.core.evaluations import (
     InvoiceGuidelineData,
     PayloadKind,
 )
-from emcie.server.core.guidelines import GuidelineContent, GuidelineId, GuidelineStore
+from emcie.server.core.guideline_connections import (
+    GuidelineConnection,
+    GuidelineConnectionId,
+    GuidelineConnectionStore,
+)
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.core.mc import MC
+
+
+class GuidelineConnectionDTO(DefaultBaseModel):
+    id: GuidelineConnectionId
+    source: GuidelineId
+    target: GuidelineId
+    kind: ConnectionKindDTO
 
 
 class GuidelineDTO(DefaultBaseModel):
@@ -26,6 +41,7 @@ class GuidelineDTO(DefaultBaseModel):
     guideline_set: str
     predicate: str
     action: str
+    connections: Sequence[GuidelineConnectionDTO]
 
 
 class InvoiceGuidelineDTO(DefaultBaseModel):
@@ -37,7 +53,6 @@ class InvoiceGuidelineDTO(DefaultBaseModel):
 
 
 class CreateGuidelineRequest(DefaultBaseModel):
-    agent_id: AgentId
     invoices: Sequence[InvoiceGuidelineDTO]
 
 
@@ -133,11 +148,15 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceGuidelineDataDTO) -> InvoiceGu
 def create_router(
     mc: MC,
     guideline_store: GuidelineStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/", status_code=status.HTTP_201_CREATED)
-    async def create_guidelines(request: CreateGuidelineRequest) -> CreateGuidelinesResponse:
+    @router.post("/{agent_id}/guidelines/", status_code=status.HTTP_201_CREATED)
+    async def create_guidelines(
+        agent_id: AgentId,
+        request: CreateGuidelineRequest,
+    ) -> CreateGuidelinesResponse:
         try:
             invoices = [_invoice_dto_to_invoice(i) for i in request.invoices]
         except ValueError as exc:
@@ -146,44 +165,48 @@ def create_router(
                 detail=str(exc),
             )
 
-        guidelines = await mc.create_guidelines(
-            guideline_set=request.agent_id,
+        result = await mc.create_guidelines(
+            guideline_set=agent_id,
             invoices=invoices,
         )
 
         return CreateGuidelinesResponse(
             guidelines=[
                 GuidelineDTO(
-                    guideline_set=request.agent_id,
-                    id=g.id,
-                    predicate=g.content.predicate,
-                    action=g.content.action,
-                )
-                for g in guidelines
-            ]
-        )
-
-    @router.get("/{agent_id}")
-    async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
-        guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
-
-        return ListGuidelinesResponse(
-            guidelines=[
-                GuidelineDTO(
                     guideline_set=agent_id,
-                    id=g.id,
-                    predicate=g.content.predicate,
-                    action=g.content.action,
+                    id=guideline.id,
+                    predicate=guideline.content.predicate,
+                    action=guideline.content.action,
+                    connections=[
+                        GuidelineConnectionDTO(
+                            id=c.id,
+                            source=c.source,
+                            target=c.target,
+                            kind=connection_kind_to_dto(c.kind),
+                        )
+                        for c in connections
+                    ],
                 )
-                for g in guidelines
+                for guideline, connections in result
             ]
         )
 
-    @router.get("/{agent_id}/{guideline_id}")
+    @router.get("/{agent_id}/guidelines/{guideline_id}")
     async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
+        )
+
+        connections = list(
+            chain(
+                await guideline_connection_store.list_connections(
+                    indirect=False, source=guideline.id
+                ),
+                await guideline_connection_store.list_connections(
+                    indirect=False, target=guideline.id
+                ),
+            )
         )
 
         return GuidelineDTO(
@@ -191,6 +214,57 @@ def create_router(
             id=guideline.id,
             predicate=guideline.content.predicate,
             action=guideline.content.action,
+            connections=[
+                GuidelineConnectionDTO(
+                    id=c.id,
+                    source=c.source,
+                    target=c.target,
+                    kind=connection_kind_to_dto(c.kind),
+                )
+                for c in connections
+            ],
+        )
+
+    @router.get("/{agent_id}/guidelines")
+    async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
+        guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
+
+        guideline_connections: list[tuple[Guideline, list[GuidelineConnection]]] = [
+            (
+                g,
+                list(
+                    chain(
+                        await guideline_connection_store.list_connections(
+                            indirect=False, source=g.id
+                        ),
+                        await guideline_connection_store.list_connections(
+                            indirect=False, target=g.id
+                        ),
+                    )
+                ),
+            )
+            for g in guidelines
+        ]
+
+        return ListGuidelinesResponse(
+            guidelines=[
+                GuidelineDTO(
+                    guideline_set=agent_id,
+                    id=guideline.id,
+                    predicate=guideline.content.predicate,
+                    action=guideline.content.action,
+                    connections=[
+                        GuidelineConnectionDTO(
+                            id=c.id,
+                            source=c.source,
+                            target=c.target,
+                            kind=connection_kind_to_dto(c.kind),
+                        )
+                        for c in connections
+                    ],
+                )
+                for guideline, connections in guideline_connections
+            ]
         )
 
     return router

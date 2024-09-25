@@ -1,5 +1,5 @@
 from typing import Awaitable, Callable
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from lagom import Container
 
@@ -7,7 +7,6 @@ from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.api import terminology
 from emcie.server.api import guidelines
-from emcie.server.api import connections
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
@@ -60,11 +59,37 @@ async def create_app(container: Container) -> FastAPI:
             detail=str(exc),
         )
 
+    agent_router = APIRouter()
+
+    agent_router.include_router(
+        agents.create_router(
+            agent_store=agent_store,
+        )
+    )
+
+    agent_router.include_router(
+        guidelines.create_router(
+            mc=mc,
+            guideline_store=guideline_store,
+            guideline_connection_store=guideline_connection_store,
+        )
+    )
+    agent_router.include_router(
+        index.create_router(
+            evaluation_service=evaluation_service,
+            evaluation_store=evaluation_store,
+            agent_store=agent_store,
+        )
+    )
+    agent_router.include_router(
+        terminology.create_router(
+            terminology_store=terminology_store,
+        )
+    )
+
     app.include_router(
         prefix="/agents",
-        router=agents.create_router(
-            agent_store=agent_store,
-        ),
+        router=agent_router,
     )
 
     app.include_router(
@@ -73,37 +98,6 @@ async def create_app(container: Container) -> FastAPI:
             mc=mc,
             session_store=session_store,
             session_listener=session_listener,
-        ),
-    )
-
-    app.include_router(
-        prefix="/index",
-        router=index.create_router(
-            evaluation_service=evaluation_service,
-            evaluation_store=evaluation_store,
-            agent_store=agent_store,
-        ),
-    )
-
-    app.include_router(
-        prefix="/terminology",
-        router=terminology.create_router(
-            terminology_store=terminology_store,
-        ),
-    )
-
-    app.include_router(
-        prefix="/guidelines",
-        router=guidelines.create_router(
-            mc=mc,
-            guideline_store=guideline_store,
-        ),
-    )
-
-    app.include_router(
-        prefix="/connections",
-        router=connections.create_router(
-            guideline_connection_store=guideline_connection_store,
         ),
     )
 

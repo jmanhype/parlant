@@ -12,7 +12,6 @@ async def test_that_a_guideline_can_be_created(
     agent_id: AgentId,
 ) -> None:
     request_data = {
-        "agent_id": agent_id,
         "invoices": [
             {
                 "payload": {
@@ -31,7 +30,7 @@ async def test_that_a_guideline_can_be_created(
         ],
     }
 
-    response = client.post("/guidelines", json=request_data)
+    response = client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
     assert response.status_code == status.HTTP_201_CREATED
 
     response_data = response.json()
@@ -48,7 +47,6 @@ async def test_that_unapproved_invoice_getting_rejected(
     agent_id: AgentId,
 ) -> None:
     request_data = {
-        "agent_id": agent_id,
         "invoices": [
             {
                 "payload": {
@@ -64,7 +62,7 @@ async def test_that_unapproved_invoice_getting_rejected(
         ],
     }
 
-    response = client.post("/guidelines", json=request_data)
+    response = client.post("/agents/{agent_id}/guidelines/", json=request_data)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     response_data = response.json()
@@ -136,9 +134,8 @@ async def test_that_connection_between_two_introduced_guidelines_is_created_once
 
     guidelines = (
         client.post(
-            "/guidelines",
+            f"/agents/{agent_id}/guidelines/",
             json={
-                "agent_id": agent_id,
                 "invoices": invoices,
             },
         )
@@ -203,9 +200,8 @@ async def test_that_connection_between_existing_guideline_is_created(
 
     guideline = (
         client.post(
-            "/guidelines",
+            f"/agents/{agent_id}/guidelines/",
             json={
-                "agent_id": agent_id,
                 "invoices": [invoice],
             },
         )
@@ -240,7 +236,7 @@ async def test_that_a_guideline_can_be_read_by_id(
         action="provide the current weather update",
     )
 
-    read_response = client.get(f"/guidelines/{agent_id}/{existing_guideline.id}")
+    read_response = client.get(f"/agents/{agent_id}/guidelines/{existing_guideline.id}")
     assert read_response.status_code == status.HTTP_200_OK
 
     read_guideline = read_response.json()
@@ -269,7 +265,7 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
         action="provide what pizza is made of",
     )
 
-    response = client.get(f"/guidelines/{agent_id}")
+    response = client.get(f"/agents/{agent_id}/guidelines")
     assert response.status_code == status.HTTP_200_OK
 
     guidelines = response.json()["guidelines"]
