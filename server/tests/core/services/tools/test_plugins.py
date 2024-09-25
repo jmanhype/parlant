@@ -149,6 +149,7 @@ async def test_that_a_plugin_tool_can_emit_events(
 ) -> None:
     @tool
     async def my_tool(context: ToolContext) -> ToolResult:
+        await context.emit_status("typing", {"tool": "my_tool"})
         await context.emit_message("Hello, cherry-pie!")
         await context.emit_message("How are you?")
         return ToolResult({"number": 123})
@@ -168,13 +169,16 @@ async def test_that_a_plugin_tool_can_emit_events(
 
             emitted_events = buffers.for_session[SessionId(context.session_id)].events
 
-            assert len(emitted_events) == 2
+            assert len(emitted_events) == 3
 
-            assert emitted_events[0].kind == "message"
-            assert emitted_events[0].data == {"message": "Hello, cherry-pie!"}
+            assert emitted_events[0].kind == "status"
+            assert emitted_events[0].data == {"status": "typing", "data": {"tool": "my_tool"}}
 
             assert emitted_events[1].kind == "message"
-            assert emitted_events[1].data == {"message": "How are you?"}
+            assert emitted_events[1].data == {"message": "Hello, cherry-pie!"}
+
+            assert emitted_events[2].kind == "message"
+            assert emitted_events[2].data == {"message": "How are you?"}
 
             assert result.data == {"number": 123}
 
