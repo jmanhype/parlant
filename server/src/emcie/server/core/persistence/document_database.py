@@ -21,29 +21,29 @@ from emcie.server.core.persistence.common import Where
 TDocument = TypeVar("TDocument", bound=Mapping[str, Any])
 
 
-def validate_document(document: TDocument, schema: type[TDocument], total: bool = False) -> bool:
+def is_total(document: TDocument, schema: type[TDocument]) -> bool:
     annotations = get_type_hints(schema)
     for key, expected_type in annotations.items():
-        if total and key not in document:
+        if key not in document:
             raise TypeError(f"key '{key}' did not provided.")
-        if key in document and not is_instance_of_type(document[key], expected_type):
-            raise ValueError(f"value '{document[key]}' expected to be '{expected_type}'.")
+        if key in document and not _is_instance_of_type(document[key], expected_type):
+            raise TypeError(f"value '{document[key]}' expected to be '{expected_type}'.")
     return True
 
 
-def is_instance_of_type(value: Any, expected_type: type) -> bool:
+def _is_instance_of_type(value: Any, expected_type: type) -> bool:
     origin = get_origin(expected_type)
     args = get_args(expected_type)
 
     if origin is Union:
-        return any(is_instance_of_type(value, arg) for arg in args)
+        return any(_is_instance_of_type(value, arg) for arg in args)
 
     if origin and issubclass(origin, Sequence):
         if not issubclass(type(value), Sequence):
             return False
         if not args:
             return True
-        return all(is_instance_of_type(item, args[0]) for item in value)
+        return all(_is_instance_of_type(item, args[0]) for item in value)
 
     elif origin and issubclass(origin, Mapping):
         if not issubclass(type(value), Mapping):
@@ -52,7 +52,7 @@ def is_instance_of_type(value: Any, expected_type: type) -> bool:
             return True
         key_type, val_type = args
         return all(
-            is_instance_of_type(k, key_type) and is_instance_of_type(v, val_type)
+            _is_instance_of_type(k, key_type) and _is_instance_of_type(v, val_type)
             for k, v in value.items()
         )
     return isinstance(value, expected_type)

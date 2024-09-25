@@ -20,7 +20,7 @@ from emcie.server.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
-    validate_document,
+    is_total,
 )
 from emcie.server.core.logging import Logger
 from emcie.common.types.common import JSONSerializable
@@ -122,6 +122,10 @@ class ChromaDatabase:
             assert schema == collection._schema
             return cast(ChromaCollection[TDocument], collection)
 
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
+        assert "content" in annotations and annotations["content"] is str
+
         self._collections[name] = ChromaCollection(
             self._logger,
             chromadb_collection=self._chroma_client.create_collection(
@@ -194,7 +198,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        assert validate_document(document, self._schema, total=True)
+        assert is_total(document, self._schema)
 
         embeddings = list((await self._embedder.embed([document["content"]])).vectors)
 
@@ -214,8 +218,6 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
-        assert validate_document(params, self._schema, total=False)
-
         async with self._lock:
             if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
                 "metadatas"
@@ -246,7 +248,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                 )
 
             elif upsert:
-                assert validate_document(params, self._schema, total=True)
+                assert is_total(params, self._schema)
 
                 embeddings = list((await self._embedder.embed([params["content"]])).vectors)
 

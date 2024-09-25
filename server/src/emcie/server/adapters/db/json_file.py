@@ -5,9 +5,11 @@ import json
 import operator
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Type, cast
+from typing_extensions import get_type_hints
 import aiofiles
 
 from emcie.server.core.persistence.common import (
+    ObjectId,
     Where,
     matches_filters,
 )
@@ -18,7 +20,7 @@ from emcie.server.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
-    validate_document,
+    is_total,
 )
 from emcie.server.core.logging import Logger
 from emcie.common.types.common import JSONSerializable
@@ -118,6 +120,9 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         self._logger.debug(f'Create collection "{name}"')
 
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
+
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
@@ -141,6 +146,9 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
+
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
@@ -189,7 +197,6 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
             lambda d: matches_filters(filters, d),
             self._documents,
         ):
-            assert validate_document(doc, self._schema, total=True)
             result.append(doc)
 
         return result
@@ -200,7 +207,6 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
     ) -> Optional[TDocument]:
         for doc in self._documents:
             if matches_filters(filters, doc):
-                assert validate_document(doc, self._schema, total=True)
                 return doc
 
         return None
@@ -209,7 +215,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        validate_document(document, self._schema, total=True)
+        is_total(document, self._schema)
 
         async with self._lock:
             self._documents.append(document)
@@ -227,8 +233,6 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
                 async with self._lock:
-                    validate_document(params, self._schema, total=False)
-
                     self._documents[i] = cast(TDocument, {**self._documents[i], **params})
 
                 await self._database._sync_if_needed()

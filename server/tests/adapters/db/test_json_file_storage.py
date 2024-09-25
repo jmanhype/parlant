@@ -30,7 +30,7 @@ from emcie.server.core.guidelines import (
     GuidelineId,
 )
 from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
-from emcie.server.core.persistence.document_database import is_instance_of_type, validate_document
+from emcie.server.core.persistence.document_database import is_total
 from emcie.server.core.sessions import SessionDocumentStore
 from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
@@ -650,7 +650,7 @@ async def test_that_validate_document_missing_key_total_true() -> None:
     document = {"name": "Alice", "age": 30, "preferences": {"theme": "dark"}}
 
     with pytest.raises(TypeError, match="key 'tags' did not provided."):
-        validate_document(document, SampleSchema, total=True)
+        is_total(document, SampleSchema)
 
 
 async def test_validate_document_incorrect_type() -> None:
@@ -662,27 +662,7 @@ async def test_validate_document_incorrect_type() -> None:
     }
 
     with pytest.raises(ValueError, match="value 'thirty' expected to be '<class 'int'>'"):
-        validate_document(document, SampleSchema, total=True)
-
-
-async def test_that_incorrect_types_return_true_by_is_instance_of_type() -> None:
-    assert is_instance_of_type("hello", str)
-    assert is_instance_of_type(123, int)
-    assert is_instance_of_type(123.45, float)
-    assert is_instance_of_type(True, bool)
-    value = {"name": "Charlie", "scores": [95, 87, 92]}
-
-    expected_type = Mapping[str, JSONSerializable]
-    assert is_instance_of_type(value, expected_type)
-
-
-async def test_that_incorrect_types_return_false_by_is_instance_of_type() -> None:
-    assert is_instance_of_type("123", int) is False
-
-    expected_type = Mapping[str, Sequence[int]]
-
-    value_with_incorrect_type = {"name": "Charlie", "scores": [95, 87, "A"]}
-    assert is_instance_of_type(value_with_incorrect_type, expected_type) is False
+        is_total(document, SampleSchema)
 
 
 async def test_that_validate_document_supports_contains_nested_types() -> None:
@@ -693,9 +673,9 @@ async def test_that_validate_document_supports_contains_nested_types() -> None:
         "preferences": {"theme": "light", "notifications": True},
     }
 
-    assert validate_document(document, SampleSchema, total=True) is True
+    assert is_total(document, SampleSchema) is True
 
     document["tags"] = ["developer", 123]
 
     with pytest.raises(ValueError):
-        validate_document(document, SampleSchema, total=True)
+        is_total(document, SampleSchema)

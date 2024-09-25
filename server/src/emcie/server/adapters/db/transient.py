@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Mapping, Optional, Sequence, Type, cast
+from typing_extensions import get_type_hints
 from emcie.server.core.persistence.common import (
+    ObjectId,
     Where,
     matches_filters,
 )
@@ -11,7 +13,7 @@ from emcie.server.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
-    validate_document,
+    is_total,
 )
 from emcie.common.types.common import JSONSerializable
 
@@ -27,6 +29,9 @@ class TransientDocumentDatabase(DocumentDatabase):
         name: str,
         schema: Type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
+
         self._collections[name] = _TransientDocumentCollection(
             name=name,
             schema=schema,
@@ -49,6 +54,9 @@ class TransientDocumentDatabase(DocumentDatabase):
     ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(_TransientDocumentCollection[TDocument], collection)
+
+        annotations = get_type_hints(schema)
+        assert "id" in annotations and annotations["id"] == ObjectId
 
         return self.create_collection(
             name=name,
@@ -85,7 +93,6 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
             lambda d: matches_filters(filters, d),
             self._documents,
         ):
-            assert validate_document(doc, self._schema, total=True)
             result.append(doc)
 
         return result
@@ -96,7 +103,6 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     ) -> Optional[TDocument]:
         for doc in self._documents:
             if matches_filters(filters, doc):
-                assert validate_document(doc, self._schema, total=True)
                 return doc
 
         return None
@@ -105,7 +111,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         self,
         document: TDocument,
     ) -> InsertResult:
-        validate_document(document, self._schema, total=True)
+        is_total(document, self._schema)
 
         self._documents.append(document)
 
@@ -119,8 +125,6 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     ) -> UpdateResult[TDocument]:
         for i, d in enumerate(self._documents):
             if matches_filters(filters, d):
-                validate_document(params, self._schema, total=False)
-
                 self._documents[i] = cast(TDocument, {**self._documents[i], **params})
 
                 return UpdateResult(
