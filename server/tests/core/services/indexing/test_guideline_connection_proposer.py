@@ -339,7 +339,7 @@ def test_that_a_connection_is_proposed_based_on_multiple_terminology_terms(  # T
 
     source_guideline_content = _create_guideline_content(
         "the user asks about getting walnuts",
-        "reply that the user can get walnuts from the tall tree",
+        "reply that the user can buy walnuts from the tall tree",
     )
 
     target_guideline_content = _create_guideline_content(
@@ -530,7 +530,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         GuidelineContent(predicate=i["predicate"], action=i["action"])
         for i in [
             {
-                "predicate": "referencing a guide",
+                "predicate": "directing the user to a guide",
                 "action": "explain how our guides directory works",
             },
             {
@@ -608,7 +608,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
         GuidelineContent(predicate=i["predicate"], action=i["action"])
         for i in [
             {
-                "predicate": "referencing a guide",
+                "predicate": "referencing a guide to the user",
                 "action": "explain how our guides directory works",
             },
             {
@@ -617,7 +617,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
             },
             {
                 "predicate": "checking a guide",
-                "action": "give reference to the guide when replying",
+                "action": "direct the user to the guide when replying",
             },
         ]
     ]

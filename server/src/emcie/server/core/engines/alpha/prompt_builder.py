@@ -161,7 +161,7 @@ The following is information that you're given about the user and context of the
             self.add_section(
                 name=BuiltInSection.TERMINOLOGY,
                 content=f"""
-The following is a terminology of the business.
+The following is a terminology of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
 Please be tolerant of possible typos by the user with regards to these terms,
 and let the user know if/when you assume they meant a term by their typo: ###
 {terms_string}
