@@ -379,7 +379,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     }
 
     first_evaluation_id = (
-        client.post("/agents/{agent_id}/index/evaluations", json=payloads)
+        client.post(f"/agents/{agent_id}/index/evaluations", json=payloads)
         .raise_for_status()
         .json()["evaluation_id"]
     )
@@ -387,7 +387,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     second_evaluation_id = (
-        client.post("/agents/{agent_id}/index/evaluations", json=payloads)
+        client.post(f"/agents/{agent_id}/index/evaluations", json=payloads)
         .raise_for_status()
         .json()["evaluation_id"]
     )
@@ -408,7 +408,6 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
         client.post(
             f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -446,7 +445,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agens/{agent_id}/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
                 "index": False,
                 "payloads": [
@@ -488,9 +487,8 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 ) -> None:
     evaluation_id = (
         client.post(
-            "/agents/{agent_id}/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "check": False,
                 "index": False,
                 "payloads": [
@@ -518,11 +516,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = (
-        client.get(f"/agents/{agent_id}/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json()
-    )
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
     assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 3
