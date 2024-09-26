@@ -110,7 +110,7 @@ Each guideline is composed of two parts:
           Any instruction described here applies only to the agent, and not to the user. 
 
 
-Now, if we have multiple guidelines, situations might arise where:
+Sometimes, when multiple guidelines are in use, we encounter the following situation:
 Guideline 1: When <X>, then <Y>.
 Guideline 2: When <W>, then <Z>.
 Sometimes, applying the "then" of Guideline 1 (<Y>) may directly cause the "when" of Guideline 2 (<W>) to hold true, forming what we call a "causal connection" or simply "causation" from Guideline 1 to Guideline 2. This causation can only happen if the agent's action in <Y> directly causes the "when" in Guideline 2 (<W>) to become true.
@@ -387,88 +387,8 @@ Expected Output:
     ]
 }}
 
-```
 ###
 Example 4:
-Input:
-
-Test guideline: ###
-{{"id": 0, "when": "Asking about our venues in New York", "then": "Reply that our largest venue is in New York"}}
-###
-
-Causation candidates: ###
-{{"id": 1, "when": "Asked where our biggest venues is", "then": "Reply that it's in New York"}}
-###
-
-Expected Output:
-
-```json
-{{
-    "propositions": [
-        {{
-            "source_id": 0,
-            "target_id": 1,
-            "source_then": "Reply that our largest venue is in New York",
-            "target_when": "Asked where our biggest venues is",
-            "is_target_when_caused_by_source_then": false,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "The agent's replying about our largest venue does not cause any question to be asked retrospectively",
-            "causation_score": 3
-        }},
-        {{
-            "source_id": 1,
-            "target_id": 0,
-            "source_then": "Reply that it's in New York",
-            "target_when": "Asking about our venues in New York",
-            "is_target_when_caused_by_source_then": true,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "The agent's replying something to the user doesn't make them ask any questions retrospectively",
-            "causation_score": 3
-        }}
-    ]
-}}
-###
-Example 5:
-Input:
-
-Test guideline: ###
-{{"id": 0, "when": "the user asks for something yellow", "then": "add bananas to the order"}}
-###
-
-Causation candidates: ###
-{{"id": 1, "when": "the user orders bananas", "then": "compliment the user for their choice"}}
-###
-
-Expected Output:
-
-```json
-{{
-    "propositions": [
-        {{
-            "source_id": 0,
-            "target_id": 1,
-            "source_then": "add bananas to the order",
-            "target_when": "the user orders bananas",
-            "is_target_when_caused_by_source_then": false,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "adding bananas to the order does not retrospectively cause the user to order bananas, even though it implies that it happened in the past",
-            "causation_score": 1
-        }},
-        {{
-            "source_id": 1,
-            "target_id": 0,
-            "source_then": "compliment the user for their choice",
-            "target_when": "the user asks for something yellow",
-            "is_target_when_caused_by_source_then": true,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "complimenting the user for their choice does not retrospectively cause them to ask for anything",
-            "causation_score": 3
-        }}
-    ]
-}}
-
-###
-Example 6:
 Input:
 
 Test guideline: ###

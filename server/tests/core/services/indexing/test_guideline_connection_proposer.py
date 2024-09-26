@@ -315,7 +315,7 @@ def test_that_a_connection_is_proposed_based_on_given_terminology(
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-def test_that_a_connection_is_proposed_based_on_multiple_terminology_terms(  # TODO ask Dor how to debug this
+def test_that_a_connection_is_proposed_based_on_multiple_terminology_terms(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -525,7 +525,7 @@ def test_that_entailing_thens_are_not_connected(
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one(
     context: _TestContext,
     agent: Agent,
-) -> None:  # TODO ask Dor about this test, maybe the first predicate causes it to be too ambiguous
+) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
         GuidelineContent(predicate=i["predicate"], action=i["action"])
         for i in [
@@ -566,7 +566,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggest
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])  # TODO rewrite test
+        GuidelineContent(predicate=i["predicate"], action=i["action"])
         for i in [
             {
                 "predicate": "discussing sandwiches",
@@ -653,6 +653,18 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
                 "action": "notify the user about supported video formats",
             },
         ),
+        (
+            {
+                "guideline_set": "test-agent",
+                "predicate": "the user asks for express shipping",
+                "action": "check if express delivery is avialable and reply positively only if it is",
+            },
+            {
+                "guideline_set": "test-agent",
+                "predicate": "offering express delivery",
+                "action": "mention it takes up to 48 hours",
+            },
+        ),
     ],
 )
 def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected(
@@ -685,7 +697,7 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
 @mark.parametrize(
@@ -707,6 +719,53 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     ],
 )
 def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_another_guidelines_predicate(
+    context: _TestContext,
+    agent: Agent,
+    source_guideline_definition: dict[str, str],
+    target_guideline_definition: dict[str, str],
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    source_guideline_content = _create_guideline_content(
+        source_guideline_definition["predicate"],
+        source_guideline_definition["action"],
+    )
+
+    target_guideline_content = _create_guideline_content(
+        target_guideline_definition["predicate"],
+        target_guideline_definition["action"],
+    )
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
+    assert len(connection_propositions) == 0
+
+
+@mark.parametrize(
+    (
+        "source_guideline_definition",
+        "target_guideline_definition",
+    ),
+    [
+        (
+            {
+                "predicate": "The user complains that the phrases in the photograph are blurry",
+                "action": "clarify what the unclear phrases means",
+            },
+            {
+                "predicate": "a word is misunderstood",
+                "action": "reply with its dictionary definition",
+            },
+        ),
+    ],
+)
+def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes_another_guideline(
     context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
@@ -863,6 +922,56 @@ def test_that_misspelled_entailing_guidelines_are_connected(
         )
     )
 
+    assert len(connection_propositions) == 1
+    assert connection_propositions[0].source == source_guideline_content
+    assert connection_propositions[0].target == target_guideline_content
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+
+
+@mark.parametrize(
+    (
+        "source_guideline_definition",
+        "target_guideline_definition",
+    ),
+    [
+        (
+            {
+                "predicate": "the user complains that a suggested solution did not work",
+                "action": "scold them for not following the instructions properly",
+            },
+            {
+                "predicate": "the conversational tone is hostile",
+                "action": "try to de-escelate the situation",
+            },
+        ),
+    ],
+)
+def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing predicates and entailing actions aren't connected
+    context: _TestContext,
+    agent: Agent,
+    source_guideline_definition: dict[str, str],
+    target_guideline_definition: dict[str, str],
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    source_guideline_content = _create_guideline_content(
+        source_guideline_definition["predicate"],
+        source_guideline_definition["action"],
+    )
+
+    target_guideline_content = _create_guideline_content(
+        target_guideline_definition["predicate"],
+        target_guideline_definition["action"],
+    )
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
