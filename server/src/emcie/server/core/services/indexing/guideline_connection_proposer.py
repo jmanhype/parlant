@@ -466,49 +466,9 @@ Expected Output:
         }}
     ]
 }}
+
 ###
 Example 6:
-Input:
-
-Test guideline: ###
-{{"id": 0, "when": "the user asks what's the tallest building in the world", "then": "reply that it's the Burj Khalifa"}}
-###
-
-Causation candidates: ###
-{{"id": 1, "when": "asked for a building that starts with a B", "then": "reply Burj Khalifa"}}
-###
-
-Expected Output:
-
-```json
-{{
-    "propositions": [
-        {{
-            "source_id": 0,
-            "target_id": 1,
-            "source_then": "reply that it's the Burj Khalifa",
-            "target_when": "asked for a building that starts with a B",
-            "is_target_when_caused_by_source_then": false,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "the agent's replying 'Burj Khalifa' does not cause the user to retrospectively ask for anything, even though the user might've asked a question earlier",
-            "causation_score": 3
-        }},
-        {{
-            "source_id": 1,
-            "target_id": 0,
-            "source_then": "reply Burj Khalifa",
-            "target_when": "the user asks what's the tallest building in the world",
-            "is_target_when_caused_by_source_then": false,
-            "is_target_then_suggestive_or_optional": false,
-            "rationale": "the agent's replying 'Burj Khalifa' does not cause the user to retrospectively ask for anything, even though the user might've asked a question earlier",
-            "causation_score": 3
-        }}
-    ]
-}}
-```
-
-###
-Example 7:
 Input:
 
 Test guideline: ###
