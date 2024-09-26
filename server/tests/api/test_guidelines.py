@@ -387,3 +387,68 @@ async def test_that_connections_can_be_removed_from_guideline(
     response_data = response.json()
     assert "connections" in response_data
     assert len(response_data["connections"]) == 0
+
+
+async def test_that_connection_can_be_created_between_two_guidelines(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    first = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user greets you",
+        action="greet them back with 'Hello'",
+    )
+
+    second = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks for help",
+        action="provide assistance",
+    )
+
+    connection_data = {
+        "source_guideline_id": first.id,
+        "target_guideline_id": second.id,
+        "kind": "entails",
+    }
+
+    response = client.post(
+        f"/agents/{agent_id}/guidelines/connections",
+        json=connection_data,
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    response_data = response.json()
+    assert "id" in response_data
+    connection_id = response_data["id"]
+    assert response_data["source"] == first.id
+    assert response_data["target"] == second.id
+    assert response_data["kind"] == "entails"
+
+    response = client.get(f"/agents/{agent_id}/guidelines/{first.id}")
+    assert response.status_code == status.HTTP_200_OK
+    guideline_data = response.json()
+    assert len(guideline_data["connections"]) == 1
+    connection = guideline_data["connections"][0]
+
+    assert (
+        connection["id"] == connection_id
+        and connection["source"] == first.id
+        and connection["target"] == second.id
+    )
+
+    response = client.get(f"/agents/{agent_id}/guidelines/{second.id}")
+    assert response.status_code == status.HTTP_200_OK
+    guideline_data = response.json()
+
+    assert len(guideline_data["connections"]) == 1
+    connection = guideline_data["connections"][0]
+
+    assert (
+        connection["id"] == connection_id
+        and connection["source"] == first.id
+        and connection["target"] == second.id
+    )
