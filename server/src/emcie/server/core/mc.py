@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from itertools import chain
 import time
 import traceback
 from typing import Any, Iterable, Mapping, Optional, TypeAlias
@@ -18,7 +19,7 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnection,
     GuidelineConnectionStore,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
 from emcie.server.core.sessions import (
     Event,
     EventKind,
@@ -276,3 +277,20 @@ class MC:
                     connections.add(c)
 
         return content_guidelines.values()
+
+    async def get_guideline_connections(
+        self,
+        guideline_id: GuidelineId,
+    ) -> Sequence[GuidelineConnection]:
+        connections = list(
+            chain(
+                await self._guideline_connection_store.list_connections(
+                    indirect=False, source=guideline_id
+                ),
+                await self._guideline_connection_store.list_connections(
+                    indirect=False, target=guideline_id
+                ),
+            )
+        )
+
+        return connections

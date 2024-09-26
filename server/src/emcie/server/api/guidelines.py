@@ -1,5 +1,6 @@
 from itertools import chain
 from typing import Optional, Sequence
+from typing_extensions import Literal
 from fastapi import APIRouter, HTTPException, status
 
 
@@ -27,6 +28,8 @@ from emcie.server.core.guideline_connections import (
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.core.mc import MC
+
+ConnectionRole = Literal["source", "target"]
 
 
 class GuidelineConnectionDTO(DefaultBaseModel):
@@ -74,6 +77,17 @@ class DeleteGuidelineResponse(DefaultBaseModel):
 
 class ListGuidelinesResponse(DefaultBaseModel):
     guidelines: list[GuidelineDTO]
+
+
+class AddConnectionDTO(DefaultBaseModel):
+    guideline_id: GuidelineId
+    role: ConnectionRole
+    kind: ConnectionKindDTO
+
+
+class PatchGuidelineRequest(DefaultBaseModel):
+    added_connections: Optional[Sequence[AddConnectionDTO]]
+    removed_connections: Optional[Sequence[GuidelineId]]
 
 
 def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
@@ -193,21 +207,7 @@ def create_router(
 
     @router.get("/{agent_id}/guidelines/{guideline_id}")
     async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
-        guideline = await guideline_store.read_guideline(
-            guideline_set=agent_id,
-            guideline_id=guideline_id,
-        )
-
-        connections = list(
-            chain(
-                await guideline_connection_store.list_connections(
-                    indirect=False, source=guideline.id
-                ),
-                await guideline_connection_store.list_connections(
-                    indirect=False, target=guideline.id
-                ),
-            )
-        )
+        guideline, connections = mc.get_guideline(agent_id, guideline_id)
 
         return GuidelineDTO(
             guideline_set=agent_id,
@@ -265,6 +265,51 @@ def create_router(
                 )
                 for guideline, connections in guideline_connections
             ]
+        )
+
+    @router.patch("/{agent_id}/guidelines/{guideline_id}")
+    async def patch_guideline(
+        agent_id: AgentId, guideline_id: GuidelineId, request: PatchGuidelineRequest
+    ) -> GuidelineDTO:
+        guideline = await guideline_store.read_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
+        if request.added_connections:
+            for req in request.added_connections:
+                source_id = req.guideline_id if req.role == "source" else guideline_id
+                target_id = req.guideline_id if req.role == "target" else guideline_id
+
+                await guideline_connection_store.create_connection(
+                    source=source_id,
+                    target=target_id,
+                    kind=connection_kind_dto_to_connection_kind(req.kind),
+                )
+
+        connections = await mc.get_guideline_connections(guideline_id)
+
+        if request.removed_connections:
+            for id in request.removed_connections:
+                if connection_to_remove := next(
+                    iter([c for c in connections if id in [c.source, c.target]])
+                ):
+                    await guideline_connection_store.delete_connection(connection_to_remove.id)
+
+        return GuidelineDTO(
+            guideline_set=agent_id,
+            id=guideline.id,
+            predicate=guideline.content.predicate,
+            action=guideline.content.action,
+            connections=[
+                GuidelineConnectionDTO(
+                    id=c.id,
+                    source=c.source,
+                    target=c.target,
+                    kind=connection_kind_to_dto(c.kind),
+                )
+                for c in await mc.get_guideline_connections(guideline_id)
+            ],
         )
 
     return router

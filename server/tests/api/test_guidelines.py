@@ -3,7 +3,7 @@ from fastapi import status
 from lagom import Container
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.guideline_connections import GuidelineConnectionStore
+from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineStore
 
 
@@ -275,3 +275,115 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
 
     assert first.id in ids
     assert second.id in ids
+
+
+async def test_that_connections_can_be_added_to_guideline(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    guideline_connection_store = container[GuidelineConnectionStore]
+
+    first = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks for help",
+        action="provide assistance",
+    )
+
+    second = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="provide assistance",
+        action="ask for clarification if needed",
+    )
+
+    patch_data = {
+        "added_connections": [
+            {
+                "role": "source",
+                "guideline_id": second.id,
+                "kind": "entails",
+            }
+        ],
+        "removed_connections": None,
+    }
+
+    response = client.patch(
+        f"/agents/{agent_id}/guidelines/{first.id}",
+        json=patch_data,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    connections = list(
+        await guideline_connection_store.list_connections(
+            indirect=False,
+            source=second.id,
+        )
+    )
+
+    assert len(connections) == 1
+    connection = connections[0]
+
+    assert connection.source == second.id
+    assert connection.target == first.id
+    assert connection.kind == ConnectionKind.ENTAILS
+
+    response_data = response.json()
+    assert "connections" in response_data
+    assert len(response_data["connections"]) == 1
+    response_connection = response_data["connections"][0]
+    assert response_connection["source"] == second.id
+    assert response_connection["target"] == first.id
+    assert response_connection["kind"] == "entails"
+
+
+async def test_that_connections_can_be_removed_from_guideline(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    guideline_connection_store = container[GuidelineConnectionStore]
+
+    first = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user wants to unsubscribe",
+        action="ask for confirmation",
+    )
+
+    second = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="ask for confirmation",
+        action="provide unsubscribe link",
+    )
+
+    await guideline_connection_store.create_connection(
+        source=first.id,
+        target=second.id,
+        kind=ConnectionKind.SUGGESTS,
+    )
+
+    patch_data = {
+        "added_connections": None,
+        "removed_connections": [second.id],
+    }
+
+    response = client.patch(
+        f"/agents/{agent_id}/guidelines/{first.id}",
+        json=patch_data,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    connections = await guideline_connection_store.list_connections(
+        indirect=False,
+        source=first.id,
+    )
+
+    connections = list(connections)
+    assert len(connections) == 0
+
+    response_data = response.json()
+    assert "connections" in response_data
+    assert len(response_data["connections"]) == 0
