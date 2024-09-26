@@ -207,7 +207,11 @@ def create_router(
 
     @router.get("/{agent_id}/guidelines/{guideline_id}")
     async def read_guideline(agent_id: AgentId, guideline_id: GuidelineId) -> GuidelineDTO:
-        guideline, connections = mc.get_guideline(agent_id, guideline_id)
+        guideline = await guideline_store.read_guideline(
+            guideline_set=agent_id, guideline_id=guideline_id
+        )
+
+        connections = await mc.get_guideline_connections(guideline_id)
 
         return GuidelineDTO(
             guideline_set=agent_id,
