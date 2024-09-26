@@ -84,7 +84,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/terminology/{agent.id}",
+                    f"{SERVER_ADDRESS}/agents/{agent.id}/terminology/",
                 )
                 terminology_response.raise_for_status()
 
@@ -135,7 +135,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/terminology/{agent.id}/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent.id}/terminology/{term_name}",
                 )
                 terminology_response.raise_for_status()
 
@@ -209,7 +209,7 @@ async def test_that_terms_can_be_listed(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/terminology/{agent['id']}",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/",
                 )
                 terminology_response.raise_for_status()
 
@@ -286,7 +286,7 @@ async def test_that_a_term_can_be_deleted(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/terminology/{agent['id']}",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/",
                 )
                 terminology_response.raise_for_status()
 
@@ -343,7 +343,7 @@ async def test_that_terms_are_loaded_on_server_startup(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/terminology/{agent['id']}/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/{term_name}",
                 )
                 terminology_response.raise_for_status()
 
@@ -393,7 +393,7 @@ async def test_that_guideline_can_be_added(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/guidelines/{agent.id}",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
             )
 
             guidelines_response.raise_for_status()
@@ -463,7 +463,7 @@ async def test_that_adding_conflicting_guideline_shows_contradictions_error(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/guidelines/{agent.id}",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
             )
 
             guidelines_response.raise_for_status()
@@ -535,7 +535,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/guidelines/{agent.id}",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
             )
             guidelines_response.raise_for_status()
 
@@ -545,15 +545,9 @@ async def test_that_adding_connected_guidelines_creates_connections(
             source = guidelines[0]
             target = guidelines[1]
 
-            connections_response = (
-                await client.get(
-                    f"{SERVER_ADDRESS}/connections/?source_guideline_id={source["id"]}&indirect=false",
-                )
-            ).raise_for_status()
+            connections = guidelines[0]["connections"]
 
-            connections = connections_response.json()["connections"]
-
-            assert len(connections) == 1
+            assert connections and len(connections) == 1
             connection = connections[0]
 
             assert connection["source"] == source["id"]
@@ -577,9 +571,8 @@ async def test_that_guideline_can_be_viewed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             response_add = await client.post(
-                f"{SERVER_ADDRESS}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
-                    "agent_id": agent.id,
                     "invoices": [
                         {
                             "payload": {
@@ -648,9 +641,8 @@ async def test_that_view_guideline_with_connections_displays_connections(
             timeout=httpx.Timeout(30),
         ) as client:
             response = await client.post(
-                f"{SERVER_ADDRESS}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
-                    "agent_id": agent.id,
                     "invoices": [
                         {
                             "payload": {
@@ -673,9 +665,8 @@ async def test_that_view_guideline_with_connections_displays_connections(
             first = response.json()["guidelines"][0]
 
             response = await client.post(
-                f"{SERVER_ADDRESS}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
-                    "agent_id": agent.id,
                     "invoices": [
                         {
                             "payload": {
@@ -697,17 +688,24 @@ async def test_that_view_guideline_with_connections_displays_connections(
             response.raise_for_status()
             second = response.json()["guidelines"][0]
 
-            response_connection = await client.post(
-                f"{SERVER_ADDRESS}/connections",
+            response_connection = await client.patch(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{first["id"]}",
                 json={
-                    "source_guideline_id": first["id"],
-                    "target_guideline_id": second["id"],
-                    "kind": "entails",
+                    "added_connections": [
+                        {
+                            "role": "source",
+                            "guideline_id": second["id"],
+                            "kind": "entails",
+                        }
+                    ],
+                    "removed_connections": None,
                 },
             )
             response_connection.raise_for_status()
-            connection = response_connection.json()
-            connection_id = connection["id"]
+            guideline = response_connection.json()
+
+            assert guideline["connections"] and len(guideline["connections"]) == 1
+            connection_id = guideline["connections"][0]["id"]
 
         exec_args_view = [
             "poetry",

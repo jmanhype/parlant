@@ -3,7 +3,6 @@
 
 import asyncio
 from dataclasses import dataclass
-from itertools import chain
 import os
 import time
 from typing import Any, Optional, cast
@@ -18,9 +17,6 @@ from tabulate import tabulate
 from textwrap import wrap
 
 from emcie.server.core.services.indexing.behavioral_change_evaluation import EvaluationError
-
-# from emcie.server.core.agents import AgentId
-# from emcie.server.core.guidelines import GuidelineContent
 
 
 class Actions:
@@ -38,9 +34,8 @@ class Actions:
         title: Optional[str] = None,
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, "sessions"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions"),
             json={
-                "agent_id": agent_id,
                 "end_user_id": end_user_id,
                 "title": title,
             },
@@ -51,15 +46,19 @@ class Actions:
         return response.json()  # type: ignore
 
     @staticmethod
-    def list_events(ctx: click.Context, session_id: str) -> dict[str, Any]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
+    def list_events(ctx: click.Context, agent_id: str, session_id: str) -> dict[str, Any]:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events")
+        )
         response.raise_for_status()
         return response.json()["events"]  # type: ignore
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> dict[str, Any]:
+    def create_event(
+        ctx: click.Context, agent_id: str, session_id: str, message: str
+    ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events"),
             json={"content": message},
         )
 
@@ -72,9 +71,8 @@ class Actions:
         ctx: click.Context, agent_id: str, name: str, description: str, synonyms: Optional[str]
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, "terminology"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology"),
             json={
-                "agent_id": agent_id,
                 "name": name,
                 "description": description,
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
@@ -86,25 +84,24 @@ class Actions:
     @staticmethod
     def delete_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
         response = requests.delete(
-            urljoin(ctx.obj.server_address, f"terminology/{agent_id}/{name}")
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology/{name}")
         )
         response.raise_for_status()
         return response.json()  # type: ignore
 
     @staticmethod
     def list_terms(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"terminology/{agent_id}"))
+        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology"))
         response.raise_for_status()
-        return response.json()  # type: ignore
+        return response.json()["terms"]  # type: ignore
 
     @staticmethod
     def create_guideline(
         ctx: click.Context, agent_id: str, predicate: str, action: str, check: bool, index: bool
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, "index/evaluations"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -120,13 +117,13 @@ class Actions:
         evaluation_id = response.json()["evaluation_id"]
 
         while True:
-            time.sleep(0.15)
+            time.sleep(0.3)
             response = requests.get(
-                urljoin(ctx.obj.server_address, f"index/evaluations/{evaluation_id}")
+                urljoin(ctx.obj.server_address, f"/agents/index/evaluations/{evaluation_id}")
             )
             response.raise_for_status()
             evaluation = response.json()
-
+            print(f"evaluation: {evaluation["status"]}")
             if evaluation["status"] in ["pending", "running"]:
                 continue
 
@@ -134,16 +131,15 @@ class Actions:
                 invoice = evaluation["invoices"][0]
                 if invoice["approved"]:
                     guideline_response = requests.post(
-                        urljoin(ctx.obj.server_address, "guidelines"),
+                        urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/"),
                         json={
-                            "agent_id": agent_id,
                             "invoices": [invoice],
                         },
                     )
                     guideline_response.raise_for_status()
 
                     if connections := invoice["data"]["connection_propositions"]:
-                        print("Connections that will be added:")
+                        rich.print("Connections that will be added:")
                         for connection in connections:
                             print(f"- {connection}")
 
@@ -157,39 +153,17 @@ class Actions:
 
     @staticmethod
     def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
-        guideline_response = requests.get(
-            urljoin(ctx.obj.server_address, f"guidelines/{agent_id}/{guideline_id}")
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
-        guideline_response.raise_for_status()
+        response.raise_for_status()
+        return response.json()
 
-        source_connections_response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/connections/?source_guideline_id={guideline_id}&indirect=false",
-            ),
-        )
-        source_connections_response.raise_for_status()
-
-        target_connections_response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/connections/?target_guideline_id={guideline_id}&indirect=false",
-            ),
-        )
-
-        target_connections_response.raise_for_status()
-
-        res = {
-            **guideline_response.json(),
-            "connections": list(
-                chain(
-                    source_connections_response.json()["connections"],
-                    target_connections_response.json()["connections"],
-                )
-            ),
-        }
-
-        return res
+    @staticmethod
+    def list_guidelines(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
+        response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+        response.raise_for_status()
+        return response.json()["guidelines"]
 
 
 class Interface:
@@ -210,8 +184,8 @@ class Interface:
         return str(agents[0]["id"])
 
     @staticmethod
-    def view_session(ctx: click.Context, session_id: str) -> None:
-        events = Actions.list_events(ctx, session_id)
+    def view_session(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        events = Actions.list_events(ctx, agent_id, session_id)
 
         if not events:
             rich.print("No data available")
@@ -245,14 +219,14 @@ class Interface:
         print(tabulate([session], headers="keys"))
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> None:
-        event = Actions.create_event(ctx, session_id, message)
+    def create_event(ctx: click.Context, agent_id: str, session_id: str, message: str) -> None:
+        event = Actions.create_event(ctx, agent_id, session_id, message)
         rich.print(tabulate([event], headers="keys"))
 
     @staticmethod
-    def chat(ctx: click.Context, session_id: str) -> None:
+    def chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
         def print_message(message_event: dict[str, Any]) -> None:
-            role = {"client": "User", "server": "Agent"}[m["source"]]
+            role = {"client": "User", "server": "Agent"}[message_event["source"]]
             prefix = Text(
                 f"{role}:".ljust(6), style="bold " + {"User": "blue", "Agent": "green"}[role]
             )
@@ -265,7 +239,9 @@ class Interface:
 
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
-        response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events")
+        )
         response.raise_for_status()
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
@@ -283,25 +259,30 @@ class Interface:
         for m in message_events:
             print_message(m)
 
+        last_known_offset = message_events[-1]["offset"] if message_events else -1
+
         while True:
             try:
                 rich.print(Text("User:  ", style="bold blue"), end="")
                 new_message = input()
 
                 response = requests.post(
-                    urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
+                    urljoin(
+                        ctx.obj.server_address,
+                        f"/agents/{agent_id}/sessions/{session_id}/events",
+                    ),
                     json={"content": new_message},
                 )
                 response.raise_for_status()
                 new_event = response.json()
 
-                last_known_offset = new_event["event_offset"]
+                last_known_offset = new_event["offset"]
 
                 while True:
                     response = requests.get(
                         urljoin(
                             ctx.obj.server_address,
-                            f"sessions/{session_id}/events"
+                            f"/agents/{agent_id}/sessions/{session_id}/events"
                             f"?min_offset={1 + last_known_offset}&wait=true",
                         )
                     )
@@ -311,13 +292,13 @@ class Interface:
                         continue
 
                     events = response.json()["events"]
+                    if not events:
+                        continue
+
                     last_known_offset = events[-1]["offset"]
 
-                    # TODO: This current implementation does not support async polling mode,
-                    #       but rather relies on request/response, which isn't comprehensive.
-                    if message_events := [
-                        e for e in response.json()["events"] if e["kind"] == "message"
-                    ]:
+                    message_events = [e for e in events if e["kind"] == "message"]
+                    if message_events:
                         for m in message_events:
                             print_message(m)
                         break
@@ -408,9 +389,43 @@ class Interface:
                             for c in guideline["connections"]
                         ],
                         headers="keys",
-                        maxcolwidths=[None, None, None, None, 40],
+                        maxcolwidths=[None, None, None, None],
                     )
                 )
+            else:
+                rich.print("\nNo connections found for this guideline.")
+        except requests.HTTPError as e:
+            rich.print(f"HTTP error occurred: {e}")
+        except Exception as e:
+            rich.print(f"An unexpected error occurred: {e}")
+
+    @staticmethod
+    def list_guidelines(ctx: click.Context, agent_id: str) -> None:
+        try:
+            guidelines = Actions.list_guidelines(ctx, agent_id)
+            if not guidelines:
+                rich.print(f"No guidelines found for agent {agent_id}.")
+                return
+
+            data = [
+                {
+                    "ID": g["id"],
+                    "Predicate": g["predicate"],
+                    "Action": g["action"],
+                }
+                for g in guidelines
+            ]
+
+            rich.print(f"Guidelines for Agent ID: {agent_id}")
+            rich.print(
+                tabulate(
+                    data,
+                    headers="keys",
+                    tablefmt="grid",
+                    maxcolwidths=[None, 40, 40],
+                )
+            )
+
         except requests.HTTPError as e:
             rich.print(f"HTTP error occurred: {e}")
         except Exception as e:
@@ -460,7 +475,7 @@ async def main() -> None:
 
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
 
-        Interface.chat(ctx, session["session_id"])
+        Interface.chat(ctx, agent_id, session["id"])
 
     @cli.group(help="Manage sessions")
     def session() -> None:
@@ -480,23 +495,26 @@ async def main() -> None:
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("view", help="View session content")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
     @click.argument("session_id")
     @click.pass_context
-    def session_view(ctx: click.Context, session_id: str) -> None:
-        Interface.view_session(ctx, session_id)
+    def session_view(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        Interface.view_session(ctx, agent_id, session_id)
 
     @session.command("post", help="Post user message to session")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
-    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
-        Interface.create_event(ctx, session_id, message)
+    def session_post(ctx: click.Context, agent_id: str, session_id: str, message: str) -> None:
+        Interface.create_event(ctx, agent_id, session_id, message)
 
     @session.command("chat", help="Enter chat mode within the session")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
     @click.argument("session_id")
     @click.pass_context
-    def session_chat(ctx: click.Context, session_id: str) -> None:
-        Interface.chat(ctx, session_id)
+    def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        Interface.chat(ctx, agent_id, session_id)
 
     @cli.group(help="Manage Terminology")
     def terminology() -> None:
@@ -564,21 +582,19 @@ async def main() -> None:
     @click.pass_context
     def guideline_add(
         ctx: click.Context,
-        check: bool,
-        index: bool,
         agent_id: str,
         predicate: str,
         action: str,
+        check: bool,
+        index: bool,
     ) -> None:
-        agent_id = agent_id if agent_id is not None else Interface.get_default_agent(ctx)
-
         Interface.create_guideline(
             ctx=ctx,
-            check=check,
-            index=index,
             agent_id=agent_id,
             predicate=predicate,
             action=action,
+            check=check,
+            index=index,
         )
 
     @guidelines.command("view", help="View a guideline and its connections")

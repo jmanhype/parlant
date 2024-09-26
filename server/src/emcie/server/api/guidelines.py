@@ -229,7 +229,7 @@ def create_router(
             ],
         )
 
-    @router.get("/{agent_id}/guidelines")
+    @router.get("/{agent_id}/guidelines/")
     async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
 

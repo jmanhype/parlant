@@ -265,7 +265,7 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
         action="provide what pizza is made of",
     )
 
-    response = client.get(f"/agents/{agent_id}/guidelines")
+    response = client.get(f"/agents/{agent_id}/guidelines/")
     assert response.status_code == status.HTTP_200_OK
 
     guidelines = response.json()["guidelines"]
