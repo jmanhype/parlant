@@ -165,6 +165,25 @@ class Actions:
         response.raise_for_status()
         return response.json()["guidelines"]
 
+    @staticmethod
+    def create_connection(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+        kind: str,
+    ) -> dict[str, Any]:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/connections"),
+            json={
+                "source_guideline_id": source_guideline_id,
+                "target_guideline_id": target_guideline_id,
+                "kind": kind,
+            },
+        )
+        response.raise_for_status()
+        return response.json()  # type: ignore
+
 
 class Interface:
     @staticmethod
@@ -431,6 +450,33 @@ class Interface:
         except Exception as e:
             rich.print(f"An unexpected error occurred: {e}")
 
+    @staticmethod
+    def create_connection(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+        kind: str,
+    ) -> None:
+        try:
+            connection = Actions.create_connection(
+                ctx,
+                agent_id,
+                source_guideline_id,
+                target_guideline_id,
+                kind,
+            )
+            rich.print("Connection created:")
+            rich.print(f"ID: {connection['id']}")
+            rich.print(f"Source: {connection['source']}")
+            rich.print(f"Target: {connection['target']}")
+            rich.print(f"Kind: {connection['kind']}")
+        except requests.HTTPError as e:
+            rich.print(f"HTTP error occurred: {e.response.status_code} {e.response.reason}")
+            rich.print(f"Detail: {e.response.text}")
+        except Exception as e:
+            rich.print(f"An unexpected error occurred: {e}")
+
 
 async def main() -> None:
     click_completion.init()
@@ -622,6 +668,29 @@ async def main() -> None:
         Interface.list_guidelines(
             ctx=ctx,
             agent_id=agent_id,
+        )
+
+    @guidelines.command("connect", help="Create a connection between two guidelines")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option(
+        "-k", "--kind", type=str, help="Connection kind (e.g., entails, contradicts)", required=True
+    )
+    @click.argument("source_guideline_id", type=str)
+    @click.argument("target_guideline_id", type=str)
+    @click.pass_context
+    def guideline_connect(
+        ctx: click.Context,
+        agent_id: str,
+        kind: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> None:
+        Interface.create_connection(
+            ctx=ctx,
+            agent_id=agent_id,
+            source_guideline_id=source_guideline_id,
+            target_guideline_id=target_guideline_id,
+            kind=kind,
         )
 
     cli()
