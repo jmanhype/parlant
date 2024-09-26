@@ -21,9 +21,8 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
     evaluation_store = container[EvaluationStore]
 
     response = client.post(
-        "/index/evaluations",
+        f"/agents/{agent_id}/index/evaluations",
         json={
-            "agent_id": agent_id,
             "payloads": [
                 {
                     "kind": "guideline",
@@ -45,7 +44,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
     assert len(content["invoices"]) == 1
@@ -61,9 +60,8 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -86,7 +84,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "running"
 
@@ -97,9 +95,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -117,7 +114,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -134,9 +131,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -159,7 +155,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -186,9 +182,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            "/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -206,7 +201,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert len(content["invoices"]) == 1
     invoice = content["invoices"][0]
@@ -233,9 +228,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -258,7 +252,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -293,9 +287,8 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
     }
 
     response = client.post(
-        "/index/evaluations",
+        f"/agents/{agent_id}/index/evaluations",
         json={
-            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
                 duplicate_payload,
@@ -332,9 +325,8 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
     }
 
     response = client.post(
-        "/index/evaluations",
+        f"/agents/{agent_id}/index/evaluations",
         json={
-            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
             ],
@@ -356,7 +348,7 @@ async def test_that_an_error_is_returned_when_no_payloads_are_provided(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
-    response = client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": []})
+    response = client.post(f"/agents/{agent_id}/index/evaluations", json={"payloads": []})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
@@ -365,20 +357,11 @@ async def test_that_an_error_is_returned_when_no_payloads_are_provided(
     assert data["detail"] == "No payloads provided for the evaluation task."
 
 
-async def test_that_an_error_is_returned_when_no_agent_id_provided(
-    client: TestClient,
-) -> None:
-    response = client.post("/index/evaluations", json={"payloads": []})
-
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-
 async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
     payloads = {
-        "agent_id": agent_id,
         "payloads": [
             {
                 "kind": "guideline",
@@ -396,16 +379,22 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     }
 
     first_evaluation_id = (
-        client.post("/index/evaluations", json=payloads).raise_for_status().json()["evaluation_id"]
+        client.post("/agents/{agent_id}/index/evaluations", json=payloads)
+        .raise_for_status()
+        .json()["evaluation_id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     second_evaluation_id = (
-        client.post("/index/evaluations", json=payloads).raise_for_status().json()["evaluation_id"]
+        client.post("/agents/{agent_id}/index/evaluations", json=payloads)
+        .raise_for_status()
+        .json()["evaluation_id"]
     )
 
-    content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
+    content = (
+        client.get(f"/agents/index/evaluations/{second_evaluation_id}").raise_for_status().json()
+    )
 
     assert content["status"] == "failed"
     assert content["error"] == f"An evaluation task '{first_evaluation_id}' is already running."
@@ -417,7 +406,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
                 "agent_id": agent_id,
                 "payloads": [
@@ -441,7 +430,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
     assert len(content["invoices"]) == 2
@@ -457,9 +446,8 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            f"/agens/{agent_id}/index/evaluations",
             json={
-                "agent_id": agent_id,
                 "index": False,
                 "payloads": [
                     {
@@ -481,7 +469,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
     assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 2
@@ -500,7 +488,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 ) -> None:
     evaluation_id = (
         client.post(
-            "/index/evaluations",
+            "/agents/{agent_id}/index/evaluations",
             json={
                 "agent_id": agent_id,
                 "check": False,
@@ -530,7 +518,11 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = (
+        client.get(f"/agents/{agent_id}/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json()
+    )
     assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 3

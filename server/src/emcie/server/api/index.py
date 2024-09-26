@@ -114,7 +114,6 @@ class InvoiceDTO(DefaultBaseModel):
 
 
 class CreateEvaluationRequest(DefaultBaseModel):
-    agent_id: AgentId
     payloads: Sequence[PayloadDTO]
     check: bool = True
     index: bool = True
@@ -139,10 +138,12 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/evaluations", status_code=status.HTTP_201_CREATED)
-    async def create_evaluation(request: CreateEvaluationRequest) -> CreateEvaluationResponse:
+    @router.post("/{agent_id}/index/evaluations/", status_code=status.HTTP_201_CREATED)
+    async def create_evaluation(
+        agent_id: AgentId, request: CreateEvaluationRequest
+    ) -> CreateEvaluationResponse:
         try:
-            agent = await agent_store.read_agent(agent_id=request.agent_id)
+            agent = await agent_store.read_agent(agent_id=agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
                 agent=agent,
                 payload_descriptors=[
@@ -161,7 +162,7 @@ def create_router(
 
         return CreateEvaluationResponse(evaluation_id=evaluation_id)
 
-    @router.get("/evaluations/{evaluation_id}")
+    @router.get("/index/evaluations/{evaluation_id}")
     async def get_evaluation(evaluation_id: EvaluationId) -> ReadEvaluationResponse:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
 
