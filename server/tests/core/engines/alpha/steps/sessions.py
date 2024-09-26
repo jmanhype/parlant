@@ -46,7 +46,7 @@ def given_a_session_with_a_single_user_message(
     return new_session.id
 
 
-@given("a session with a thirsty user", target_fixture="session_id")
+@step(given, "a session with a thirsty user", target_fixture="session_id")
 def given_a_session_with_a_thirsty_user(
     context: ContextOfTest,
     new_session: Session,
@@ -66,7 +66,7 @@ def given_a_session_with_a_thirsty_user(
     return new_session.id
 
 
-@given("a session with a few messages", target_fixture="session_id")
+@step(given, "a session with a few messages", target_fixture="session_id")
 def given_a_session_with_a_few_messages(
     context: ContextOfTest,
     new_session: Session,

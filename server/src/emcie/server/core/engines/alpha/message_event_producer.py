@@ -51,7 +51,7 @@ class MessageEventSchema(DefaultBaseModel):
     produced_reply: bool
     rationale: str
     revisions: list[Revision]
-    evaluations_for_each_of_the_provided_guidelines: list[GuidelineEvaluation]
+    evaluations_for_each_of_the_provided_guidelines: Optional[list[GuidelineEvaluation]] = None
 
 
 class MessageEventProducer:
