@@ -612,6 +612,18 @@ async def main() -> None:
             guideline_id=guideline_id,
         )
 
+    @guidelines.command("list", help="List all guidelines for an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.pass_context
+    def guideline_list(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        Interface.list_guidelines(
+            ctx=ctx,
+            agent_id=agent_id,
+        )
+
     cli()
 
 

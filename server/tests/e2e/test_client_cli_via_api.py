@@ -739,3 +739,94 @@ async def test_that_view_guideline_with_connections_displays_connections(
         assert second["id"] in output_view
         assert connection_id in output_view
         assert "entails" in output_view
+
+
+async def test_that_guidelines_can_be_listed_via_cli(
+    context: ContextOfTest,
+) -> None:
+    predicate1 = "the user asks for help"
+    action1 = "provide assistance"
+
+    predicate2 = "the user needs support"
+    action2 = "offer support"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await get_first_agent()
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_add1 = await client.post(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": predicate1,
+                                "action": action1,
+                            },
+                            "checksum": "checksum1",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": None,
+                            },
+                            "error": None,
+                        }
+                    ],
+                },
+            )
+            response_add1.raise_for_status()
+
+            response_add2 = await client.post(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": predicate2,
+                                "action": action2,
+                            },
+                            "checksum": "checksum2",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": None,
+                            },
+                            "error": None,
+                        }
+                    ],
+                },
+            )
+            response_add2.raise_for_status()
+
+        exec_args_list = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guidelines",
+            "list",
+            "-a",
+            agent.id,
+        ]
+        process_list = await asyncio.create_subprocess_exec(
+            *exec_args_list,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_list, stderr_list = await process_list.communicate()
+        output_list = stdout_list.decode() + stderr_list.decode()
+        assert process_list.returncode == os.EX_OK
+
+        assert predicate1 in output_list
+        assert action1 in output_list
+        assert predicate2 in output_list
+        assert action2 in output_list
