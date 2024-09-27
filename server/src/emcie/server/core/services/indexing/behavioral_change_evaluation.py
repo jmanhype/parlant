@@ -1,5 +1,5 @@
 import asyncio
-from typing import Iterable, Optional, OrderedDict, Sequence
+from typing import Iterable, Optional, OrderedDict, Sequence, cast
 
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.evaluations import (
@@ -287,17 +287,19 @@ class BehavioralChangeEvaluator:
     ) -> EvaluationId:
         await self.validate_payloads(agent, payload_descriptors)
 
-        evaluation = await self._evaluation_store.create_evaluation(agent.id, payload_descriptors)
+        evaluation = await self._evaluation_store.create_evaluation(
+            agent.id,
+            payload_descriptors,
+            extra={"check": check, "index": index},
+        )
 
-        asyncio.create_task(self.run_evaluation(evaluation, check, index))
+        asyncio.create_task(self.run_evaluation(evaluation))
 
         return evaluation.id
 
     async def run_evaluation(
         self,
         evaluation: Evaluation,
-        check: bool,
-        index: bool,
     ) -> None:
         self._logger.info(f"Starting evaluation task '{evaluation.id}'")
 
@@ -326,8 +328,8 @@ class BehavioralChangeEvaluator:
                     for invoice in evaluation.invoices
                     if invoice.kind == PayloadKind.GUIDELINE
                 ],
-                check=check,
-                index=index,
+                check=cast(bool, evaluation.extra.get("check")) if evaluation.extra else True,
+                index=cast(bool, evaluation.extra.get("index")) if evaluation.extra else True,
             )
 
             invoices: list[Invoice] = []

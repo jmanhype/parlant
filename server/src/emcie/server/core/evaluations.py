@@ -125,6 +125,7 @@ class EvaluationStore(ABC):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
+        extra: Optional[dict[str, Union[str, int, float, bool]]] = None,
     ) -> Evaluation: ...
 
     @abstractmethod
@@ -396,6 +397,7 @@ class EvaluationDocumentStore(EvaluationStore):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
+        extra: Optional[dict[str, Union[str, int, float, bool]]] = None,
     ) -> Evaluation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
@@ -422,7 +424,7 @@ class EvaluationDocumentStore(EvaluationStore):
             error=None,
             invoices=invoices,
             progress=0.0,
-            extra=None,
+            extra=extra,
         )
 
         await self._evaluation_collection.insert_one(
