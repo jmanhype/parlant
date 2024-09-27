@@ -182,7 +182,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     evaluation_id = (
         client.post(
-            "/agents/{agent_id}/index/evaluations",
+            f"/agents/{agent_id}/index/evaluations",
             json={
                 "payloads": [
                     {

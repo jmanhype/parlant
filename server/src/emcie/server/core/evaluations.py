@@ -107,12 +107,15 @@ class Evaluation:
     status: EvaluationStatus
     error: Optional[str]
     invoices: Sequence[Invoice]
+    progress: float
+    extra: Optional[dict[str, Union[str, int, float, bool]]]
 
 
 class EvaluationUpdateParams(TypedDict, total=False):
     status: EvaluationStatus
     error: Optional[str]
     invoices: Sequence[Invoice]
+    progress: float
 
 
 class EvaluationStore(ABC):
@@ -196,6 +199,8 @@ class _EvaluationDocument(TypedDict, total=False):
     status: str
     error: Optional[str]
     invoices: Sequence[_InvoiceDocument]
+    progress: float
+    extra: Optional[dict[str, Union[str, int, float, bool]]]
 
 
 class EvaluationDocumentStore(EvaluationStore):
@@ -280,6 +285,8 @@ class EvaluationDocumentStore(EvaluationStore):
             status=evaluation.status.name,
             error=evaluation.error,
             invoices=[self._serialize_invoice(inv) for inv in evaluation.invoices],
+            progress=evaluation.progress,
+            extra=evaluation.extra,
         )
 
     def _deserialize_evaluation(self, evaluation_document: _EvaluationDocument) -> Evaluation:
@@ -380,6 +387,8 @@ class EvaluationDocumentStore(EvaluationStore):
             status=status,
             error=evaluation_document.get("error"),
             invoices=invoices,
+            progress=evaluation_document["progress"],
+            extra=evaluation_document.get("extra"),
         )
 
     async def create_evaluation(
@@ -412,6 +421,8 @@ class EvaluationDocumentStore(EvaluationStore):
             creation_utc=creation_utc,
             error=None,
             invoices=invoices,
+            progress=0.0,
+            extra=None,
         )
 
         await self._evaluation_collection.insert_one(
