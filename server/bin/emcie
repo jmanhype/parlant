@@ -119,7 +119,6 @@ class Actions:
         evaluation_id = response.json()["evaluation_id"]
 
         with tqdm(
-            delim=20,
             total=100,
             desc="Evaluation Progress",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",

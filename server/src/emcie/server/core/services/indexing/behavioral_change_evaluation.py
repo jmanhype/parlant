@@ -330,7 +330,13 @@ class BehavioralChangeEvaluator:
     ) -> None:
         self._logger.info(f"Starting evaluation task '{evaluation.id}'")
 
-        progress_report = ProgressReport()
+        async def _update_progress(percentage: float) -> None:
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation.id,
+                params={"progress": percentage},
+            )
+
+        progress_report = ProgressReport(_update_progress)
 
         try:
             if running_task := next(
@@ -346,10 +352,6 @@ class BehavioralChangeEvaluator:
             await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
                 params={"status": EvaluationStatus.RUNNING},
-            )
-
-            progress_task = asyncio.create_task(
-                self._update_progress(evaluation.id, progress_report)
             )
 
             agent = await self._agent_store.read_agent(agent_id=evaluation.agent_id)
@@ -407,23 +409,3 @@ class BehavioralChangeEvaluator:
                     "error": str(exc),
                 },
             )
-
-        finally:
-            progress_task.cancel()
-
-    async def _update_progress(
-        self,
-        evaluation_id: EvaluationId,
-        progress_report: ProgressReport,
-    ) -> None:
-        while True:
-            percentage = progress_report.percentage
-
-            self._logger.info(f"Evaluation task progress: {percentage:.2f}% completed")
-
-            await self._evaluation_store.update_evaluation(
-                evaluation_id=evaluation_id,
-                params={"progress": percentage},
-            )
-
-            await asyncio.sleep(0.15)

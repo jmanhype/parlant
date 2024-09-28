@@ -126,6 +126,7 @@ class CreateEvaluationResponse(DefaultBaseModel):
 class ReadEvaluationResponse(DefaultBaseModel):
     evaluation_id: EvaluationId
     status: EvaluationStatusDTO
+    progress: float
     creation_utc: datetime
     error: Optional[str]
     invoices: list[InvoiceDTO]
@@ -169,6 +170,7 @@ def create_router(
         return ReadEvaluationResponse(
             evaluation_id=evaluation.id,
             status=_evaluation_status_to_dto(evaluation.status),
+            progress=evaluation.progress,
             creation_utc=evaluation.creation_utc,
             invoices=[
                 InvoiceDTO(
