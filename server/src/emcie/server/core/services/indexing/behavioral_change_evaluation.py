@@ -1,5 +1,5 @@
 import asyncio
-from typing import Iterable, Optional, OrderedDict, Sequence, cast
+from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.evaluations import (
@@ -61,51 +61,71 @@ class GuidelineEvaluator:
 
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
-        coherence_checks = (
-            await self._check_payloads_coherence(
-                guidelines_to_evaluate,
-                existing_guidelines,
-            )
-            if check
-            else []
-        )
+        tasks: list[asyncio.Task[Any]] = []
+        coherence_checks_task: Optional[
+            asyncio.Task[Optional[Iterable[Sequence[CoherenceCheck]]]]
+        ] = None
 
-        if not coherence_checks:
-            connection_propositions = (
-                await self._propose_payloads_connections(
+        connection_propositions_task: Optional[
+            asyncio.Task[Optional[Iterable[Sequence[ConnectionProposition]]]]
+        ] = None
+
+        if check:
+            coherence_checks_task = asyncio.create_task(
+                self._check_payloads_coherence(
+                    guidelines_to_evaluate,
+                    existing_guidelines,
+                )
+            )
+            tasks.append(coherence_checks_task)
+
+        if index:
+            connection_propositions_task = asyncio.create_task(
+                self._propose_payloads_connections(
                     agent,
                     guidelines_to_evaluate,
                     existing_guidelines,
                 )
-                if index
-                else None
             )
+            tasks.append(connection_propositions_task)
 
-            if connection_propositions:
-                return [
-                    InvoiceGuidelineData(
-                        coherence_checks=[],
-                        connection_propositions=payload_connection_propositions,
-                    )
-                    for payload_connection_propositions in connection_propositions
-                ]
+        if tasks:
+            await asyncio.gather(*tasks)
 
-            else:
-                return [
-                    InvoiceGuidelineData(
-                        coherence_checks=[],
-                        connection_propositions=None,
-                    )
-                    for _ in range(len(payloads))
-                ]
+        coherence_checks: Optional[Iterable[Sequence[CoherenceCheck]]] = []
+        if coherence_checks_task:
+            coherence_checks = coherence_checks_task.result()
 
-        return [
-            InvoiceGuidelineData(
-                coherence_checks=payload_coherence_checks,
-                connection_propositions=None,
-            )
-            for payload_coherence_checks in coherence_checks
-        ]
+        connection_propositions: Optional[Iterable[Sequence[ConnectionProposition]]] = None
+        if connection_propositions_task:
+            connection_propositions = connection_propositions_task.result()
+
+        if coherence_checks:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=payload_coherence_checks,
+                    connection_propositions=None,
+                )
+                for payload_coherence_checks in coherence_checks
+            ]
+
+        elif connection_propositions:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=[],
+                    connection_propositions=payload_connection_propositions,
+                )
+                for payload_connection_propositions in connection_propositions
+            ]
+
+        else:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=[],
+                    connection_propositions=None,
+                )
+                for _ in payloads
+            ]
 
     async def _check_payloads_coherence(
         self,
