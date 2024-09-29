@@ -1,4 +1,5 @@
 import asyncio
+import json
 import math
 from typing import Sequence
 
@@ -434,7 +435,7 @@ Expected Output
     ```json
     {{
         "checks":
-        {result_structure}
+        {json.dumps(result_structure)}
     }}
     ```
 """  # noqa
