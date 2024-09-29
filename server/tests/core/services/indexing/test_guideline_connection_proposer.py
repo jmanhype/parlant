@@ -419,7 +419,7 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
         (
             {
                 "predicate": "Asked about supported languages",
-                "action": "Explain that English is the only supported language",
+                "action": "explain that English is the only supported language",
             },
             {
                 "predicate": "the user uses a language other than English",
@@ -756,7 +756,7 @@ def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_ano
         (
             {
                 "predicate": "The user complains that the phrases in the photograph are blurry",
-                "action": "clarify what the unclear phrases means",
+                "action": "clarify what the unclear phrases mean",
             },
             {
                 "predicate": "a word is misunderstood",
@@ -937,7 +937,7 @@ def test_that_misspelled_entailing_guidelines_are_connected(
         (
             {
                 "predicate": "the user complains that a suggested solution did not work",
-                "action": "Reply in a hostile manner",
+                "action": "reply in a hostile manner",
             },
             {
                 "predicate": "the conversational tone is hostile",

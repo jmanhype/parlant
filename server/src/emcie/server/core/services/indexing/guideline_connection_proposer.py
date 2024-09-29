@@ -498,9 +498,9 @@ Expected Output:
             "target_when": "mentioning electronic products",
             "is_target_when_caused_by_source_then": true,
             "is_source_then_suggestive_or_optional": true,
-            "target_then": "check if the product is available, and inform the user about its price if it is"
+            "target_then": "check if the product is available, and inform the user about its price if it is",
             "is_target_then_suggestive_or_optional": true,
-            "rationale": "suggesting to buy a new TV causes the mentioning of a TV, wh5ch is an electronic product",
+            "rationale": "suggesting to buy a new TV causes the mentioning of a TV, which is an electronic product",
             "causation_score": 9
         }},
         {{
@@ -570,8 +570,6 @@ Causation candidates: ###
             guideline_to_test,
             {k: v for k, v in guidelines_dict.items() if k != 0},
         )
-        with open("new format initial prompt 23.9.txt", "w") as f:
-            f.write(prompt)  # TODO delete
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
