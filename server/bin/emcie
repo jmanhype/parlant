@@ -539,7 +539,7 @@ async def main() -> None:
         pass
 
     @session.command("new", help="Create a new session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
@@ -549,28 +549,40 @@ async def main() -> None:
         end_user_id: str,
         title: Optional[str],
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("view", help="View session content")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.pass_context
     def session_view(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.view_session(ctx, agent_id, session_id)
 
     @session.command("post", help="Post user message to session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
     def session_post(ctx: click.Context, agent_id: str, session_id: str, message: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_event(ctx, agent_id, session_id, message)
 
     @session.command("chat", help="Enter chat mode within the session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.pass_context
     def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.chat(ctx, agent_id, session_id)
 
     @cli.group(help="Manage Terminology")
@@ -578,7 +590,7 @@ async def main() -> None:
         pass
 
     @terminology.command("add", help="Add a new term to the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option("-n", "--name", type=str, help="Name of the term", required=True)
     @click.option("-d", "--description", type=str, help="Description of the term", required=True)
     @click.option(
@@ -592,10 +604,13 @@ async def main() -> None:
         description: str,
         synonyms: Optional[str],
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_term(ctx, agent_id, name, description, synonyms)
 
     @terminology.command("delete", help="Delete a term from the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option("-n", "--name", type=str, help="Name of the term to delete", required=True)
     @click.pass_context
     def terminology_delete(
@@ -603,22 +618,28 @@ async def main() -> None:
         agent_id: str,
         name: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.delete_term(ctx, agent_id, name)
 
     @terminology.command("list", help="List all terms in the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.pass_context
     def terminology_list(
         ctx: click.Context,
         agent_id: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.list_terms(ctx, agent_id)
 
     @cli.group(help="Manage Guidelines")
-    def guidelines() -> None:
+    def guideline() -> None:
         pass
 
-    @guidelines.command("add", help="Add a new guideline")
+    @guideline.command("add", help="Add a new guideline")
     @click.option(
         "--check/--no-check",
         type=bool,
@@ -633,7 +654,7 @@ async def main() -> None:
         default=True,
         help="Determine if guideline connections should be indexed",
     )
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("predicate", type=str)
     @click.argument("action", type=str)
     @click.pass_context
@@ -645,6 +666,9 @@ async def main() -> None:
         check: bool,
         index: bool,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_guideline(
             ctx=ctx,
             agent_id=agent_id,
@@ -654,8 +678,8 @@ async def main() -> None:
             index=index,
         )
 
-    @guidelines.command("view", help="View a guideline and its connections")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @guideline.command("view", help="View a guideline and its connections")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("guideline_id", type=str)
     @click.pass_context
     def guideline_view(
@@ -663,26 +687,32 @@ async def main() -> None:
         agent_id: str,
         guideline_id: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.view_guideline(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
         )
 
-    @guidelines.command("list", help="List all guidelines for an agent")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @guideline.command("list", help="List all guidelines for an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.pass_context
     def guideline_list(
         ctx: click.Context,
         agent_id: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.list_guidelines(
             ctx=ctx,
             agent_id=agent_id,
         )
 
-    @guidelines.command("connect", help="Create a connection between two guidelines")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @guideline.command("connect", help="Create a connection between two guidelines")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option(
         "-k", "--kind", type=str, help="Connection kind (e.g., entails, contradicts)", required=True
     )
@@ -696,6 +726,9 @@ async def main() -> None:
         source_guideline_id: str,
         target_guideline_id: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_connection(
             ctx=ctx,
             agent_id=agent_id,
