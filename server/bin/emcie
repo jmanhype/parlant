@@ -36,8 +36,9 @@ class Actions:
         title: Optional[str] = None,
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions"),
+            urljoin(ctx.obj.server_address, "/sessions"),
             json={
+                "agent_id": agent_id,
                 "end_user_id": end_user_id,
                 "title": title,
             },
@@ -49,9 +50,7 @@ class Actions:
 
     @staticmethod
     def list_events(ctx: click.Context, agent_id: str, session_id: str) -> dict[str, Any]:
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events")
-        )
+        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
         return response.json()["events"]  # type: ignore
 
@@ -60,7 +59,7 @@ class Actions:
         ctx: click.Context, agent_id: str, session_id: str, message: str
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events"),
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
         )
 
@@ -271,9 +270,7 @@ class Interface:
 
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/sessions/{session_id}/events")
-        )
+        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
@@ -301,20 +298,20 @@ class Interface:
                 response = requests.post(
                     urljoin(
                         ctx.obj.server_address,
-                        f"/agents/{agent_id}/sessions/{session_id}/events",
+                        f"/sessions/{session_id}/events",
                     ),
                     json={"content": new_message},
                 )
                 response.raise_for_status()
                 new_event = response.json()
 
-                last_known_offset = new_event["offset"]
+                last_known_offset = new_event["event_offset"]
 
                 while True:
                     response = requests.get(
                         urljoin(
                             ctx.obj.server_address,
-                            f"/agents/{agent_id}/sessions/{session_id}/events"
+                            f"/sessions/{session_id}/events"
                             f"?min_offset={1 + last_known_offset}&wait=true",
                         )
                     )
