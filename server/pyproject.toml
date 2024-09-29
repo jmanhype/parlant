@@ -38,6 +38,7 @@ aiopenapi3 = "^0.6.0"
 coloredlogs = "^15.0.1"
 contextvars = "^2.4"
 together = "^1.2.12"
+types-tqdm = "^4.66.0.20240417"
 
 
 [tool.poetry.group.dev.dependencies]

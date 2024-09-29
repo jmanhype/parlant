@@ -448,6 +448,9 @@ class EvaluationDocumentStore(EvaluationStore):
             update_params["status"] = params["status"].name
             update_params["error"] = params["error"] if "error" in params else None
 
+        if "progress" in params:
+            update_params["progress"] = params["progress"]
+
         result = await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},
             params=update_params,

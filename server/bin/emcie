@@ -15,6 +15,8 @@ import rich
 from rich.text import Text
 from tabulate import tabulate
 from textwrap import wrap
+from tqdm import tqdm
+
 
 from emcie.server.core.services.indexing.behavioral_change_evaluation import EvaluationError
 
@@ -116,40 +118,50 @@ class Actions:
         response.raise_for_status()
         evaluation_id = response.json()["evaluation_id"]
 
-        while True:
-            time.sleep(0.3)
-            response = requests.get(
-                urljoin(ctx.obj.server_address, f"/agents/index/evaluations/{evaluation_id}")
-            )
-            response.raise_for_status()
-            evaluation = response.json()
-            print(f"evaluation: {evaluation["status"]}")
-            if evaluation["status"] in ["pending", "running"]:
-                continue
+        with tqdm(
+            delim=20,
+            total=100,
+            desc="Evaluation Progress",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
+        ) as progress_bar:
+            while True:
+                time.sleep(0.1)
+                response = requests.get(
+                    urljoin(ctx.obj.server_address, f"/agents/index/evaluations/{evaluation_id}")
+                )
+                response.raise_for_status()
+                evaluation = response.json()
 
-            if evaluation["status"] == "completed":
-                invoice = evaluation["invoices"][0]
-                if invoice["approved"]:
-                    guideline_response = requests.post(
-                        urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/"),
-                        json={
-                            "invoices": [invoice],
-                        },
-                    )
-                    guideline_response.raise_for_status()
+                if "progress" in evaluation:
+                    progress_bar.n = int(evaluation["progress"])
+                    progress_bar.refresh()
 
-                    if connections := invoice["data"]["connection_propositions"]:
-                        rich.print("Connections that will be added:")
-                        for connection in connections:
-                            print(f"- {connection}")
+                if evaluation["status"] in ["pending", "running"]:
+                    continue
 
-                    return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
+                if evaluation["status"] == "completed":
+                    invoice = evaluation["invoices"][0]
+                    if invoice["approved"]:
+                        guideline_response = requests.post(
+                            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/"),
+                            json={
+                                "invoices": [invoice],
+                            },
+                        )
+                        guideline_response.raise_for_status()
 
-                else:
-                    raise ValueError(invoice["data"]["coherence_checks"])
+                        if connections := invoice["data"]["connection_propositions"]:
+                            rich.print("Connections that will be added:")
+                            for connection in connections:
+                                print(f"- {connection}")
 
-            elif evaluation["status"] == "failed":
-                raise EvaluationError(evaluation["error"])
+                        return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
+
+                    else:
+                        raise ValueError(invoice["data"]["coherence_checks"])
+
+                elif evaluation["status"] == "failed":
+                    raise EvaluationError(evaluation["error"])
 
     @staticmethod
     def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
@@ -157,13 +169,13 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
         response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
         response.raise_for_status()
-        return response.json()["guidelines"]
+        return response.json()["guidelines"]  # type: ignore
 
     @staticmethod
     def create_connection(

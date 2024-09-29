@@ -3,11 +3,11 @@ import asyncio
 from datetime import datetime, timezone
 from enum import Enum, auto
 from itertools import chain
-from typing import Sequence
+from typing import Optional, Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel, ProgressReport
 from emcie.server.core.common import UniqueId, generate_id
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
@@ -68,6 +68,7 @@ class ContradictionEvaluatorBase(ABC):
         self,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         comparison_guidelines: Sequence[GuidelineContent] = [],
+        progress_report: Optional[ProgressReport] = None,
     ) -> Sequence[ContradictionTest]:
         comparison_guidelines_list = list(comparison_guidelines)
         guidelines_to_evaluate_list = list(guidelines_to_evaluate)
@@ -77,11 +78,17 @@ class ContradictionEvaluatorBase(ABC):
             filtered_existing_guidelines = [
                 g for g in guidelines_to_evaluate_list[i + 1 :] + comparison_guidelines_list
             ]
-            guideline_batches = chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE)
+            guideline_batches = list(chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE))
+
+            if progress_report:
+                await progress_report.stretch(len(guideline_batches))
+
             tasks.extend(
                 [
                     asyncio.create_task(
-                        self._process_proposed_guideline(guideline_to_evaluate, batch)
+                        self._process_proposed_guideline(
+                            guideline_to_evaluate, batch, progress_report
+                        )
                     )
                     for batch in guideline_batches
                 ]
@@ -98,6 +105,7 @@ class ContradictionEvaluatorBase(ABC):
         self,
         guideline_to_evaluate: GuidelineContent,
         comparison_guidelines: Sequence[GuidelineContent],
+        progress_report: Optional[ProgressReport],
     ) -> Sequence[ContradictionTest]:
         indexed_comparison_guidelines = {generate_id(): c for c in comparison_guidelines}
         prompt = self._format_contradiction_prompt(
@@ -107,6 +115,10 @@ class ContradictionEvaluatorBase(ABC):
         contradictions = await self._generate_contradictions(
             guideline_to_evaluate, indexed_comparison_guidelines, prompt
         )
+
+        if progress_report:
+            await progress_report.increment()
+
         return contradictions
 
     @abstractmethod
@@ -556,22 +568,27 @@ class CoherenceChecker:
         self,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         comparison_guidelines: Sequence[GuidelineContent] = [],
+        progress_report: Optional[ProgressReport] = None,
     ) -> Sequence[ContradictionTest]:
         hierarchical_contradictions_task = self._hierarchical_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
+            progress_report,
         )
         parallel_contradictions_task = self._parallel_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
+            progress_report,
         )
         temporal_contradictions_task = self._temporal_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
+            progress_report,
         )
         contextual_contradictions_task = self._contextual_contradiction_evaluator.evaluate(
             guidelines_to_evaluate,
             comparison_guidelines,
+            progress_report,
         )
         combined_contradictions = list(
             chain.from_iterable(

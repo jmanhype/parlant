@@ -24,7 +24,7 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from emcie.server.core.logging import Logger
-from emcie.server.core.common import md5_checksum
+from emcie.server.core.common import ProgressReport, md5_checksum
 
 
 class EvaluationError(Exception):
@@ -56,6 +56,7 @@ class GuidelineEvaluator:
         payloads: Sequence[Payload],
         check: bool,
         index: bool,
+        progress_report: ProgressReport,
     ) -> Sequence[InvoiceGuidelineData]:
         guidelines_to_evaluate = [p.content for p in payloads]
 
@@ -75,6 +76,7 @@ class GuidelineEvaluator:
                 self._check_payloads_coherence(
                     guidelines_to_evaluate,
                     existing_guidelines,
+                    progress_report,
                 )
             )
             tasks.append(coherence_checks_task)
@@ -85,6 +87,7 @@ class GuidelineEvaluator:
                     agent,
                     guidelines_to_evaluate,
                     existing_guidelines,
+                    progress_report,
                 )
             )
             tasks.append(connection_propositions_task)
@@ -131,6 +134,7 @@ class GuidelineEvaluator:
         self,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
+        progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[CoherenceCheck]]]:
         coherence_checks = await self._coherence_checker.evaluate_coherence(
             guidelines_to_evaluate=guidelines_to_evaluate,
@@ -138,6 +142,7 @@ class GuidelineEvaluator:
                 GuidelineContent(predicate=g.content.predicate, action=g.content.action)
                 for g in existing_guidelines
             ],
+            progress_report=progress_report,
         )
 
         contradictions: dict[str, ContradictionTest] = {}
@@ -195,6 +200,7 @@ class GuidelineEvaluator:
         agent: Agent,
         proposed_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
+        progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[ConnectionProposition]]]:
         connection_propositions = [
             p
@@ -205,6 +211,7 @@ class GuidelineEvaluator:
                     GuidelineContent(predicate=g.content.predicate, action=g.content.action)
                     for g in existing_guidelines
                 ],
+                progress_report=progress_report,
             )
             if p.score >= 6
         ]
@@ -323,6 +330,8 @@ class BehavioralChangeEvaluator:
     ) -> None:
         self._logger.info(f"Starting evaluation task '{evaluation.id}'")
 
+        progress_report = ProgressReport()
+
         try:
             if running_task := next(
                 iter(
@@ -339,6 +348,10 @@ class BehavioralChangeEvaluator:
                 params={"status": EvaluationStatus.RUNNING},
             )
 
+            progress_task = asyncio.create_task(
+                self._update_progress(evaluation.id, progress_report)
+            )
+
             agent = await self._agent_store.read_agent(agent_id=evaluation.agent_id)
 
             guideline_evaluation_data = await self._guideline_evaluator.evaluate(
@@ -350,6 +363,7 @@ class BehavioralChangeEvaluator:
                 ],
                 check=cast(bool, evaluation.extra.get("check")) if evaluation.extra else True,
                 index=cast(bool, evaluation.extra.get("index")) if evaluation.extra else True,
+                progress_report=progress_report,
             )
 
             invoices: list[Invoice] = []
@@ -393,3 +407,23 @@ class BehavioralChangeEvaluator:
                     "error": str(exc),
                 },
             )
+
+        finally:
+            progress_task.cancel()
+
+    async def _update_progress(
+        self,
+        evaluation_id: EvaluationId,
+        progress_report: ProgressReport,
+    ) -> None:
+        while True:
+            percentage = progress_report.percentage
+
+            self._logger.info(f"Evaluation task progress: {percentage:.2f}% completed")
+
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation_id,
+                params={"progress": percentage},
+            )
+
+            await asyncio.sleep(0.15)
