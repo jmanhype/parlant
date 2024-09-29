@@ -385,7 +385,6 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
         agent = await get_first_agent()
 
         payloads = {
-            "agent_id": agent.id,
             "payloads": [
                 {
                     "kind": "guideline",
@@ -405,7 +404,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
         ) as client:
             try:
                 evaluation_creation_response = await client.post(
-                    f"{SERVER_ADDRESS}/index/evaluations",
+                    f"{SERVER_ADDRESS}/agents/{agent.id}/index/evaluations",
                     json=payloads,
                 )
                 evaluation_creation_response.raise_for_status()
@@ -428,7 +427,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
         ) as client:
             try:
                 evaluation_response = await client.get(
-                    f"{SERVER_ADDRESS}/index/evaluations/{evaluation_id}",
+                    f"{SERVER_ADDRESS}/agents/index/evaluations/{evaluation_id}",
                 )
                 evaluation_creation_response.raise_for_status()
                 assert evaluation_response.json()["status"] == "completed"
