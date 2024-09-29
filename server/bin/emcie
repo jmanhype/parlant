@@ -72,7 +72,7 @@ class Actions:
         ctx: click.Context, agent_id: str, name: str, description: str, synonyms: Optional[str]
     ) -> dict[str, Any]:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"),
             json={
                 "name": name,
                 "description": description,
@@ -85,14 +85,14 @@ class Actions:
     @staticmethod
     def delete_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
         response = requests.delete(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology/{name}")
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
         response.raise_for_status()
         return response.json()  # type: ignore
 
     @staticmethod
     def list_terms(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terminology"))
+        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
         response.raise_for_status()
         return response.json()["terms"]  # type: ignore
 

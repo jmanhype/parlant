@@ -84,7 +84,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent.id}/terminology/",
+                    f"{SERVER_ADDRESS}/agents/{agent.id}/terms/",
                 )
                 terminology_response.raise_for_status()
 
@@ -135,7 +135,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent.id}/terminology/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent.id}/terms/{term_name}",
                 )
                 terminology_response.raise_for_status()
 
@@ -209,7 +209,7 @@ async def test_that_terms_can_be_listed(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
                 )
                 terminology_response.raise_for_status()
 
@@ -286,7 +286,7 @@ async def test_that_a_term_can_be_deleted(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
                 )
                 terminology_response.raise_for_status()
 
@@ -343,7 +343,7 @@ async def test_that_terms_are_loaded_on_server_startup(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terminology/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/{term_name}",
                 )
                 terminology_response.raise_for_status()
 
@@ -375,7 +375,7 @@ async def test_that_guideline_can_be_added(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -422,7 +422,7 @@ async def test_that_adding_conflicting_guideline_shows_contradictions_error(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -440,7 +440,7 @@ async def test_that_adding_conflicting_guideline_shows_contradictions_error(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -497,7 +497,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -517,7 +517,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -602,7 +602,7 @@ async def test_that_guideline_can_be_viewed_via_cli(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "view",
             "-a",
             agent.id,
@@ -714,7 +714,7 @@ async def test_that_view_guideline_with_connections_displays_connections(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "view",
             "-a",
             agent.id,
@@ -812,7 +812,7 @@ async def test_that_guidelines_can_be_listed_via_cli(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "list",
             "-a",
             agent.id,
@@ -853,7 +853,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -873,7 +873,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "add",
             "-a",
             agent.id,
@@ -910,7 +910,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "guidelines",
+            "guideline",
             "connect",
             "-a",
             agent.id,
@@ -925,6 +925,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
             stderr=asyncio.subprocess.PIPE,
         )
         await process_connect.communicate()
+        await process_connect.wait()
         assert process_connect.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
