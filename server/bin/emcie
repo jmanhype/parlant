@@ -131,16 +131,18 @@ class Actions:
                 response.raise_for_status()
                 evaluation = response.json()
 
-                if "progress" in evaluation:
+                if evaluation["status"] in ["pending", "running"]:
                     progress_bar.n = int(evaluation["progress"])
                     progress_bar.refresh()
 
-                if evaluation["status"] in ["pending", "running"]:
                     continue
 
                 if evaluation["status"] == "completed":
                     invoice = evaluation["invoices"][0]
                     if invoice["approved"]:
+                        progress_bar.n = 100
+                        progress_bar.refresh()
+
                         guideline_response = requests.post(
                             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/"),
                             json={
