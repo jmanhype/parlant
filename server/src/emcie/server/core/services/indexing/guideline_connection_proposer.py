@@ -118,25 +118,21 @@ Guideline 2: When <W>, then <Z>.
 Sometimes, applying the "then" of Guideline 1 (<Y>) may directly cause the "when" of Guideline 2 (<W>) to hold true, forming what we call a "causal connection" or simply "causation" from Guideline 1 to Guideline 2. This causation can only happen if the agent's action in <Y> directly causes the "when" in Guideline 2 (<W>) to become true.
 
 Important clarification: An action taken by the agent can never cause the user to do anything. Causation only occurs if applying the source's "then" action directly and immediately causes the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation. 
-As a result of this, if there's any scenario where the source's "then" can be applied while the target's "when" is false - then causation neccessarily isn't fulfilled.
-Note: For the provided guidelines, assume that the 'then' statements are mandatory unless explicitly stated as optional or suggestive. For example, phrases like "try to" or "consider" should not be interpreted as optional.
+As a result of this, if there's any scenario where the source's "then" can be applied while the target's "when" is false - then causation necessarily isn't fulfilled.
 
-There are two types of causal connections:
-- Entailed: This means that the source guideline's "then" necessarily entails
-            the target guideline's "when".
-- Suggested: This is a specific case of "entailed", where either the source or the target’s "then" action is explicitly said to be optional or merely recommended when its respective "when" condition is met, as opposed to mandatory. For example, a causal connection is considered suggestive
-             in cases where {{source="When <X> then <Y>", target="When <W> then consider <Z>"}} (where <W> is caused by <Y>), or similarly when {{source="When <X> then only do <Y> under certain conditions", target="When <W> then <Z>"}}.
-
-
-At the end of this message, you will receive a test guideline to evaluate against a set of other guidelines which are candidates for
-causal connections. For each candidate, the test guideline may be found as either the source or the target in the
-connection, or neither. Be forgiving regarding misspelling and grammatical errors.
+When a connection is identified, we wish to know whether it involves actions that the agent must undertake, or if its prescriptions are merely suggestive or optional, resulting in a "suggestive causal connection". 
+A causal connection is considered suggestive if either of the following conditions is met:
+- The source guideline's "then" statement is suggestive or optional.
+- The target guideline's "then" statement is suggestive or optional.
+For example, a connection is suggestive if it's of the form {{source="When <X> then <Y>", target="When <W> then consider <Z>"}} (where <W> is caused by <Y>), or similarly if {{source="When <X> then only do <Y> under certain conditions", target="When <W> then <Z>"}}.
+If both guidelines' "then" statements prescribe mandatory actions that the agent must take, then the connection is not considered suggestive. Conversely, if either "then" statement is optional or suggestive, the connection is considered suggestive.
+'Then' statements which prescribe actions which the agent must attempt to take, even if they might fail, are NOT considered suggestive, as they describe an action that's mandatory.  
 
 Your task is to:
     1. evaluate pairs of guidelines and detect which pairs fulfill such causal connections.
     2.Identify whether the causal connections are suggestive. Meaning, if the action described in either guideline's 'then' statement is optional. 
-      Note: For the provided guidelines, assume that the 'then' statements are mandatory unless explicitly stated as optional or suggestive.
-
+    To fulfill the second task, please identify if each 'then' statement in a candidate connection as either suggestive or not.
+    
 Please output JSON structured in the following format:
 
 {{
@@ -166,7 +162,7 @@ Example 1:
 Input:
 
 Test guideline: ###
-{{"id": 0, "when": "providing the weather update", "then": "mention whether it's likely to rain"}}
+{{"id": 0, "when": "providing the weather update", "then": "try to estimate whether it's likely to rain"}}
 ###
 
 Causation candidates: ###
@@ -182,7 +178,7 @@ Expected Output:
         {{
             "source_id": 0,
             "target_id": 1,
-            "source_then": "mention whether it's likely to rain",
+            "source_then": "try to estimate whether it's likely to rain",
             "target_when": "the user asked about the weather",
             "is_target_when_caused_by_source_then": false,
             "is_source_then_suggestive_or_optional": false,
@@ -198,7 +194,7 @@ Expected Output:
             "target_when": "providing the weather update",
             "is_target_when_caused_by_source_then": true,
             "is_source_then_suggestive_or_optional": false,
-            "target_then": "mention whether it's likely to rain",
+            "target_then": "try to estimate whether it's likely to rain",
             "is_target_then_suggestive_or_optional": false,
             "rationale": "the agent's providing a current weather update necessarily causes a weather update to be provided",
             "causation_score": 10
@@ -206,7 +202,7 @@ Expected Output:
         {{
             "source_id": 0,
             "target_id": 2,
-            "source_then": "mention whether it's likely to rain",
+            "source_then": "try to estimate whether it's likely to rain",
             "target_when": "discussing whether an umbrella is needed",
             "is_target_when_caused_by_source_then": false,
             "is_source_then_suggestive_or_optional": false,
@@ -222,7 +218,7 @@ Expected Output:
             "target_when": "providing the weather update",
             "is_target_when_caused_by_source_then": false,
             "is_source_then_suggestive_or_optional": false,
-            "target_then": "mention whether it's likely to rain",
+            "target_then": "try to estimate whether it's likely to rain",
             "is_target_then_suggestive_or_optional": false,
             "rationale": "the agent's referring to the electronic store does not cause a weather update to be provided",
             "causation_score": 1
