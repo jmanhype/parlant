@@ -418,12 +418,12 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
         ),
         (
             {
-                "predicate": "Asked about supported languages",
+                "predicate": "asked about supported languages",
                 "action": "explain that English is the only supported language",
             },
             {
                 "predicate": "the user uses a language other than English",
-                "action": "Refer them to our international website",
+                "action": "refer them to our international website",
             },
         ),
     ],
