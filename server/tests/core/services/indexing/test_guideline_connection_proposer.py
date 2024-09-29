@@ -657,7 +657,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
             {
                 "guideline_set": "test-agent",
                 "predicate": "the user asks for express shipping",
-                "action": "check if express delivery is avialable and reply positively only if it is",
+                "action": "check if express delivery is avialable and reply positively only if it is",  # Keeping the mispelling intentionally
             },
             {
                 "guideline_set": "test-agent",
@@ -667,7 +667,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
         ),
     ],
 )
-def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected(
+def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
     context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
@@ -937,11 +937,11 @@ def test_that_misspelled_entailing_guidelines_are_connected(
         (
             {
                 "predicate": "the user complains that a suggested solution did not work",
-                "action": "scold them for not following the instructions properly",
+                "action": "Reply in a hostile manner",
             },
             {
                 "predicate": "the conversational tone is hostile",
-                "action": "try to de-escelate the situation",
+                "action": "try to de-escalate the situation",
             },
         ),
     ],
