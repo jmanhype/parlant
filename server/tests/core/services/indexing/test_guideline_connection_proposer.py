@@ -522,6 +522,45 @@ def test_that_entailing_thens_are_not_connected(
     assert len(connection_propositions) == 0
 
 
+def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one_using_pronouns_from_then_to_when(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    introduced_guidelines: Sequence[GuidelineContent] = [
+        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        for i in [
+            {
+                "predicate": "the user says hello",
+                "action": "say you like bananas",
+            },
+            {
+                "predicate": "talking about bananas",
+                "action": "say that they're tasty",
+            },
+            {
+                "predicate": "you say that bananas are tasty",
+                "action": "say they're better than mangoes",
+            },
+        ]
+    ]
+
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(agent, introduced_guidelines, [])
+        )
+    )
+
+    assert len(connection_propositions) == 2
+    assert connection_propositions[0].source == introduced_guidelines[0]
+    assert connection_propositions[0].target == introduced_guidelines[1]
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+    assert connection_propositions[1].source == introduced_guidelines[1]
+    assert connection_propositions[1].target == introduced_guidelines[2]
+    assert connection_propositions[1].kind == ConnectionKind.ENTAILS
+
+
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one(
     context: _TestContext,
     agent: Agent,
@@ -700,40 +739,20 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
-@mark.parametrize(
-    (
-        "source_guideline_definition",
-        "target_guideline_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "the user refers to a past interaction",
-                "action": "ask for the date of this previous interaction",
-            },
-            {
-                "predicate": "the user refers to a quota offered in a past interaction",
-                "action": "answer that that quota is no longer relevant",
-            },
-        ),
-    ],
-)
 def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_another_guidelines_predicate(
     context: _TestContext,
     agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
-        source_guideline_definition["action"],
+        "the user refers to a past interaction",
+        "ask for the date of this previous interaction",
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
-        target_guideline_definition["action"],
+        "the user refers to a quota offered in a past interaction",
+        "answer that that quota is no longer relevant",
     )
 
     connection_propositions = list(
@@ -747,40 +766,20 @@ def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_ano
     assert len(connection_propositions) == 0
 
 
-@mark.parametrize(
-    (
-        "source_guideline_definition",
-        "target_guideline_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "The user complains that the phrases in the photograph are blurry",
-                "action": "clarify what the unclear phrases mean",
-            },
-            {
-                "predicate": "a word is misunderstood",
-                "action": "reply with its dictionary definition",
-            },
-        ),
-    ],
-)
 def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes_another_guideline(
     context: _TestContext,
     agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
-        source_guideline_definition["action"],
+        "The user complains that the phrases in the photograph are blurry",
+        "clarify what the unclear phrases mean",
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
-        target_guideline_definition["action"],
+        "a word is misunderstood",
+        "reply with its dictionary definition",
     )
 
     connection_propositions = list(
@@ -794,40 +793,20 @@ def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes
     assert len(connection_propositions) == 0
 
 
-@mark.parametrize(
-    (
-        "source_guideline_definition",
-        "target_guideline_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "the user refers to a past interaction",
-                "action": "ask the user for the date of this interaction",
-            },
-            {
-                "predicate": "the user asks about a solution suggested in a previous interaction",
-                "action": "ask when that conversation occurred",
-            },
-        ),
-    ],
-)
 def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
-        source_guideline_definition["action"],
+        "the user refers to a past interaction",
+        "ask the user for the date of this interaction",
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
-        target_guideline_definition["action"],
+        "the user asks about a solution suggested in a previous interaction",
+        "ask when that conversation occurred",
     )
 
     connection_propositions = list(
@@ -841,40 +820,20 @@ def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that 
     assert len(connection_propositions) == 0
 
 
-@mark.parametrize(
-    (
-        "source_guideline_definition",
-        "target_guideline_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "asked about pizza toppings",
-                "action": "list our pizza toppings",
-            },
-            {
-                "predicate": "asked about our menu",
-                "action": "list our pizza toppings",
-            },
-        ),
-    ],
-)
 def test_that_identical_actions_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
-        source_guideline_definition["action"],
+        "asked about pizza toppings",
+        "list our pizza toppings",
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
-        target_guideline_definition["action"],
+        "asked about our menu",
+        "list our pizza toppings",
     )
 
     connection_propositions = list(
@@ -928,40 +887,20 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-@mark.parametrize(
-    (
-        "source_guideline_definition",
-        "target_guideline_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "the user complains that a suggested solution did not work",
-                "action": "reply in a hostile manner",
-            },
-            {
-                "predicate": "the conversational tone is hostile",
-                "action": "try to de-escalate the situation",
-            },
-        ),
-    ],
-)
 def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing predicates and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
-        source_guideline_definition["action"],
+        "the user complains that a suggested solution did not work",
+        "reply in a hostile manner",
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
-        target_guideline_definition["action"],
+        "the conversational tone is hostile",
+        "try to de-escalate the situation",
     )
 
     connection_propositions = list(
