@@ -1,9 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from pydantic.dataclasses import dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import (
+    Mapping,
     NamedTuple,
     NewType,
     Optional,
@@ -15,7 +16,7 @@ from typing import (
 from typing_extensions import Literal
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.persistence.document_database import (
@@ -108,7 +109,7 @@ class Evaluation:
     error: Optional[str]
     invoices: Sequence[Invoice]
     progress: float
-    extra: Optional[dict[str, Union[str, int, float, bool]]]
+    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationUpdateParams(TypedDict, total=False):
@@ -125,7 +126,7 @@ class EvaluationStore(ABC):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
-        extra: Optional[dict[str, Union[str, int, float, bool]]] = None,
+        extra: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Evaluation: ...
 
     @abstractmethod
@@ -201,7 +202,7 @@ class _EvaluationDocument(TypedDict, total=False):
     error: Optional[str]
     invoices: Sequence[_InvoiceDocument]
     progress: float
-    extra: Optional[dict[str, Union[str, int, float, bool]]]
+    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationDocumentStore(EvaluationStore):
@@ -397,7 +398,7 @@ class EvaluationDocumentStore(EvaluationStore):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
-        extra: Optional[dict[str, Union[str, int, float, bool]]] = None,
+        extra: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Evaluation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 

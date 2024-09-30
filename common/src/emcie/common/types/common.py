@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, Sequence, TypeAlias, Union, Any
+from typing import Mapping, Optional, Sequence, TypeAlias, Union
 
 
 JSONSerializable: TypeAlias = Union[
@@ -17,14 +17,3 @@ JSONSerializable: TypeAlias = Union[
     Optional[Mapping[str, "JSONSerializable"]],
     Optional[Sequence["JSONSerializable"]],
 ]
-
-
-def is_json_serializable(value: Any) -> bool:
-    if isinstance(value, (str, int, float, bool, type(None))):
-        return True
-    elif isinstance(value, Mapping):
-        return all(isinstance(k, str) and is_json_serializable(v) for k, v in value.items())
-    elif isinstance(value, Sequence):
-        return all(is_json_serializable(item) for item in value)
-    else:
-        return False
