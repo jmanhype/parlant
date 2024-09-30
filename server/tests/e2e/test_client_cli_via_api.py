@@ -837,7 +837,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
     predicate1 = "the user needs assistance"
     action1 = "provide help"
 
-    predicate2 = "providing help"
+    predicate2 = "user ask about a certain subject"
     action2 = "offer detailed explanation"
 
     with run_server(context):

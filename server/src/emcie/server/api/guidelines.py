@@ -86,8 +86,8 @@ class AddConnectionDTO(DefaultBaseModel):
 
 
 class PatchGuidelineRequest(DefaultBaseModel):
-    added_connections: Optional[Sequence[AddConnectionDTO]]
-    removed_connections: Optional[Sequence[GuidelineId]]
+    added_connections: Optional[Sequence[AddConnectionDTO]] = None
+    removed_connections: Optional[Sequence[GuidelineId]] = None
 
 
 def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:

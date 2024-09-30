@@ -185,12 +185,16 @@ class Actions:
         target_guideline_id: str,
         kind: str,
     ) -> dict[str, Any]:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/connections"),
+        response = requests.patch(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"),
             json={
-                "source_guideline_id": source_guideline_id,
-                "target_guideline_id": target_guideline_id,
-                "kind": kind,
+                "added_connections": [
+                    {
+                        "role": "target",
+                        "guideline_id": target_guideline_id,
+                        "kind": kind,
+                    }
+                ],
             },
         )
         response.raise_for_status()

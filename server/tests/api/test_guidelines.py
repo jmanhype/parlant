@@ -305,7 +305,6 @@ async def test_that_connections_can_be_added_to_guideline(
                 "kind": "entails",
             }
         ],
-        "removed_connections": None,
     }
 
     response = client.patch(
