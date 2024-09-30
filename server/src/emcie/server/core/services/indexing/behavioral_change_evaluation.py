@@ -54,8 +54,8 @@ class GuidelineEvaluator:
         self,
         agent: Agent,
         payloads: Sequence[Payload],
-        check: bool,
-        index: bool,
+        coherence_check: bool,
+        connection_proposition: bool,
         progress_report: ProgressReport,
     ) -> Sequence[InvoiceGuidelineData]:
         guidelines_to_evaluate = [p.content for p in payloads]
@@ -71,7 +71,7 @@ class GuidelineEvaluator:
             asyncio.Task[Optional[Iterable[Sequence[ConnectionProposition]]]]
         ] = None
 
-        if check:
+        if coherence_check:
             coherence_checks_task = asyncio.create_task(
                 self._check_payloads_coherence(
                     guidelines_to_evaluate,
@@ -81,7 +81,7 @@ class GuidelineEvaluator:
             )
             tasks.append(coherence_checks_task)
 
-        if index:
+        if connection_proposition:
             connection_propositions_task = asyncio.create_task(
                 self._propose_payloads_connections(
                     agent,
@@ -309,15 +309,18 @@ class BehavioralChangeEvaluator:
         self,
         agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
-        check: bool,
-        index: bool,
+        coherence_check: bool,
+        connection_proposition: bool,
     ) -> EvaluationId:
         await self.validate_payloads(agent, payload_descriptors)
 
         evaluation = await self._evaluation_store.create_evaluation(
             agent.id,
             payload_descriptors,
-            extra={"check": check, "index": index},
+            extra={
+                "coherence_check": coherence_check,
+                "connection_proposition": connection_proposition,
+            },
         )
 
         asyncio.create_task(self.run_evaluation(evaluation))
@@ -363,8 +366,12 @@ class BehavioralChangeEvaluator:
                     for invoice in evaluation.invoices
                     if invoice.kind == PayloadKind.GUIDELINE
                 ],
-                check=cast(bool, evaluation.extra.get("check")) if evaluation.extra else True,
-                index=cast(bool, evaluation.extra.get("index")) if evaluation.extra else True,
+                coherence_check=cast(bool, evaluation.extra.get("coherence_check"))
+                if evaluation.extra
+                else True,
+                connection_proposition=cast(bool, evaluation.extra.get("connection_proposition"))
+                if evaluation.extra
+                else True,
                 progress_report=progress_report,
             )
 

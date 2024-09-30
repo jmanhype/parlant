@@ -110,8 +110,8 @@ class Actions:
                         "action": action,
                     }
                 ],
-                "check": check,
-                "index": index,
+                "coherence_check": check,
+                "connection_proposition": index,
             },
         )
         response.raise_for_status()
@@ -371,22 +371,13 @@ class Interface:
         check: bool,
         index: bool,
     ) -> None:
-        def render_contradiction(c: dict[str, Any]) -> dict[str, Any]:
-            def render_guideline(g: dict[str, Any]) -> str:
-                return f"when {g["predicate"]}, then {g["action"]}"
-
-            return {
-                key: value if key not in ["first", "second"] else render_guideline(value)
-                for key, value in c.items()
-            }
-
         try:
             guideline = Actions.create_guideline(ctx, agent_id, predicate, action, check, index)
             rich.print(f"Guideline created:\n{tabulate([guideline], headers="keys")}")
         except ValueError as e:
             contradictions = e.args[0]
             rich.print(
-                f"Contradictions found:\n{tabulate(list(map(render_contradiction, contradictions)), headers="keys", maxcolwidths=[20, 20, 20, 40, 10],
+                f"Contradictions found:\n{tabulate(contradictions, headers="keys", maxcolwidths=[20, 20, 20, 40, 10],
                     tablefmt="rounded_grid",)}"
             )
             rich.print("Guideline was not added. to force, rerun with --no-check")

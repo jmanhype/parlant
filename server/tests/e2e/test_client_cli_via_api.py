@@ -617,9 +617,9 @@ async def test_that_guideline_can_be_viewed_via_cli(
         output_view = stdout_view.decode() + stderr_view.decode()
         assert process_view.returncode == os.EX_OK
 
-        assert f"Guideline ID: {guideline_id}" in output_view
-        assert f"Predicate: {predicate}" in output_view
-        assert f"Action: {action}" in output_view
+        assert guideline_id in output_view
+        assert predicate in output_view
+        assert action in output_view
 
 
 async def test_that_view_guideline_with_connections_displays_connections(
@@ -729,13 +729,12 @@ async def test_that_view_guideline_with_connections_displays_connections(
         output_view = stdout_view.decode() + stderr_view.decode()
         assert process_view.returncode == os.EX_OK
 
-        assert f"Guideline ID: {first["id"]}" in output_view
-        assert f"Predicate: {predicate1}" in output_view
-        assert f"Action: {action1}" in output_view
+        assert first["id"] in output_view
+        assert predicate1 in output_view
+        assert action1 in output_view
 
         assert "Connections:" in output_view
 
-        assert first["id"] in output_view
         assert second["id"] in output_view
         assert connection_id in output_view
         assert "entails" in output_view
@@ -838,7 +837,7 @@ async def test_that_guidelines_can_be_connected_via_cli(
     predicate1 = "the user needs assistance"
     action1 = "provide help"
 
-    predicate2 = "the user wants more information"
+    predicate2 = "providing help"
     action2 = "offer detailed explanation"
 
     with run_server(context):

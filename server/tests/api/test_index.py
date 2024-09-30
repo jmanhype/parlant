@@ -30,8 +30,8 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
                     "action": "greet them back with 'Hello'",
                 }
             ],
-            "check": True,
-            "index": True,
+            "coherence_check": True,
+            "connection_proposition": True,
         },
     )
 
@@ -74,8 +74,8 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "action": "greet them back with 'Hola'",
                     },
                 ],
-                "check": True,
-                "index": True,
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -104,8 +104,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "action": "greet them back with 'Hello'",
                     }
                 ],
-                "check": True,
-                "index": True,
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -142,11 +142,11 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                     {
                         "kind": "guideline",
                         "predicate": "the user greeting you",
-                        "action": "greet them back with 'Hola'",
+                        "action": "greet them back with 'Good bye'",
                     },
                 ],
-                "check": True,
-                "index": True,
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -191,8 +191,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "action": "mention the best time to go for a walk",
                     }
                 ],
-                "check": True,
-                "index": True,
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -242,8 +242,8 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "action": "highlight the one with the best reviews",
                     },
                 ],
-                "check": True,
-                "index": True,
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -293,8 +293,8 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
                 duplicate_payload,
                 duplicate_payload,
             ],
-            "check": True,
-            "index": True,
+            "coherence_check": True,
+            "connection_proposition": True,
         },
     )
 
@@ -330,8 +330,8 @@ async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_exist
             "payloads": [
                 duplicate_payload,
             ],
-            "check": True,
-            "index": True,
+            "coherence_check": True,
+            "connection_proposition": True,
         },
     )
 
@@ -374,8 +374,8 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
                 "action": "provide a weather update",
             },
         ],
-        "check": True,
-        "index": True,
+        "coherence_check": True,
+        "connection_proposition": True,
     }
 
     first_evaluation_id = (
@@ -420,7 +420,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
                         "action": "greet them back with 'Hello'",
                     },
                 ],
-                "check": False,
+                "coherence_check": False,
             },
         )
         .raise_for_status()
@@ -447,7 +447,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
         client.post(
             f"/agents/{agent_id}/index/evaluations",
             json={
-                "index": False,
+                "connection_proposition": False,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -489,8 +489,8 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
         client.post(
             f"/agents/{agent_id}/index/evaluations",
             json={
-                "check": False,
-                "index": False,
+                "coherence_check": False,
+                "connection_proposition": False,
                 "payloads": [
                     {
                         "kind": "guideline",
