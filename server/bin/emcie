@@ -386,9 +386,10 @@ class Interface:
         except ValueError as e:
             contradictions = e.args[0]
             rich.print(
-                f"Contradictions found:\n{tabulate(list(map(render_contradiction, contradictions)), headers="keys", maxcolwidths=[20, 20, 40, 10],
+                f"Contradictions found:\n{tabulate(list(map(render_contradiction, contradictions)), headers="keys", maxcolwidths=[20, 20, 20, 40, 10],
                     tablefmt="rounded_grid",)}"
             )
+            rich.print("Guideline was not added. to force, rerun with --no-check")
         except EvaluationError as e:
             error_message = str(e)
             rich.print(f"Evaluation failed: {error_message}")
