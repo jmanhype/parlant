@@ -119,11 +119,11 @@ class Actions:
 
         with tqdm(
             total=100,
-            desc="Evaluation Progress",
+            desc="Evaluating guideline impact",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
         ) as progress_bar:
             while True:
-                time.sleep(0.1)
+                time.sleep(0.5)
                 response = requests.get(
                     urljoin(ctx.obj.server_address, f"/agents/index/evaluations/{evaluation_id}")
                 )
@@ -151,9 +151,9 @@ class Actions:
                         guideline_response.raise_for_status()
 
                         if connections := invoice["data"]["connection_propositions"]:
-                            rich.print("Connections that will be added:")
-                            for connection in connections:
-                                print(f"- {connection}")
+                            rich.print(
+                                f"Connections that will be added:\n{tabulate(connections, headers="keys")}"
+                            )
 
                         return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
 
@@ -371,22 +371,24 @@ class Interface:
         check: bool,
         index: bool,
     ) -> None:
+        def render_contradiction(c: dict[str, Any]) -> dict[str, Any]:
+            def render_guideline(g: dict[str, Any]) -> str:
+                return f"when {g["predicate"]}, then {g["action"]}"
+
+            return {
+                key: value if key not in ["first", "second"] else render_guideline(value)
+                for key, value in c.items()
+            }
+
         try:
             guideline = Actions.create_guideline(ctx, agent_id, predicate, action, check, index)
-            rich.print(f"Guideline created: {guideline}")
+            rich.print(f"Guideline created:\n{tabulate([guideline], headers="keys")}")
         except ValueError as e:
             contradictions = e.args[0]
-            rich.print("Contradictions found:")
-            for contradiction in contradictions:
-                issue = contradiction.get("issue", "No issue description provided.")
-                first = contradiction.get("first", {})
-                second = contradiction.get("second", {})
-                rich.print(f"- Issue: {issue}")
-                rich.print("  Between:")
-                rich.print(f"    - Predicate: {first['predicate']}")
-                rich.print(f"      Action: {first['action']}")
-                rich.print(f"    - Predicate: {second['predicate']}")
-                rich.print(f"      Action: {second['action']}")
+            rich.print(
+                f"Contradictions found:\n{tabulate(list(map(render_contradiction, contradictions)), headers="keys", maxcolwidths=[20, 20, 40, 10],
+                    tablefmt="rounded_grid",)}"
+            )
         except EvaluationError as e:
             error_message = str(e)
             rich.print(f"Evaluation failed: {error_message}")
@@ -399,10 +401,7 @@ class Interface:
     def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
         try:
             guideline = Actions.get_guideline(ctx, agent_id, guideline_id)
-            rich.print(f"Guideline ID: {guideline['id']}")
-            rich.print(f"Guideline Set: {guideline['guideline_set']}")
-            rich.print(f"Predicate: {guideline['predicate']}")
-            rich.print(f"Action: {guideline['action']}")
+            rich.print(tabulate([guideline], headers="keys"))
 
             if guideline["connections"]:
                 rich.print("\nConnections:")
@@ -477,10 +476,7 @@ class Interface:
                 kind,
             )
             rich.print("Connection created:")
-            rich.print(f"ID: {connection['id']}")
-            rich.print(f"Source: {connection['source']}")
-            rich.print(f"Target: {connection['target']}")
-            rich.print(f"Kind: {connection['kind']}")
+            rich.print(f"{tabulate([connection], headers="keys")}")
         except requests.HTTPError as e:
             rich.print(f"HTTP error occurred: {e.response.status_code} {e.response.reason}")
             rich.print(f"Detail: {e.response.text}")
