@@ -1,6 +1,5 @@
 from itertools import chain
 from typing import Optional, Sequence
-from typing_extensions import Literal
 from fastapi import APIRouter, HTTPException, status
 
 
@@ -28,8 +27,6 @@ from emcie.server.core.guideline_connections import (
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.core.mc import MC
-
-ConnectionRole = Literal["source", "target"]
 
 
 class GuidelineConnectionDTO(DefaultBaseModel):
@@ -79,14 +76,14 @@ class ListGuidelinesResponse(DefaultBaseModel):
     guidelines: list[GuidelineDTO]
 
 
-class AddConnectionDTO(DefaultBaseModel):
-    guideline_id: GuidelineId
-    role: ConnectionRole
+class ConnectionDTO(DefaultBaseModel):
+    source: GuidelineId
+    target: GuidelineId
     kind: ConnectionKindDTO
 
 
 class PatchGuidelineRequest(DefaultBaseModel):
-    added_connections: Optional[Sequence[AddConnectionDTO]] = None
+    added_connections: Optional[Sequence[ConnectionDTO]] = None
     removed_connections: Optional[Sequence[GuidelineId]] = None
 
 
