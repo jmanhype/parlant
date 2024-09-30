@@ -90,12 +90,6 @@ class PatchGuidelineRequest(DefaultBaseModel):
     removed_connections: Optional[Sequence[GuidelineId]]
 
 
-class CreateConnectionRequest(DefaultBaseModel):
-    source_guideline_id: GuidelineId
-    target_guideline_id: GuidelineId
-    kind: ConnectionKindDTO
-
-
 def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
     if not dto.approved:
         raise ValueError("Unapproved invoice.")
@@ -320,24 +314,6 @@ def create_router(
                 )
                 for c in await mc.get_guideline_connections(guideline_id)
             ],
-        )
-
-    @router.post("/{agent_id}/guidelines/connections", status_code=status.HTTP_201_CREATED)
-    async def create_connection(
-        agent_id: AgentId,
-        request: CreateConnectionRequest,
-    ) -> GuidelineConnectionDTO:
-        connection = await guideline_connection_store.create_connection(
-            source=request.source_guideline_id,
-            target=request.target_guideline_id,
-            kind=connection_kind_dto_to_connection_kind(request.kind),
-        )
-
-        return GuidelineConnectionDTO(
-            id=connection.id,
-            source=connection.source,
-            target=connection.target,
-            kind=connection_kind_to_dto(connection.kind),
         )
 
     return router
