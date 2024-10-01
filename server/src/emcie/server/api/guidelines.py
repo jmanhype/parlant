@@ -279,6 +279,19 @@ def create_router(
 
         if request.added_connections:
             for req in request.added_connections:
+                if req.source == guideline.id:
+                    await guideline_store.read_guideline(
+                        guideline_set=agent_id,
+                        guideline_id=req.target,
+                    )
+                elif req.target == guideline.id:
+                    await guideline_store.read_guideline(
+                        guideline_set=agent_id,
+                        guideline_id=req.source,
+                    )
+                else:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
                 await guideline_connection_store.create_connection(
                     source=req.source,
                     target=req.target,

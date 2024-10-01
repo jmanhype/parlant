@@ -321,8 +321,8 @@ async def test_that_connections_can_be_added_to_guideline(
     patch_data = {
         "added_connections": [
             {
-                "role": "source",
-                "guideline_id": second.id,
+                "source": first.id,
+                "target": second.id,
                 "kind": "entails",
             }
         ],
@@ -338,23 +338,23 @@ async def test_that_connections_can_be_added_to_guideline(
     connections = list(
         await guideline_connection_store.list_connections(
             indirect=False,
-            source=second.id,
+            source=first.id,
         )
     )
 
     assert len(connections) == 1
     connection = connections[0]
 
-    assert connection.source == second.id
-    assert connection.target == first.id
+    assert connection.source == first.id
+    assert connection.target == second.id
     assert connection.kind == ConnectionKind.ENTAILS
 
     response_data = response.json()
     assert "connections" in response_data
     assert len(response_data["connections"]) == 1
     response_connection = response_data["connections"][0]
-    assert response_connection["source"] == second.id
-    assert response_connection["target"] == first.id
+    assert response_connection["source"] == first.id
+    assert response_connection["target"] == second.id
     assert response_connection["kind"] == "entails"
 
 
