@@ -196,8 +196,8 @@ class Actions:
             json={
                 "added_connections": [
                     {
-                        "role": "target",
-                        "guideline_id": target_guideline_id,
+                        "source": source_guideline_id,
+                        "target": target_guideline_id,
                         "kind": kind,
                     }
                 ],

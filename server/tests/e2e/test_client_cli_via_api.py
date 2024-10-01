@@ -693,8 +693,8 @@ async def test_that_view_guideline_with_connections_displays_connections(
                 json={
                     "added_connections": [
                         {
-                            "role": "source",
-                            "guideline_id": second["id"],
+                            "source": first["id"],
+                            "target": second["id"],
                             "kind": "entails",
                         }
                     ],
