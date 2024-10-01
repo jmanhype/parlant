@@ -942,3 +942,71 @@ async def test_that_guidelines_can_be_connected_via_cli(
             connection["source"] == guideline1["id"] and connection["target"] == guideline2[
                 "id"
             ] and connection["kind"] == "entails"
+
+
+async def test_that_guideline_can_be_removed(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await get_first_agent()
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guidelines_response = await client.post(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "checksum": "checksum_value",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": None,
+                            },
+                            "error": None,
+                        }
+                    ]
+                },
+            )
+
+            guidelines_response.raise_for_status()
+
+            guideline_id = guidelines_response.json()["guidelines"][0]["id"]
+
+        exec_args = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guideline",
+            "remove",
+            "-a",
+            agent.id,
+            guideline_id,
+        ]
+
+        result = await asyncio.create_subprocess_exec(*exec_args)
+        await result.wait()
+
+        assert result.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guidelines_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline_id}",
+            )
+
+            assert guidelines_response.status_code == httpx.codes.NOT_FOUND

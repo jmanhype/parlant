@@ -684,6 +684,7 @@ async def main() -> None:
             index=index,
         )
 
+    @guideline.command("remove", help="Remove a guideline")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("guideline_id", type=str)
     @click.pass_context
