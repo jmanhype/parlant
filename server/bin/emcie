@@ -738,7 +738,11 @@ async def main() -> None:
     @guideline.command("connect", help="Create a connection between two guidelines")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option(
-        "-k", "--kind", type=str, help="Connection kind (entails, suggests)", required=True
+        "--suggestive/-s",
+        type=bool,
+        show_default=True,
+        default=False,
+        help="Use 'suggestive' as the connection kind. Defaults to 'entails' if not specified.",
     )
     @click.argument("source_guideline_id", type=str)
     @click.argument("target_guideline_id", type=str)
@@ -746,7 +750,7 @@ async def main() -> None:
     def guideline_connect(
         ctx: click.Context,
         agent_id: str,
-        kind: str,
+        suggestive: bool,
         source_guideline_id: str,
         target_guideline_id: str,
     ) -> None:
@@ -758,7 +762,7 @@ async def main() -> None:
             agent_id=agent_id,
             source_guideline_id=source_guideline_id,
             target_guideline_id=target_guideline_id,
-            kind=kind,
+            kind="suggests" if suggestive else "entails",
         )
 
     cli()

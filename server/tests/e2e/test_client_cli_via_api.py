@@ -831,7 +831,7 @@ async def test_that_guidelines_can_be_listed_via_cli(
         assert action2 in output_list
 
 
-async def test_that_guidelines_can_be_connected_via_cli(
+async def test_that_guidelines_can_be_connected_via_cli_with_default_of_entails(
     context: ContextOfTest,
 ) -> None:
     predicate1 = "the user needs assistance"
@@ -913,8 +913,6 @@ async def test_that_guidelines_can_be_connected_via_cli(
             "connect",
             "-a",
             agent.id,
-            "-k",
-            "entails",
             guideline1["id"],
             guideline2["id"],
         ]
@@ -942,6 +940,118 @@ async def test_that_guidelines_can_be_connected_via_cli(
             connection["source"] == guideline1["id"] and connection["target"] == guideline2[
                 "id"
             ] and connection["kind"] == "entails"
+
+
+async def test_that_guidelines_can_be_connected_with_suggestive_kind_via_cli(
+    context: ContextOfTest,
+) -> None:
+    predicate1 = "the user needs assistance"
+    action1 = "provide help"
+
+    predicate2 = "user ask about a certain subject"
+    action2 = "offer detailed explanation"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await get_first_agent()
+
+        exec_args_add1 = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guideline",
+            "add",
+            "-a",
+            agent.id,
+            "--no-check",
+            "--no-index",
+            predicate1,
+            action1,
+        ]
+        result_add1 = await asyncio.create_subprocess_exec(*exec_args_add1)
+        await result_add1.wait()
+        assert result_add1.returncode == os.EX_OK
+
+        exec_args_add2 = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guideline",
+            "add",
+            "-a",
+            agent.id,
+            "--no-check",
+            "--no-index",
+            predicate2,
+            action2,
+        ]
+        result_add2 = await asyncio.create_subprocess_exec(*exec_args_add2)
+        await result_add2.wait()
+        assert result_add2.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guidelines_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/"
+            )
+            guidelines_response.raise_for_status()
+            guidelines = guidelines_response.json()["guidelines"]
+
+            guideline1 = next(
+                g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
+            )
+            guideline2 = next(
+                g for g in guidelines if g["predicate"] == predicate2 and g["action"] == action2
+            )
+
+        exec_args_connect = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guideline",
+            "connect",
+            "-a",
+            agent.id,
+            "--suggestive",
+            guideline1["id"],
+            guideline2["id"],
+        ]
+        process_connect = await asyncio.create_subprocess_exec(
+            *exec_args_connect,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process_connect.communicate()
+        await process_connect.wait()
+        assert process_connect.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guideline_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline1['id']}"
+            )
+            guideline_response.raise_for_status()
+            guideline_data = guideline_response.json()
+
+            assert "connections" in guideline_data and len(guideline_data["connections"]) == 1
+            connection = guideline_data["connections"][0]
+            connection["source"] == guideline1["id"] and connection["target"] == guideline2[
+                "id"
+            ] and connection["kind"] == "suggests"
 
 
 async def test_that_guideline_can_be_removed(
