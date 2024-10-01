@@ -42,6 +42,27 @@ async def test_that_a_guideline_can_be_created(
     assert guideline["action"] == "greet them back with 'Hello'"
 
 
+async def test_that_a_guideline_can_be_deleted(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    guideline_to_delete = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user wants to unsubscribe",
+        action="ask for confirmation",
+    )
+
+    content = (
+        client.delete(f"/agents/{agent_id}/guidelines/{guideline_to_delete.id}")
+        .raise_for_status()
+        .json()
+    )
+    assert content["deleted_guideline_id"] == guideline_to_delete.id
+
+
 async def test_that_unapproved_invoice_getting_rejected(
     client: TestClient,
     agent_id: AgentId,

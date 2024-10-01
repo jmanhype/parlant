@@ -69,7 +69,7 @@ class DeleteGuidelineRequest(DefaultBaseModel):
 
 
 class DeleteGuidelineResponse(DefaultBaseModel):
-    deleted_guideline_id: Optional[GuidelineId]
+    deleted_guideline_id: GuidelineId
 
 
 class ListGuidelinesResponse(DefaultBaseModel):
@@ -279,12 +279,9 @@ def create_router(
 
         if request.added_connections:
             for req in request.added_connections:
-                source_id = req.guideline_id if req.role == "source" else guideline_id
-                target_id = req.guideline_id if req.role == "target" else guideline_id
-
                 await guideline_connection_store.create_connection(
-                    source=source_id,
-                    target=target_id,
+                    source=req.source,
+                    target=req.target,
                     kind=connection_kind_dto_to_connection_kind(req.kind),
                 )
 
@@ -312,5 +309,16 @@ def create_router(
                 for c in await mc.get_guideline_connections(guideline_id)
             ],
         )
+
+    @router.delete("/{agent_id}/guidelines/{guideline_id}")
+    async def delete_guideline(
+        agent_id: AgentId, guideline_id: GuidelineId
+    ) -> DeleteGuidelineResponse:
+        deleted_guideline = await guideline_store.delete_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
+        return DeleteGuidelineResponse(deleted_guideline_id=deleted_guideline.id)
 
     return router

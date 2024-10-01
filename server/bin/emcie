@@ -84,8 +84,8 @@ class Actions:
         return response.json()  # type: ignore
 
     @staticmethod
-    def delete_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
-        response = requests.delete(
+    def remove_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
+        response = requests.remove(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
         response.raise_for_status()
@@ -160,6 +160,14 @@ class Actions:
 
                 elif evaluation["status"] == "failed":
                     raise ValueError(evaluation["error"])
+
+    @staticmethod
+    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
+        response = requests.delete(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+        )
+        response.raise_for_status()
+        return response.json()
 
     @staticmethod
     def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
@@ -350,8 +358,8 @@ class Interface:
         rich.print(tabulate([term], headers="keys"))
 
     @staticmethod
-    def delete_term(ctx: click.Context, agent_id: str, name: str) -> None:
-        result = Actions.delete_term(ctx, agent_id, name)
+    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
+        result = Actions.remove_term(ctx, agent_id, name)
         rich.print(result)
 
     @staticmethod
@@ -393,7 +401,19 @@ class Interface:
                 Text("\nTo force add despite these errors, re-run with --no-check.", style="bold")
             )
         except Exception as e:
-            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+
+    @staticmethod
+    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+        try:
+            guideline = Actions.remove_guideline(ctx, agent_id, guideline_id)
+            rich.print(
+                f"Guideline with ID '{guideline_id}' has been successfully removed.",
+                style="bold green",
+            )
+            rich.print(tabulate([guideline], headers="keys"))
+        except Exception as e:
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"), file=sys.stderr)
 
     @staticmethod
     def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
@@ -421,7 +441,7 @@ class Interface:
             else:
                 rich.print("\nNo connections found for this guideline.")
         except Exception as e:
-            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> None:
@@ -451,7 +471,7 @@ class Interface:
             )
 
         except Exception as e:
-            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
 
     @staticmethod
     def create_connection(
@@ -472,7 +492,7 @@ class Interface:
             rich.print("Connection created:")
             rich.print(f"{tabulate([connection], headers="keys")}")
         except Exception as e:
-            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
 
 
 async def main() -> None:
@@ -595,11 +615,11 @@ async def main() -> None:
 
         Interface.create_term(ctx, agent_id, name, description, synonyms)
 
-    @terminology.command("delete", help="Delete a term from the terminology")
+    @terminology.command("remove", help="remove a term from the terminology")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.option("-n", "--name", type=str, help="Name of the term to delete", required=True)
+    @click.option("-n", "--name", type=str, help="Name of the term to remove", required=True)
     @click.pass_context
-    def terminology_delete(
+    def terminology_remove(
         ctx: click.Context,
         agent_id: str,
         name: str,
@@ -607,7 +627,7 @@ async def main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.delete_term(ctx, agent_id, name)
+        Interface.remove_term(ctx, agent_id, name)
 
     @terminology.command("list", help="List all terms in the terminology")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
@@ -662,6 +682,23 @@ async def main() -> None:
             action=action,
             check=check,
             index=index,
+        )
+
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("guideline_id", type=str)
+    @click.pass_context
+    def guideline_remove(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.remove_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
         )
 
     @guideline.command("view", help="View a guideline and its connections")
