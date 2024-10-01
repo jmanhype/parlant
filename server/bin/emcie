@@ -19,6 +19,11 @@ from textwrap import wrap
 from tqdm import tqdm
 
 
+class _CoherenceCheckFailue(Exception):
+    def __init__(self, contradictions: list[dict[str, Any]]) -> None:
+        self.contradictions = contradictions
+
+
 class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[dict[str, Any]]:
@@ -149,7 +154,9 @@ class Actions:
                         return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
 
                     else:
-                        raise ValueError(invoice["data"]["coherence_checks"])
+                        raise _CoherenceCheckFailue(
+                            contradictions=invoice["data"]["coherence_checks"]
+                        )
 
                 elif evaluation["status"] == "failed":
                     raise ValueError(evaluation["error"])
@@ -370,8 +377,8 @@ class Interface:
             guideline = Actions.create_guideline(ctx, agent_id, predicate, action, check, index)
             rich.print(Text(f"\nAdded guideline (id={guideline['id']}).\n", style="bold green"))
             rich.print(tabulate([guideline], headers="keys"))
-        except ValueError as e:
-            contradictions = e.args[0]
+        except _CoherenceCheckFailue as e:
+            contradictions = e.contradictions
             rich.print(Text("\nFailed to add guideline.", style="bold red"))
             rich.print("\nDetected incoherence with other guidelines:\n")
             rich.print(
@@ -413,10 +420,8 @@ class Interface:
                 )
             else:
                 rich.print("\nNo connections found for this guideline.")
-        except requests.HTTPError as e:
-            rich.print(f"HTTP error occurred: {e}")
         except Exception as e:
-            rich.print(f"An unexpected error occurred: {e}")
+            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> None:
@@ -445,10 +450,8 @@ class Interface:
                 )
             )
 
-        except requests.HTTPError as e:
-            rich.print(f"HTTP error occurred: {e}")
         except Exception as e:
-            rich.print(f"An unexpected error occurred: {e}")
+            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
 
     @staticmethod
     def create_connection(
@@ -468,11 +471,8 @@ class Interface:
             )
             rich.print("Connection created:")
             rich.print(f"{tabulate([connection], headers="keys")}")
-        except requests.HTTPError as e:
-            rich.print(f"HTTP error occurred: {e.response.status_code} {e.response.reason}")
-            rich.print(f"Detail: {e.response.text}")
         except Exception as e:
-            rich.print(f"An unexpected error occurred: {e}")
+            rich.print(f"error: {type(e)}: {e}", file=sys.stderr)
 
 
 async def main() -> None:
