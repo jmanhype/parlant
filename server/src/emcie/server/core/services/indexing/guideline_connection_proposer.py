@@ -103,13 +103,13 @@ class GuidelineConnectionProposer:
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
 
 Each guideline is composed of two parts:
-- "when": this is a natural-language predicate that specifies when a guideline should apply.
-          we look at each conversation at any particular state, and we test against this
+- "when": This is a natural-language predicate that specifies when a guideline should apply.
+          We look at each conversation at any particular state, and we test against this
           predicate to understand if we should have this guideline participate in generating
           the next reply to the user.
-- "then": this is a natural-language instruction that should be followed by the agent
+- "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.
-          Any instruction described here applies only to the agent, and not to the user. 
+          Any instruction described here applies only to the agent, and not to the user.
 
 
 Sometimes, when multiple guidelines are in use, we encounter the following situation:
@@ -117,22 +117,22 @@ Guideline 1: When <X>, then <Y>.
 Guideline 2: When <W>, then <Z>.
 Sometimes, applying the "then" of Guideline 1 (<Y>) may directly cause the "when" of Guideline 2 (<W>) to hold true, forming what we call a "causal connection" or simply "causation" from Guideline 1 to Guideline 2. This causation can only happen if the agent's action in <Y> directly causes the "when" in Guideline 2 (<W>) to become true.
 
-Important clarification: An action taken by the agent can never cause the user to do anything. Causation only occurs if applying the source's "then" action directly and immediately causes the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation. 
+Important clarification: An action taken by the agent can never cause the user to do anything. Causation only occurs if applying the source's "then" action directly and immediately causes the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation.
 As a result of this, if there's any scenario where the source's "then" can be applied while the target's "when" is false - then causation necessarily isn't fulfilled.
 
-When a connection is identified, we wish to know whether it involves actions that the agent must undertake, or if its prescriptions are merely suggestive or optional, resulting in a "suggestive causal connection". 
+When a connection is identified, we wish to know whether it involves actions that the agent must undertake, or if its prescriptions are merely suggestive or optional, resulting in a "suggestive causal connection".
 A causal connection is considered suggestive if either of the following conditions is met:
 - The source guideline's "then" statement is suggestive or optional.
 - The target guideline's "then" statement is suggestive or optional.
 For example, a connection is suggestive if it's of the form {{source="When <X> then <Y>", target="When <W> then consider <Z>"}} (where <W> is caused by <Y>), or similarly if {{source="When <X> then only do <Y> under certain conditions", target="When <W> then <Z>"}}.
 If both guidelines' "then" statements prescribe mandatory actions that the agent must take, then the connection is not considered suggestive. Conversely, if either "then" statement is optional or suggestive, the connection is considered suggestive.
-'Then' statements which prescribe actions which the agent must attempt to take, even if they might fail, are NOT considered suggestive, as they describe an action that's mandatory.  
+'Then' statements which prescribe actions which the agent must attempt to take, even if they might fail, are NOT considered suggestive, as they describe an action that's mandatory.
 
 Your task is to:
-    1. evaluate pairs of guidelines and detect which pairs fulfill such causal connections.
-    2.Identify whether the causal connections are suggestive. Meaning, if the action described in either guideline's 'then' statement is optional. 
+    1. Evaluate pairs of guidelines and detect which pairs fulfill such causal connections.
+    2. Identify whether the causal connections are suggestive. Meaning, if the action described in either guideline's 'then' statement is optional.
     To fulfill the second task, please identify if each 'then' statement in a candidate connection as either suggestive or not.
-    
+
 Please output JSON structured in the following format:
 
 {{
@@ -232,7 +232,7 @@ Input:
 Test guideline: ###
 {{"id": 0, "when": "The user asks for a book recommendation", "then": "suggest a book"}}
 ###
-Causation candidates: 
+Causation candidates:
 ###
 {{"id": 1, "when": "suggesting a book", "then": "mention its availability in the local library"}}
 {{"id": 2, "when": "recommending books", "then": "consider highlighting the ones with the best reviews"}}
