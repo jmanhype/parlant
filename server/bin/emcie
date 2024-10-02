@@ -206,6 +206,34 @@ class Actions:
         response.raise_for_status()
         return response.json()  # type: ignore
 
+    @staticmethod
+    def remove_connection(
+        ctx: click.Context,
+        agent_id: str,
+        first_guideline: str,
+        second_guideline: str,
+    ) -> dict[str, Any]:
+        guideline = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{first_guideline}")
+        )
+
+        connections = guideline.json()["connections"]
+        if connection := next(
+            iter(c for c in connections if second_guideline in [c["source"], c["target"]])
+        ):
+            response = requests.patch(
+                urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{first_guideline}"),
+                json={
+                    "removed_connections": [second_guideline],
+                },
+            )
+            response.raise_for_status()
+            return connection
+
+        raise ValueError(
+            f"A connection between {first_guideline} and {second_guideline} was not found."
+        )
+
 
 class Interface:
     @staticmethod
@@ -493,8 +521,26 @@ class Interface:
                 target_guideline_id,
                 kind,
             )
-            rich.print("Connection created:")
+            rich.print(Text(f"\nAdded connection (id={connection['id']}).\n", style="bold green"))
             rich.print(f"{tabulate([connection], headers="keys")}")
+        except Exception as e:
+            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+
+    @staticmethod
+    def remove_connection(
+        ctx: click.Context,
+        agent_id: str,
+        first_guideline_id: str,
+        second_guideline_id: str,
+    ) -> None:
+        try:
+            connection = Actions.remove_connection(
+                ctx,
+                agent_id,
+                first_guideline_id,
+                second_guideline_id,
+            )
+            rich.print(Text(f"\nRemoved connection (id={connection['id']}).\n", style="bold green"))
         except Exception as e:
             rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
 
@@ -739,11 +785,11 @@ async def main() -> None:
             agent_id=agent_id,
         )
 
-    @guideline.command("connect", help="Create a connection between two guidelines")
+    @guideline.command("entail", help="Create an entailment connection between two guidelines")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option(
         "--suggestive/-s",
-        type=bool,
+        is_flag=True,
         show_default=True,
         default=False,
         help="Use 'suggestive' as the connection kind. Defaults to 'entails' if not specified.",
@@ -751,7 +797,7 @@ async def main() -> None:
     @click.argument("source_guideline_id", type=str)
     @click.argument("target_guideline_id", type=str)
     @click.pass_context
-    def guideline_connect(
+    def guideline_entail(
         ctx: click.Context,
         agent_id: str,
         suggestive: bool,
@@ -767,6 +813,27 @@ async def main() -> None:
             source_guideline_id=source_guideline_id,
             target_guideline_id=target_guideline_id,
             kind="suggests" if suggestive else "entails",
+        )
+
+    @guideline.command("disentail", help="Remove an entailment connection between two guidelines")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("first_guideline_id", type=str)
+    @click.argument("second_guideline_id", type=str)
+    @click.pass_context
+    def guideline_disentail(
+        ctx: click.Context,
+        agent_id: str,
+        first_guideline_id: str,
+        second_guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.remove_connection(
+            ctx=ctx,
+            agent_id=agent_id,
+            first_guideline_id=first_guideline_id,
+            second_guideline_id=second_guideline_id,
         )
 
     cli()

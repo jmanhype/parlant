@@ -910,7 +910,7 @@ async def test_that_guidelines_can_be_connected_via_cli_with_default_of_entails(
             "--server",
             SERVER_ADDRESS,
             "guideline",
-            "connect",
+            "entail",
             "-a",
             agent.id,
             guideline1["id"],
@@ -1021,7 +1021,7 @@ async def test_that_guidelines_can_be_connected_with_suggestive_kind_via_cli(
             "--server",
             SERVER_ADDRESS,
             "guideline",
-            "connect",
+            "entail",
             "-a",
             agent.id,
             "--suggestive",
@@ -1148,7 +1148,20 @@ async def test_that_connection_can_be_removed_via_cli(
                             "approved": True,
                             "data": {
                                 "coherence_checks": [],
-                                "connection_propositions": None,
+                                "connection_propositions": [
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": "the user greets you",
+                                            "action": "greet them back with 'Hello'",
+                                        },
+                                        "target": {
+                                            "predicate": "greeting the user",
+                                            "action": "ask for his health condition",
+                                        },
+                                        "connection_kind": "entails",
+                                    }
+                                ],
                             },
                             "error": None,
                         },
@@ -1184,8 +1197,8 @@ async def test_that_connection_can_be_removed_via_cli(
             )
 
             guidelines_response.raise_for_status()
-
-            guideline_id = guidelines_response.json()["guidelines"][0]["id"]
+            first = guidelines_response.json()["guidelines"][0]["id"]
+            second = guidelines_response.json()["guidelines"][1]["id"]
 
         exec_args = [
             "poetry",
@@ -1195,10 +1208,11 @@ async def test_that_connection_can_be_removed_via_cli(
             "--server",
             SERVER_ADDRESS,
             "guideline",
-            "remove",
+            "disentail",
             "-a",
             agent.id,
-            guideline_id,
+            first,
+            second,
         ]
 
         result = await asyncio.create_subprocess_exec(*exec_args)
@@ -1211,7 +1225,7 @@ async def test_that_connection_can_be_removed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline_id}",
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{first}",
             )
 
-            assert guidelines_response.status_code == httpx.codes.NOT_FOUND
+            assert len(guidelines_response.json()["connections"]) == 0
