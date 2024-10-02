@@ -1054,7 +1054,7 @@ async def test_that_guidelines_can_be_connected_with_suggestive_kind_via_cli(
             ] and connection["kind"] == "suggests"
 
 
-async def test_that_guideline_can_be_removed(
+async def test_that_guideline_can_be_removed_cli(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1084,6 +1084,101 @@ async def test_that_guideline_can_be_removed(
                             },
                             "error": None,
                         }
+                    ]
+                },
+            )
+
+            guidelines_response.raise_for_status()
+
+            guideline_id = guidelines_response.json()["guidelines"][0]["id"]
+
+        exec_args = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "guideline",
+            "remove",
+            "-a",
+            agent.id,
+            guideline_id,
+        ]
+
+        result = await asyncio.create_subprocess_exec(*exec_args)
+        await result.wait()
+
+        assert result.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guidelines_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline_id}",
+            )
+
+            assert guidelines_response.status_code == httpx.codes.NOT_FOUND
+
+
+async def test_that_connection_can_be_removed_via_cli(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await get_first_agent()
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            guidelines_response = await client.post(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "checksum": "checksum_value",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": None,
+                            },
+                            "error": None,
+                        },
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": "greeting the user",
+                                "action": "ask for his health condition",
+                            },
+                            "checksum": "checksum_value",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": [
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": "the user greets you",
+                                            "action": "greet them back with 'Hello'",
+                                        },
+                                        "target": {
+                                            "predicate": "greeting the user",
+                                            "action": "ask for his health condition",
+                                        },
+                                        "connection_kind": "entails",
+                                    }
+                                ],
+                            },
+                            "error": None,
+                        },
                     ]
                 },
             )

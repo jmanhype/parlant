@@ -85,7 +85,7 @@ class Actions:
 
     @staticmethod
     def remove_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
-        response = requests.remove(
+        response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
         response.raise_for_status()
@@ -167,7 +167,7 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore
 
     @staticmethod
     def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
@@ -257,11 +257,13 @@ class Interface:
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
+        rich.print(Text(f"\nAdded session (id={session['id']}).\n", style="bold green"))
         print(tabulate([session], headers="keys"))
 
     @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> None:
         event = Actions.create_event(ctx, session_id, message)
+        rich.print(Text(f"\nAdded event (id={event['id']}).\n", style="bold green"))
         rich.print(tabulate([event], headers="keys"))
 
     @staticmethod
@@ -355,12 +357,13 @@ class Interface:
         synonyms: Optional[str],
     ) -> None:
         term = Actions.add_term(ctx, agent_id, name, description, synonyms)
+        rich.print(Text(f"\nAdded term (id={term['id']}).\n", style="bold green"))
         rich.print(tabulate([term], headers="keys"))
 
     @staticmethod
     def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
         result = Actions.remove_term(ctx, agent_id, name)
-        rich.print(result)
+        rich.print(Text(f"\nRemoved term (id={result['deleted_term_id']}).\n", style="bold green"))
 
     @staticmethod
     def list_terms(ctx: click.Context, agent_id: str) -> None:
@@ -406,12 +409,13 @@ class Interface:
     @staticmethod
     def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
         try:
-            guideline = Actions.remove_guideline(ctx, agent_id, guideline_id)
+            result = Actions.remove_guideline(ctx, agent_id, guideline_id)
             rich.print(
-                f"Guideline with ID '{guideline_id}' has been successfully removed.",
-                style="bold green",
+                Text(
+                    f"\nRemoved guideline (id={result['deleted_guideline_id']}).\n",
+                    style="bold green",
+                )
             )
-            rich.print(tabulate([guideline], headers="keys"))
         except Exception as e:
             rich.print(Text(f"error: {type(e)}: {e}", style="bold red"), file=sys.stderr)
 
