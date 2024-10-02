@@ -7,7 +7,6 @@ from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent
 from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
-from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.terminology import Term
@@ -174,13 +173,11 @@ and let the user know if/when you assume they meant a term by their typo: ###
 
     def add_guideline_predicates(
         self,
-        guidelines: Sequence[Guideline],
+        predicates: Sequence[str],
     ) -> PromptBuilder:
-        assert guidelines
+        assert predicates
 
-        predicates = "\n".join(
-            f"{i}) {g.content.predicate}" for i, g in enumerate(guidelines, start=1)
-        )
+        predicates = "\n".join(f"{i}) {p}" for i, p in enumerate(predicates, start=1))
 
         self.add_section(
             name=BuiltInSection.GUIDELINE_PREDICATES,
@@ -189,7 +186,7 @@ and let the user know if/when you assume they meant a term by their typo: ###
 {predicates}
 ###
 
-IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
     """,
             status=SectionStatus.ACTIVE,
         )
