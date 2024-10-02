@@ -101,14 +101,15 @@ The following is a description of your identity: ###
         events: Sequence[Event],
     ) -> PromptBuilder:
         if events:
-            events_as_json = events_to_json(events)
+            interaction_events = [e for e in events if e.kind != "status"]
+            interaction_events_as_json = events_to_json(interaction_events)
 
             self.add_section(
                 name=BuiltInSection.INTERACTION_HISTORY,
                 content=f"""
 The following is a list of events describing a back-and-forth
 interaction between you and a user: ###
-{events_as_json}
+{interaction_events_as_json}
 ###
 """,
                 status=SectionStatus.ACTIVE,
