@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Sequence, cast
 from lagom import Container
+from more_itertools import unique
 from pytest import fixture, mark
 from datetime import datetime, timezone
 
@@ -46,7 +47,8 @@ def propose_guidelines(
     context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
 ) -> Sequence[GuidelineProposition]:
-    guideline_filter = GuidelineProposer(context.logger, context.schematic_generator)
+    guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
+
     agents = [
         Agent(
             id=AgentId("123"),
@@ -66,7 +68,7 @@ def propose_guidelines(
     ]
 
     guideline_propositions = context.sync_await(
-        guideline_filter.propose_guidelines(
+        guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=context.guidelines,
             context_variables=[],
@@ -95,6 +97,21 @@ def create_event_message(
     )
 
     return event
+
+
+def create_guideline(context: ContextOfTest, predicate: str, action: str) -> Guideline:
+    guideline = Guideline(
+        id=GuidelineId(generate_id()),
+        creation_utc=datetime.now(timezone.utc),
+        content=GuidelineContent(
+            predicate=predicate,
+            action=action,
+        ),
+    )
+
+    context.guidelines.append(guideline)
+
+    return guideline
 
 
 def create_guideline_by_name(
@@ -133,15 +150,12 @@ def create_guideline_by_name(
         },
     }
 
-    guideline = Guideline(
-        id=GuidelineId(generate_id()),
-        creation_utc=datetime.now(timezone.utc),
-        content=GuidelineContent(
-            predicate=guidelines[guideline_name]["predicate"],
-            action=guidelines[guideline_name]["action"],
-        ),
+    guideline = create_guideline(
+        context=context,
+        predicate=guidelines[guideline_name]["predicate"],
+        action=guidelines[guideline_name]["action"],
     )
-    context.guidelines.append(guideline)
+
     return guideline
 
 
@@ -306,3 +320,39 @@ def test_that_irrelevant_guidelines_are_not_proposed(
 
     for guideline in guidelines:
         assert guideline not in irrelevant_guidelines
+
+
+def test_that_guidelines_with_the_same_predicates_are_scored_identically(
+    context: ContextOfTest,
+) -> None:
+    relevant_guidelines = [
+        create_guideline(
+            context=context,
+            predicate="the user greets you",
+            action="talk about apples",
+        ),
+        create_guideline(
+            context=context,
+            predicate="the user greets you",
+            action="talk about oranges",
+        ),
+    ]
+
+    _ = [  # irrelevant guidelines
+        create_guideline(
+            context=context,
+            predicate="talking about the weather",
+            action="talk about apples",
+        ),
+        create_guideline(
+            context=context,
+            predicate="talking about the weather",
+            action="talk about oranges",
+        ),
+    ]
+
+    guideline_propositions = propose_guidelines(context, [("client", "Hello there")])
+
+    assert len(guideline_propositions) == len(relevant_guidelines)
+    assert all(gp.guideline in relevant_guidelines for gp in guideline_propositions)
+    assert len(list(unique(gp.score for gp in guideline_propositions))) == 1

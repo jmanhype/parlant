@@ -1,4 +1,6 @@
 import asyncio
+from dataclasses import dataclass
+from itertools import groupby
 import json
 import math
 from typing import Sequence
@@ -29,6 +31,13 @@ class GuidelinePropositionsSchema(DefaultBaseModel):
     checks: Sequence[GuidelinePropositionSchema]
 
 
+@dataclass(frozen=True)
+class PredicateApplicabilityEvaluation:
+    predicate: str
+    score: int
+    rationale: str
+
+
 class GuidelineProposer:
     def __init__(
         self,
@@ -50,11 +59,22 @@ class GuidelineProposer:
         if not guidelines:
             return []
 
-        batches = self._create_batches(guidelines, batch_size=5)
+        guidelines_grouped_by_predicate = {
+            predicate: list(guidelines)
+            for predicate, guidelines in groupby(
+                sorted(guidelines, key=lambda g: g.content.predicate),
+                key=lambda g: g.content.predicate,
+            )
+        }
 
-        with self._logger.operation(f"Total guideline proposal ({len(batches)} batches)"):
+        unique_predicates = list(guidelines_grouped_by_predicate.keys())
+        batches = self._create_predicate_batches(unique_predicates, batch_size=5)
+
+        with self._logger.operation(
+            f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
+        ):
             batch_tasks = [
-                self._process_batch(
+                self._process_predicate_batch(
                     agents,
                     context_variables,
                     interaction_history,
@@ -64,45 +84,56 @@ class GuidelineProposer:
                 )
                 for batch in batches
             ]
-            batch_results = await asyncio.gather(*batch_tasks)
-            propositions = sum(batch_results, [])
-            return propositions
 
-    def _create_batches(
+            predicate_evaluations = sum(await asyncio.gather(*batch_tasks), [])
+
+            guideline_propositions = []
+
+            for evaluation in predicate_evaluations:
+                guideline_propositions += [
+                    GuidelineProposition(
+                        guideline=g, score=evaluation.score, rationale=evaluation.rationale
+                    )
+                    for g in guidelines_grouped_by_predicate[evaluation.predicate]
+                ]
+
+            return guideline_propositions
+
+    def _create_predicate_batches(
         self,
-        guidelines: Sequence[Guideline],
+        predicates: Sequence[str],
         batch_size: int,
-    ) -> Sequence[Sequence[Guideline]]:
+    ) -> Sequence[Sequence[str]]:
         batches = []
-        batch_count = math.ceil(len(guidelines) / batch_size)
+        batch_count = math.ceil(len(predicates) / batch_size)
 
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
             end_offset = start_offset + batch_size
-            batch = guidelines[start_offset:end_offset]
+            batch = predicates[start_offset:end_offset]
             batches.append(batch)
 
         return batches
 
-    async def _process_batch(
+    async def _process_predicate_batch(
         self,
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        batch: Sequence[Guideline],
-    ) -> list[GuidelineProposition]:
+        batch: Sequence[str],
+    ) -> list[PredicateApplicabilityEvaluation]:
         prompt = self._format_prompt(
             agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
             staged_events=staged_events,
             terms=terms,
-            guidelines=batch,
+            predicates=batch,
         )
 
-        with self._logger.operation("Guideline batch proposal"):
+        with self._logger.operation(f"Predicate evaluation batch ({len(batch)} predicates)"):
             propositions_json = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
@@ -111,11 +142,11 @@ class GuidelineProposer:
         propositions = []
 
         for proposition in propositions_json.content.checks:
-            guideline = batch[int(proposition.predicate_number) - 1]
+            predicate = batch[int(proposition.predicate_number) - 1]
 
             self._logger.debug(
-                f'Guideline evaluation for "When {guideline.content.predicate}, Then {guideline.content.action}":\n'  # noqa
-                f'  score: {proposition.applies_score}/10; rationale: "{proposition.rationale}"'
+                f'Guideline predicate evaluation for "{predicate}":\n'  # noqa
+                f'  Score: {proposition.applies_score}/10; Rationale: "{proposition.rationale}"'
             )
 
             if (proposition.applies_score >= 7) or (
@@ -123,8 +154,8 @@ class GuidelineProposer:
                 and not proposition.can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies
             ):
                 propositions.append(
-                    GuidelineProposition(
-                        guideline=batch[int(proposition.predicate_number) - 1],
+                    PredicateApplicabilityEvaluation(
+                        predicate=batch[int(proposition.predicate_number) - 1],
                         score=proposition.applies_score,
                         rationale=proposition.rationale,
                     )
@@ -139,21 +170,21 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        guidelines: Sequence[Guideline],
+        predicates: Sequence[str],
     ) -> str:
         assert len(agents) == 1
 
         result_structure = [
             {
                 "predicate_number": i,
-                "predicate": g.content.predicate,
+                "predicate": predicate,
                 "was_already_addressed_or_resolved_according_to_the_record_of_the_interaction": "<BOOL>",
                 "can_we_safely_presume_to_ascertain_whether_the_predicate_still_applies": "<BOOL>",
                 "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE "
                 "CURRENT STATE OF THE INTERACTION>",
                 "applies_score": "<RELEVANCE SCORE>",
             }
-            for i, g in enumerate(guidelines, start=1)
+            for i, predicate in enumerate(predicates, start=1)
         ]
 
         builder = PromptBuilder()
@@ -181,11 +212,11 @@ to the last known state of an interaction between yourself, AI assistant, and a 
 """
         )
 
-        builder.add_guideline_predicates(guidelines)
+        builder.add_guideline_predicates(predicates)
 
         builder.add_section(
             f"""
-IMPORTANT: Please note there are exactly {len(guidelines)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
 
 Process Description
 -------------------
