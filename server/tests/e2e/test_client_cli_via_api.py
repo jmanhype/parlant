@@ -622,7 +622,7 @@ async def test_that_guideline_can_be_viewed_via_cli(
         assert action in output_view
 
 
-async def test_that_view_guideline_with_connections_displays_connections(
+async def test_that_view_guideline_with_connections_displays_indirect_and_direct_connections(
     context: ContextOfTest,
 ) -> None:
     predicate1 = "the user asks for help"
@@ -630,6 +630,9 @@ async def test_that_view_guideline_with_connections_displays_connections(
 
     predicate2 = "provide assistance"
     action2 = "ask for clarification if needed"
+
+    predicate3 = "ask for clarification if needed"
+    action3 = "ask in a polite way"
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -640,7 +643,7 @@ async def test_that_view_guideline_with_connections_displays_connections(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response = await client.post(
+            guidelines_response = await client.post(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
                     "invoices": [
@@ -650,62 +653,102 @@ async def test_that_view_guideline_with_connections_displays_connections(
                                 "predicate": predicate1,
                                 "action": action1,
                             },
-                            "checksum": "checksum1",
+                            "checksum": "checksum_value",
                             "approved": True,
                             "data": {
                                 "coherence_checks": [],
-                                "connection_propositions": None,
+                                "connection_propositions": [
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": predicate1,
+                                            "action": action1,
+                                        },
+                                        "target": {
+                                            "predicate": predicate2,
+                                            "action": action2,
+                                        },
+                                        "connection_kind": "entails",
+                                    }
+                                ],
                             },
                             "error": None,
-                        }
-                    ],
-                },
-            )
-            response.raise_for_status()
-            first = response.json()["guidelines"][0]
-
-            response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
-                json={
-                    "invoices": [
+                        },
                         {
                             "payload": {
                                 "kind": "guideline",
                                 "predicate": predicate2,
                                 "action": action2,
                             },
-                            "checksum": "checksum2",
+                            "checksum": "checksum_value",
                             "approved": True,
                             "data": {
                                 "coherence_checks": [],
-                                "connection_propositions": None,
+                                "connection_propositions": [
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": predicate1,
+                                            "action": action1,
+                                        },
+                                        "target": {
+                                            "predicate": predicate2,
+                                            "action": action2,
+                                        },
+                                        "connection_kind": "entails",
+                                    },
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": predicate2,
+                                            "action": action2,
+                                        },
+                                        "target": {
+                                            "predicate": predicate3,
+                                            "action": action3,
+                                        },
+                                        "connection_kind": "entails",
+                                    },
+                                ],
                             },
                             "error": None,
-                        }
-                    ],
-                },
-            )
-            response.raise_for_status()
-            second = response.json()["guidelines"][0]
-
-            response_connection = await client.patch(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{first["id"]}",
-                json={
-                    "added_connections": [
+                        },
                         {
-                            "source": first["id"],
-                            "target": second["id"],
-                            "kind": "entails",
-                        }
-                    ],
-                    "removed_connections": None,
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": predicate3,
+                                "action": action3,
+                            },
+                            "checksum": "checksum_value",
+                            "approved": True,
+                            "data": {
+                                "coherence_checks": [],
+                                "connection_propositions": [
+                                    {
+                                        "check_kind": "connection_with_another_evaluated_guideline",
+                                        "source": {
+                                            "predicate": predicate2,
+                                            "action": action2,
+                                        },
+                                        "target": {
+                                            "predicate": predicate3,
+                                            "action": action3,
+                                        },
+                                        "connection_kind": "entails",
+                                    }
+                                ],
+                            },
+                            "error": None,
+                        },
+                    ]
                 },
             )
-            response_connection.raise_for_status()
-            guideline = response_connection.json()
 
-            assert guideline["connections"] and len(guideline["connections"]) == 1
-            connection_id = guideline["connections"][0]["id"]
+            guidelines_response.raise_for_status()
+
+        first = guidelines_response.json()["guidelines"][0]
+        first_connection = guidelines_response.json()["guidelines"][0]["connections"][0]
+        second_connection = guidelines_response.json()["guidelines"][1]["connections"][0]
 
         exec_args_view = [
             "poetry",
@@ -735,9 +778,15 @@ async def test_that_view_guideline_with_connections_displays_connections(
 
         assert "Connections:" in output_view
 
-        assert second["id"] in output_view
-        assert connection_id in output_view
-        assert "entails" in output_view
+        assert "direct" in output_view
+        assert first_connection["id"] in output_view
+        assert predicate2 in output_view
+        assert action2 in output_view
+
+        assert "indirect" in output_view
+        assert second_connection["id"] in output_view
+        assert predicate3 in output_view
+        assert action3 in output_view
 
 
 async def test_that_guidelines_can_be_listed_via_cli(
