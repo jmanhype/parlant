@@ -257,14 +257,17 @@ async def test_that_a_guideline_can_be_read_by_id(
         action="provide the current weather update",
     )
 
-    read_response = client.get(f"/agents/{agent_id}/guidelines/{existing_guideline.id}")
-    assert read_response.status_code == status.HTTP_200_OK
+    guideline = (
+        client.get(f"/agents/{agent_id}/guidelines/{existing_guideline.id}")
+        .raise_for_status()
+        .json()
+    )
 
-    read_guideline = read_response.json()
-    assert read_guideline["guideline_set"] == agent_id
-    assert read_guideline["id"] == existing_guideline.id
-    assert read_guideline["predicate"] == "the user asks about the weather"
-    assert read_guideline["action"] == "provide the current weather update"
+    assert guideline["guideline_set"] == agent_id
+    assert guideline["id"] == existing_guideline.id
+    assert guideline["predicate"] == "the user asks about the weather"
+    assert guideline["action"] == "provide the current weather update"
+    assert len(guideline["connections"]) == 0
 
 
 async def test_that_guidelines_can_be_listed_for_an_agent(
@@ -471,4 +474,108 @@ async def test_that_connection_can_be_created_between_two_guidelines(
         connection["id"] == connection_id
         and connection["source"] == first.id
         and connection["target"] == second.id
+    )
+
+
+async def test_that_read_guideline_contains_indirect_and_direct_connections(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    guideline_connection_store = container[GuidelineConnectionStore]
+
+    first = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks for help",
+        action="provide assistance",
+    )
+
+    second = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="provide assistance",
+        action="ask for clarification if needed",
+    )
+
+    third = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="ask for clarification if needed",
+        action="clarify the user's request",
+    )
+
+    fourth = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="clarify the user's request",
+        action="provide a suitable response",
+    )
+
+    fifth = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="provide a suitable response",
+        action="ensure the response is clear",
+    )
+
+    await guideline_connection_store.create_connection(
+        source=first.id, target=second.id, kind=ConnectionKind.ENTAILS
+    )
+
+    await guideline_connection_store.create_connection(
+        source=second.id, target=third.id, kind=ConnectionKind.ENTAILS
+    )
+
+    await guideline_connection_store.create_connection(
+        source=third.id, target=fourth.id, kind=ConnectionKind.ENTAILS
+    )
+
+    await guideline_connection_store.create_connection(
+        source=fourth.id, target=fifth.id, kind=ConnectionKind.ENTAILS
+    )
+
+    guideline = client.get(f"/agents/{agent_id}/guidelines/{third.id}").raise_for_status().json()
+
+    assert len(guideline["connections"]) == 4
+    connections = guideline["connections"]
+
+    assert any(
+        c["source"]["id"] == first.id
+        and c["target"]["id"] == second.id
+        and c["source"]["predicate"] == first.content.predicate
+        and c["source"]["action"] == first.content.action
+        and c["target"]["predicate"] == second.content.predicate
+        and c["target"]["action"] == second.content.action
+        and c["indirect"] is True
+        for c in connections
+    )
+
+    assert any(
+        c["source"]["id"] == second.id
+        and c["target"]["id"] == third.id
+        and c["source"]["predicate"] == second.content.predicate
+        and c["source"]["action"] == second.content.action
+        and c["target"]["predicate"] == third.content.predicate
+        and c["target"]["action"] == third.content.action
+        and c["indirect"] is False
+        for c in connections
+    )
+
+    assert any(
+        c["source"]["id"] == third.id
+        and c["target"]["id"] == fourth.id
+        and c["source"]["predicate"] == third.content.predicate
+        and c["source"]["action"] == third.content.action
+        and c["target"]["predicate"] == fourth.content.predicate
+        and c["target"]["action"] == fourth.content.action
+        and c["indirect"] is False
+        for c in connections
+    )
+
+    assert any(
+        c["source"]["id"] == fourth.id
+        and c["target"]["id"] == fifth.id
+        and c["source"]["predicate"] == fourth.content.predicate
+        and c["source"]["action"] == fourth.content.action
+        and c["target"]["predicate"] == fifth.content.predicate
+        and c["target"]["action"] == fifth.content.action
+        and c["indirect"] is True
+        for c in connections
     )

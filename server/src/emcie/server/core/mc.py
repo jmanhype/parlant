@@ -9,6 +9,7 @@ from typing import Any, Iterable, Mapping, Optional, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
+from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
 from emcie.server.core.emissions import EventEmitterFactory
@@ -16,7 +17,7 @@ from emcie.server.core.end_users import EndUserId
 from emcie.server.core.evaluations import ConnectionProposition, Invoice
 from emcie.server.core.guideline_connections import (
     ConnectionKind,
-    GuidelineConnection,
+    GuidelineConnectionId,
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
@@ -34,6 +35,13 @@ from emcie.server.core.logging import Logger
 
 
 TaskQueue: TypeAlias = list[asyncio.Task[None]]
+
+
+class GuidelineConnection(DefaultBaseModel):
+    id: GuidelineConnectionId
+    source: Guideline
+    target: Guideline
+    kind: ConnectionKind
 
 
 class MC:
@@ -184,65 +192,45 @@ class MC:
         self,
         guideline_set: str,
         invoices: Sequence[Invoice],
-    ) -> Iterable[tuple[Guideline, Sequence[GuidelineConnection]]]:
-        async def _create_connection_between_guidelines(
-            source_key: str,
-            target_key: str,
-            content_guidelines: dict[str, tuple[Guideline, list[GuidelineConnection]]],
-            connection_kind: ConnectionKind,
-        ) -> None:
-            source_guideline = content_guidelines[source_key][0]
-            target_guideline = content_guidelines[target_key][0]
-
-            connection = await self._guideline_connection_store.create_connection(
-                source=source_guideline.id,
-                target=target_guideline.id,
-                kind=connection_kind,
-            )
-
-            content_guidelines[source_key][1].append(connection)
-            content_guidelines[target_key][1].append(connection)
-
+    ) -> Iterable[GuidelineId]:
         async def _create_connection_with_existing_guideline(
             source_key: str,
             target_key: str,
-            content_guidelines: dict[str, tuple[Guideline, list[GuidelineConnection]]],
+            content_guidelines: dict[str, GuidelineId],
             guideline_set: str,
             proposition: ConnectionProposition,
         ) -> None:
             if source_key in content_guidelines:
-                source_guideline = content_guidelines[source_key][0]
-                target_guideline = await self._guideline_store.search_guideline(
-                    guideline_set=guideline_set,
-                    guideline_content=proposition.target,
-                )
+                source_guideline_id = content_guidelines[source_key]
+                target_guideline_id = (
+                    await self._guideline_store.search_guideline(
+                        guideline_set=guideline_set,
+                        guideline_content=proposition.target,
+                    )
+                ).id
             else:
-                source_guideline = await self._guideline_store.search_guideline(
-                    guideline_set=guideline_set,
-                    guideline_content=proposition.source,
-                )
-                target_guideline = content_guidelines[target_key][0]
+                source_guideline_id = (
+                    await self._guideline_store.search_guideline(
+                        guideline_set=guideline_set,
+                        guideline_content=proposition.source,
+                    )
+                ).id
+                target_guideline_id = content_guidelines[target_key]
 
-            connection = await self._guideline_connection_store.create_connection(
-                source=source_guideline.id,
-                target=target_guideline.id,
+            await self._guideline_connection_store.create_connection(
+                source=source_guideline_id,
+                target=target_guideline_id,
                 kind=proposition.connection_kind,
             )
 
-            if source_key in content_guidelines:
-                content_guidelines[source_key][1].append(connection)
-            else:
-                content_guidelines[target_key][1].append(connection)
-
-        content_guidelines: dict[str, tuple[Guideline, list[GuidelineConnection]]] = {
+        content_guidelines: dict[str, GuidelineId] = {
             f"{i.payload.content.predicate}_{i.payload.content.action}": (
                 await self._guideline_store.create_guideline(
                     guideline_set=guideline_set,
                     predicate=i.payload.content.predicate,
                     action=i.payload.content.action,
-                ),
-                [],
-            )
+                )
+            ).id
             for i in invoices
         }
 
@@ -260,11 +248,10 @@ class MC:
 
                 if c not in connections:
                     if c.check_kind == "connection_with_another_evaluated_guideline":
-                        await _create_connection_between_guidelines(
-                            source_key,
-                            target_key,
-                            content_guidelines,
-                            c.connection_kind,
+                        await self._guideline_connection_store.create_connection(
+                            source=content_guidelines[source_key],
+                            target=content_guidelines[target_key],
+                            kind=c.connection_kind,
                         )
                     else:
                         await _create_connection_with_existing_guideline(
@@ -280,17 +267,29 @@ class MC:
 
     async def get_guideline_connections(
         self,
+        guideline_set: str,
         guideline_id: GuidelineId,
-    ) -> Sequence[GuidelineConnection]:
-        connections = list(
-            chain(
+        indirect: bool = True,
+    ) -> Sequence[tuple[GuidelineConnection, bool]]:
+        connections = [
+            GuidelineConnection(
+                id=c.id,
+                source=await self._guideline_store.read_guideline(
+                    guideline_set=guideline_set, guideline_id=c.source
+                ),
+                target=await self._guideline_store.read_guideline(
+                    guideline_set=guideline_set, guideline_id=c.target
+                ),
+                kind=c.kind,
+            )
+            for c in chain(
                 await self._guideline_connection_store.list_connections(
-                    indirect=False, source=guideline_id
+                    indirect=indirect, source=guideline_id
                 ),
                 await self._guideline_connection_store.list_connections(
-                    indirect=False, target=guideline_id
+                    indirect=indirect, target=guideline_id
                 ),
             )
-        )
+        ]
 
-        return connections
+        return [(c, guideline_id not in [c.source.id, c.target.id]) for c in connections]
