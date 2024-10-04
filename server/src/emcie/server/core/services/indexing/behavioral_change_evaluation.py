@@ -298,9 +298,9 @@ class BehavioralChangeEvaluator:
             ):
                 raise EvaluationError(f"An evaluation task '{running_task.id}' is already running.")
 
-            await self._evaluation_store.update_evaluation_status(
+            await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
-                status=EvaluationStatus.RUNNING,
+                params={"status": EvaluationStatus.RUNNING},
             )
 
             agent = await self._agent_store.read_agent(agent_id=evaluation.agent_id)
@@ -314,31 +314,33 @@ class BehavioralChangeEvaluator:
                 ],
             )
 
+            invoices: list[Invoice] = []
             for i, result in enumerate(guideline_evaluation_data):
                 invoice_checksum = md5_checksum(str(evaluation.invoices[i].payload))
                 state_version = str(hash("Temporarily"))
 
-                invoice = Invoice(
-                    kind=evaluation.invoices[i].kind,
-                    payload=evaluation.invoices[i].payload,
-                    checksum=invoice_checksum,
-                    state_version=state_version,
-                    approved=True if not result.coherence_checks else False,
-                    data=result,
-                    error=None,
+                invoices.append(
+                    Invoice(
+                        kind=evaluation.invoices[i].kind,
+                        payload=evaluation.invoices[i].payload,
+                        checksum=invoice_checksum,
+                        state_version=state_version,
+                        approved=True if not result.coherence_checks else False,
+                        data=result,
+                        error=None,
+                    )
                 )
 
-                await self._evaluation_store.update_evaluation_invoice(
-                    evaluation.id,
-                    invoice_index=i,
-                    updated_invoice=invoice,
-                )
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation.id,
+                params={"invoices": invoices},
+            )
 
             self._logger.info(f"evaluation task '{evaluation.id}' completed")
 
-            await self._evaluation_store.update_evaluation_status(
+            await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
-                status=EvaluationStatus.COMPLETED,
+                params={"status": EvaluationStatus.COMPLETED},
             )
 
         except Exception as exc:
@@ -346,8 +348,10 @@ class BehavioralChangeEvaluator:
             getattr(self._logger, logger_level)(
                 f"Evaluation task '{evaluation.id}' failed due to the following error: '{str(exc)}'"
             )
-            await self._evaluation_store.update_evaluation_status(
+            await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
-                status=EvaluationStatus.FAILED,
-                error=str(exc),
+                params={
+                    "status": EvaluationStatus.FAILED,
+                    "error": str(exc),
+                },
             )

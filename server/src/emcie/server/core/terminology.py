@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, TypedDict
 
 
 TermId = NewType("TermId", str)
@@ -25,6 +25,12 @@ class Term:
         return hash(self.id)
 
 
+class TermUpdateParams(TypedDict, total=False):
+    name: str
+    description: str
+    synonyms: Sequence[str]
+
+
 class TerminologyStore:
     @abstractmethod
     async def create_term(
@@ -40,9 +46,8 @@ class TerminologyStore:
     async def update_term(
         self,
         term_set: str,
-        name: str,
-        description: str,
-        synonyms: Sequence[str],
+        term_id: str,
+        params: TermUpdateParams,
     ) -> Term: ...
 
     @abstractmethod

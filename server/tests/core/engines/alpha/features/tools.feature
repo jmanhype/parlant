@@ -29,7 +29,7 @@ Feature: Tools
         And the tool calls event contains 2 tool call(s)
         And the tool calls event contains Sprite and Coca Cola as drinks, and Pepperoni, Mushrooms and Olives as toppings
 
-    Scenario: Add tools called twice
+    Scenario: Add tool called twice
         Given a guideline "calculate_sum", to calculate sums when the user seeks to add numbers
         And the tool "add"
         And an association between "calculate_sum" and "add"

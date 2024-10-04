@@ -24,6 +24,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
+from emcie.common.types.common import JSONSerializable
+
 from emcie.common.tools import (
     Tool,
     ToolContext,
@@ -31,6 +33,7 @@ from emcie.common.tools import (
     ToolParameter,
     ToolParameterType,
     ToolResult,
+    _SessionStatus,
 )
 
 
@@ -347,9 +350,18 @@ class PluginServer:
                     chunks.append(json.dumps({"message": message}))
                 chunks_received.release()
 
+            async def emit_status(
+                status: _SessionStatus,
+                data: JSONSerializable,
+            ) -> None:
+                async with lock:
+                    chunks.append(json.dumps({"status": status, "data": data}))
+                chunks_received.release()
+
             context = ToolContext(
                 session_id=request.session_id,
                 emit_message=emit_message,
+                emit_status=emit_status,
             )
 
             result = self.tools[tool_id].function(context, **request.arguments)  # type: ignore

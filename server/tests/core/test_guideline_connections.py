@@ -46,7 +46,7 @@ async def test_that_direct_guideline_connections_can_be_listed(
         (b_id, d_id),
         (z_id, b_id),
     ]:
-        await store.update_connection(
+        await store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
@@ -72,7 +72,7 @@ async def test_that_indirect_guideline_connections_can_be_listed(
     z_id = GuidelineId("z")
 
     for source, target in [(a_id, b_id), (a_id, c_id), (b_id, d_id), (z_id, b_id)]:
-        await store.update_connection(
+        await store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
@@ -100,7 +100,7 @@ async def test_that_db_data_is_loaded_correctly(
     z_id = GuidelineId("z")
 
     for source, target in [(a_id, b_id), (a_id, c_id), (b_id, d_id), (z_id, b_id)]:
-        await store.update_connection(
+        await store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
@@ -126,8 +126,8 @@ async def test_that_connections_are_returned_for_source_without_indirect_connect
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.update_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.update_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
 
     connections = await store.list_connections(
         source=a_id,
@@ -146,8 +146,8 @@ async def test_that_connections_are_returned_for_source_with_indirect_connection
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.update_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.update_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
 
     connections = await store.list_connections(
         source=a_id,
@@ -167,8 +167,8 @@ async def test_that_connections_are_returned_for_target_without_indirect_connect
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.update_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.update_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
 
     connections = await store.list_connections(
         target=b_id,
@@ -187,8 +187,8 @@ async def test_that_connections_are_returned_for_target_with_indirect_connection
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.update_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.update_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
+    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
 
     connections = await store.list_connections(
         target=c_id,

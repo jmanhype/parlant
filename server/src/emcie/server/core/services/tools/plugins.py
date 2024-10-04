@@ -101,6 +101,14 @@ class PluginClient(ToolService):
                             data=chunk_dict["data"],
                             metadata=chunk_dict["metadata"],
                         )
+                    elif "status" in chunk_dict:
+                        await event_emitter.emit_status_event(
+                            correlation_id=self._correlator.correlation_id,
+                            data={
+                                "status": chunk_dict["status"],
+                                "data": chunk_dict.get("data", {}),
+                            },
+                        )
                     elif "message" in chunk_dict:
                         await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,

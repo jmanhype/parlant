@@ -402,7 +402,7 @@ def given_a_guideline_connection(
     store = context.container[GuidelineConnectionStore]
 
     context.sync_await(
-        store.update_connection(
+        store.create_connection(
             source=context.guidelines[guideline_a].id,
             target=context.guidelines[guideline_b].id,
             kind={

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import tempfile
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator, TypedDict
 from lagom import Container
 from pytest import fixture
 
@@ -10,13 +10,12 @@ from emcie.server.core.nlp.embedding import EmbedderFactory
 from emcie.server.adapters.db.chroma.database import (
     ChromaCollection,
     ChromaDatabase,
-    ChromaDocument,
 )
-from emcie.server.core.persistence.common import ObjectId
 from emcie.server.core.logging import Logger
+from emcie.server.core.persistence.document_database import ObjectId
 
 
-class _TestModel(ChromaDocument):
+class _TestDocument(TypedDict, total=False):
     id: ObjectId
     content: str
     name: str
@@ -54,10 +53,10 @@ def create_database(context: _TestContext) -> ChromaDatabase:
 @fixture
 async def chroma_collection(
     chroma_database: ChromaDatabase,
-) -> AsyncIterator[ChromaCollection[_TestModel]]:
+) -> AsyncIterator[ChromaCollection[_TestDocument]]:
     collection = chroma_database.get_or_create_collection(
         "test_collection",
-        _TestModel,
+        _TestDocument,
         embedder_type=OpenAITextEmbedding3Large,
     )
     yield collection
@@ -65,9 +64,9 @@ async def chroma_collection(
 
 
 async def test_that_create_document_and_find_with_metadata_field(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    doc = _TestModel(
+    doc = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -98,9 +97,9 @@ async def test_that_create_document_and_find_with_metadata_field(
 
 
 async def test_that_update_one_without_upsert_is_updating_existing_document(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    document = _TestModel(
+    document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -108,7 +107,7 @@ async def test_that_update_one_without_upsert_is_updating_existing_document(
 
     await chroma_collection.insert_one(document)
 
-    updated_document = _TestModel(
+    updated_document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="new name",
@@ -129,9 +128,9 @@ async def test_that_update_one_without_upsert_is_updating_existing_document(
 
 
 async def test_that_update_one_without_upsert_and_no_existing_content_does_not_insert(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    updated_document = _TestModel(
+    updated_document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -147,9 +146,9 @@ async def test_that_update_one_without_upsert_and_no_existing_content_does_not_i
 
 
 async def test_that_update_one_with_upsert_and_no_existing_content_inserts_new_document(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    updated_document = _TestModel(
+    updated_document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -168,9 +167,9 @@ async def test_that_update_one_with_upsert_and_no_existing_content_inserts_new_d
 
 
 async def test_delete_one(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    document = _TestModel(
+    document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -186,28 +185,28 @@ async def test_delete_one(
     assert deleted_result.deleted_count == 1
 
     if deleted_result.deleted_document:
-        assert deleted_result.deleted_document.id == ObjectId("1")
+        assert deleted_result.deleted_document["id"] == ObjectId("1")
 
     result = await chroma_collection.find({"id": {"$eq": "1"}})
     assert len(result) == 0
 
 
 async def test_find_similar_documents(
-    chroma_collection: ChromaCollection[_TestModel],
+    chroma_collection: ChromaCollection[_TestDocument],
 ) -> None:
-    apple_document = _TestModel(
+    apple_document = _TestDocument(
         id=ObjectId("1"),
         content="apple",
         name="Apple",
     )
 
-    banana_document = _TestModel(
+    banana_document = _TestDocument(
         id=ObjectId("2"),
         content="banana",
         name="Banana",
     )
 
-    cherry_document = _TestModel(
+    cherry_document = _TestDocument(
         id=ObjectId("3"),
         content="cherry",
         name="Cherry",
@@ -217,14 +216,14 @@ async def test_find_similar_documents(
     await chroma_collection.insert_one(banana_document)
     await chroma_collection.insert_one(cherry_document)
     await chroma_collection.insert_one(
-        _TestModel(
+        _TestDocument(
             id=ObjectId("4"),
             content="date",
             name="Date",
         )
     )
     await chroma_collection.insert_one(
-        _TestModel(
+        _TestDocument(
             id=ObjectId("5"),
             content="elderberry",
             name="Elderberry",
@@ -246,11 +245,11 @@ async def test_loading_collections_succeed(context: _TestContext, container: Con
     chroma_database_1 = create_database(context)
     chroma_collection_1 = chroma_database_1.get_or_create_collection(
         "test_collection",
-        _TestModel,
+        _TestDocument,
         embedder_type=OpenAITextEmbedding3Large,
     )
 
-    document = _TestModel(
+    document = _TestDocument(
         id=ObjectId("1"),
         content="test content",
         name="test name",
@@ -259,7 +258,7 @@ async def test_loading_collections_succeed(context: _TestContext, container: Con
     await chroma_collection_1.insert_one(document)
 
     chroma_database_2 = create_database(context)
-    chroma_collection_2: ChromaCollection[_TestModel] = chroma_database_2.get_collection(
+    chroma_collection_2: ChromaCollection[_TestDocument] = chroma_database_2.get_collection(
         "test_collection"
     )
 

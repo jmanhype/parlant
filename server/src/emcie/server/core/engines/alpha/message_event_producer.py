@@ -51,7 +51,7 @@ class MessageEventSchema(DefaultBaseModel):
     produced_reply: bool
     rationale: str
     revisions: list[Revision]
-    evaluations_for_each_of_the_provided_guidelines: list[GuidelineEvaluation]
+    evaluations_for_each_of_the_provided_guidelines: Optional[list[GuidelineEvaluation]] = None
 
 
 class MessageEventProducer:
@@ -257,28 +257,28 @@ Example 2: A reply that took critique in a few revisions to get right: ###
             "number": 1,
             "instruction": "Do this [...]",
             "evaluation": "in this situation, I am instructed to do [...]",
-            "adds_value": "I didn't do it yet, so I should do it now"
+            "adds_value": "I didn't do it yet, so I should do it now",
             "data_available": "no particular data is needed for this"
         }},
         {{
             "number": 2,
             "instruction": "Say this [...]",
             "evaluation": "in this situation, I am instructed to say [...]",
-            "adds_value": "I didn't say it yet, so I should say it now"
+            "adds_value": "I didn't say it yet, so I should say it now",
             "data_available": "no particular data is needed for this"
         }},
         {{
             "number": 3,
             "instruction": "Say that [...]",
             "evaluation": "in this situation, I am instructed to say [...]",
-            "adds_value": "I didn't say it yet, so I should say it now"
+            "adds_value": "I didn't say it yet, so I should say it now",
             "data_available": "no particular data is needed for this"
         }},
         {{
             "number": 4,
             "instruction": "Do that [...]",
             "evaluation": "in this situation, I am instructed to do [...]",
-            "adds_value": "I didn't do it yet, so I should do it now"
+            "adds_value": "I didn't do it yet, so I should do it now",
             "data_available": "no particular data is needed for this"
         }}
     ],
@@ -291,8 +291,8 @@ Example 2: A reply that took critique in a few revisions to get right: ###
                 "#3; correctly said..."
             ],
             "guidelines_broken": [
-                "#2; didn't say..."
-                "#4; didn't do...",
+                "#2; didn't say...",
+                "#4; didn't do..."
             ],
             "followed_all_guidelines": false,
             "guidelines_broken_due_to_missing_data": false,
@@ -323,16 +323,16 @@ Example 3: A reply where one guideline was prioritized over another: ###
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
             "number": 1,
-            "instruction": "When the user chooses and orders a burger, then provide it"
+            "instruction": "When the user chooses and orders a burger, then provide it",
             "evaluation": "The user asked for a burger with cheese, so I need to provide it to him.",
-            "adds_value": "I didn't provide the burger yet, so I should do so now."
+            "adds_value": "I didn't provide the burger yet, so I should do so now.",
             "data_available": "The burger choice is available in the interaction"
         }},
         {{
             "number": 2,
             "instruction": "When the user chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
             "evaluation": "The user chose cheese on the burger, but all of the cheese we currently have is expired",
-            "adds_value": "I must reject the order, otherwise the user might eat bad cheese"
+            "adds_value": "I must reject the order, otherwise the user might eat bad cheese",
             "data_available": "The relevant stock availability is given in the tool calls' data"
         }}
     ],
@@ -366,7 +366,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
             "number": 1,
             "instruction": "When the user asks for a drink, check the menu and offer what's on it"
             "evaluation": "The user did ask for a drink, so I should check the menu to see what's available.",
-            "adds_value": "The user doesn't know what drinks we have yet, so I should tell him."
+            "adds_value": "The user doesn't know what drinks we have yet, so I should tell him.",
             "data_available": "No, I don't have the menu info in the interaction or tool calls"
         }}
     ],
@@ -381,7 +381,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
             ],
             "followed_all_guidelines": false,
             "missing_data_rationale": "Menu data was missing",
-            "guidelines_broken_due_to_missing_data": true
+            "guidelines_broken_due_to_missing_data": true,
             "guidelines_broken_only_due_to_prioritization": false
         }}
     ]
@@ -410,11 +410,12 @@ Example 4: Non-Adherence Due to Missing Data: ###
             f"{json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
         )
 
-        if last_correct_revision := next(
+        if first_correct_revision := next(
             (
                 r
-                for r in reversed(message_event_response.content.revisions)
+                for r in message_event_response.content.revisions
                 if r.guidelines_broken_only_due_to_prioritization
+                or r.guidelines_broken_due_to_missing_data
             ),
             None,
         ):
@@ -422,7 +423,7 @@ Example 4: Non-Adherence Due to Missing Data: ###
             # it generated a correct one. Those next revisions tend to be
             # faulty, as they do not handle prioritization well.
             # This is a workaround.
-            final_revision = last_correct_revision
+            final_revision = first_correct_revision
         else:
             final_revision = message_event_response.content.revisions[-1]
 

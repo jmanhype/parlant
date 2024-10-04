@@ -1,13 +1,13 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import (
-    Any,
     Literal,
     Mapping,
     NewType,
+    NotRequired,
     Optional,
     Sequence,
     TypeAlias,
@@ -19,13 +19,10 @@ from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.persistence.common import (
-    BaseDocument,
-    ObjectId,
-    Where,
-)
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
+    ObjectId,
+    Where,
 )
 
 SessionId = NewType("SessionId", str)
@@ -77,7 +74,7 @@ SessionStatus: TypeAlias = Literal[
 
 
 class StatusEventData(TypedDict):
-    acknowledged_offset: int
+    acknowledged_offset: NotRequired[int]
     status: SessionStatus
     data: JSONSerializable
 
@@ -90,6 +87,13 @@ ConsumerId: TypeAlias = Literal["client"]
 class Session:
     id: SessionId
     creation_utc: datetime
+    end_user_id: EndUserId
+    agent_id: AgentId
+    title: Optional[str]
+    consumption_offsets: dict[ConsumerId, int]
+
+
+class SessionUpdateParams(TypedDict, total=False):
     end_user_id: EndUserId
     agent_id: AgentId
     title: Optional[str]
@@ -119,18 +123,10 @@ class SessionStore(ABC):
     ) -> Optional[SessionId]: ...
 
     @abstractmethod
-    async def update_consumption_offset(
+    async def update_session(
         self,
         session_id: SessionId,
-        consumer_id: ConsumerId,
-        new_offset: int,
-    ) -> None: ...
-
-    @abstractmethod
-    async def update_title(
-        self,
-        session_id: SessionId,
-        title: str,
+        params: SessionUpdateParams,
     ) -> None: ...
 
     @abstractmethod
@@ -166,31 +162,91 @@ class SessionStore(ABC):
     ) -> Sequence[Session]: ...
 
 
+class _SessionDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    end_user_id: EndUserId
+    agent_id: AgentId
+    title: Optional[str]
+    consumption_offsets: dict[ConsumerId, int]
+
+
+class _EventDocument(TypedDict, total=False):
+    id: ObjectId
+    creation_utc: str
+    session_id: SessionId
+    source: EventSource
+    kind: EventKind
+    offset: int
+    correlation_id: str
+    data: JSONSerializable
+
+
 class SessionDocumentStore(SessionStore):
-    class SessionDocument(BaseDocument):
-        creation_utc: datetime
-        end_user_id: EndUserId
-        agent_id: AgentId
-        title: Optional[str] = None
-        consumption_offsets: dict[ConsumerId, int]
-
-    class EventDocument(BaseDocument):
-        creation_utc: datetime
-        session_id: SessionId
-        source: EventSource
-        kind: EventKind
-        offset: int
-        correlation_id: str
-        data: Any
-
     def __init__(self, database: DocumentDatabase):
         self._session_collection = database.get_or_create_collection(
             name="sessions",
-            schema=self.SessionDocument,
+            schema=_SessionDocument,
         )
         self._event_collection = database.get_or_create_collection(
             name="events",
-            schema=self.EventDocument,
+            schema=_EventDocument,
+        )
+
+    def _serialize_session(
+        self,
+        session: Session,
+    ) -> _SessionDocument:
+        return _SessionDocument(
+            id=ObjectId(session.id),
+            creation_utc=session.creation_utc.isoformat(),
+            end_user_id=session.end_user_id,
+            agent_id=session.agent_id,
+            title=session.title if session.title else None,
+            consumption_offsets=session.consumption_offsets,
+        )
+
+    def _deserialize_session(
+        self,
+        session_document: _SessionDocument,
+    ) -> Session:
+        return Session(
+            id=SessionId(session_document["id"]),
+            creation_utc=datetime.fromisoformat(session_document["creation_utc"]),
+            end_user_id=session_document["end_user_id"],
+            agent_id=session_document["agent_id"],
+            title=session_document["title"],
+            consumption_offsets=session_document["consumption_offsets"],
+        )
+
+    def _serialize_event(
+        self,
+        event: Event,
+        session_id: SessionId,
+    ) -> _EventDocument:
+        return _EventDocument(
+            id=ObjectId(event.id),
+            creation_utc=event.creation_utc.isoformat(),
+            session_id=session_id,
+            source=event.source,
+            kind=event.kind,
+            offset=event.offset,
+            correlation_id=event.correlation_id,
+            data=event.data,
+        )
+
+    def _deserialize_event(
+        self,
+        event_document: _EventDocument,
+    ) -> Event:
+        return Event(
+            id=EventId(event_document["id"]),
+            creation_utc=datetime.fromisoformat(event_document["creation_utc"]),
+            source=event_document["source"],
+            kind=event_document["kind"],
+            offset=event_document["offset"],
+            correlation_id=event_document["correlation_id"],
+            data=event_document["data"],
         )
 
     async def create_session(
@@ -204,27 +260,18 @@ class SessionDocumentStore(SessionStore):
 
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
 
-        document = self.SessionDocument(
-            id=ObjectId(generate_id()),
-            creation_utc=creation_utc,
-            end_user_id=end_user_id,
-            agent_id=agent_id,
-            consumption_offsets=consumption_offsets,
-        )
-
-        if title:
-            document.title = title
-
-        await self._session_collection.insert_one(document=document)
-
-        return Session(
-            id=SessionId(document.id),
+        session = Session(
+            id=SessionId(generate_id()),
             creation_utc=creation_utc,
             end_user_id=end_user_id,
             agent_id=agent_id,
             consumption_offsets=consumption_offsets,
             title=title,
         )
+
+        await self._session_collection.insert_one(document=self._serialize_session(session))
+
+        return session
 
     async def delete_session(
         self,
@@ -247,49 +294,27 @@ class SessionDocumentStore(SessionStore):
         if not session_document:
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
-        return Session(
-            id=SessionId(session_document.id),
-            creation_utc=session_document.creation_utc,
-            end_user_id=session_document.end_user_id,
-            agent_id=session_document.agent_id,
-            consumption_offsets=session_document.consumption_offsets,
-            title=getattr(session_document, "title"),
-        )
+        return self._deserialize_session(session_document)
 
     async def update_session(
         self,
         session_id: SessionId,
-        updated_session: Session,
+        params: SessionUpdateParams,
     ) -> None:
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
-            updated_document=self.SessionDocument(
-                id=ObjectId(updated_session.id),
-                creation_utc=updated_session.creation_utc,
-                end_user_id=updated_session.end_user_id,
-                agent_id=updated_session.agent_id,
-                consumption_offsets=updated_session.consumption_offsets,
-                title=getattr(updated_session, "title"),
-            ),
+            params=cast(_SessionDocument, params),
         )
-
-    async def update_consumption_offset(
-        self,
-        session_id: SessionId,
-        consumer_id: ConsumerId,
-        new_offset: int,
-    ) -> None:
-        session = await self.read_session(session_id)
-        session.consumption_offsets[consumer_id] = new_offset
-        await self.update_session(session_id, session)
 
     async def update_title(
         self,
         session_id: SessionId,
         title: str,
     ) -> None:
-        session = await self.read_session(session_id)
-        await self.update_session(session_id, Session(**{**asdict(session), "title": title}))
+        await self._session_collection.update_one(
+            filters={"id": {"$eq": session_id}},
+            params={"title": title},
+        )
 
     async def create_event(
         self,
@@ -307,9 +332,8 @@ class SessionDocumentStore(SessionStore):
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
 
-        document = self.EventDocument(
-            id=ObjectId(generate_id()),
-            session_id=session_id,
+        event = Event(
+            id=EventId(generate_id()),
             source=source,
             kind=kind,
             offset=offset,
@@ -318,17 +342,9 @@ class SessionDocumentStore(SessionStore):
             data=data,
         )
 
-        await self._event_collection.insert_one(document=document)
+        await self._event_collection.insert_one(document=self._serialize_event(event, session_id))
 
-        return Event(
-            id=EventId(document.id),
-            source=source,
-            kind=kind,
-            offset=offset,
-            creation_utc=creation_utc,
-            correlation_id=correlation_id,
-            data=data,
-        )
+        return event
 
     async def delete_event(
         self,
@@ -377,33 +393,15 @@ class SessionDocumentStore(SessionStore):
                 )
             )
 
-        return [
-            Event(
-                id=EventId(d.id),
-                source=d.source,
-                kind=d.kind,
-                offset=d.offset,
-                creation_utc=d.creation_utc,
-                correlation_id=d.correlation_id,
-                data=d.data,
-            )
-            for d in event_documents
-        ]
+        return [self._deserialize_event(d) for d in event_documents]
 
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
     ) -> Sequence[Session]:
         return [
-            Session(
-                id=SessionId(s.id),
-                creation_utc=s.creation_utc,
-                end_user_id=EndUserId(s.end_user_id),
-                agent_id=AgentId(s.agent_id),
-                consumption_offsets=s.consumption_offsets,
-                title=s.title,
-            )
-            for s in await self._session_collection.find(
+            self._deserialize_session(d)
+            for d in await self._session_collection.find(
                 filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
             )
         ]

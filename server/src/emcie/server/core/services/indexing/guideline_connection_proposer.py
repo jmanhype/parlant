@@ -12,17 +12,20 @@ from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):
-    source: dict[str, str]
-    target: dict[str, str]
+    source_id: int
+    target_id: int
     source_then: str
     target_when: str
-    is_target_when_implied_by_source_then: bool
+    is_target_when_caused_by_source_then: bool
+    is_source_then_suggestive_or_optional: bool = False
+    target_then: str = ""
     is_target_then_suggestive_or_optional: bool = False
     rationale: str
-    implication_score: int
+    causation_score: int
 
 
 class GuidelineConnectionPropositionsSchema(DefaultBaseModel):
@@ -92,245 +95,467 @@ class GuidelineConnectionProposer:
         self,
         agent: Agent,
         evaluated_guideline: GuidelineContent,
-        comparison_set: Sequence[GuidelineContent],
+        comparison_set: dict[int, GuidelineContent],
     ) -> str:
-        implication_candidates = "\n\t".join(
-            f"{i}) {{when: {g.predicate}, then: {g.action}}}"
-            for i, g in enumerate(comparison_set, start=1)
-        )
-        test_guideline = (
-            f"{{when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
-        )
-
-        terms = await self._terminology_store.find_relevant_terms(
-            agent.id,
-            query=test_guideline + implication_candidates,
-        )
-        terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
-
-        return f"""
-In our system, the behavior of conversational AI agents is guided by "guidelines".
+        builder = PromptBuilder()
+        builder.add_section(
+            f"""
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
 
 Each guideline is composed of two parts:
-- "when": this is a natural-language predicate that specifies when a guideline should apply.
-          we look at each conversation at any particular state, and we test against this
+- "when": This is a natural-language predicate that specifies when a guideline should apply.
+          We look at each conversation at any particular state, and we test against this
           predicate to understand if we should have this guideline participate in generating
           the next reply to the user.
-- "then": this is a natural-language instruction that should be followed whenever the
-          "when" part of the guidelines applies to the conversation in its particular state.
+- "then": This is a natural-language instruction that should be followed by the agent
+          whenever the "when" part of the guideline applies to the conversation in its particular state.
+          Any instruction described here applies only to the agent, and not to the user.
 
-Now, if we have many guidelines, it is possible to encounter a situation like this:
-Guideline N: When <X>, then <Y>.
-Guideline N+1: When <Y>, then <Z>.
 
-Note, in this edge case, that, when testing these two guidelines (N, N+1) against a conversation,
-it may happen that <X> applies and therefore Guideline N should apply.
-However, the application of Guideline N would also make necessarily <Y> apply.
-But just by looking at the conversation itself, before the application of Guideline N,
-<Y> may not necessarily apply, which would lead to Guideline N+1 not applying either.
-But this is a bug in the expected behavior, because, if the guideline designer said
-"When <X> then <Y>" and "When <Y> then <Z>", they clearly want <Z> to happen when <X> applies.
+Sometimes, when multiple guidelines are in use, we encounter the following situation:
+Guideline 1: When <X>, then <Y>.
+Guideline 2: When <W>, then <Z>.
+Sometimes, applying the "then" of Guideline 1 (<Y>) may directly cause the "when" of Guideline 2 (<W>) to hold true, forming what we call a "causal connection" or simply "causation" from Guideline 1 to Guideline 2. This causation can only happen if the agent's action in <Y> directly causes the "when" in Guideline 2 (<W>) to become true.
 
-We therefore need to detect these implicit connections between guidelines, and index them as such.
+Important clarification: An action taken by the agent can never cause the user to do anything. Causation only occurs if applying the source's "then" action directly and immediately causes the "when" of the target guideline to apply. Cases where the source's "then" implies that the target's "when" happened in the past, or will happen in the future, are not considered causation.
+As a result of this, if there's any scenario where the source's "then" can be applied while the target's "when" is false - then causation necessarily isn't fulfilled.
 
-Your job is to detect cases in evaluated guidelines that follow the pattern:
-When <X> then <Y>; When <Y> then <Z>.
-Meaning, that the "then" part of the first guideline (called the "source" guideline),
-by itself implies and makes true the "when" part of the second guideline (called the "target" guideline).
-We call this pattern an "implication".
-Please note that there is no implication when <Y> is something that *may* happen in the future following <X>.
-It is only about whether <Y> in itself is directly and immediately implied by <X>.
+When a connection is identified, we wish to know whether it involves actions that the agent must undertake, or if its prescriptions are merely suggestive or optional, resulting in a "suggestive causal connection".
+A causal connection is considered suggestive if either of the following conditions is met:
+- The source guideline's "then" statement is suggestive or optional.
+- The target guideline's "then" statement is suggestive or optional.
+For example, a connection is suggestive if it's of the form {{source="When <X> then <Y>", target="When <W> then consider <Z>"}} (where <W> is caused by <Y>), or similarly if {{source="When <X> then only do <Y> under certain conditions", target="When <W> then <Z>"}}.
+If both guidelines' "then" statements prescribe mandatory actions that the agent must take, then the connection is not considered suggestive. Conversely, if either "then" statement is optional or suggestive, the connection is considered suggestive.
+'Then' statements which prescribe actions which the agent must attempt to take, even if they might fail, are NOT considered suggestive, as they describe an action that's mandatory.
 
-There are two types of implication:
-- Entailed: This means that the source guideline's "then" necessarily entails
-            the target guideline's "when".
-- Optional: This is the same as "entailed", except in these cases the target's
-            "then" is suggestive instead of necessary. For example, in cases such as
-             source="When <X> then <Y>", target="When <Y> then consider <Z>".
+Your task is to:
+    1. Evaluate pairs of guidelines and detect which pairs fulfill such causal connections.
+    2. Identify whether the causal connections are suggestive. Meaning, if the action described in either guideline's 'then' statement is optional.
+    To fulfill the second task, please identify if each 'then' statement in a candidate connection as either suggestive or not.
 
-You will now receive a test guideline to evaluate against a set of other guidelines which are candidates for
-implication. For each candidate, the test guideline may be found as either the source or the target in the
-connection, or neither.
-
-Please output JSON structured as per the following examples:
+Please output JSON structured in the following format:
 
 {{
     "propositions": [
         {{
-            "source": <The source guideline in its entirety>,
-            "target": <The target guideline in its entirety>,
+            "source_id": <id of the source guideline>,
+            "target_id": <id of the target guideline>,
             "source_then": <The source guideline's 'then'>,
             "target_when": <The target guideline's 'when'>,
-            "is_target_when_implied_by_source_then": <BOOL>,
+            "is_target_when_caused_by_source_then": <BOOL>,
+            "is_source_then_suggestive_or_optional": <BOOL>,
+            "target_then": <The target guideline's 'then'>,
             "is_target_then_suggestive_or_optional": <BOOL>,
-            "rationale": <Explanation for the implication between the source's 'then' and the target's 'when'>,
-            "implication_score": <Score between 1-10 indicating the strength of the connection>
+            "rationale": <Explanation for if and how the source's 'then' causes the target's 'when'. The explanation should revolve around the word 'cause' or a conjugation of it>,
+            "causation_score": <Score between 1-10 indicating the strength of the connection>
         }},
         ...
     ]
 }}
 
-Examples:
+For each causation candidate, you should evaluate two potential propositions: one in which the test guideline is treated as the "source" and the candidate as the "target," and another in which the roles are reversed
 
-Example 1: ###
+The following are examples of expected outputs for a given input:
+###
+Example 1:
 {{
-    "source": {{"when": "The user asks about the weather", "then": "provide the current weather update"}},
-    "target": {{"when": "providing the weather update", "then": "mention the best time to go for a walk"}},
-    "source_then": "provide the current weather update",
-    "target_when": "providing the weather update",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": false,
-    "rationale": "Mentioning the best time to go for a walk follows logically from providing a weather update.",
-    "implication_score": 10
-}}
-###
-
-Example 2: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for directions", "then": "provide step-by-step directions"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for directions",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for directions is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 3: ###
-{{
-    "source": {{"when": "The user asks for a book recommendation", "then": "suggest a book"}},
-    "target": {{"when": "suggesting a book", "then": "mention its availability in the local library"}},
-    "source_then": "suggest a book",
-    "target_when": "suggesting a book",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The source's 'then' directly makes the target's 'when' apply",
-    "implication_score": 10
-}}
-###
-
-Example 4: ###
-{{
-    "source": {{"when": "The user asks about nearby restaurants", "then": "provide a list of popular restaurants"}},
-    "target": {{"when": "listing restaurants", "then": "consider highlighting the one with the best reviews"}},
-    "source_then": "provide a list of popular restaurants",
-    "target_when": "listing restaurants",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": true,
-    "rationale": "The source's 'then' is a specific case of the target's 'when'",
-    "implication_score": 9
-}}
-###
-
-Example 5: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks about the weather", "then": "provide the current weather update"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks about the weather",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking about the weather is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 6: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for a book recommendation", "then": "suggest a popular book"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for a book recommendation",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for a book recommendation is not implied by the agent's greeting the user",
-    "implication_score": 1
-}}
-###
-
-Example 7: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user mentions being tired", "then": "suggest taking a break"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user mentions being tired",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's mentioning being tired is not implied by the agent's greeting the user",
-    "implication_score": 1
-}}
-###
-
-Example 8: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user mentions being new to the area", "then": "offer a local guide"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user mentions being new to the area",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's mentioning being new to the area is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 9: ###
-{{
-    "source": {{"when": "The user greets you", "then": "Greet them back with 'Hello'"}},
-    "target": {{"when": "The user asks for tech support", "then": "provide the tech support contact"}},
-    "source_then": "Greet them back with 'Hello'",
-    "target_when": "The user asks for tech support",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "The user's asking for tech support is not implied by the agent's greeting the user",
-    "implication_score": 2
-}}
-###
-
-Example 10:###
-{{
-    "source": {{"when": "The user inquires about office hours", "then": "tell them the office hours"}},
-    "target": {{"when": "mentioning office hours", "then": "suggest the best time to visit for quicker service"}},
-    "source_then": "tell them the office hours",
-    "target_when": "mentioning office hours",
-    "is_target_when_implied_by_source_then": true,
-    "is_target_then_suggestive_or_optional": false,
-    "rationale": "If you tell the user about office hours, then the guideline for what to do when mentioning office hours should also apply",
-    "implication_score": 9
-}}
-###
-
-Example 11: ###
-{{
-    "source": {{
-        "when": "The user asks if Google is a search engine",
-        "then": "First double check with Wikipedia, but then answer positively. Explain to them why."
-    }},
-    "target": {{
-        "when": "The user asks you to explain more",
-        "then": "Consult Wikipedia with the query 'information about Google'"
-    }},
-    "source_then": "First double check with Wikipedia, but then answer positively. Explain to them why."
-    "target_when": "The user asks you to explain more",
-    "is_target_when_implied_by_source_then": false,
-    "rationale": "While the user might then ask for more information, thus triggering the target's 'when', this is not certain in advance.",
-    "implication_score": 3
-}}
-###
-
-The following is a terminology of the business.
-Please be tolerant of possible typos by the user with regards to these terms,
-and let the user know if/when you assume they meant a term by their typo: ###
-{terms_string}
-###
-
 Input:
 
+Test guideline: ###
+{{"id": 0, "when": "providing the weather update", "then": "try to estimate whether it's likely to rain"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "the user asked about the weather", "then": "provide the current weather update"}}
+{{"id": 2, "when": "discussing whether an umbrella is needed", "then": "refer the user to our electronic store"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "try to estimate whether it's likely to rain",
+            "target_when": "the user asked about the weather",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "provide the current weather update",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's mentioning the likelihood of rain does not cause the user ask about the weather retrospectively",
+            "causation_score": 3
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "provide the current weather update",
+            "target_when": "providing the weather update",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "try to estimate whether it's likely to rain",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's providing a current weather update necessarily causes a weather update to be provided",
+            "causation_score": 10
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 2,
+            "source_then": "try to estimate whether it's likely to rain",
+            "target_when": "discussing whether an umbrella is needed",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "refer the user to our electronic store",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's mentioning the chances for rain does not retrospectively make the discussion about umbrellas",
+            "causation_score": 3
+        }},
+        {{
+            "source_id": 2,
+            "target_id": 0,
+            "source_then": "refer the user to our electronic store",
+            "target_when": "providing the weather update",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "try to estimate whether it's likely to rain",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's referring to the electronic store does not cause a weather update to be provided",
+            "causation_score": 1
+        }}
+    ]
+}}
+
+
+Example 2
+Input:
+Test guideline: ###
+{{"id": 0, "when": "The user asks for a book recommendation", "then": "suggest a book"}}
+###
+Causation candidates:
+###
+{{"id": 1, "when": "suggesting a book", "then": "mention its availability in the local library"}}
+{{"id": 2, "when": "recommending books", "then": "consider highlighting the ones with the best reviews"}}
+{{"id": 3, "when": "the user greets you", "then": "greet them back with 'hello'"}}
+{{"id": 4, "when": "suggesting products", "then": "check if the product is available in our store, and only offer it if it is"}}
+
+Expected Output:
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "suggest a book",
+            "target_when": "suggesting a book",
+            "is_target_when_caused_by_source_then": true,
+            "rationale": "the agent's suggusting a book causes the suggestion of a book",
+            "causation_score": 10
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "mention its availability in the local library",
+            "target_when": "The user asks for a book recommendation",
+            "is_target_when_caused_by_source_then": false,
+            "rationale": "the agent's mentioning library availability does not retrospectively make the user ask for book recommendations",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 2,
+            "source_then": "suggest a book",
+            "target_when": "recommending books",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "consider highlighting the ones with the best reviews",
+            "is_target_then_suggestive_or_optional": true,
+            "rationale": "the agent's applying of 'suggest a book' causes the recommendation of books to occur. The target's then begins with 'consider', making it suggestive.",
+            "causation_score": 9
+        }},
+        {{
+            "source_id": 2,
+            "target_id": 0,
+            "source_then": "consider highlighting the ones with the best reviews",
+            "target_when": "The user asks for a book recommendation",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": true,
+            "target_then": "suggest a book",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's highlighting reviews does not cause the user to retrospectively ask for anything",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 3,
+            "source_then": "suggest a book",
+            "target_when": "the user greets you",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "greet them back with 'hello'",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's suggesting a book does not cause the user to greet the agent retrospectively",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 3,
+            "target_id": 0,
+            "source_then": "greet them back with 'hello'",
+            "target_when": "The user asks for a book recommendation",
+            "is_target_when_caused_by_source_then": false,
+            "rationale": "the agent's greeting the user does not cause them to ask for a book recommendation retrospectively",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 4,
+            "source_then": "suggest a book",
+            "target_when": "suggesting products",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "check if the product is available in our store, and only offer it if it is'",
+            "is_target_then_suggestive_or_optional": true,
+            "rationale": "the agent's suggesting a book, necessarily causes the suggestion of a product. The suggestion is optional, making the connection suggestive.",
+            "causation_score": 9
+        }},
+        {{
+            "source_id": 4,
+            "target_id": 0,
+            "source_then": "check if the product is available in our store, and only offer it if it is'",
+            "target_when": "The user asks for a book recommendation",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": true,
+            "target_then": "suggest a book",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's checking product availability does not cause the user to ask for book recommendations retrospectively",
+            "causation_score": 2
+        }}
+    ]
+}}
+```
+
+###
+Example 3
+Input:
+Test guideline: ###
+{{"id": 0, "when": "a new topping is suggested", "then": "announce that the suggestion will be forwarded to management for consideration"}}
+###
+Causation candidates: ###
+{{"id": 1, "when": "discussing opening hours", "then": "mention that the store closes early on Sundays"}}
+{{"id": 2, "when": "the user asks for a topping we do not offer", "then": "suggest to add the topping to the menu in the future"}}
+{{"id": 3, "when": "forwarding messages to management", "then": "try to forward the message to management via email"}}
+
+Expected Output:
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "announce that the suggestion will be forwarded to management for consideration",
+            "target_when": "discussing opening hours",
+            "is_target_when_caused_by_source_then": false,
+            "rationale": "the agent's forwarding something to management has nothing to do with opening hours",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "mention that the store closes early on Sundays",
+            "target_when": "a new topping is suggested",
+            "is_target_when_caused_by_source_then": false,
+            "rationale": "the agent's store hours discussion does not cause any new topping suggestion to occur",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 2,
+            "source_then": "announce that the suggestion will be forwarded to management for consideration",
+            "target_when": "the user asks for a topping we do not offer",
+            "is_target_when_caused_by_source_then": false,
+            "rationale": "the agent's announcing something does not cause the user to have retrospectively asked about anything regarding toppings",
+            "causation_score": 2
+        }},
+        {{
+            "source_id": 2,
+            "target_id": 0,
+            "source_then": "suggest to add the topping to the menu in the future",
+            "target_when": "a new topping is suggested",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "announce that the suggestion will be forwarded to management for consideration",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's suggesting to add the topping to the menu is causing a new topping is being suggested",
+            "causation_score": 9
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 3,
+            "source_then": "announce that the suggestion will be forwarded to management for consideration",
+            "target_when": "forwarding messages to management",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "try to forward the message to management via email",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's' announcement from the source's 'then' should cause a message to be forwarded to management",
+            "causation_score": 8
+        }},
+        {{
+            "source_id": 3,
+            "target_id": 0,
+            "source_then": "try to forward the message to management via email",
+            "target_when": "a new topping is suggested",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "announce that the suggestion will be forwarded to management for consideration",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "the agent's emailing a message is not necessarily a new topping suggestion",
+            "causation_score": 2
+        }}
+    ]
+}}
+
+###
+Example 4:
+Input:
+
+Test guideline: ###
+{{"id": 0, "when": "the user requests a refund", "then": "ask the user for the date of their purchase"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "the user mentions a past purchase", "then": "ask for the order number"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "ask the user for the date of their purchase",
+            "target_when": "the user mentions a past purchase",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "ask for the order number",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "actions taken by the agent cannot ever cause the user to do anything",
+            "causation_score": 3
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "ask for the order number",
+            "target_when": "the user requests a refund",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "ask the user for the date of their purchase",
+            "is_target_then_suggestive_or_optional": false,
+
+            "rationale": "actions taken by the agent cannot ever cause the user to do anything",
+            "causation_score": 3
+        }}
+    ]
+}}
+```
+###
+Example 5:
+{{
+Input:
+
+Test guideline: ###
+{{"id": 0, "when": "mentioning electronic products", "then": "check if the product is available, and inform the user about its price if it is"}}
+###
+
+Causation candidates: ###
+{{"id": 1, "when": "the user complains about their television", "then": "consider suggesting buying a new TV"}}
+{{"id": 2, "when": "discussing product prices", "then": "inform the user about our black friday deals"}}
+###
+
+Expected Output:
+
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_then": "check if the product is available, and inform the user about its price if it is",
+            "target_when": "the user complains about their television",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": true,
+            "target_then": "consider suggesting buying a new TV",
+            "is_target_then_suggestive_or_optional": true,
+            "rationale": "actions taken by the agent cannot ever cause the user to do anything",
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_then": "consider suggesting buying a new TV",
+            "target_when": "mentioning electronic products",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": true,
+            "target_then": "check if the product is available, and inform the user about its price if it is",
+            "is_target_then_suggestive_or_optional": true,
+            "rationale": "suggesting to buy a new TV causes the mentioning of a TV, which is an electronic product",
+            "causation_score": 9
+        }},
+        {{
+            "source_id": 0,
+            "target_id": 2,
+            "source_then": "check if the product is available, and inform the user about its price if it is",
+            "target_when": "discussing product prices",
+            "is_target_when_caused_by_source_then": true,
+            "is_source_then_suggestive_or_optional": true,
+            "target_then": "inform the user about our black friday deals",
+            "is_target_then_suggestive_or_optional": false,
+            "rationale": "informing the user about a price causes the discussion to be about product prices",
+            "causation_score": 9
+        }},
+        {{
+            "source_id": 2,
+            "target_id": 0,
+            "source_then": "inform the user about our black friday deals",
+            "target_when": "mentioning electronic products",
+            "is_target_when_caused_by_source_then": false,
+            "is_source_then_suggestive_or_optional": false,
+            "target_then": "check if the product is available, and inform the user about its price if it is",
+            "is_target_then_suggestive_or_optional": true,
+            "rationale": "informing about black friday deals does not necessarily cause the mentioning of an electronic product",
+            "causation_score": 2
+        }}
+    ]
+}}
+```
+"""  # noqa
+        )
+        # Find and add terminology to prompt
+        causation_candidates = "\n\t".join(
+            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            for id, g in comparison_set.items()
+        )
+        test_guideline = f"{{id: 0, when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
+        terms = await self._terminology_store.find_relevant_terms(
+            agent.id,
+            query=test_guideline + causation_candidates,
+        )
+        builder.add_terminology(terms)
+
+        builder.add_section(
+            f"""
+The guidelines you should analyze for connections are:
 Test guideline: ###
 {test_guideline}
 ###
 
-Implication candidates: ###
-{implication_candidates}
-###
-
-
-"""  # noqa
+Causation candidates: ###
+{causation_candidates}
+###"""
+        )
+        return builder.build()
 
     async def _generate_propositions(
         self,
@@ -338,12 +563,13 @@ Implication candidates: ###
         guideline_to_test: GuidelineContent,
         guidelines_to_compare: Sequence[GuidelineContent],
     ) -> list[GuidelineConnectionProposition]:
+        guidelines_dict = {i: g for i, g in enumerate(guidelines_to_compare, start=1)}
+        guidelines_dict[0] = guideline_to_test
         prompt = await self._format_connection_propositions(
             agent,
             guideline_to_test,
-            guidelines_to_compare,
+            {k: v for k, v in guidelines_dict.items() if k != 0},
         )
-
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
@@ -361,17 +587,20 @@ Connection Propositions Found:
 
         relevant_propositions = [
             GuidelineConnectionProposition(
-                source=GuidelineContent(predicate=p.source["when"], action=p.source["then"]),
-                target=GuidelineContent(predicate=p.target["when"], action=p.target["then"]),
+                source=guidelines_dict[p.source_id],
+                target=guidelines_dict[p.target_id],
                 kind={
                     False: ConnectionKind.ENTAILS,
                     True: ConnectionKind.SUGGESTS,
-                }[p.is_target_then_suggestive_or_optional],
-                score=int(p.implication_score),
+                }[
+                    p.is_source_then_suggestive_or_optional
+                    or p.is_target_then_suggestive_or_optional
+                ],
+                score=int(p.causation_score),
                 rationale=p.rationale,
             )
             for p in response.content.propositions
-            if p.implication_score >= 7
+            if p.causation_score >= 7
         ]
 
         return relevant_propositions

@@ -31,13 +31,23 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
         response = await self._client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model=self.model_name,
+            response_format={"type": "json_object"},
             **together_api_arguments,
         )
 
         raw_content = response.choices[0].message.content or "{}"
 
         try:
-            json_content = jsonfinder.only_json(raw_content)[2]
+            if json_start := max(0, raw_content.find("```json")):
+                json_start = json_start + 7
+
+            json_end = raw_content[json_start:].find("```")
+
+            if json_end == -1:
+                json_end = len(raw_content[json_start:])
+
+            json_content = raw_content[json_start : json_start + json_end]
+            json_object = jsonfinder.only_json(json_content)[2]
         except Exception:
             self._logger.error(
                 f"Failed to extract JSON returned by {self.model_name}:\n{raw_content}"
@@ -45,8 +55,8 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
             raise
 
         try:
-            content = self.schema.model_validate(json_content)
-            return SchematicGenerationResult(content=content)
+            model_content = self.schema.model_validate(json_object)
+            return SchematicGenerationResult(content=model_content)
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
@@ -58,6 +68,14 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            logger=logger,
+        )
+
+
+class Llama3_1_70B(TogetherAISchematicGenerator[T]):
+    def __init__(self, logger: Logger) -> None:
+        super().__init__(
+            model_name="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             logger=logger,
         )
 
