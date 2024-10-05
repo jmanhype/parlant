@@ -4,7 +4,9 @@
 import asyncio
 from dataclasses import dataclass
 import os
-from typing import Any, Optional
+import sys
+import time
+from typing import Any, Iterable, Literal, Optional, TypedDict, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -14,14 +16,67 @@ import rich
 from rich.text import Text
 from tabulate import tabulate
 from textwrap import wrap
+from tqdm import tqdm
+
+
+class CoherenceCheckFailure(Exception):
+    def __init__(self, contradictions: list[dict[str, Any]]) -> None:
+        self.contradictions = contradictions
+
+
+class AgentDTO(TypedDict):
+    id: str
+    name: str
+    description: Optional[str]
+
+
+class SessionDTO(TypedDict):
+    id: str
+    end_user_id: str
+    title: Optional[str]
+
+
+class EventDTO(TypedDict):
+    id: str
+    source: Literal["client", "server"]
+    kind: str
+    offset: int
+    correlation_id: str
+    data: Any
+
+
+class TermDTO(TypedDict):
+    id: str
+    name: str
+    description: str
+    synonyms: Optional[list[str]]
+
+
+class GuidelineDTO(TypedDict):
+    id: str
+    predicate: str
+    action: str
+
+
+class GuidelineConnectionDTO(TypedDict):
+    id: str
+    source: GuidelineDTO
+    target: GuidelineDTO
+    kind: Literal["entails", "suggests"]
+    indirect: bool
+
+
+class GuidelineWithConnectionsDTO(TypedDict):
+    guideline: GuidelineDTO
+    connections: list[GuidelineConnectionDTO]
 
 
 class Actions:
     @staticmethod
-    def list_agents(ctx: click.Context) -> list[dict[str, Any]]:
+    def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
         response.raise_for_status()
-        return response.json()["agents"]  # type: ignore
+        return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
     def create_session(
@@ -29,9 +84,9 @@ class Actions:
         agent_id: str,
         end_user_id: str,
         title: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> SessionDTO:
         response = requests.post(
-            urljoin(ctx.obj.server_address, "sessions"),
+            urljoin(ctx.obj.server_address, "/sessions"),
             json={
                 "agent_id": agent_id,
                 "end_user_id": end_user_id,
@@ -41,58 +96,234 @@ class Actions:
 
         response.raise_for_status()
 
-        return response.json()  # type: ignore
+        return cast(SessionDTO, response.json()["session"])  # type: ignore
 
     @staticmethod
-    def list_events(ctx: click.Context, session_id: str) -> dict[str, Any]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
+    def list_events(ctx: click.Context, session_id: str) -> list[EventDTO]:
+        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
-        return response.json()["events"]  # type: ignore
+        return cast(list[EventDTO], response.json()["events"])  # type: ignore
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> dict[str, Any]:
+    def create_event(ctx: click.Context, session_id: str, message: str) -> EventDTO:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
         )
 
         response.raise_for_status()
 
-        return response.json()  # type: ignore
+        return cast(EventDTO, response.json())  # type: ignore
 
     @staticmethod
-    def add_term(
-        ctx: click.Context, agent_id: str, name: str, description: str, synonyms: Optional[str]
-    ) -> dict[str, Any]:
+    def create_term(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: Optional[str],
+    ) -> TermDTO:
         response = requests.post(
-            urljoin(ctx.obj.server_address, "terminology"),
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"),
             json={
-                "agent_id": agent_id,
                 "name": name,
                 "description": description,
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
+
         response.raise_for_status()
-        return response.json()  # type: ignore
+
+        return cast(TermDTO, response.json())  # type: ignore
 
     @staticmethod
-    def delete_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
+    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
         response = requests.delete(
-            urljoin(ctx.obj.server_address, f"terminology/{agent_id}/{name}")
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
         response.raise_for_status()
-        return response.json()  # type: ignore
 
     @staticmethod
-    def list_terms(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"terminology/{agent_id}"))
+    def list_terms(ctx: click.Context, agent_id: str) -> list[TermDTO]:
+        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
         response.raise_for_status()
-        print(f"DOrZO: {response.json()}")
-        return response.json()  # type: ignore
+        return cast(list[TermDTO], response.json()["terms"])  # type: ignore
+
+    @staticmethod
+    def create_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> GuidelineWithConnectionsDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
+            json={
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "predicate": predicate,
+                        "action": action,
+                    }
+                ],
+                "coherence_check": check,
+                "connection_proposition": index,
+            },
+        )
+        response.raise_for_status()
+        evaluation_id = response.json()["evaluation_id"]
+
+        with tqdm(
+            total=100,
+            desc="Evaluating guideline impact",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
+        ) as progress_bar:
+            while True:
+                time.sleep(0.5)
+                response = requests.get(
+                    urljoin(ctx.obj.server_address, f"/agents/index/evaluations/{evaluation_id}")
+                )
+                response.raise_for_status()
+                evaluation = response.json()
+
+                if evaluation["status"] in ["pending", "running"]:
+                    progress_bar.n = int(evaluation["progress"])
+                    progress_bar.refresh()
+
+                    continue
+
+                if evaluation["status"] == "completed":
+                    invoice = evaluation["invoices"][0]
+                    if invoice["approved"]:
+                        progress_bar.n = 100
+                        progress_bar.refresh()
+
+                        guideline_response = requests.post(
+                            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/"),
+                            json={
+                                "invoices": [invoice],
+                            },
+                        )
+                        guideline_response.raise_for_status()
+
+                        return cast(
+                            GuidelineWithConnectionsDTO,
+                            guideline_response.json()["items"][0],
+                        )
+
+                    else:
+                        raise CoherenceCheckFailure(
+                            contradictions=invoice["data"]["coherence_checks"]
+                        )
+
+                elif evaluation["status"] == "failed":
+                    raise ValueError(evaluation["error"])
+
+    @staticmethod
+    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+        response = requests.delete(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+        )
+        response.raise_for_status()
+
+    @staticmethod
+    def get_guideline(
+        ctx: click.Context, agent_id: str, guideline_id: str
+    ) -> GuidelineWithConnectionsDTO:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+        )
+        response.raise_for_status()
+        return cast(GuidelineWithConnectionsDTO, response.json())  # type: ignore
+
+    @staticmethod
+    def list_guidelines(ctx: click.Context, agent_id: str) -> list[GuidelineDTO]:
+        response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+        response.raise_for_status()
+        return cast(list[GuidelineDTO], response.json()["guidelines"])  # type: ignore
+
+    @staticmethod
+    def create_connection(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+        kind: str,
+    ) -> GuidelineWithConnectionsDTO:
+        response = requests.patch(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"),
+            json={
+                "added_connections": [
+                    {
+                        "source": source_guideline_id,
+                        "target": target_guideline_id,
+                        "kind": kind,
+                    }
+                ],
+            },
+        )
+        response.raise_for_status()
+        return cast(GuidelineWithConnectionsDTO, response.json())  # type: ignore
+
+    @staticmethod
+    def remove_entailment(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> str:
+        guideline = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}")
+        )
+
+        connections: list[GuidelineConnectionDTO] = guideline.json()["connections"]
+
+        if connection := next(
+            (
+                c
+                for c in connections
+                if target_guideline_id in [c["source"]["id"], c["target"]["id"]]
+            ),
+            None,
+        ):
+            response = requests.patch(
+                urljoin(
+                    ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"
+                ),
+                json={
+                    "removed_connections": [target_guideline_id],
+                },
+            )
+            response.raise_for_status()
+            return connection["id"]
+
+        raise ValueError(
+            f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
+        )
 
 
 class Interface:
+    @staticmethod
+    def _write_success(message: str) -> None:
+        rich.print(Text(message, style="bold green"))
+
+    @staticmethod
+    def _write_error(message: str) -> None:
+        rich.print(Text(message, style="bold red"), file=sys.stderr)
+
+    @staticmethod
+    def _print_table(data: Iterable[Any], **kwargs: Any) -> None:
+        rich.print(
+            tabulate(
+                data,
+                headers="keys",
+                tablefmt="rounded_grid",
+                **kwargs,
+            )
+        )
+
     @staticmethod
     def list_agents(ctx: click.Context) -> None:
         agents = Actions.list_agents(ctx)
@@ -101,7 +332,7 @@ class Interface:
             rich.print("No data available")
             return
 
-        rich.print(tabulate(agents, headers="keys"))
+        Interface._print_table(agents)
 
     @staticmethod
     def get_default_agent(ctx: click.Context) -> str:
@@ -117,21 +348,19 @@ class Interface:
             rich.print("No data available")
             return
 
-        print(
-            tabulate(
-                [
-                    {
-                        "id": e["id"],  # type: ignore
-                        "source": e["source"],  # type: ignore
-                        "offset": e["offset"],  # type: ignore
-                        "creation_utc": e["creation_utc"],  # type: ignore
-                        "message": e["data"]["message"],  # type: ignore
-                    }
-                    for e in events
-                ],
-                headers="keys",
-                maxcolwidths=[None, None, None, None, 40],
-            )
+        Interface._print_table(
+            [
+                {
+                    "id": e["id"],  # type: ignore
+                    "creation_utc": e["creation_utc"],  # type: ignore
+                    "correlation_id": e["correlation_id"],
+                    "source": e["source"],  # type: ignore
+                    "offset": e["offset"],  # type: ignore
+                    "message": e["data"]["message"],  # type: ignore
+                }
+                for e in events
+            ],
+            maxcolwidths=[None, None, None, None, None, 40],
         )
 
     @staticmethod
@@ -142,17 +371,19 @@ class Interface:
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
-        print(tabulate([session], headers="keys"))
+        Interface._write_success(f"Added session (id={session['id']})")
+        Interface._print_table([session])
 
     @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> None:
         event = Actions.create_event(ctx, session_id, message)
-        rich.print(tabulate([event], headers="keys"))
+        Interface._write_success(f"Added event (id={event['id']})")
+        Interface._print_table([event])
 
     @staticmethod
     def chat(ctx: click.Context, session_id: str) -> None:
         def print_message(message_event: dict[str, Any]) -> None:
-            role = {"client": "User", "server": "Agent"}[m["source"]]
+            role = {"client": "User", "server": "Agent"}[message_event["source"]]
             prefix = Text(
                 f"{role}:".ljust(6), style="bold " + {"User": "blue", "Agent": "green"}[role]
             )
@@ -165,7 +396,7 @@ class Interface:
 
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
-        response = requests.get(urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"))
+        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
@@ -183,13 +414,18 @@ class Interface:
         for m in message_events:
             print_message(m)
 
+        last_known_offset = message_events[-1]["offset"] if message_events else -1
+
         while True:
             try:
                 rich.print(Text("User:  ", style="bold blue"), end="")
                 new_message = input()
 
                 response = requests.post(
-                    urljoin(ctx.obj.server_address, f"sessions/{session_id}/events"),
+                    urljoin(
+                        ctx.obj.server_address,
+                        f"/sessions/{session_id}/events",
+                    ),
                     json={"content": new_message},
                 )
                 response.raise_for_status()
@@ -201,7 +437,7 @@ class Interface:
                     response = requests.get(
                         urljoin(
                             ctx.obj.server_address,
-                            f"sessions/{session_id}/events"
+                            f"/sessions/{session_id}/events"
                             f"?min_offset={1 + last_known_offset}&wait=true",
                         )
                     )
@@ -211,13 +447,13 @@ class Interface:
                         continue
 
                     events = response.json()["events"]
+                    if not events:
+                        continue
+
                     last_known_offset = events[-1]["offset"]
 
-                    # TODO: This current implementation does not support async polling mode,
-                    #       but rather relies on request/response, which isn't comprehensive.
-                    if message_events := [
-                        e for e in response.json()["events"] if e["kind"] == "message"
-                    ]:
+                    message_events = [e for e in events if e["kind"] == "message"]
+                    if message_events:
                         for m in message_events:
                             print_message(m)
                         break
@@ -234,23 +470,198 @@ class Interface:
         description: str,
         synonyms: Optional[str],
     ) -> None:
-        term = Actions.add_term(ctx, agent_id, name, description, synonyms)
-        rich.print(tabulate([term], headers="keys"))
+        term = Actions.create_term(ctx, agent_id, name, description, synonyms)
+        Interface._write_success(f"Added term (id={term['id']})")
+        Interface._print_table([term])
 
     @staticmethod
-    def delete_term(ctx: click.Context, agent_id: str, name: str) -> None:
-        result = Actions.delete_term(ctx, agent_id, name)
-        rich.print(result)
+    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
+        Actions.remove_term(ctx, agent_id, name)
+        Interface._write_success(f"Removed term '{name}'")
 
     @staticmethod
     def list_terms(ctx: click.Context, agent_id: str) -> None:
         terms = Actions.list_terms(ctx, agent_id)
 
         if not terms:
-            rich.print("No terms found")
+            rich.print("No data available")
             return
 
-        rich.print(tabulate(terms, headers="keys"))
+        Interface._print_table(terms)
+
+    @staticmethod
+    def _render_guidelines(guidelines: list[GuidelineDTO]) -> None:
+        guideline_items = [
+            {
+                "ID": guideline["id"],
+                "Predicate": guideline["predicate"],
+                "Action": guideline["action"],
+            }
+            for guideline in guidelines
+        ]
+
+        Interface._print_table(guideline_items, maxcolwidths=[None, 40, 40])
+
+    @staticmethod
+    def _render_guideline_entailments(
+        guideline: GuidelineDTO,
+        connections: list[GuidelineConnectionDTO],
+        include_indirect: bool,
+    ) -> None:
+        def to_direct_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
+            peer = conn["target"] if conn["source"]["id"] == guideline["id"] else conn["source"]
+
+            return {
+                "Connection ID": conn["id"],
+                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
+                "Role": "Source" if conn["source"]["id"] == guideline["id"] else "Target",
+                "Peer Role": "Target" if conn["source"]["id"] == guideline["id"] else "Source",
+                "Peer ID": peer["id"],
+                "Peer Predicate": peer["predicate"],
+                "Peer Action": peer["action"],
+            }
+
+        def to_indirect_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
+            return {
+                "Connection ID": conn["id"],
+                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
+                "Source ID": conn["source"]["id"],
+                "Source Predicate": conn["source"]["predicate"],
+                "Source Action": conn["source"]["action"],
+                "Target ID": conn["target"]["id"],
+                "Target Predicate": conn["target"]["predicate"],
+                "Target Action": conn["target"]["action"],
+            }
+
+        if connections:
+            direct = [c for c in connections if not c["indirect"]]
+            indirect = [c for c in connections if c["indirect"]]
+
+            if direct:
+                rich.print("\nDirect Entailments:")
+                Interface._print_table(map(lambda c: to_direct_entailment_item(c), direct))
+
+            if indirect and include_indirect:
+                rich.print("\nIndirect Entailments:")
+                Interface._print_table(map(lambda c: to_indirect_entailment_item(c), indirect))
+
+    @staticmethod
+    def create_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        try:
+            guideline_with_connections = Actions.create_guideline(
+                ctx,
+                agent_id,
+                predicate,
+                action,
+                check,
+                index,
+            )
+
+            guideline = guideline_with_connections["guideline"]
+            Interface._write_success(f"Added guideline (id={guideline['id']})")
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                include_indirect=False,
+            )
+
+        except CoherenceCheckFailure as e:
+            contradictions = e.contradictions
+            Interface._write_error("Failed to add guideline")
+            rich.print("Detected incoherence with other guidelines:")
+            Interface._print_table(
+                contradictions,
+                maxcolwidths=[20, 20, 20, 40, 10],
+            )
+            rich.print(
+                Text("\nTo force-add despite these errors, re-run with --no-check", style="bold")
+            )
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+        try:
+            Actions.remove_guideline(ctx, agent_id, guideline_id)
+            Interface._write_success(f"Removed guideline (id={guideline_id})")
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+        try:
+            guideline_with_connections = Actions.get_guideline(ctx, agent_id, guideline_id)
+
+            Interface._render_guidelines([guideline_with_connections["guideline"]])
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                include_indirect=True,
+            )
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def list_guidelines(ctx: click.Context, agent_id: str) -> None:
+        try:
+            guidelines = Actions.list_guidelines(ctx, agent_id)
+
+            if not guidelines:
+                rich.print("No data available")
+                return
+
+            Interface._render_guidelines(guidelines)
+
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def create_entailment(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+        kind: str,
+    ) -> None:
+        try:
+            connection = Actions.create_connection(
+                ctx,
+                agent_id,
+                source_guideline_id,
+                target_guideline_id,
+                kind,
+            )
+            Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
+            Interface._print_table([connection])
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def remove_entailment(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> None:
+        try:
+            connection_id = Actions.remove_entailment(
+                ctx,
+                agent_id,
+                source_guideline_id,
+                target_guideline_id,
+            )
+            Interface._write_success(f"Removed entailment (id={connection_id})")
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
 
 async def main() -> None:
@@ -293,17 +704,15 @@ async def main() -> None:
     def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
-
-        Interface.chat(ctx, session["session_id"])
+        Interface.chat(ctx, session["id"])
 
     @cli.group(help="Manage sessions")
     def session() -> None:
         pass
 
     @session.command("new", help="Create a new session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
@@ -313,67 +722,233 @@ async def main() -> None:
         end_user_id: str,
         title: Optional[str],
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("view", help="View session content")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.pass_context
-    def session_view(ctx: click.Context, session_id: str) -> None:
+    def session_view(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.view_session(ctx, session_id)
 
     @session.command("post", help="Post user message to session")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
-    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
+    def session_post(ctx: click.Context, agent_id: str, session_id: str, message: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.create_event(ctx, session_id, message)
 
     @session.command("chat", help="Enter chat mode within the session")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.argument("session_id")
     @click.pass_context
-    def session_chat(ctx: click.Context, session_id: str) -> None:
+    def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
         Interface.chat(ctx, session_id)
 
-    @cli.group(help="Manage Terminology")
-    def terminology() -> None:
+    @cli.group(help="Manage an agent's glossary")
+    def glossary() -> None:
         pass
 
-    @terminology.command("add", help="Add a new term to the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
-    @click.option("-n", "--name", type=str, help="Name of the term", required=True)
-    @click.option("-d", "--description", type=str, help="Description of the term", required=True)
+    @glossary.command("add", help="Add a new term to the glossary")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("name", type=str)
+    @click.argument("description", type=str)
     @click.option(
         "-s", "--synonyms", type=str, help="Comma-separated list of synonyms", required=False
     )
     @click.pass_context
-    def terminology_add(
+    def glossary_add(
         ctx: click.Context,
         agent_id: str,
         name: str,
         description: str,
         synonyms: Optional[str],
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
         Interface.create_term(ctx, agent_id, name, description, synonyms)
 
-    @terminology.command("delete", help="Delete a term from the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
-    @click.option("-n", "--name", type=str, help="Name of the term to delete", required=True)
+    @glossary.command("remove", help="Remove a term from the glossary")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("name", type=str)
     @click.pass_context
-    def terminology_delete(
+    def glossary_remove(
         ctx: click.Context,
         agent_id: str,
         name: str,
     ) -> None:
-        Interface.delete_term(ctx, agent_id, name)
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+        Interface.remove_term(ctx, agent_id, name)
 
-    @terminology.command("list", help="List all terms in the terminology")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=True)
+    @glossary.command("list", help="List all terms in the glossary")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.pass_context
-    def terminology_list(
+    def glossary_list(
         ctx: click.Context,
         agent_id: str,
     ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
         Interface.list_terms(ctx, agent_id)
+
+    @cli.group(help="Manage an agent's guidelines")
+    def guideline() -> None:
+        pass
+
+    @guideline.command("add", help="Add a new guideline")
+    @click.option(
+        "--check/--no-check",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Check for contradictions between existing guidelines",
+    )
+    @click.option(
+        "--index/--no-index",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Determine if guideline connections should be indexed",
+    )
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.pass_context
+    def guideline_add(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.create_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            predicate=predicate,
+            action=action,
+            check=check,
+            index=index,
+        )
+
+    @guideline.command("remove", help="Remove a guideline")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("guideline_id", type=str)
+    @click.pass_context
+    def guideline_remove(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.remove_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+        )
+
+    @guideline.command("view", help="View a guideline and its connections")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("guideline_id", type=str)
+    @click.pass_context
+    def guideline_view(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.view_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+        )
+
+    @guideline.command("list", help="List all guidelines for an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.pass_context
+    def guideline_list(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.list_guidelines(
+            ctx=ctx,
+            agent_id=agent_id,
+        )
+
+    @guideline.command("entail", help="Create an entailment between two guidelines")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "--suggestive/-s",
+        is_flag=True,
+        show_default=True,
+        default=False,
+        help="Make the entailment suggestive rather than definite",
+    )
+    @click.argument("source_guideline_id", type=str)
+    @click.argument("target_guideline_id", type=str)
+    @click.pass_context
+    def guideline_entail(
+        ctx: click.Context,
+        agent_id: str,
+        suggestive: bool,
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.create_entailment(
+            ctx=ctx,
+            agent_id=agent_id,
+            source_guideline_id=source_guideline_id,
+            target_guideline_id=target_guideline_id,
+            kind="suggests" if suggestive else "entails",
+        )
+
+    @guideline.command("disentail", help="Remove an entailment between two guidelines")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("source_guideline_id", type=str)
+    @click.argument("target_guideline_id", type=str)
+    @click.pass_context
+    def guideline_disentail(
+        ctx: click.Context,
+        agent_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.remove_entailment(
+            ctx=ctx,
+            agent_id=agent_id,
+            source_guideline_id=source_guideline_id,
+            target_guideline_id=target_guideline_id,
+        )
 
     cli()
 

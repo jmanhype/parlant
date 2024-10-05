@@ -7,14 +7,13 @@ from emcie.server.core.terminology import TermUpdateParams, TerminologyStore, Te
 
 
 class CreateTermRequest(DefaultBaseModel):
-    agent_id: AgentId
     name: str
     description: str
     synonyms: Optional[list[str]] = []
 
 
 class TermDTO(DefaultBaseModel):
-    term_id: TermId
+    id: TermId
     name: str
     description: str
     synonyms: Optional[list[str]] = []
@@ -31,7 +30,7 @@ class PatchTermRequest(DefaultBaseModel):
 
 
 class DeleteTermResponse(DefaultBaseModel):
-    deleted_term_id: TermId
+    term_id: TermId
 
 
 def create_router(
@@ -39,41 +38,41 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/", status_code=status.HTTP_201_CREATED)
-    async def create_term(request: CreateTermRequest) -> TermDTO:
+    @router.post("/{agent_id}/terms/", status_code=status.HTTP_201_CREATED)
+    async def create_term(agent_id: AgentId, request: CreateTermRequest) -> TermDTO:
         term = await terminology_store.create_term(
-            term_set=request.agent_id,
+            term_set=agent_id,
             name=request.name,
             description=request.description,
             synonyms=request.synonyms,
         )
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
         )
 
-    @router.get("/{agent_id}/{name}")
-    async def read_term(agent_id: str, name: str) -> TermDTO:
+    @router.get("/{agent_id}/terms/{name}")
+    async def read_term(agent_id: AgentId, name: str) -> TermDTO:
         term = await terminology_store.read_term(term_set=agent_id, name=name)
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
         )
 
-    @router.get("/{agent_id}/")
+    @router.get("/{agent_id}/terms/")
     async def list_terms(agent_id: str) -> ListTermsResponse:
         terms = await terminology_store.list_terms(term_set=agent_id)
 
         return ListTermsResponse(
             terms=[
                 TermDTO(
-                    term_id=term.id,
+                    id=term.id,
                     name=term.name,
                     description=term.description,
                     synonyms=term.synonyms,
@@ -82,8 +81,8 @@ def create_router(
             ]
         )
 
-    @router.patch("/agent_id={agent_id}/term_id={term_id}")
-    async def patch_term(agent_id: str, term_id: str, request: PatchTermRequest) -> TermDTO:
+    @router.patch("/{agent_id}/terms/{term_id}")
+    async def patch_term(agent_id: AgentId, term_id: TermId, request: PatchTermRequest) -> TermDTO:
         params: TermUpdateParams = {}
         if request.name:
             params["name"] = request.name
@@ -99,16 +98,15 @@ def create_router(
         )
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
         )
 
-    @router.delete("/{agent_id}/{name}")
+    @router.delete("/{agent_id}/terms/{name}")
     async def delete_term(agent_id: str, name: str) -> DeleteTermResponse:
         deleted_term_id = await terminology_store.delete_term(term_set=agent_id, name=name)
-
-        return DeleteTermResponse(deleted_term_id=deleted_term_id)
+        return DeleteTermResponse(term_id=deleted_term_id)
 
     return router

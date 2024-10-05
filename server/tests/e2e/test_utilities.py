@@ -44,7 +44,7 @@ class ContextOfTest:
     logger: Logger
 
 
-class _Agent(TypedDict, total=False):
+class _Agent(TypedDict):
     id: str
     name: str
     description: str

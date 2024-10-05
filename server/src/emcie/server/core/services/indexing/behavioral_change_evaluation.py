@@ -1,5 +1,5 @@
 import asyncio
-from typing import Iterable, Optional, OrderedDict, Sequence
+from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.evaluations import (
@@ -24,7 +24,7 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from emcie.server.core.logging import Logger
-from emcie.server.core.common import md5_checksum
+from emcie.server.core.common import ProgressReport, md5_checksum
 
 
 class EvaluationError(Exception):
@@ -54,53 +54,87 @@ class GuidelineEvaluator:
         self,
         agent: Agent,
         payloads: Sequence[Payload],
+        coherence_check: bool,
+        connection_proposition: bool,
+        progress_report: ProgressReport,
     ) -> Sequence[InvoiceGuidelineData]:
         guidelines_to_evaluate = [p.content for p in payloads]
 
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
-        coherence_checks = await self._check_payloads_coherence(
-            guidelines_to_evaluate,
-            existing_guidelines,
-        )
+        tasks: list[asyncio.Task[Any]] = []
+        coherence_checks_task: Optional[
+            asyncio.Task[Optional[Iterable[Sequence[CoherenceCheck]]]]
+        ] = None
 
-        if not coherence_checks:
-            connection_propositions = await self._propose_payloads_connections(
-                agent,
-                guidelines_to_evaluate,
-                existing_guidelines,
+        connection_propositions_task: Optional[
+            asyncio.Task[Optional[Iterable[Sequence[ConnectionProposition]]]]
+        ] = None
+
+        if coherence_check:
+            coherence_checks_task = asyncio.create_task(
+                self._check_payloads_coherence(
+                    guidelines_to_evaluate,
+                    existing_guidelines,
+                    progress_report,
+                )
             )
+            tasks.append(coherence_checks_task)
 
-            if connection_propositions:
-                return [
-                    InvoiceGuidelineData(
-                        coherence_checks=[],
-                        connection_propositions=payload_connection_propositions,
-                    )
-                    for payload_connection_propositions in connection_propositions
-                ]
-
-            else:
-                return [
-                    InvoiceGuidelineData(
-                        coherence_checks=[],
-                        connection_propositions=None,
-                    )
-                    for _ in range(len(payloads))
-                ]
-
-        return [
-            InvoiceGuidelineData(
-                coherence_checks=payload_coherence_checks,
-                connection_propositions=None,
+        if connection_proposition:
+            connection_propositions_task = asyncio.create_task(
+                self._propose_payloads_connections(
+                    agent,
+                    guidelines_to_evaluate,
+                    existing_guidelines,
+                    progress_report,
+                )
             )
-            for payload_coherence_checks in coherence_checks
-        ]
+            tasks.append(connection_propositions_task)
+
+        if tasks:
+            await asyncio.gather(*tasks)
+
+        coherence_checks: Optional[Iterable[Sequence[CoherenceCheck]]] = []
+        if coherence_checks_task:
+            coherence_checks = coherence_checks_task.result()
+
+        connection_propositions: Optional[Iterable[Sequence[ConnectionProposition]]] = None
+        if connection_propositions_task:
+            connection_propositions = connection_propositions_task.result()
+
+        if coherence_checks:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=payload_coherence_checks,
+                    connection_propositions=None,
+                )
+                for payload_coherence_checks in coherence_checks
+            ]
+
+        elif connection_propositions:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=[],
+                    connection_propositions=payload_connection_propositions,
+                )
+                for payload_connection_propositions in connection_propositions
+            ]
+
+        else:
+            return [
+                InvoiceGuidelineData(
+                    coherence_checks=[],
+                    connection_propositions=None,
+                )
+                for _ in payloads
+            ]
 
     async def _check_payloads_coherence(
         self,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
+        progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[CoherenceCheck]]]:
         coherence_checks = await self._coherence_checker.evaluate_coherence(
             guidelines_to_evaluate=guidelines_to_evaluate,
@@ -108,6 +142,7 @@ class GuidelineEvaluator:
                 GuidelineContent(predicate=g.content.predicate, action=g.content.action)
                 for g in existing_guidelines
             ],
+            progress_report=progress_report,
         )
 
         contradictions: dict[str, ContradictionTest] = {}
@@ -165,6 +200,7 @@ class GuidelineEvaluator:
         agent: Agent,
         proposed_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
+        progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[ConnectionProposition]]]:
         connection_propositions = [
             p
@@ -175,6 +211,7 @@ class GuidelineEvaluator:
                     GuidelineContent(predicate=g.content.predicate, action=g.content.action)
                     for g in existing_guidelines
                 ],
+                progress_report=progress_report,
             )
             if p.score >= 6
         ]
@@ -272,10 +309,19 @@ class BehavioralChangeEvaluator:
         self,
         agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
+        coherence_check: bool,
+        connection_proposition: bool,
     ) -> EvaluationId:
         await self.validate_payloads(agent, payload_descriptors)
 
-        evaluation = await self._evaluation_store.create_evaluation(agent.id, payload_descriptors)
+        evaluation = await self._evaluation_store.create_evaluation(
+            agent.id,
+            payload_descriptors,
+            extra={
+                "coherence_check": coherence_check,
+                "connection_proposition": connection_proposition,
+            },
+        )
 
         asyncio.create_task(self.run_evaluation(evaluation))
 
@@ -286,6 +332,14 @@ class BehavioralChangeEvaluator:
         evaluation: Evaluation,
     ) -> None:
         self._logger.info(f"Starting evaluation task '{evaluation.id}'")
+
+        async def _update_progress(percentage: float) -> None:
+            await self._evaluation_store.update_evaluation(
+                evaluation_id=evaluation.id,
+                params={"progress": percentage},
+            )
+
+        progress_report = ProgressReport(_update_progress)
 
         try:
             if running_task := next(
@@ -312,6 +366,13 @@ class BehavioralChangeEvaluator:
                     for invoice in evaluation.invoices
                     if invoice.kind == PayloadKind.GUIDELINE
                 ],
+                coherence_check=cast(bool, evaluation.extra.get("coherence_check"))
+                if evaluation.extra
+                else True,
+                connection_proposition=cast(bool, evaluation.extra.get("connection_proposition"))
+                if evaluation.extra
+                else True,
+                progress_report=progress_report,
             )
 
             invoices: list[Invoice] = []

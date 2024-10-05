@@ -1,15 +1,18 @@
 from typing import Awaitable, Callable
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from lagom import Container
 
 from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.api import terminology
+from emcie.server.api import guidelines
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.evaluations import EvaluationStore
+from emcie.server.core.guideline_connections import GuidelineConnectionStore
+from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionListener, SessionStore
 from emcie.server.core.terminology import TerminologyStore
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
@@ -28,6 +31,8 @@ async def create_app(container: Container) -> FastAPI:
     evaluation_store = container[EvaluationStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     terminology_store = container[TerminologyStore]
+    guideline_store = container[GuidelineStore]
+    guideline_connection_store = container[GuidelineConnectionStore]
     mc = container[MC]
 
     app = FastAPI()
@@ -54,11 +59,37 @@ async def create_app(container: Container) -> FastAPI:
             detail=str(exc),
         )
 
+    agent_router = APIRouter()
+
+    agent_router.include_router(
+        agents.create_router(
+            agent_store=agent_store,
+        )
+    )
+
+    agent_router.include_router(
+        guidelines.create_router(
+            mc=mc,
+            guideline_store=guideline_store,
+            guideline_connection_store=guideline_connection_store,
+        )
+    )
+    agent_router.include_router(
+        index.create_router(
+            evaluation_service=evaluation_service,
+            evaluation_store=evaluation_store,
+            agent_store=agent_store,
+        )
+    )
+    agent_router.include_router(
+        terminology.create_router(
+            terminology_store=terminology_store,
+        )
+    )
+
     app.include_router(
         prefix="/agents",
-        router=agents.create_router(
-            agent_store=agent_store,
-        ),
+        router=agent_router,
     )
 
     app.include_router(
@@ -67,22 +98,6 @@ async def create_app(container: Container) -> FastAPI:
             mc=mc,
             session_store=session_store,
             session_listener=session_listener,
-        ),
-    )
-
-    app.include_router(
-        prefix="/index",
-        router=index.create_router(
-            evaluation_service=evaluation_service,
-            evaluation_store=evaluation_store,
-            agent_store=agent_store,
-        ),
-    )
-
-    app.include_router(
-        prefix="/terminology",
-        router=terminology.create_router(
-            terminology_store=terminology_store,
         ),
     )
 

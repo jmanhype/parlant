@@ -1,12 +1,19 @@
 from datetime import datetime
-from typing import Literal, Optional, Sequence, TypeAlias, TypedDict, Union, cast
+from typing import Optional, Sequence, cast
 from fastapi import APIRouter, HTTPException, status
 
+from emcie.server.api.common import (
+    CoherenceCheckDTO,
+    ConnectionPropositionDTO,
+    EvaluationStatusDTO,
+    InvoiceDataDTO,
+    GuidelineInvoiceDataDTO,
+    PayloadDTO,
+    connection_kind_to_dto,
+)
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.evaluations import (
-    CoherenceCheckKind,
-    ConnectionPropositionKind,
     EvaluationId,
     EvaluationStatus,
     EvaluationStore,
@@ -16,14 +23,11 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-
-EvaluationStatusDTO = Literal["pending", "running", "completed", "failed"]
 
 
 def _evaluation_status_to_dto(
@@ -38,31 +42,6 @@ def _evaluation_status_to_dto(
             EvaluationStatus.FAILED: "failed",
         }[status],
     )
-
-
-ConnectionKindDTO = Literal["entails", "suggests"]
-
-
-def _connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
-    return cast(
-        ConnectionKindDTO,
-        {
-            ConnectionKind.ENTAILS: "entails",
-            ConnectionKind.SUGGESTS: "suggests",
-        }[kind],
-    )
-
-
-PayloadKindDTO = Literal["guideline"]
-
-
-class GuidelinePayloadDTO(TypedDict):
-    kind: PayloadKindDTO
-    predicate: str
-    action: str
-
-
-PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]
 
 
 def _payload_from_dto(dto: PayloadDTO) -> Payload:
@@ -86,36 +65,44 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     }[descriptor.kind]
 
 
-class CoherenceCheckDTO(DefaultBaseModel):
-    kind: CoherenceCheckKind
-    first: GuidelineContent
-    second: GuidelineContent
-    issue: str
-    severity: int
-
-
-class ConnectionPropositionDTO(DefaultBaseModel):
-    check_kind: ConnectionPropositionKind
-    source: GuidelineContent
-    target: GuidelineContent
-    connection_kind: ConnectionKindDTO
-
-
-class InvoiceGuidelineDataDTO(DefaultBaseModel):
-    coherence_checks: list[CoherenceCheckDTO]
-    connection_propositions: Optional[list[ConnectionPropositionDTO]]
-
-
-InvoiceDataDTO: TypeAlias = Union[InvoiceGuidelineDataDTO]
-
-
-class CreateEvaluationRequest(DefaultBaseModel):
-    agent_id: AgentId
-    payloads: Sequence[PayloadDTO]
-
-
-class CreateEvaluationResponse(DefaultBaseModel):
-    evaluation_id: EvaluationId
+def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
+    return {
+        PayloadKind.GUIDELINE: GuidelineInvoiceDataDTO(
+            coherence_checks=[
+                CoherenceCheckDTO(
+                    kind=c.kind,
+                    first=GuidelineContent(
+                        predicate=c.first.predicate,
+                        action=c.first.action,
+                    ),
+                    second=GuidelineContent(
+                        predicate=c.second.predicate,
+                        action=c.second.action,
+                    ),
+                    issue=c.issue,
+                    severity=c.severity,
+                )
+                for c in invoice_data.coherence_checks
+            ],
+            connection_propositions=[
+                ConnectionPropositionDTO(
+                    check_kind=c.check_kind,
+                    source=GuidelineContent(
+                        predicate=c.source.predicate,
+                        action=c.source.action,
+                    ),
+                    target=GuidelineContent(
+                        predicate=c.target.predicate,
+                        action=c.target.action,
+                    ),
+                    connection_kind=connection_kind_to_dto(c.connection_kind),
+                )
+                for c in invoice_data.connection_propositions
+            ]
+            if invoice_data.connection_propositions
+            else None,
+        )
+    }[kind]
 
 
 class InvoiceDTO(DefaultBaseModel):
@@ -126,37 +113,20 @@ class InvoiceDTO(DefaultBaseModel):
     error: Optional[str]
 
 
-def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
-    return {
-        PayloadKind.GUIDELINE: InvoiceGuidelineDataDTO(
-            coherence_checks=[
-                CoherenceCheckDTO(
-                    kind=c.kind,
-                    first=c.first,
-                    second=c.second,
-                    issue=c.issue,
-                    severity=c.severity,
-                )
-                for c in invoice_data.coherence_checks
-            ],
-            connection_propositions=[
-                ConnectionPropositionDTO(
-                    check_kind=c.check_kind,
-                    source=c.source,
-                    target=c.target,
-                    connection_kind=_connection_kind_to_dto(c.connection_kind),
-                )
-                for c in invoice_data.connection_propositions
-            ]
-            if invoice_data.connection_propositions
-            else None,
-        )
-    }[kind]
+class CreateEvaluationRequest(DefaultBaseModel):
+    payloads: Sequence[PayloadDTO]
+    coherence_check: bool = True
+    connection_proposition: bool = True
+
+
+class CreateEvaluationResponse(DefaultBaseModel):
+    evaluation_id: EvaluationId
 
 
 class ReadEvaluationResponse(DefaultBaseModel):
     evaluation_id: EvaluationId
     status: EvaluationStatusDTO
+    progress: float
     creation_utc: datetime
     error: Optional[str]
     invoices: list[InvoiceDTO]
@@ -169,16 +139,20 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/evaluations", status_code=status.HTTP_201_CREATED)
-    async def create_evaluation(request: CreateEvaluationRequest) -> CreateEvaluationResponse:
+    @router.post("/{agent_id}/index/evaluations/", status_code=status.HTTP_201_CREATED)
+    async def create_evaluation(
+        agent_id: AgentId, request: CreateEvaluationRequest
+    ) -> CreateEvaluationResponse:
         try:
-            agent = await agent_store.read_agent(agent_id=request.agent_id)
+            agent = await agent_store.read_agent(agent_id=agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
                 agent=agent,
                 payload_descriptors=[
                     PayloadDescriptor(PayloadKind.GUIDELINE, p)
                     for p in [_payload_from_dto(p) for p in request.payloads]
                 ],
+                coherence_check=request.coherence_check,
+                connection_proposition=request.connection_proposition,
             )
 
         except EvaluationValidationError as exc:
@@ -189,13 +163,14 @@ def create_router(
 
         return CreateEvaluationResponse(evaluation_id=evaluation_id)
 
-    @router.get("/evaluations/{evaluation_id}")
+    @router.get("/index/evaluations/{evaluation_id}")
     async def get_evaluation(evaluation_id: EvaluationId) -> ReadEvaluationResponse:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
 
         return ReadEvaluationResponse(
             evaluation_id=evaluation.id,
             status=_evaluation_status_to_dto(evaluation.status),
+            progress=evaluation.progress,
             creation_utc=evaluation.creation_utc,
             invoices=[
                 InvoiceDTO(

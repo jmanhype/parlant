@@ -1,9 +1,10 @@
 from __future__ import annotations
 import asyncio
+from collections.abc import Sequence
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Any, Mapping, Optional, Sequence, Type, TypeAlias
+from typing import Any, Iterable, Mapping, Optional, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
@@ -11,6 +12,11 @@ from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
 from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.evaluations import ConnectionProposition, Invoice
+from emcie.server.core.guideline_connections import (
+    GuidelineConnectionStore,
+)
+from emcie.server.core.guidelines import GuidelineId, GuidelineStore
 from emcie.server.core.sessions import (
     Event,
     EventKind,
@@ -33,6 +39,8 @@ class MC:
         self._correlator = container[ContextualCorrelator]
         self._session_store = container[SessionStore]
         self._session_listener = container[SessionListener]
+        self._guideline_store = container[GuidelineStore]
+        self._guideline_connection_store = container[GuidelineConnectionStore]
         self._engine = container[Engine]
         self._event_emitter_factory = container[EventEmitterFactory]
 
@@ -46,7 +54,7 @@ class MC:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
     ) -> bool:
@@ -168,3 +176,80 @@ class MC:
             ),
             event_emitter=event_emitter,
         )
+
+    async def create_guidelines(
+        self,
+        guideline_set: str,
+        invoices: Sequence[Invoice],
+    ) -> Iterable[GuidelineId]:
+        async def _create_connection_with_existing_guideline(
+            source_key: str,
+            target_key: str,
+            content_guidelines: dict[str, GuidelineId],
+            guideline_set: str,
+            proposition: ConnectionProposition,
+        ) -> None:
+            if source_key in content_guidelines:
+                source_guideline_id = content_guidelines[source_key]
+                target_guideline_id = (
+                    await self._guideline_store.search_guideline(
+                        guideline_set=guideline_set,
+                        guideline_content=proposition.target,
+                    )
+                ).id
+            else:
+                source_guideline_id = (
+                    await self._guideline_store.search_guideline(
+                        guideline_set=guideline_set,
+                        guideline_content=proposition.source,
+                    )
+                ).id
+                target_guideline_id = content_guidelines[target_key]
+
+            await self._guideline_connection_store.create_connection(
+                source=source_guideline_id,
+                target=target_guideline_id,
+                kind=proposition.connection_kind,
+            )
+
+        content_guidelines: dict[str, GuidelineId] = {
+            f"{i.payload.content.predicate}_{i.payload.content.action}": (
+                await self._guideline_store.create_guideline(
+                    guideline_set=guideline_set,
+                    predicate=i.payload.content.predicate,
+                    action=i.payload.content.action,
+                )
+            ).id
+            for i in invoices
+        }
+
+        connections: set[ConnectionProposition] = set([])
+
+        for i in invoices:
+            assert i.data
+
+            if not i.data.connection_propositions:
+                continue
+
+            for c in i.data.connection_propositions:
+                source_key = f"{c.source.predicate}_{c.source.action}"
+                target_key = f"{c.target.predicate}_{c.target.action}"
+
+                if c not in connections:
+                    if c.check_kind == "connection_with_another_evaluated_guideline":
+                        await self._guideline_connection_store.create_connection(
+                            source=content_guidelines[source_key],
+                            target=content_guidelines[target_key],
+                            kind=c.connection_kind,
+                        )
+                    else:
+                        await _create_connection_with_existing_guideline(
+                            source_key,
+                            target_key,
+                            content_guidelines,
+                            guideline_set,
+                            c,
+                        )
+                    connections.add(c)
+
+        return content_guidelines.values()

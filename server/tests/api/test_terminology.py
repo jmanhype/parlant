@@ -13,9 +13,8 @@ def test_create_term(
     synonyms = ["rule", "principle"]
 
     response = client.post(
-        "/terminology",
+        f"/agents/{agent_id}/terms/",
         json={
-            "agent_id": agent_id,
             "name": name,
             "description": description,
             "synonyms": synonyms,
@@ -38,9 +37,8 @@ def test_create_term_without_synonyms(
     description = "when and then statements"
 
     response = client.post(
-        "/terminology",
+        f"/agents/{agent_id}/terms/",
         json={
-            "agent_id": agent_id,
             "name": name,
             "description": description,
         },
@@ -63,9 +61,8 @@ def test_read_term(
     synonyms = ["rule", "principle"]
 
     create_response = client.post(
-        "/terminology",
+        f"/agents/{agent_id}/terms/",
         json={
-            "agent_id": agent_id,
             "name": name,
             "description": description,
             "synonyms": synonyms,
@@ -73,7 +70,7 @@ def test_read_term(
     )
     assert create_response.status_code == status.HTTP_201_CREATED
 
-    read_response = client.get(f"/terminology/{agent_id}/{name}")
+    read_response = client.get(f"agents/{agent_id}/terms/{name}")
     assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
@@ -90,16 +87,15 @@ def test_read_term_without_synonyms(
     description = "when and then statements"
 
     create_response = client.post(
-        "/terminology",
+        f"/agents/{agent_id}/terms/",
         json={
-            "agent_id": agent_id,
             "name": name,
             "description": description,
         },
     )
     assert create_response.status_code == status.HTTP_201_CREATED
 
-    read_response = client.get(f"/terminology/{agent_id}/{name}")
+    read_response = client.get(f"/agents/{agent_id}/terms/{name}")
     assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
@@ -119,9 +115,8 @@ def test_list_terms(
 
     for term in terms:
         response = client.post(
-            "/terminology",
+            f"/agents/{agent_id}/terms",
             json={
-                "agent_id": agent_id,
                 "name": term["name"],
                 "description": term["description"],
                 "synonyms": term["synonyms"],
@@ -129,7 +124,7 @@ def test_list_terms(
         )
         assert response.status_code == status.HTTP_201_CREATED
 
-    list_response = client.get(f"terminology/{agent_id}/")
+    list_response = client.get(f"/agents/{agent_id}/terms/")
     assert list_response.status_code == status.HTTP_200_OK
 
     data = list_response.json()
@@ -158,9 +153,8 @@ def test_update_term(
     synonyms = ["rule", "principle"]
 
     create_response = client.post(
-        "/terminology",
+        f"/agents/{agent_id}/terms/",
         json={
-            "agent_id": agent_id,
             "name": name,
             "description": description,
             "synonyms": synonyms,
@@ -172,7 +166,7 @@ def test_update_term(
     updated_synonyms = ["rule", "updated"]
 
     update_response = client.patch(
-        f"/terminology/agent_id={agent_id}/term_id={create_response.json()["term_id"]}",
+        f"/agents/{agent_id}/terms/{create_response.json()["id"]}",
         json={
             "description": updated_description,
             "synonyms": updated_synonyms,
@@ -197,9 +191,8 @@ def test_delete_term(
 
     create_response = (
         client.post(
-            "/terminology",
+            f"/agents/{agent_id}/terms",
             json={
-                "agent_id": agent_id,
                 "name": name,
                 "description": description,
                 "synonyms": synonyms,
@@ -209,8 +202,8 @@ def test_delete_term(
         .json()
     )
 
-    delete_response = client.delete(f"/terminology/{agent_id}/{name}").raise_for_status().json()
-    assert delete_response["deleted_term_id"] == create_response["term_id"]
+    delete_response = client.delete(f"/agents/{agent_id}/terms/{name}").raise_for_status().json()
+    assert delete_response["term_id"] == create_response["id"]
 
-    read_response = client.get(f"/terminology/{agent_id}/{name}")
+    read_response = client.get(f"/agents/{agent_id}/terms/{name}")
     assert read_response.status_code == status.HTTP_404_NOT_FOUND

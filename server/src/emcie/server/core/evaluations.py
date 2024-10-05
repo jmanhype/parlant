@@ -1,9 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from pydantic.dataclasses import dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import (
+    Mapping,
     NamedTuple,
     NewType,
     Optional,
@@ -15,7 +16,7 @@ from typing import (
 from typing_extensions import Literal
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.persistence.document_database import (
@@ -107,12 +108,15 @@ class Evaluation:
     status: EvaluationStatus
     error: Optional[str]
     invoices: Sequence[Invoice]
+    progress: float
+    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationUpdateParams(TypedDict, total=False):
     status: EvaluationStatus
     error: Optional[str]
     invoices: Sequence[Invoice]
+    progress: float
 
 
 class EvaluationStore(ABC):
@@ -122,6 +126,7 @@ class EvaluationStore(ABC):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
+        extra: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Evaluation: ...
 
     @abstractmethod
@@ -196,6 +201,8 @@ class _EvaluationDocument(TypedDict, total=False):
     status: str
     error: Optional[str]
     invoices: Sequence[_InvoiceDocument]
+    progress: float
+    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationDocumentStore(EvaluationStore):
@@ -280,6 +287,8 @@ class EvaluationDocumentStore(EvaluationStore):
             status=evaluation.status.name,
             error=evaluation.error,
             invoices=[self._serialize_invoice(inv) for inv in evaluation.invoices],
+            progress=evaluation.progress,
+            extra=evaluation.extra,
         )
 
     def _deserialize_evaluation(self, evaluation_document: _EvaluationDocument) -> Evaluation:
@@ -380,6 +389,8 @@ class EvaluationDocumentStore(EvaluationStore):
             status=status,
             error=evaluation_document.get("error"),
             invoices=invoices,
+            progress=evaluation_document["progress"],
+            extra=evaluation_document.get("extra"),
         )
 
     async def create_evaluation(
@@ -387,6 +398,7 @@ class EvaluationDocumentStore(EvaluationStore):
         agent_id: AgentId,
         payload_descriptors: Sequence[PayloadDescriptor],
         creation_utc: Optional[datetime] = None,
+        extra: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Evaluation:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
@@ -412,6 +424,8 @@ class EvaluationDocumentStore(EvaluationStore):
             creation_utc=creation_utc,
             error=None,
             invoices=invoices,
+            progress=0.0,
+            extra=extra,
         )
 
         await self._evaluation_collection.insert_one(
@@ -433,7 +447,10 @@ class EvaluationDocumentStore(EvaluationStore):
 
         if "status" in params:
             update_params["status"] = params["status"].name
-            update_params["error"] = params["error"]
+            update_params["error"] = params["error"] if "error" in params else None
+
+        if "progress" in params:
+            update_params["progress"] = params["progress"]
 
         result = await self._evaluation_collection.update_one(
             filters={"id": {"$eq": evaluation.id}},

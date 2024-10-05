@@ -2,11 +2,11 @@ import asyncio
 from dataclasses import dataclass
 from itertools import chain
 import json
-from typing import Sequence
+from typing import Optional, Sequence
 from more_itertools import chunked
 
 from emcie.server.core.agents import Agent
-from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.common import DefaultBaseModel, ProgressReport
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
@@ -58,6 +58,7 @@ class GuidelineConnectionProposer:
         agent: Agent,
         introduced_guidelines: Sequence[GuidelineContent],
         existing_guidelines: Sequence[GuidelineContent] = [],
+        progress_report: Optional[ProgressReport] = None,
     ) -> Sequence[GuidelineConnectionProposition]:
         if not introduced_guidelines:
             return []
@@ -73,12 +74,17 @@ class GuidelineConnectionProposer:
                 )
             ]
 
-            guideline_batches = chunked(filtered_existing_guidelines, self._batch_size)
+            guideline_batches = list(chunked(filtered_existing_guidelines, self._batch_size))
+
+            if progress_report:
+                await progress_report.stretch(len(guideline_batches))
 
             connection_proposition_tasks.extend(
                 [
                     asyncio.create_task(
-                        self._generate_propositions(agent, introduced_guideline, batch)
+                        self._generate_propositions(
+                            agent, introduced_guideline, batch, progress_report
+                        )
                     )
                     for batch in guideline_batches
                 ]
@@ -562,6 +568,7 @@ Causation candidates: ###
         agent: Agent,
         guideline_to_test: GuidelineContent,
         guidelines_to_compare: Sequence[GuidelineContent],
+        progress_report: Optional[ProgressReport],
     ) -> list[GuidelineConnectionProposition]:
         guidelines_dict = {i: g for i, g in enumerate(guidelines_to_compare, start=1)}
         guidelines_dict[0] = guideline_to_test
@@ -602,5 +609,8 @@ Connection Propositions Found:
             for p in response.content.propositions
             if p.causation_score >= 7
         ]
+
+        if progress_report:
+            await progress_report.increment()
 
         return relevant_propositions

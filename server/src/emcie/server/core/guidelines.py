@@ -58,6 +58,13 @@ class GuidelineStore(ABC):
         guideline_id: GuidelineId,
     ) -> Guideline: ...
 
+    @abstractmethod
+    async def search_guideline(
+        self,
+        guideline_set: str,
+        guideline_content: GuidelineContent,
+    ) -> Guideline: ...
+
 
 class _GuidelineDocument(TypedDict, total=False):
     id: ObjectId
@@ -172,3 +179,24 @@ class GuidelineDocumentStore(GuidelineStore):
             )
 
         return self._deserialize(result.deleted_document)
+
+    async def search_guideline(
+        self,
+        guideline_set: str,
+        guideline_content: GuidelineContent,
+    ) -> Guideline:
+        guideline_document = await self._collection.find_one(
+            filters={
+                "guideline_set": {"$eq": guideline_set},
+                "predicate": {"$eq": guideline_content.predicate},
+                "action": {"$eq": guideline_content.action},
+            }
+        )
+
+        if not guideline_document:
+            raise ItemNotFoundError(
+                item_id=UniqueId(f"{guideline_content.predicate}{guideline_content.action}"),
+                message=f"with guideline_set '{guideline_set}'",
+            )
+
+        return self._deserialize(guideline_document)
