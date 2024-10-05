@@ -404,21 +404,16 @@ def create_router(
         agent_id: AgentId,
         guideline_id: GuidelineId,
     ) -> DeleteGuidelineResponse:
-        # TODO: There should be a better transactional/rollback model here
-
-        connections = await get_guideline_connections(
-            guideline_set=agent_id,
-            guideline_id=guideline_id,
-            include_indirect=False,
-        )
-
-        for connection in connections:
-            await guideline_connection_store.delete_connection(connection[0].id)
-
         await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
         )
+
+        for c in chain(
+            await guideline_connection_store.list_connections(indirect=False, source=guideline_id),
+            await guideline_connection_store.list_connections(indirect=False, target=guideline_id),
+        ):
+            await guideline_connection_store.delete_connection(c.id)
 
         return DeleteGuidelineResponse(guideline_id=guideline_id)
 
