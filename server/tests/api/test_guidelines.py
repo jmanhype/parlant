@@ -318,13 +318,15 @@ async def test_that_a_connection_can_be_added_to_a_guideline(
         client.patch(
             f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
             json={
-                "added_connections": [
-                    {
-                        "source": guidelines[0].id,
-                        "target": guidelines[1].id,
-                        "kind": "entails",
-                    }
-                ],
+                "connections": {
+                    "add": [
+                        {
+                            "source": guidelines[0].id,
+                            "target": guidelines[1].id,
+                            "kind": "entails",
+                        }
+                    ],
+                },
             },
         )
         .raise_for_status()
@@ -367,7 +369,9 @@ async def test_that_a_direct_target_connection_can_be_removed_from_a_guideline(
         client.patch(
             f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
             json={
-                "removed_connections": [guidelines[1].id],
+                "connections": {
+                    "remove": [guidelines[1].id],
+                },
             },
         )
         .raise_for_status()
@@ -402,7 +406,9 @@ async def test_that_an_indirect_connection_cannot_be_removed_from_a_guideline(
     response = client.patch(
         f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
         json={
-            "removed_connections": [guidelines[2].id],
+            "connections": {
+                "remove": [guidelines[2].id],
+            },
         },
     )
 

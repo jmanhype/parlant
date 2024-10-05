@@ -82,9 +82,13 @@ class GuidelineConnectionAdditionDTO(DefaultBaseModel):
     kind: ConnectionKindDTO
 
 
+class GuidelineConnectionsPatchDTO(DefaultBaseModel):
+    add: Optional[Sequence[GuidelineConnectionAdditionDTO]] = None
+    remove: Optional[Sequence[GuidelineId]] = None
+
+
 class PatchGuidelineRequest(DefaultBaseModel):
-    added_connections: Optional[Sequence[GuidelineConnectionAdditionDTO]] = None
-    removed_connections: Optional[Sequence[GuidelineId]] = None
+    connections: Optional[GuidelineConnectionsPatchDTO] = None
 
 
 class GuidelineConnection(DefaultBaseModel):
@@ -320,8 +324,8 @@ def create_router(
             guideline_id=guideline_id,
         )
 
-        if request.added_connections:
-            for req in request.added_connections:
+        if request.connections and request.connections.add:
+            for req in request.connections.add:
                 if req.source == req.target:
                     raise HTTPException(
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -355,8 +359,8 @@ def create_router(
             include_indirect=False,
         )
 
-        if request.removed_connections:
-            for id in request.removed_connections:
+        if request.connections and request.connections.remove:
+            for id in request.connections.remove:
                 if found_connection := next(
                     (c for c, _ in connections if id in [c.source.id, c.target.id]), None
                 ):
