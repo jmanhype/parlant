@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
@@ -5,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from emcie.server.api.common import (
     ConnectionKindDTO,
     GuidelinePayloadDTO,
-    InvoiceGuidelineDataDTO,
+    GuidelineInvoiceDataDTO,
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
@@ -20,14 +21,15 @@ from emcie.server.core.evaluations import (
     PayloadKind,
 )
 from emcie.server.core.guideline_connections import (
+    ConnectionKind,
     GuidelineConnectionId,
     GuidelineConnectionStore,
 )
-from emcie.server.core.guidelines import GuidelineContent, GuidelineId, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
 from emcie.server.core.mc import MC
 
 
-class GuidelineContentDTO(DefaultBaseModel):
+class GuidelineDTO(DefaultBaseModel):
     id: GuidelineId
     predicate: str
     action: str
@@ -35,41 +37,31 @@ class GuidelineContentDTO(DefaultBaseModel):
 
 class GuidelineConnectionDTO(DefaultBaseModel):
     id: GuidelineConnectionId
-    source: GuidelineContentDTO
-    target: GuidelineContentDTO
+    source: GuidelineDTO
+    target: GuidelineDTO
     kind: ConnectionKindDTO
     indirect: bool
 
 
 class GuidelineWithConnectionsDTO(DefaultBaseModel):
-    id: GuidelineId
-    guideline_set: str
-    predicate: str
-    action: str
+    guideline: GuidelineDTO
     connections: Sequence[GuidelineConnectionDTO]
 
 
-class GuidelineWithoutConnectionsDTO(DefaultBaseModel):
-    guideline_set: str
-    id: GuidelineId
-    predicate: str
-    action: str
-
-
-class InvoiceGuidelineDTO(DefaultBaseModel):
+class GuidelineInvoiceDTO(DefaultBaseModel):
     payload: GuidelinePayloadDTO
     checksum: str
     approved: bool
-    data: InvoiceGuidelineDataDTO
+    data: GuidelineInvoiceDataDTO
     error: Optional[str]
 
 
 class CreateGuidelineRequest(DefaultBaseModel):
-    invoices: Sequence[InvoiceGuidelineDTO]
+    invoices: Sequence[GuidelineInvoiceDTO]
 
 
 class CreateGuidelinesResponse(DefaultBaseModel):
-    guidelines: list[GuidelineWithConnectionsDTO]
+    items: list[GuidelineWithConnectionsDTO]
 
 
 class DeleteGuidelineRequest(DefaultBaseModel):
@@ -77,25 +69,32 @@ class DeleteGuidelineRequest(DefaultBaseModel):
 
 
 class DeleteGuidelineResponse(DefaultBaseModel):
-    deleted_guideline_id: GuidelineId
+    guideline_id: GuidelineId
 
 
 class ListGuidelinesResponse(DefaultBaseModel):
-    guidelines: list[GuidelineWithoutConnectionsDTO]
+    guidelines: list[GuidelineDTO]
 
 
-class ConnectionDTO(DefaultBaseModel):
+class GuidelineConnectionAdditionDTO(DefaultBaseModel):
     source: GuidelineId
     target: GuidelineId
     kind: ConnectionKindDTO
 
 
 class PatchGuidelineRequest(DefaultBaseModel):
-    added_connections: Optional[Sequence[ConnectionDTO]] = None
+    added_connections: Optional[Sequence[GuidelineConnectionAdditionDTO]] = None
     removed_connections: Optional[Sequence[GuidelineId]] = None
 
 
-def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
+class GuidelineConnection(DefaultBaseModel):
+    id: GuidelineConnectionId
+    source: Guideline
+    target: Guideline
+    kind: ConnectionKind
+
+
+def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
     if not dto.approved:
         raise ValueError("Unapproved invoice.")
 
@@ -124,7 +123,7 @@ def _invoice_dto_to_invoice(dto: InvoiceGuidelineDTO) -> Invoice:
     )
 
 
-def _invoice_data_dto_to_invoice_data(dto: InvoiceGuidelineDataDTO) -> InvoiceGuidelineData:
+def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGuidelineData:
     try:
         coherence_checks = [
             CoherenceCheck(
@@ -171,6 +170,34 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
+    async def get_guideline_connections(
+        guideline_set: str,
+        guideline_id: GuidelineId,
+        include_indirect: bool = True,
+    ) -> Sequence[tuple[GuidelineConnection, bool]]:
+        connections = [
+            GuidelineConnection(
+                id=c.id,
+                source=await guideline_store.read_guideline(
+                    guideline_set=guideline_set, guideline_id=c.source
+                ),
+                target=await guideline_store.read_guideline(
+                    guideline_set=guideline_set, guideline_id=c.target
+                ),
+                kind=c.kind,
+            )
+            for c in chain(
+                await guideline_connection_store.list_connections(
+                    indirect=include_indirect, source=guideline_id
+                ),
+                await guideline_connection_store.list_connections(
+                    indirect=include_indirect, target=guideline_id
+                ),
+            )
+        ]
+
+        return [(c, guideline_id not in [c.source.id, c.target.id]) for c in connections]
+
     @router.post("/{agent_id}/guidelines/", status_code=status.HTTP_201_CREATED)
     async def create_guidelines(
         agent_id: AgentId,
@@ -195,21 +222,22 @@ def create_router(
         ]
 
         return CreateGuidelinesResponse(
-            guidelines=[
+            items=[
                 GuidelineWithConnectionsDTO(
-                    guideline_set=agent_id,
-                    id=guideline.id,
-                    predicate=guideline.content.predicate,
-                    action=guideline.content.action,
+                    guideline=GuidelineDTO(
+                        id=guideline.id,
+                        predicate=guideline.content.predicate,
+                        action=guideline.content.action,
+                    ),
                     connections=[
                         GuidelineConnectionDTO(
                             id=connection.id,
-                            source=GuidelineContentDTO(
+                            source=GuidelineDTO(
                                 id=connection.source.id,
                                 predicate=connection.source.content.predicate,
                                 action=connection.source.content.action,
                             ),
-                            target=GuidelineContentDTO(
+                            target=GuidelineDTO(
                                 id=connection.target.id,
                                 predicate=connection.target.content.predicate,
                                 action=connection.target.content.action,
@@ -217,10 +245,10 @@ def create_router(
                             kind=connection_kind_to_dto(connection.kind),
                             indirect=indirect,
                         )
-                        for connection, indirect in await mc.get_guideline_connections(
+                        for connection, indirect in await get_guideline_connections(
                             guideline_set=agent_id,
                             guideline_id=guideline.id,
-                            indirect=True,
+                            include_indirect=True,
                         )
                     ],
                 )
@@ -236,26 +264,27 @@ def create_router(
             guideline_set=agent_id, guideline_id=guideline_id
         )
 
-        connections = await mc.get_guideline_connections(
+        connections = await get_guideline_connections(
             guideline_set=agent_id,
             guideline_id=guideline_id,
-            indirect=True,
+            include_indirect=True,
         )
 
         return GuidelineWithConnectionsDTO(
-            guideline_set=agent_id,
-            id=guideline.id,
-            predicate=guideline.content.predicate,
-            action=guideline.content.action,
+            guideline=GuidelineDTO(
+                id=guideline.id,
+                predicate=guideline.content.predicate,
+                action=guideline.content.action,
+            ),
             connections=[
                 GuidelineConnectionDTO(
                     id=connection.id,
-                    source=GuidelineContentDTO(
+                    source=GuidelineDTO(
                         id=connection.source.id,
                         predicate=connection.source.content.predicate,
                         action=connection.source.content.action,
                     ),
-                    target=GuidelineContentDTO(
+                    target=GuidelineDTO(
                         id=connection.target.id,
                         predicate=connection.target.content.predicate,
                         action=connection.target.content.action,
@@ -273,8 +302,7 @@ def create_router(
 
         return ListGuidelinesResponse(
             guidelines=[
-                GuidelineWithoutConnectionsDTO(
-                    guideline_set=agent_id,
+                GuidelineDTO(
                     id=guideline.id,
                     predicate=guideline.content.predicate,
                     action=guideline.content.action,
@@ -294,20 +322,25 @@ def create_router(
 
         if request.added_connections:
             for req in request.added_connections:
-                if req.source == guideline.id:
-                    await guideline_store.read_guideline(
+                if req.source == req.target:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="A guideline cannot be connected to itself",
+                    )
+                elif req.source == guideline.id:
+                    _ = await guideline_store.read_guideline(
                         guideline_set=agent_id,
                         guideline_id=req.target,
                     )
                 elif req.target == guideline.id:
-                    await guideline_store.read_guideline(
+                    _ = await guideline_store.read_guideline(
                         guideline_set=agent_id,
                         guideline_id=req.source,
                     )
                 else:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Neither source ID '{req.source}' nor target ID '{req.target}' match the provided guideline ID '{guideline_id}'.",
+                        detail="The connection must specify the guideline at hand as either source or target",
                     )
 
                 await guideline_connection_store.create_connection(
@@ -316,34 +349,39 @@ def create_router(
                     kind=connection_kind_dto_to_connection_kind(req.kind),
                 )
 
-        connections = await mc.get_guideline_connections(agent_id, guideline_id, indirect=False)
+        connections = await get_guideline_connections(
+            agent_id,
+            guideline_id,
+            include_indirect=False,
+        )
 
         if request.removed_connections:
             for id in request.removed_connections:
-                if connection_to_remove := next(
-                    iter([c for c, _ in connections if id in [c.source.id, c.target.id]])
+                if found_connection := next(
+                    (c for c, _ in connections if id in [c.source.id, c.target.id]), None
                 ):
-                    await guideline_connection_store.delete_connection(connection_to_remove.id)
+                    await guideline_connection_store.delete_connection(found_connection.id)
                 else:
                     raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Connection ID '{id}' was not found.",
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Only direct connections may be removed",
                     )
 
         return GuidelineWithConnectionsDTO(
-            guideline_set=agent_id,
-            id=guideline.id,
-            predicate=guideline.content.predicate,
-            action=guideline.content.action,
+            guideline=GuidelineDTO(
+                id=guideline.id,
+                predicate=guideline.content.predicate,
+                action=guideline.content.action,
+            ),
             connections=[
                 GuidelineConnectionDTO(
                     id=connection.id,
-                    source=GuidelineContentDTO(
+                    source=GuidelineDTO(
                         id=connection.source.id,
                         predicate=connection.source.content.predicate,
                         action=connection.source.content.action,
                     ),
-                    target=GuidelineContentDTO(
+                    target=GuidelineDTO(
                         id=connection.target.id,
                         predicate=connection.target.content.predicate,
                         action=connection.target.content.action,
@@ -351,7 +389,7 @@ def create_router(
                     kind=connection_kind_to_dto(connection.kind),
                     indirect=indirect,
                 )
-                for connection, indirect in await mc.get_guideline_connections(
+                for connection, indirect in await get_guideline_connections(
                     agent_id, guideline_id, True
                 )
             ],
@@ -359,13 +397,25 @@ def create_router(
 
     @router.delete("/{agent_id}/guidelines/{guideline_id}")
     async def delete_guideline(
-        agent_id: AgentId, guideline_id: GuidelineId
+        agent_id: AgentId,
+        guideline_id: GuidelineId,
     ) -> DeleteGuidelineResponse:
-        deleted_guideline = await guideline_store.delete_guideline(
+        # TODO: There should be a better transactional/rollback model here
+
+        connections = await get_guideline_connections(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+            include_indirect=False,
+        )
+
+        for connection in connections:
+            await guideline_connection_store.delete_connection(connection[0].id)
+
+        await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
         )
 
-        return DeleteGuidelineResponse(deleted_guideline_id=deleted_guideline.id)
+        return DeleteGuidelineResponse(guideline_id=guideline_id)
 
     return router

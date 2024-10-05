@@ -24,6 +24,18 @@ from emcie.server.core.sessions import (
 from emcie.server.core.mc import MC
 
 
+class ConsumptionOffsetsDTO(DefaultBaseModel):
+    client: int
+
+
+class SessionDTO(DefaultBaseModel):
+    id: SessionId
+    end_user_id: EndUserId
+    creation_utc: datetime
+    title: Optional[str] = None
+    consumption_offsets: ConsumptionOffsetsDTO
+
+
 class CreateSessionRequest(DefaultBaseModel):
     end_user_id: EndUserId
     agent_id: AgentId
@@ -31,9 +43,7 @@ class CreateSessionRequest(DefaultBaseModel):
 
 
 class CreateSessionResponse(DefaultBaseModel):
-    session_id: SessionId
-    creation_utc: datetime
-    title: Optional[str] = None
+    session: SessionDTO
 
 
 class CreateMessageRequest(DefaultBaseModel):
@@ -44,18 +54,6 @@ class CreateMessageRequest(DefaultBaseModel):
 class CreateEventResponse(DefaultBaseModel):
     event_id: EventId
     event_offset: int
-
-
-class ConsumptionOffsetsDTO(DefaultBaseModel):
-    client: int
-
-
-class SessionDTO(DefaultBaseModel):
-    session_id: SessionId
-    end_user_id: EndUserId
-    creation_utc: datetime
-    consumption_offsets: ConsumptionOffsetsDTO
-    title: Optional[str] = None
 
 
 class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
@@ -137,7 +135,15 @@ def create_router(
         )
 
         return CreateSessionResponse(
-            session_id=session.id, title=session.title, creation_utc=session.creation_utc
+            session=SessionDTO(
+                id=session.id,
+                end_user_id=session.end_user_id,
+                creation_utc=session.creation_utc,
+                consumption_offsets=ConsumptionOffsetsDTO(
+                    client=session.consumption_offsets["client"]
+                ),
+                title=session.title,
+            )
         )
 
     @router.get("/{session_id}")
@@ -145,7 +151,7 @@ def create_router(
         session = await session_store.read_session(session_id=session_id)
 
         return SessionDTO(
-            session_id=session.id,
+            id=session.id,
             creation_utc=session.creation_utc,
             title=session.title,
             end_user_id=session.end_user_id,
@@ -161,7 +167,7 @@ def create_router(
         return ListSessionsResponse(
             sessions=[
                 SessionDTO(
-                    session_id=s.id,
+                    id=s.id,
                     creation_utc=s.creation_utc,
                     title=s.title,
                     end_user_id=s.end_user_id,

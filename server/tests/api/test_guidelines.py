@@ -4,7 +4,29 @@ from lagom import Container
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
-from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
+
+
+async def create_and_connect(
+    container: Container,
+    agent_id: AgentId,
+    guideline_contents: list[GuidelineContent],
+) -> list[Guideline]:
+    guidelines = [
+        await container[GuidelineStore].create_guideline(
+            guideline_set=agent_id,
+            predicate=gc.predicate,
+            action=gc.action,
+        )
+        for gc in guideline_contents
+    ]
+
+    for source, target in zip(guidelines, guidelines[1:]):
+        await container[GuidelineConnectionStore].create_connection(
+            source=source.id, target=target.id, kind=ConnectionKind.ENTAILS
+        )
+
+    return guidelines
 
 
 async def test_that_a_guideline_can_be_created(
@@ -32,14 +54,11 @@ async def test_that_a_guideline_can_be_created(
 
     response = client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
     assert response.status_code == status.HTTP_201_CREATED
+    items = response.json()["items"]
 
-    response_data = response.json()
-    assert "guidelines" in response_data
-    assert len(response_data["guidelines"]) == 1
-    guideline = response_data["guidelines"][0]
-    assert guideline["guideline_set"] == agent_id
-    assert guideline["predicate"] == "the user greets you"
-    assert guideline["action"] == "greet them back with 'Hello'"
+    assert len(items) == 1
+    assert items[0]["guideline"]["predicate"] == "the user greets you"
+    assert items[0]["guideline"]["action"] == "greet them back with 'Hello'"
 
 
 async def test_that_a_guideline_can_be_deleted(
@@ -60,12 +79,11 @@ async def test_that_a_guideline_can_be_deleted(
         .raise_for_status()
         .json()
     )
-    assert content["deleted_guideline_id"] == guideline_to_delete.id
+    assert content["guideline_id"] == guideline_to_delete.id
 
 
-async def test_that_unapproved_invoice_getting_rejected(
+async def test_that_an_unapproved_invoice_is_rejected(
     client: TestClient,
-    agent_id: AgentId,
 ) -> None:
     request_data = {
         "invoices": [
@@ -91,7 +109,7 @@ async def test_that_unapproved_invoice_getting_rejected(
     assert response_data["detail"] == "Unapproved invoice."
 
 
-async def test_that_connection_between_two_introduced_guidelines_is_created_once(
+async def test_that_a_connection_between_two_introduced_guidelines_is_created(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -153,7 +171,7 @@ async def test_that_connection_between_two_introduced_guidelines_is_created_once
         },
     ]
 
-    guidelines = (
+    items = (
         client.post(
             f"/agents/{agent_id}/guidelines/",
             json={
@@ -161,30 +179,26 @@ async def test_that_connection_between_two_introduced_guidelines_is_created_once
             },
         )
         .raise_for_status()
-        .json()["guidelines"]
+        .json()["items"]
     )
 
-    guideline_connection_store = container[GuidelineConnectionStore]
-    connections = await guideline_connection_store.list_connections(
+    connections = await container[GuidelineConnectionStore].list_connections(
         indirect=False,
-        source=guidelines[0]["id"],
+        source=items[0]["guideline"]["id"],
     )
-
-    connections = list(connections)
 
     assert len(connections) == 1
-    connection = connections[0]
-
-    assert connection.source == guidelines[0]["id"]
-    assert connection.target == guidelines[1]["id"]
+    assert connections[0].source == items[0]["guideline"]["id"]
+    assert connections[0].target == items[1]["guideline"]["id"]
 
 
-async def test_that_connection_between_existing_guideline_is_created(
+async def test_that_a_connection_to_an_existing_guideline_is_created(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
     guideline_store = container[GuidelineStore]
+
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
         predicate="the user asks about the weather",
@@ -219,7 +233,7 @@ async def test_that_connection_between_existing_guideline_is_created(
         "error": None,
     }
 
-    guideline = (
+    introduced_guideline = (
         client.post(
             f"/agents/{agent_id}/guidelines/",
             json={
@@ -227,22 +241,17 @@ async def test_that_connection_between_existing_guideline_is_created(
             },
         )
         .raise_for_status()
-        .json()["guidelines"][0]
+        .json()["items"][0]["guideline"]
     )
 
-    guideline_connection_store = container[GuidelineConnectionStore]
-    connections = await guideline_connection_store.list_connections(
+    connections = await container[GuidelineConnectionStore].list_connections(
         indirect=False,
         source=existing_guideline.id,
     )
 
-    connections = list(connections)
-
     assert len(connections) == 1
-    connection = connections[0]
-
-    assert connection.source == existing_guideline.id
-    assert connection.target == guideline["id"]
+    assert connections[0].source == existing_guideline.id
+    assert connections[0].target == introduced_guideline["id"]
 
 
 async def test_that_a_guideline_can_be_read_by_id(
@@ -251,23 +260,21 @@ async def test_that_a_guideline_can_be_read_by_id(
     agent_id: AgentId,
 ) -> None:
     guideline_store = container[GuidelineStore]
-    existing_guideline = await guideline_store.create_guideline(
+
+    stored_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
         predicate="the user asks about the weather",
         action="provide the current weather update",
     )
 
-    guideline = (
-        client.get(f"/agents/{agent_id}/guidelines/{existing_guideline.id}")
-        .raise_for_status()
-        .json()
+    item = (
+        client.get(f"/agents/{agent_id}/guidelines/{stored_guideline.id}").raise_for_status().json()
     )
 
-    assert guideline["guideline_set"] == agent_id
-    assert guideline["id"] == existing_guideline.id
-    assert guideline["predicate"] == "the user asks about the weather"
-    assert guideline["action"] == "provide the current weather update"
-    assert len(guideline["connections"]) == 0
+    assert item["guideline"]["id"] == stored_guideline.id
+    assert item["guideline"]["predicate"] == "the user asks about the weather"
+    assert item["guideline"]["action"] == "provide the current weather update"
+    assert len(item["connections"]) == 0
 
 
 async def test_that_guidelines_can_be_listed_for_an_agent(
@@ -275,242 +282,213 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
     container: Container,
     agent_id: AgentId,
 ) -> None:
-    guideline_store = container[GuidelineStore]
-
-    first = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="the user asks about the weather",
-        action="provide the current weather update",
+    stored_guidelines = await create_and_connect(
+        container,
+        agent_id,
+        [
+            GuidelineContent("A", "B"),
+            GuidelineContent("B", "C"),
+        ],
     )
 
-    second = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="the user asks about pizza",
-        action="provide what pizza is made of",
+    response_guidelines = (
+        client.get(f"/agents/{agent_id}/guidelines/").raise_for_status().json()["guidelines"]
     )
 
-    response = client.get(f"/agents/{agent_id}/guidelines/")
-    assert response.status_code == status.HTTP_200_OK
-
-    guidelines = response.json()["guidelines"]
-    assert len(guidelines) == 2
-
-    ids = [g["id"] for g in guidelines]
-
-    assert first.id in ids
-    assert second.id in ids
+    assert len(response_guidelines) == 2
+    assert any(stored_guidelines[0].id == g["id"] for g in response_guidelines)
+    assert any(stored_guidelines[1].id == g["id"] for g in response_guidelines)
 
 
-async def test_that_connections_can_be_added_to_guideline(
+async def test_that_a_connection_can_be_added_to_a_guideline(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
-    guideline_store = container[GuidelineStore]
-    guideline_connection_store = container[GuidelineConnectionStore]
-
-    first = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="the user asks for help",
-        action="provide assistance",
-    )
-
-    second = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="provide assistance",
-        action="ask for clarification if needed",
-    )
-
-    patch_data = {
-        "added_connections": [
-            {
-                "source": first.id,
-                "target": second.id,
-                "kind": "entails",
-            }
+    guidelines = await create_and_connect(
+        container,
+        agent_id,
+        [
+            GuidelineContent("A", "B"),
+            GuidelineContent("B", "C"),
         ],
-    }
-
-    response = client.patch(
-        f"/agents/{agent_id}/guidelines/{first.id}",
-        json=patch_data,
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    response_connections = (
+        client.patch(
+            f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
+            json={
+                "added_connections": [
+                    {
+                        "source": guidelines[0].id,
+                        "target": guidelines[1].id,
+                        "kind": "entails",
+                    }
+                ],
+            },
+        )
+        .raise_for_status()
+        .json()["connections"]
+    )
 
-    connections = list(
-        await guideline_connection_store.list_connections(
+    stored_connections = list(
+        await container[GuidelineConnectionStore].list_connections(
             indirect=False,
-            source=first.id,
+            source=guidelines[0].id,
         )
     )
 
-    assert len(connections) == 1
-    connection = connections[0]
+    assert len(stored_connections) == 1
+    assert stored_connections[0].source == guidelines[0].id
+    assert stored_connections[0].target == guidelines[1].id
+    assert stored_connections[0].kind == ConnectionKind.ENTAILS
 
-    assert connection.source == first.id
-    assert connection.target == second.id
-    assert connection.kind == ConnectionKind.ENTAILS
-
-    response_data = response.json()
-    assert "connections" in response_data
-    assert len(response_data["connections"]) == 1
-    response_connection = response_data["connections"][0]
-    assert response_connection["source"]["id"] == first.id
-    assert response_connection["target"]["id"] == second.id
-    assert response_connection["kind"] == "entails"
+    assert len(response_connections) == 1
+    assert response_connections[0]["source"]["id"] == guidelines[0].id
+    assert response_connections[0]["target"]["id"] == guidelines[1].id
+    assert response_connections[0]["kind"] == "entails"
 
 
-async def test_that_connections_can_be_removed_from_guideline(
+async def test_that_a_direct_target_connection_can_be_removed_from_a_guideline(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
-    guideline_store = container[GuidelineStore]
-    guideline_connection_store = container[GuidelineConnectionStore]
-
-    first = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="the user wants to unsubscribe",
-        action="ask for confirmation",
+    guidelines = await create_and_connect(
+        container,
+        agent_id,
+        [
+            GuidelineContent("A", "B"),
+            GuidelineContent("B", "C"),
+        ],
     )
 
-    second = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="ask for confirmation",
-        action="provide unsubscribe link",
+    response_collections = (
+        client.patch(
+            f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
+            json={
+                "removed_connections": [guidelines[1].id],
+            },
+        )
+        .raise_for_status()
+        .json()["connections"]
     )
 
-    await guideline_connection_store.create_connection(
-        source=first.id,
-        target=second.id,
-        kind=ConnectionKind.SUGGESTS,
+    assert len(response_collections) == 0
+
+    stored_connections = await container[GuidelineConnectionStore].list_connections(
+        indirect=True,
+        source=guidelines[0].id,
     )
 
-    patch_data = {
-        "added_connections": None,
-        "removed_connections": [second.id],
-    }
+    assert len(stored_connections) == 0
+
+
+async def test_that_an_indirect_connection_cannot_be_removed_from_a_guideline(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guidelines = await create_and_connect(
+        container,
+        agent_id,
+        [
+            GuidelineContent("A", "B"),
+            GuidelineContent("B", "C"),
+            GuidelineContent("C", "D"),
+        ],
+    )
 
     response = client.patch(
-        f"/agents/{agent_id}/guidelines/{first.id}",
-        json=patch_data,
+        f"/agents/{agent_id}/guidelines/{guidelines[0].id}",
+        json={
+            "removed_connections": [guidelines[2].id],
+        },
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    connections = await guideline_connection_store.list_connections(
-        indirect=False,
-        source=first.id,
+    stored_connections = await container[GuidelineConnectionStore].list_connections(
+        indirect=True,
+        source=guidelines[0].id,
     )
 
-    connections = list(connections)
-    assert len(connections) == 0
-
-    response_data = response.json()
-    assert "connections" in response_data
-    assert len(response_data["connections"]) == 0
+    assert len(stored_connections) == 2
 
 
-async def test_that_read_guideline_contains_indirect_and_direct_connections(
+async def test_that_deleting_a_guideline_also_deletes_all_of_its_direct_connections(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
-    guideline_store = container[GuidelineStore]
-    guideline_connection_store = container[GuidelineConnectionStore]
-
-    first = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="the user asks for help",
-        action="provide assistance",
+    guidelines = await create_and_connect(
+        container,
+        agent_id,
+        [
+            GuidelineContent("A", "B"),
+            GuidelineContent("B", "C"),
+        ],
     )
 
-    second = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="provide assistance",
-        action="ask for clarification if needed",
+    client.delete(f"/agents/{agent_id}/guidelines/{guidelines[0].id}").raise_for_status()
+
+    stored_connections = await container[GuidelineConnectionStore].list_connections(
+        indirect=False,
+        source=guidelines[0].id,
     )
 
-    third = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="ask for clarification if needed",
-        action="clarify the user's request",
+    assert not stored_connections
+
+
+async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connections(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guidelines = [
+        await container[GuidelineStore].create_guideline(
+            guideline_set=agent_id,
+            predicate=predicate,
+            action=action,
+        )
+        for predicate, action in [
+            ("A", "B"),
+            ("B", "C"),
+            ("C", "D"),
+            ("D", "E"),
+            ("E", "F"),
+        ]
+    ]
+
+    for source, target in zip(guidelines, guidelines[1:]):
+        await container[GuidelineConnectionStore].create_connection(
+            source=source.id, target=target.id, kind=ConnectionKind.ENTAILS
+        )
+
+    third_item = (
+        client.get(f"/agents/{agent_id}/guidelines/{guidelines[2].id}").raise_for_status().json()
     )
 
-    fourth = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="clarify the user's request",
-        action="provide a suitable response",
-    )
+    assert 2 == len([c for c in third_item["connections"] if c["indirect"]])
+    assert 2 == len([c for c in third_item["connections"] if not c["indirect"]])
 
-    fifth = await guideline_store.create_guideline(
-        guideline_set=agent_id,
-        predicate="provide a suitable response",
-        action="ensure the response is clear",
-    )
+    connections = sorted(third_item["connections"], key=lambda c: c["source"]["predicate"])
 
-    await guideline_connection_store.create_connection(
-        source=first.id, target=second.id, kind=ConnectionKind.ENTAILS
-    )
+    for i, c in enumerate(connections):
+        guideline_a = guidelines[i]
+        guideline_b = guidelines[i + 1]
 
-    await guideline_connection_store.create_connection(
-        source=second.id, target=third.id, kind=ConnectionKind.ENTAILS
-    )
+        assert c["source"] == {
+            "id": guideline_a.id,
+            "predicate": guideline_a.content.predicate,
+            "action": guideline_a.content.action,
+        }
 
-    await guideline_connection_store.create_connection(
-        source=third.id, target=fourth.id, kind=ConnectionKind.ENTAILS
-    )
+        assert c["target"] == {
+            "id": guideline_b.id,
+            "predicate": guideline_b.content.predicate,
+            "action": guideline_b.content.action,
+        }
 
-    await guideline_connection_store.create_connection(
-        source=fourth.id, target=fifth.id, kind=ConnectionKind.ENTAILS
-    )
-
-    guideline = client.get(f"/agents/{agent_id}/guidelines/{third.id}").raise_for_status().json()
-
-    assert len(guideline["connections"]) == 4
-    connections = guideline["connections"]
-
-    assert any(
-        c["source"]["id"] == first.id
-        and c["target"]["id"] == second.id
-        and c["source"]["predicate"] == first.content.predicate
-        and c["source"]["action"] == first.content.action
-        and c["target"]["predicate"] == second.content.predicate
-        and c["target"]["action"] == second.content.action
-        and c["indirect"] is True
-        for c in connections
-    )
-
-    assert any(
-        c["source"]["id"] == second.id
-        and c["target"]["id"] == third.id
-        and c["source"]["predicate"] == second.content.predicate
-        and c["source"]["action"] == second.content.action
-        and c["target"]["predicate"] == third.content.predicate
-        and c["target"]["action"] == third.content.action
-        and c["indirect"] is False
-        for c in connections
-    )
-
-    assert any(
-        c["source"]["id"] == third.id
-        and c["target"]["id"] == fourth.id
-        and c["source"]["predicate"] == third.content.predicate
-        and c["source"]["action"] == third.content.action
-        and c["target"]["predicate"] == fourth.content.predicate
-        and c["target"]["action"] == fourth.content.action
-        and c["indirect"] is False
-        for c in connections
-    )
-
-    assert any(
-        c["source"]["id"] == fourth.id
-        and c["target"]["id"] == fifth.id
-        and c["source"]["predicate"] == fourth.content.predicate
-        and c["source"]["action"] == fourth.content.action
-        and c["target"]["predicate"] == fifth.content.predicate
-        and c["target"]["action"] == fifth.content.action
-        and c["indirect"] is True
-        for c in connections
-    )
+        is_direct = third_item["guideline"]["id"] in (c["source"]["id"], c["target"]["id"])
+        assert c["indirect"] is not is_direct

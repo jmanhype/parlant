@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import os
 import sys
 import time
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, TypedDict, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -19,17 +19,64 @@ from textwrap import wrap
 from tqdm import tqdm
 
 
-class _CoherenceCheckFailue(Exception):
+class CoherenceCheckFailure(Exception):
     def __init__(self, contradictions: list[dict[str, Any]]) -> None:
         self.contradictions = contradictions
 
 
+class AgentDTO(TypedDict):
+    id: str
+    name: str
+    description: Optional[str]
+
+
+class SessionDTO(TypedDict):
+    id: str
+    end_user_id: str
+    title: Optional[str]
+
+
+class EventDTO(TypedDict):
+    id: str
+    source: Literal["client", "server"]
+    kind: str
+    offset: int
+    correlation_id: str
+    data: Any
+
+
+class TermDTO(TypedDict):
+    id: str
+    name: str
+    description: str
+    synonyms: Optional[list[str]]
+
+
+class GuidelineDTO(TypedDict):
+    id: str
+    predicate: str
+    action: str
+
+
+class GuidelineConnectionDTO(TypedDict):
+    id: str
+    source: GuidelineDTO
+    target: GuidelineDTO
+    kind: Literal["entails", "suggests"]
+    indirect: bool
+
+
+class GuidelineWithConnectionsDTO(TypedDict):
+    guideline: GuidelineDTO
+    connections: list[GuidelineConnectionDTO]
+
+
 class Actions:
     @staticmethod
-    def list_agents(ctx: click.Context) -> list[dict[str, Any]]:
+    def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
         response.raise_for_status()
-        return response.json()["agents"]  # type: ignore
+        return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
     def create_session(
@@ -37,7 +84,7 @@ class Actions:
         agent_id: str,
         end_user_id: str,
         title: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> SessionDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, "/sessions"),
             json={
@@ -49,16 +96,16 @@ class Actions:
 
         response.raise_for_status()
 
-        return response.json()  # type: ignore
+        return cast(SessionDTO, response.json()["session"])  # type: ignore
 
     @staticmethod
-    def list_events(ctx: click.Context, session_id: str) -> dict[str, Any]:
+    def list_events(ctx: click.Context, session_id: str) -> list[EventDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
-        return response.json()["events"]  # type: ignore
+        return cast(list[EventDTO], response.json()["events"])  # type: ignore
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> dict[str, Any]:
+    def create_event(ctx: click.Context, session_id: str, message: str) -> EventDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
@@ -66,12 +113,16 @@ class Actions:
 
         response.raise_for_status()
 
-        return response.json()  # type: ignore
+        return cast(EventDTO, response.json())  # type: ignore
 
     @staticmethod
-    def add_term(
-        ctx: click.Context, agent_id: str, name: str, description: str, synonyms: Optional[str]
-    ) -> dict[str, Any]:
+    def create_term(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: Optional[str],
+    ) -> TermDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"),
             json={
@@ -80,27 +131,33 @@ class Actions:
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
+
         response.raise_for_status()
-        return response.json()  # type: ignore
+
+        return cast(TermDTO, response.json())  # type: ignore
 
     @staticmethod
-    def remove_term(ctx: click.Context, agent_id: str, name: str) -> dict[str, Any]:
+    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
         response.raise_for_status()
-        return response.json()  # type: ignore
 
     @staticmethod
-    def list_terms(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
+    def list_terms(ctx: click.Context, agent_id: str) -> list[TermDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
         response.raise_for_status()
-        return response.json()["terms"]  # type: ignore
+        return cast(list[TermDTO], response.json()["terms"])  # type: ignore
 
     @staticmethod
     def create_guideline(
-        ctx: click.Context, agent_id: str, predicate: str, action: str, check: bool, index: bool
-    ) -> dict[str, Any]:
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> GuidelineWithConnectionsDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
             json={
@@ -151,10 +208,13 @@ class Actions:
                         )
                         guideline_response.raise_for_status()
 
-                        return cast(dict[str, Any], guideline_response.json()["guidelines"][0])
+                        return cast(
+                            GuidelineWithConnectionsDTO,
+                            guideline_response.json()["items"][0],
+                        )
 
                     else:
-                        raise _CoherenceCheckFailue(
+                        raise CoherenceCheckFailure(
                             contradictions=invoice["data"]["coherence_checks"]
                         )
 
@@ -162,26 +222,27 @@ class Actions:
                     raise ValueError(evaluation["error"])
 
     @staticmethod
-    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
+    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
         response.raise_for_status()
-        return response.json()  # type: ignore
 
     @staticmethod
-    def get_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> dict[str, Any]:
+    def get_guideline(
+        ctx: click.Context, agent_id: str, guideline_id: str
+    ) -> GuidelineWithConnectionsDTO:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
         response.raise_for_status()
-        return response.json()  # type: ignore
+        return cast(GuidelineWithConnectionsDTO, response.json())  # type: ignore
 
     @staticmethod
-    def list_guidelines(ctx: click.Context, agent_id: str) -> list[dict[str, Any]]:
+    def list_guidelines(ctx: click.Context, agent_id: str) -> list[GuidelineDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
         response.raise_for_status()
-        return response.json()["guidelines"]  # type: ignore
+        return cast(list[GuidelineDTO], response.json()["guidelines"])  # type: ignore
 
     @staticmethod
     def create_connection(
@@ -190,7 +251,7 @@ class Actions:
         source_guideline_id: str,
         target_guideline_id: str,
         kind: str,
-    ) -> dict[str, Any]:
+    ) -> GuidelineWithConnectionsDTO:
         response = requests.patch(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"),
             json={
@@ -204,38 +265,65 @@ class Actions:
             },
         )
         response.raise_for_status()
-        return response.json()  # type: ignore
+        return cast(GuidelineWithConnectionsDTO, response.json())  # type: ignore
 
     @staticmethod
-    def remove_connection(
+    def remove_entailment(
         ctx: click.Context,
         agent_id: str,
-        first_guideline: str,
-        second_guideline: str,
-    ) -> dict[str, Any]:
+        source_guideline_id: str,
+        target_guideline_id: str,
+    ) -> str:
         guideline = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{first_guideline}")
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}")
         )
 
-        connections = guideline.json()["connections"]
+        connections: list[GuidelineConnectionDTO] = guideline.json()["connections"]
+
         if connection := next(
-            iter(c for c in connections if second_guideline in [c["source"], c["target"]])
+            (
+                c
+                for c in connections
+                if target_guideline_id in [c["source"]["id"], c["target"]["id"]]
+            ),
+            None,
         ):
             response = requests.patch(
-                urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{first_guideline}"),
+                urljoin(
+                    ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"
+                ),
                 json={
-                    "removed_connections": [second_guideline],
+                    "removed_connections": [target_guideline_id],
                 },
             )
             response.raise_for_status()
-            return connection  # type: ignore
+            return connection["id"]
 
         raise ValueError(
-            f"A connection between {first_guideline} and {second_guideline} was not found."
+            f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
         )
 
 
 class Interface:
+    @staticmethod
+    def _write_success(message: str) -> None:
+        rich.print(Text(message, style="bold green"))
+
+    @staticmethod
+    def _write_error(message: str) -> None:
+        rich.print(Text(message, style="bold red"), file=sys.stderr)
+
+    @staticmethod
+    def _print_table(data, **kwargs) -> None:
+        rich.print(
+            tabulate(
+                data,
+                headers="keys",
+                tablefmt="rounded_grid",
+                **kwargs,
+            )
+        )
+
     @staticmethod
     def list_agents(ctx: click.Context) -> None:
         agents = Actions.list_agents(ctx)
@@ -244,13 +332,7 @@ class Interface:
             rich.print("No data available")
             return
 
-        rich.print(
-            tabulate(
-                agents,
-                headers="keys",
-                tablefmt="rounded_grid",
-            )
-        )
+        Interface._print_table(agents)
 
     @staticmethod
     def get_default_agent(ctx: click.Context) -> str:
@@ -266,22 +348,19 @@ class Interface:
             rich.print("No data available")
             return
 
-        print(
-            tabulate(
-                [
-                    {
-                        "id": e["id"],  # type: ignore
-                        "source": e["source"],  # type: ignore
-                        "offset": e["offset"],  # type: ignore
-                        "creation_utc": e["creation_utc"],  # type: ignore
-                        "message": e["data"]["message"],  # type: ignore
-                    }
-                    for e in events
-                ],
-                headers="keys",
-                maxcolwidths=[None, None, None, None, 40],
-                tablefmt="rounded_grid",
-            )
+        Interface._print_table(
+            [
+                {
+                    "id": e["id"],  # type: ignore
+                    "creation_utc": e["creation_utc"],  # type: ignore
+                    "correlation_id": e["correlation_id"],
+                    "source": e["source"],  # type: ignore
+                    "offset": e["offset"],  # type: ignore
+                    "message": e["data"]["message"],  # type: ignore
+                }
+                for e in events
+            ],
+            maxcolwidths=[None, None, None, None, None, 40],
         )
 
     @staticmethod
@@ -292,26 +371,14 @@ class Interface:
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
-        rich.print(Text(f"\nAdded session (id={session['id']}).\n", style="bold green"))
-        print(
-            tabulate(
-                [session],
-                headers="keys",
-                tablefmt="rounded_grid",
-            )
-        )
+        Interface._write_success(f"Added session (id={session['id']})")
+        Interface._print_table([session])
 
     @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> None:
         event = Actions.create_event(ctx, session_id, message)
-        rich.print(Text(f"\nAdded event (id={event['id']}).\n", style="bold green"))
-        rich.print(
-            tabulate(
-                [event],
-                headers="keys",
-                tablefmt="rounded_grid",
-            )
-        )
+        Interface._write_success(f"Added event (id={event['id']})")
+        Interface._print_table([event])
 
     @staticmethod
     def chat(ctx: click.Context, session_id: str) -> None:
@@ -403,50 +470,80 @@ class Interface:
         description: str,
         synonyms: Optional[str],
     ) -> None:
-        term = Actions.add_term(ctx, agent_id, name, description, synonyms)
-        rich.print(Text(f"\nAdded term (id={term['id']}).\n", style="bold green"))
-        rich.print(
-            tabulate(
-                [term],
-                headers="keys",
-                tablefmt="rounded_grid",
-            )
-        )
+        term = Actions.create_term(ctx, agent_id, name, description, synonyms)
+        Interface._write_success(f"Added term (id={term['id']})")
+        Interface._print_table([term])
 
     @staticmethod
     def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
-        result = Actions.remove_term(ctx, agent_id, name)
-        rich.print(Text(f"\nRemoved term (id={result['deleted_term_id']}).\n", style="bold green"))
+        Actions.remove_term(ctx, agent_id, name)
+        Interface._write_success(f"Removed term '{name}'")
 
     @staticmethod
     def list_terms(ctx: click.Context, agent_id: str) -> None:
         terms = Actions.list_terms(ctx, agent_id)
 
         if not terms:
-            rich.print("No terms found")
+            rich.print("No data available")
             return
 
-        rich.print(
-            tabulate(
-                terms,
-                headers="keys",
-                tablefmt="rounded_grid",
-            )
-        )
+        Interface._print_table(terms)
 
     @staticmethod
-    def _render_guideline_connection(connection: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "id": connection["id"],
-            "source_id": connection["source"]["id"],
-            "source_predicate": connection["source"]["predicate"],
-            "source_action": connection["source"]["action"],
-            "taget_id": connection["target"]["id"],
-            "target_predicate": connection["target"]["predicate"],
-            "target_action": connection["target"]["action"],
-            "kind": connection["kind"],
-            "indirect": connection["indirect"],
-        }
+    def _render_guidelines(guidelines: list[GuidelineDTO]) -> None:
+        guideline_items = [
+            {
+                "ID": guideline["id"],
+                "Predicate": guideline["predicate"],
+                "Action": guideline["action"],
+            }
+            for guideline in guidelines
+        ]
+
+        Interface._print_table(guideline_items, maxcolwidths=[None, 40, 40])
+
+    @staticmethod
+    def _render_guideline_entailments(
+        guideline: GuidelineDTO,
+        connections: list[GuidelineConnectionDTO],
+        include_indirect: bool,
+    ) -> None:
+        def to_direct_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
+            peer = conn["target"] if conn["source"]["id"] == guideline["id"] else conn["source"]
+
+            return {
+                "Connection ID": conn["id"],
+                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
+                "Role": "Source" if conn["source"]["id"] == guideline["id"] else "Target",
+                "Peer Role": "Target" if conn["source"]["id"] == guideline["id"] else "Source",
+                "Peer ID": peer["id"],
+                "Peer Predicate": peer["predicate"],
+                "Peer Action": peer["action"],
+            }
+
+        def to_indirect_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
+            return {
+                "Connection ID": conn["id"],
+                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
+                "Source ID": conn["source"]["id"],
+                "Source Predicate": conn["source"]["predicate"],
+                "Source Action": conn["source"]["action"],
+                "Target ID": conn["target"]["id"],
+                "Target Predicate": conn["target"]["predicate"],
+                "Target Action": conn["target"]["action"],
+            }
+
+        if connections:
+            direct = [c for c in connections if not c["indirect"]]
+            indirect = [c for c in connections if c["indirect"]]
+
+            if direct:
+                rich.print("\nDirect Entailments:")
+                Interface._print_table(map(lambda c: to_direct_entailment_item(c), direct))
+
+            if indirect and include_indirect:
+                rich.print("\nIndirect Entailments:")
+                Interface._print_table(map(lambda c: to_indirect_entailment_item(c), indirect))
 
     @staticmethod
     def create_guideline(
@@ -458,124 +555,77 @@ class Interface:
         index: bool,
     ) -> None:
         try:
-            guideline = Actions.create_guideline(ctx, agent_id, predicate, action, check, index)
-            rich.print(Text(f"\nAdded guideline (id={guideline['id']}).\n", style="bold green"))
-
-            selected_keys = ["guideline_set", "id", "predicate", "action"]
-            rich.print(
-                tabulate(
-                    [{key: guideline[key] for key in selected_keys}],
-                    headers="keys",
-                    tablefmt="rounded_grid",
-                )
+            guideline_with_connections = Actions.create_guideline(
+                ctx,
+                agent_id,
+                predicate,
+                action,
+                check,
+                index,
             )
 
-            if guideline["connections"]:
-                rich.print("\nConnections:")
-                rich.print(
-                    tabulate(
-                        map(
-                            lambda c: Interface._render_guideline_connection(c),
-                            guideline["connections"],
-                        ),
-                        headers="keys",
-                        tablefmt="rounded_grid",
-                    )
-                )
-        except _CoherenceCheckFailue as e:
+            guideline = guideline_with_connections["guideline"]
+            Interface._write_success(f"Added guideline (id={guideline['id']})")
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                include_indirect=False,
+            )
+
+        except CoherenceCheckFailure as e:
             contradictions = e.contradictions
-            rich.print(Text("\nFailed to add guideline.", style="bold red"))
-            rich.print("\nDetected incoherence with other guidelines:\n")
-            rich.print(
-                tabulate(
-                    contradictions,
-                    headers="keys",
-                    maxcolwidths=[20, 20, 20, 40, 10],
-                    tablefmt="rounded_grid",
-                )
+            Interface._write_error("Failed to add guideline")
+            rich.print("Detected incoherence with other guidelines:")
+            Interface._print_table(
+                contradictions,
+                maxcolwidths=[20, 20, 20, 40, 10],
             )
             rich.print(
-                Text("\nTo force add despite these errors, re-run with --no-check.", style="bold")
+                Text("\nTo force-add despite these errors, re-run with --no-check", style="bold")
             )
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
     def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
         try:
-            result = Actions.remove_guideline(ctx, agent_id, guideline_id)
-            rich.print(
-                Text(
-                    f"\nRemoved guideline (id={result['deleted_guideline_id']}).\n",
-                    style="bold green",
-                )
-            )
+            Actions.remove_guideline(ctx, agent_id, guideline_id)
+            Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"), file=sys.stderr)
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
     def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
         try:
-            guideline = Actions.get_guideline(ctx, agent_id, guideline_id)
+            guideline_with_connections = Actions.get_guideline(ctx, agent_id, guideline_id)
 
-            selected_keys = ["guideline_set", "id", "predicate", "action"]
-            rich.print(
-                tabulate(
-                    [{key: guideline[key] for key in selected_keys}],
-                    headers="keys",
-                    tablefmt="rounded_grid",
-                )
+            Interface._render_guidelines([guideline_with_connections["guideline"]])
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                include_indirect=True,
             )
-
-            if guideline["connections"]:
-                rich.print("\nConnections:")
-                rich.print(
-                    tabulate(
-                        map(
-                            lambda c: Interface._render_guideline_connection(c),
-                            guideline["connections"],
-                        ),
-                        headers="keys",
-                        tablefmt="rounded_grid",
-                    )
-                )
-            else:
-                rich.print("\nNo connections found for this guideline.")
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> None:
         try:
             guidelines = Actions.list_guidelines(ctx, agent_id)
+
             if not guidelines:
-                rich.print(f"No guidelines found for agent {agent_id}.")
+                rich.print("No data available")
                 return
 
-            data = [
-                {
-                    "ID": g["id"],
-                    "Predicate": g["predicate"],
-                    "Action": g["action"],
-                }
-                for g in guidelines
-            ]
-
-            rich.print(f"Guidelines for Agent ID: {agent_id}")
-            rich.print(
-                tabulate(
-                    data,
-                    headers="keys",
-                    maxcolwidths=[None, 40, 40],
-                    tablefmt="rounded_grid",
-                )
-            )
+            Interface._render_guidelines(guidelines)
 
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
-    def create_connection(
+    def create_entailment(
         ctx: click.Context,
         agent_id: str,
         source_guideline_id: str,
@@ -590,28 +640,28 @@ class Interface:
                 target_guideline_id,
                 kind,
             )
-            rich.print(Text(f"\nAdded connection (id={connection['id']}).\n", style="bold green"))
-            rich.print(f"{tabulate([connection], headers="keys",tablefmt="rounded_grid",)}")
+            Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
+            Interface._print_table([connection])
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
-    def remove_connection(
+    def remove_entailment(
         ctx: click.Context,
         agent_id: str,
-        first_guideline_id: str,
-        second_guideline_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
     ) -> None:
         try:
-            connection = Actions.remove_connection(
+            connection_id = Actions.remove_entailment(
                 ctx,
                 agent_id,
-                first_guideline_id,
-                second_guideline_id,
+                source_guideline_id,
+                target_guideline_id,
             )
-            rich.print(Text(f"\nRemoved connection (id={connection['id']}).\n", style="bold green"))
+            Interface._write_success(f"Removed entailment (id={connection_id})")
         except Exception as e:
-            rich.print(Text(f"error: {type(e)}: {e}", style="bold red"))
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
 
 async def main() -> None:
@@ -654,9 +704,7 @@ async def main() -> None:
     def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
-
         Interface.chat(ctx, session["id"])
 
     @cli.group(help="Manage sessions")
@@ -710,19 +758,19 @@ async def main() -> None:
 
         Interface.chat(ctx, session_id)
 
-    @cli.group(help="Manage Terminology")
-    def terminology() -> None:
+    @cli.group(help="Manage an agent's glossary")
+    def glossary() -> None:
         pass
 
-    @terminology.command("add", help="Add a new term to the terminology")
+    @glossary.command("add", help="Add a new term to the glossary")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.option("-n", "--name", type=str, help="Name of the term", required=True)
-    @click.option("-d", "--description", type=str, help="Description of the term", required=True)
+    @click.argument("name", type=str)
+    @click.argument("description", type=str)
     @click.option(
         "-s", "--synonyms", type=str, help="Comma-separated list of synonyms", required=False
     )
     @click.pass_context
-    def terminology_add(
+    def glossary_add(
         ctx: click.Context,
         agent_id: str,
         name: str,
@@ -731,36 +779,33 @@ async def main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-
         Interface.create_term(ctx, agent_id, name, description, synonyms)
 
-    @terminology.command("remove", help="remove a term from the terminology")
+    @glossary.command("remove", help="Remove a term from the glossary")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.option("-n", "--name", type=str, help="Name of the term to remove", required=True)
+    @click.argument("name", type=str)
     @click.pass_context
-    def terminology_remove(
+    def glossary_remove(
         ctx: click.Context,
         agent_id: str,
         name: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-
         Interface.remove_term(ctx, agent_id, name)
 
-    @terminology.command("list", help="List all terms in the terminology")
+    @glossary.command("list", help="List all terms in the glossary")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.pass_context
-    def terminology_list(
+    def glossary_list(
         ctx: click.Context,
         agent_id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-
         Interface.list_terms(ctx, agent_id)
 
-    @cli.group(help="Manage Guidelines")
+    @cli.group(help="Manage an agent's guidelines")
     def guideline() -> None:
         pass
 
@@ -854,14 +899,14 @@ async def main() -> None:
             agent_id=agent_id,
         )
 
-    @guideline.command("entail", help="Create an entailment connection between two guidelines")
+    @guideline.command("entail", help="Create an entailment between two guidelines")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
     @click.option(
         "--suggestive/-s",
         is_flag=True,
         show_default=True,
         default=False,
-        help="Use 'suggestive' as the connection kind. Defaults to 'entails' if not specified.",
+        help="Make the entailment suggestive rather than definite",
     )
     @click.argument("source_guideline_id", type=str)
     @click.argument("target_guideline_id", type=str)
@@ -876,7 +921,7 @@ async def main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.create_connection(
+        Interface.create_entailment(
             ctx=ctx,
             agent_id=agent_id,
             source_guideline_id=source_guideline_id,
@@ -884,25 +929,25 @@ async def main() -> None:
             kind="suggests" if suggestive else "entails",
         )
 
-    @guideline.command("disentail", help="Remove an entailment connection between two guidelines")
+    @guideline.command("disentail", help="Remove an entailment between two guidelines")
     @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.argument("first_guideline_id", type=str)
-    @click.argument("second_guideline_id", type=str)
+    @click.argument("source_guideline_id", type=str)
+    @click.argument("target_guideline_id", type=str)
     @click.pass_context
     def guideline_disentail(
         ctx: click.Context,
         agent_id: str,
-        first_guideline_id: str,
-        second_guideline_id: str,
+        source_guideline_id: str,
+        target_guideline_id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_connection(
+        Interface.remove_entailment(
             ctx=ctx,
             agent_id=agent_id,
-            first_guideline_id=first_guideline_id,
-            second_guideline_id=second_guideline_id,
+            source_guideline_id=source_guideline_id,
+            target_guideline_id=target_guideline_id,
         )
 
     cli()

@@ -276,7 +276,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     )
 
 
-async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads_contains_relevant_error_message(
+async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloads_contains_a_relevant_error_message(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -305,7 +305,7 @@ async def test_that_an_evaluation_failed_due_to_duplicate_guidelines_in_payloads
     assert data["detail"] == "Duplicate guideline found among the provided guidelines."
 
 
-async def test_that_an_evaluation_failed_due_to_guideline_duplication_with_existing_guidelines_contains_relevant_error_message(
+async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_existing_guidelines_contains_a_relevant_error_message(
     client: TestClient,
     container: Container,
     agent_id: AgentId,

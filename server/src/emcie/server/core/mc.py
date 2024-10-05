@@ -2,25 +2,21 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from itertools import chain
 import time
 import traceback
 from typing import Any, Iterable, Mapping, Optional, TypeAlias
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
-from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentId
 from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.evaluations import ConnectionProposition, Invoice
 from emcie.server.core.guideline_connections import (
-    ConnectionKind,
-    GuidelineConnectionId,
     GuidelineConnectionStore,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineId, GuidelineStore
+from emcie.server.core.guidelines import GuidelineId, GuidelineStore
 from emcie.server.core.sessions import (
     Event,
     EventKind,
@@ -35,13 +31,6 @@ from emcie.server.core.logging import Logger
 
 
 TaskQueue: TypeAlias = list[asyncio.Task[None]]
-
-
-class GuidelineConnection(DefaultBaseModel):
-    id: GuidelineConnectionId
-    source: Guideline
-    target: Guideline
-    kind: ConnectionKind
 
 
 class MC:
@@ -264,32 +253,3 @@ class MC:
                     connections.add(c)
 
         return content_guidelines.values()
-
-    async def get_guideline_connections(
-        self,
-        guideline_set: str,
-        guideline_id: GuidelineId,
-        indirect: bool = True,
-    ) -> Sequence[tuple[GuidelineConnection, bool]]:
-        connections = [
-            GuidelineConnection(
-                id=c.id,
-                source=await self._guideline_store.read_guideline(
-                    guideline_set=guideline_set, guideline_id=c.source
-                ),
-                target=await self._guideline_store.read_guideline(
-                    guideline_set=guideline_set, guideline_id=c.target
-                ),
-                kind=c.kind,
-            )
-            for c in chain(
-                await self._guideline_connection_store.list_connections(
-                    indirect=indirect, source=guideline_id
-                ),
-                await self._guideline_connection_store.list_connections(
-                    indirect=indirect, target=guideline_id
-                ),
-            )
-        ]
-
-        return [(c, guideline_id not in [c.source.id, c.target.id]) for c in connections]

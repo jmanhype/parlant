@@ -72,7 +72,7 @@ async def get_agent_replies(
                 },
             )
             session_creation_response.raise_for_status()
-            session_id = session_creation_response.json()["session_id"]
+            session_id = session_creation_response.json()["session"]["id"]
 
             await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 

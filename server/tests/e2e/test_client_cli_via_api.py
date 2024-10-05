@@ -61,13 +61,11 @@ async def test_that_a_term_can_be_created_with_synonyms(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent.id,
-            "--name",
             term_name,
-            "--description",
             description,
             "--synonyms",
             synonyms,
@@ -114,13 +112,11 @@ async def test_that_a_term_can_be_created_without_synonyms(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent.id,
-            "--name",
             term_name,
-            "--description",
             description,
         ]
 
@@ -171,13 +167,11 @@ async def test_that_terms_can_be_listed(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent["id"],
-            "--name",
             guideline_term_name,
-            "--description",
             guideline_description,
             "--synonyms",
             guideline_synonyms,
@@ -189,13 +183,11 @@ async def test_that_terms_can_be_listed(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent["id"],
-            "--name",
             tool_term_name,
-            "--description",
             tool_description,
         ]
 
@@ -245,13 +237,11 @@ async def test_that_a_term_can_be_deleted(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent["id"],
-            "--name",
             name,
-            "--description",
             description,
             "--synonyms",
             synonyms,
@@ -268,11 +258,10 @@ async def test_that_a_term_can_be_deleted(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
-            "delete",
+            "glossary",
+            "remove",
             "--agent-id",
             agent["id"],
-            "--name",
             name,
         ]
         result_delete = await asyncio.create_subprocess_exec(*exec_args_delete)
@@ -317,13 +306,11 @@ async def test_that_terms_are_loaded_on_server_startup(
             CLI_CLIENT_PATH.as_posix(),
             "--server",
             SERVER_ADDRESS,
-            "terminology",
+            "glossary",
             "add",
             "--agent-id",
             agent["id"],
-            "--name",
             term_name,
-            "--description",
             description,
         ]
 
@@ -402,7 +389,7 @@ async def test_that_guideline_can_be_added(
             assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
 
 
-async def test_that_adding_conflicting_guideline_shows_contradictions_error(
+async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     context: ContextOfTest,
 ) -> None:
     predicate = "the user greets you"
@@ -456,7 +443,7 @@ async def test_that_adding_conflicting_guideline_shows_contradictions_error(
         stdout, stderr = await result_conflict.communicate()
         output = stdout.decode() + stderr.decode()
 
-        assert "Contradictions found" in output
+        assert "Detected incoherence with other guidelines" in output
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -482,7 +469,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
     predicate1 = "the user asks about the weather"
     action1 = "provide a weather update"
 
-    predicate2 = "provide a weather update"
+    predicate2 = "providing a weather update"
     action2 = "include temperature and humidity"
 
     with run_server(context):
@@ -538,20 +525,23 @@ async def test_that_adding_connected_guidelines_creates_connections(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
             )
             guidelines_response.raise_for_status()
-
             guidelines = guidelines_response.json()["guidelines"]
 
             assert len(guidelines) == 2
             source = guidelines[0]
             target = guidelines[1]
 
-            connections = guidelines[0]["connections"]
+            source_guideline_response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{source['id']}"
+            )
+            source_guideline_response.raise_for_status()
+            source_guideline_connections = source_guideline_response.json()["connections"]
 
-            assert connections and len(connections) == 1
-            connection = connections[0]
+            assert len(source_guideline_connections) == 1
+            connection = source_guideline_connections[0]
 
-            assert connection["source"] == source["id"]
-            assert connection["target"] == target["id"]
+            assert connection["source"] == source
+            assert connection["target"] == target
             assert connection["kind"] == "entails"
 
 
@@ -570,7 +560,7 @@ async def test_that_guideline_can_be_viewed_via_cli(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_add = await client.post(
+            add_guideline_response = await client.post(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
                     "invoices": [
@@ -591,9 +581,9 @@ async def test_that_guideline_can_be_viewed_via_cli(
                     ],
                 },
             )
-            response_add.raise_for_status()
-            added_guideline = response_add.json()["guidelines"][0]
-            guideline_id = added_guideline["id"]
+            add_guideline_response.raise_for_status()
+            added_item = add_guideline_response.json()["items"][0]
+            guideline_id = added_item["guideline"]["id"]
 
         exec_args_view = [
             "poetry",
@@ -625,14 +615,14 @@ async def test_that_guideline_can_be_viewed_via_cli(
 async def test_that_view_guideline_with_connections_displays_indirect_and_direct_connections(
     context: ContextOfTest,
 ) -> None:
-    predicate1 = "the user asks for help"
-    action1 = "provide assistance"
+    predicate1 = "AAA"
+    action1 = "BBB"
 
-    predicate2 = "provide assistance"
-    action2 = "ask for clarification if needed"
+    predicate2 = "BBB"
+    action2 = "CCC"
 
-    predicate3 = "ask for clarification if needed"
-    action3 = "ask in a polite way"
+    predicate3 = "CCC"
+    action3 = "DDD"
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -643,7 +633,7 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            guidelines_response = await client.post(
+            add_guidelines_response = await client.post(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
                     "invoices": [
@@ -744,11 +734,11 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
                 },
             )
 
-            guidelines_response.raise_for_status()
+            add_guidelines_response.raise_for_status()
 
-        first = guidelines_response.json()["guidelines"][0]
-        first_connection = guidelines_response.json()["guidelines"][0]["connections"][0]
-        second_connection = guidelines_response.json()["guidelines"][1]["connections"][0]
+        first = add_guidelines_response.json()["items"][0]["guideline"]
+        first_connection = add_guidelines_response.json()["items"][0]["connections"][0]
+        second_connection = add_guidelines_response.json()["items"][1]["connections"][0]
 
         exec_args_view = [
             "poetry",
@@ -776,14 +766,12 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
         assert predicate1 in output_view
         assert action1 in output_view
 
-        assert "Connections:" in output_view
-
-        assert "direct" in output_view
+        assert "Direct Entailments:" in output_view
         assert first_connection["id"] in output_view
         assert predicate2 in output_view
         assert action2 in output_view
 
-        assert "indirect" in output_view
+        assert "Indirect Entailments:" in output_view
         assert second_connection["id"] in output_view
         assert predicate3 in output_view
         assert action3 in output_view
@@ -880,7 +868,7 @@ async def test_that_guidelines_can_be_listed_via_cli(
         assert action2 in output_list
 
 
-async def test_that_guidelines_can_be_connected_via_cli_with_default_of_entails(
+async def test_that_guidelines_can_be_entailed_via_cli(
     context: ContextOfTest,
 ) -> None:
     predicate1 = "the user needs assistance"
@@ -986,12 +974,14 @@ async def test_that_guidelines_can_be_connected_via_cli_with_default_of_entails(
 
             assert "connections" in guideline_data and len(guideline_data["connections"]) == 1
             connection = guideline_data["connections"][0]
-            connection["source"] == guideline1["id"] and connection["target"] == guideline2[
-                "id"
-            ] and connection["kind"] == "entails"
+            assert (
+                connection["source"] == guideline1
+                and connection["target"] == guideline2
+                and connection["kind"] == "entails"
+            )
 
 
-async def test_that_guidelines_can_be_connected_with_suggestive_kind_via_cli(
+async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
     context: ContextOfTest,
 ) -> None:
     predicate1 = "the user needs assistance"
@@ -1098,9 +1088,11 @@ async def test_that_guidelines_can_be_connected_with_suggestive_kind_via_cli(
 
             assert "connections" in guideline_data and len(guideline_data["connections"]) == 1
             connection = guideline_data["connections"][0]
-            connection["source"] == guideline1["id"] and connection["target"] == guideline2[
-                "id"
-            ] and connection["kind"] == "suggests"
+            assert (
+                connection["source"] == guideline1
+                and connection["target"] == guideline2
+                and connection["kind"] == "suggests"
+            )
 
 
 async def test_that_guideline_can_be_removed_cli(
@@ -1115,7 +1107,7 @@ async def test_that_guideline_can_be_removed_cli(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            guidelines_response = await client.post(
+            add_guidelines_response = await client.post(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
                 json={
                     "invoices": [
@@ -1137,9 +1129,9 @@ async def test_that_guideline_can_be_removed_cli(
                 },
             )
 
-            guidelines_response.raise_for_status()
+            add_guidelines_response.raise_for_status()
 
-            guideline_id = guidelines_response.json()["guidelines"][0]["id"]
+            guideline_id = add_guidelines_response.json()["items"][0]["guideline"]["id"]
 
         exec_args = [
             "poetry",
@@ -1164,11 +1156,11 @@ async def test_that_guideline_can_be_removed_cli(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            guidelines_response = await client.get(
+            add_guidelines_response = await client.get(
                 f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline_id}",
             )
 
-            assert guidelines_response.status_code == httpx.codes.NOT_FOUND
+            assert add_guidelines_response.status_code == httpx.codes.NOT_FOUND
 
 
 async def test_that_connection_can_be_removed_via_cli(
@@ -1246,8 +1238,8 @@ async def test_that_connection_can_be_removed_via_cli(
             )
 
             guidelines_response.raise_for_status()
-            first = guidelines_response.json()["guidelines"][0]["id"]
-            second = guidelines_response.json()["guidelines"][1]["id"]
+            first = guidelines_response.json()["items"][0]["guideline"]["id"]
+            second = guidelines_response.json()["items"][1]["guideline"]["id"]
 
         exec_args = [
             "poetry",

@@ -7,7 +7,7 @@ from emcie.server.api.common import (
     ConnectionPropositionDTO,
     EvaluationStatusDTO,
     InvoiceDataDTO,
-    InvoiceGuidelineDataDTO,
+    GuidelineInvoiceDataDTO,
     PayloadDTO,
     connection_kind_to_dto,
 )
@@ -67,7 +67,7 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
 
 def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
     return {
-        PayloadKind.GUIDELINE: InvoiceGuidelineDataDTO(
+        PayloadKind.GUIDELINE: GuidelineInvoiceDataDTO(
             coherence_checks=[
                 CoherenceCheckDTO(
                     kind=c.kind,

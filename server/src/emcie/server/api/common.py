@@ -38,12 +38,12 @@ class ConnectionPropositionDTO(DefaultBaseModel):
     connection_kind: ConnectionKindDTO
 
 
-class InvoiceGuidelineDataDTO(DefaultBaseModel):
+class GuidelineInvoiceDataDTO(DefaultBaseModel):
     coherence_checks: list[CoherenceCheckDTO]
     connection_propositions: Optional[list[ConnectionPropositionDTO]]
 
 
-InvoiceDataDTO: TypeAlias = Union[InvoiceGuidelineDataDTO]
+InvoiceDataDTO: TypeAlias = Union[GuidelineInvoiceDataDTO]
 
 
 def connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:

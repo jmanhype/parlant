@@ -97,9 +97,9 @@ def test_that_a_session_can_be_created_without_a_title(
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
+    data = response.json()["session"]
 
-    assert "session_id" in data
+    assert "id" in data
     assert "title" in data
     assert data["title"] is None
 
@@ -119,9 +119,9 @@ def test_that_a_session_can_be_created_with_title(
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
+    data = response.json()["session"]
 
-    assert "session_id" in data
+    assert "id" in data
     assert data["title"] == title
 
 
@@ -140,7 +140,7 @@ def test_that_a_created_session_has_meaningful_creation_utc(
             },
         )
         .raise_for_status()
-        .json()
+        .json()["session"]
     )
 
     assert "creation_utc" in data
@@ -282,7 +282,7 @@ async def test_that_a_deleted_session_is_removed_from_the_session_list(
     session_id: SessionId,
 ) -> None:
     sessions = client.get("/sessions").raise_for_status().json()["sessions"]
-    assert any(session["session_id"] == str(session_id) for session in sessions)
+    assert any(session["id"] == str(session_id) for session in sessions)
 
     client.delete(f"/sessions/{session_id}").raise_for_status()
 

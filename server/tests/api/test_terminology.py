@@ -166,7 +166,7 @@ def test_update_term(
     updated_synonyms = ["rule", "updated"]
 
     update_response = client.patch(
-        f"/agents/{agent_id}/terms/{create_response.json()["term_id"]}",
+        f"/agents/{agent_id}/terms/{create_response.json()["id"]}",
         json={
             "description": updated_description,
             "synonyms": updated_synonyms,
@@ -203,7 +203,7 @@ def test_delete_term(
     )
 
     delete_response = client.delete(f"/agents/{agent_id}/terms/{name}").raise_for_status().json()
-    assert delete_response["deleted_term_id"] == create_response["term_id"]
+    assert delete_response["term_id"] == create_response["id"]
 
     read_response = client.get(f"/agents/{agent_id}/terms/{name}")
     assert read_response.status_code == status.HTTP_404_NOT_FOUND

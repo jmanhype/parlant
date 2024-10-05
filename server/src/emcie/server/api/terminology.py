@@ -13,7 +13,7 @@ class CreateTermRequest(DefaultBaseModel):
 
 
 class TermDTO(DefaultBaseModel):
-    term_id: TermId
+    id: TermId
     name: str
     description: str
     synonyms: Optional[list[str]] = []
@@ -30,7 +30,7 @@ class PatchTermRequest(DefaultBaseModel):
 
 
 class DeleteTermResponse(DefaultBaseModel):
-    deleted_term_id: TermId
+    term_id: TermId
 
 
 def create_router(
@@ -48,7 +48,7 @@ def create_router(
         )
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
@@ -59,7 +59,7 @@ def create_router(
         term = await terminology_store.read_term(term_set=agent_id, name=name)
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
@@ -72,7 +72,7 @@ def create_router(
         return ListTermsResponse(
             terms=[
                 TermDTO(
-                    term_id=term.id,
+                    id=term.id,
                     name=term.name,
                     description=term.description,
                     synonyms=term.synonyms,
@@ -98,7 +98,7 @@ def create_router(
         )
 
         return TermDTO(
-            term_id=term.id,
+            id=term.id,
             name=term.name,
             description=term.description,
             synonyms=term.synonyms,
@@ -107,7 +107,6 @@ def create_router(
     @router.delete("/{agent_id}/terms/{name}")
     async def delete_term(agent_id: str, name: str) -> DeleteTermResponse:
         deleted_term_id = await terminology_store.delete_term(term_set=agent_id, name=name)
-
-        return DeleteTermResponse(deleted_term_id=deleted_term_id)
+        return DeleteTermResponse(term_id=deleted_term_id)
 
     return router
