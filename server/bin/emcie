@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import os
 import sys
 import time
-from typing import Any, Literal, Optional, TypedDict, cast
+from typing import Any, Iterable, Literal, Optional, TypedDict, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -314,7 +314,7 @@ class Interface:
         rich.print(Text(message, style="bold red"), file=sys.stderr)
 
     @staticmethod
-    def _print_table(data, **kwargs) -> None:
+    def _print_table(data: Iterable[Any], **kwargs: Any) -> None:
         rich.print(
             tabulate(
                 data,
