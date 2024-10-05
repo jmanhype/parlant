@@ -231,7 +231,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                     ids=[str(doc["id"])],
                     documents=[document],
                     metadatas=[cast(chromadb.Metadata, updated_document)],
-                    embeddings=embeddings,
+                    embeddings=embeddings,  # type: ignore
                 )
 
                 return UpdateResult(
