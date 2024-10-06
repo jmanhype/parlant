@@ -63,7 +63,7 @@ Feature: Conversation
         And a guideline to do your job when the user says hello
         When processing is triggered
         Then a single message event is emitted
-        And the message contains a welcome to the pizza place
+        And the message contains a direct or indirect invitation to order pizza
 
     Scenario: Message generation is cancelled
         Given an agent whose job is to sell pizza
