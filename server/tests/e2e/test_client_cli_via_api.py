@@ -191,9 +191,8 @@ async def test_that_terms_can_be_listed(
             tool_description,
         ]
 
-        await asyncio.create_subprocess_exec(*exec_args_1)
-        result = await asyncio.create_subprocess_exec(*exec_args_2)
-        await result.wait()
+        assert await (await asyncio.create_subprocess_exec(*exec_args_1)).wait() == os.EX_OK
+        assert await (await asyncio.create_subprocess_exec(*exec_args_2)).wait() == os.EX_OK
 
         async with httpx.AsyncClient(
             follow_redirects=True,
