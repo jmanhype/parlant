@@ -17,7 +17,6 @@ RUN poetry config virtualenvs.create false \
 
 COPY server/pyproject.toml server/poetry.lock /app/server/
 COPY server/src /app/server/src
-COPY server/bin /app/server/bin
 WORKDIR /app/server
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --only main
