@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # mypy: disable-error-code=import-untyped
 
 import asyncio
@@ -666,7 +665,7 @@ class Interface:
             Interface._write_error(f"error: {type(e).__name__}: {e}")
 
 
-async def main() -> None:
+async def async_main() -> None:
     click_completion.init()
 
     @dataclass(frozen=True)
@@ -955,5 +954,9 @@ async def main() -> None:
     cli()
 
 
+def main() -> None:
+    asyncio.run(async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

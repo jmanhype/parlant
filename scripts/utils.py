@@ -1,4 +1,4 @@
-from dataclasses import field, dataclass
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import subprocess
@@ -13,7 +13,6 @@ class Package:
     uses_poetry: bool
     cmd_prefix: str
     publish: bool
-    bin_files: list[Path] = field(default_factory=list)
 
     def run_cmd(self, cmd: str) -> tuple[int, str]:
         return subprocess.getstatusoutput(f"{self.cmd_prefix} {cmd}")
@@ -59,10 +58,6 @@ def get_packages() -> list[Package]:
             name="server",
             path=root / "server",
             cmd_prefix="poetry run",
-            bin_files=[
-                root / "server" / "bin" / "emcie",
-                root / "server" / "bin" / "emcie-server",
-            ],
             uses_poetry=True,
             publish=False,
         ),

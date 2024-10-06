@@ -4,7 +4,6 @@ from pytest_bdd import given, then, parsers
 from emcie.common.tools import ToolId
 from emcie.server.core.engines.alpha.utils import emitted_tool_event_to_dict
 from emcie.server.core.emissions import EmittedEvent
-from emcie.server.core.logging import Logger
 from emcie.server.core.sessions import (
     MessageEventData,
     SessionId,
@@ -89,7 +88,6 @@ def then_the_message_contains(
 
     assert context.sync_await(
         nlp_test(
-            logger=context.container[Logger],
             context=message,
             predicate=f"the text contains {something}",
         )
@@ -246,7 +244,6 @@ def then_the_tool_calls_event_contains_expected_content(
 
     assert context.sync_await(
         nlp_test(
-            logger=context.container[Logger],
             context=f"The following is the result of tool (function) calls: {tool_calls}",
             predicate=f"The calls contain {expected_content}",
         )

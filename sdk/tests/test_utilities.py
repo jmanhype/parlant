@@ -26,14 +26,15 @@ def get_package_path() -> Path:
         p = p.parent
         assert p != Path("/"), "Failed to find repo path"
 
-    package_path = p / "server"
+    package_path = p / "sdk"
 
     assert Path.cwd().is_relative_to(package_path), "Must run from within the package dir"
 
     return package_path
 
 
-CLI_SERVER_PATH = get_package_path() / "src/emcie/server/bin/server.py"
+CLI_CLIENT_PATH = get_package_path() / "src/emcie/sdk/bin/emcie.py"
+CLI_SERVER_PATH = get_package_path() / "../server/src/emcie/server/bin/server.py"
 
 
 @dataclass(frozen=True)
