@@ -179,6 +179,13 @@ def create_router(
             ]
         )
 
+    @router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+    async def delete_sessions(agent_id: AgentId) -> None:
+        sessions = await session_store.list_sessions(agent_id)
+
+        for s in sessions:
+            await session_store.delete_session(s.id)
+
     @router.patch("/{session_id}")
     async def patch_session(
         session_id: SessionId,
