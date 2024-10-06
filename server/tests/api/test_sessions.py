@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from emcie.common.tools import ToolResult
 from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
+from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
 from tests.api.utils import create_agent, create_guideline, create_session, post_message
 
@@ -290,6 +291,27 @@ async def test_that_a_deleted_session_is_removed_from_the_session_list(
     assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
 
 
+async def test_that_all_sessions_can_be_deleted_with_one_request(
+    client: TestClient,
+    agent_id: AgentId,
+    container: Container,
+) -> None:
+    for _ in range(5):
+        await create_session(
+            container=container,
+            agent_id=agent_id,
+            end_user_id=EndUserId("test-user"),
+        )
+
+    response = client.delete("/sessions", params={"agent_id": agent_id})
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    stored_sessions = await container[SessionStore].list_sessions(agent_id)
+
+    assert len(stored_sessions) == 0
+
+
 async def test_that_deleting_a_session_also_deletes_its_events(
     client: TestClient,
     container: Container,
@@ -433,7 +455,6 @@ async def test_that_status_updates_can_be_retrieved_separately_after_posting_a_m
 
 def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     client: TestClient,
-    agent_id: AgentId,
     session_id: SessionId,
 ) -> None:
     posted_event = (
