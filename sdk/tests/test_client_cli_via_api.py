@@ -2,9 +2,8 @@ import asyncio
 import os
 import traceback
 import httpx
-from emcie.server.core.agents import Agent
-from tests.e2e.test_server_cli import REASONABLE_AMOUNT_OF_TIME
-from tests.e2e.test_utilities import (
+
+from tests.test_utilities import (
     CLI_CLIENT_PATH,
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
@@ -13,10 +12,11 @@ from tests.e2e.test_utilities import (
     run_server,
 )
 
+REASONABLE_AMOUNT_OF_TIME = 5
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 
-async def get_first_agent() -> Agent:
+async def get_first_agent_id() -> str:
     async with httpx.AsyncClient(
         follow_redirects=True,
         timeout=httpx.Timeout(30),
@@ -29,13 +29,7 @@ async def get_first_agent() -> Agent:
 
             assert len(agents_response.json()["agents"]) > 0
             agent = agents_response.json()["agents"][0]
-
-            return Agent(
-                id=agent["id"],
-                name=agent["name"],
-                description=agent["description"],
-                creation_utc=agent["creation_utc"],
-            )
+            return str(agent["id"])
 
         except:
             traceback.print_exc()
@@ -52,7 +46,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args = [
             "poetry",
@@ -64,7 +58,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
             "glossary",
             "add",
             "--agent-id",
-            agent.id,
+            agent_id,
             term_name,
             description,
             "--synonyms",
@@ -82,7 +76,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent.id}/terms/",
+                    f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
                 )
                 terminology_response.raise_for_status()
 
@@ -103,7 +97,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args = [
             "poetry",
@@ -115,7 +109,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
             "glossary",
             "add",
             "--agent-id",
-            agent.id,
+            agent_id,
             term_name,
             description,
         ]
@@ -131,7 +125,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
         ) as client:
             try:
                 terminology_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent.id}/terms/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent_id}/terms/{term_name}",
                 )
                 terminology_response.raise_for_status()
 
@@ -352,7 +346,7 @@ async def test_that_guideline_can_be_added(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args = [
             "poetry",
@@ -364,7 +358,7 @@ async def test_that_guideline_can_be_added(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             predicate,
             action,
         ]
@@ -379,7 +373,7 @@ async def test_that_guideline_can_be_added(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
             )
 
             guidelines_response.raise_for_status()
@@ -399,7 +393,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args_first = [
             "poetry",
@@ -411,7 +405,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             predicate,
             action,
         ]
@@ -429,7 +423,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             predicate,
             conflicting_action,
         ]
@@ -449,7 +443,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
             )
 
             guidelines_response.raise_for_status()
@@ -474,7 +468,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args_first = [
             "poetry",
@@ -486,7 +480,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             predicate1,
             action1,
         ]
@@ -506,7 +500,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             predicate2,
             action2,
         ]
@@ -521,7 +515,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
             )
             guidelines_response.raise_for_status()
             guidelines = guidelines_response.json()["guidelines"]
@@ -531,7 +525,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
             target = guidelines[1]
 
             source_guideline_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{source['id']}"
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{source['id']}"
             )
             source_guideline_response.raise_for_status()
             source_guideline_connections = source_guideline_response.json()["connections"]
@@ -553,14 +547,14 @@ async def test_that_guideline_can_be_viewed_via_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             add_guideline_response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -594,7 +588,7 @@ async def test_that_guideline_can_be_viewed_via_cli(
             "guideline",
             "view",
             "-a",
-            agent.id,
+            agent_id,
             guideline_id,
         ]
         process_view = await asyncio.create_subprocess_exec(
@@ -626,14 +620,14 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             add_guidelines_response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -749,7 +743,7 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
             "guideline",
             "view",
             "-a",
-            agent.id,
+            agent_id,
             first["id"],
         ]
         process_view = await asyncio.create_subprocess_exec(
@@ -788,14 +782,14 @@ async def test_that_guidelines_can_be_listed_via_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             response_add1 = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -818,7 +812,7 @@ async def test_that_guidelines_can_be_listed_via_cli(
             response_add1.raise_for_status()
 
             response_add2 = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -850,7 +844,7 @@ async def test_that_guidelines_can_be_listed_via_cli(
             "guideline",
             "list",
             "-a",
-            agent.id,
+            agent_id,
         ]
         process_list = await asyncio.create_subprocess_exec(
             *exec_args_list,
@@ -879,7 +873,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args_add1 = [
             "poetry",
@@ -891,7 +885,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             "--no-check",
             "--no-index",
             predicate1,
@@ -911,7 +905,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             "--no-check",
             "--no-index",
             predicate2,
@@ -926,7 +920,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/"
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/"
             )
             guidelines_response.raise_for_status()
             guidelines = guidelines_response.json()["guidelines"]
@@ -948,7 +942,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
             "guideline",
             "entail",
             "-a",
-            agent.id,
+            agent_id,
             guideline1["id"],
             guideline2["id"],
         ]
@@ -966,7 +960,7 @@ async def test_that_guidelines_can_be_entailed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guideline_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline1['id']}"
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{guideline1['id']}"
             )
             guideline_response.raise_for_status()
             guideline_data = guideline_response.json()
@@ -992,7 +986,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         exec_args_add1 = [
             "poetry",
@@ -1004,7 +998,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             "--no-check",
             "--no-index",
             predicate1,
@@ -1024,7 +1018,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             "guideline",
             "add",
             "-a",
-            agent.id,
+            agent_id,
             "--no-check",
             "--no-index",
             predicate2,
@@ -1039,7 +1033,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/"
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/"
             )
             guidelines_response.raise_for_status()
             guidelines = guidelines_response.json()["guidelines"]
@@ -1061,7 +1055,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             "guideline",
             "entail",
             "-a",
-            agent.id,
+            agent_id,
             "--suggestive",
             guideline1["id"],
             guideline2["id"],
@@ -1080,7 +1074,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guideline_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline1['id']}"
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{guideline1['id']}"
             )
             guideline_response.raise_for_status()
             guideline_data = guideline_response.json()
@@ -1100,14 +1094,14 @@ async def test_that_guideline_can_be_removed_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             add_guidelines_response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -1142,7 +1136,7 @@ async def test_that_guideline_can_be_removed_cli(
             "guideline",
             "remove",
             "-a",
-            agent.id,
+            agent_id,
             guideline_id,
         ]
 
@@ -1156,7 +1150,7 @@ async def test_that_guideline_can_be_removed_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             add_guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{guideline_id}",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{guideline_id}",
             )
 
             assert add_guidelines_response.status_code == httpx.codes.NOT_FOUND
@@ -1168,14 +1162,14 @@ async def test_that_connection_can_be_removed_via_cli(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await get_first_agent()
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -1250,7 +1244,7 @@ async def test_that_connection_can_be_removed_via_cli(
             "guideline",
             "disentail",
             "-a",
-            agent.id,
+            agent_id,
             first,
             second,
         ]
@@ -1265,7 +1259,7 @@ async def test_that_connection_can_be_removed_via_cli(
             timeout=httpx.Timeout(30),
         ) as client:
             guidelines_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent.id}/guidelines/{first}",
+                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{first}",
             )
 
             assert len(guidelines_response.json()["connections"]) == 0

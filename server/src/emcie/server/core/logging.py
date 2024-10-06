@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import asyncio
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +20,27 @@ class CustomFormatter(logging.Formatter, ABC):
 
 
 class Logger(ABC):
+    @abstractmethod
+    def debug(self, message: str) -> None: ...
+
+    @abstractmethod
+    def info(self, message: str) -> None: ...
+
+    @abstractmethod
+    def warning(self, message: str) -> None: ...
+
+    @abstractmethod
+    def error(self, message: str) -> None: ...
+
+    @abstractmethod
+    def critical(self, message: str) -> None: ...
+
+    @abstractmethod
+    @contextmanager
+    def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]: ...
+
+
+class CorrelationalLogger(Logger):
     def __init__(self, correlator: ContextualCorrelator) -> None:
         self._correlator = correlator
         self.logger = logging.getLogger("emcie")
@@ -68,13 +89,13 @@ class Logger(ABC):
         return f"[{self._correlator.correlation_id}] {message}"
 
 
-class StdoutLogger(Logger):
+class StdoutLogger(CorrelationalLogger):
     def __init__(self, correlator: ContextualCorrelator) -> None:
         super().__init__(correlator)
         coloredlogs.install(level="DEBUG", logger=self.logger)
 
 
-class FileLogger(Logger):
+class FileLogger(CorrelationalLogger):
     def __init__(self, log_file_path: Path, correlator: ContextualCorrelator) -> None:
         super().__init__(correlator)
 

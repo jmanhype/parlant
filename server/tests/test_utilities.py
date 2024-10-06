@@ -1,5 +1,7 @@
 import asyncio
-from typing import Any, Awaitable, Generator, TypeVar
+from contextlib import contextmanager
+import logging
+from typing import Any, Awaitable, Generator, Iterator, TypeVar
 
 from emcie.server.adapters.nlp.openai import GPT_4o
 from emcie.server.core.logging import Logger
@@ -20,8 +22,32 @@ class SyncAwaiter:
         return self.event_loop.run_until_complete(awaitable)  # type: ignore
 
 
-async def nlp_test(logger: Logger, context: str, predicate: str) -> bool:
-    schematic_generator = GPT_4o[NLPTestSchema](logger=logger)
+class TestLogger(Logger):
+    def __init__(self) -> None:
+        self.logger = logging.getLogger("TestLogger")
+
+    def debug(self, message: str) -> None:
+        self.logger.debug(message)
+
+    def info(self, message: str) -> None:
+        self.logger.info(message)
+
+    def warning(self, message: str) -> None:
+        self.logger.warning(message)
+
+    def error(self, message: str) -> None:
+        self.logger.error(message)
+
+    def critical(self, message: str) -> None:
+        self.logger.critical(message)
+
+    @contextmanager
+    def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
+        yield
+
+
+async def nlp_test(context: str, predicate: str) -> bool:
+    schematic_generator = GPT_4o[NLPTestSchema](logger=TestLogger())
 
     inference = await schematic_generator.generate(
         prompt=f"""\

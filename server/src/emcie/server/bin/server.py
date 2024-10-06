@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # mypy: disable-error-code=import-untyped
 
 import asyncio
@@ -475,7 +474,7 @@ async def check_coherence(params: CLIParams) -> None:
             rich.print()
 
 
-if __name__ == "__main__":
+def main() -> None:
     click_completion.init()
 
     @click.group
@@ -548,3 +547,7 @@ if __name__ == "__main__":
     except StartupError as e:
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

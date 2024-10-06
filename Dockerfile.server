@@ -25,4 +25,4 @@ RUN poetry config virtualenvs.create false \
 # Expose the port your app runs on
 EXPOSE 8000
 
-CMD ["poetry", "run", "python", "bin/emcie-server", "run", "--index"]
+CMD ["poetry", "run", "emcie-server", "run", "--index"]

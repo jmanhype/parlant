@@ -158,7 +158,6 @@ async def test_that_the_server_hot_reloads_guideline_changes(
         )
 
         assert await nlp_test(
-            context.logger,
             agent_replies[0],
             "It says that bananas are very tasty",
         )
@@ -213,13 +212,11 @@ async def test_that_the_server_loads_and_interacts_with_a_plugin(
                 )
 
                 assert await nlp_test(
-                    context.logger,
                     agent_replies[0],
                     "It says that Dor makes the worst pizza",
                 )
 
                 assert await nlp_test(
-                    context.logger,
                     agent_replies[1],
                     "It says that Dor makes great pizza",
                 )
@@ -244,7 +241,6 @@ async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_n
         )
 
         assert await nlp_test(
-            context.logger,
             agent_replies[0],
             "It greeting the user",
         )
@@ -266,7 +262,6 @@ async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_t
         )
 
         assert await nlp_test(
-            context.logger,
             agent_replies[0],
             "It greeting the user",
         )
@@ -328,7 +323,6 @@ async def test_that_the_server_does_not_conform_to_state_changes_if_forced_to_st
         )
 
         assert await nlp_test(
-            context.logger,
             agent_replies[0],
             "It says that bananas are very tasty but not mentioning they blue",
         )
@@ -370,7 +364,6 @@ async def test_that_the_server_detects_and_conforms_to_a_state_change_if_told_to
         )
 
         assert await nlp_test(
-            context.logger,
             agent_replies[0],
             "It says that bananas are very tasty and blue",
         )
