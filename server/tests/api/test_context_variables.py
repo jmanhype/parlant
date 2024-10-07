@@ -5,6 +5,7 @@ from pytest import fixture
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
+from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.tools import LocalToolService
 
 
@@ -55,3 +56,28 @@ async def test_that_context_variable_can_be_created(
     assert context_variable["name"] == "test_variable"
     assert context_variable["description"] == "test of context variable"
     assert context_variable["freshness_rules"] == freshness_rules
+
+
+async def test_that_context_variable_can_be_removed(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    variable_to_delete = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=None,
+    )
+
+    respone = (
+        client.delete(f"/agents/{agent_id}/variables/{variable_to_delete.id}/")
+        .raise_for_status()
+        .json()
+    )
+
+    assert respone["variable_id"] == variable_to_delete.id

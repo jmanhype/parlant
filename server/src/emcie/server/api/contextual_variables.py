@@ -53,6 +53,10 @@ class CreateContextVariableResponse(DefaultBaseModel):
     variable: ContextVariableDTO
 
 
+class DeleteContextVariableReponse(DefaultBaseModel):
+    variable_id: ContextVariableId
+
+
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
     return FreshnessRules(
         months=dto.months,
@@ -109,5 +113,16 @@ def create_router(
                 else None,
             )
         )
+
+    @router.delete("/{agent_id}/variables/{variable_id}/")
+    async def delete_variable(
+        agent_id: AgentId, variable_id: ContextVariableId
+    ) -> DeleteContextVariableReponse:
+        _ = await context_variable_store.delete_variable(
+            variable_set=agent_id,
+            id=variable_id,
+        )
+
+        return DeleteContextVariableReponse(variable_id=variable_id)
 
     return router
