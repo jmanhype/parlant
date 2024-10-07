@@ -7,6 +7,8 @@ from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.api import terminology
 from emcie.server.api import guidelines
+from emcie.server.api import contextual_variables as variables
+from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore
 from emcie.server.core.common import ItemNotFoundError, generate_id
@@ -20,6 +22,7 @@ from emcie.server.core.services.indexing.behavioral_change_evaluation import (
 )
 from emcie.server.core.logging import Logger
 from emcie.server.core.mc import MC
+from emcie.server.core.tools import ToolService
 
 
 async def create_app(container: Container) -> FastAPI:
@@ -33,6 +36,8 @@ async def create_app(container: Container) -> FastAPI:
     terminology_store = container[TerminologyStore]
     guideline_store = container[GuidelineStore]
     guideline_connection_store = container[GuidelineConnectionStore]
+    context_variable_store = container[ContextVariableStore]
+    tool_service = container[ToolService]
     mc = container[MC]
 
     app = FastAPI()
@@ -84,6 +89,12 @@ async def create_app(container: Container) -> FastAPI:
     agent_router.include_router(
         terminology.create_router(
             terminology_store=terminology_store,
+        )
+    )
+    agent_router.include_router(
+        variables.create_router(
+            context_variable_store=context_variable_store,
+            tool_service=tool_service,
         )
     )
 

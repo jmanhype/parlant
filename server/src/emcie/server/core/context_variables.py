@@ -405,7 +405,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         return self._deserialize_context_variable_value(value_document)
 
-    @abstractmethod
     async def delete_value(
         self,
         variable_set: str,
@@ -425,7 +424,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
             else None
         )
 
-    @abstractmethod
     async def list_values(
         self,
         variable_set: str,
