@@ -81,3 +81,50 @@ async def test_that_context_variable_can_be_removed(
     )
 
     assert respone["variable_id"] == variable_to_delete.id
+
+
+async def test_that_context_variables_can_be_listed(
+    client: TestClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    freshness_rules = {
+        "months": [5],
+        "days_of_month": [14],
+        "days_of_week": ["Thursday"],
+        "hours": [18],
+        "minutes": None,
+        "seconds": None,
+    }
+
+    first_variable = (
+        client.post(
+            f"/agents/{agent_id}/variables",
+            json={
+                "name": "test_variable",
+                "description": "test of context variable",
+                "tool_id": f"local__{tool_id}",
+                "freshness_rules": freshness_rules,
+            },
+        )
+        .raise_for_status()
+        .json()["variable"]
+    )
+
+    second_variable = (
+        client.post(
+            f"/agents/{agent_id}/variables",
+            json={
+                "name": "second_test_variable",
+                "tool_id": f"local__{tool_id}",
+            },
+        )
+        .raise_for_status()
+        .json()["variable"]
+    )
+
+    variables = client.get(f"/agents/{agent_id}/variables/").raise_for_status().json()["variables"]
+    assert len(variables) == 2
+
+    assert any(first_variable == v for v in variables)
+    assert any(second_variable == v for v in variables)
