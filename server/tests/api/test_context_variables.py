@@ -75,12 +75,15 @@ async def test_that_context_variable_can_be_removed(
     )
 
     respone = (
-        client.delete(f"/agents/{agent_id}/variables/{variable_to_delete.id}/")
+        client.delete(f"/agents/{agent_id}/variables/{variable_to_delete.id}")
         .raise_for_status()
         .json()
     )
 
     assert respone["variable_id"] == variable_to_delete.id
+
+    response = client.get(f"/agents/{agent_id}/variables/{variable_to_delete.id}")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 async def test_that_context_variables_can_be_listed(
@@ -128,3 +131,43 @@ async def test_that_context_variables_can_be_listed(
 
     assert any(first_variable == v for v in variables)
     assert any(second_variable == v for v in variables)
+
+
+async def test_that_context_variable_value_can_be_deleted(
+    client: TestClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    response = client.post(
+        f"/agents/{agent_id}/variables",
+        json={
+            "name": "test_variable",
+            "description": "test of context variable",
+            "tool_id": f"local__{tool_id}",
+            "freshness_rules": None,
+        },
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    variable = response.json()["variable"]
+    variable_id = variable["id"]
+
+    key = "test_key"
+    data = {"value": 42, "message": "The answer to life"}
+
+    response = client.put(
+        f"/agents/{agent_id}/variables/{variable_id}/values/{key}",
+        json={"data": data},
+    )
+
+    variable_value = response.json()["variable_value"]
+    assert variable_value["variable_id"] == variable_id
+    assert variable_value["data"] == data
+    assert "last_modified" in variable_value
+
+    response = client.delete(f"/agents/{agent_id}/variables/{variable_id}/values/{key}")
+    assert response.status_code == status.HTTP_200_OK
+    deleted_value_id = response.json()["variable_value_id"]
+    assert deleted_value_id == variable_value["id"]
+
+    response = client.get(f"/agents/{agent_id}/variables/{variable_id}/values/{key}")
+    assert response.status_code == status.HTTP_404_NOT_FOUND

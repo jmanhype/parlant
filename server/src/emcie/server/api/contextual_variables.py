@@ -1,4 +1,4 @@
-from fastapi import status
+from fastapi import HTTPException, status
 from typing import Literal, Optional
 
 from emcie.common.tools import ToolId
@@ -8,6 +8,7 @@ from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.context_variables import (
     ContextVariableId,
     ContextVariableStore,
+    ContextVariableValueId,
     FreshnessRules,
 )
 from emcie.server.core.tools import ToolService
@@ -59,6 +60,10 @@ class DeleteContextVariableReponse(DefaultBaseModel):
 
 class ListContextVariablesResponse(DefaultBaseModel):
     variables: list[ContextVariableDTO]
+
+
+class DeleteContextVariableValueResponse(DefaultBaseModel):
+    variable_value_id: ContextVariableValueId
 
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
@@ -149,5 +154,25 @@ def create_router(
                 for variable in variables
             ]
         )
+
+    @router.delete("/{agent_id}/variables/{variable_id}/values/{key}")
+    async def delete_value(
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+        key: str,
+    ) -> DeleteContextVariableValueResponse:
+        _ = await context_variable_store.read_variable(
+            variable_set=agent_id,
+            id=variable_id,
+        )
+
+        if deleted_variable_value_id := await context_variable_store.delete_value(
+            variable_set=agent_id,
+            variable_id=variable_id,
+            key=key,
+        ):
+            return DeleteContextVariableValueResponse(variable_value_id=deleted_variable_value_id)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     return router

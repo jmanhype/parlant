@@ -409,6 +409,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             {
                 "variable_set": {"$eq": variable_set},
                 "variable_id": {"$eq": variable_id},
+                "key": {"$eq": key},
             }
         )
 
