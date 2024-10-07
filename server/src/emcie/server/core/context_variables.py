@@ -90,7 +90,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> None: ...
+    ) -> Optional[ContextVariableId]: ...
 
     @abstractmethod
     async def list_variables(
@@ -112,6 +112,21 @@ class ContextVariableStore(ABC):
         key: str,
         variable_id: ContextVariableId,
     ) -> ContextVariableValue: ...
+
+    @abstractmethod
+    async def delete_value(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+        key: str,
+    ) -> Optional[ContextVariableValueId]: ...
+
+    @abstractmethod
+    async def list_values(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+    ) -> Sequence[ContextVariableValue]: ...
 
 
 class _FreshnessRulesDocument(TypedDict, total=False):
@@ -312,7 +327,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> None:
+    ) -> Optional[ContextVariableId]:
         variable_deletion_result = await self._variable_collection.delete_one(
             {
                 "id": {"$eq": id},
@@ -334,6 +349,12 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 item_id=UniqueId(id),
                 message=f"variable_set={variable_set} in values collection",
             )
+
+        return (
+            ContextVariableId(variable_deletion_result.deleted_document["id"])
+            if variable_deletion_result.deleted_document
+            else None
+        )
 
     async def list_variables(
         self,
@@ -383,3 +404,39 @@ class ContextVariableDocumentStore(ContextVariableStore):
             )
 
         return self._deserialize_context_variable_value(value_document)
+
+    @abstractmethod
+    async def delete_value(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+        key: str,
+    ) -> Optional[ContextVariableValueId]:
+        result = await self._value_collection.delete_one(
+            {
+                "variable_set": {"$eq": variable_set},
+                "variable_id": {"$eq": variable_id},
+            }
+        )
+
+        return (
+            ContextVariableValueId(result.deleted_document["id"])
+            if result.deleted_document
+            else None
+        )
+
+    @abstractmethod
+    async def list_values(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+    ) -> Sequence[ContextVariableValue]:
+        return [
+            self._deserialize_context_variable_value(d)
+            for d in await self._value_collection.find(
+                {
+                    "variable_set": {"$eq": variable_set},
+                    "variable_id": {"$eq": variable_id},
+                }
+            )
+        ]
