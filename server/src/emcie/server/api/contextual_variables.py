@@ -1,5 +1,6 @@
+from datetime import datetime
 from fastapi import HTTPException, status
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from emcie.common.tools import ToolId
 from fastapi import APIRouter
@@ -60,6 +61,21 @@ class DeleteContextVariableReponse(DefaultBaseModel):
 
 class ListContextVariablesResponse(DefaultBaseModel):
     variables: list[ContextVariableDTO]
+
+
+class ContextVariableValueDTO(DefaultBaseModel):
+    id: ContextVariableValueId
+    variable_id: ContextVariableId
+    last_modified: datetime
+    data: Any
+
+
+class PutContextVariableValueRequest(DefaultBaseModel):
+    data: Any
+
+
+class PutContextVariableValueResponse(DefaultBaseModel):
+    variable_value: ContextVariableValueDTO
 
 
 class DeleteContextVariableValueResponse(DefaultBaseModel):
@@ -155,7 +171,35 @@ def create_router(
             ]
         )
 
-    @router.delete("/{agent_id}/variables/{variable_id}/values/{key}")
+    @router.put("/{agent_id}/variables/{variable_id}/{key}")
+    async def set_value(
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+        key: str,
+        request: PutContextVariableValueRequest,
+    ) -> PutContextVariableValueResponse:
+        _ = await context_variable_store.read_variable(
+            variable_set=agent_id,
+            id=variable_id,
+        )
+
+        variable_value = await context_variable_store.update_value(
+            variable_set=agent_id,
+            key=key,
+            variable_id=variable_id,
+            data=request.data,
+        )
+
+        return PutContextVariableValueResponse(
+            variable_value=ContextVariableValueDTO(
+                id=variable_value.id,
+                variable_id=variable_value.variable_id,
+                last_modified=variable_value.last_modified,
+                data=variable_value.data,
+            )
+        )
+
+    @router.delete("/{agent_id}/variables/{variable_id}/{key}")
     async def delete_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,

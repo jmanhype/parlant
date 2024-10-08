@@ -133,6 +133,55 @@ async def test_that_context_variables_can_be_listed(
     assert any(second_variable == v for v in variables)
 
 
+async def test_that_context_variable_value_can_be_set(
+    client: TestClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    variable = (
+        client.post(
+            f"/agents/{agent_id}/variables",
+            json={
+                "name": "test_variable",
+                "description": "test of context variable",
+                "tool_id": f"local__{tool_id}",
+                "freshness_rules": None,
+            },
+        )
+        .raise_for_status()
+        .json()["variable"]
+    )
+    variable_id = variable["id"]
+
+    key = "yam_choock"
+    data = {"zen_level": 5000}
+
+    value = (
+        client.put(
+            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            json={"data": data},
+        )
+        .raise_for_status()
+        .json()["variable_value"]
+    )
+
+    assert value["variable_id"] == variable_id
+    assert value["data"] == data
+
+    data = {"zen_level": 9000}
+    value = (
+        client.put(
+            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            json={"data": data},
+        )
+        .raise_for_status()
+        .json()["variable_value"]
+    )
+
+    assert value["variable_id"] == variable_id
+    assert value["data"] == data
+
+
 async def test_that_context_variable_value_can_be_deleted(
     client: TestClient,
     agent_id: AgentId,
@@ -151,11 +200,11 @@ async def test_that_context_variable_value_can_be_deleted(
     variable = response.json()["variable"]
     variable_id = variable["id"]
 
-    key = "test_key"
-    data = {"value": 42, "message": "The answer to life"}
+    key = "yam_choock"
+    data = {"zen_level": 9000}
 
     response = client.put(
-        f"/agents/{agent_id}/variables/{variable_id}/values/{key}",
+        f"/agents/{agent_id}/variables/{variable_id}/{key}",
         json={"data": data},
     )
 
@@ -164,10 +213,9 @@ async def test_that_context_variable_value_can_be_deleted(
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 
-    response = client.delete(f"/agents/{agent_id}/variables/{variable_id}/values/{key}")
-    assert response.status_code == status.HTTP_200_OK
+    response = client.delete(f"/agents/{agent_id}/variables/{variable_id}/{key}")
     deleted_value_id = response.json()["variable_value_id"]
     assert deleted_value_id == variable_value["id"]
 
-    response = client.get(f"/agents/{agent_id}/variables/{variable_id}/values/{key}")
+    response = client.get(f"/agents/{agent_id}/variables/{variable_id}/{key}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
