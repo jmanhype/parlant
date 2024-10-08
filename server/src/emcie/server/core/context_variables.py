@@ -126,7 +126,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-    ) -> Sequence[ContextVariableValue]: ...
+    ) -> Sequence[tuple[str, ContextVariableValue]]: ...
 
 
 class _FreshnessRulesDocument(TypedDict, total=False):
@@ -423,9 +423,9 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-    ) -> Sequence[ContextVariableValue]:
+    ) -> Sequence[tuple[str, ContextVariableValue]]:
         return [
-            self._deserialize_context_variable_value(d)
+            (d["key"], self._deserialize_context_variable_value(d))
             for d in await self._value_collection.find(
                 {
                     "variable_set": {"$eq": variable_set},

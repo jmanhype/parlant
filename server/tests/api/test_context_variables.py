@@ -58,49 +58,6 @@ async def test_that_context_variable_can_be_created(
     assert context_variable["freshness_rules"] == freshness_rules
 
 
-async def test_that_context_variable_can_be_retrieved(
-    client: TestClient,
-    container: Container,
-    agent_id: AgentId,
-    tool_id: ToolId,
-) -> None:
-    context_variable_store = container[ContextVariableStore]
-
-    variable = await context_variable_store.create_variable(
-        variable_set=agent_id,
-        name="test_variable",
-        description="test variable",
-        tool_id=ToolId(f"local__{tool_id}"),
-        freshness_rules=FreshnessRules(
-            months=[5],
-            days_of_month=None,
-            days_of_week=None,
-            hours=None,
-            minutes=None,
-            seconds=None,
-        ),
-    )
-
-    response = client.get(f"/agents/{agent_id}/variables/{variable.id}")
-    assert response.status_code == status.HTTP_200_OK
-
-    retrieved_variable = response.json()
-    assert retrieved_variable["id"] == variable.id
-    assert retrieved_variable["name"] == "test_variable"
-    assert retrieved_variable["description"] == "test variable"
-    assert retrieved_variable["tool_id"] == f"local__{tool_id}"
-
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": None,
-        "days_of_week": None,
-        "hours": None,
-        "minutes": None,
-        "seconds": None,
-    }
-    assert retrieved_variable["freshness_rules"] == freshness_rules
-
-
 async def test_that_all_context_variables_can_be_deleted(
     client: TestClient,
     container: Container,
@@ -303,7 +260,7 @@ async def test_that_context_variable_values_can_be_listed(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
+        tool_id=ToolId(f"local__{tool_id}"),
         freshness_rules=None,
     )
 
@@ -324,12 +281,18 @@ async def test_that_context_variable_values_can_be_listed(
     response = client.get(f"/agents/{agent_id}/variables/{variable.id}")
     assert response.status_code == status.HTTP_200_OK
 
+    retrieved_variable = response.json()["variable"]
+    assert retrieved_variable["id"] == variable.id
+    assert retrieved_variable["name"] == "test_variable"
+    assert retrieved_variable["description"] == "test variable"
+    assert retrieved_variable["tool_id"] == f"local__{tool_id}"
+
     retrieved_values = response.json()["variable_values"]
 
     assert len(retrieved_values) == len(keys_and_data)
-    for value_dto in retrieved_values:
-        assert any(value_dto["data"] == keys_and_data[key] for key in keys_and_data)
-        assert value_dto["variable_id"] == variable.id
+    for key in keys_and_data:
+        assert key in retrieved_values
+        assert retrieved_values[key]["data"] == keys_and_data[key]
 
 
 async def test_that_context_variable_value_can_be_deleted(
