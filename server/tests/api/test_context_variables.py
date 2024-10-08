@@ -5,7 +5,7 @@ from pytest import fixture
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import ContextVariableStore
+from emcie.server.core.context_variables import ContextVariableStore, FreshnessRules
 from emcie.server.core.tools import LocalToolService
 
 
@@ -88,134 +88,164 @@ async def test_that_context_variable_can_be_removed(
 
 async def test_that_context_variables_can_be_listed(
     client: TestClient,
+    container: Container,
     agent_id: AgentId,
     tool_id: ToolId,
 ) -> None:
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": [14],
-        "days_of_week": ["Thursday"],
-        "hours": [18],
-        "minutes": None,
-        "seconds": None,
-    }
+    context_variable_store = container[ContextVariableStore]
 
-    first_variable = (
-        client.post(
-            f"/agents/{agent_id}/variables",
-            json={
-                "name": "test_variable",
-                "description": "test of context variable",
-                "tool_id": f"local__{tool_id}",
-                "freshness_rules": freshness_rules,
-            },
-        )
-        .raise_for_status()
-        .json()["variable"]
+    first_variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=FreshnessRules(
+            months=[5],
+            days_of_month=None,
+            days_of_week=None,
+            hours=None,
+            minutes=None,
+            seconds=None,
+        ),
     )
 
-    second_variable = (
-        client.post(
-            f"/agents/{agent_id}/variables",
-            json={
-                "name": "second_test_variable",
-                "tool_id": f"local__{tool_id}",
-            },
-        )
-        .raise_for_status()
-        .json()["variable"]
+    second_variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="second_test_variable",
+        description=None,
+        tool_id=tool_id,
+        freshness_rules=None,
     )
 
     variables = client.get(f"/agents/{agent_id}/variables/").raise_for_status().json()["variables"]
     assert len(variables) == 2
 
-    assert any(first_variable == v for v in variables)
-    assert any(second_variable == v for v in variables)
+    assert first_variable.id == variables[0]["id"]
+    assert second_variable.id == variables[1]["id"]
+
+    assert first_variable.name == variables[0]["name"]
+    assert second_variable.name == variables[1]["name"]
+
+    assert first_variable.description == variables[0]["description"]
+    assert second_variable.description == variables[1]["description"]
+
+    assert first_variable.freshness_rules is not None
+    assert first_variable.freshness_rules.months == variables[0]["freshness_rules"]["months"]
+
+    assert second_variable.freshness_rules is None
+
+
+async def test_that_context_variable_value_can_be_retrieved(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=None,
+    )
+
+    key = "test_key"
+    data = {"value": 42}
+
+    _ = await context_variable_store.update_value(
+        variable_set=agent_id,
+        variable_id=variable.id,
+        key=key,
+        data=data,
+    )
+
+    value = (
+        client.get(f"/agents/{agent_id}/variables/{variable.id}/{key}").raise_for_status().json()
+    )
+
+    assert value["variable_id"] == variable.id
+    assert value["data"] == data
 
 
 async def test_that_context_variable_value_can_be_set(
     client: TestClient,
+    container: Container,
     agent_id: AgentId,
     tool_id: ToolId,
 ) -> None:
-    variable = (
-        client.post(
-            f"/agents/{agent_id}/variables",
-            json={
-                "name": "test_variable",
-                "description": "test of context variable",
-                "tool_id": f"local__{tool_id}",
-                "freshness_rules": None,
-            },
-        )
-        .raise_for_status()
-        .json()["variable"]
+    context_variable_store = container[ContextVariableStore]
+
+    variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=None,
     )
-    variable_id = variable["id"]
 
     key = "yam_choock"
     data = {"zen_level": 5000}
 
     value = (
         client.put(
-            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            f"/agents/{agent_id}/variables/{variable.id}/{key}",
             json={"data": data},
         )
         .raise_for_status()
         .json()["variable_value"]
     )
 
-    assert value["variable_id"] == variable_id
+    assert value["variable_id"] == variable.id
     assert value["data"] == data
 
     data = {"zen_level": 9000}
     value = (
         client.put(
-            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            f"/agents/{agent_id}/variables/{variable.id}/{key}",
             json={"data": data},
         )
         .raise_for_status()
         .json()["variable_value"]
     )
 
-    assert value["variable_id"] == variable_id
+    assert value["variable_id"] == variable.id
     assert value["data"] == data
 
 
 async def test_that_context_variable_value_can_be_deleted(
     client: TestClient,
+    container: Container,
     agent_id: AgentId,
     tool_id: ToolId,
 ) -> None:
-    response = client.post(
-        f"/agents/{agent_id}/variables",
-        json={
-            "name": "test_variable",
-            "description": "test of context variable",
-            "tool_id": f"local__{tool_id}",
-            "freshness_rules": None,
-        },
+    context_variable_store = container[ContextVariableStore]
+
+    variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=None,
     )
-    assert response.status_code == status.HTTP_201_CREATED
-    variable = response.json()["variable"]
-    variable_id = variable["id"]
 
     key = "yam_choock"
     data = {"zen_level": 9000}
 
     response = client.put(
-        f"/agents/{agent_id}/variables/{variable_id}/{key}",
+        f"/agents/{agent_id}/variables/{variable.id}/{key}",
         json={"data": data},
     )
 
     variable_value = response.json()["variable_value"]
-    assert variable_value["variable_id"] == variable_id
+    assert variable_value["variable_id"] == variable.id
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 
-    response = client.delete(f"/agents/{agent_id}/variables/{variable_id}/{key}")
+    response = client.delete(f"/agents/{agent_id}/variables/{variable.id}/{key}")
     deleted_value_id = response.json()["variable_value_id"]
     assert deleted_value_id == variable_value["id"]
 
-    response = client.get(f"/agents/{agent_id}/variables/{variable_id}/{key}")
+    response = client.get(f"/agents/{agent_id}/variables/{variable.id}/{key}")
     assert response.status_code == status.HTTP_404_NOT_FOUND

@@ -171,6 +171,30 @@ def create_router(
             ]
         )
 
+    @router.get("/{agent_id}/variables/{variable_id}/{key}")
+    async def get_value(
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+        key: str,
+    ) -> ContextVariableValueDTO:
+        _ = await context_variable_store.read_variable(
+            variable_set=agent_id,
+            id=variable_id,
+        )
+
+        variable_value = await context_variable_store.read_value(
+            variable_set=agent_id,
+            key=key,
+            variable_id=variable_id,
+        )
+
+        return ContextVariableValueDTO(
+            id=variable_value.id,
+            variable_id=variable_value.variable_id,
+            last_modified=variable_value.last_modified,
+            data=variable_value.data,
+        )
+
     @router.put("/{agent_id}/variables/{variable_id}/{key}")
     async def set_value(
         agent_id: AgentId,
