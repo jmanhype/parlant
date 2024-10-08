@@ -13,6 +13,7 @@ from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
+    ContextVariableValueKey,
 )
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
 from emcie.server.core.evaluations import (
@@ -370,12 +371,14 @@ async def test_context_variable_value_update_and_retrieval(
 
         await context_variable_store.update_value(
             variable_set=context.agent_id,
-            key=end_user_id,
+            key=ContextVariableValueKey(end_user_id),
             variable_id=variable.id,
             data={"key": "value"},
         )
         value = await context_variable_store.read_value(
-            variable_set=context.agent_id, key=end_user_id, variable_id=variable.id
+            variable_set=context.agent_id,
+            key=ContextVariableValueKey(end_user_id),
+            variable_id=variable.id,
         )
 
     with open(new_file) as f:
@@ -434,7 +437,7 @@ async def test_context_variable_deletion(
         value_data = {"key": "test", "data": "This is a test value"}
         await context_variable_store.update_value(
             variable_set=context.agent_id,
-            key="test_user",
+            key=ContextVariableValueKey("test_user"),
             variable_id=variable.id,
             data=value_data,
         )
@@ -447,7 +450,7 @@ async def test_context_variable_deletion(
 
         value_before_deletion = await context_variable_store.read_value(
             variable_set=context.agent_id,
-            key="test_user",
+            key=ContextVariableValueKey("test_user"),
             variable_id=variable.id,
         )
 
@@ -466,7 +469,9 @@ async def test_context_variable_deletion(
 
         with pytest.raises(ItemNotFoundError):
             await context_variable_store.read_value(
-                variable_set=context.agent_id, key="test_user", variable_id=variable.id
+                variable_set=context.agent_id,
+                key=ContextVariableValueKey("test_user"),
+                variable_id=variable.id,
             )
 
 

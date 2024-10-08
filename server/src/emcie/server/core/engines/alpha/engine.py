@@ -12,6 +12,7 @@ from emcie.server.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
     ContextVariableValue,
+    ContextVariableValueKey,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
@@ -262,7 +263,7 @@ class AlphaEngine(Engine):
                 variable,
                 await self._context_variable_store.read_value(
                     variable_set=agent_id,
-                    key=session.end_user_id,
+                    key=ContextVariableValueKey(session.end_user_id),  # noqa: F821
                     variable_id=variable.id,
                 ),
             )

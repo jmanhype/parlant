@@ -5,7 +5,11 @@ from pytest import fixture
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import ContextVariableStore, FreshnessRules
+from emcie.server.core.context_variables import (
+    ContextVariableStore,
+    ContextVariableValueKey,
+    FreshnessRules,
+)
 from emcie.server.core.tools import LocalToolService
 
 
@@ -185,7 +189,7 @@ async def test_that_context_variable_value_can_be_retrieved(
         freshness_rules=None,
     )
 
-    key = "test_key"
+    key = ContextVariableValueKey("test_key")
     data = {"value": 42}
 
     _ = await context_variable_store.update_value(
@@ -262,9 +266,9 @@ async def test_that_context_variable_values_can_be_listed(
     )
 
     keys_and_data = {
-        "key1": {"value": 1},
-        "key2": {"value": 2},
-        "key3": {"value": 3},
+        ContextVariableValueKey("key1"): {"value": 1},
+        ContextVariableValueKey("key2"): {"value": 2},
+        ContextVariableValueKey("key3"): {"value": 3},
     }
 
     for key, data in keys_and_data.items():
