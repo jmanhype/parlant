@@ -199,7 +199,6 @@ async def test_that_context_variable_value_can_be_retrieved(
         client.get(f"/agents/{agent_id}/variables/{variable.id}/{key}").raise_for_status().json()
     )
 
-    assert value["variable_id"] == variable.id
     assert value["data"] == data
 
 
@@ -231,7 +230,6 @@ async def test_that_context_variable_value_can_be_set(
         .json()["variable_value"]
     )
 
-    assert value["variable_id"] == variable.id
     assert value["data"] == data
 
     data = {"zen_level": 9000}
@@ -244,7 +242,6 @@ async def test_that_context_variable_value_can_be_set(
         .json()["variable_value"]
     )
 
-    assert value["variable_id"] == variable.id
     assert value["data"] == data
 
 
@@ -320,7 +317,6 @@ async def test_that_context_variable_value_can_be_deleted(
     )
 
     variable_value = response.json()["variable_value"]
-    assert variable_value["variable_id"] == variable.id
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 

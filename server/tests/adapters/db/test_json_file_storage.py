@@ -385,8 +385,6 @@ async def test_context_variable_value_update_and_retrieval(
     json_value = values_from_json["values"][0]
 
     assert json_value["data"] == value.data
-    assert json_value["variable_id"] == value.variable_id
-    assert json_value["data"] == value.data
 
 
 async def test_context_variable_listing(

@@ -60,7 +60,6 @@ class ContextVariable:
 @dataclass(frozen=True)
 class ContextVariableValue:
     id: ContextVariableValueId
-    variable_id: ContextVariableId
     last_modified: datetime
     data: JSONSerializable
 
@@ -217,6 +216,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         context_variable_value: ContextVariableValue,
         variable_set: str,
+        variable_id: ContextVariableId,
         key: str,
     ) -> _ContextVariableValueDocument:
         return _ContextVariableValueDocument(
@@ -224,7 +224,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             version=self.VERSION.to_string(),
             last_modified=context_variable_value.last_modified.isoformat(),
             variable_set=variable_set,
-            variable_id=context_variable_value.variable_id,
+            variable_id=variable_id,
             key=key,
             data=context_variable_value.data,
         )
@@ -265,7 +265,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
         return ContextVariableValue(
             id=ContextVariableValueId(context_variable_value_document["id"]),
             last_modified=datetime.fromisoformat(context_variable_value_document["last_modified"]),
-            variable_id=context_variable_value_document["variable_id"],
             data=context_variable_value_document["data"],
         )
 
@@ -302,7 +301,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         value = ContextVariableValue(
             id=ContextVariableValueId(generate_id()),
-            variable_id=variable_id,
             last_modified=last_modified,
             data=data,
         )
@@ -314,7 +312,10 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "key": {"$eq": key},
             },
             self._serialize_context_variable_value(
-                context_variable_value=value, variable_set=variable_set, key=key
+                context_variable_value=value,
+                variable_set=variable_set,
+                variable_id=variable_id,
+                key=key,
             ),
             upsert=True,
         )
