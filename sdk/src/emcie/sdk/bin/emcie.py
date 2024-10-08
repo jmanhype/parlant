@@ -701,6 +701,8 @@ class Interface:
 
     @staticmethod
     def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
+        if freshness_rules is None:
+            return ""
         parts = []
         if freshness_rules.get("months"):
             months = ", ".join(str(m) for m in freshness_rules["months"])
@@ -736,13 +738,13 @@ class Interface:
                 "ID": variable["id"],
                 "Name": variable["name"],
                 "Description": variable["description"] or "",
-                "Tool ID": variable["tool_id"],
+                "Tool ID": variable["tool_id"] or "",
                 "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
             }
             for variable in variables
         ]
 
-        Interface._print_table(variable_items, maxcolwidths=[None, 20, 40, 20])
+        Interface._print_table(variable_items)
 
 
 async def async_main() -> None:
