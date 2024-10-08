@@ -1263,3 +1263,78 @@ async def test_that_connection_can_be_removed_via_cli(
             )
 
             assert len(guidelines_response.json()["connections"]) == 0
+
+
+async def test_that_variables_can_be_listed(
+    context: ContextOfTest,
+) -> None:
+    variable_name1 = "test_variable1"
+    description1 = "test variable one"
+
+    variable_name2 = "test_variable2"
+    description2 = "test variable two"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            _ = (
+                (
+                    await client.post(
+                        f"/agents/{agent_id}/variables",
+                        json={
+                            "name": variable_name1,
+                            "description": description1,
+                        },
+                    )
+                )
+                .raise_for_status()
+                .json()["variable"]
+            )
+
+            _ = (
+                (
+                    await client.post(
+                        f"/agents/{agent_id}/variables",
+                        json={
+                            "name": variable_name2,
+                            "description": description2,
+                        },
+                    )
+                )
+                .raise_for_status()
+                .json()["variable"]
+            )
+
+            exec_args_list = [
+                "poetry",
+                "run",
+                "python",
+                CLI_CLIENT_PATH.as_posix(),
+                "--server",
+                SERVER_ADDRESS,
+                "variable",
+                "list",
+                "--agent-id",
+                agent_id,
+            ]
+            process_list = await asyncio.create_subprocess_exec(
+                *exec_args_list,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_list, stderr_list = await process_list.communicate()
+            output_list = stdout_list.decode() + stderr_list.decode()
+
+            assert process_list.returncode == os.EX_OK
+
+            assert variable_name1 in output_list
+            assert description1 in output_list
+            assert variable_name2 in output_list
+            assert description2 in output_list

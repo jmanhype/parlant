@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import os
 import sys
 import time
-from typing import Any, Iterable, Literal, Optional, TypedDict, cast
+from typing import Any, Iterable, Literal, NotRequired, Optional, TypedDict, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -68,6 +68,35 @@ class GuidelineConnectionDTO(TypedDict):
 class GuidelineWithConnectionsDTO(TypedDict):
     guideline: GuidelineDTO
     connections: list[GuidelineConnectionDTO]
+
+
+class FreshnessRulesDTO(TypedDict):
+    months: NotRequired[list[int]]
+    days_of_month: NotRequired[list[int]]
+    days_of_week: NotRequired[
+        list[
+            Literal[
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+            ]
+        ]
+    ]
+    hours: NotRequired[list[int]]
+    minutes: NotRequired[list[int]]
+    seconds: NotRequired[list[int]]
+
+
+class ContextVariableDTO(TypedDict):
+    id: str
+    name: str
+    description: NotRequired[str]
+    tool_id: NotRequired[str]
+    freshness_rules: NotRequired[FreshnessRulesDTO]
 
 
 class Actions:
@@ -303,6 +332,12 @@ class Actions:
         raise ValueError(
             f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
         )
+
+    @staticmethod
+    def list_variables(ctx: click.Context, agent_id: str) -> list[ContextVariableDTO]:
+        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/variables/"))
+        response.raise_for_status()
+        return cast(list[ContextVariableDTO], response.json()["variables"])
 
 
 class Interface:
@@ -664,6 +699,51 @@ class Interface:
         except Exception as e:
             Interface._write_error(f"error: {type(e).__name__}: {e}")
 
+    @staticmethod
+    def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
+        parts = []
+        if freshness_rules.get("months"):
+            months = ", ".join(str(m) for m in freshness_rules["months"])
+            parts.append(f"Months: {months}")
+        if freshness_rules.get("days_of_month"):
+            days_of_month = ", ".join(str(d) for d in freshness_rules["days_of_month"])
+            parts.append(f"Days of Month: {days_of_month}")
+        if freshness_rules.get("days_of_week"):
+            days_of_week = ", ".join(freshness_rules["days_of_week"])
+            parts.append(f"Days of Week: {days_of_week}")
+        if freshness_rules.get("hours"):
+            hours = ", ".join(str(h) for h in freshness_rules["hours"])
+            parts.append(f"Hours: {hours}")
+        if freshness_rules.get("minutes"):
+            minutes = ", ".join(str(m) for m in freshness_rules["minutes"])
+            parts.append(f"Minutes: {minutes}")
+        if freshness_rules.get("seconds"):
+            seconds = ", ".join(str(s) for s in freshness_rules["seconds"])
+            parts.append(f"Seconds: {seconds}")
+        if not parts:
+            return "None"
+        return "; ".join(parts)
+
+    @staticmethod
+    def list_variables(ctx: click.Context, agent_id: str) -> None:
+        variables = Actions.list_variables(ctx, agent_id)
+        if not variables:
+            rich.print("No variables found")
+            return
+
+        variable_items = [
+            {
+                "ID": variable["id"],
+                "Name": variable["name"],
+                "Description": variable["description"] or "",
+                "Tool ID": variable["tool_id"],
+                "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
+            }
+            for variable in variables
+        ]
+
+        Interface._print_table(variable_items, maxcolwidths=[None, 20, 40, 20])
+
 
 async def async_main() -> None:
     click_completion.init()
@@ -949,6 +1029,25 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source_guideline_id,
             target_guideline_id=target_guideline_id,
+        )
+
+    @cli.group(help="Manage an agent's variables")
+    def variable() -> None:
+        pass
+
+    @variable.command("list", help="List all variables for an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.pass_context
+    def variable_list(
+        ctx: click.Context,
+        agent_id: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.list_variables(
+            ctx=ctx,
+            agent_id=agent_id,
         )
 
     cli()
