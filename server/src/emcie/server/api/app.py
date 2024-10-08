@@ -7,7 +7,7 @@ from emcie.server.api import agents, index
 from emcie.server.api import sessions
 from emcie.server.api import terminology
 from emcie.server.api import guidelines
-from emcie.server.api import contextual_variables as variables
+from emcie.server.api import context_variables as variables
 from emcie.server.core.context_variables import ContextVariableStore
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import AgentStore

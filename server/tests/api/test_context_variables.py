@@ -291,6 +291,47 @@ async def test_that_context_variable_value_can_be_set(
     assert value["data"] == data
 
 
+async def test_that_context_variable_values_can_be_listed(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+        freshness_rules=None,
+    )
+
+    keys_and_data = {
+        "key1": {"value": 1},
+        "key2": {"value": 2},
+        "key3": {"value": 3},
+    }
+
+    for key, data in keys_and_data.items():
+        _ = await context_variable_store.update_value(
+            variable_set=agent_id,
+            variable_id=variable.id,
+            key=key,
+            data=data,
+        )
+
+    response = client.get(f"/agents/{agent_id}/variables/{variable.id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    retrieved_values = response.json()["variable_values"]
+
+    assert len(retrieved_values) == len(keys_and_data)
+    for value_dto in retrieved_values:
+        assert any(value_dto["data"] == keys_and_data[key] for key in keys_and_data)
+        assert value_dto["variable_id"] == variable.id
+
+
 async def test_that_context_variable_value_can_be_deleted(
     client: TestClient,
     container: Container,
