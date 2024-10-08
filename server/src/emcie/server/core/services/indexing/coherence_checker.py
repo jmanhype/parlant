@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 import asyncio
+from dataclasses import dataclass
+
 from datetime import datetime, timezone
 from enum import Enum, auto
 from itertools import chain
@@ -12,44 +14,228 @@ from emcie.server.core.common import UniqueId, generate_id
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
+from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.agents import Agent
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
 LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
+CRITICAL_CONTRADICTION_THRESHOLD = 7
+CONTRADICTION_SEVERITY_THRESHOLD = 7
 
 
 class ContradictionKind(Enum):
-    HIERARCHICAL = auto()
-    PARALLEL = auto()
-    TEMPORAL = auto()
-    CONTEXTUAL = auto()
-
-    def _describe(self) -> str:
-        return {
-            ContradictionKind.HIERARCHICAL: "Hierarchical Contradiction",
-            ContradictionKind.PARALLEL: "Parallel Contradiction",
-            ContradictionKind.TEMPORAL: "Temporal Contradiction",
-            ContradictionKind.CONTEXTUAL: "Contextual Contradiction",
-        }[self]
+    CRITICAL = auto()
+    POTENTIAL = auto()
 
 
-class ContradictionTestSchema(DefaultBaseModel):
-    compared_guideline_id: UniqueId
-    severity_level: int
+class WhensEntailmentTestSchema(DefaultBaseModel):
+    compared_guideline_id: int
+    origin_guideline_when: str
+    compared_guideline_when: str
+    whens_entailment: bool
+    severity: int
     rationale: str
 
 
-class ContradictionTestsSchema(DefaultBaseModel):
+class WhensEntailmentTestsSchema(DefaultBaseModel):
+    contradictions: list[WhensEntailmentTestSchema]
+
+
+class ThensContradictionTestSchema(DefaultBaseModel):
+    compared_guideline_id: int
+    origin_guideline_then: str
+    compared_guideline_then: str
+    thens_contradiction: bool
+    severity: int
+    rationale: str
+
+
+class ThensContradictionTestsSchema(DefaultBaseModel):
+    contradiction: list[ThensContradictionTestSchema]
+
+
+@dataclass(frozen=True)
+class ContradictionTestSchema:
+    compared_guideline_id: int
+    thens_contradiction: bool
+    thens_contradiction_severity: int
+    thens_contradiction_rationale: str
+    whens_entailment: bool
+    whens_entailment_severity: int
+    whens_entailement_rationale: str
+
+
+class ContradictionTestsSchema(DefaultBaseModel):  # TODO delete
     contradictions: list[ContradictionTestSchema]
 
 
 class ContradictionTest(DefaultBaseModel):
-    kind: ContradictionKind
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
-    severity: int
-    rationale: str
+    ContradictionKind: ContradictionKind
+    whens_entailment_severity: int
+    whens_entailement_rationale: str
+    thens_contradiction_severity: int
+    thens_contradiction_rationale: str
     creation_utc: datetime
+
+
+class CoherenceChecker:
+    def __init__(
+        self,
+        logger: Logger,
+        whens_test_schematic_generator: SchematicGenerator[WhensEntailmentTestsSchema],
+        thens_test_schematic_generator: SchematicGenerator[ThensContradictionTestSchema],
+        terminology_store: TerminologyStore,
+    ) -> None:
+        self._logger = logger
+        self._whens_entailment_checker = WhensEntailmentChecker(
+            logger, whens_test_schematic_generator, terminology_store
+        )
+        self._thens_contradicting_checker = ThensContradictionChecker(
+            logger, thens_test_schematic_generator, terminology_store
+        )
+
+    async def propose_contradictions(
+        self,
+        agent: Agent,
+        guidelines_to_evaluate: Sequence[GuidelineContent],
+        comparison_guidelines: Sequence[GuidelineContent] = [],
+        progress_report: Optional[ProgressReport] = None,
+    ) -> Sequence[ContradictionTest]:
+        comparison_guidelines_list = list(comparison_guidelines)
+        guidelines_to_evaluate_list = list(guidelines_to_evaluate)
+        tasks = []
+
+        for i, guideline_to_evaluate in enumerate(guidelines_to_evaluate):
+            filtered_existing_guidelines = [
+                g for g in guidelines_to_evaluate_list[i + 1 :] + comparison_guidelines_list
+            ]
+            guideline_batches = list(chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE))
+            if progress_report:
+                await progress_report.stretch(len(guideline_batches))
+
+            tasks.extend(
+                [
+                    asyncio.create_task(
+                        self._process_proposed_guideline(
+                            agent, guideline_to_evaluate, batch, progress_report
+                        )
+                    )
+                    for batch in guideline_batches
+                ]
+            )
+        with self._logger.operation(
+            f"Evaluating contradictions for {len(tasks)} "
+            f"batches (batch size={EVALUATION_BATCH_SIZE})",
+        ):
+            contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
+
+        return contradictions
+
+    async def _process_proposed_guideline(
+        self,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        comparison_guidelines: Sequence[GuidelineContent],
+        progress_report: Optional[ProgressReport],
+    ) -> Sequence[ContradictionTest]:
+        indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
+        whens_entailment_reponses = await self._whens_entailment_checker.evaluate(
+            agent, guideline_to_evaluate, indexed_comparison_guidelines
+        )
+        thens_contradiction_reponses = await self._thens_contradicting_checker.evaluate(
+            agent, guideline_to_evaluate, indexed_comparison_guidelines
+        )
+        whens_entailment_reponses = sorted(
+            whens_entailment_reponses, key=lambda r: r.compared_guideline_id
+        )
+        thens_contradiction_reponses = sorted(
+            thens_contradiction_reponses, key=lambda r: r.compared_guideline_id
+        )
+        contradictions = [
+            ContradictionTest(
+                guideline_a=guideline_to_evaluate,
+                guideline_b=indexed_comparison_guidelines[w.compared_guideline_id],
+                ContradictionKind=ContradictionKind.CRITICAL
+                if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
+                else ContradictionKind.POTENTIAL,
+                whens_entailment_severity=w.severity,
+                whens_entailement_rationale=w.rationale,
+                thens_contradiction_severity=t.severity,
+                thens_contradiction_rationale=t.rationale,
+                creation_utc=datetime.now(timezone.utc),
+            )
+            for w, t in zip(whens_entailment_reponses, thens_contradiction_reponses)
+            if w.severity >= CONTRADICTION_SEVERITY_THRESHOLD
+            and w.compared_guideline_id == t.compared_guideline_id
+        ]
+
+        if progress_report:
+            await progress_report.increment()
+
+        return contradictions
+
+
+class WhensEntailmentChecker:
+    def __init__(
+        self,
+        logger: Logger,
+        schematic_generator: SchematicGenerator[WhensEntailmentTestsSchema],
+        terminology_store: TerminologyStore,
+    ) -> None:
+        self._logger = logger
+        self._schematic_generator = schematic_generator
+        self._terminology_store = terminology_store
+
+    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    async def evaluate(  # TODO write
+        self,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> Sequence[WhensEntailmentTestSchema]:
+        #        prompt = self._format_prompt(agent, guideline_to_evaluate, indexed_comparison_guidelines)
+        #        response = await self._schematic_generator.generate(
+        #            prompt=prompt,
+        #            hints={"temperature": 0.0},
+        #        )
+        #        self._logger.debug(
+        #            f"""
+        # ----------------------------------------
+        # Connection Propositions Found:
+        # ----------------------------------------
+        # {json.dumps([p.model_dump(mode="json") for p in response.content.propositions], indent=2)}
+        # ----------------------------------------
+        # """
+        #        )
+
+        return []
+
+
+class ThensContradictionChecker:
+    def __init__(
+        self,
+        logger: Logger,
+        schematic_generator: SchematicGenerator[ThensContradictionTestSchema],
+        terminology_store: TerminologyStore,
+    ) -> None:
+        self._logger = logger
+        self._schematic_generator = schematic_generator
+        self._terminology_store = terminology_store
+
+    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    async def evaluate(  # TODO write
+        self,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> Sequence[ThensContradictionTestSchema]:
+        return []
+
+
+##################################################################################
 
 
 class ContradictionEvaluatorBase(ABC):
@@ -539,7 +725,7 @@ These conflicts arise from different but potentially overlapping circumstances r
 """  # noqa
 
 
-class CoherenceChecker:
+class CoherenceCheckerOld:
     def __init__(
         self,
         logger: Logger,
