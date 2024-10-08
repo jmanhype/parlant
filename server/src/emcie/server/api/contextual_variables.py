@@ -159,6 +159,18 @@ def create_router(
             else None,
         )
 
+    @router.delete(
+        "/{agent_id}/variables",
+        status_code=status.HTTP_204_NO_CONTENT,
+    )
+    async def delete_all_variables(
+        agent_id: AgentId,
+    ) -> None:
+        for v in await context_variable_store.list_variables(variable_set=agent_id):
+            await context_variable_store.delete_variable(variable_set=agent_id, id=v.id)
+
+        return
+
     @router.delete("/{agent_id}/variables/{variable_id}")
     async def delete_variable(
         agent_id: AgentId, variable_id: ContextVariableId

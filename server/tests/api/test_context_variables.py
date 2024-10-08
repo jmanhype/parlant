@@ -101,7 +101,41 @@ async def test_that_context_variable_can_be_retrieved(
     assert retrieved_variable["freshness_rules"] == freshness_rules
 
 
-async def test_that_context_variable_can_be_removed(
+async def test_that_all_context_variables_can_be_deleted(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    _ = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=ToolId(f"local__{tool_id}"),
+        freshness_rules=None,
+    )
+
+    _ = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=ToolId(f"local__{tool_id}"),
+        freshness_rules=None,
+    )
+
+    vars = await context_variable_store.list_variables(variable_set=agent_id)
+    assert len(vars) == 2
+
+    response = client.delete(f"/agents/{agent_id}/variables")
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    vars = await context_variable_store.list_variables(variable_set=agent_id)
+    assert len(vars) == 0
+
+
+async def test_that_context_variable_can_be_deleted(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
