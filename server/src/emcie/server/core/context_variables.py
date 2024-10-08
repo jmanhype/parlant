@@ -53,7 +53,7 @@ class ContextVariable:
     id: ContextVariableId
     name: str
     description: Optional[str]
-    tool_id: ToolId
+    tool_id: Optional[ToolId]
     freshness_rules: Optional[FreshnessRules]
     """If None, the variable will only be updated on session creation"""
 
@@ -72,7 +72,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         name: str,
         description: Optional[str],
-        tool_id: ToolId,
+        tool_id: Optional[ToolId],
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable: ...
 
@@ -156,7 +156,7 @@ class _ContextVariableDocument(TypedDict, total=False):
     variable_set: str
     name: str
     description: Optional[str]
-    tool_id: ToolId
+    tool_id: Optional[ToolId]
     freshness_rules: Optional[_FreshnessRulesDocument]
 
 
@@ -274,7 +274,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         name: str,
         description: Optional[str],
-        tool_id: ToolId,
+        tool_id: Optional[ToolId],
         freshness_rules: Optional[FreshnessRules],
     ) -> ContextVariable:
         context_variable = ContextVariable(
