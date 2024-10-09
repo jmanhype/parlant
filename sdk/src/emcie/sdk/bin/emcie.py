@@ -313,11 +313,12 @@ class Actions:
         source_guideline_id: str,
         target_guideline_id: str,
     ) -> str:
-        guideline = requests.get(
+        guideline_response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}")
         )
+        guideline_response.raise_for_status()
 
-        connections: list[GuidelineConnectionDTO] = guideline.json()["connections"]
+        connections: list[GuidelineConnectionDTO] = guideline_response.json()["connections"]
 
         if connection := next(
             (
@@ -327,7 +328,7 @@ class Actions:
             ),
             None,
         ):
-            response = requests.patch(
+            connection_response = requests.patch(
                 urljoin(
                     ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{source_guideline_id}"
                 ),
@@ -335,7 +336,7 @@ class Actions:
                     "connections": {"remove": [target_guideline_id]},
                 },
             )
-            response.raise_for_status()
+            connection_response.raise_for_status()
             return connection["id"]
 
         raise ValueError(
@@ -404,9 +405,63 @@ class Actions:
                 "data": data,
             },
         )
+        value = response.raise_for_status().json()
+
+        return ContextVariableValueDTO(
+            id=value["id"],
+            data=value["data"],
+            last_modified=datetime.fromisoformat(value["last_modified"]),
+        )
+
+    @staticmethod
+    def get_variable_values(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+    ) -> dict[str, ContextVariableValueDTO]:
+        variable = Actions._get_variable_by_name(ctx, agent_id, variable_name)
+        variable_id = variable["id"]
+
+        response = requests.get(
+            urljoin(
+                ctx.obj.server_address,
+                f"/agents/{agent_id}/variables/{variable_id}",
+            )
+        )
         response.raise_for_status()
 
-        return cast(ContextVariableValueDTO, response.json())
+        return {
+            k: ContextVariableValueDTO(
+                id=v["id"],
+                data=v["data"],
+                last_modified=datetime.fromisoformat(v["last_modified"]),
+            )
+            for k, v in response.json()["variable_values"].items()
+        }
+
+    @staticmethod
+    def get_variable_value_by_key(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+        key: str,
+    ) -> ContextVariableValueDTO:
+        variable = Actions._get_variable_by_name(ctx, agent_id, variable_name)
+        variable_id = variable["id"]
+
+        url = urljoin(
+            ctx.obj.server_address,
+            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+        )
+
+        response = requests.get(url)
+        value = response.raise_for_status().json()
+
+        return ContextVariableValueDTO(
+            id=value["id"],
+            data=value["data"],
+            last_modified=datetime.fromisoformat(value["last_modified"]),
+        )
 
 
 class Interface:
@@ -457,7 +512,7 @@ class Interface:
             [
                 {
                     "ID": e["id"],
-                    "Creation Date": e["creation_utc"],
+                    "Creation Date": e["creation_utc"].strftime("%Y-%m-%d %I:%M:%S %p %Z"),
                     "Correlation ID": e["correlation_id"],
                     "Source": e["source"],
                     "Offset": e["offset"],
@@ -844,6 +899,20 @@ class Interface:
             Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
+    def _render_variable_value(values: dict[str, ContextVariableValueDTO]) -> None:
+        values_items = [
+            {
+                "ID": value["id"],
+                "Key": key,
+                "Data": value["data"],
+                "Last Modified": value["last_modified"].strftime("%Y-%m-%d %I:%M:%S %p %Z"),
+            }
+            for key, value in values.items()
+        ]
+
+        Interface._print_table(values_items, maxcolwidths=[None, None, 80, 30])
+
+    @staticmethod
     def set_variable_value(
         ctx: click.Context,
         agent_id: str,
@@ -855,7 +924,39 @@ class Interface:
             value = Actions.set_variable_value(ctx, agent_id, variable_name, key, data)
 
             Interface._write_success(f"Added value (id={data['id']})")
-            Interface._print_table([value])
+            Interface._render_variable_value({key: value})
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def get_variable_values(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+    ) -> None:
+        try:
+            values = Actions.get_variable_values(ctx, agent_id, variable_name)
+            if not values:
+                rich.print("No data available")
+                return
+
+            Interface._write_success(f"Values for variable '{variable_name}':")
+            Interface._render_variable_value(values)
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
+    @staticmethod
+    def get_variable_value_by_key(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+        key: str,
+    ) -> None:
+        try:
+            value = Actions.get_variable_value_by_key(ctx, agent_id, variable_name, key)
+            Interface._write_success(
+                f"Value for variable '{variable_name}' with key '{key}': '{value}'"
+            )
         except Exception as e:
             Interface._write_error(f"error: {type(e).__name__}: {e}")
 
@@ -1227,6 +1328,34 @@ async def async_main() -> None:
             key=key,
             data=json.loads(data),
         )
+
+    @variable.command("get", help="Get the value(s) of a variable")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("name", type=str)
+    @click.argument("key", type=str, required=False)
+    @click.pass_context
+    def variable_get(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        name: str,
+        key: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        if key:
+            Interface.get_variable_value_by_key(
+                ctx=ctx,
+                agent_id=agent_id,
+                variable_name=name,
+                key=key,
+            )
+        else:
+            Interface.get_variable_values(
+                ctx=ctx,
+                agent_id=agent_id,
+                variable_name=name,
+            )
 
     cli()
 

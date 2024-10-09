@@ -1446,7 +1446,7 @@ async def test_that_variable_can_be_removed(
             assert removed_variable is None, "Variable was not removed"
 
 
-async def test_that_variable_value_can_be_set(
+async def test_that_variable_value_can_be_set_with_json(
     context: ContextOfTest,
 ) -> None:
     variable_name = "test_variable_set"
@@ -1505,4 +1505,161 @@ async def test_that_variable_value_can_be_set(
             response_get_value.raise_for_status()
 
             retrieved_data = response_get_value.json()["data"]
-            assert retrieved_data == data, "Variable value was not set correctly"
+            assert retrieved_data == data
+
+
+async def test_that_variable_value_can_be_set_with_string(
+    context: ContextOfTest,
+) -> None:
+    variable_name = "test_variable_set"
+    variable_description = "Variable to test setting value via CLI"
+    key = "test_key"
+    data = "test_string"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_add = await client.post(
+                f"/agents/{agent_id}/variables",
+                json={
+                    "name": variable_name,
+                    "description": variable_description,
+                },
+            )
+            response_add.raise_for_status()
+            variable = response_add.json()["variable"]
+            variable_id = variable["id"]
+
+        exec_args_set = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "set",
+            "--agent-id",
+            agent_id,
+            variable_name,
+            key,
+            json.dumps(data),
+        ]
+        result_set = await asyncio.create_subprocess_exec(*exec_args_set)
+        await result_set.wait()
+        assert result_set.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_get_value = await client.get(
+                f"/agents/{agent_id}/variables/{variable_id}/{key}"
+            )
+            response_get_value.raise_for_status()
+
+            retrieved_data = response_get_value.json()["data"]
+            assert retrieved_data == data
+
+
+async def test_that_variable_values_can_be_retrieved(
+    context: ContextOfTest,
+) -> None:
+    variable_name = "test_variable_get"
+    variable_description = "Variable to test retrieving values via CLI"
+    values = {
+        "key1": "data1",
+        "key2": "data2",
+        "key3": "data3",
+    }
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_add = await client.post(
+                f"/agents/{agent_id}/variables",
+                json={
+                    "name": variable_name,
+                    "description": variable_description,
+                },
+            )
+            response_add.raise_for_status()
+            variable = response_add.json()["variable"]
+            variable_id = variable["id"]
+
+            for key, data in values.items():
+                response_set_value = await client.put(
+                    f"/agents/{agent_id}/variables/{variable_id}/{key}",
+                    json={"data": data},
+                )
+                response_set_value.raise_for_status()
+
+        exec_args_get_all = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "get",
+            "--agent-id",
+            agent_id,
+            variable_name,
+        ]
+        process_get_all = await asyncio.create_subprocess_exec(
+            *exec_args_get_all,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_get_all_values, stderr_get_all = await process_get_all.communicate()
+        output_get_all_values = stdout_get_all_values.decode() + stderr_get_all.decode()
+        assert process_get_all.returncode == os.EX_OK
+
+        for key, data in values.items():
+            assert key in output_get_all_values
+            assert data in output_get_all_values
+
+        specific_key = "key2"
+        expected_value = values[specific_key]
+
+        exec_args_get_key = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "get",
+            "--agent-id",
+            agent_id,
+            variable_name,
+            specific_key,
+        ]
+        process_get_key = await asyncio.create_subprocess_exec(
+            *exec_args_get_key,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_get_value_by_key, stderr_get_key = await process_get_key.communicate()
+        output_get_value_by_key = stdout_get_value_by_key.decode() + stderr_get_key.decode()
+        assert process_get_key.returncode == os.EX_OK
+
+        assert specific_key in output_get_value_by_key
+        assert expected_value in output_get_value_by_key
