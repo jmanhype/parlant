@@ -339,12 +339,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
         if variable_deletion_result.deleted_count == 0:
             raise ItemNotFoundError(item_id=UniqueId(id), message=f"variable_set={variable_set}")
 
-        _ = await self._value_collection.delete_one(
-            {
-                "variable_id": {"$eq": id},
-                "variable_set": {"$eq": variable_set},
-            }
-        )
+        for k, _ in await self.list_values(variable_set=variable_set, variable_id=id):
+            await self.delete_value(variable_set=variable_set, variable_id=id, key=k)
 
         return (
             ContextVariableId(variable_deletion_result.deleted_document["id"])

@@ -434,45 +434,37 @@ async def test_context_variable_deletion(
             freshness_rules=None,
         )
 
-        value_data = {"key": "test", "data": "This is a test value"}
-        await context_variable_store.update_value(
+        for k, d in [("k1", "d1"), ("k2", "d2"), ("k3", "d3")]:
+            await context_variable_store.update_value(
+                variable_set=context.agent_id,
+                key=ContextVariableValueKey(k),
+                variable_id=variable.id,
+                data=d,
+            )
+
+        values = await context_variable_store.list_values(
             variable_set=context.agent_id,
-            key=ContextVariableValueKey("test_user"),
-            variable_id=variable.id,
-            data=value_data,
-        )
-
-        variables_before_deletion = list(
-            await context_variable_store.list_variables(context.agent_id)
-        )
-
-        assert any(v.id == variable.id for v in variables_before_deletion)
-
-        value_before_deletion = await context_variable_store.read_value(
-            variable_set=context.agent_id,
-            key=ContextVariableValueKey("test_user"),
             variable_id=variable.id,
         )
 
-        assert value_before_deletion.data == value_data
+        assert len(values) == 3
 
         await context_variable_store.delete_variable(
             variable_set=context.agent_id,
             id=variable.id,
         )
 
-        variables_after_deletion = list(
-            await context_variable_store.list_variables(context.agent_id)
+        assert not any(
+            variable.id == v.id
+            for v in await context_variable_store.list_variables(context.agent_id)
         )
 
-        assert all(var.id != variable.id for var in variables_after_deletion)
+        values = await context_variable_store.list_values(
+            variable_set=context.agent_id,
+            variable_id=variable.id,
+        )
 
-        with pytest.raises(ItemNotFoundError):
-            await context_variable_store.read_value(
-                variable_set=context.agent_id,
-                key=ContextVariableValueKey("test_user"),
-                variable_id=variable.id,
-            )
+        assert len(values) == 0
 
 
 async def test_guideline_tool_association_creation(
