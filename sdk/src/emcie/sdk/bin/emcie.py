@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime
 import os
 import sys
 import time
@@ -37,6 +38,7 @@ class SessionDTO(TypedDict):
 
 class EventDTO(TypedDict):
     id: str
+    creation_utc: datetime
     source: Literal["client", "server"]
     kind: str
     offset: int
@@ -339,6 +341,23 @@ class Actions:
         response.raise_for_status()
         return cast(list[ContextVariableDTO], response.json()["variables"])
 
+    @staticmethod
+    def create_variable(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+    ) -> ContextVariableDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/variables"),
+            json={
+                "name": name,
+                "description": description,
+            },
+        )
+        response.raise_for_status()
+        return cast(ContextVariableDTO, response.json()["variable"])
+
 
 class Interface:
     @staticmethod
@@ -387,12 +406,12 @@ class Interface:
         Interface._print_table(
             [
                 {
-                    "id": e["id"],  # type: ignore
-                    "creation_utc": e["creation_utc"],  # type: ignore
-                    "correlation_id": e["correlation_id"],
-                    "source": e["source"],  # type: ignore
-                    "offset": e["offset"],  # type: ignore
-                    "message": e["data"]["message"],  # type: ignore
+                    "ID": e["id"],
+                    "Creation Date": e["creation_utc"],
+                    "Correlation ID": e["correlation_id"],
+                    "Source": e["source"],
+                    "Offset": e["offset"],
+                    "Message": e["data"]["message"],
                 }
                 for e in events
             ],
@@ -746,6 +765,26 @@ class Interface:
 
         Interface._print_table(variable_items)
 
+    @staticmethod
+    def create_variable(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+    ) -> None:
+        variable = Actions.create_variable(ctx, agent_id, name, description)
+
+        Interface._write_success(f"Added variable (id={variable['id']})")
+        Interface._print_table(
+            [
+                {
+                    "ID": variable["id"],
+                    "Name": variable["name"],
+                    "Description": variable["description"] or "",
+                }
+            ],
+        )
+
 
 async def async_main() -> None:
     click_completion.init()
@@ -1050,6 +1089,27 @@ async def async_main() -> None:
         Interface.list_variables(
             ctx=ctx,
             agent_id=agent_id,
+        )
+
+    @variable.command("add", help="Add a new variable to an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option("-d", "--description", type=str, help="Variable description", required=False)
+    @click.argument("name", type=str)
+    @click.pass_context
+    def variable_add(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        name: str,
+        description: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.create_variable(
+            ctx=ctx,
+            agent_id=agent_id,
+            name=name,
+            description=description or "",
         )
 
     cli()

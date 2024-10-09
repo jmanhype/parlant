@@ -6,11 +6,9 @@ from typing import Any, AsyncIterator
 import tempfile
 from lagom import Container
 from pytest import fixture, mark
-import pytest
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
-from emcie.server.core.common import ItemNotFoundError
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
     ContextVariableValueKey,

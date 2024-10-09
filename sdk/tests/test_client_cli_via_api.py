@@ -1324,6 +1324,7 @@ async def test_that_variables_can_be_listed(
                 "--agent-id",
                 agent_id,
             ]
+
             process_list = await asyncio.create_subprocess_exec(
                 *exec_args_list,
                 stdout=asyncio.subprocess.PIPE,
@@ -1338,3 +1339,49 @@ async def test_that_variables_can_be_listed(
             assert description1 in output_list
             assert variable_name2 in output_list
             assert description2 in output_list
+
+
+async def test_that_variable_can_be_added(
+    context: ContextOfTest,
+) -> None:
+    name = "test_variable_cli"
+    description = "Variable added via CLI"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        exec_args_add = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "add",
+            "--agent-id",
+            agent_id,
+            "--description",
+            description,
+            name,
+        ]
+        result_add = await asyncio.create_subprocess_exec(*exec_args_add)
+        await result_add.wait()
+        assert result_add.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_list = await client.get(f"/agents/{agent_id}/variables/")
+            response_list.raise_for_status()
+            variables = response_list.json()["variables"]
+
+            added_variable = next(
+                (v for v in variables if v["name"] == name and v["description"] == description),
+                None,
+            )
+            assert added_variable is not None, "Variable was not added"
