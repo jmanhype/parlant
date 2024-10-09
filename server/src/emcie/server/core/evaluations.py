@@ -16,7 +16,13 @@ from typing import (
 from typing_extensions import Literal
 
 from emcie.server.core.agents import AgentId
-from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
+from emcie.server.core.common import (
+    ItemNotFoundError,
+    JSONSerializable,
+    UniqueId,
+    Version,
+    generate_id,
+)
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.persistence.document_database import (
@@ -196,6 +202,7 @@ class _InvoiceDocument(TypedDict, total=False):
 
 class _EvaluationDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     agent_id: AgentId
     creation_utc: str
     status: str
@@ -206,6 +213,8 @@ class _EvaluationDocument(TypedDict, total=False):
 
 
 class EvaluationDocumentStore(EvaluationStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase):
         self._evaluation_collection = database.get_or_create_collection(
             name="evaluations",
@@ -282,6 +291,7 @@ class EvaluationDocumentStore(EvaluationStore):
     def _serialize_evaluation(self, evaluation: Evaluation) -> _EvaluationDocument:
         return _EvaluationDocument(
             id=ObjectId(evaluation.id),
+            version=self.VERSION.to_string(),
             agent_id=evaluation.agent_id,
             creation_utc=evaluation.creation_utc.isoformat(),
             status=evaluation.status.name,

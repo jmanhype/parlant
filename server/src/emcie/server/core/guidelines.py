@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -68,6 +68,7 @@ class GuidelineStore(ABC):
 
 class _GuidelineDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     guideline_set: str
     predicate: str
@@ -75,6 +76,8 @@ class _GuidelineDocument(TypedDict, total=False):
 
 
 class GuidelineDocumentStore(GuidelineStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
             name="guidelines",
@@ -88,6 +91,7 @@ class GuidelineDocumentStore(GuidelineStore):
     ) -> _GuidelineDocument:
         return _GuidelineDocument(
             id=ObjectId(guideline.id),
+            version=self.VERSION.to_string(),
             creation_utc=guideline.creation_utc.isoformat(),
             guideline_set=guideline_set,
             predicate=guideline.content.predicate,

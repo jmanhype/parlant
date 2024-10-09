@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast
 import chromadb
 
+from emcie.server.core.common import Version
 from emcie.server.core.nlp.embedding import Embedder, EmbedderFactory
 from emcie.server.core.persistence.document_database import (
     DeleteResult,
@@ -22,6 +23,7 @@ from emcie.server.core.logging import Logger
 
 class BaseDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     content: str
 
 

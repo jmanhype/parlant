@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import NewType, Optional, Sequence, TypedDict
 import networkx  # type: ignore
 
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -55,6 +55,7 @@ class GuidelineConnectionStore(ABC):
 
 class _GuidelineConnectionDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     source: GuidelineId
     target: GuidelineId
@@ -62,6 +63,8 @@ class _GuidelineConnectionDocument(TypedDict, total=False):
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase) -> None:
         self._collection = database.get_or_create_collection(
             name="guideline_connections",
@@ -75,6 +78,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     ) -> _GuidelineConnectionDocument:
         return _GuidelineConnectionDocument(
             id=ObjectId(guideline_connection.id),
+            version=self.VERSION.to_string(),
             creation_utc=guideline_connection.creation_utc.isoformat(),
             source=guideline_connection.source,
             target=guideline_connection.target,

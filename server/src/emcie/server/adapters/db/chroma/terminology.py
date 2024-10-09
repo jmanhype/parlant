@@ -2,7 +2,12 @@ from datetime import datetime, timezone
 from typing import Optional, Sequence, TypedDict
 
 from emcie.server.adapters.db.chroma.database import ChromaDatabase
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import (
+    ItemNotFoundError,
+    UniqueId,
+    Version,
+    generate_id,
+)
 from emcie.server.core.nlp.embedding import Embedder
 from emcie.server.core.persistence.document_database import ObjectId
 from emcie.server.core.terminology import Term, TermId, TermUpdateParams, TerminologyStore
@@ -10,6 +15,7 @@ from emcie.server.core.terminology import Term, TermId, TermUpdateParams, Termin
 
 class _TermDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     term_set: str
     creation_utc: str
     name: str
@@ -19,6 +25,8 @@ class _TermDocument(TypedDict, total=False):
 
 
 class TerminologyChromaStore(TerminologyStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, chroma_db: ChromaDatabase, embedder_type: type[Embedder]):
         self._collection = chroma_db.get_or_create_collection(
             name="terminology",
@@ -30,6 +38,7 @@ class TerminologyChromaStore(TerminologyStore):
     def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
         return _TermDocument(
             id=ObjectId(term.id),
+            version=self.VERSION.to_string(),
             term_set=term_set,
             creation_utc=term.creation_utc.isoformat(),
             name=term.name,

@@ -17,6 +17,8 @@ from typing import (
     get_type_hints,
 )
 
+from emcie.server.core.common import Version
+
 
 ObjectId = NewType("ObjectId", str)
 
@@ -104,6 +106,7 @@ def matches_filters(
 
 class BaseDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
 
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)

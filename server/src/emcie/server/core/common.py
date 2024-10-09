@@ -1,7 +1,9 @@
+from __future__ import annotations
 import asyncio
 from typing import Awaitable, Callable, NewType, Optional, TypeAlias
 import hashlib
 import nanoid  # type: ignore
+import semver  # type: ignore
 
 
 from emcie.common.base_models import DefaultBaseModel as _DefaultBaseModel
@@ -12,6 +14,33 @@ DefaultBaseModel: TypeAlias = _DefaultBaseModel
 JSONSerializable: TypeAlias = _JSONSerializable
 
 UniqueId = NewType("UniqueId", str)
+
+
+class Version:
+    String = NewType("String", str)
+
+    @staticmethod
+    def from_string(version_string: Version.String | str) -> Version:
+        result = Version(major=0, minor=0, patch=0)
+        result._v = semver.Version.parse(version_string)
+        return result
+
+    def __init__(
+        self,
+        major: int,
+        minor: int,
+        patch: int,
+        prerelease: Optional[str] = None,
+    ) -> None:
+        self._v = semver.Version(
+            major=major,
+            minor=minor,
+            patch=patch,
+            prerelease=prerelease,
+        )
+
+    def to_string(self) -> Version.String:
+        return Version.String(str(self._v))
 
 
 class ItemNotFoundError(Exception):
