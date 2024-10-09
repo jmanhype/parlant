@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
+import json
 import os
 import sys
 import time
@@ -99,6 +100,12 @@ class ContextVariableDTO(TypedDict):
     description: NotRequired[str]
     tool_id: NotRequired[str]
     freshness_rules: NotRequired[FreshnessRulesDTO]
+
+
+class ContextVariableValueDTO(TypedDict):
+    id: str
+    last_modified: datetime
+    data: Any
 
 
 class Actions:
@@ -376,6 +383,30 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/variables/{variable_id}")
         )
         response.raise_for_status()
+
+    @staticmethod
+    def set_variable_value(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+        key: str,
+        data: Any,
+    ) -> ContextVariableValueDTO:
+        variable = Actions._get_variable_by_name(ctx, agent_id, variable_name)
+        variable_id = variable["id"]
+
+        response = requests.put(
+            urljoin(
+                ctx.obj.server_address,
+                f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            ),
+            json={
+                "data": data,
+            },
+        )
+        response.raise_for_status()
+
+        return cast(ContextVariableValueDTO, response.json())
 
 
 class Interface:
@@ -812,6 +843,22 @@ class Interface:
         except Exception as e:
             Interface._write_error(f"error: {type(e).__name__}: {e}")
 
+    @staticmethod
+    def set_variable_value(
+        ctx: click.Context,
+        agent_id: str,
+        variable_name: str,
+        key: str,
+        data: Any,
+    ) -> None:
+        try:
+            value = Actions.set_variable_value(ctx, agent_id, variable_name, key, data)
+
+            Interface._write_success(f"Added value (id={data['id']})")
+            Interface._print_table([value])
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
 
 async def async_main() -> None:
     click_completion.init()
@@ -1155,6 +1202,30 @@ async def async_main() -> None:
             ctx=ctx,
             agent_id=agent_id,
             name=name,
+        )
+
+    @variable.command("set", help="Set a value for a variable")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("name", type=str)
+    @click.argument("key", type=str)
+    @click.argument("data", type=str)
+    @click.pass_context
+    def variable_set(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        name: str,
+        key: str,
+        data: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.set_variable_value(
+            ctx=ctx,
+            agent_id=agent_id,
+            variable_name=name,
+            key=key,
+            data=json.loads(data),
         )
 
     cli()

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import traceback
 import httpx
@@ -1443,3 +1444,65 @@ async def test_that_variable_can_be_removed(
                 None,
             )
             assert removed_variable is None, "Variable was not removed"
+
+
+async def test_that_variable_value_can_be_set(
+    context: ContextOfTest,
+) -> None:
+    variable_name = "test_variable_set"
+    variable_description = "Variable to test setting value via CLI"
+    key = "test_key"
+    data = {"test": "data", "type": 27}
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_add = await client.post(
+                f"/agents/{agent_id}/variables",
+                json={
+                    "name": variable_name,
+                    "description": variable_description,
+                },
+            )
+            response_add.raise_for_status()
+            variable = response_add.json()["variable"]
+            variable_id = variable["id"]
+
+        exec_args_set = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "set",
+            "--agent-id",
+            agent_id,
+            variable_name,
+            key,
+            json.dumps(data),
+        ]
+        result_set = await asyncio.create_subprocess_exec(*exec_args_set)
+        await result_set.wait()
+        assert result_set.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_get_value = await client.get(
+                f"/agents/{agent_id}/variables/{variable_id}/{key}"
+            )
+            response_get_value.raise_for_status()
+
+            retrieved_data = response_get_value.json()["data"]
+            assert retrieved_data == data, "Variable value was not set correctly"
