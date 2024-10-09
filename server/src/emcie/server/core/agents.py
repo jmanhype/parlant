@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence, TypedDict
 
-from emcie.server.core.common import ItemNotFoundError, UniqueId, generate_id
+from emcie.server.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -38,12 +38,15 @@ class AgentStore(ABC):
 
 class _AgentDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     name: str
     description: Optional[str]
 
 
 class AgentDocumentStore(AgentStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(
         self,
         database: DocumentDatabase,
@@ -56,6 +59,7 @@ class AgentDocumentStore(AgentStore):
     def _serialize(self, agent: Agent) -> _AgentDocument:
         return _AgentDocument(
             id=ObjectId(agent.id),
+            version=self.VERSION.to_string(),
             creation_utc=agent.creation_utc.isoformat(),
             name=agent.name,
             description=agent.description,

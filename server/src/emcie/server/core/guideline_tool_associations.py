@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence, TypedDict
 
 from emcie.common.tools import ToolId
-from emcie.server.core.common import generate_id
+from emcie.server.core.common import Version, generate_id
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -40,12 +40,15 @@ class GuidelineToolAssociationStore(ABC):
 
 class _GuidelineToolAssociationDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     guideline_id: GuidelineId
     tool_id: ToolId
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase):
         self._collection = database.get_or_create_collection(
             name="associations", schema=_GuidelineToolAssociationDocument
@@ -57,6 +60,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
     ) -> _GuidelineToolAssociationDocument:
         return _GuidelineToolAssociationDocument(
             id=ObjectId(association.id),
+            version=self.VERSION.to_string(),
             creation_utc=association.creation_utc.isoformat(),
             guideline_id=association.guideline_id,
             tool_id=association.tool_id,

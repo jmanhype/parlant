@@ -16,7 +16,13 @@ from typing import (
 )
 
 from emcie.server.core.async_utils import Timeout
-from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
+from emcie.server.core.common import (
+    ItemNotFoundError,
+    JSONSerializable,
+    UniqueId,
+    Version,
+    generate_id,
+)
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.persistence.document_database import (
@@ -164,6 +170,7 @@ class SessionStore(ABC):
 
 class _SessionDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     end_user_id: EndUserId
     agent_id: AgentId
@@ -173,6 +180,7 @@ class _SessionDocument(TypedDict, total=False):
 
 class _EventDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     session_id: SessionId
     source: EventSource
@@ -183,6 +191,8 @@ class _EventDocument(TypedDict, total=False):
 
 
 class SessionDocumentStore(SessionStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase):
         self._session_collection = database.get_or_create_collection(
             name="sessions",
@@ -199,6 +209,7 @@ class SessionDocumentStore(SessionStore):
     ) -> _SessionDocument:
         return _SessionDocument(
             id=ObjectId(session.id),
+            version=self.VERSION.to_string(),
             creation_utc=session.creation_utc.isoformat(),
             end_user_id=session.end_user_id,
             agent_id=session.agent_id,
@@ -226,6 +237,7 @@ class SessionDocumentStore(SessionStore):
     ) -> _EventDocument:
         return _EventDocument(
             id=ObjectId(event.id),
+            version=self.VERSION.to_string(),
             creation_utc=event.creation_utc.isoformat(),
             session_id=session_id,
             source=event.source,
@@ -304,16 +316,6 @@ class SessionDocumentStore(SessionStore):
         await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
             params=cast(_SessionDocument, params),
-        )
-
-    async def update_title(
-        self,
-        session_id: SessionId,
-        title: str,
-    ) -> None:
-        await self._session_collection.update_one(
-            filters={"id": {"$eq": session_id}},
-            params={"title": title},
         )
 
     async def create_event(

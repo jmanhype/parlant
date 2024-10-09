@@ -6,7 +6,13 @@ from typing import Mapping, Optional, Sequence, TypedDict
 from pydantic import ValidationError
 
 from emcie.common.tools import ToolId, ToolParameter, ToolResult, Tool, ToolContext
-from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
+from emcie.server.core.common import (
+    ItemNotFoundError,
+    JSONSerializable,
+    UniqueId,
+    Version,
+    generate_id,
+)
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -131,6 +137,7 @@ class MultiplexedToolService(ToolService):
 
 class _ToolDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     creation_utc: str
     name: str
     module_path: str
@@ -141,6 +148,8 @@ class _ToolDocument(TypedDict, total=False):
 
 
 class LocalToolService(ToolService):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(
         self,
         database: DocumentDatabase,
@@ -157,6 +166,7 @@ class LocalToolService(ToolService):
     ) -> _ToolDocument:
         return _ToolDocument(
             id=ObjectId(tool.id),
+            version=self.VERSION.to_string(),
             creation_utc=tool.creation_utc.isoformat(),
             name=tool.name,
             module_path=module_path,

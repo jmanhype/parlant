@@ -5,7 +5,13 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 
 from emcie.common.tools import ToolId
-from emcie.server.core.common import ItemNotFoundError, JSONSerializable, UniqueId, generate_id
+from emcie.server.core.common import (
+    ItemNotFoundError,
+    JSONSerializable,
+    UniqueId,
+    Version,
+    generate_id,
+)
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -131,6 +137,7 @@ class _FreshnessRulesDocument(TypedDict, total=False):
 
 class _ContextVariableDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     variable_set: str
     name: str
     description: Optional[str]
@@ -140,6 +147,7 @@ class _ContextVariableDocument(TypedDict, total=False):
 
 class _ContextVariableValueDocument(TypedDict, total=False):
     id: ObjectId
+    version: Version.String
     last_modified: str
     variable_set: str
     variable_id: ContextVariableId
@@ -148,6 +156,8 @@ class _ContextVariableValueDocument(TypedDict, total=False):
 
 
 class ContextVariableDocumentStore(ContextVariableStore):
+    VERSION = Version.from_string("0.1.0")
+
     def __init__(self, database: DocumentDatabase):
         self._variable_collection = database.get_or_create_collection(
             name="variables",
@@ -178,6 +188,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     ) -> _ContextVariableDocument:
         return _ContextVariableDocument(
             id=ObjectId(context_variable.id),
+            version=self.VERSION.to_string(),
             variable_set=variable_set,
             name=context_variable.name,
             description=context_variable.description,
@@ -195,6 +206,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     ) -> _ContextVariableValueDocument:
         return _ContextVariableValueDocument(
             id=ObjectId(context_variable_value.id),
+            version=self.VERSION.to_string(),
             last_modified=context_variable_value.last_modified.isoformat(),
             variable_set=variable_set,
             variable_id=context_variable_value.variable_id,
