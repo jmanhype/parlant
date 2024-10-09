@@ -405,7 +405,8 @@ class Actions:
                 "data": data,
             },
         )
-        value = response.raise_for_status().json()
+        response.raise_for_status()
+        value = response.json()
 
         return ContextVariableValueDTO(
             id=value["id"],
@@ -449,13 +450,14 @@ class Actions:
         variable = Actions._get_variable_by_name(ctx, agent_id, variable_name)
         variable_id = variable["id"]
 
-        url = urljoin(
-            ctx.obj.server_address,
-            f"/agents/{agent_id}/variables/{variable_id}/{key}",
+        response = requests.get(
+            urljoin(
+                ctx.obj.server_address,
+                f"/agents/{agent_id}/variables/{variable_id}/{key}",
+            )
         )
-
-        response = requests.get(url)
-        value = response.raise_for_status().json()
+        response.raise_for_status()
+        value = response.json()
 
         return ContextVariableValueDTO(
             id=value["id"],
