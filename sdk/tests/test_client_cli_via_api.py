@@ -1268,10 +1268,10 @@ async def test_that_connection_can_be_removed_via_cli(
 async def test_that_variables_can_be_listed(
     context: ContextOfTest,
 ) -> None:
-    variable_name1 = "test_variable1"
+    name1 = "test_variable1"
     description1 = "test variable one"
 
-    variable_name2 = "test_variable2"
+    name2 = "test_variable2"
     description2 = "test variable two"
 
     with run_server(context):
@@ -1289,7 +1289,7 @@ async def test_that_variables_can_be_listed(
                     await client.post(
                         f"/agents/{agent_id}/variables",
                         json={
-                            "name": variable_name1,
+                            "name": name1,
                             "description": description1,
                         },
                     )
@@ -1303,7 +1303,7 @@ async def test_that_variables_can_be_listed(
                     await client.post(
                         f"/agents/{agent_id}/variables",
                         json={
-                            "name": variable_name2,
+                            "name": name2,
                             "description": description2,
                         },
                     )
@@ -1335,9 +1335,9 @@ async def test_that_variables_can_be_listed(
 
             assert process_list.returncode == os.EX_OK
 
-            assert variable_name1 in output_list
+            assert name1 in output_list
             assert description1 in output_list
-            assert variable_name2 in output_list
+            assert name2 in output_list
             assert description2 in output_list
 
 
@@ -1385,3 +1385,61 @@ async def test_that_variable_can_be_added(
                 None,
             )
             assert added_variable is not None, "Variable was not added"
+
+
+async def test_that_variable_can_be_removed(
+    context: ContextOfTest,
+) -> None:
+    name = "test_variable_to_remove"
+    description = "Variable to be removed via CLI"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await get_first_agent_id()
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_add = await client.post(
+                f"/agents/{agent_id}/variables",
+                json={
+                    "name": name,
+                    "description": description,
+                },
+            )
+            response_add.raise_for_status()
+
+        exec_args_remove = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "variable",
+            "remove",
+            "--agent-id",
+            agent_id,
+            name,
+        ]
+        result_remove = await asyncio.create_subprocess_exec(*exec_args_remove)
+        await result_remove.wait()
+        assert result_remove.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response_list = await client.get(f"/agents/{agent_id}/variables/")
+            response_list.raise_for_status()
+            variables = response_list.json()["variables"]
+
+            removed_variable = next(
+                (v for v in variables if v["name"] == name and v["description"] == description),
+                None,
+            )
+            assert removed_variable is None, "Variable was not removed"

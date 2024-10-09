@@ -358,6 +358,25 @@ class Actions:
         response.raise_for_status()
         return cast(ContextVariableDTO, response.json()["variable"])
 
+    @staticmethod
+    def _get_variable_by_name(ctx: click.Context, agent_id: str, name: str) -> ContextVariableDTO:
+        variables = Actions.list_variables(ctx, agent_id)
+
+        for variable in variables:
+            if variable["name"] == name:
+                return variable
+        raise ValueError(f"Variable with name '{name}' not found")
+
+    @staticmethod
+    def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
+        variable = Actions._get_variable_by_name(ctx, agent_id, name)
+        variable_id = variable["id"]
+
+        response = requests.delete(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/variables/{variable_id}")
+        )
+        response.raise_for_status()
+
 
 class Interface:
     @staticmethod
@@ -785,6 +804,14 @@ class Interface:
             ],
         )
 
+    @staticmethod
+    def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
+        try:
+            Actions.remove_variable(ctx, agent_id, name)
+            Interface._write_success(f"Removed variable '{name}'")
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
+
 
 async def async_main() -> None:
     click_completion.init()
@@ -1110,6 +1137,24 @@ async def async_main() -> None:
             agent_id=agent_id,
             name=name,
             description=description or "",
+        )
+
+    @variable.command("remove", help="Remove a variable from an agent")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.argument("name", type=str)
+    @click.pass_context
+    def variable_remove(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        name: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.remove_variable(
+            ctx=ctx,
+            agent_id=agent_id,
+            name=name,
         )
 
     cli()
