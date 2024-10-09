@@ -24,9 +24,9 @@ CRITICAL_CONTRADICTION_THRESHOLD = 7
 CONTRADICTION_SEVERITY_THRESHOLD = 7
 
 
-class ContradictionKind(Enum):
-    CRITICAL = auto()
-    POTENTIAL = auto()
+class IncoherenceKind(Enum):
+    STRICT = auto()
+    CONTINGENT = auto()
 
 
 class WhensEntailmentTestSchema(DefaultBaseModel):
@@ -70,10 +70,12 @@ class ContradictionTestsSchema(DefaultBaseModel):  # TODO delete
     contradictions: list[ContradictionTestSchema]
 
 
-class ContradictionTest(DefaultBaseModel):
+class ContradictionTest(
+    DefaultBaseModel
+):  # TODO change to predicate, action language here and upstream
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
-    ContradictionKind: ContradictionKind
+    ContradictionKind: IncoherenceKind
     whens_entailment_severity: int
     whens_entailement_rationale: str
     thens_contradiction_severity: int
@@ -86,18 +88,18 @@ class CoherenceChecker:
         self,
         logger: Logger,
         whens_test_schematic_generator: SchematicGenerator[WhensEntailmentTestsSchema],
-        thens_test_schematic_generator: SchematicGenerator[ThensContradictionTestSchema],
+        thens_test_schematic_generator: SchematicGenerator[ThensContradictionTestsSchema],
         terminology_store: TerminologyStore,
     ) -> None:
         self._logger = logger
         self._whens_entailment_checker = WhensEntailmentChecker(
             logger, whens_test_schematic_generator, terminology_store
         )
-        self._thens_contradicting_checker = ThensContradictionChecker(
+        self._thens_contradiction_checker = ThensContradictionChecker(
             logger, thens_test_schematic_generator, terminology_store
         )
 
-    async def propose_contradictions(
+    async def propose_incoherencies(
         self,
         agent: Agent,
         guidelines_to_evaluate: Sequence[GuidelineContent],
@@ -142,10 +144,11 @@ class CoherenceChecker:
         progress_report: Optional[ProgressReport],
     ) -> Sequence[ContradictionTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
+        # TODO parallelize
         whens_entailment_reponses = await self._whens_entailment_checker.evaluate(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
-        thens_contradiction_reponses = await self._thens_contradicting_checker.evaluate(
+        thens_contradiction_reponses = await self._thens_contradiction_checker.evaluate(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
         whens_entailment_reponses = sorted(
@@ -158,9 +161,9 @@ class CoherenceChecker:
             ContradictionTest(
                 guideline_a=guideline_to_evaluate,
                 guideline_b=indexed_comparison_guidelines[w.compared_guideline_id],
-                ContradictionKind=ContradictionKind.CRITICAL
+                ContradictionKind=IncoherenceKind.STRICT
                 if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
-                else ContradictionKind.POTENTIAL,
+                else IncoherenceKind.CONTINGENT,
                 whens_entailment_severity=w.severity,
                 whens_entailement_rationale=w.rationale,
                 thens_contradiction_severity=t.severity,
@@ -168,9 +171,9 @@ class CoherenceChecker:
                 creation_utc=datetime.now(timezone.utc),
             )
             for w, t in zip(whens_entailment_reponses, thens_contradiction_reponses)
-            if w.severity >= CONTRADICTION_SEVERITY_THRESHOLD
+            if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD
             and w.compared_guideline_id == t.compared_guideline_id
-        ]
+        ]  # TODO Iterate over IDs instead of the zip
 
         if progress_report:
             await progress_report.increment()
@@ -218,7 +221,7 @@ class ThensContradictionChecker:
     def __init__(
         self,
         logger: Logger,
-        schematic_generator: SchematicGenerator[ThensContradictionTestSchema],
+        schematic_generator: SchematicGenerator[ThensContradictionTestsSchema],
         terminology_store: TerminologyStore,
     ) -> None:
         self._logger = logger
@@ -242,7 +245,7 @@ class ContradictionEvaluatorBase(ABC):
     def __init__(
         self,
         logger: Logger,
-        contradiction_kind: ContradictionKind,
+        contradiction_kind: IncoherenceKind,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
         self._logger = logger
@@ -403,7 +406,7 @@ class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
         logger: Logger,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        super().__init__(logger, ContradictionKind.HIERARCHICAL, schematic_generator)
+        super().__init__(logger, IncoherenceKind.HIERARCHICAL, schematic_generator)
 
     def format_contradiction_type_definition(self) -> str:
         return """
@@ -485,7 +488,7 @@ class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
         logger: Logger,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        super().__init__(logger, ContradictionKind.PARALLEL, schematic_generator)
+        super().__init__(logger, IncoherenceKind.PARALLEL, schematic_generator)
 
     def format_contradiction_type_definition(self) -> str:
         return """
@@ -567,7 +570,7 @@ class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
         logger: Logger,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        super().__init__(logger, ContradictionKind.TEMPORAL, schematic_generator)
+        super().__init__(logger, IncoherenceKind.TEMPORAL, schematic_generator)
 
     def format_contradiction_type_definition(self) -> str:
         return """
@@ -649,7 +652,7 @@ class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
         logger: Logger,
         schematic_generator: SchematicGenerator[ContradictionTestsSchema],
     ) -> None:
-        super().__init__(logger, ContradictionKind.CONTEXTUAL, schematic_generator)
+        super().__init__(logger, IncoherenceKind.CONTEXTUAL, schematic_generator)
 
     def format_contradiction_type_definition(self) -> str:
         return """
