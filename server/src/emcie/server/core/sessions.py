@@ -295,7 +295,12 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
     ) -> Optional[SessionId]:
         events_to_delete = await self.list_events(session_id=session_id)
-        asyncio.gather(*iter(self.delete_event(event_id=e.id) for e in events_to_delete))
+        asyncio.gather(
+            *iter(
+                await self._event_collection.delete_one(filters={"id": {"$eq": e.id}})
+                for e in events_to_delete
+            )
+        )
 
         result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
@@ -358,9 +363,10 @@ class SessionDocumentStore(SessionStore):
         self,
         event_id: EventId,
     ) -> None:
-        result = await self._event_collection.delete_one(filters={"id": {"$eq": event_id}})
-        if not result.deleted_document:
-            raise ItemNotFoundError(item_id=UniqueId(event_id))
+        await self._event_collection.update_one(
+            filters={"id": {"$eq": event_id}},
+            params=cast(_EventDocument, {"deleted": True}),
+        )
 
     async def list_events(
         self,
