@@ -160,7 +160,7 @@ class SessionStore(ABC):
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
-        is_skipped: Optional[bool] = False,
+        include_skipped: Optional[bool] = False,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
@@ -368,14 +368,14 @@ class SessionDocumentStore(SessionStore):
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
-        is_skipped: Optional[bool] = None,
+        include_skipped: Optional[bool] = None,
     ) -> Sequence[Event]:
         if not await self._session_collection.find_one(
             cast(
                 Where,
                 {
                     "id": {"$eq": session_id},
-                    **({"is_skipped": {"$eq": is_skipped}} if is_skipped else {}),
+                    **({"is_skipped": {"$eq": include_skipped}} if include_skipped else {}),
                 },
             )
         ):
@@ -454,6 +454,7 @@ class PollingSessionListener(SessionListener):
                 min_offset=min_offset,
                 source=source,
                 kinds=kinds,
+                include_skipped=False,
             )
 
             if events:
