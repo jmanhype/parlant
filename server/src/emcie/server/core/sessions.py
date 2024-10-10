@@ -47,6 +47,7 @@ class Event:
     creation_utc: datetime
     offset: int
     correlation_id: str
+    is_skipped: bool
     data: JSONSerializable
 
 
@@ -188,6 +189,7 @@ class _EventDocument(TypedDict, total=False):
     offset: int
     correlation_id: str
     data: JSONSerializable
+    is_skipped: bool
 
 
 class SessionDocumentStore(SessionStore):
@@ -245,6 +247,7 @@ class SessionDocumentStore(SessionStore):
             offset=event.offset,
             correlation_id=event.correlation_id,
             data=event.data,
+            is_skipped=event.is_skipped,
         )
 
     def _deserialize_event(
@@ -259,6 +262,7 @@ class SessionDocumentStore(SessionStore):
             offset=event_document["offset"],
             correlation_id=event_document["correlation_id"],
             data=event_document["data"],
+            is_skipped=event_document["is_skipped"],
         )
 
     async def create_session(
@@ -342,6 +346,7 @@ class SessionDocumentStore(SessionStore):
             creation_utc=creation_utc,
             correlation_id=correlation_id,
             data=data,
+            is_skipped=False,
         )
 
         await self._event_collection.insert_one(document=self._serialize_event(event, session_id))

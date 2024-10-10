@@ -94,6 +94,7 @@ def create_event_message(
         correlation_id="test_correlation_id",
         data={"message": message},
         creation_utc=datetime.now(timezone.utc),
+        is_skipped=False,
     )
 
     return event
