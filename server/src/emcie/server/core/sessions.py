@@ -160,6 +160,7 @@ class SessionStore(ABC):
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
+        is_skipped: Optional[bool] = False,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
@@ -367,8 +368,17 @@ class SessionDocumentStore(SessionStore):
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
+        is_skipped: Optional[bool] = None,
     ) -> Sequence[Event]:
-        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
+        if not await self._session_collection.find_one(
+            cast(
+                Where,
+                {
+                    "id": {"$eq": session_id},
+                    **({"is_skipped": {"$eq": is_skipped}} if is_skipped else {}),
+                },
+            )
+        ):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
 
         if kinds:
@@ -439,13 +449,11 @@ class PollingSessionListener(SessionListener):
         timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         while True:
-            events = list(
-                await self._session_store.list_events(
-                    session_id,
-                    min_offset=min_offset,
-                    source=source,
-                    kinds=kinds,
-                )
+            events = await self._session_store.list_events(
+                session_id,
+                min_offset=min_offset,
+                source=source,
+                kinds=kinds,
             )
 
             if events:
