@@ -47,7 +47,7 @@ class Event:
     creation_utc: datetime
     offset: int
     correlation_id: str
-    is_skipped: bool
+    deleted: bool
     data: JSONSerializable
 
 
@@ -160,7 +160,7 @@ class SessionStore(ABC):
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
-        include_skipped: Optional[bool] = False,
+        include_deleted: Optional[bool] = False,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
@@ -248,7 +248,7 @@ class SessionDocumentStore(SessionStore):
             offset=event.offset,
             correlation_id=event.correlation_id,
             data=event.data,
-            is_skipped=event.is_skipped,
+            is_skipped=event.deleted,
         )
 
     def _deserialize_event(
@@ -263,7 +263,7 @@ class SessionDocumentStore(SessionStore):
             offset=event_document["offset"],
             correlation_id=event_document["correlation_id"],
             data=event_document["data"],
-            is_skipped=event_document["is_skipped"],
+            deleted=event_document["is_skipped"],
         )
 
     async def create_session(
@@ -347,7 +347,7 @@ class SessionDocumentStore(SessionStore):
             creation_utc=creation_utc,
             correlation_id=correlation_id,
             data=data,
-            is_skipped=False,
+            deleted=False,
         )
 
         await self._event_collection.insert_one(document=self._serialize_event(event, session_id))
@@ -454,7 +454,7 @@ class PollingSessionListener(SessionListener):
                 min_offset=min_offset,
                 source=source,
                 kinds=kinds,
-                include_skipped=False,
+                include_deleted=False,
             )
 
             if events:
