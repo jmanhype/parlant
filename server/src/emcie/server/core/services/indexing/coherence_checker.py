@@ -1,16 +1,16 @@
-from abc import ABC, abstractmethod
 import asyncio
 from dataclasses import dataclass
 
 from datetime import datetime, timezone
 from enum import Enum, auto
 from itertools import chain
+import json
 from typing import Optional, Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from emcie.server.core.common import DefaultBaseModel, ProgressReport
-from emcie.server.core.common import UniqueId, generate_id
+from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
@@ -29,7 +29,7 @@ class IncoherenceKind(Enum):
     CONTINGENT = auto()
 
 
-class WhensEntailmentTestSchema(DefaultBaseModel):
+class PredicatesEntailmentTestSchema(DefaultBaseModel):
     compared_guideline_id: int
     origin_guideline_when: str
     compared_guideline_when: str
@@ -38,11 +38,11 @@ class WhensEntailmentTestSchema(DefaultBaseModel):
     rationale: str
 
 
-class WhensEntailmentTestsSchema(DefaultBaseModel):
-    contradictions: list[WhensEntailmentTestSchema]
+class PredicatesEntailmentTestsSchema(DefaultBaseModel):
+    predicate_entailments: list[PredicatesEntailmentTestSchema]
 
 
-class ThensContradictionTestSchema(DefaultBaseModel):
+class ActionsContradictionTestSchema(DefaultBaseModel):
     compared_guideline_id: int
     origin_guideline_then: str
     compared_guideline_then: str
@@ -51,8 +51,8 @@ class ThensContradictionTestSchema(DefaultBaseModel):
     rationale: str
 
 
-class ThensContradictionTestsSchema(DefaultBaseModel):
-    contradiction: list[ThensContradictionTestSchema]
+class ActionsContradictionTestsSchema(DefaultBaseModel):
+    action_contradictions: list[ActionsContradictionTestSchema]
 
 
 @dataclass(frozen=True)
@@ -64,10 +64,6 @@ class ContradictionTestSchema:
     whens_entailment: bool
     whens_entailment_severity: int
     whens_entailement_rationale: str
-
-
-class ContradictionTestsSchema(DefaultBaseModel):  # TODO delete
-    contradictions: list[ContradictionTestSchema]
 
 
 class ContradictionTest(
@@ -87,16 +83,16 @@ class CoherenceChecker:
     def __init__(
         self,
         logger: Logger,
-        whens_test_schematic_generator: SchematicGenerator[WhensEntailmentTestsSchema],
-        thens_test_schematic_generator: SchematicGenerator[ThensContradictionTestsSchema],
+        predicates_test_schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
+        actions_test_schematic_generator: SchematicGenerator[ActionsContradictionTestsSchema],
         terminology_store: TerminologyStore,
     ) -> None:
         self._logger = logger
-        self._whens_entailment_checker = WhensEntailmentChecker(
-            logger, whens_test_schematic_generator, terminology_store
+        self._predicates_entailment_checker = PredicatesEntailmentChecker(
+            logger, predicates_test_schematic_generator, terminology_store
         )
-        self._thens_contradiction_checker = ThensContradictionChecker(
-            logger, thens_test_schematic_generator, terminology_store
+        self._actions_contradiction_checker = ActionsContradictionChecker(
+            logger, actions_test_schematic_generator, terminology_store
         )
 
     async def propose_incoherencies(
@@ -144,649 +140,411 @@ class CoherenceChecker:
         progress_report: Optional[ProgressReport],
     ) -> Sequence[ContradictionTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
-        # TODO parallelize
-        whens_entailment_reponses = await self._whens_entailment_checker.evaluate(
-            agent, guideline_to_evaluate, indexed_comparison_guidelines
+        predicates_entailment_reponses, actions_contradiction_reponses = await asyncio.gather(
+            self._predicates_entailment_checker.evaluate(
+                agent, guideline_to_evaluate, indexed_comparison_guidelines
+            ),
+            self._actions_contradiction_checker.evaluate(
+                agent, guideline_to_evaluate, indexed_comparison_guidelines
+            ),
         )
-        thens_contradiction_reponses = await self._thens_contradiction_checker.evaluate(
-            agent, guideline_to_evaluate, indexed_comparison_guidelines
-        )
-        whens_entailment_reponses = sorted(
-            whens_entailment_reponses, key=lambda r: r.compared_guideline_id
-        )
-        thens_contradiction_reponses = sorted(
-            thens_contradiction_reponses, key=lambda r: r.compared_guideline_id
-        )
-        contradictions = [
-            ContradictionTest(
-                guideline_a=guideline_to_evaluate,
-                guideline_b=indexed_comparison_guidelines[w.compared_guideline_id],
-                ContradictionKind=IncoherenceKind.STRICT
-                if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
-                else IncoherenceKind.CONTINGENT,
-                whens_entailment_severity=w.severity,
-                whens_entailement_rationale=w.rationale,
-                thens_contradiction_severity=t.severity,
-                thens_contradiction_rationale=t.rationale,
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for w, t in zip(whens_entailment_reponses, thens_contradiction_reponses)
-            if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD
-            and w.compared_guideline_id == t.compared_guideline_id
-        ]  # TODO Iterate over IDs instead of the zip
 
-        if progress_report:
-            await progress_report.increment()
-
-        return contradictions
-
-
-class WhensEntailmentChecker:
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[WhensEntailmentTestsSchema],
-        terminology_store: TerminologyStore,
-    ) -> None:
-        self._logger = logger
-        self._schematic_generator = schematic_generator
-        self._terminology_store = terminology_store
-
-    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
-    async def evaluate(  # TODO write
-        self,
-        agent: Agent,
-        guideline_to_evaluate: GuidelineContent,
-        indexed_comparison_guidelines: dict[int, GuidelineContent],
-    ) -> Sequence[WhensEntailmentTestSchema]:
-        #        prompt = self._format_prompt(agent, guideline_to_evaluate, indexed_comparison_guidelines)
-        #        response = await self._schematic_generator.generate(
-        #            prompt=prompt,
-        #            hints={"temperature": 0.0},
-        #        )
-        #        self._logger.debug(
-        #            f"""
-        # ----------------------------------------
-        # Connection Propositions Found:
-        # ----------------------------------------
-        # {json.dumps([p.model_dump(mode="json") for p in response.content.propositions], indent=2)}
-        # ----------------------------------------
-        # """
-        #        )
-
-        return []
-
-
-class ThensContradictionChecker:
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[ThensContradictionTestsSchema],
-        terminology_store: TerminologyStore,
-    ) -> None:
-        self._logger = logger
-        self._schematic_generator = schematic_generator
-        self._terminology_store = terminology_store
-
-    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
-    async def evaluate(  # TODO write
-        self,
-        agent: Agent,
-        guideline_to_evaluate: GuidelineContent,
-        indexed_comparison_guidelines: dict[int, GuidelineContent],
-    ) -> Sequence[ThensContradictionTestSchema]:
-        return []
-
-
-##################################################################################
-
-
-class ContradictionEvaluatorBase(ABC):
-    def __init__(
-        self,
-        logger: Logger,
-        contradiction_kind: IncoherenceKind,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
-    ) -> None:
-        self._logger = logger
-        self._schematic_generator = schematic_generator
-
-        self.contradiction_kind = contradiction_kind
-
-    async def evaluate(
-        self,
-        guidelines_to_evaluate: Sequence[GuidelineContent],
-        comparison_guidelines: Sequence[GuidelineContent] = [],
-        progress_report: Optional[ProgressReport] = None,
-    ) -> Sequence[ContradictionTest]:
-        comparison_guidelines_list = list(comparison_guidelines)
-        guidelines_to_evaluate_list = list(guidelines_to_evaluate)
-        tasks = []
-
-        for i, guideline_to_evaluate in enumerate(guidelines_to_evaluate):
-            filtered_existing_guidelines = [
-                g for g in guidelines_to_evaluate_list[i + 1 :] + comparison_guidelines_list
-            ]
-            guideline_batches = list(chunked(filtered_existing_guidelines, EVALUATION_BATCH_SIZE))
-
-            if progress_report:
-                await progress_report.stretch(len(guideline_batches))
-
-            tasks.extend(
-                [
-                    asyncio.create_task(
-                        self._process_proposed_guideline(
-                            guideline_to_evaluate, batch, progress_report
-                        )
+        contradictions = []
+        for id, g in indexed_comparison_guidelines.items():
+            w = [w for w in predicates_entailment_reponses if w.compared_guideline_id == id][0]
+            t = [t for t in actions_contradiction_reponses if t.compared_guideline_id == id][0]
+            if t.severity > CONTRADICTION_SEVERITY_THRESHOLD:
+                contradictions.append(
+                    ContradictionTest(
+                        guideline_a=guideline_to_evaluate,
+                        guideline_b=g,
+                        ContradictionKind=IncoherenceKind.STRICT
+                        if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
+                        else IncoherenceKind.CONTINGENT,
+                        whens_entailment_severity=w.severity,
+                        whens_entailement_rationale=w.rationale,
+                        thens_contradiction_severity=t.severity,
+                        thens_contradiction_rationale=t.rationale,
+                        creation_utc=datetime.now(timezone.utc),
                     )
-                    for batch in guideline_batches
-                ]
-            )
-        with self._logger.operation(
-            f"Evaluating {self.contradiction_kind} for {len(tasks)} "
-            f"batches (batch size={EVALUATION_BATCH_SIZE})",
-        ):
-            contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
-
-        return contradictions
-
-    async def _process_proposed_guideline(
-        self,
-        guideline_to_evaluate: GuidelineContent,
-        comparison_guidelines: Sequence[GuidelineContent],
-        progress_report: Optional[ProgressReport],
-    ) -> Sequence[ContradictionTest]:
-        indexed_comparison_guidelines = {generate_id(): c for c in comparison_guidelines}
-        prompt = self._format_contradiction_prompt(
-            guideline_to_evaluate,
-            indexed_comparison_guidelines,
-        )
-        contradictions = await self._generate_contradictions(
-            guideline_to_evaluate, indexed_comparison_guidelines, prompt
-        )
+                )
 
         if progress_report:
             await progress_report.increment()
 
         return contradictions
 
-    @abstractmethod
-    def format_contradiction_type_definition(self) -> str: ...
 
-    @abstractmethod
-    def _format_contradiction_type_examples(self) -> str: ...
-
-    def _format_contradiction_prompt(
+class PredicatesEntailmentChecker:
+    def __init__(
         self,
+        logger: Logger,
+        schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
+        terminology_store: TerminologyStore,
+    ) -> None:
+        self._logger = logger
+        self._schematic_generator = schematic_generator
+        self._terminology_store = terminology_store
+
+    #    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    async def evaluate(  # TODO write
+        self,
+        agent: Agent,
         guideline_to_evaluate: GuidelineContent,
-        comparison_guidelines: dict[UniqueId, GuidelineContent],
-    ) -> str:
-        comparison_guidelines_string = "\n\t".join(
-            f"{i}) {{id: {id}, guideline: When {comparison_guidelines[id].predicate}, then {comparison_guidelines[id].action}}}"
-            for i, id in enumerate(comparison_guidelines, start=1)
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> Sequence[PredicatesEntailmentTestSchema]:
+        prompt = await self._format_prompt(
+            agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
-        guideline_to_evaluate_string = f"guideline: When {guideline_to_evaluate.predicate}, then {guideline_to_evaluate.action}}}"
-        result_structure = [
-            {
-                "compared_guideline_id": id,
-                "severity_level": "<Severity Level (1-10): Indicates the intensity of the "
-                "contradiction arising from overlapping conditions>",
-                "rationale": "<Concise explanation of why the Guideline A and the "
-                f"Guideline B exhibit a {self.contradiction_kind._describe()}>",
-            }
-            for id in comparison_guidelines
-        ]
-
-        return f"""
-### Definition of {self.contradiction_kind._describe()}:
-
-{self.format_contradiction_type_definition()}
-
-**Objective**: Evaluate potential {self.contradiction_kind._describe()}s between guideline A and the comparison guideline set.
-
-**Task Description**:
-1. **Input**:
-   - Guideline Comparison Set: ###
-    {comparison_guidelines_string}
-   ###
-   - Guideline A: ###
-   {guideline_to_evaluate_string}
-   ###
-
-2. **Process**:
-   - Compare each of the {len(comparison_guidelines)} guidelines in the Guideline Comparison Set with the Guideline A.
-   - Determine if there is a {self.contradiction_kind._describe()}, where Guideline A directly contradicts a guideline from the Guideline Comparison Set when both guidelines are based on the same input.
-   - If no contradiction is detected, set the severity_level to 1 to indicate minimal or no contradiction.
-
-
-3. **Output**:
-   - A list of results, each item detailing a potential contradiction, structured as follows:
-     ```json
-     {{
-         "contradictions":
-            {result_structure}
-     }}
-     ```
-
-### Examples of Evaluations:
-
-{self._format_contradiction_type_examples()}
-"""  # noqa
-
-    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
-    async def _generate_contradictions(
-        self,
-        guideline_to_evaluate: GuidelineContent,
-        indexed_compared_guidelines: dict[UniqueId, GuidelineContent],
-        prompt: str,
-    ) -> Sequence[ContradictionTest]:
-        contradiction_tests_response = await self._schematic_generator.generate(
+        with open("predicate entailment prompt.txt", "w", encoding="utf-8") as file:
+            file.write(prompt)
+        response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
         )
+        self._logger.debug(
+            f"""
+----------------------------------------
+Predicate Entailment Test Results:
+----------------------------------------
+{json.dumps([p.model_dump(mode="json") for p in response.content.predicate_entailments], indent=2)}
+----------------------------------------
+"""
+        )
 
-        contradictions = [
-            ContradictionTest(
-                kind=self.contradiction_kind,
-                guideline_a=guideline_to_evaluate,
-                guideline_b=indexed_compared_guidelines[c.compared_guideline_id],
-                severity=c.severity_level,
-                rationale=c.rationale,
-                creation_utc=datetime.now(timezone.utc),
-            )
-            for c in contradiction_tests_response.content.contradictions
-        ]
+        return response.content.predicate_entailments
 
-        return contradictions
+    async def _format_prompt(
+        self,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> str:  # TODO write
+        builder = PromptBuilder()
+        comparison_candidates_text = "\n\t".join(
+            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            for id, g in indexed_comparison_guidelines.items()
+        )
+        guideline_to_evaluate_text = (
+            f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
+        )
+
+        builder.add_agent_identity(
+            agent
+        )  # TODO ask dor about where this should be placed for prompt caching
+        builder.add_section(
+            f"""
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
+
+Each guideline is composed of two parts:
+- "when": This is a natural-language predicate that specifies when a guideline should apply.
+          We look at each conversation at any particular state, and we test against this
+          predicate to understand if we should have this guideline participate in generating
+          the next reply to the user.
+- "then": This is a natural-language instruction that should be followed by the agent
+          whenever the "when" part of the guideline applies to the conversation in its particular state.
+          Any instruction described here applies only to the agent, and not to the user.
 
 
-class HierarchicalContradictionEvaluator(ContradictionEvaluatorBase):
+Your task is to evaluate whether pairs of guidelines have entailing 'when' statements. 
+Two guidelines should be detected as having entailing 'when' statements if and only if one of their 'when' statements being true must mean that the other's 'when' statement is true.
+By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A. 
+The entailment might be in either direction - for guidelines A and B, identify them as having entailing 'when' statements if either the 'when' of A entails the when of 'b', or if the 'when' of B entails the 'when' of A.
+If two guidelines have equivalent 'when' statements, meaning that they both entail each other - then identify the guidelines as having entailing 'when's. 
+
+Please output JSON structured in the following format:
+```json
+{{
+    "predicate_entailments": [
+        {{
+            "compared_guideline_id": <id of the compared guideline>
+            "origin_guideline_when": <The origin guideline's 'when'>
+            "compared_guideline_when": <The compared guideline's 'when'>
+            "whens_entailment": <BOOL of whether one of the 'when' statements entails the other>
+            "severity": <Score between 1-10 indicating the strength of the entailment>
+            "rationale": <Explanation for if and how one of the 'when' statement's entails the other>
+        }},
+        ...
+    ]
+}}
+```
+The output json should have one such object for each pairing of the origin guideline with one of the compared guidelines.
+
+The following are examples of expected outputs for a given input:
+###
+Example 1:
+{{
+Input:
+
+Test guideline: ###
+{{"when": "a customer orders an electrical appliance", "then": "ship the item immediately"}}
+###
+
+Comparison candidates: ###
+{{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
+{{"id": 2, "when": "a costumer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
+{{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
+{{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
+
+###
+
+Expected Output:
+```json
+{{
+    "predicate_entailments": [
+        {{
+            "compared_guideline_id": 1
+            "origin_guideline_when": "a customer orders an electrical appliance"
+            "compared_guideline_when": "a customer orders a TV"
+            "whens_entailment": True
+            "severity": 10
+            "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance"
+        }},
+        {{
+            "compared_guideline_id": 2
+            "origin_guideline_when": "a customer orders an electrical appliance"
+            "compared_guideline_when": "a costumer orders any item"
+            "whens_entailment": True
+            "severity": 10
+            "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item"
+        }},
+        {{
+            "compared_guideline_id": 3
+            "origin_guideline_when": "a customer orders an electrical appliance"
+            "compared_guideline_when": "a customer orders a chair"
+            "whens_entailment": False
+            "severity": 2
+            "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa"
+        }},
+        {{
+            "compared_guideline_id": 4
+            "origin_guideline_when": "a customer orders an electrical appliance"
+            "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances"
+            "whens_entailment": False
+            "severity": 3
+            "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other"
+        }},
+        {{
+            "compared_guideline_id": 5
+            "origin_guideline_when": "a customer orders an electrical appliance"
+            "compared_guideline_when": "a customer greets you"
+            "whens_entailment": True
+            "severity": 10
+            "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other"
+        }},
+    ]
+}}
+```
+            """  # noqa
+        )
+
+        terms = await self._terminology_store.find_relevant_terms(
+            agent.id,
+            query=guideline_to_evaluate_text + comparison_candidates_text,
+        )
+        builder.add_terminology(terms)
+
+        builder.add_section(f"""
+The guidelines you should analyze for entailments are:
+Origin guideline: ###
+{guideline_to_evaluate_text}
+###
+
+Comparison candidates: ###
+{comparison_candidates_text}
+###""")
+        builder.add_section(  # output format
+            f"""
+
+                            """  # noqa
+        )
+        return builder.build()
+
+
+class ActionsContradictionChecker:
     def __init__(
         self,
         logger: Logger,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
-    ) -> None:
-        super().__init__(logger, IncoherenceKind.HIERARCHICAL, schematic_generator)
-
-    def format_contradiction_type_definition(self) -> str:
-        return """
-Hierarchical Coherence Contradiction arises when there are multiple layers of guidelines, with one being more specific or detailed than the other.
-This type of Contradiction occurs when the application of a general guideline is contradicted by a more specific guideline under certain conditions, leading to inconsistencies in decision-making.
-"""  # noqa
-
-    def _format_contradiction_type_examples(self) -> str:
-        return f"""
-#### Example #1:
-- **Guideline A**: {{"id": 4, "guideline": "When a customer orders a high-demand item, Then ship immediately, regardless of loyalty level."}}
-- **Guideline B**: {{"id": 3, "guideline": "When a customer orders any item, Then prioritize shipping based on customer loyalty level."}}
-- **Expected Result**:
-     ```json
-     {{
-         "contradictions": [
-             {{
-                 "compared_guideline_id": "3",
-                 "severity_level": 9,
-                 "rationale": "Shipping high-demand items immediately contradicts the policy of prioritizing shipments based on loyalty."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #2:
-- **Guideline A**: {{"id": 2, "guideline": "When an employee excels in a critical project, Then offer additional rewards beyond standard metrics."}}
-- **Guideline B**: {{"id": 1, "guideline": "When an employee qualifies for any reward, Then distribute rewards based on standard performance metrics."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                 "compared_guideline_id": "1",
-                 "severity_level": 8,
-                 "rationale": "Offering extra rewards for specific projects directly conflicts with the uniform application of standard performance metrics."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #3:
-- **Guideline A**: {{"id": 6, "guideline": "When a customer subscribes to any plan during a promotional period, Then offer an additional 5% discount on the subscription fee."}}
-- **Guideline B**: {{"id": 5, "guideline": "When a customer subscribes to a yearly plan, Then offer a 10% discount on the subscription fee."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                 "compared_guideline_id": "5",
-                 "severity_level": 1,
-                 "rationale": "The policies to offer discounts for yearly subscriptions and additional discounts during promotional periods complement each other rather than contradict. Both discounts can be applied simultaneously without undermining one another, enhancing the overall attractiveness of the subscription offers during promotions."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #4:
-- **Guideline A**: {{"id": 8, "guideline": "When a software update includes major changes affecting user interfaces, Then delay deployment for additional user training."}}
-- **Guideline B**: {{"id": 7, "guideline": "When there is a software update, Then deploy it within 48 hours."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                 "compared_guideline_id": "7",
-                 "severity_level": 9,
-                 "rationale": "The need for additional training on major UI changes necessitates delaying rapid deployments, causing a conflict with established update protocols."
-             }}
-         ]
-     }}
-     ```
-"""  # noqa
-
-
-class ParallelContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
-    ) -> None:
-        super().__init__(logger, IncoherenceKind.PARALLEL, schematic_generator)
-
-    def format_contradiction_type_definition(self) -> str:
-        return """
-Parallel Contradiction occurs when two guidelines of equal specificity lead to contradictory actions.
-This happens when conditions for both guidelines are met simultaneously, without a clear resolution mechanism to prioritize one over the other.
-"""  # noqa
-
-    def _format_contradiction_type_examples(self) -> str:
-        return f"""
-#### Example #1:
-- **Guideline A**: {{"id": 2, "guideline": "When the returned item is a special order, Then do not offer refunds."}}
-- **Guideline B**: {{"id": 1, "guideline": "When a customer returns an item within 30 days, Then issue a full refund."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "1",
-                "severity_level": 9,
-                "rationale": "Refund policy conflict: special orders returned within 30 days challenge the standard refund guideline, causing potential customer confusion."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #2:
-- **Guideline A**: {{"id": 4, "guideline": "When multiple projects are nearing deadlines at the same time, Then distribute resources equally among projects."}}
-- **Guideline B**: {{"id": 3, "guideline": "When a project deadline is imminent, Then allocate all available resources to complete the project."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "3",
-                "severity_level": 8,
-                "rationale": "Resource allocation conflict: The need to focus resources on imminent deadlines clashes with equal distribution policies during multiple simultaneous project deadlines."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #3:
-- **Guideline A**: {{"id": 6, "guideline": "When team collaboration is essential, Then require standard working hours for all team members."}}
-- **Guideline B**: {{"id": 5, "guideline": "When an employee requests flexible working hours, Then approve to support work-life balance."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                 "compared_guideline_id": "5",
-                 "severity_level": 7,
-                 "rationale": "Flexible vs. standard hours conflict: Approving flexible hours contradicts the necessity for standard hours required for effective team collaboration."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #4:
-- **Guideline A**: {{"id": 8, "guideline": "When a customer asks about compatibility with other products, Then offer guidance on compatible products and configurations."}}
-- **Guideline B**: {{"id": 7, "guideline": "When a customer inquires about product features, Then provide detailed information and recommendations based on their needs."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "7",
-                "severity_level": 1,
-                "rationale": "These guidelines complement each other by addressing different customer needs: detailed product information and specific compatibility advice."
-             }}
-         ]
-     }}
-     ```
-"""  # noqa
-
-
-class TemporalContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
-    ) -> None:
-        super().__init__(logger, IncoherenceKind.TEMPORAL, schematic_generator)
-
-    def format_contradiction_type_definition(self) -> str:
-        return """
-Temporal Contradiction occurs when guidelines dependent on timing or sequence overlap in a way that leads to contradictions.
-This arises from a lack of clear prioritization or differentiation between actions required at the same time.
-"""  # noqa
-
-    def _format_contradiction_type_examples(self) -> str:
-        return f"""
-#### Example #1:
-- **Guideline A**: {{"id": 2, "guideline": "When it is the end-of-year sale period, Then apply no discounts."}}
-- **Guideline B**: {{"id": 1, "guideline": "When it is the holiday season, Then apply discounts."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "1",
-                "severity_level": 9,
-                "rationale": "Applying discounts during the holiday season directly contradicts withholding them during overlapping end-of-year sales, creating inconsistent pricing strategies."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #2:
-- **Guideline A**: {{"id": 4, "guideline": "When a promotional campaign is active, Then maintain standard pricing to maximize campaign impact."}}
-- **Guideline B**: {{"id": 3, "guideline": "When a product reaches its expiration date, Then mark it down for quick sale."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "3",
-                "severity_level": 8,
-                "rationale": "Reducing prices for expiring products conflicts with maintaining standard pricing during promotional campaigns, causing pricing conflicts."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #3:
-- **Guideline A**: {{"id": 6, "guideline": "When a major sales event is planned, Then ensure maximum operational capacity."}}
-- **Guideline B**: {{"id": 5, "guideline": "When severe weather conditions are forecasted, Then activate emergency protocols and limit business operations."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "5",
-                "severity_level": 9,
-                "rationale": "Emergency protocol for severe weather contradicts the need for maximum capacity during major sales events, challenging management decisions."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #4:
-- **Guideline A**: {{"id": 8, "guideline": "When a new product launch is scheduled, Then prepare customer service for increased inquiries."}}
-- **Guideline B**: {{"id": 7, "guideline": "When customer service receives high call volumes, Then deploy additional staff to handle the influx."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "7",
-                "severity_level": 1,
-                "rationale": "Both guidelines support enhancing customer service under different circumstances, effectively complementing each other without conflict."
-             }}
-         ]
-     }}
-     ```
-"""  # noqa
-
-
-class ContextualContradictionEvaluator(ContradictionEvaluatorBase):
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
-    ) -> None:
-        super().__init__(logger, IncoherenceKind.CONTEXTUAL, schematic_generator)
-
-    def format_contradiction_type_definition(self) -> str:
-        return """
-Contextual Contradiction occurs when external conditions or operational contexts lead to contradictory actions.
-These conflicts arise from different but potentially overlapping circumstances requiring actions that are valid under each specific context yet oppose each other.
-"""  # noqa
-
-    def _format_contradiction_type_examples(self) -> str:
-        return f"""
-#### Example #1:
-- **Guideline A**: {{"id": 2, "guideline": "When operational costs need to be minimized, Then restrict free shipping."}}
-- **Guideline B**: {{"id": 1, "guideline": "When operating in urban areas, Then offer free shipping."}}
-- **Expected Result**:
-     ```json
-     {{
-         "contextual_contradictions": [
-             {{
-                "compared_guideline_id": "1",
-                "severity_level": 9,
-                "rationale": "Offering free shipping in urban areas directly conflicts with initiatives to minimize operational costs, leading to contradictory shipping policies when both conditions apply."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #2:
-- **Guideline A**: {{"id": 4, "guideline": "When cost considerations drive decisions, Then continue using less expensive, traditional materials."}}
-- **Guideline B**: {{"id": 3, "guideline": "When customer surveys indicate a preference for environmentally friendly products, Then shift production to eco-friendly materials."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "3",
-                "severity_level": 8,
-                "rationale": "The preference for eco-friendly products conflicts with cost-driven decisions to use cheaper materials, creating a strategic dilemma between sustainability and cost efficiency."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #3:
-- **Guideline A**: {{"id": 6, "guideline": "When internal strategy targets mass market appeal, Then increase production of lower-cost items."}}
-- **Guideline B**: {{"id": 5, "guideline": "When market data shows customer preference for high-end products, Then focus on premium product lines."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "5",
-                "severity_level": 9,
-                "rationale": "Targeting premium product lines based on customer preferences contradicts strategies to enhance mass market appeal with lower-cost items, presenting a strategic conflict."
-             }}
-         ]
-     }}
-     ```
-
-#### Example #4:
-- **Guideline A**: {{"id": 8, "guideline": "When a new software update is released, Then send notifications to existing customers to encourage updates."}}
-- **Guideline B**: {{"id": 7, "guideline": "When a technology product is released, Then launch a marketing campaign to promote the new product."}}
-- **Expected Result**:
-     ```json
-     {{
-        "contradictions": [
-             {{
-                "compared_guideline_id": "7",
-                "severity_level": 1,
-                "rationale": "Marketing new products and notifying existing customers about updates serve complementary purposes without conflicting, effectively targeting different customer segments."
-             }}
-         ]
-     }}
-     ```
-"""  # noqa
-
-
-class CoherenceCheckerOld:
-    def __init__(
-        self,
-        logger: Logger,
-        schematic_generator: SchematicGenerator[ContradictionTestsSchema],
+        schematic_generator: SchematicGenerator[ActionsContradictionTestsSchema],
+        terminology_store: TerminologyStore,
     ) -> None:
         self._logger = logger
+        self._schematic_generator = schematic_generator
+        self._terminology_store = terminology_store
 
-        self._hierarchical_contradiction_evaluator = HierarchicalContradictionEvaluator(
-            logger,
-            schematic_generator,
-        )
-        self._parallel_contradiction_evaluator = ParallelContradictionEvaluator(
-            logger,
-            schematic_generator,
-        )
-        self._temporal_contradiction_evaluator = TemporalContradictionEvaluator(
-            logger,
-            schematic_generator,
-        )
-        self._contextual_contradiction_evaluator = ContextualContradictionEvaluator(
-            logger,
-            schematic_generator,
-        )
-
-    async def evaluate_coherence(
+    # @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    async def evaluate(
         self,
-        guidelines_to_evaluate: Sequence[GuidelineContent],
-        comparison_guidelines: Sequence[GuidelineContent] = [],
-        progress_report: Optional[ProgressReport] = None,
-    ) -> Sequence[ContradictionTest]:
-        hierarchical_contradictions_task = self._hierarchical_contradiction_evaluator.evaluate(
-            guidelines_to_evaluate,
-            comparison_guidelines,
-            progress_report,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> Sequence[ActionsContradictionTestSchema]:
+        prompt = await self._format_prompt(
+            agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
-        parallel_contradictions_task = self._parallel_contradiction_evaluator.evaluate(
-            guidelines_to_evaluate,
-            comparison_guidelines,
-            progress_report,
+        with open("action contradiction prompt.txt", "w", encoding="utf-8") as file:
+            file.write(prompt)
+        response = await self._schematic_generator.generate(
+            prompt=prompt,
+            hints={"temperature": 0.0},
         )
-        temporal_contradictions_task = self._temporal_contradiction_evaluator.evaluate(
-            guidelines_to_evaluate,
-            comparison_guidelines,
-            progress_report,
+        self._logger.debug(
+            f"""
+----------------------------------------
+Action Contradiction Test Results:
+----------------------------------------
+{json.dumps([p.model_dump(mode="json") for p in response.content.action_contradictions], indent=2)}
+----------------------------------------
+"""
         )
-        contextual_contradictions_task = self._contextual_contradiction_evaluator.evaluate(
-            guidelines_to_evaluate,
-            comparison_guidelines,
-            progress_report,
+
+        return response.content.action_contradictions
+
+    async def _format_prompt(
+        self,
+        agent: Agent,
+        guideline_to_evaluate: GuidelineContent,
+        indexed_comparison_guidelines: dict[int, GuidelineContent],
+    ) -> str:
+        builder = PromptBuilder()
+        comparison_candidates_text = "\n\t".join(
+            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            for id, g in indexed_comparison_guidelines.items()
         )
-        combined_contradictions = list(
-            chain.from_iterable(
-                await asyncio.gather(
-                    hierarchical_contradictions_task,
-                    parallel_contradictions_task,
-                    temporal_contradictions_task,
-                    contextual_contradictions_task,
-                )
-            )
+        guideline_to_evaluate_text = (
+            f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
         )
-        return combined_contradictions
+
+        builder.add_agent_identity(
+            agent
+        )  # TODO ask dor about where this should be placed for prompt caching
+        builder.add_section(
+            f"""
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
+
+Each guideline is composed of two parts:
+- "when": This is a natural-language predicate that specifies when a guideline should apply.
+          We look at each conversation at any particular state, and we test against this
+          predicate to understand if we should have this guideline participate in generating
+          the next reply to the user.
+- "then": This is a natural-language instruction that should be followed by the agent
+          whenever the "when" part of the guideline applies to the conversation in its particular state.
+          Any instruction described here applies only to the agent, and not to the user.
+
+
+To maintain consistency, we must avoid cases where multiple guidelines with contradictory 'then' statements are applied.
+
+Your role is to evaluate whether pairs of guideline have contradictory 'then' statements. Two 'then' statements should be detected as contradictory
+if and only if applying them both simultaneously would be illogical, or would result in an incoherent action / response. 
+While your determination should depend solely on the guidelines' 'then' statements, note that each 'then' statement might be contextualized by its respective 'then' statement.
+Therefore, to find whether two guidelines have contradictory 'then' statements, begin by understanding each guideline's 'then' statement, through the context of their respective 'when's, and then evaluate whether applying them simultaneously would be contradictory. 
+
+Please output JSON structured in the following format:
+```json
+{{
+    "action_contradictions": [
+        {{
+            "compared_guideline_id": <id of the compared guideline>
+            "origin_guideline_then": <The origin guideline's 'then'>
+            "compared_guideline_then": <The compared guideline's 'then'>
+            "thens_contradiction": <BOOL of whether the two 'then' statements are contradictory>
+            "severity": <Score between 1-10 indicating the strength of the contradiction>
+            "rationale": <Explanation for if and how the 'then' statements contradict each other>
+        }},
+        ...
+    ]
+}}
+```
+The output json should have one such object for each pairing of the origin guideline with one of the compared guidelines.
+
+The following are examples of expected outputs for a given input:
+###
+Example 1:
+{{
+Input:
+
+Test guideline: ###
+{{"when": "a customer orders an electrical appliance", "then": "ship the item immediately"}}
+###
+
+Comparison candidates: ###
+{{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
+{{"id": 2, "when": "a costumer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
+{{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
+{{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
+
+###
+
+Expected Output:
+```json
+{{
+    "action_contradictions": [
+        {{
+            "compared_guideline_id": 1
+            "origin_guideline_then": "ship the item immediately"
+            "compared_guideline_then": "wait for the manager's approval before shipping"
+            "thens_contradiction": True
+            "severity": 10
+            "rationale": "shipping the item immediately contradicts waiting for the manager's approval"
+        }},
+        {{
+            "compared_guideline_id": 2
+            "origin_guideline_then": "ship the item immediately"
+            "compared_guideline_then": "refer the user to our electronic store"
+            "thens_contradiction": False
+            "severity": 2
+            "rationale": "the agent can both ship the item immediately and refer the user to the electronic store at the same time, the actions are not contradictory"
+        }},
+        {{
+            "compared_guideline_id": 3
+            "origin_guideline_then": "ship the item immediately"
+            "compared_guideline_then": "reply that the product can only be delivered in-store"
+            "thens_contradiction": True
+            "severity": 9
+            "rationale": "shipping the item immediately contradicts the reply that the product can only be delivered in-store"
+        }},
+        {{
+            "compared_guideline_id": 4
+            "origin_guideline_then": "ship the item immediately"
+            "compared_guideline_then": "reply that we offer free shipping for items over 100$"
+            "thens_contradiction": False
+            "severity": 1
+            "rationale": "replying that we offer free shipping for expensive items does not contradict shipping an item immediately, both actions can be taken simultaneously"
+        }},
+        {{
+            "compared_guideline_id": 5
+            "origin_guideline_then": "ship the item immediately"
+            "compared_guideline_then": "greet them back"
+            "thens_contradiction": True
+            "severity": 1
+            "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously"
+        }},
+    ]
+}}
+```
+            """  # noqa
+        )
+
+        terms = await self._terminology_store.find_relevant_terms(
+            agent.id,
+            query=guideline_to_evaluate_text + comparison_candidates_text,
+        )
+        builder.add_terminology(terms)
+
+        builder.add_section(f"""
+The guidelines you should analyze for entailments are:
+Origin guideline: ###
+{guideline_to_evaluate_text}
+###
+
+Comparison candidates: ###
+{comparison_candidates_text}
+###""")
+        builder.add_section(  # output format
+            f"""
+
+                                """  # noqa
+        )
+        return builder.build()

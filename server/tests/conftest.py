@@ -47,7 +47,11 @@ from emcie.server.core.engines.types import Engine
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
-from emcie.server.core.services.indexing.coherence_checker import ContradictionTestsSchema
+from emcie.server.core.services.indexing.coherence_checker import (
+    CoherenceChecker,
+    PredicatesEntailmentTestsSchema,
+    ActionsContradictionTestsSchema,
+)
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
@@ -86,15 +90,19 @@ async def container() -> AsyncIterator[Container]:
     container[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[
         GuidelinePropositionsSchema
     ](logger=container[Logger])
+
     container[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](
         logger=container[Logger]
     )
     container[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema](
         logger=container[Logger]
     )
-    container[SchematicGenerator[ContradictionTestsSchema]] = GPT_4o[ContradictionTestsSchema](
-        logger=container[Logger]
-    )
+    container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
+        PredicatesEntailmentTestsSchema
+    ](logger=container[Logger])
+    container[SchematicGenerator[ActionsContradictionTestsSchema]] = GPT_4o[
+        ActionsContradictionTestsSchema
+    ](logger=container[Logger])
     container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
         GuidelineConnectionPropositionsSchema
     ](logger=container[Logger])
@@ -105,6 +113,7 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineProposer] = Singleton(GuidelineProposer)
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
     container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
+    container[CoherenceChecker] = Singleton(CoherenceChecker)
     container[LocalToolService] = Singleton(LocalToolService)
     container[MultiplexedToolService] = MultiplexedToolService(
         services={"local": container[LocalToolService]}

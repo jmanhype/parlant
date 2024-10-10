@@ -15,7 +15,7 @@ from emcie.server.core.services.indexing.coherence_checker import (
     IncoherenceKind,
 )
 
-from tests.test_utilities import SyncAwaiter, nlp_test
+from tests.test_utilities import SyncAwaiter  # , nlp_test
 
 
 @fixture
@@ -162,7 +162,7 @@ def guidelines_without_contradictions() -> list[GuidelineContent]:
         ),
     ],
 )
-def test_that_contradicting_guidelines_with_hierarchical_whens_are_detected(
+def test_that_contradicting_guidelines_with_hierarchical_predicates_are_detected(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -274,7 +274,7 @@ def test_that_potential_contradictions_are_detected(
                 "action": "Roll it out to all users to ensure everyone has the latest version",
             },
             {
-                "predicate": "The month is Novemeber",
+                "predicate": "A software update is about to release and the month is November",
                 "action": "Delay software updates to avoid disrupting their operations",
             },
         ),
@@ -448,8 +448,6 @@ def test_that_non_contradicting_guidelines_arent_detected(
 def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(
     context: _TestContext,
     agent: Agent,
-    guideline_a_definition: dict[str, str],
-    guideline_b_definition: dict[str, str],
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
@@ -485,8 +483,6 @@ def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_c
 def test_that_logically_contradicting_actions_are_detected_as_incoherencies(
     context: _TestContext,
     agent: Agent,
-    guideline_a_definition: dict[str, str],
-    guideline_b_definition: dict[str, str],
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
@@ -522,8 +518,6 @@ def test_that_logically_contradicting_actions_are_detected_as_incoherencies(
 def test_that_entailing_predicates_with_unrelated_actions_arent_false_positives(
     context: _TestContext,
     agent: Agent,
-    guideline_a_definition: dict[str, str],
-    guideline_b_definition: dict[str, str],
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
@@ -727,25 +721,24 @@ def test_that_a_terminology_based_contradiciton_is_detected(
 
 def test_that_an_agent_description_based_contradiciton_is_detected(
     context: _TestContext,
-) -> None:  # TODO ask Dor how to initiate agent
+) -> None:
     agent = Agent(
-        id=AgentId("abcd"),
+        id=AgentId("sparkling-water-agent"),
         name="sparkling-water-agent",
-        description="You are a helpful AI assistant for a sparkling water company. All of our products are named after famous mountians. Our competitors products are all named after bodies of water.",
+        description="You are a helpful AI assistant for a sparkling water company. Our company sells sparkling water, but never sparkling juices. The philosophy of our company dictates that juices should never be carbonated.",
         creation_utc=datetime.now(timezone.utc),
     )
 
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="the client asks our recommendation",
-        action="add one pap to the order",
+        predicate="the client asks for our recommendation",
+        action="Recommend a product according to our company's philosophy",
     )
 
     guideline_b = GuidelineContent(
-        predicate="the client asks for a specific pizza topping",
-        action="Add the pizza to the order unless a fruit-based topping is requested",
+        predicate="the client asks for a recommended sweetened soda",
+        action="suggest sparkling orange juice",
     )
-
     contradiction_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
@@ -764,4 +757,32 @@ def test_that_an_agent_description_based_contradiciton_is_detected(
         contradiction_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert contradiction_results[0].ContradictionKind == IncoherenceKind.CONTINGENT
+    assert contradiction_results[0].ContradictionKind == IncoherenceKind.STRICT
+
+
+def test_that_many_guidelins_which_are_all_contradictory_are_detected(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    coherence_checker = context.container[CoherenceChecker]
+    n = 7
+    contradictory_guidelines = [
+        GuidelineContent(
+            predicate="a client asks for the price of a television",
+            action=f"reply that the price is {i*10}$",
+        )
+        for i in range(n)
+    ]
+    contradiction_results = list(
+        context.sync_await(
+            coherence_checker.propose_incoherencies(
+                agent,
+                contradictory_guidelines,
+            )
+        )
+    )
+    contradictions_n = (n * (n - 1)) // 2
+
+    assert len(contradiction_results) == contradictions_n
+    for c in contradiction_results:
+        assert c.ContradictionKind == IncoherenceKind.STRICT
