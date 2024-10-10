@@ -10,7 +10,7 @@ from emcie.server.core.context_variables import ContextVariable, ContextVariable
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
-from emcie.server.core.terminology import Term
+from emcie.server.core.glossary import Term
 from emcie.server.core.guidelines import Guideline
 from emcie.server.core.sessions import Event
 from emcie.server.core.emissions import EmittedEvent
@@ -201,7 +201,7 @@ The following is an additional list of staged events that were just added: ###
         )
 
         builder.add_context_variables(context_variables)
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
 
         builder.add_section(
             """

@@ -10,7 +10,7 @@ from emcie.server.core.context_variables import ContextVariable, ContextVariable
 from emcie.server.core.sessions import Event, SessionId, ToolEventData
 from emcie.server.core.tools import ToolService
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.core.terminology import Term
+from emcie.server.core.glossary import Term
 from emcie.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCaller
 from emcie.server.core.emissions import EmittedEvent, EventEmitter
 

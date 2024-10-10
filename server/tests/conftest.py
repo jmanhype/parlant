@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from lagom import Container, Singleton
 from pytest import fixture, Config
 
-from emcie.server.adapters.db.chroma.terminology import TerminologyChromaStore
+from emcie.server.adapters.db.chroma.glossary import GlossaryChromaStore
 from emcie.server.adapters.nlp.openai import GPT_4o, GPT_4o_Mini, OpenAITextEmbedding3Large
 from emcie.server.api.app import create_app
 from emcie.server.core.contextual_correlator import ContextualCorrelator
@@ -32,7 +32,7 @@ from emcie.server.core.sessions import (
 )
 from emcie.server.core.tools import MultiplexedToolService, LocalToolService, ToolService
 from emcie.server.core.engines.alpha.engine import AlphaEngine
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
@@ -123,7 +123,7 @@ async def container() -> AsyncIterator[Container]:
     container[Engine] = AlphaEngine
 
     with tempfile.TemporaryDirectory() as chroma_db_dir:
-        container[TerminologyStore] = TerminologyChromaStore(
+        container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(chroma_db_dir), EmbedderFactory(container)),
             embedder_type=OpenAITextEmbedding3Large,
         )

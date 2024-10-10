@@ -20,7 +20,7 @@ import uvicorn
 
 from emcie.common.tools import ToolId
 from emcie.server import VERSION
-from emcie.server.adapters.db.chroma.terminology import TerminologyChromaStore
+from emcie.server.adapters.db.chroma.glossary import GlossaryChromaStore
 from emcie.server.adapters.nlp.openai import GPT_4o, GPT_4o_Mini, OpenAITextEmbedding3Large
 from emcie.server.api.app import create_app
 from emcie.server.core.contextual_correlator import ContextualCorrelator
@@ -49,7 +49,7 @@ from emcie.server.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.tools import LocalToolService, ToolService, MultiplexedToolService
 from emcie.server.core.services.tools.plugins import PluginClient
 from emcie.server.core.engines.alpha.engine import AlphaEngine
@@ -258,7 +258,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
         c[SessionStore] = SessionDocumentStore(sessions_db)
         c[SessionListener] = PollingSessionListener
-        c[TerminologyStore] = TerminologyChromaStore(
+        c[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(LOGGER, EMCIE_HOME_DIR, EmbedderFactory(c)),
             embedder_type=OpenAITextEmbedding3Large,
         )
@@ -272,7 +272,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
         c[GuidelineConnectionProposer] = GuidelineConnectionProposer(
             c[Logger],
             c[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
-            c[TerminologyStore],
+            c[GlossaryStore],
         )
         c[ToolEventProducer] = ToolEventProducer(
             c[Logger],

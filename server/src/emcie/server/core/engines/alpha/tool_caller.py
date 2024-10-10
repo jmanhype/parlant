@@ -13,7 +13,7 @@ from emcie.server.core.context_variables import ContextVariable, ContextVariable
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.sessions import Event, ToolResult
 from emcie.server.core.tools import ToolService
-from emcie.server.core.terminology import Term
+from emcie.server.core.glossary import Term
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.engines.alpha.utils import emitted_tool_events_to_dicts
@@ -145,7 +145,7 @@ class ToolCaller:
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_event_list)
         builder.add_context_variables(context_variables)
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
 
         builder.add_section(
             """

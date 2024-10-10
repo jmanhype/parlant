@@ -76,13 +76,13 @@ async def test_that_a_term_can_be_created_with_synonyms(
             timeout=httpx.Timeout(30),
         ) as client:
             try:
-                terminology_response = await client.get(
+                glossary_response = await client.get(
                     f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
                 )
-                terminology_response.raise_for_status()
+                glossary_response.raise_for_status()
 
-                assert len(terminology_response.json()["terms"]) == 1
-                assert terminology_response.json()["terms"][0]["name"] == "guideline"
+                assert len(glossary_response.json()["terms"]) == 1
+                assert glossary_response.json()["terms"][0]["name"] == "guideline"
 
             except:
                 traceback.print_exc()
@@ -125,12 +125,12 @@ async def test_that_a_term_can_be_created_without_synonyms(
             timeout=httpx.Timeout(30),
         ) as client:
             try:
-                terminology_response = await client.get(
+                glossary_response = await client.get(
                     f"{SERVER_ADDRESS}/agents/{agent_id}/terms/{term_name}",
                 )
-                terminology_response.raise_for_status()
+                glossary_response.raise_for_status()
 
-                term = terminology_response.json()
+                term = glossary_response.json()
                 assert term["name"] == term_name
                 assert term["description"] == description
                 assert term["synonyms"] is None
@@ -194,12 +194,12 @@ async def test_that_terms_can_be_listed(
             timeout=httpx.Timeout(30),
         ) as client:
             try:
-                terminology_response = await client.get(
+                glossary_response = await client.get(
                     f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
                 )
-                terminology_response.raise_for_status()
+                glossary_response.raise_for_status()
 
-                terms = terminology_response.json()["terms"]
+                terms = glossary_response.json()["terms"]
                 assert len(terms) == 2
 
                 term_names = {term["name"] for term in terms}
@@ -268,12 +268,12 @@ async def test_that_a_term_can_be_deleted(
             timeout=httpx.Timeout(30),
         ) as client:
             try:
-                terminology_response = await client.get(
+                glossary_response = await client.get(
                     f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
                 )
-                terminology_response.raise_for_status()
+                glossary_response.raise_for_status()
 
-                terms = terminology_response.json()["terms"]
+                terms = glossary_response.json()["terms"]
                 assert len(terms) == 0
 
             except:
@@ -323,12 +323,12 @@ async def test_that_terms_are_loaded_on_server_startup(
             timeout=httpx.Timeout(30),
         ) as client:
             try:
-                terminology_response = await client.get(
+                glossary_response = await client.get(
                     f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/{term_name}",
                 )
-                terminology_response.raise_for_status()
+                glossary_response.raise_for_status()
 
-                term = terminology_response.json()
+                term = glossary_response.json()
                 assert term["name"] == term_name
                 assert term["description"] == description
                 assert term["synonyms"] is None

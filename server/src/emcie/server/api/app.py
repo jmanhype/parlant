@@ -5,7 +5,7 @@ from lagom import Container
 
 from emcie.server.api import agents, index
 from emcie.server.api import sessions
-from emcie.server.api import terminology
+from emcie.server.api import glossary
 from emcie.server.api import guidelines
 from emcie.server.api import context_variables as variables
 from emcie.server.core.context_variables import ContextVariableStore
@@ -16,7 +16,7 @@ from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineStore
 from emcie.server.core.sessions import SessionListener, SessionStore
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
@@ -33,7 +33,7 @@ async def create_app(container: Container) -> FastAPI:
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
     evaluation_service = container[BehavioralChangeEvaluator]
-    terminology_store = container[TerminologyStore]
+    glossary_store = container[GlossaryStore]
     guideline_store = container[GuidelineStore]
     guideline_connection_store = container[GuidelineConnectionStore]
     context_variable_store = container[ContextVariableStore]
@@ -87,8 +87,8 @@ async def create_app(container: Container) -> FastAPI:
         )
     )
     agent_router.include_router(
-        terminology.create_router(
-            terminology_store=terminology_store,
+        glossary.create_router(
+            glossary_store=glossary_store,
         )
     )
     agent_router.include_router(

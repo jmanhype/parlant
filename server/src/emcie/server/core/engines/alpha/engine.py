@@ -19,7 +19,7 @@ from emcie.server.core.guideline_connections import ConnectionKind, GuidelineCon
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
-from emcie.server.core.terminology import Term, TerminologyStore
+from emcie.server.core.glossary import Term, GlossaryStore
 from emcie.server.core.tools import ToolService
 from emcie.server.core.sessions import (
     Event,
@@ -53,7 +53,7 @@ class AlphaEngine(Engine):
         agent_store: AgentStore,
         session_store: SessionStore,
         context_variable_store: ContextVariableStore,
-        terminology_store: TerminologyStore,
+        glossary_store: GlossaryStore,
         guideline_store: GuidelineStore,
         guideline_connection_store: GuidelineConnectionStore,
         tool_service: ToolService,
@@ -68,7 +68,7 @@ class AlphaEngine(Engine):
         self._agent_store = agent_store
         self._session_store = session_store
         self._context_variable_store = context_variable_store
-        self._terminology_store = terminology_store
+        self._glossary_store = glossary_store
         self._guideline_store = guideline_store
         self._guideline_connection_store = guideline_connection_store
         self._tool_service = tool_service
@@ -465,7 +465,7 @@ class AlphaEngine(Engine):
             context += str([e.data for e in staged_events])
 
         if context:
-            return await self._terminology_store.find_relevant_terms(
+            return await self._glossary_store.find_relevant_terms(
                 term_set=agent.id,
                 query=context,
             )
