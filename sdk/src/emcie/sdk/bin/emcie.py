@@ -35,6 +35,7 @@ class SessionDTO(TypedDict):
     id: str
     end_user_id: str
     title: Optional[str]
+    creation_utc: datetime
 
 
 class EventDTO(TypedDict):
@@ -132,14 +133,31 @@ class Actions:
         )
 
         response.raise_for_status()
+        session = response.json()["session"]
 
-        return cast(SessionDTO, response.json()["session"])  # type: ignore
+        return SessionDTO(
+            id=session["id"],
+            end_user_id=session["end_user_id"],
+            title=session["title"],
+            creation_utc=datetime.fromisoformat(session["creation_utc"]),
+        )
 
     @staticmethod
     def list_events(ctx: click.Context, session_id: str) -> list[EventDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
-        return cast(list[EventDTO], response.json()["events"])  # type: ignore
+        return [
+            EventDTO(
+                id=e["id"],
+                creation_utc=datetime.fromisoformat(e["creation_utc"]),
+                source=e["source"],
+                kind=e["kind"],
+                offset=e["offset"],
+                correlation_id=e["correlation_id"],
+                data=e["data"],
+            )
+            for e in response.json()["events"]
+        ]
 
     @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> EventDTO:
@@ -149,8 +167,17 @@ class Actions:
         )
 
         response.raise_for_status()
+        event = response.json()
 
-        return cast(EventDTO, response.json())  # type: ignore
+        return EventDTO(
+            id=event["id"],
+            creation_utc=datetime.fromisoformat(event["creation_utc"]),
+            source=event["source"],
+            kind=event["kind"],
+            offset=event["offset"],
+            correlation_id=event["correlation_id"],
+            data=event["data"],
+        )
 
     @staticmethod
     def create_term(
@@ -503,6 +530,22 @@ class Interface:
         return str(agents[0]["id"])
 
     @staticmethod
+    def _render_events(events: list[EventDTO]) -> None:
+        event_items = [
+            {
+                "ID": e["id"],
+                "Creation Date": e["creation_utc"].strftime("%Y-%m-%d %I:%M:%S %p %Z"),
+                "Correlation ID": e["correlation_id"],
+                "Source": e["source"],
+                "Offset": e["offset"],
+                "Message": e["data"]["message"],
+            }
+            for e in events
+        ]
+
+        Interface._print_table(event_items, maxcolwidths=[None, None, None, None, None, 40])
+
+    @staticmethod
     def view_session(ctx: click.Context, session_id: str) -> None:
         events = Actions.list_events(ctx, session_id)
 
@@ -510,20 +553,7 @@ class Interface:
             rich.print("No data available")
             return
 
-        Interface._print_table(
-            [
-                {
-                    "ID": e["id"],
-                    "Creation Date": e["creation_utc"].strftime("%Y-%m-%d %I:%M:%S %p %Z"),
-                    "Correlation ID": e["correlation_id"],
-                    "Source": e["source"],
-                    "Offset": e["offset"],
-                    "Message": e["data"]["message"],
-                }
-                for e in events
-            ],
-            maxcolwidths=[None, None, None, None, None, 40],
-        )
+        Interface._render_events(events=events)
 
     @staticmethod
     def create_session(
@@ -534,13 +564,22 @@ class Interface:
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
         Interface._write_success(f"Added session (id={session['id']})")
-        Interface._print_table([session])
+        Interface._print_table(
+            [
+                {
+                    "ID": session["id"],
+                    "Creation Date": session["creation_utc"].strftime("%Y-%m-%d %I:%M:%S %p %Z"),
+                    "Title": session["title"],
+                    "End User ID": session["end_user_id"],
+                }
+            ]
+        )
 
     @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> None:
         event = Actions.create_event(ctx, session_id, message)
         Interface._write_success(f"Added event (id={event['id']})")
-        Interface._print_table([event])
+        Interface._render_events([event])
 
     @staticmethod
     def chat(ctx: click.Context, session_id: str) -> None:
