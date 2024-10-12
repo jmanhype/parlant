@@ -9,7 +9,6 @@ from tests.test_utilities import (
     DEFAULT_AGENT_NAME,
     SERVER_ADDRESS,
     ContextOfTest,
-    load_active_agent,
     run_server,
 )
 
@@ -153,7 +152,7 @@ async def test_that_terms_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
+        agent_id = await get_first_agent_id()
 
         first_exec_args = [
             "poetry",
@@ -165,7 +164,7 @@ async def test_that_terms_can_be_listed(
             "glossary",
             "add",
             "--agent-id",
-            agent["id"],
+            agent_id,
             guideline_term_name,
             guideline_description,
             "--synonyms",
@@ -181,7 +180,7 @@ async def test_that_terms_can_be_listed(
             "glossary",
             "add",
             "--agent-id",
-            agent["id"],
+            agent_id,
             tool_term_name,
             tool_description,
         ]
@@ -195,7 +194,7 @@ async def test_that_terms_can_be_listed(
         ) as client:
             try:
                 glossary_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
+                    f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
                 )
                 glossary_response.raise_for_status()
 
@@ -222,7 +221,7 @@ async def test_that_a_term_can_be_deleted(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
+        agent_id = await get_first_agent_id()
 
         exec_args = [
             "poetry",
@@ -234,7 +233,7 @@ async def test_that_a_term_can_be_deleted(
             "glossary",
             "add",
             "--agent-id",
-            agent["id"],
+            agent_id,
             name,
             description,
             "--synonyms",
@@ -255,7 +254,7 @@ async def test_that_a_term_can_be_deleted(
             "glossary",
             "remove",
             "--agent-id",
-            agent["id"],
+            agent_id,
             name,
         ]
         result_delete = await asyncio.create_subprocess_exec(*exec_args_delete)
@@ -269,7 +268,7 @@ async def test_that_a_term_can_be_deleted(
         ) as client:
             try:
                 glossary_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/",
+                    f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
                 )
                 glossary_response.raise_for_status()
 
@@ -291,7 +290,7 @@ async def test_that_terms_are_loaded_on_server_startup(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
+        agent_id = await get_first_agent_id()
 
         exec_args = [
             "poetry",
@@ -303,7 +302,7 @@ async def test_that_terms_are_loaded_on_server_startup(
             "glossary",
             "add",
             "--agent-id",
-            agent["id"],
+            agent_id,
             term_name,
             description,
         ]
@@ -316,7 +315,7 @@ async def test_that_terms_are_loaded_on_server_startup(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
+        agent_id = await get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -324,7 +323,7 @@ async def test_that_terms_are_loaded_on_server_startup(
         ) as client:
             try:
                 glossary_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/{agent['id']}/terms/{term_name}",
+                    f"{SERVER_ADDRESS}/agents/{agent_id}/terms/{term_name}",
                 )
                 glossary_response.raise_for_status()
 
