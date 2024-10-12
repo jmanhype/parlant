@@ -7,7 +7,7 @@ from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.context_variables import (
     ContextVariableStore,
-    ContextVariableValueKey,
+    ContextVariableKey,
     FreshnessRules,
 )
 from emcie.server.core.tools import LocalToolService
@@ -45,7 +45,7 @@ async def test_that_context_variable_can_be_created(
     }
 
     response = client.post(
-        f"/agents/{agent_id}/variables",
+        f"/agents/{agent_id}/context-variables",
         json={
             "name": "test_variable",
             "description": "test of context variable",
@@ -56,7 +56,7 @@ async def test_that_context_variable_can_be_created(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    context_variable = response.json()["variable"]
+    context_variable = response.json()["context_variable"]
     assert context_variable["name"] == "test_variable"
     assert context_variable["description"] == "test of context variable"
     assert context_variable["freshness_rules"] == freshness_rules
@@ -89,7 +89,7 @@ async def test_that_all_context_variables_can_be_deleted(
     vars = await context_variable_store.list_variables(variable_set=agent_id)
     assert len(vars) == 2
 
-    response = client.delete(f"/agents/{agent_id}/variables")
+    response = client.delete(f"/agents/{agent_id}/context-variables")
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     vars = await context_variable_store.list_variables(variable_set=agent_id)
@@ -113,14 +113,14 @@ async def test_that_context_variable_can_be_deleted(
     )
 
     respone = (
-        client.delete(f"/agents/{agent_id}/variables/{variable_to_delete.id}")
+        client.delete(f"/agents/{agent_id}/context-variables/{variable_to_delete.id}")
         .raise_for_status()
         .json()
     )
 
-    assert respone["variable_id"] == variable_to_delete.id
+    assert respone["context_variable_id"] == variable_to_delete.id
 
-    response = client.get(f"/agents/{agent_id}/variables/{variable_to_delete.id}")
+    response = client.get(f"/agents/{agent_id}/context-variables/{variable_to_delete.id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -155,7 +155,11 @@ async def test_that_context_variables_can_be_listed(
         freshness_rules=None,
     )
 
-    variables = client.get(f"/agents/{agent_id}/variables/").raise_for_status().json()["variables"]
+    variables = (
+        client.get(f"/agents/{agent_id}/context-variables/")
+        .raise_for_status()
+        .json()["context_variables"]
+    )
     assert len(variables) == 2
 
     assert first_variable.id == variables[0]["id"]
@@ -189,7 +193,7 @@ async def test_that_context_variable_value_can_be_retrieved(
         freshness_rules=None,
     )
 
-    key = ContextVariableValueKey("test_key")
+    key = ContextVariableKey("test_key")
     data = {"value": 42}
 
     _ = await context_variable_store.update_value(
@@ -200,7 +204,9 @@ async def test_that_context_variable_value_can_be_retrieved(
     )
 
     value = (
-        client.get(f"/agents/{agent_id}/variables/{variable.id}/{key}").raise_for_status().json()
+        client.get(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
+        .raise_for_status()
+        .json()
     )
 
     assert value["data"] == data
@@ -227,11 +233,11 @@ async def test_that_context_variable_value_can_be_set(
 
     value = (
         client.put(
-            f"/agents/{agent_id}/variables/{variable.id}/{key}",
+            f"/agents/{agent_id}/context-variables/{variable.id}/{key}",
             json={"data": data},
         )
         .raise_for_status()
-        .json()["variable_value"]
+        .json()["context_variable_value"]
     )
 
     assert value["data"] == data
@@ -239,11 +245,11 @@ async def test_that_context_variable_value_can_be_set(
     data = {"zen_level": 9000}
     value = (
         client.put(
-            f"/agents/{agent_id}/variables/{variable.id}/{key}",
+            f"/agents/{agent_id}/context-variables/{variable.id}/{key}",
             json={"data": data},
         )
         .raise_for_status()
-        .json()["variable_value"]
+        .json()["context_variable_value"]
     )
 
     assert value["data"] == data
@@ -266,9 +272,9 @@ async def test_that_context_variable_values_can_be_listed(
     )
 
     keys_and_data = {
-        ContextVariableValueKey("key1"): {"value": 1},
-        ContextVariableValueKey("key2"): {"value": 2},
-        ContextVariableValueKey("key3"): {"value": 3},
+        ContextVariableKey("key1"): {"value": 1},
+        ContextVariableKey("key2"): {"value": 2},
+        ContextVariableKey("key3"): {"value": 3},
     }
 
     for key, data in keys_and_data.items():
@@ -279,16 +285,16 @@ async def test_that_context_variable_values_can_be_listed(
             data=data,
         )
 
-    response = client.get(f"/agents/{agent_id}/variables/{variable.id}")
+    response = client.get(f"/agents/{agent_id}/context-variables/{variable.id}")
     assert response.status_code == status.HTTP_200_OK
 
-    retrieved_variable = response.json()["variable"]
+    retrieved_variable = response.json()["context_variable"]
     assert retrieved_variable["id"] == variable.id
     assert retrieved_variable["name"] == "test_variable"
     assert retrieved_variable["description"] == "test variable"
     assert retrieved_variable["tool_id"] == f"local__{tool_id}"
 
-    retrieved_values = response.json()["variable_values"]
+    retrieved_values = response.json()["key_value_pairs"]
 
     assert len(retrieved_values) == len(keys_and_data)
     for key in keys_and_data:
@@ -316,17 +322,17 @@ async def test_that_context_variable_value_can_be_deleted(
     data = {"zen_level": 9000}
 
     response = client.put(
-        f"/agents/{agent_id}/variables/{variable.id}/{key}",
+        f"/agents/{agent_id}/context-variables/{variable.id}/{key}",
         json={"data": data},
     )
 
-    variable_value = response.json()["variable_value"]
+    variable_value = response.json()["context_variable_value"]
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 
-    response = client.delete(f"/agents/{agent_id}/variables/{variable.id}/{key}")
-    deleted_value_id = response.json()["variable_value_id"]
+    response = client.delete(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
+    deleted_value_id = response.json()["context_variable_value_id"]
     assert deleted_value_id == variable_value["id"]
 
-    response = client.get(f"/agents/{agent_id}/variables/{variable.id}/{key}")
+    response = client.get(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
     assert response.status_code == status.HTTP_404_NOT_FOUND

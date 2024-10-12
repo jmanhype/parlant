@@ -10,7 +10,7 @@ from emcie.server.core.context_variables import (
     ContextVariableId,
     ContextVariableStore,
     ContextVariableValueId,
-    ContextVariableValueKey,
+    ContextVariableKey,
     FreshnessRules,
 )
 from emcie.server.core.tools import ToolService
@@ -53,15 +53,15 @@ class CreateContextVariableRequest(DefaultBaseModel):
 
 
 class CreateContextVariableResponse(DefaultBaseModel):
-    variable: ContextVariableDTO
+    context_variable: ContextVariableDTO
 
 
 class DeleteContextVariableReponse(DefaultBaseModel):
-    variable_id: ContextVariableId
+    context_variable_id: ContextVariableId
 
 
 class ListContextVariablesResponse(DefaultBaseModel):
-    variables: list[ContextVariableDTO]
+    context_variables: list[ContextVariableDTO]
 
 
 class ContextVariableValueDTO(DefaultBaseModel):
@@ -75,16 +75,16 @@ class PutContextVariableValueRequest(DefaultBaseModel):
 
 
 class PutContextVariableValueResponse(DefaultBaseModel):
-    variable_value: ContextVariableValueDTO
+    context_variable_value: ContextVariableValueDTO
 
 
-class ListContextVariabvleValuesRsponse(DefaultBaseModel):
-    variable: ContextVariableDTO
-    variable_values: dict[ContextVariableValueKey, ContextVariableValueDTO]
+class ReadContextVariableResponse(DefaultBaseModel):
+    context_variable: ContextVariableDTO
+    key_value_pairs: Optional[dict[ContextVariableKey, ContextVariableValueDTO]]
 
 
 class DeleteContextVariableValueResponse(DefaultBaseModel):
-    variable_value_id: ContextVariableValueId
+    context_variable_value_id: ContextVariableValueId
 
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
@@ -115,7 +115,7 @@ def create_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/{agent_id}/variables", status_code=status.HTTP_201_CREATED)
+    @router.post("/{agent_id}/context-variables", status_code=status.HTTP_201_CREATED)
     async def create_variable(
         agent_id: AgentId,
         request: CreateContextVariableRequest,
@@ -134,7 +134,7 @@ def create_router(
         )
 
         return CreateContextVariableResponse(
-            variable=ContextVariableDTO(
+            context_variable=ContextVariableDTO(
                 id=variable.id,
                 name=variable.name,
                 description=variable.description,
@@ -146,7 +146,7 @@ def create_router(
         )
 
     @router.delete(
-        "/{agent_id}/variables",
+        "/{agent_id}/context-variables",
         status_code=status.HTTP_204_NO_CONTENT,
     )
     async def delete_all_variables(
@@ -157,7 +157,7 @@ def create_router(
 
         return
 
-    @router.delete("/{agent_id}/variables/{variable_id}")
+    @router.delete("/{agent_id}/context-variables/{variable_id}")
     async def delete_variable(
         agent_id: AgentId, variable_id: ContextVariableId
     ) -> DeleteContextVariableReponse:
@@ -166,16 +166,16 @@ def create_router(
             id=variable_id,
         )
 
-        return DeleteContextVariableReponse(variable_id=variable_id)
+        return DeleteContextVariableReponse(context_variable_id=variable_id)
 
-    @router.get("/{agent_id}/variables/")
+    @router.get("/{agent_id}/context-variables/")
     async def list_variables(
         agent_id: AgentId,
     ) -> ListContextVariablesResponse:
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 
         return ListContextVariablesResponse(
-            variables=[
+            context_variables=[
                 ContextVariableDTO(
                     id=variable.id,
                     name=variable.name,
@@ -189,11 +189,11 @@ def create_router(
             ]
         )
 
-    @router.put("/{agent_id}/variables/{variable_id}/{key}")
+    @router.put("/{agent_id}/context-variables/{variable_id}/{key}")
     async def set_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableValueKey,
+        key: ContextVariableKey,
         request: PutContextVariableValueRequest,
     ) -> PutContextVariableValueResponse:
         _ = await context_variable_store.read_variable(
@@ -209,18 +209,18 @@ def create_router(
         )
 
         return PutContextVariableValueResponse(
-            variable_value=ContextVariableValueDTO(
+            context_variable_value=ContextVariableValueDTO(
                 id=variable_value.id,
                 last_modified=variable_value.last_modified,
                 data=variable_value.data,
             )
         )
 
-    @router.get("/{agent_id}/variables/{variable_id}/{key}")
+    @router.get("/{agent_id}/context-variables/{variable_id}/{key}")
     async def get_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableValueKey,
+        key: ContextVariableKey,
     ) -> ContextVariableValueDTO:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
@@ -239,44 +239,55 @@ def create_router(
             data=variable_value.data,
         )
 
-    @router.get("/{agent_id}/variables/{variable_id}")
-    async def list_values(
+    @router.get("/{agent_id}/context-variables/{variable_id}")
+    async def read_variable(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-    ) -> ListContextVariabvleValuesRsponse:
+        include_values: bool = True,
+    ) -> ReadContextVariableResponse:
         variable = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
         )
 
-        return ListContextVariabvleValuesRsponse(
-            variable=ContextVariableDTO(
-                id=variable.id,
-                name=variable.name,
-                description=variable.description,
-                tool_id=variable.tool_id,
-                freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
-                if variable.freshness_rules
-                else None,
-            ),
-            variable_values={
+        variable_dto = ContextVariableDTO(
+            id=variable.id,
+            name=variable.name,
+            description=variable.description,
+            tool_id=variable.tool_id,
+            freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
+            if variable.freshness_rules
+            else None,
+        )
+
+        if not include_values:
+            return ReadContextVariableResponse(
+                context_variable=variable_dto,
+                key_value_pairs=None,
+            )
+
+        key_value_pairs = await context_variable_store.list_values(
+            variable_set=agent_id,
+            variable_id=variable_id,
+        )
+
+        return ReadContextVariableResponse(
+            context_variable=variable_dto,
+            key_value_pairs={
                 key: ContextVariableValueDTO(
                     id=value.id,
                     last_modified=value.last_modified,
                     data=value.data,
                 )
-                for key, value in await context_variable_store.list_values(
-                    variable_set=agent_id,
-                    variable_id=variable_id,
-                )
+                for key, value in key_value_pairs
             },
         )
 
-    @router.delete("/{agent_id}/variables/{variable_id}/{key}")
+    @router.delete("/{agent_id}/context-variables/{variable_id}/{key}")
     async def delete_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableValueKey,
+        key: ContextVariableKey,
     ) -> DeleteContextVariableValueResponse:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
@@ -288,7 +299,9 @@ def create_router(
             variable_id=variable_id,
             key=key,
         ):
-            return DeleteContextVariableValueResponse(variable_value_id=deleted_variable_value_id)
+            return DeleteContextVariableValueResponse(
+                context_variable_value_id=deleted_variable_value_id
+            )
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 

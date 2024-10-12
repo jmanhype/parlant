@@ -66,10 +66,10 @@ async def test_that_a_term_can_be_created_with_synonyms(
             synonyms,
         ]
 
-        result = await asyncio.create_subprocess_exec(*exec_args)
-        await result.wait()
+        process = await asyncio.create_subprocess_exec(*exec_args)
+        await process.wait()
 
-        assert result.returncode == os.EX_OK
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -115,10 +115,10 @@ async def test_that_a_term_can_be_created_without_synonyms(
             description,
         ]
 
-        result = await asyncio.create_subprocess_exec(*exec_args)
-        await result.wait()
+        process = await asyncio.create_subprocess_exec(*exec_args)
+        await process.wait()
 
-        assert result.returncode == os.EX_OK
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -155,7 +155,7 @@ async def test_that_terms_can_be_listed(
 
         agent = load_active_agent(home_dir=context.home_dir, agent_name=agent_name)
 
-        exec_args_1 = [
+        first_exec_args = [
             "poetry",
             "run",
             "python",
@@ -171,7 +171,7 @@ async def test_that_terms_can_be_listed(
             "--synonyms",
             guideline_synonyms,
         ]
-        exec_args_2 = [
+        seconds_exec_args = [
             "poetry",
             "run",
             "python",
@@ -186,8 +186,8 @@ async def test_that_terms_can_be_listed(
             tool_description,
         ]
 
-        assert await (await asyncio.create_subprocess_exec(*exec_args_1)).wait() == os.EX_OK
-        assert await (await asyncio.create_subprocess_exec(*exec_args_2)).wait() == os.EX_OK
+        assert await (await asyncio.create_subprocess_exec(*first_exec_args)).wait() == os.EX_OK
+        assert await (await asyncio.create_subprocess_exec(*seconds_exec_args)).wait() == os.EX_OK
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -1089,7 +1089,7 @@ async def test_that_guidelines_can_be_suggestively_entailed_via_cli(
             )
 
 
-async def test_that_guideline_can_be_removed_cli(
+async def test_that_guideline_can_be_removed_via_cli(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1288,7 +1288,7 @@ async def test_that_variables_can_be_listed(
             _ = (
                 (
                     await client.post(
-                        f"/agents/{agent_id}/variables",
+                        f"/agents/{agent_id}/context-variables",
                         json={
                             "name": name1,
                             "description": description1,
@@ -1296,13 +1296,13 @@ async def test_that_variables_can_be_listed(
                     )
                 )
                 .raise_for_status()
-                .json()["variable"]
+                .json()["context_variable"]
             )
 
             _ = (
                 (
                     await client.post(
-                        f"/agents/{agent_id}/variables",
+                        f"/agents/{agent_id}/context-variables",
                         json={
                             "name": name2,
                             "description": description2,
@@ -1310,7 +1310,7 @@ async def test_that_variables_can_be_listed(
                     )
                 )
                 .raise_for_status()
-                .json()["variable"]
+                .json()["context_variable"]
             )
 
             exec_args_list = [
@@ -1326,20 +1326,20 @@ async def test_that_variables_can_be_listed(
                 agent_id,
             ]
 
-            process_list = await asyncio.create_subprocess_exec(
+            process = await asyncio.create_subprocess_exec(
                 *exec_args_list,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout_list, stderr_list = await process_list.communicate()
-            output_list = stdout_list.decode() + stderr_list.decode()
+            stdout, stderr = await process.communicate()
+            process_output = stdout.decode() + stderr.decode()
 
-            assert process_list.returncode == os.EX_OK
+            assert process.returncode == os.EX_OK
 
-            assert name1 in output_list
-            assert description1 in output_list
-            assert name2 in output_list
-            assert description2 in output_list
+            assert name1 in process_output
+            assert description1 in process_output
+            assert name2 in process_output
+            assert description2 in process_output
 
 
 async def test_that_variable_can_be_added(
@@ -1368,18 +1368,19 @@ async def test_that_variable_can_be_added(
             description,
             name,
         ]
-        result_add = await asyncio.create_subprocess_exec(*exec_args_add)
-        await result_add.wait()
-        assert result_add.returncode == os.EX_OK
+
+        process = await asyncio.create_subprocess_exec(*exec_args_add)
+        await process.wait()
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             base_url=SERVER_ADDRESS,
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_list = await client.get(f"/agents/{agent_id}/variables/")
+            response_list = await client.get(f"/agents/{agent_id}/context-variables/")
             response_list.raise_for_status()
-            variables = response_list.json()["variables"]
+            variables = response_list.json()["context_variables"]
 
             added_variable = next(
                 (v for v in variables if v["name"] == name and v["description"] == description),
@@ -1405,7 +1406,7 @@ async def test_that_variable_can_be_removed(
             timeout=httpx.Timeout(30),
         ) as client:
             response_add = await client.post(
-                f"/agents/{agent_id}/variables",
+                f"/agents/{agent_id}/context-variables",
                 json={
                     "name": name,
                     "description": description,
@@ -1413,7 +1414,7 @@ async def test_that_variable_can_be_removed(
             )
             response_add.raise_for_status()
 
-        exec_args_remove = [
+        exec_args = [
             "poetry",
             "run",
             "python",
@@ -1426,18 +1427,19 @@ async def test_that_variable_can_be_removed(
             agent_id,
             name,
         ]
-        result_remove = await asyncio.create_subprocess_exec(*exec_args_remove)
-        await result_remove.wait()
-        assert result_remove.returncode == os.EX_OK
+
+        process = await asyncio.create_subprocess_exec(*exec_args)
+        await process.wait()
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             base_url=SERVER_ADDRESS,
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_list = await client.get(f"/agents/{agent_id}/variables/")
+            response_list = await client.get(f"/agents/{agent_id}/context-variables/")
             response_list.raise_for_status()
-            variables = response_list.json()["variables"]
+            variables = response_list.json()["context_variables"]
 
             removed_variable = next(
                 (v for v in variables if v["name"] == name and v["description"] == description),
@@ -1464,18 +1466,18 @@ async def test_that_variable_value_can_be_set_with_json(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_add = await client.post(
-                f"/agents/{agent_id}/variables",
+            response = await client.post(
+                f"/agents/{agent_id}/context-variables",
                 json={
                     "name": variable_name,
                     "description": variable_description,
                 },
             )
-            response_add.raise_for_status()
-            variable = response_add.json()["variable"]
+            response.raise_for_status()
+            variable = response.json()["context_variable"]
             variable_id = variable["id"]
 
-        exec_args_set = [
+        exec_args = [
             "poetry",
             "run",
             "python",
@@ -1490,21 +1492,20 @@ async def test_that_variable_value_can_be_set_with_json(
             key,
             json.dumps(data),
         ]
-        result_set = await asyncio.create_subprocess_exec(*exec_args_set)
-        await result_set.wait()
-        assert result_set.returncode == os.EX_OK
+
+        process = await asyncio.create_subprocess_exec(*exec_args)
+        await process.wait()
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             base_url=SERVER_ADDRESS,
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_get_value = await client.get(
-                f"/agents/{agent_id}/variables/{variable_id}/{key}"
-            )
-            response_get_value.raise_for_status()
+            response = await client.get(f"/agents/{agent_id}/context-variables/{variable_id}/{key}")
+            response.raise_for_status()
 
-            retrieved_data = response_get_value.json()["data"]
+            retrieved_data = response.json()["data"]
             assert retrieved_data == data
 
 
@@ -1527,14 +1528,14 @@ async def test_that_variable_value_can_be_set_with_string(
             timeout=httpx.Timeout(30),
         ) as client:
             response_add = await client.post(
-                f"/agents/{agent_id}/variables",
+                f"/agents/{agent_id}/context-variables",
                 json={
                     "name": variable_name,
                     "description": variable_description,
                 },
             )
             response_add.raise_for_status()
-            variable = response_add.json()["variable"]
+            variable = response_add.json()["context_variable"]
             variable_id = variable["id"]
 
         exec_args_set = [
@@ -1552,21 +1553,20 @@ async def test_that_variable_value_can_be_set_with_string(
             key,
             json.dumps(data),
         ]
-        result_set = await asyncio.create_subprocess_exec(*exec_args_set)
-        await result_set.wait()
-        assert result_set.returncode == os.EX_OK
+
+        process = await asyncio.create_subprocess_exec(*exec_args_set)
+        await process.wait()
+        assert process.returncode == os.EX_OK
 
         async with httpx.AsyncClient(
             base_url=SERVER_ADDRESS,
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_get_value = await client.get(
-                f"/agents/{agent_id}/variables/{variable_id}/{key}"
-            )
-            response_get_value.raise_for_status()
+            response = await client.get(f"/agents/{agent_id}/context-variables/{variable_id}/{key}")
+            response.raise_for_status()
 
-            retrieved_data = response_get_value.json()["data"]
+            retrieved_data = response.json()["data"]
             assert retrieved_data == data
 
 
@@ -1591,25 +1591,25 @@ async def test_that_variable_values_can_be_retrieved(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            response_add = await client.post(
-                f"/agents/{agent_id}/variables",
+            response = await client.post(
+                f"/agents/{agent_id}/context-variables",
                 json={
                     "name": variable_name,
                     "description": variable_description,
                 },
             )
-            response_add.raise_for_status()
-            variable = response_add.json()["variable"]
+            response.raise_for_status()
+            variable = response.json()["context_variable"]
             variable_id = variable["id"]
 
             for key, data in values.items():
                 response_set_value = await client.put(
-                    f"/agents/{agent_id}/variables/{variable_id}/{key}",
+                    f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
                     json={"data": data},
                 )
                 response_set_value.raise_for_status()
 
-        exec_args_get_all = [
+        exec_args = [
             "poetry",
             "run",
             "python",
@@ -1622,14 +1622,15 @@ async def test_that_variable_values_can_be_retrieved(
             agent_id,
             variable_name,
         ]
-        process_get_all = await asyncio.create_subprocess_exec(
-            *exec_args_get_all,
+
+        process = await asyncio.create_subprocess_exec(
+            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout_get_all_values, stderr_get_all = await process_get_all.communicate()
+        stdout_get_all_values, stderr_get_all = await process.communicate()
         output_get_all_values = stdout_get_all_values.decode() + stderr_get_all.decode()
-        assert process_get_all.returncode == os.EX_OK
+        assert process.returncode == os.EX_OK
 
         for key, data in values.items():
             assert key in output_get_all_values
