@@ -8,7 +8,7 @@ from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from tests.test_utilities import SyncAwaiter
 
 
@@ -275,15 +275,15 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     assert len(connection_propositions) == 0
 
 
-def test_that_a_connection_is_proposed_based_on_given_terminology(
+def test_that_a_connection_is_proposed_based_on_given_glossary(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
-    terminology_store = context.container[TerminologyStore]
+    glossary_store = context.container[GlossaryStore]
 
     context.sync_await(
-        terminology_store.create_term(
+        glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
             description="walnut is an altcoin",
@@ -315,22 +315,22 @@ def test_that_a_connection_is_proposed_based_on_given_terminology(
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-def test_that_a_connection_is_proposed_based_on_multiple_terminology_terms(
+def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
-    terminology_store = context.container[TerminologyStore]
+    glossary_store = context.container[GlossaryStore]
 
     context.sync_await(
-        terminology_store.create_term(
+        glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
             description="walnut is an altcoin",
         )
     )
     context.sync_await(
-        terminology_store.create_term(
+        glossary_store.create_term(
             term_set=agent.id,
             name="the tall tree",
             description="the tall tree is a German website for purchasing virtual goods",
@@ -852,10 +852,10 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     agent: Agent,
 ) -> None:
     connection_proposer = context.container[GuidelineConnectionProposer]
-    terminology_store = context.container[TerminologyStore]
+    glossary_store = context.container[GlossaryStore]
 
     context.sync_await(
-        terminology_store.create_term(
+        glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
             description="walnut is an altcoin",

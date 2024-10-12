@@ -22,7 +22,7 @@ scenarios(
             "guideline_connections",
             "proactivity",
             "supervision",
-            "terminology",
+            "glossary",
             "tools",
         )
     )

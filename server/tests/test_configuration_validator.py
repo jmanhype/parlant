@@ -52,7 +52,7 @@ async def valid_config() -> JSONSerializable:
                     },
                 }
             ],
-            "terminology": {
+            "glossary": {
                 "Default Agent": [
                     {
                         "name": "walnut",
@@ -79,7 +79,7 @@ async def test_that_empty_config_is_valid(container: Container) -> None:
                         "agents": [{"name": "Default Agent"}],
                         "guidelines": {"Default Agent": []},
                         "services": [],
-                        "terminology": {},
+                        "glossary": {},
                     }
                 )
             )
@@ -172,7 +172,7 @@ async def test_that_terms_under_nonexistent_agent_fail_validation(
 ) -> None:
     async with new_file_path() as config_file:
         invalid_config = copy.deepcopy(valid_config)
-        invalid_config["terminology"]["Nonexistent Agent"] = [  # type: ignore
+        invalid_config["glossary"]["Nonexistent Agent"] = [  # type: ignore
             {"name": "Example term", "description": "Example description"}
         ]
 

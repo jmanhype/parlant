@@ -14,7 +14,7 @@ from emcie.server.core.engines.alpha.prompt_builder import (
     PromptBuilder,
     SectionStatus,
 )
-from emcie.server.core.terminology import Term
+from emcie.server.core.glossary import Term
 from emcie.server.core.emissions import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
 from emcie.server.core.common import DefaultBaseModel
@@ -173,7 +173,7 @@ class MessageEventProducer:
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
         builder.add_context_variables(context_variables)
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
         builder.add_guideline_propositions(
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,

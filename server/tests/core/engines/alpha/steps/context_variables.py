@@ -2,7 +2,11 @@ from pytest_bdd import given, parsers
 
 from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import ContextVariableStore, ContextVariableValue
+from emcie.server.core.context_variables import (
+    ContextVariableStore,
+    ContextVariableValue,
+    ContextVariableKey,
+)
 from emcie.server.core.sessions import SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
@@ -36,7 +40,7 @@ def given_a_context_variable(
     return context.sync_await(
         context_variable_store.update_value(
             variable_set=agent_id,
-            key=end_user_id,
+            key=ContextVariableKey(end_user_id),
             variable_id=variable.id,
             data={variable_name: variable_value},
         )

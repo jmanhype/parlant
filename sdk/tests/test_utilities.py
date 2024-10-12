@@ -100,47 +100,6 @@ def write_service_config(
     config_file.write_text(json.dumps(config))
 
 
-def load_active_agents(home_dir: Path) -> list[_Agent]:
-    agent_store = home_dir / "agents.json"
-
-    agent_data = json.loads(agent_store.read_text())
-
-    return [
-        {
-            "id": a["id"],
-            "name": a["name"],
-            "description": a.get("description"),
-        }
-        for a in agent_data["agents"]
-    ]
-
-
-def load_active_agent(home_dir: Path, agent_name: str) -> _Agent:
-    agents = load_active_agents(home_dir)
-    matching_agents = [a for a in agents if a["name"] == agent_name]
-    assert len(matching_agents) == 1
-    return matching_agents[0]
-
-
-def read_loaded_guidelines(
-    home_dir: Path,
-    agent: str = DEFAULT_AGENT_NAME,
-) -> list[_Guideline]:
-    guideline_store = home_dir / "guidelines.json"
-    guideline_data = json.loads(guideline_store.read_text())
-
-    agent_id = load_active_agent(home_dir, agent)["id"]
-
-    return [
-        {
-            "when": g["predicate"],
-            "then": g["action"],
-        }
-        for g in guideline_data["guidelines"]
-        if g["guideline_set"] == agent_id
-    ]
-
-
 def find_guideline(guideline: _Guideline, within: list[_Guideline]) -> bool:
     return bool(
         [g for g in within if g["when"] == guideline["when"] and g["then"] == guideline["then"]]

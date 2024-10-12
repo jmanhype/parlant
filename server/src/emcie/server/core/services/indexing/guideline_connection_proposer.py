@@ -11,7 +11,7 @@ from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
 from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 
 
@@ -46,10 +46,10 @@ class GuidelineConnectionProposer:
         self,
         logger: Logger,
         schematic_generator: SchematicGenerator[GuidelineConnectionPropositionsSchema],
-        terminology_store: TerminologyStore,
+        glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
-        self._terminology_store = terminology_store
+        self._glossary_store = glossary_store
         self._schematic_generator = schematic_generator
         self._batch_size = 5
 
@@ -538,17 +538,17 @@ Expected Output:
 ```
 """  # noqa
         )
-        # Find and add terminology to prompt
+        # Find and add glossary to prompt
         causation_candidates = "\n\t".join(
             f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
             for id, g in comparison_set.items()
         )
         test_guideline = f"{{id: 0, when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
-        terms = await self._terminology_store.find_relevant_terms(
+        terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=test_guideline + causation_candidates,
         )
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
 
         builder.add_section(
             f"""

@@ -9,7 +9,7 @@ from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.sessions import Event
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.core.terminology import Term
+from emcie.server.core.glossary import Term
 from emcie.server.core.engines.alpha.utils import (
     context_variables_to_json,
     events_to_json,
@@ -151,7 +151,7 @@ The following is information that you're given about the user and context of the
 
         return self
 
-    def add_terminology(
+    def add_glossary(
         self,
         terms: Sequence[Term],
     ) -> PromptBuilder:
@@ -161,7 +161,7 @@ The following is information that you're given about the user and context of the
             self.add_section(
                 name=BuiltInSection.TERMINOLOGY,
                 content=f"""
-The following is a terminology of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
+The following is a glossary of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
 Please be tolerant of possible typos by the user with regards to these terms,
 and let the user know if/when you assume they meant a term by their typo: ###
 {terms_string}

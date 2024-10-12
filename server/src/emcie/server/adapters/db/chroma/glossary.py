@@ -10,7 +10,7 @@ from emcie.server.core.common import (
 )
 from emcie.server.core.nlp.embedding import Embedder
 from emcie.server.core.persistence.document_database import ObjectId
-from emcie.server.core.terminology import Term, TermId, TermUpdateParams, TerminologyStore
+from emcie.server.core.glossary import Term, TermId, TermUpdateParams, GlossaryStore
 
 
 class _TermDocument(TypedDict, total=False):
@@ -24,12 +24,12 @@ class _TermDocument(TypedDict, total=False):
     content: str
 
 
-class TerminologyChromaStore(TerminologyStore):
+class GlossaryChromaStore(GlossaryStore):
     VERSION = Version.from_string("0.1.0")
 
     def __init__(self, chroma_db: ChromaDatabase, embedder_type: type[Embedder]):
         self._collection = chroma_db.get_or_create_collection(
-            name="terminology",
+            name="glossary",
             schema=_TermDocument,
             embedder_type=embedder_type,
         )

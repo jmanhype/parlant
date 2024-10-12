@@ -31,7 +31,7 @@ class TermUpdateParams(TypedDict, total=False):
     synonyms: Sequence[str]
 
 
-class TerminologyStore:
+class GlossaryStore:
     @abstractmethod
     async def create_term(
         self,

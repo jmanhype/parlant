@@ -3,7 +3,7 @@ from typing import Optional
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
-from emcie.server.core.terminology import TermUpdateParams, TerminologyStore, TermId
+from emcie.server.core.glossary import TermUpdateParams, GlossaryStore, TermId
 
 
 class CreateTermRequest(DefaultBaseModel):
@@ -34,13 +34,13 @@ class DeleteTermResponse(DefaultBaseModel):
 
 
 def create_router(
-    terminology_store: TerminologyStore,
+    glossary_store: GlossaryStore,
 ) -> APIRouter:
     router = APIRouter()
 
     @router.post("/{agent_id}/terms/", status_code=status.HTTP_201_CREATED)
     async def create_term(agent_id: AgentId, request: CreateTermRequest) -> TermDTO:
-        term = await terminology_store.create_term(
+        term = await glossary_store.create_term(
             term_set=agent_id,
             name=request.name,
             description=request.description,
@@ -56,7 +56,7 @@ def create_router(
 
     @router.get("/{agent_id}/terms/{name}")
     async def read_term(agent_id: AgentId, name: str) -> TermDTO:
-        term = await terminology_store.read_term(term_set=agent_id, name=name)
+        term = await glossary_store.read_term(term_set=agent_id, name=name)
 
         return TermDTO(
             id=term.id,
@@ -67,7 +67,7 @@ def create_router(
 
     @router.get("/{agent_id}/terms/")
     async def list_terms(agent_id: str) -> ListTermsResponse:
-        terms = await terminology_store.list_terms(term_set=agent_id)
+        terms = await glossary_store.list_terms(term_set=agent_id)
 
         return ListTermsResponse(
             terms=[
@@ -91,7 +91,7 @@ def create_router(
         if request.synonyms:
             params["synonyms"] = request.synonyms
 
-        term = await terminology_store.update_term(
+        term = await glossary_store.update_term(
             term_set=agent_id,
             term_id=term_id,
             params=params,
@@ -106,7 +106,7 @@ def create_router(
 
     @router.delete("/{agent_id}/terms/{name}")
     async def delete_term(agent_id: str, name: str) -> DeleteTermResponse:
-        deleted_term_id = await terminology_store.delete_term(term_set=agent_id, name=name)
+        deleted_term_id = await glossary_store.delete_term(term_set=agent_id, name=name)
         return DeleteTermResponse(term_id=deleted_term_id)
 
     return router

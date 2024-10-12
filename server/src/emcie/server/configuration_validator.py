@@ -113,7 +113,7 @@ class ConfigurationFileValidator:
                         ]
                     },
                 },
-                "terminology": {
+                "glossary": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "array",
@@ -186,14 +186,14 @@ class ConfigurationFileValidator:
             if agent not in agents:
                 raise ValidationError(f'Agent "{agent}" does not exist.')
 
-    def validate_terminology(
+    def validate_glossary(
         self,
         config: JSONSerializable,
     ) -> None:
         config = typing.cast(dict[str, typing.Any], config)
 
         agents = set(agent["name"] for agent in config["agents"])
-        for agent in config["terminology"]:
+        for agent in config["glossary"]:
             if agent not in agents:
                 raise ValidationError(f'Agent "{agent}" does not exist.')
 
@@ -203,7 +203,7 @@ class ConfigurationFileValidator:
             self.validate_json_schema(config)
             self.validate_local_tools(config)
             self.validate_guidelines(config)
-            self.validate_terminology(config)
+            self.validate_glossary(config)
             return True
         except Exception as e:
             traceback.print_exc()

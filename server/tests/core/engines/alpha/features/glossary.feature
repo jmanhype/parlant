@@ -1,4 +1,4 @@
-Feature: Terminology
+Feature: Glossary
     Background:
         Given the alpha engine
         And an agent
