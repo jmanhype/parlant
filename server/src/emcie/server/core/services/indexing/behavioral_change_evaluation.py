@@ -18,7 +18,6 @@ from emcie.server.core.evaluations import (
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
 from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
-    ContradictionTest,
 )
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
@@ -74,6 +73,7 @@ class GuidelineEvaluator:
         if coherence_check:
             coherence_checks_task = asyncio.create_task(
                 self._check_payloads_coherence(
+                    agent,
                     guidelines_to_evaluate,
                     existing_guidelines,
                     progress_report,
@@ -132,11 +132,13 @@ class GuidelineEvaluator:
 
     async def _check_payloads_coherence(
         self,
+        agent: Agent,
         guidelines_to_evaluate: Sequence[GuidelineContent],
         existing_guidelines: Sequence[Guideline],
         progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[CoherenceCheck]]]:
-        coherence_checks = await self._coherence_checker.evaluate_coherence(
+        incoherences = await self._coherence_checker.propose_incoherencies(
+            agent=agent,
             guidelines_to_evaluate=guidelines_to_evaluate,
             comparison_guidelines=[
                 GuidelineContent(predicate=g.content.predicate, action=g.content.action)
@@ -145,23 +147,14 @@ class GuidelineEvaluator:
             progress_report=progress_report,
         )
 
-        contradictions: dict[str, ContradictionTest] = {}
-
-        for c in coherence_checks:
-            key = f"{c.guideline_a.predicate}{c.guideline_a.action}"
-            if (c.severity >= 6) and (
-                key not in contradictions or c.severity > contradictions[key].severity
-            ):
-                contradictions[key] = c
-
-        if not contradictions:
+        if not incoherences:
             return None
 
         coherence_checks_by_guideline_payload: OrderedDict[str, list[CoherenceCheck]] = OrderedDict(
             {f"{g.predicate}{g.action}": [] for g in guidelines_to_evaluate}
         )
 
-        for c in contradictions.values():
+        for c in incoherences:
             coherence_checks_by_guideline_payload[
                 f"{c.guideline_a.predicate}{c.guideline_a.action}"
             ].append(
@@ -172,8 +165,8 @@ class GuidelineEvaluator:
                     else "contradiction_with_existing_guideline",
                     first=c.guideline_a,
                     second=c.guideline_b,
-                    issue=c.rationale,
-                    severity=c.severity,
+                    issue=c.actions_contradiction_rationale,
+                    severity=c.actions_contradiction_severity,
                 )
             )
 
@@ -188,8 +181,8 @@ class GuidelineEvaluator:
                         kind="contradiction_with_another_evaluated_guideline",
                         first=c.guideline_a,
                         second=c.guideline_b,
-                        issue=c.rationale,
-                        severity=c.severity,
+                        issue=c.actions_contradiction_rationale,
+                        severity=c.actions_contradiction_severity,
                     )
                 )
 

@@ -1,6 +1,4 @@
 import asyncio
-from dataclasses import dataclass
-
 from datetime import datetime, timezone
 from enum import Enum, auto
 from itertools import chain
@@ -8,6 +6,7 @@ import json
 from typing import Optional, Sequence
 from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
+from dataclasses import dataclass
 
 from emcie.server.core.common import DefaultBaseModel, ProgressReport
 from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
@@ -20,8 +19,8 @@ from emcie.server.core.agents import Agent
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
 LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
-CRITICAL_CONTRADICTION_THRESHOLD = 7
-CONTRADICTION_SEVERITY_THRESHOLD = 7
+CRITICAL_CONTRADICTION_THRESHOLD = 6
+CONTRADICTION_SEVERITY_THRESHOLD = 6
 
 
 class IncoherenceKind(Enum):
@@ -56,26 +55,14 @@ class ActionsContradictionTestsSchema(DefaultBaseModel):
 
 
 @dataclass(frozen=True)
-class ContradictionTestSchema:
-    compared_guideline_id: int
-    thens_contradiction: bool
-    thens_contradiction_severity: int
-    thens_contradiction_rationale: str
-    whens_entailment: bool
-    whens_entailment_severity: int
-    whens_entailement_rationale: str
-
-
-class ContradictionTest(
-    DefaultBaseModel
-):  # TODO change to predicate, action language here and upstream
+class ContradictionTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     ContradictionKind: IncoherenceKind
-    whens_entailment_severity: int
-    whens_entailement_rationale: str
-    thens_contradiction_severity: int
-    thens_contradiction_rationale: str
+    predicates_entailment_severity: int
+    predicates_entailment_rationale: str
+    actions_contradiction_severity: int
+    actions_contradiction_rationale: str
     creation_utc: datetime
 
 
@@ -153,7 +140,7 @@ class CoherenceChecker:
         for id, g in indexed_comparison_guidelines.items():
             w = [w for w in predicates_entailment_reponses if w.compared_guideline_id == id][0]
             t = [t for t in actions_contradiction_reponses if t.compared_guideline_id == id][0]
-            if t.severity > CONTRADICTION_SEVERITY_THRESHOLD:
+            if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD:
                 contradictions.append(
                     ContradictionTest(
                         guideline_a=guideline_to_evaluate,
@@ -161,10 +148,10 @@ class CoherenceChecker:
                         ContradictionKind=IncoherenceKind.STRICT
                         if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
-                        whens_entailment_severity=w.severity,
-                        whens_entailement_rationale=w.rationale,
-                        thens_contradiction_severity=t.severity,
-                        thens_contradiction_rationale=t.rationale,
+                        predicates_entailment_severity=w.severity,
+                        predicates_entailment_rationale=w.rationale,
+                        actions_contradiction_severity=t.severity,
+                        actions_contradiction_rationale=t.rationale,
                         creation_utc=datetime.now(timezone.utc),
                     )
                 )
@@ -186,7 +173,7 @@ class PredicatesEntailmentChecker:
         self._schematic_generator = schematic_generator
         self._terminology_store = terminology_store
 
-    #    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(  # TODO write
         self,
         agent: Agent,
@@ -221,7 +208,7 @@ Predicate Entailment Test Results:
         indexed_comparison_guidelines: dict[int, GuidelineContent],
     ) -> str:  # TODO write
         builder = PromptBuilder()
-        comparison_candidates_text = "\n\t".join(
+        comparison_candidates_text = "\n".join(
             f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
             for id, g in indexed_comparison_guidelines.items()
         )
@@ -247,10 +234,10 @@ Each guideline is composed of two parts:
 
 
 Your task is to evaluate whether pairs of guidelines have entailing 'when' statements. 
-Two guidelines should be detected as having entailing 'when' statements if and only if one of their 'when' statements being true must mean that the other's 'when' statement is true.
-By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A. 
-The entailment might be in either direction - for guidelines A and B, identify them as having entailing 'when' statements if either the 'when' of A entails the when of 'b', or if the 'when' of B entails the 'when' of A.
-If two guidelines have equivalent 'when' statements, meaning that they both entail each other - then identify the guidelines as having entailing 'when's. 
+Two guidelines should be detected as having entailing 'when' statements if and only if one of their 'when' statements being true entails that the other's 'when' statement is also true.
+By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A.
+If one 'when' statement being true merely implies that the other 'when' statement is true, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing.
+If entailment is fulfilled in at least one direction, consider the 'when' statements as entailing, even if the entailment is not bidirectional.
 
 Please output JSON structured in the following format:
 ```json
@@ -297,15 +284,15 @@ Expected Output:
             "compared_guideline_id": 1
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer orders a TV"
-            "whens_entailment": True
-            "severity": 10
+            "whens_entailment": true
+            "severity": 9
             "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance"
         }},
         {{
             "compared_guideline_id": 2
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a costumer orders any item"
-            "whens_entailment": True
+            "whens_entailment": true
             "severity": 10
             "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item"
         }},
@@ -329,13 +316,45 @@ Expected Output:
             "compared_guideline_id": 5
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer greets you"
-            "whens_entailment": True
+            "whens_entailment": true
             "severity": 10
             "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other"
         }},
     ]
 }}
 ```
+
+###
+Example 1:
+{{
+Input:
+
+Test guideline: ###
+{{"when": "offering products to the user", "then": "mention the price of the suggested product"}}
+###
+
+Comparison candidates: ###
+{{"id": 1, "when": "suggesting a TV", "then": "mention the size of the screen"}}
+
+
+###
+
+Expected Output:
+```json
+{{
+    "predicate_entailments": [
+        {{
+            "compared_guideline_id": 1
+            "origin_guideline_when": "offering products to the user"
+            "compared_guideline_when": "suggesting a TV"
+            "whens_entailment": true
+            "severity": 8
+            "rationale": "by suggesting a TV, a product is offered to the user, so suggesting a TV entails offering a product"
+        }},
+    ]
+}}
+```
+###
             """  # noqa
         )
 
@@ -373,7 +392,7 @@ class ActionsContradictionChecker:
         self._schematic_generator = schematic_generator
         self._terminology_store = terminology_store
 
-    # @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
+    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(
         self,
         agent: Agent,
@@ -432,13 +451,17 @@ Each guideline is composed of two parts:
           whenever the "when" part of the guideline applies to the conversation in its particular state.
           Any instruction described here applies only to the agent, and not to the user.
 
+To ensure consistency, it is crucial to avoid scenarios where multiple guidelines with conflicting 'then' statements are applied. Your task is to assess whether pairs of guidelines contain contradictory 'then' statements. Two 'then' statements are considered contradictory if:
 
-To maintain consistency, we must avoid cases where multiple guidelines with contradictory 'then' statements are applied.
+1. Applying both results in an illogical or contradictory action.
+2. Applying both leads to a confusing or paradoxical response.
+3. Applying both results in the agent taking an action that does not align with the response it should provide to the user.
 
-Your role is to evaluate whether pairs of guideline have contradictory 'then' statements. Two 'then' statements should be detected as contradictory
-if and only if applying them both simultaneously would be illogical, or would result in an incoherent action / response. 
-While your determination should depend solely on the guidelines' 'then' statements, note that each 'then' statement might be contextualized by its respective 'then' statement.
-Therefore, to find whether two guidelines have contradictory 'then' statements, begin by understanding each guideline's 'then' statement, through the context of their respective 'when's, and then evaluate whether applying them simultaneously would be contradictory. 
+While your evaluation should focus on the 'then' statements, remember that each 'then' statement is contextualized by its corresponding 'when' statement. Analyze each 'then' statement within the context provided by its "when" condition. Please be lenient with any misspellings or grammatical errors.
+          
+Be forgiving regarding misspellings and grammatical errors.
+ 
+
 
 Please output JSON structured in the following format:
 ```json
@@ -461,7 +484,7 @@ The output json should have one such object for each pairing of the origin guide
 The following are examples of expected outputs for a given input:
 ###
 Example 1:
-{{
+###
 Input:
 
 Test guideline: ###
@@ -485,7 +508,7 @@ Expected Output:
             "compared_guideline_id": 1
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "wait for the manager's approval before shipping"
-            "thens_contradiction": True
+            "thens_contradiction": true
             "severity": 10
             "rationale": "shipping the item immediately contradicts waiting for the manager's approval"
         }},
@@ -501,7 +524,7 @@ Expected Output:
             "compared_guideline_id": 3
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "reply that the product can only be delivered in-store"
-            "thens_contradiction": True
+            "thens_contradiction": true
             "severity": 9
             "rationale": "shipping the item immediately contradicts the reply that the product can only be delivered in-store"
         }},
@@ -517,14 +540,43 @@ Expected Output:
             "compared_guideline_id": 5
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "greet them back"
-            "thens_contradiction": True
+            "thens_contradiction": true
             "severity": 1
             "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously"
         }},
     ]
 }}
 ```
-            """  # noqa
+
+Example 2:
+###
+Input:
+
+Test guideline: ###
+{{"when": "cancelling an order", "then": "ask for explicit approval before performing the action"}}
+###
+
+Comparison candidates: ###
+{{"id": 1, "when": "a user provides an invalid home address", "then": "cancel the order"}}
+
+###
+
+Expected Output:
+```json
+{{
+    "action_contradictions": [
+        {{
+            "compared_guideline_id": 1
+            "origin_guideline_then": "ask for explicit approval before performing the action"
+            "compared_guideline_then": "cancel the order immediately"
+            "thens_contradiction": true
+            "severity": 9
+            "rationale": "the compared 'then' requires canceling the order immediately, while the origin 'then' requires explicit approval before canceling, which is contradictory"
+        }},
+    ]
+}}
+```
+###"""  # noqa
         )
 
         terms = await self._terminology_store.find_relevant_terms(

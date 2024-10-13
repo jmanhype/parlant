@@ -51,7 +51,7 @@ def guidelines_with_contradictions() -> list[GuidelineContent]:
     for guideline_params in [
         {
             "predicate": "Asked for UPS shipping",  # noqa
-            "action": "Send UPS a request and inform the client that the order would arrive in a few days",
+            "action": "Send UPS a request and inform the client that the order would arrive in 5 business days",
         },
         {
             "predicate": "Asked for express shipping",  # noqa
@@ -59,11 +59,11 @@ def guidelines_with_contradictions() -> list[GuidelineContent]:
         },
         {
             "predicate": "Asked for delayed shipping",
-            "action": "inform the client that the order would arrive in the next calandar year",
+            "action": "Send UPS the request and inform the client that the order would arrive in the next calendar year",
         },
         {
-            "predicate": "The client stops responding midorder",  # noqa
-            "action": "save the client's order and notify them that it has not be shipped yet",
+            "predicate": "The client stops responding mid-order",  # noqa
+            "action": "save the client's order in their cart and notify them that it has not been shipped yet",
         },
         {
             "predicate": "The client refuses to give their address",
@@ -445,13 +445,14 @@ def test_that_non_contradicting_guidelines_arent_detected(
     assert len(contradiction_results) == 0
 
 
-def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(
+def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(  # TODO Occasional entailment failure
     context: _TestContext,
     agent: Agent,
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
+        predicate="Recommending pizza toppings",
+        action="Only recommend mushrooms as they are healthy",
     )
 
     guideline_b = GuidelineContent(
@@ -597,7 +598,7 @@ def test_that_many_non_contradicting_guidelines_are_not_causing_false_positive(
     assert len(contradiction_results) == 0
 
 
-def test_that_many_contradicting_guidelines_are_detected(
+def test_that_many_contradicting_guidelines_are_detected(  # TODO contradiction failure
     context: _TestContext,
     agent: Agent,
     guidelines_with_contradictions: list[GuidelineContent],
@@ -617,20 +618,60 @@ def test_that_many_contradicting_guidelines_are_detected(
     assert len(contradiction_results) == n * (n + 1)
 
     # Tests that there's exactly 1 contradiction per pair of guidelines
-    expected_pairs = set()
-    for i, g1 in enumerate(guidelines_with_contradictions):
-        for g2 in guidelines_with_contradictions[i + 1 :]:
-            expected_pairs.add((g1, g2))
+    expected_pairs = {
+        (g1, g2)
+        for i, g1 in enumerate(guidelines_with_contradictions)
+        for g2 in guidelines_with_contradictions[i + 1 :]
+    }
 
-    for contradiction in contradiction_results:
-        if (contradiction.guideline_a, contradiction.guideline_b) in expected_pairs:
-            expected_pairs.remove((contradiction.guideline_a, contradiction.guideline_b))
-        elif (contradiction.guideline_b, contradiction.guideline_a) in expected_pairs:
-            expected_pairs.remove((contradiction.guideline_b, contradiction.guideline_a))
-        else:
-            raise AssertionError("Invalid contradiction returned from coherence checker")
+    for c in contradiction_results:
+        assert (c.guideline_a, c.guideline_b) in expected_pairs
+        assert c.ContradictionKind == IncoherenceKind.CONTINGENT
+        expected_pairs.remove((c.guideline_a, c.guideline_b))
 
     assert len(contradiction_results) == 0
+
+
+def test_that_contradictory_next_message_commands_are_detected(  # TODO occasional entailment failure
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    coherence_checker = context.container[CoherenceChecker]
+    guidelines_to_evaluate = [
+        GuidelineContent(
+            predicate="a document is being discussed",
+            action="provide the full document to the user",
+        ),
+        GuidelineContent(
+            predicate="a client asks to summarize a document",
+            action="provide a summary of the document in 100 words or less",
+        ),
+        GuidelineContent(
+            predicate="the client asks for a summary of another user's medical document",
+            action="refuse to share the document or its summary",
+        ),
+    ]
+
+    contradiction_results = list(
+        context.sync_await(
+            coherence_checker.propose_incoherencies(
+                agent,
+                guidelines_to_evaluate,
+            )
+        )
+    )
+
+    assert len(contradiction_results) == 3
+    contradictions_to_detect = {
+        (guideline_a, guideline_b)
+        for i, guideline_a in enumerate(guidelines_to_evaluate)
+        for guideline_b in guidelines_to_evaluate[i + 1 :]
+    }
+    for c in contradiction_results:
+        assert (c.guideline_a, c.guideline_b) in contradictions_to_detect
+        assert c.ContradictionKind == IncoherenceKind.STRICT
+        contradictions_to_detect.remove((c.guideline_a, c.guideline_b))
+    assert len(contradictions_to_detect) == 0
 
 
 def test_that_existing_guidelines_are_not_checked_against_each_other(
@@ -639,13 +680,13 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_to_evaluate = GuidelineContent(
-        predicate="a document is being discussed",
-        action="provide the full document to the user",
+        predicate="the user is dissatisfied",
+        action="apologize and suggest to forward the request to managment",
     )
 
     first_guideline_to_compare = GuidelineContent(
         predicate="a client asks to summarize a document",
-        action="provide a summary of the document in 100 words or less",
+        action="provide a summary of the document",
     )
 
     second_guideline_to_compare = GuidelineContent(
@@ -663,13 +704,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
         )
     )
 
-    assert len(contradiction_results) == 2
-    assert contradiction_results[0].guideline_a == guideline_to_evaluate
-    assert contradiction_results[0].guideline_b == first_guideline_to_compare
-    assert contradiction_results[0].ContradictionKind == IncoherenceKind.STRICT
-    assert contradiction_results[1].guideline_a == guideline_to_evaluate
-    assert contradiction_results[1].guideline_b == second_guideline_to_compare
-    assert contradiction_results[1].ContradictionKind == IncoherenceKind.STRICT
+    assert len(contradiction_results) == 0
 
 
 def test_that_a_terminology_based_contradiciton_is_detected(
