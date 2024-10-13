@@ -48,6 +48,7 @@ def make_event_params(
         "creation_utc": str(datetime.now(timezone.utc)),
         "correlation_id": "dummy_correlation_id",
         "data": data,
+        "deleted": False,
     }
 
 
@@ -517,6 +518,45 @@ async def test_that_tool_events_are_correlated_with_message_events(
     message_event = next(e for e in events_in_session if e["kind"] == "message")
     tool_call_event = next(e for e in events_in_session if e["kind"] == "tool")
     assert message_event["correlation_id"] == tool_call_event["correlation_id"]
+
+
+async def test_that_deleting_an_event_filters_out_subsequent_events(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+) -> None:
+    session_events = [
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("client"),
+        make_event_params("server"),
+        make_event_params("client"),
+    ]
+    await populate_session_id(container, session_id, session_events)
+
+    initial_events = (
+        client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
+    )
+    assert len(initial_events) == len(session_events)
+
+    event_to_delete = initial_events[1]
+    deleted_event_ids = (
+        client.delete(f"/sessions/{session_id}/events/{event_to_delete['offset']}")
+        .raise_for_status()
+        .json()["event_ids"]
+    )
+
+    for d_id, e in zip(deleted_event_ids, initial_events[1:]):
+        assert d_id == e["id"]
+
+    remaining_events = (
+        client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
+    )
+
+    assert len(remaining_events) == 1
+    assert event_is_according_to_params(remaining_events[0], session_events[0])
+
+    assert all(e["offset"] > event_to_delete["offset"] for e in remaining_events) is False
 
 
 ###############################################################################

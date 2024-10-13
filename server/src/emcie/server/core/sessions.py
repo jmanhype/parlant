@@ -151,16 +151,16 @@ class SessionStore(ABC):
     async def delete_event(
         self,
         event_id: EventId,
-    ) -> None: ...
+    ) -> EventId: ...
 
     @abstractmethod
     async def list_events(
         self,
         session_id: SessionId,
+        exclude_deleted: bool = True,
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
-        include_deleted: Optional[bool] = False,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
@@ -190,7 +190,7 @@ class _EventDocument(TypedDict, total=False):
     offset: int
     correlation_id: str
     data: JSONSerializable
-    is_skipped: bool
+    deleted: bool
 
 
 class SessionDocumentStore(SessionStore):
@@ -248,7 +248,7 @@ class SessionDocumentStore(SessionStore):
             offset=event.offset,
             correlation_id=event.correlation_id,
             data=event.data,
-            is_skipped=event.deleted,
+            deleted=event.deleted,
         )
 
     def _deserialize_event(
@@ -263,7 +263,7 @@ class SessionDocumentStore(SessionStore):
             offset=event_document["offset"],
             correlation_id=event_document["correlation_id"],
             data=event_document["data"],
-            deleted=event_document["is_skipped"],
+            deleted=event_document["deleted"],
         )
 
     async def create_session(
@@ -294,11 +294,10 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
     ) -> Optional[SessionId]:
-        events_to_delete = await self.list_events(session_id=session_id)
+        events = await self._event_collection.find(filters={"session_id": {"$eq": session_id}})
         asyncio.gather(
             *iter(
-                await self._event_collection.delete_one(filters={"id": {"$eq": e.id}})
-                for e in events_to_delete
+                self._event_collection.delete_one(filters={"id": {"$eq": e["id"]}}) for e in events
             )
         )
 
@@ -362,57 +361,41 @@ class SessionDocumentStore(SessionStore):
     async def delete_event(
         self,
         event_id: EventId,
-    ) -> None:
-        await self._event_collection.update_one(
+    ) -> EventId:
+        _ = await self._event_collection.update_one(
             filters={"id": {"$eq": event_id}},
             params=cast(_EventDocument, {"deleted": True}),
         )
 
+        return event_id
+
     async def list_events(
         self,
         session_id: SessionId,
+        exclude_deleted: bool = True,
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
-        include_skipped: Optional[bool] = None,
     ) -> Sequence[Event]:
-        if not await self._session_collection.find_one(
-            cast(
-                Where,
-                {
-                    "id": {"$eq": session_id},
-                    **({"is_skipped": {"$eq": include_skipped}} if include_skipped else {}),
-                },
-            )
-        ):
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
+
+        base_filters = {
+            "session_id": {"$eq": session_id},
+            **({"source": {"$eq": source}} if source else {}),
+            **({"offset": {"$gte": min_offset}} if min_offset else {}),
+            **({"deleted": {"$eq": False}} if exclude_deleted else {}),
+        }
 
         if kinds:
             event_documents = await self._event_collection.find(
-                {
-                    "$or": [
-                        cast(
-                            Where,
-                            {
-                                "kind": {"$eq": k},
-                                "session_id": {"$eq": session_id},
-                                **({"source": {"$eq": source}} if source else {}),
-                                **({"offset": {"$gte": min_offset}} if min_offset else {}),
-                            },
-                        )
-                        for k in kinds
-                    ],
-                }
+                cast(Where, {"$or": [{**base_filters, "kind": {"$eq": k}} for k in kinds]})
             )
         else:
             event_documents = await self._event_collection.find(
                 cast(
                     Where,
-                    {
-                        "session_id": {"$eq": session_id},
-                        **({"source": {"$eq": source}} if source else {}),
-                        **({"offset": {"$gte": min_offset}} if min_offset else {}),
-                    },
+                    base_filters,
                 )
             )
 
@@ -460,7 +443,6 @@ class PollingSessionListener(SessionListener):
                 min_offset=min_offset,
                 source=source,
                 kinds=kinds,
-                include_deleted=False,
             )
 
             if events:
