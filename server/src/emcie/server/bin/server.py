@@ -290,7 +290,7 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
             c[Logger],
             c[SchematicGenerator[PredicatesEntailmentTestsSchema]],
             c[SchematicGenerator[ActionsContradictionTestsSchema]],
-            c[TerminologyStore],
+            c[GlossaryStore],
         )
 
         c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(

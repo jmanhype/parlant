@@ -13,7 +13,7 @@ from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.logging import Logger
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.agents import Agent
 
 LLM_RETRY_WAIT_TIME_SECONDS = 3.5
@@ -72,14 +72,14 @@ class CoherenceChecker:
         logger: Logger,
         predicates_test_schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
         actions_test_schematic_generator: SchematicGenerator[ActionsContradictionTestsSchema],
-        terminology_store: TerminologyStore,
+        glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
         self._predicates_entailment_checker = PredicatesEntailmentChecker(
-            logger, predicates_test_schematic_generator, terminology_store
+            logger, predicates_test_schematic_generator, glossary_store
         )
         self._actions_contradiction_checker = ActionsContradictionChecker(
-            logger, actions_test_schematic_generator, terminology_store
+            logger, actions_test_schematic_generator, glossary_store
         )
 
     async def propose_incoherencies(
@@ -167,11 +167,11 @@ class PredicatesEntailmentChecker:
         self,
         logger: Logger,
         schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
-        terminology_store: TerminologyStore,
+        glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
         self._schematic_generator = schematic_generator
-        self._terminology_store = terminology_store
+        self._glossary_store = glossary_store
 
     @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(  # TODO write
@@ -358,11 +358,11 @@ Expected Output:
             """  # noqa
         )
 
-        terms = await self._terminology_store.find_relevant_terms(
+        terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=guideline_to_evaluate_text + comparison_candidates_text,
         )
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
 
         builder.add_section(f"""
 The guidelines you should analyze for entailments are:
@@ -386,11 +386,11 @@ class ActionsContradictionChecker:
         self,
         logger: Logger,
         schematic_generator: SchematicGenerator[ActionsContradictionTestsSchema],
-        terminology_store: TerminologyStore,
+        glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
         self._schematic_generator = schematic_generator
-        self._terminology_store = terminology_store
+        self._glossary_store = glossary_store
 
     @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(
@@ -579,11 +579,11 @@ Expected Output:
 ###"""  # noqa
         )
 
-        terms = await self._terminology_store.find_relevant_terms(
+        terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=guideline_to_evaluate_text + comparison_candidates_text,
         )
-        builder.add_terminology(terms)
+        builder.add_glossary(terms)
 
         builder.add_section(f"""
 The guidelines you should analyze for entailments are:

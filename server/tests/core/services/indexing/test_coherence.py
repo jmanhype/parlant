@@ -7,7 +7,7 @@ from emcie.server.core.agents import Agent, AgentId, AgentStore
 
 # from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.terminology import TerminologyStore
+from emcie.server.core.glossary import GlossaryStore
 
 # from emcie.server.core.logging import Logger
 from emcie.server.core.services.indexing.coherence_checker import (
@@ -711,10 +711,10 @@ def test_that_a_terminology_based_contradiciton_is_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
-    terminology_store = context.container[TerminologyStore]
+    glossary_store = context.container[GlossaryStore]
 
     context.sync_await(
-        terminology_store.create_term(
+        glossary_store.create_term(
             term_set=agent.id,
             name="PAP",
             description="Pineapple pizza - a pizza topped with pineapples",
