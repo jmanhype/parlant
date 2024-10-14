@@ -33,8 +33,8 @@ class PredicatesEntailmentTestSchema(DefaultBaseModel):
     origin_guideline_when: str
     compared_guideline_when: str
     whens_entailment: bool
-    severity: int
     rationale: str
+    severity: int
 
 
 class PredicatesEntailmentTestsSchema(DefaultBaseModel):
@@ -46,8 +46,8 @@ class ActionsContradictionTestSchema(DefaultBaseModel):
     origin_guideline_then: str
     compared_guideline_then: str
     thens_contradiction: bool
-    severity: int
     rationale: str
+    severity: int
 
 
 class ActionsContradictionTestsSchema(DefaultBaseModel):
@@ -59,10 +59,10 @@ class ContradictionTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     ContradictionKind: IncoherenceKind
-    predicates_entailment_severity: int
     predicates_entailment_rationale: str
-    actions_contradiction_severity: int
+    predicates_entailment_severity: int
     actions_contradiction_rationale: str
+    actions_contradiction_severity: int
     creation_utc: datetime
 
 
@@ -148,10 +148,10 @@ class CoherenceChecker:
                         ContradictionKind=IncoherenceKind.STRICT
                         if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
-                        predicates_entailment_severity=w.severity,
                         predicates_entailment_rationale=w.rationale,
-                        actions_contradiction_severity=t.severity,
+                        predicates_entailment_severity=w.severity,
                         actions_contradiction_rationale=t.rationale,
+                        actions_contradiction_severity=t.severity,
                         creation_utc=datetime.now(timezone.utc),
                     )
                 )
@@ -236,7 +236,7 @@ Each guideline is composed of two parts:
 Your task is to evaluate whether pairs of guidelines have entailing 'when' statements. 
 Two guidelines should be detected as having entailing 'when' statements if and only if one of their 'when' statements being true entails that the other's 'when' statement is also true.
 By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A.
-If one 'when' statement being true merely implies that the other 'when' statement is true, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing.
+If one 'when' statement being true merely implies that the other 'when' statement is true, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing. If one 'when' statement holding true typically means that another 'when' is true, it is not sufficient to be considered entailment.   
 If entailment is fulfilled in at least one direction, consider the 'when' statements as entailing, even if the entailment is not bidirectional.
 
 Please output JSON structured in the following format:
@@ -248,8 +248,8 @@ Please output JSON structured in the following format:
             "origin_guideline_when": <The origin guideline's 'when'>
             "compared_guideline_when": <The compared guideline's 'when'>
             "whens_entailment": <BOOL of whether one of the 'when' statements entails the other>
-            "severity": <Score between 1-10 indicating the strength of the entailment>
             "rationale": <Explanation for if and how one of the 'when' statement's entails the other>
+            "severity": <Score between 1-10 indicating the strength of the entailment>
         }},
         ...
     ]
@@ -285,47 +285,47 @@ Expected Output:
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer orders a TV"
             "whens_entailment": true
-            "severity": 9
             "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance"
+            "severity": 9
         }},
         {{
             "compared_guideline_id": 2
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a costumer orders any item"
             "whens_entailment": true
-            "severity": 10
             "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item"
+            "severity": 10
         }},
         {{
             "compared_guideline_id": 3
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer orders a chair"
             "whens_entailment": False
-            "severity": 2
             "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa"
+            "severity": 2
         }},
         {{
             "compared_guideline_id": 4
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances"
             "whens_entailment": False
-            "severity": 3
             "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other"
+            "severity": 3
         }},
         {{
             "compared_guideline_id": 5
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer greets you"
             "whens_entailment": true
-            "severity": 10
             "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other"
+            "severity": 10
         }},
     ]
 }}
 ```
 
 ###
-Example 1:
+Example 2:
 {{
 Input:
 
@@ -335,7 +335,8 @@ Test guideline: ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "suggesting a TV", "then": "mention the size of the screen"}}
-
+{{"id": 2, "when": "the user asks for recommendations", "then": "recommend items from the sales department"}}
+{{"id": 3, "when": "recommending a TV warranty plan", "then": "encourage the use to get an upgraded warranty"}}
 
 ###
 
@@ -348,9 +349,26 @@ Expected Output:
             "origin_guideline_when": "offering products to the user"
             "compared_guideline_when": "suggesting a TV"
             "whens_entailment": true
-            "severity": 8
             "rationale": "by suggesting a TV, a product is offered to the user, so suggesting a TV entails offering a product"
+            "severity": 8
         }},
+        {{
+            "compared_guideline_id": 2
+            "origin_guideline_when": "offering products to the user"
+            "compared_guideline_when": "the user asks for recommendations"
+            "whens_entailment": false
+            "rationale": "the user asking for recommendations does not entail that a product is offered to them. On the other direction, offering products to the user does not necessarily mean that they asked for recommendations, even though it is implied"
+            "severity": 4
+        }},
+        {{
+            "compared_guideline_id": 3
+            "origin_guideline_when": "offering products to the user"
+            "compared_guideline_when": "recommending a TV warranty plan"
+            "whens_entailment": true
+            "rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product"
+            "severity": 8
+        }},
+        
     ]
 }}
 ```
@@ -455,7 +473,7 @@ To ensure consistency, it is crucial to avoid scenarios where multiple guideline
 
 1. Applying both results in an illogical or contradictory action.
 2. Applying both leads to a confusing or paradoxical response.
-3. Applying both results in the agent taking an action that does not align with the response it should provide to the user.
+3. Applying both would result in the agent taking an action that does not align with the response it should provide to the user.
 
 While your evaluation should focus on the 'then' statements, remember that each 'then' statement is contextualized by its corresponding 'when' statement. Analyze each 'then' statement within the context provided by its "when" condition. Please be lenient with any misspellings or grammatical errors.
           
@@ -472,8 +490,8 @@ Please output JSON structured in the following format:
             "origin_guideline_then": <The origin guideline's 'then'>
             "compared_guideline_then": <The compared guideline's 'then'>
             "thens_contradiction": <BOOL of whether the two 'then' statements are contradictory>
-            "severity": <Score between 1-10 indicating the strength of the contradiction>
             "rationale": <Explanation for if and how the 'then' statements contradict each other>
+            "severity": <Score between 1-10 indicating the strength of the contradiction>
         }},
         ...
     ]
@@ -509,56 +527,58 @@ Expected Output:
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "wait for the manager's approval before shipping"
             "thens_contradiction": true
-            "severity": 10
             "rationale": "shipping the item immediately contradicts waiting for the manager's approval"
+            "severity": 10
         }},
         {{
             "compared_guideline_id": 2
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "refer the user to our electronic store"
             "thens_contradiction": False
-            "severity": 2
             "rationale": "the agent can both ship the item immediately and refer the user to the electronic store at the same time, the actions are not contradictory"
+            "severity": 2
         }},
         {{
             "compared_guideline_id": 3
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "reply that the product can only be delivered in-store"
             "thens_contradiction": true
-            "severity": 9
             "rationale": "shipping the item immediately contradicts the reply that the product can only be delivered in-store"
+            "severity": 9
         }},
         {{
             "compared_guideline_id": 4
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "reply that we offer free shipping for items over 100$"
             "thens_contradiction": False
-            "severity": 1
             "rationale": "replying that we offer free shipping for expensive items does not contradict shipping an item immediately, both actions can be taken simultaneously"
+            "severity": 1
         }},
         {{
             "compared_guideline_id": 5
             "origin_guideline_then": "ship the item immediately"
             "compared_guideline_then": "greet them back"
             "thens_contradiction": true
-            "severity": 1
             "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously"
+            "severity": 1
         }},
     ]
 }}
 ```
 
+###
 Example 2:
 ###
 Input:
 
 Test guideline: ###
-{{"when": "cancelling an order", "then": "ask for explicit approval before performing the action"}}
+{{"when": "the user mentions health issues", "then": "register them to the 5km race"}}
 ###
 
 Comparison candidates: ###
-{{"id": 1, "when": "a user provides an invalid home address", "then": "cancel the order"}}
-
+{{"id": 1, "when": "the user asks about registering available races", "then": "Reply that you can register them either to the 5km or the 10km race"}}
+{{"id": 2, "when": "the user wishes to register to a race without being verified", "then": "Inform them that they cannot register to races without verification"}}
+{{"id": 3, "when": "asking users about health issues", "then": "remind them that their answers would remain private"}}
 ###
 
 Expected Output:
@@ -567,15 +587,25 @@ Expected Output:
     "action_contradictions": [
         {{
             "compared_guideline_id": 1
-            "origin_guideline_then": "ask for explicit approval before performing the action"
-            "compared_guideline_then": "cancel the order immediately"
+            "origin_guideline_then": "register them to the 5km race"
+            "compared_guideline_then": "Reply that you can register them either to the 5km or the 10km race"
             "thens_contradiction": true
-            "severity": 9
-            "rationale": "the compared 'then' requires canceling the order immediately, while the origin 'then' requires explicit approval before canceling, which is contradictory"
+            "rationale": "allowing the user to select from the multiple options for races, while already registering them to the 5km race is contradictory, as it ascribes an action that doesn't align with the agent's response"
+            "severity": 7
         }},
+        {{
+            "compared_guideline_id": 2
+            "origin_guideline_then": "register them to the 5km race"
+            "compared_guideline_then": "Inform them that they cannot register to races without verification"
+            "thens_contradiction": true
+            "rationale": "Informing the user that they cannot register to races while registering them to a race is contradictory - the action does not align with the agent's response"
+            "severity": 8
+        }},
+        
     ]
 }}
 ```
+
 ###"""  # noqa
         )
 
@@ -594,9 +624,4 @@ Origin guideline: ###
 Comparison candidates: ###
 {comparison_candidates_text}
 ###""")
-        builder.add_section(  # output format
-            f"""
-
-                                """  # noqa
-        )
         return builder.build()

@@ -598,7 +598,7 @@ def test_that_many_non_contradicting_guidelines_are_not_causing_false_positive(
     assert len(contradiction_results) == 0
 
 
-def test_that_many_contradicting_guidelines_are_detected(  # TODO contradiction failure
+def test_that_many_contradicting_guidelines_are_detected(  # TODO occasional contradiction failure
     context: _TestContext,
     agent: Agent,
     guidelines_with_contradictions: list[GuidelineContent],
@@ -615,7 +615,7 @@ def test_that_many_contradicting_guidelines_are_detected(  # TODO contradiction 
     )
 
     n = len(guidelines_with_contradictions)
-    assert len(contradiction_results) == n * (n + 1)
+    assert len(contradiction_results) == n * (n - 1) // 2
 
     # Tests that there's exactly 1 contradiction per pair of guidelines
     expected_pairs = {
@@ -629,10 +629,10 @@ def test_that_many_contradicting_guidelines_are_detected(  # TODO contradiction 
         assert c.ContradictionKind == IncoherenceKind.CONTINGENT
         expected_pairs.remove((c.guideline_a, c.guideline_b))
 
-    assert len(contradiction_results) == 0
+    assert len(expected_pairs) == 0
 
 
-def test_that_contradictory_next_message_commands_are_detected(  # TODO occasional entailment failure
+def test_that_contradictory_next_message_commands_are_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -821,3 +821,36 @@ def test_that_many_guidelins_which_are_all_contradictory_are_detected(
     assert len(contradiction_results) == contradictions_n
     for c in contradiction_results:
         assert c.ContradictionKind == IncoherenceKind.STRICT
+
+
+def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  # Same as test_that_logically_contradicting_actions_are_detected_as_incoherencies but with typos
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    coherence_checker = context.container[CoherenceChecker]
+    guideline_a = GuidelineContent(predicate="Recommending pizza tops", action="Recommend tomatos")
+
+    guideline_b = GuidelineContent(
+        predicate="asked about our toppings while inventory indicates that we are almost out of tomatoes",
+        action="mention that we are oout of tomatoes",
+    )
+
+    contradiction_results = list(
+        context.sync_await(
+            coherence_checker.propose_incoherencies(
+                agent,
+                [guideline_a, guideline_b],
+            )
+        )
+    )
+
+    assert len(contradiction_results) == 1
+
+    correct_guidelines_option_1 = (contradiction_results[0].guideline_a == guideline_a) and (
+        contradiction_results[0].guideline_b == guideline_b
+    )
+    correct_guidelines_option_2 = (contradiction_results[0].guideline_b == guideline_a) and (
+        contradiction_results[0].guideline_a == guideline_b
+    )
+    assert correct_guidelines_option_1 or correct_guidelines_option_2
+    assert contradiction_results[0].ContradictionKind == IncoherenceKind.CONTINGENT
