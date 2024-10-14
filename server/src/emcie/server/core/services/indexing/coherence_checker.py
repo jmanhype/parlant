@@ -16,7 +16,7 @@ from emcie.server.core.logging import Logger
 from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.agents import Agent
 
-LLM_RETRY_WAIT_TIME_SECONDS = 3.5
+LLM_RETRY_WAIT_TIME_SECONDS = 5.0
 LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
 CRITICAL_CONTRADICTION_THRESHOLD = 6
@@ -183,6 +183,7 @@ class PredicatesEntailmentChecker:
         prompt = await self._format_prompt(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
+
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
@@ -207,12 +208,10 @@ Predicate Entailment Test Results:
     ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
-            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = (
-            f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
-        )
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_agent_identity(agent)
         builder.add_section(
@@ -242,12 +241,12 @@ Please output JSON structured in the following format:
 {{
     "predicate_entailments": [
         {{
-            "compared_guideline_id": <id of the compared guideline>
-            "origin_guideline_when": <The origin guideline's 'when'>
-            "compared_guideline_when": <The compared guideline's 'when'>
-            "whens_entailment": <BOOL of whether one of the 'when' statements entails the other>
-            "rationale": <Explanation for if and how one of the 'when' statement's entails the other>
-            "severity": <Score between 1-10 indicating the strength of the entailment>
+            "compared_guideline_id": <id of the compared guideline>,
+            "origin_guideline_when": <The origin guideline's 'when'>,
+            "compared_guideline_when": <The compared guideline's 'when'>,
+            "whens_entailment": <BOOL of whether one of the 'when' statements entails the other>,
+            "rationale": <Explanation for if and how one of the 'when' statement's entails the other>,
+            "severity": <Score between 1-10 indicating the strength of the entailment>,
         }},
         ...
     ]
@@ -258,7 +257,7 @@ The output json should have one such object for each pairing of the origin guide
 The following are examples of expected outputs for a given input:
 ###
 Example 1:
-{{
+###
 Input:
 
 Test guideline: ###
@@ -267,7 +266,7 @@ Test guideline: ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
-{{"id": 2, "when": "a costumer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 2, "when": "a customer orders any item", "then": "refer the user to our electronic store"}}
 {{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
 {{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
 {{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
@@ -279,43 +278,43 @@ Expected Output:
 {{
     "predicate_entailments": [
         {{
-            "compared_guideline_id": 1
-            "origin_guideline_when": "a customer orders an electrical appliance"
-            "compared_guideline_when": "a customer orders a TV"
-            "whens_entailment": true
-            "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance"
+            "compared_guideline_id": 1,
+            "origin_guideline_when": "a customer orders an electrical appliance",
+            "compared_guideline_when": "a customer orders a TV",
+            "whens_entailment": true,
+            "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance",
             "severity": 9
         }},
         {{
-            "compared_guideline_id": 2
-            "origin_guideline_when": "a customer orders an electrical appliance"
-            "compared_guideline_when": "a costumer orders any item"
-            "whens_entailment": true
-            "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item"
+            "compared_guideline_id": 2,
+            "origin_guideline_when": "a customer orders an electrical appliance",
+            "compared_guideline_when": "a customer orders any item",
+            "whens_entailment": true,
+            "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item",
             "severity": 10
         }},
         {{
-            "compared_guideline_id": 3
-            "origin_guideline_when": "a customer orders an electrical appliance"
-            "compared_guideline_when": "a customer orders a chair"
-            "whens_entailment": false
-            "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa"
+            "compared_guideline_id": 3,
+            "origin_guideline_when": "a customer orders an electrical appliance",
+            "compared_guideline_when": "a customer orders a chair",
+            "whens_entailment": false,
+            "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa",
             "severity": 2
         }},
         {{
-            "compared_guideline_id": 4
-            "origin_guideline_when": "a customer orders an electrical appliance"
-            "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances"
-            "whens_entailment": false
-            "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other"
+            "compared_guideline_id": 4,
+            "origin_guideline_when": "a customer orders an electrical appliance",
+            "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances",
+            "whens_entailment": false,
+            "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other",
             "severity": 3
         }},
         {{
-            "compared_guideline_id": 5
-            "origin_guideline_when": "a customer orders an electrical appliance"
-            "compared_guideline_when": "a customer greets you"
-            "whens_entailment": true
-            "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other"
+            "compared_guideline_id": 5,
+            "origin_guideline_when": "a customer orders an electrical appliance",
+            "compared_guideline_when": "a customer greets you",
+            "whens_entailment": true,
+            "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other",
             "severity": 10
         }},
     ]
@@ -324,7 +323,7 @@ Expected Output:
 
 ###
 Example 2:
-{{
+###
 Input:
 
 Test guideline: ###
@@ -343,27 +342,27 @@ Expected Output:
 {{
     "predicate_entailments": [
         {{
-            "compared_guideline_id": 1
-            "origin_guideline_when": "offering products to the user"
-            "compared_guideline_when": "suggesting a TV"
-            "whens_entailment": true
-            "rationale": "by suggesting a TV, a product is offered to the user, so suggesting a TV entails offering a product"
-            "severity": 8
+            "compared_guideline_id": 1,
+            "origin_guideline_when": "offering products to the user",
+            "compared_guideline_when": "suggesting a TV",
+            "whens_entailment": true,
+            "rationale": "by suggesting a TV, a product is offered to the user, so suggesting a TV entails offering a product",
+            "severity": 9
         }},
         {{
-            "compared_guideline_id": 2
-            "origin_guideline_when": "offering products to the user"
-            "compared_guideline_when": "the user asks for recommendations"
-            "whens_entailment": false
-            "rationale": "the user asking for recommendations does not entail that a product is offered to them. On the other direction, offering products to the user does not necessarily mean that they asked for recommendations, even though it is implied"
+            "compared_guideline_id": 2,
+            "origin_guideline_when": "offering products to the user",
+            "compared_guideline_when": "the user asks for recommendations",
+            "whens_entailment": false,
+            "rationale": "the user asking for recommendations does not entail that a product is offered to them. On the other direction, offering products to the user does not necessarily mean that they asked for recommendations, even though it is implied",
             "severity": 4
         }},
         {{
-            "compared_guideline_id": 3
-            "origin_guideline_when": "offering products to the user"
-            "compared_guideline_when": "recommending a TV warranty plan"
-            "whens_entailment": true
-            "rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product"
+            "compared_guideline_id": 3,
+            "origin_guideline_when": "offering products to the user",
+            "compared_guideline_when": "recommending a TV warranty plan",
+            "whens_entailment": true,
+            "rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product",
             "severity": 8
         }},
         
@@ -436,13 +435,11 @@ Action Contradiction Test Results:
         indexed_comparison_guidelines: dict[int, GuidelineContent],
     ) -> str:
         builder = PromptBuilder()
-        comparison_candidates_text = "\n\t".join(
-            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+        comparison_candidates_text = "\n".join(
+            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = (
-            f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
-        )
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_agent_identity(agent)
         builder.add_section(
@@ -475,11 +472,11 @@ Please output JSON structured in the following format:
 {{
     "action_contradictions": [
         {{
-            "compared_guideline_id": <id of the compared guideline>
-            "origin_guideline_then": <The origin guideline's 'then'>
-            "compared_guideline_then": <The compared guideline's 'then'>
-            "thens_contradiction": <BOOL of whether the two 'then' statements are contradictory>
-            "rationale": <Explanation for if and how the 'then' statements contradict each other>
+            "compared_guideline_id": <id of the compared guideline>,
+            "origin_guideline_then": <The origin guideline's 'then'>,
+            "compared_guideline_then": <The compared guideline's 'then'>,
+            "thens_contradiction": <BOOL of whether the two 'then' statements are contradictory>,
+            "rationale": <Explanation for if and how the 'then' statements contradict each other>,
             "severity": <Score between 1-10 indicating the strength of the contradiction>
         }},
         ...
@@ -500,7 +497,7 @@ Test guideline: ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
-{{"id": 2, "when": "a costumer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 2, "when": "a customer orders any item", "then": "refer the user to our electronic store"}}
 {{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
 {{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
 {{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
@@ -512,43 +509,43 @@ Expected Output:
 {{
     "action_contradictions": [
         {{
-            "compared_guideline_id": 1
-            "origin_guideline_then": "ship the item immediately"
-            "compared_guideline_then": "wait for the manager's approval before shipping"
-            "thens_contradiction": true
-            "rationale": "shipping the item immediately contradicts waiting for the manager's approval"
+            "compared_guideline_id": 1,
+            "origin_guideline_then": "ship the item immediately",
+            "compared_guideline_then": "wait for the manager's approval before shipping",
+            "thens_contradiction": true,
+            "rationale": "shipping the item immediately contradicts waiting for the manager's approval",
             "severity": 10
         }},
         {{
-            "compared_guideline_id": 2
-            "origin_guideline_then": "ship the item immediately"
-            "compared_guideline_then": "refer the user to our electronic store"
-            "thens_contradiction": False
-            "rationale": "the agent can both ship the item immediately and refer the user to the electronic store at the same time, the actions are not contradictory"
+            "compared_guideline_id": 2,
+            "origin_guideline_then": "ship the item immediately",
+            "compared_guideline_then": "refer the user to our electronic store",
+            "thens_contradiction": false,
+            "rationale": "the agent can both ship the item immediately and refer the user to the electronic store at the same time, the actions are not contradictory",
             "severity": 2
         }},
         {{
-            "compared_guideline_id": 3
-            "origin_guideline_then": "ship the item immediately"
-            "compared_guideline_then": "reply that the product can only be delivered in-store"
-            "thens_contradiction": true
-            "rationale": "shipping the item immediately contradicts the reply that the product can only be delivered in-store"
+            "compared_guideline_id": 3,
+            "origin_guideline_then": "ship the item immediately",
+            "compared_guideline_then": "reply that the product can only be delivered in-store",
+            "thens_contradiction": true,
+            "rationale": "shipping the item immediately contradicts the reply that the product can only be delivered in-store",
             "severity": 9
         }},
         {{
-            "compared_guideline_id": 4
-            "origin_guideline_then": "ship the item immediately"
-            "compared_guideline_then": "reply that we offer free shipping for items over 100$"
-            "thens_contradiction": False
-            "rationale": "replying that we offer free shipping for expensive items does not contradict shipping an item immediately, both actions can be taken simultaneously"
+            "compared_guideline_id": 4,
+            "origin_guideline_then": "ship the item immediately",
+            "compared_guideline_then": "reply that we offer free shipping for items over 100$",
+            "thens_contradiction": false,
+            "rationale": "replying that we offer free shipping for expensive items does not contradict shipping an item immediately, both actions can be taken simultaneously",
             "severity": 1
         }},
         {{
-            "compared_guideline_id": 5
-            "origin_guideline_then": "ship the item immediately"
-            "compared_guideline_then": "greet them back"
-            "thens_contradiction": true
-            "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously"
+            "compared_guideline_id": 5,
+            "origin_guideline_then": "ship the item immediately",
+            "compared_guideline_then": "greet them back",
+            "thens_contradiction": false,
+            "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously",
             "severity": 1
         }},
     ]
@@ -567,7 +564,6 @@ Test guideline: ###
 Comparison candidates: ###
 {{"id": 1, "when": "the user asks about registering available races", "then": "Reply that you can register them either to the 5km or the 10km race"}}
 {{"id": 2, "when": "the user wishes to register to a race without being verified", "then": "Inform them that they cannot register to races without verification"}}
-{{"id": 3, "when": "asking users about health issues", "then": "remind them that their answers would remain private"}}
 ###
 
 Expected Output:
@@ -575,19 +571,19 @@ Expected Output:
 {{
     "action_contradictions": [
         {{
-            "compared_guideline_id": 1
-            "origin_guideline_then": "register them to the 5km race"
-            "compared_guideline_then": "Reply that you can register them either to the 5km or the 10km race"
-            "thens_contradiction": true
-            "rationale": "allowing the user to select from the multiple options for races, while already registering them to the 5km race is contradictory, as it ascribes an action that doesn't align with the agent's response"
+            "compared_guideline_id": 1,
+            "origin_guideline_then": "register them to the 5km race",
+            "compared_guideline_then": "Reply that you can register them either to the 5km or the 10km race",
+            "thens_contradiction": true,
+            "rationale": "allowing the user to select from the multiple options for races, while already registering them to the 5km race is contradictory, as it ascribes an action that doesn't align with the agent's response",
             "severity": 7
         }},
         {{
-            "compared_guideline_id": 2
-            "origin_guideline_then": "register them to the 5km race"
-            "compared_guideline_then": "Inform them that they cannot register to races without verification"
-            "thens_contradiction": true
-            "rationale": "Informing the user that they cannot register to races while registering them to a race is contradictory - the action does not align with the agent's response"
+            "compared_guideline_id": 2,
+            "origin_guideline_then": "register them to the 5km race",
+            "compared_guideline_then": "Inform them that they cannot register to races without verification",
+            "thens_contradiction": true,
+            "rationale": "Informing the user that they cannot register to races while registering them to a race is contradictory - the action does not align with the agent's response",
             "severity": 8
         }},
         

@@ -667,7 +667,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
     coherence_checker = context.container[CoherenceChecker]
     guideline_to_evaluate = GuidelineContent(
         predicate="the user is dissatisfied",
-        action="apologize and suggest to forward the request to managment",
+        action="apologize and suggest to forward the request to management",
     )
 
     first_guideline_to_compare = GuidelineContent(
