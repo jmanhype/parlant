@@ -55,10 +55,10 @@ class ActionsContradictionTestsSchema(DefaultBaseModel):
 
 
 @dataclass(frozen=True)
-class ContradictionTest:
+class IncoherencyTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
-    ContradictionKind: IncoherenceKind
+    IncoherenceKind: IncoherenceKind
     predicates_entailment_rationale: str
     predicates_entailment_severity: int
     actions_contradiction_rationale: str
@@ -88,7 +88,7 @@ class CoherenceChecker:
         guidelines_to_evaluate: Sequence[GuidelineContent],
         comparison_guidelines: Sequence[GuidelineContent] = [],
         progress_report: Optional[ProgressReport] = None,
-    ) -> Sequence[ContradictionTest]:
+    ) -> Sequence[IncoherencyTest]:
         comparison_guidelines_list = list(comparison_guidelines)
         guidelines_to_evaluate_list = list(guidelines_to_evaluate)
         tasks = []
@@ -125,9 +125,9 @@ class CoherenceChecker:
         guideline_to_evaluate: GuidelineContent,
         comparison_guidelines: Sequence[GuidelineContent],
         progress_report: Optional[ProgressReport],
-    ) -> Sequence[ContradictionTest]:
+    ) -> Sequence[IncoherencyTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
-        predicates_entailment_reponses, actions_contradiction_reponses = await asyncio.gather(
+        predicates_entailment_responses, actions_contradiction_responses = await asyncio.gather(
             self._predicates_entailment_checker.evaluate(
                 agent, guideline_to_evaluate, indexed_comparison_guidelines
             ),
@@ -138,14 +138,14 @@ class CoherenceChecker:
 
         contradictions = []
         for id, g in indexed_comparison_guidelines.items():
-            w = [w for w in predicates_entailment_reponses if w.compared_guideline_id == id][0]
-            t = [t for t in actions_contradiction_reponses if t.compared_guideline_id == id][0]
+            w = [w for w in predicates_entailment_responses if w.compared_guideline_id == id][0]
+            t = [t for t in actions_contradiction_responses if t.compared_guideline_id == id][0]
             if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD:
                 contradictions.append(
-                    ContradictionTest(
+                    IncoherencyTest(
                         guideline_a=guideline_to_evaluate,
                         guideline_b=g,
-                        ContradictionKind=IncoherenceKind.STRICT
+                        IncoherenceKind=IncoherenceKind.STRICT
                         if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
                         predicates_entailment_rationale=w.rationale,
@@ -174,7 +174,7 @@ class PredicatesEntailmentChecker:
         self._glossary_store = glossary_store
 
     @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
-    async def evaluate(  # TODO write
+    async def evaluate(
         self,
         agent: Agent,
         guideline_to_evaluate: GuidelineContent,
@@ -183,8 +183,6 @@ class PredicatesEntailmentChecker:
         prompt = await self._format_prompt(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
-        with open("predicate entailment prompt.txt", "w", encoding="utf-8") as file:
-            file.write(prompt)
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
@@ -206,7 +204,7 @@ Predicate Entailment Test Results:
         agent: Agent,
         guideline_to_evaluate: GuidelineContent,
         indexed_comparison_guidelines: dict[int, GuidelineContent],
-    ) -> str:  # TODO write
+    ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
             f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
@@ -216,9 +214,7 @@ Predicate Entailment Test Results:
             f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
         )
 
-        builder.add_agent_identity(
-            agent
-        )  # TODO ask dor about where this should be placed for prompt caching
+        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
@@ -238,6 +234,8 @@ Two guidelines should be detected as having entailing 'when' statements if and o
 By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A.
 If one 'when' statement being true merely implies that the other 'when' statement is true, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing. If one 'when' statement holding true typically means that another 'when' is true, it is not sufficient to be considered entailment.   
 If entailment is fulfilled in at least one direction, consider the 'when' statements as entailing, even if the entailment is not bidirectional.
+
+Be forgiving regarding misspellings and grammatical errors.
 
 Please output JSON structured in the following format:
 ```json
@@ -300,7 +298,7 @@ Expected Output:
             "compared_guideline_id": 3
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer orders a chair"
-            "whens_entailment": False
+            "whens_entailment": false
             "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa"
             "severity": 2
         }},
@@ -308,7 +306,7 @@ Expected Output:
             "compared_guideline_id": 4
             "origin_guideline_when": "a customer orders an electrical appliance"
             "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances"
-            "whens_entailment": False
+            "whens_entailment": false
             "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other"
             "severity": 3
         }},
@@ -391,11 +389,6 @@ Origin guideline: ###
 Comparison candidates: ###
 {comparison_candidates_text}
 ###""")
-        builder.add_section(  # output format
-            f"""
-
-                            """  # noqa
-        )
         return builder.build()
 
 
@@ -420,8 +413,6 @@ class ActionsContradictionChecker:
         prompt = await self._format_prompt(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
-        with open("action contradiction prompt.txt", "w", encoding="utf-8") as file:
-            file.write(prompt)
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
@@ -453,9 +444,7 @@ Action Contradiction Test Results:
             f"{{when: {guideline_to_evaluate.predicate}, then: {guideline_to_evaluate.action}}}"
         )
 
-        builder.add_agent_identity(
-            agent
-        )  # TODO ask dor about where this should be placed for prompt caching
+        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
