@@ -20,7 +20,7 @@ from tests.test_utilities import nlp_test
 
 @step(
     given,
-    parsers.parse('a server message, "{server_message}"'),
+    parsers.parse('an agent message, "{server_message}"'),
     target_fixture="session_id",
 )
 def given_a_server_message(

@@ -15,7 +15,7 @@ load_steps(
 
 scenarios(
     *(
-        f"core/engines/alpha/features/{feature}.feature"
+        f"core/engines/alpha/features/baseline/{feature}.feature"
         for feature in (
             "conversation",
             "errors",
