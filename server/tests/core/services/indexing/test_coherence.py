@@ -882,7 +882,9 @@ def test_that_an_agent_description_based_incoherency_is_detected(
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherency_results[0].IncoherenceKind == IncoherenceKind.STRICT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        nlp_test_action_contradiction(
+            agent, context.container[GlossaryStore], incoherency_results[0]
+        )
     )
 
 
