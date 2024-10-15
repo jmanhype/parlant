@@ -1,12 +1,15 @@
 import './App.css'
+import useFetch from './hooks/useFetch';
+import Chatbot from './components/chatbot/chatbot';
 
 function App() {
-  // const [count, setCount] = useState(0)
+  const { data, loading, error } = useFetch('agents');
+  console.log(data, loading, error);
 
   return (
-    <>
-      Parlant
-    </>
+    <div>
+      <Chatbot />
+    </div>
   )
 }
 
