@@ -229,7 +229,6 @@ Each guideline is composed of two parts:
 
 
 Your task is to evaluate whether pairs of guidelines have entailing 'when' statements. 
-Your task is to assess whether pairs of guidelines contain contradictory 'then' statements. 
 {self.get_task_description()}
 
 Be forgiving regarding misspellings and grammatical errors.
