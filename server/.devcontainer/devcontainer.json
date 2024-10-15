@@ -34,6 +34,10 @@
   },
   // 👇 Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
   "features": {
+    "node": {
+        "version": "lts",
+        "nodeGypDependencies": true
+    },
     "ghcr.io/devcontainers-contrib/features/mypy:2": {
       "version": "latest"
     },
