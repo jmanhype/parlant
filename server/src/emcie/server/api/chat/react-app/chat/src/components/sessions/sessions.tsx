@@ -1,22 +1,14 @@
-import { ReactElement } from "react";
-import useFetch from "../../hooks/useFetch";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select";
+import { ReactElement, useState } from "react";
+import AgentsSelect from "../agents-select/agents-select";
+import AgentSessions from "../agent-sessions/agent-sessions";
 
 export default function Sessions(): ReactElement {
-    const {data, error, loading} = useFetch('agents');
+    const [selectedAgent, setSelectedAgent] = useState<string>();
 
     return (
-        <div className="flex justify-center pt-4">
-            <Select>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select an agent" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectGroup>
-                        {data?.agents && data.agents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
-                    </SelectGroup>
-                </SelectContent>
-            </Select>
+        <div className="flex flex-col items-center pt-4">
+            <AgentsSelect value={selectedAgent} setSelectedAgent={setSelectedAgent}/>
+            <AgentSessions agentId={selectedAgent}/>
         </div>
     )
 }
