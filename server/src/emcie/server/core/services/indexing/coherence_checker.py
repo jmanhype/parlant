@@ -32,9 +32,12 @@ class PredicatesEntailmentTestSchema(DefaultBaseModel):
     compared_guideline_id: int
     origin_guideline_when: str
     compared_guideline_when: str
-    rationale: str
-    whens_entailment: bool
-    severity: int
+    origin_entails_compared_rationale: str
+    origin_when_entails_compared_when: bool
+    origin_entails_compared_severity: int
+    compared_entails_origin_rationale: str
+    compared_when_entails_origin_when: bool
+    compared_entails_origin_severity: int
 
 
 class PredicatesEntailmentTestsSchema(DefaultBaseModel):
@@ -141,15 +144,21 @@ class CoherenceChecker:
             w = [w for w in predicates_entailment_responses if w.compared_guideline_id == id][0]
             t = [t for t in actions_contradiction_responses if t.compared_guideline_id == id][0]
             if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD:
+                if w.compared_entails_origin_severity > w.origin_entails_compared_severity:
+                    entailment_severity = w.compared_entails_origin_severity
+                    entailment_rationale = w.compared_entails_origin_rationale
+                else:
+                    entailment_severity = w.origin_entails_compared_severity
+                    entailment_rationale = w.origin_entails_compared_rationale
                 contradictions.append(
                     IncoherencyTest(
                         guideline_a=guideline_to_evaluate,
                         guideline_b=g,
                         IncoherenceKind=IncoherenceKind.STRICT
-                        if w.severity >= CRITICAL_CONTRADICTION_THRESHOLD
+                        if entailment_severity >= CRITICAL_CONTRADICTION_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
-                        predicates_entailment_rationale=w.rationale,
-                        predicates_entailment_severity=w.severity,
+                        predicates_entailment_rationale=entailment_rationale,
+                        predicates_entailment_severity=entailment_severity,
                         actions_contradiction_rationale=t.rationale,
                         actions_contradiction_severity=t.severity,
                         creation_utc=datetime.now(timezone.utc),
@@ -231,6 +240,7 @@ Each guideline is composed of two parts:
 Your task is to evaluate whether pairs of guidelines have entailing 'when' statements. 
 {self.get_task_description()}
 
+To find whether two guidelines have entailing 'when's, independently determine whether the first 'when' entails the second, and vice-versa.  
 Be forgiving regarding misspellings and grammatical errors.
 
 Please output JSON structured in the following format:
@@ -241,9 +251,13 @@ Please output JSON structured in the following format:
             "compared_guideline_id": <id of the compared guideline>,
             "origin_guideline_when": <The origin guideline's 'when'>,
             "compared_guideline_when": <The compared guideline's 'when'>,
-            "rationale": <Explanation for if and how one of the 'when' statement's entails the other>,
-            "whens_entailment": <BOOL of whether one of the 'when' statements entails the other>,
-            "severity": <Score between 1-10 indicating the strength of the entailment>,
+            "origin_entails_compared_rationale": <Explanation for if and how origin_guideline_when entails compared_guideline_when>,
+            "origin_when_entails_compared_when": <BOOL of whether origin_guideline_when entails compared_guideline_when>,
+            "origin_entails_compared_severity": <Score between 1-10 indicating the strength of the entailment from origin_guideline_when to compared_guideline_when>,
+            "compared_entails_origin_rationale": <Explanation for if and how compared_guideline_when entails origin_guideline_when>,
+            "compared_when_entails_origin_when": <BOOL of whether compared_guideline_when entails origin_guideline_when>,
+            "compared_entails_origin_severity": <Score between 1-10 indicating the strength of the entailment from compared_guideline_when to origin_guideline_when>,
+
         }},
         ...
     ]
@@ -278,41 +292,56 @@ Expected Output:
             "compared_guideline_id": 1,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer orders a TV",
-            "rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance",
-            "whens_entailment": true,
-            "severity": 9
+            "origin_entails_compared_rationale": "A customer ordering an electrical appliance doesn't necessarily mean they are ordering a TV specifically",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 3
+            "compared_entails_origin_rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance",,
+            "compared_when_entails_origin_when": true,
+            "compared_entails_origin_severity": 9,
         }},
         {{
             "compared_guideline_id": 2,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer orders any item",
-            "rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item",
-            "whens_entailment": true,
-            "severity": 10
+            "origin_entails_compared_rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item",,
+            "origin_when_entails_compared_when": true,
+            "origin_entails_compared_severity": 10,
+            "compared_entails_origin_rationale": "ordering an electrical appliance doesn't entail ordering any item, since the customer might be ordering a non-electronic item",
+            "compared_when_entails_origin_when": false,
+            "compared_entails_origin_severity": 2,
         }},
         {{
             "compared_guideline_id": 3,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer orders a chair",
-            "rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance, nor vice-versa",
-            "whens_entailment": false,
-            "severity": 2
+            "origin_entails_compared_rationale": "ordering an electrical appliance doesn't entail ordering a chair, since they are two distinct categories of items",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 1,
+            "compared_entails_origin_rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance",
+            "compared_when_entails_origin_when": false,
+            "compared_entails_origin_severity": 2,
         }},
         {{
             "compared_guideline_id": 4,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer asks which discounts we offer on electrical appliances",
-            "rationale": "an electrical appliance can be ordered without asking for a discount, and vice-versa, meaning that neither when statement entails the other",
-            "whens_entailment": false,
-            "severity": 3
+            "origin_entails_compared_rationale": "an electrical appliance can be ordered without asking for a discount, so it doesn't entail it",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 3,
+            "compared_entails_origin_rationale": "asking for a discount does not entail the ordering of an electrical appliance, as the discount may apply to another type of item",
+            "compared_when_entails_origin_when": false,
+            "compared_entails_origin_severity": 2,
         }},
         {{
             "compared_guideline_id": 5,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer greets you",
-            "rationale": "a customer be greeted without ordering an electrical appliance and vice-versa, meaning that neither when statement entails the other",
-            "whens_entailment": true,
-            "severity": 10
+            "origin_entails_compared_rationale": "ordering an electrical appliance does not entail or mean that the use has greeted the assistant",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 1,
+            "compared_entails_origin_rationale": "a customer greeting the assistant in no way entails them ordering an electrical appliance",
+            "compared_when_entails_origin_when": false,
+            "compared_entails_origin_severity": 1,
         }},
     ]
 }}
@@ -343,33 +372,45 @@ Expected Output:
             "compared_guideline_id": 1,
             "origin_guideline_when": "offering products to the user",
             "compared_guideline_when": "suggesting a TV",
-            "rationale": "by suggesting a TV, a product is offered to the user, so suggesting a TV entails offering a product",
-            "whens_entailment": true,
-            "severity": 9
+            "origin_entails_compared_rationale": "offering products does not entail suggesting a tv, as another type of product could be offered",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 3,
+            "compared_entails_origin_rationale": "by suggesting a TV, a product is offered to the user,
+            "compared_when_entails_origin_when": true,
+            "compared_entails_origin_severity": 9,
         }},
         {{
             "compared_guideline_id": 2,
             "origin_guideline_when": "offering products to the user",
             "compared_guideline_when": "the user asks for recommendations",
-            "rationale": "the user asking for recommendations does not entail that a product is offered to them. On the other direction, offering products to the user does not necessarily mean that they asked for recommendations, even though it is implied",
-            "whens_entailment": false,
-            "severity": 4
+            "origin_entails_compared_rationale": "offering products to the user does not entail them asking for recommendations, since the agent might be offering items for a different reason",
+            "origin_when_entails_compared_when": 4,
+            "origin_entails_compared_severity": false,
+            "compared_entails_origin_rationale": "the user asking for recommendations does not entail that a product is offered to them. They could be asking out of their own accord", 
+            "compared_when_entails_origin_when": false,
+            "compared_entails_origin_severity": 3,
         }},
         {{
             "compared_guideline_id": 3,
             "origin_guideline_when": "offering products to the user",
             "compared_guideline_when": "recommending a TV warranty plan",
-            "rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product",
-            "whens_entailment": true,
-            "severity": 8
+            "origin_entails_compared_rationale": "offering product does not entail recommending a TV warranty, as the product might not be a TV warranty",
+            "origin_when_entails_compared_when": false,
+            "origin_entails_compared_severity": 3,
+            "compared_entails_origin_rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product",
+            "compared_when_entails_origin_when": true,
+            "compared_entails_origin_severity": 8,
         }},
         {{
             "compared_guideline_id": 4,
             "origin_guideline_when": "offering products to the user",
             "compared_guideline_when": "discussing store items",
-            "rationale": "offering a product to the user entails the discussion of a store item, as it's fair to assume that product is a store item",
-            "whens_entailment": true,
-            "severity": 7
+            "origin_entails_compared_rationale": "discussing store items does not entail offering products, since a different kind of discussion might be occurring",
+            "origin_when_entails_compared_when": 3,
+            "origin_entails_compared_severity": false,
+            "compared_entails_origin_rationale": "offering a product to the user entails the discussion of a store item, as it's fair to assume that product is a store item",
+            "compared_when_entails_origin_when": true,
+            "compared_entails_origin_severity": 7,
         }},
     ]
 }}
@@ -400,8 +441,7 @@ Comparison candidates: ###
         return """
 Two guidelines should be detected as having entailing 'when' statements if and only if one of their 'when' statements being true entails that the other's 'when' statement is also true.
 By this, if there is any context in which the 'when' statement of guideline A is false while the 'when' statement of guideline B is true - guideline B can not entail guideline A.
-If one 'when' statement being true implies that the other 'when' statement was perhaps true in a past state of the conversation, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing. If one 'when' statement holding true typically means that another 'when' is true, it is not sufficient to be considered entailment.   
-If entailment is fulfilled in at least one direction, consider the 'when' statements as entailing, even if the entailment is not bidirectional."""
+If one 'when' statement being true implies that the other 'when' statement was perhaps true in a past state of the conversation, but strict entailment is not fulfilled - do not consider the 'when' statements as entailing. If one 'when' statement holding true typically means that another 'when' is true, it is not sufficient to be considered entailment."""
 
 
 class ActionsContradictionChecker:
