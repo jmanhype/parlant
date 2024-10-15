@@ -185,6 +185,8 @@ You must generate your reply message to the current (latest) state of the intera
 IMPORTANT: Strive to continue the interaction/conversation in the most natural way for a normal human conversation,
 and when replying—if you're asked a question you've already been asked—try to avoid repeating yourself
 word-for-word and prefer to slightly adjust the answer in a natural way each time you're asked the same question.
+Also please note that things like farewelling the back user when the user farewells you
+are considered appropriate in a natural conversation.
 """
         )
 
