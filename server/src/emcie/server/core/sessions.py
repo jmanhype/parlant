@@ -47,8 +47,8 @@ class Event:
     creation_utc: datetime
     offset: int
     correlation_id: str
-    deleted: bool
     data: JSONSerializable
+    deleted: bool
 
 
 class MessageEventData(TypedDict):
@@ -157,10 +157,10 @@ class SessionStore(ABC):
     async def list_events(
         self,
         session_id: SessionId,
-        exclude_deleted: bool = True,
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
+        exclude_deleted: bool = True,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
@@ -296,9 +296,7 @@ class SessionDocumentStore(SessionStore):
     ) -> Optional[SessionId]:
         events = await self._event_collection.find(filters={"session_id": {"$eq": session_id}})
         asyncio.gather(
-            *iter(
-                self._event_collection.delete_one(filters={"id": {"$eq": e["id"]}}) for e in events
-            )
+            *(self._event_collection.delete_one(filters={"id": {"$eq": e["id"]}}) for e in events)
         )
 
         result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
@@ -372,10 +370,10 @@ class SessionDocumentStore(SessionStore):
     async def list_events(
         self,
         session_id: SessionId,
-        exclude_deleted: bool = True,
         source: Optional[EventSource] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
+        exclude_deleted: bool = True,
     ) -> Sequence[Event]:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id))
