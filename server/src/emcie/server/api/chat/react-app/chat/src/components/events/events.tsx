@@ -23,7 +23,7 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
         <div className="flex flex-col items-center pt-4 h-full">
             <div className="messages overflow-auto flex-1 flex flex-col">
                 {data?.events?.map(event => (
-                    <div className={(event.source === 'client' ? 'bg-red-100 self-start' : 'bg-blue-100 self-end') + ' rounded-lg p-2 m-4 mb-1 w-fit'}>{event?.data?.message}</div>
+                    <div key={event.id} className={(event.source === 'client' ? 'bg-red-100 self-start' : 'bg-blue-100 self-end') + ' rounded-lg p-2 m-4 mb-1 w-fit'}>{event?.data?.message}</div>
                 ))}
             </div>
             <div className="w-full flex items-center gap-4 p-1">
