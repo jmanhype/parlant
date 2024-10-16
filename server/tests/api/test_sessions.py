@@ -520,7 +520,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
     assert message_event["correlation_id"] == tool_call_event["correlation_id"]
 
 
-async def test_that_deleting_an_event_filters_out_subsequent_events(
+async def test_that_deleted_events_no_longer_show_up_in_the_listing(
     client: TestClient,
     container: Container,
     session_id: SessionId,
@@ -541,7 +541,7 @@ async def test_that_deleting_an_event_filters_out_subsequent_events(
 
     event_to_delete = initial_events[1]
     deleted_event_ids = (
-        client.delete(f"/sessions/{session_id}/events/{event_to_delete['offset']}")
+        client.delete(f"/sessions/{session_id}/events?min_offset={event_to_delete['offset']}")
         .raise_for_status()
         .json()["event_ids"]
     )

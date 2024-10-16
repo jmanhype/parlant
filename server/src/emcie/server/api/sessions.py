@@ -115,7 +115,7 @@ class ListInteractionsResponse(DefaultBaseModel):
     interactions: list[InteractionDTO]
 
 
-class DeleteEventResponse(DefaultBaseModel):
+class DeleteEventsResponse(DefaultBaseModel):
     event_ids: list[EventId]
 
 
@@ -345,11 +345,11 @@ def create_router(
             interactions=interactions,
         )
 
-    @router.delete("/{session_id}/events/{min_offset}")
-    async def delete_event(
+    @router.delete("/{session_id}/events")
+    async def delete_events(
         session_id: SessionId,
         min_offset: int,
-    ) -> DeleteEventResponse:
+    ) -> DeleteEventsResponse:
         events = await session_store.list_events(
             session_id=session_id,
             min_offset=min_offset,
@@ -358,6 +358,6 @@ def create_router(
 
         deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
 
-        return DeleteEventResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+        return DeleteEventsResponse(event_ids=[id for id in deleted_event_ids if id is not None])
 
     return router
