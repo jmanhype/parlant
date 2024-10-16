@@ -949,9 +949,7 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        nlp_test_action_contradiction(
-            agent, context.container[GlossaryStore], incoherency_results[0]
-        )
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
     )
 
 

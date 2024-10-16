@@ -19,8 +19,8 @@ from emcie.server.core.agents import Agent
 LLM_RETRY_WAIT_TIME_SECONDS = 5.0
 LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
-CRITICAL_CONTRADICTION_THRESHOLD = 6
-CONTRADICTION_SEVERITY_THRESHOLD = 6
+CRITICAL_INCOHERENCY_THRESHOLD = 6
+ACTION_CONTRADICTION_SEVERITY_THRESHOLD = 6
 
 
 class IncoherenceKind(Enum):
@@ -115,12 +115,12 @@ class CoherenceChecker:
                 ]
             )
         with self._logger.operation(
-            f"Evaluating contradictions for {len(tasks)} "
+            f"Evaluating incoherencies for {len(tasks)} "
             f"batches (batch size={EVALUATION_BATCH_SIZE})",
         ):
-            contradictions = list(chain.from_iterable(await asyncio.gather(*tasks)))
+            incoherencies = list(chain.from_iterable(await asyncio.gather(*tasks)))
 
-        return contradictions
+        return incoherencies
 
     async def _process_proposed_guideline(
         self,
@@ -139,23 +139,23 @@ class CoherenceChecker:
             ),
         )
 
-        contradictions = []
+        incoherencies = []
         for id, g in indexed_comparison_guidelines.items():
             w = [w for w in predicates_entailment_responses if w.compared_guideline_id == id][0]
             t = [t for t in actions_contradiction_responses if t.compared_guideline_id == id][0]
-            if t.severity >= CONTRADICTION_SEVERITY_THRESHOLD:
+            if t.severity >= ACTION_CONTRADICTION_SEVERITY_THRESHOLD:
                 if w.compared_entails_origin_severity > w.origin_entails_compared_severity:
                     entailment_severity = w.compared_entails_origin_severity
                     entailment_rationale = w.compared_entails_origin_rationale
                 else:
                     entailment_severity = w.origin_entails_compared_severity
                     entailment_rationale = w.origin_entails_compared_rationale
-                contradictions.append(
+                incoherencies.append(
                     IncoherencyTest(
                         guideline_a=guideline_to_evaluate,
                         guideline_b=g,
                         IncoherenceKind=IncoherenceKind.STRICT
-                        if entailment_severity >= CRITICAL_CONTRADICTION_THRESHOLD
+                        if entailment_severity >= CRITICAL_INCOHERENCY_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
                         predicates_entailment_rationale=entailment_rationale,
                         predicates_entailment_severity=entailment_severity,
@@ -168,7 +168,7 @@ class CoherenceChecker:
         if progress_report:
             await progress_report.increment()
 
-        return contradictions
+        return incoherencies
 
 
 class PredicatesEntailmentChecker:
