@@ -7,7 +7,6 @@ interface Props {
 
 export default function SessionEvents({sessionId}: Props): ReactElement {
     const {data, error, loading} = useFetch(`sessions/${sessionId}/events`, {kinds: 'message'});
-    console.log(data);
 
     return (
         <div className="flex flex-col items-center pt-4">
