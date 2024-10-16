@@ -10,7 +10,7 @@ export default function AgentSessions({agentId, setSession}: Props): ReactElemen
     const results = useFetch('sessions/', {agent_id: agentId});
 
     return (
-        <div className="flex justify-center pt-4">
+        <div className="flex justify-center pt-4 flex-col gap-4">
             {results?.data?.sessions && results.data.sessions.map(session => (
                 <div key={session.id} onClick={() => setSession(session.id)} className="bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded">
                     <div>{session.title}</div>
