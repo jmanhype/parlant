@@ -11,3 +11,7 @@ setup-cache:
 
 @validate *args: setup-cache
   EMCIE_HOME={{EMCIE_HOME}} poetry run emcie-server check {{args}}
+
+
+test-ci-initial:
+  poetry run pytest -v --plan=initial --tap-combined --capture=tee-sys | tee testresults.log

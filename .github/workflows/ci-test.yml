@@ -15,6 +15,9 @@ jobs:
         python-version: ["3.12"]
         poetry-version: ["1.8"]
 
+    env:
+      SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+    
     steps:  
     - name: checkout branch commit
       uses: actions/checkout@v4
@@ -22,36 +25,55 @@ jobs:
     - name: 'Set up Python (cache: pip)'
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version}}
+        python-version: ${{ matrix.python-version }}
         cache: 'pip'
 
     - name: Initial Configs and Install Poetry
       run: |
-        pip install poetry==${{ matrix.poetry-version}}
+        pip install poetry==${{ matrix.poetry-version }}
         git config --local core.hooksPath .githooks/
         chmod +x .githooks/pre-commit .githooks/pre-push
     
     - name: Set up Poetry Cache
       uses: actions/setup-python@v5
       with:
+        python-version: ${{ matrix.python-version }}
         cache: 'poetry'
+
+    - name: Setup SSH 
+      run: |
+        ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+        ssh-add - <<< "${{ secrets.MC_DEPLOY_PTSTS }}" 
 
     - name: Install packages
       run: python scripts/install_packages.py
-      continue-on-error: false   
 
     - name: Test
+      continue-on-error: false
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         cd server
-        poetry run pytest -v
-
-    - name: test log artifact
+        if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "develop" ]]; then
+          PLAN="initial"
+        elif [[ "${{ github.event_name }}" == "push" && "${{ github.base_ref }}" == "develop" ]]; then
+          PLAN="initial"
+        elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "main" ]]; then
+          PLAN="disabled"
+        elif [[ "${{ github.event_name }}" == "push" && "${{ github.base_ref }}" == "main" ]]; then
+          PLAN="disabled"
+        else
+          echo "how did we get here?"
+          PLAN="disabled"
+        fi
+        poetry run pytest -v --plan=$PLAN --tap-combined --capture=tee-sys | tee testresults.log 
+    
+    - name: test log artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: testresults_tap
-        path: server/testresults.tap
-    
-        
+        name: testresults
+        path: |
+          server/testresults.tap
+          server/testresults.log
+          
