@@ -18,7 +18,7 @@ class Agent:
     name: str
     description: Optional[str]
     creation_utc: datetime
-    max_engine_iterations: Optional[int]
+    max_engine_iterations: int
 
 
 class AgentStore(ABC):
@@ -28,6 +28,7 @@ class AgentStore(ABC):
         name: str,
         description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
+        max_engine_iterations: Optional[int] = None,
     ) -> Agent: ...
 
     @abstractmethod
@@ -43,7 +44,7 @@ class _AgentDocument(TypedDict, total=False):
     creation_utc: str
     name: str
     description: Optional[str]
-    max_engine_iterations: Optional[int]
+    max_engine_iterations: int
 
 
 class AgentDocumentStore(AgentStore):
@@ -85,6 +86,7 @@ class AgentDocumentStore(AgentStore):
         max_engine_iterations: Optional[int] = None,
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
+        max_engine_iterations = max_engine_iterations or 3
 
         agent = Agent(
             id=AgentId(generate_id()),

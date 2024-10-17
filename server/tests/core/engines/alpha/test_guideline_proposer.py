@@ -55,6 +55,7 @@ def propose_guidelines(
             creation_utc=datetime.now(timezone.utc),
             name="Test Agent",
             description="You are an agent that works for Emcie",
+            max_engine_iterations=3,
         )
     ]
 
