@@ -18,6 +18,7 @@ class Agent:
     name: str
     description: Optional[str]
     creation_utc: datetime
+    max_engine_iterations: Optional[int]
 
 
 class AgentStore(ABC):
@@ -42,6 +43,7 @@ class _AgentDocument(TypedDict, total=False):
     creation_utc: str
     name: str
     description: Optional[str]
+    max_engine_iterations: Optional[int]
 
 
 class AgentDocumentStore(AgentStore):
@@ -63,6 +65,7 @@ class AgentDocumentStore(AgentStore):
             creation_utc=agent.creation_utc.isoformat(),
             name=agent.name,
             description=agent.description,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     def _deserialize(self, agent_document: _AgentDocument) -> Agent:
@@ -71,6 +74,7 @@ class AgentDocumentStore(AgentStore):
             creation_utc=datetime.fromisoformat(agent_document["creation_utc"]),
             name=agent_document["name"],
             description=agent_document["description"],
+            max_engine_iterations=agent_document["max_engine_iterations"],
         )
 
     async def create_agent(
@@ -78,6 +82,7 @@ class AgentDocumentStore(AgentStore):
         name: str,
         description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
+        max_engine_iterations: Optional[int] = None,
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
@@ -86,6 +91,7 @@ class AgentDocumentStore(AgentStore):
             name=name,
             description=description,
             creation_utc=creation_utc,
+            max_engine_iterations=max_engine_iterations,
         )
 
         await self._collection.insert_one(document=self._serialize(agent=agent))
