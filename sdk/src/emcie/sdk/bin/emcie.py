@@ -126,6 +126,25 @@ class Actions:
         return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
+    def patch_agent(
+        ctx: click.Context,
+        agent_id: str,
+        description: Optional[str] = None,
+        max_engine_iterations: Optional[int] = None,
+    ) -> None:
+        patch_data: dict[str, Any] = {}
+        if description is not None:
+            patch_data["description"] = description
+        if max_engine_iterations is not None:
+            patch_data["max_engine_iterations"] = max_engine_iterations
+
+        response = requests.patch(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
+            json=patch_data,
+        )
+        response.raise_for_status()
+
+    @staticmethod
     def create_session(
         ctx: click.Context,
         agent_id: str,
@@ -495,6 +514,19 @@ class Interface:
         agents = Actions.list_agents(ctx)
         assert agents
         return str(agents[0]["id"])
+
+    @staticmethod
+    def patch_agent(
+        ctx: click.Context,
+        agent_id: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        try:
+            Actions.patch_agent(ctx, agent_id, description, max_engine_iterations)
+            Interface._write_success(f"Updated agent (id={agent_id})")
+        except Exception as e:
+            Interface._write_error(f"error: {type(e).__name__}: {e}")
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
@@ -1033,6 +1065,24 @@ async def async_main() -> None:
     @click.pass_context
     def agent_list(ctx: click.Context) -> None:
         Interface.list_agents(ctx)
+
+    @agent.command("update", help="Update an agent's details")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option(
+        "-m", "--max-engine-iterations", type=int, help="Max engine iterations", required=False
+    )
+    @click.pass_context
+    def agent_update(
+        ctx: click.Context,
+        agent_id: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.patch_agent(ctx, agent_id, description, max_engine_iterations)
 
     @agent.command(
         "chat",

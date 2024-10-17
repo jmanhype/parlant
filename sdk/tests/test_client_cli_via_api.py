@@ -171,6 +171,46 @@ async def get_context_variable_value(agent_id: str, variable_id: str, key: str) 
         return response.json()
 
 
+async def test_that_agent_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    new_description = "Updated description"
+    new_max_engine_iterations = 5
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        exec_args = [
+            "poetry",
+            "run",
+            "python",
+            CLI_CLIENT_PATH.as_posix(),
+            "--server",
+            SERVER_ADDRESS,
+            "agent",
+            "update",
+            "--description",
+            new_description,
+            "--max-engine-iterations",
+            str(new_max_engine_iterations),
+        ]
+
+        process = await asyncio.create_subprocess_exec(*exec_args)
+        await process.wait()
+        assert process.returncode == os.EX_OK
+
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            response = await client.get(f"{SERVER_ADDRESS}/agents")
+            response.raise_for_status()
+            agent = response.json()["agents"][0]
+
+            assert agent["description"] == new_description
+            assert agent["max_engine_iterations"] == new_max_engine_iterations
+
+
 async def test_that_a_term_can_be_created_with_synonyms(
     context: ContextOfTest,
 ) -> None:
