@@ -39,7 +39,7 @@ def get_account_balance(account_name: str) -> ToolResult:
         "Larry David": 450000000,
         "John Smith": 100,
     }
-    return ToolResult(balances.get(account_name, -1))
+    return ToolResult(balances.get(account_name, -555))
 
 
 def get_account_loans(account_name: str) -> ToolResult:

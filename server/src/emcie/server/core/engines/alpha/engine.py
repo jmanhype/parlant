@@ -77,8 +77,6 @@ class AlphaEngine(Engine):
         self._tool_event_producer = tool_event_producer
         self._message_event_producer = message_event_producer
 
-        self._max_tool_call_iterations = 5
-
     async def process(
         self,
         context: Context,
@@ -208,7 +206,7 @@ class AlphaEngine(Engine):
                 else:
                     break
 
-                if tool_call_iterations == self._max_tool_call_iterations:
+                if tool_call_iterations == agent.max_engine_iterations:
                     self._logger.warning(
                         f"Reached max tool call iterations ({tool_call_iterations})"
                     )
