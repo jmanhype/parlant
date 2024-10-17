@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, cast
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from emcie.server.core.persistence.document_database import (
@@ -10,6 +10,11 @@ from emcie.server.core.persistence.document_database import (
 )
 
 AgentId = NewType("AgentId", str)
+
+
+class AgentUpdateParams(TypedDict, total=False):
+    description: Optional[str]
+    max_engine_iterations: int
 
 
 @dataclass(frozen=True)
@@ -36,6 +41,13 @@ class AgentStore(ABC):
 
     @abstractmethod
     async def read_agent(self, agent_id: AgentId) -> Agent: ...
+
+    @abstractmethod
+    async def update_agent(
+        self,
+        agent_id: AgentId,
+        params: AgentUpdateParams,
+    ) -> None: ...
 
 
 class _AgentDocument(TypedDict, total=False):
@@ -116,3 +128,13 @@ class AgentDocumentStore(AgentStore):
             raise ItemNotFoundError(item_id=UniqueId(agent_id))
 
         return self._deserialize(agent_document)
+
+    async def update_agent(
+        self,
+        agent_id: AgentId,
+        params: AgentUpdateParams,
+    ) -> None:
+        await self._collection.update_one(
+            filters={"id": {"$eq": agent_id}},
+            params=cast(_AgentDocument, params),
+        )

@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from emcie.server.core.common import DefaultBaseModel
-from emcie.server.core.agents import AgentId, AgentStore
+from emcie.server.core.agents import AgentId, AgentStore, AgentUpdateParams
 
 
 class AgentDTO(DefaultBaseModel):
@@ -26,6 +26,11 @@ class CreateAgentResponse(DefaultBaseModel):
 
 class ListAgentsResponse(DefaultBaseModel):
     agents: list[AgentDTO]
+
+
+class PatchAgentRequest(DefaultBaseModel):
+    description: Optional[str] = None
+    max_engine_iterations: Optional[int] = None
 
 
 def create_router(
@@ -61,5 +66,22 @@ def create_router(
                 for a in agents
             ]
         )
+
+    @router.patch("/{agent_id}")
+    async def patch_agent(
+        agent_id: AgentId,
+        request: PatchAgentRequest,
+    ) -> Response:
+        params: AgentUpdateParams = {}
+
+        if request.description:
+            params["description"] = request.description
+
+        if request.max_engine_iterations:
+            params["max_engine_iterations"] = request.max_engine_iterations
+
+        await agent_store.update_agent(agent_id=agent_id, params=params)
+
+        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     return router
