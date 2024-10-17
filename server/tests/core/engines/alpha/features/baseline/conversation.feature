@@ -74,3 +74,17 @@ Feature: Conversation
         Then no message events are emitted
         And a status event is emitted, cancelling the response to event 0
         And a status event is emitted, ready for further engagement after reacting to event 0
+
+    Scenario: The agent's response changes after deleting the last two messages
+        Given an agent
+        And a guideline to recommend Pepsi when the user says they are thirsty
+        And an empty session
+        And a user message, "Hello"
+        And an agent message, "Hi there! How can I help you today?"
+        And a user message, "I'm thirsty"
+        And an agent message, "I can get you a drink. How about a Pepsi?"
+        And a user message, "Actually, can I have water instead?"
+        And delete the last 2 messages
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an offering of a Pepsi
