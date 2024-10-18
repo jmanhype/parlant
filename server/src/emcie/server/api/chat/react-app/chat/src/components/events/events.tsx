@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { postData } from "@/utils/api";
 import { Skeleton } from "../ui/skeleton";
 import { Check, CheckCheck } from "lucide-react";
+import Markdown from "react-markdown";
 
 interface Props {
     sessionId: string;
@@ -86,7 +87,7 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
                 {messages.map((event, i) => (
                     <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
                         <div className="relative">
-                            {event?.data?.message}
+                            <Markdown>{event?.data?.message}</Markdown>
                             {/* <div className="absolute text-xs">{event.creation_utc.toLocaleString()}</div> */}
                         </div>
                         {event.source === 'client' && event?.serverStatus === 'acknowledged' && <Check className="self-end" height={15}/>}

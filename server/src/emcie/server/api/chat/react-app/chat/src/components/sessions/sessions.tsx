@@ -14,7 +14,7 @@ export default function Sessions({setSession, sessionId}: Props): ReactElement {
     const [selectedAgent, setSelectedAgent] = useState<string>();
 
     const createNewSession = () => {
-       return postData('sessions?allow_greeting=true', {end_user_id: '1122', agent_id: selectedAgent, title: 'New Conversaion' })
+       return postData('sessions?allow_greeting=true', {end_user_id: '1122', agent_id: selectedAgent, title: 'New Conversation' })
         .then(res => setSession(res.session.id))
     }
     return (

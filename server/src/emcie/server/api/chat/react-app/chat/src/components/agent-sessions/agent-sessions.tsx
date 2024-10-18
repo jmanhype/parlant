@@ -29,7 +29,7 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
 
     const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
         e.stopPropagation();
-        return deleteData(`sessions/${sessionId}`).then(() => setRefetch(!refetch))
+        return deleteData(`sessions/${sessionId}`).then(() => {setRefetch(!refetch); setSession(null)})
     }
 
     return (
