@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // const baseUrl = process.env;
 // console.log(baseUrl);
 
@@ -14,30 +14,43 @@ function objToUrlParams(obj: object) {
 }
 
 export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number)[] = []): {data: T | null, loading: boolean, error: string | null} {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [data, setData] = useState<null | any>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<null | string>(null);
   const params = body ? objToUrlParams(body) : '';
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`http://localhost:8000/${url}${params}`);
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        const result = await response.json();
-        setData(result);
-        setError(null)
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = useCallback(() => {
+    const controller = new AbortController(); // Create an AbortController
+    const { signal } = controller; // Get the abort signal
+    setLoading(true);
 
-    fetchData();
+    fetch(`http://localhost:8000/${url}${params}`, { signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Error: ${response.statusText}`);
+        }
+        const result = await response.json(); // or response.text() / response.blob() based on your API
+        setData(result);
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') {
+          console.log('Fetch aborted');
+        } else {
+          setError(err.message);
+        }
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
   }, [url, ...dependencies]);
 
+  useEffect(() => {
+    const abortFetch = fetchData();
+
+    return () => {
+      abortFetch();
+    };
+  }, [fetchData]);
+
   return { data, loading, error };
-}
+};

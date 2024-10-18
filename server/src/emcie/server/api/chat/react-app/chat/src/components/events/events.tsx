@@ -38,6 +38,15 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
     const {data: lastMessages, error: lastMessageError, loading: lastMessageLoading} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
 
     useEffect(() => {
+        setMessage('');
+        setLastOffset(0);
+        setMessages([]);
+        setIsSubmitDisabled(false);
+        setShowSkeleton(false);
+        setRefetch(!refetch)
+    }, [sessionId]);
+
+    useEffect(() => {
         const lastEvent = lastMessages?.events?.at(-1);
         if (!lastEvent) return;
         const offset = lastEvent?.offset;
