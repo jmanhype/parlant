@@ -13,7 +13,7 @@ function objToUrlParams(obj: object) {
   return `?${params.join('&')}`;
 }
 
-export default function useFetch(url: string, body?: object, dependencies: (boolean | number)[] = []) {
+export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number)[] = []): {data: T | null, loading: boolean, error: string | null} {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,7 +29,7 @@ export default function useFetch(url: string, body?: object, dependencies: (bool
         const result = await response.json();
         setData(result);
         setError(null)
-      } catch (err) {
+      } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
