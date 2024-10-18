@@ -6,7 +6,7 @@ import { postData } from "@/utils/api";
 
 interface Props {
     setSession: Dispatch<SetStateAction<null>>;
-    sessionId: string;
+    sessionId: string | null;
 }
 
 
@@ -18,10 +18,10 @@ export default function Sessions({setSession, sessionId}: Props): ReactElement {
         .then(res => setSession(res.session.id))
     }
     return (
-        <div className="flex flex-col items-center h-full overflow-auto">
+        <div className="flex flex-col items-center h-full overflow-auto pt-4">
             <div className="flex justify-center gap-4">
                 <AgentsSelect value={selectedAgent} setSelectedAgent={setSelectedAgent}/>
-                {selectedAgent && <Button onClick={() => createNewSession()}>+</Button>}
+                <Button disabled={!selectedAgent} onClick={() => createNewSession()}>+</Button>
             </div>
             {selectedAgent && <AgentSessions agentId={selectedAgent} sessionId={sessionId} setSession={setSession}/>}
         </div>

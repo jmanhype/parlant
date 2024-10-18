@@ -75,7 +75,7 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
         <div className="flex flex-col items-center pt-4 h-full">
             <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4">
                 {messages.map((event, i) => (
-                    <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-red-100 self-start' : 'bg-blue-100 self-end') + ' rounded-lg p-2 m-4 mb-1 w-fit flex gap-1 items-center relative'}>
+                    <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
                         <div className="relative">
                             {event?.data?.message}
                             {/* <div className="absolute text-xs">{event.creation_utc.toLocaleString()}</div> */}
@@ -85,12 +85,12 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
                     </div>
                 ))}
                 {showSkeleton && 
-                <div ref={lastMessageRef} className="bg-blue-100 self-end rounded-lg p-2 m-4 mb-1 w-[250px]">
-                    <Skeleton className="w-[200px] h-[20px] rounded-full bg-gray-200" /> 
-                    <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-200 mt-2" /> 
+                <div ref={lastMessageRef} className="border bg-white border-black self-end rounded-lg p-2 m-4 mb-1 w-[250px]">
+                    <Skeleton className="w-[200px] h-[20px] rounded-full bg-gray-400" /> 
+                    <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-400 mt-2" /> 
                 </div>}
             </div>
-            <div className="w-full flex items-center gap-4 p-1">
+            <div className="w-full flex items-center gap-4 p-4 pt-0">
                 <Textarea value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
                 <Button ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
             </div>
