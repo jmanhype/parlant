@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { deleteData, patchData } from "@/utils/api";
 import { Check, Edit, Trash, X } from "lucide-react";
 import { Input } from "../ui/input";
+import Tooltip from "../ui/custom/tooltip";
 
 interface Props {
     agentId: string | undefined;
@@ -60,11 +61,11 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
                         {isEditingTitle[session.id] && <Input ref={sessionNameRef} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
                     </div>
                     <div>
-                        {!isEditingTitle[session.id] && <Button title="edit" variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => editTitle(e, session.id)}><Edit/></Button>}
-                        {!isEditingTitle[session.id] && <Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => deleteSession(e, session.id)}><Trash/></Button>}
+                        {!isEditingTitle[session.id] && <Tooltip value='Edit'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => editTitle(e, session.id)}><Edit/></Button></Tooltip>}
+                        {!isEditingTitle[session.id] && <Tooltip value='Delete'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => deleteSession(e, session.id)}><Trash/></Button></Tooltip>}
                         
-                        {isEditingTitle[session.id] && <Button variant='ghost' className="w-[40px] p-0" onClick={cancel}><X/></Button>}
-                        {isEditingTitle[session.id] && <Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => saveTitleChange(e, session.id)}><Check/></Button>}
+                        {isEditingTitle[session.id] && <Tooltip value='Cancel'><Button variant='ghost' className="w-[40px] p-0" onClick={cancel}><X/></Button></Tooltip>}
+                        {isEditingTitle[session.id] && <Tooltip value='Save'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => saveTitleChange(e, session.id)}><Check/></Button></Tooltip>}
                     </div>
                 </div>
             ))}
