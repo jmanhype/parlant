@@ -8,7 +8,7 @@ import { Input } from "../ui/input";
 interface Props {
     agentId: string | undefined;
     setSession: Dispatch<SetStateAction<null>>;
-    sessionId: string;
+    sessionId: string | null;
 }
 
 interface Session {
@@ -22,7 +22,7 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
     const [refetch, setRefetch] = useState(false);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [isEditingTitle, setIsEditingTitle] = useState({});
-    const {data} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [refetch]);
+    const {data} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [refetch, agentId]);
 
     useEffect(() => {
         if (data?.sessions) setSessions(data?.sessions);
@@ -38,6 +38,7 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
     const editTitle = async (e: React.MouseEvent, sessionId: string) => {
         e.stopPropagation();
         setIsEditingTitle({[sessionId]: true});
+        setTimeout(() => sessionNameRef?.current?.select(), 0);
     }
 
     const saveTitleChange = (e: React.MouseEvent, sessionId: string) => {
@@ -54,9 +55,9 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
         <div className="flex justify-center pt-4 flex-col gap-4 w-[80%]">
             {sessions.map(session => (
                 <div onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
-                    <div>
-                        {!isEditingTitle[session.id] && <div>{session.title}</div>}
-                        {isEditingTitle[session.id] && <Input ref={sessionNameRef} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} className="bg-transparent text-[unset] h-fit p-0 ps-1" onChange={(e: React.ChangeEvent) => editTitle(e, session.id)}/>}
+                    <div className="flex-1 whitespace-nowrap overflow-hidden">
+                        {!isEditingTitle[session.id] && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
+                        {isEditingTitle[session.id] && <Input ref={sessionNameRef} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
                     </div>
                     <div>
                         {!isEditingTitle[session.id] && <Button title="edit" variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => editTitle(e, session.id)}><Edit/></Button>}
