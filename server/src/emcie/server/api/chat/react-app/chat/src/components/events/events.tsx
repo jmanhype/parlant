@@ -6,6 +6,7 @@ import { postData } from "@/utils/api";
 import { Skeleton } from "../ui/skeleton";
 import { Check, CheckCheck } from "lucide-react";
 import Markdown from "react-markdown";
+import { groupBy } from "@/utils/obj";
 
 interface Props {
     sessionId: string;
@@ -36,7 +37,7 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
     // const {data, error, loading} = useFetch(`sessions/${sessionId}/events`);
-    const {data: lastMessages, error: lastMessageError, loading: lastMessageLoading} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
+    const {data: lastMessages} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
 
     useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages]);
 
@@ -54,9 +55,9 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
         if (!lastEvent) return;
         const offset = lastEvent?.offset;
         if (offset) setLastOffset(offset + 1);
-        const correlationsMap = Object.groupBy(lastMessages?.events || [], (item: Event) => item?.correlation_id.match(/^[^.]+/));
+        const correlationsMap = groupBy(lastMessages?.events || [], (item: Event) => item?.correlation_id.split('.')[0]);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
-        const withStatusMessages = newMessages.map(newMessage => ({...newMessage, creation_utc: new Date(newMessage.creation_utc), serverStatus: correlationsMap?.[newMessage.correlation_id.match(/^[^.]+/)]?.at(-1)?.data?.status}));
+        const withStatusMessages = newMessages.map(newMessage => ({...newMessage, creation_utc: new Date(newMessage.creation_utc), serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         setMessages(messages => {
             const last = messages.at(-1);
            if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap?.[last?.correlation_id]?.at(-1)?.data?.status;
@@ -91,8 +92,8 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
                             <Markdown>{event?.data?.message}</Markdown>
                             {/* <div className="absolute text-xs">{event.creation_utc.toLocaleString()}</div> */}
                         </div>
-                        {event.source === 'client' && event?.serverStatus === 'acknowledged' && <Check className="self-end" height={15}/>}
-                        {event.source === 'client' && {processing: true, typing: true, ready: true}[event?.serverStatus] && <CheckCheck className="self-end" height={15}/>}
+                        {event.source === 'client' && event.serverStatus === 'acknowledged' && <Check className="self-end" height={15}/>}
+                        {event.source === 'client' && event.serverStatus && {processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end" height={15}/>}
                     </div>
                 ))}
                 {showSkeleton && 

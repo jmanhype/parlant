@@ -2,9 +2,14 @@ import { ReactElement } from "react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import useFetch from "@/hooks/useFetch";
 
+interface Agent {
+    id: string;
+    name: string;
+}
+
 
 export default function AgentsSelect({value, setSelectedAgent}: {value: string | undefined, setSelectedAgent: (val: string) => void}): ReactElement {
-    const {data, error, loading} = useFetch('agents');
+    const {data} = useFetch<{agents: Agent[]}>('agents');
     return (
         <Select value={value} onValueChange={(val: string) => setSelectedAgent(val)}>
             <SelectTrigger className="w-[180px]">

@@ -7,7 +7,7 @@ import { Input } from "../ui/input";
 
 interface Props {
     agentId: string | undefined;
-    setSession: Dispatch<SetStateAction<null>>;
+    setSession: Dispatch<SetStateAction<null | string>>;
     sessionId: string | null;
 }
 
@@ -21,7 +21,7 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const [refetch, setRefetch] = useState(false);
     const [sessions, setSessions] = useState<Session[]>([]);
-    const [isEditingTitle, setIsEditingTitle] = useState({});
+    const [isEditingTitle, setIsEditingTitle] = useState<{ [key: string]: boolean }>({});
     const {data} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [refetch, agentId]);
 
     useEffect(() => {

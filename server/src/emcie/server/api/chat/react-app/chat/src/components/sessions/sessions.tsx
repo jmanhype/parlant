@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { postData } from "@/utils/api";
 
 interface Props {
-    setSession: Dispatch<SetStateAction<null>>;
+    setSession: Dispatch<SetStateAction<string | null>>;
     sessionId: string | null;
 }
 

@@ -3,7 +3,7 @@
 const BASE_URL = 'http://localhost:8000';
 
 // A helper function to handle fetch requests
-const request = async (url: string, options = {}) => {
+const request = async (url: string, options: RequestInit = {}) => {
   try {
     const response = await fetch(url, options);
     if (!response.ok) {
@@ -45,7 +45,7 @@ export const patchData = async (endpoint: string, data: object) => {
 };
 
 // DELETE request
-export const deleteData = async (endpoint) => {
+export const deleteData = async (endpoint: string) => {
   return request(`${BASE_URL}/${endpoint}`, {
     method: 'DELETE',
   });

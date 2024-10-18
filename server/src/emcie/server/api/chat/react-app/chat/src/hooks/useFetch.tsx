@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 // const baseUrl = process.env;
 // console.log(baseUrl);
 
-function objToUrlParams(obj: object) {
+function objToUrlParams(obj: any) {
   const params = [];
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {

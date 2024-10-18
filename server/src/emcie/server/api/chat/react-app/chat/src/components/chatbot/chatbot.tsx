@@ -3,7 +3,7 @@ import Sessions from "../sessions/sessions";
 import SessionEvents from "../events/events";
 
 export default function Chatbot(): ReactElement {
-    const [sessionId, setSessionId] = useState(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     return (
         <div className="main bg-slate-200 flex justify-center items-center h-screen">
             <div className="flex justify-between items-center w-4/5 h-[80%] border border-gray-800 border-solid rounded-lg">
