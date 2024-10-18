@@ -44,7 +44,7 @@ export default function SessionEvents({sessionId}: Props): ReactElement {
         setMessages([]);
         setIsSubmitDisabled(false);
         setShowSkeleton(false);
-        setRefetch(!refetch)
+        setRefetch(!refetch);
     }, [sessionId]);
 
     useEffect(() => {

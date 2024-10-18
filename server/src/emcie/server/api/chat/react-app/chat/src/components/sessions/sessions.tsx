@@ -19,7 +19,7 @@ export default function Sessions({setSession, sessionId}: Props): ReactElement {
     }
     return (
         <div className="flex flex-col items-center h-full overflow-auto pt-4">
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-between gap-4 w-[80%]">
                 <AgentsSelect value={selectedAgent} setSelectedAgent={setSelectedAgent}/>
                 <Button disabled={!selectedAgent} onClick={() => createNewSession()}>+</Button>
             </div>

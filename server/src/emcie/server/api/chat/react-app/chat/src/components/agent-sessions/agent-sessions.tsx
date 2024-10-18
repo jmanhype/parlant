@@ -35,7 +35,7 @@ export default function AgentSessions({agentId, setSession, sessionId}: Props): 
     return (
         <div className="flex justify-center pt-4 flex-col gap-4 w-[80%]">
             {sessions.map(session => (
-                <div onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 " + (session.id === sessionId ? 'bg-blue-600 text-white' : '')}>
+                <div onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
                     <div>
                         <div>{session.title}</div>
                     </div>
