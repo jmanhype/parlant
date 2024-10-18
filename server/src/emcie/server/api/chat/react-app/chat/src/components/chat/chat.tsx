@@ -26,7 +26,7 @@ interface Event {
 }
 
 
-export default function SessionEvents({sessionId}: Props): ReactElement {
+export default function Chat({sessionId}: Props): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const submitButtonRef = useRef<HTMLButtonElement>(null);
 
