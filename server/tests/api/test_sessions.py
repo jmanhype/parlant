@@ -213,6 +213,23 @@ async def test_that_sessions_can_be_listed_by_agent_id(
             assert listed_session["end_user_id"] == created_session.end_user_id
 
 
+async def test_that_sessions_can_be_listed_by_end_user_id(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    _ = await create_session(container, agent_id=agent_id, title="first-session")
+    _ = await create_session(container, agent_id=agent_id, title="second-session")
+    _ = await create_session(
+        container, agent_id=agent_id, title="three-session", end_user_id=EndUserId("Joe")
+    )
+
+    data = client.get("/sessions", params={"end_user_id": "Joe"}).raise_for_status().json()
+
+    assert len(data["sessions"]) == 1
+    assert data["sessions"][0]["end_user_id"] == "Joe"
+
+
 def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
     client: TestClient,
     long_session_id: SessionId,
