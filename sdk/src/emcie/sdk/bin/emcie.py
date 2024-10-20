@@ -526,7 +526,7 @@ class Interface:
             Actions.patch_agent(ctx, agent_id, description, max_engine_iterations)
             Interface._write_success(f"Updated agent (id={agent_id})")
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
@@ -790,7 +790,7 @@ class Interface:
                 )
             )
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
@@ -798,7 +798,7 @@ class Interface:
             Actions.remove_guideline(ctx, agent_id, guideline_id)
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
@@ -813,7 +813,7 @@ class Interface:
                 include_indirect=True,
             )
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> None:
@@ -827,7 +827,7 @@ class Interface:
             Interface._render_guidelines(guidelines)
 
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def create_entailment(
@@ -848,7 +848,7 @@ class Interface:
             Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
             Interface._print_table([connection])
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def remove_entailment(
@@ -866,7 +866,7 @@ class Interface:
             )
             Interface._write_success(f"Removed entailment (id={connection_id})")
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
@@ -946,7 +946,7 @@ class Interface:
             Actions.remove_variable(ctx, agent_id, variable["id"])
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def _render_variable_key_value_pairs(
@@ -986,7 +986,7 @@ class Interface:
             Interface._write_success(f"Added value (id={cv_value['id']})")
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def view_variable(
@@ -1014,7 +1014,7 @@ class Interface:
                 read_variable_response["key_value_pairs"],
             )
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
     def view_variable_value(
@@ -1028,7 +1028,7 @@ class Interface:
             value = Actions.read_variable_value(ctx, agent_id, variable["id"], key)
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
-            Interface._write_error(f"error: {type(e).__name__}: {e}")
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
 
 async def async_main() -> None:
@@ -1067,11 +1067,16 @@ async def async_main() -> None:
         Interface.list_agents(ctx)
 
     @agent.command("update", help="Update an agent's details")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.option("-d", "--description", type=str, help="Agent description", required=False)
     @click.option(
-        "-m", "--max-engine-iterations", type=int, help="Max engine iterations", required=False
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
     )
+    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option("--max-engine-iterations", type=int, help="Max engine iterations", required=False)
     @click.pass_context
     def agent_update(
         ctx: click.Context,
@@ -1102,7 +1107,14 @@ async def async_main() -> None:
         pass
 
     @session.command("new", help="Create a new session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
@@ -1118,7 +1130,14 @@ async def async_main() -> None:
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("view", help="View session content")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("session_id")
     @click.pass_context
     def session_view(ctx: click.Context, agent_id: str, session_id: str) -> None:
@@ -1128,7 +1147,14 @@ async def async_main() -> None:
         Interface.view_session(ctx, session_id)
 
     @session.command("post", help="Post user message to session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
@@ -1139,7 +1165,14 @@ async def async_main() -> None:
         Interface.create_event(ctx, session_id, message)
 
     @session.command("chat", help="Enter chat mode within the session")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("session_id")
     @click.pass_context
     def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
@@ -1153,7 +1186,14 @@ async def async_main() -> None:
         pass
 
     @glossary.command("add", help="Add a new term to the glossary")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("name", type=str)
     @click.argument("description", type=str)
     @click.option(
@@ -1176,7 +1216,14 @@ async def async_main() -> None:
         Interface.create_term(ctx, agent_id, name, description, synonyms)
 
     @glossary.command("remove", help="Remove a term from the glossary")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("name", type=str)
     @click.pass_context
     def glossary_remove(
@@ -1189,7 +1236,14 @@ async def async_main() -> None:
         Interface.remove_term(ctx, agent_id, name)
 
     @glossary.command("list", help="List all terms in the glossary")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.pass_context
     def glossary_list(
         ctx: click.Context,
@@ -1218,7 +1272,14 @@ async def async_main() -> None:
         default=True,
         help="Determine if guideline connections should be indexed",
     )
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("predicate", type=str)
     @click.argument("action", type=str)
     @click.pass_context
@@ -1243,7 +1304,14 @@ async def async_main() -> None:
         )
 
     @guideline.command("remove", help="Remove a guideline")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("guideline_id", type=str)
     @click.pass_context
     def guideline_remove(
@@ -1261,7 +1329,14 @@ async def async_main() -> None:
         )
 
     @guideline.command("view", help="View a guideline and its connections")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("guideline_id", type=str)
     @click.pass_context
     def guideline_view(
@@ -1279,7 +1354,14 @@ async def async_main() -> None:
         )
 
     @guideline.command("list", help="List all guidelines for an agent")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.pass_context
     def guideline_list(
         ctx: click.Context,
@@ -1294,7 +1376,14 @@ async def async_main() -> None:
         )
 
     @guideline.command("entail", help="Create an entailment between two guidelines")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option(
         "--suggestive/-s",
         is_flag=True,
@@ -1324,7 +1413,14 @@ async def async_main() -> None:
         )
 
     @guideline.command("disentail", help="Remove an entailment between two guidelines")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("source_guideline_id", type=str)
     @click.argument("target_guideline_id", type=str)
     @click.pass_context
@@ -1349,7 +1445,14 @@ async def async_main() -> None:
         pass
 
     @variable.command("list", help="List all variables for an agent")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.pass_context
     def variable_list(
         ctx: click.Context,
@@ -1364,7 +1467,14 @@ async def async_main() -> None:
         )
 
     @variable.command("add", help="Add a new variable to an agent")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option("-d", "--description", type=str, help="Variable description", required=False)
     @click.argument("name", type=str)
     @click.pass_context
@@ -1385,7 +1495,14 @@ async def async_main() -> None:
         )
 
     @variable.command("remove", help="Remove a variable from an agent")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("name", type=str)
     @click.pass_context
     def variable_remove(
@@ -1403,7 +1520,14 @@ async def async_main() -> None:
         )
 
     @variable.command("set", help="Set a variable's value")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("name", type=str)
     @click.argument("key", type=str)
     @click.argument("value", type=str)
@@ -1427,7 +1551,14 @@ async def async_main() -> None:
         )
 
     @variable.command("get", help="Get the value(s) of a variable")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.argument("name", type=str)
     @click.argument("key", type=str, required=False)
     @click.pass_context

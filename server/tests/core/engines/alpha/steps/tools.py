@@ -184,7 +184,7 @@ def given_a_tool(
     )
 
 
-@step(given, parsers.parse("an agent with a maximum of {max_engine_iterations} engine iteration"))
+@step(given, parsers.parse("an agent with a maximum of {max_engine_iterations} engine iterations"))
 def given_max_engine_iteration(
     context: ContextOfTest,
     agent_id: AgentId,
