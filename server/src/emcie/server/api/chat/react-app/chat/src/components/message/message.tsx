@@ -10,10 +10,8 @@ interface Props {
 const formatDateTime = (targetDate: Date | string): string => {
     if (typeof targetDate === 'string') targetDate = new Date(targetDate);
     const now = new Date();
-    const timeDifference = now.getTime() - targetDate.getTime();
-    const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
 
-    if (timeDifference < oneDayInMilliseconds) return targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
+    if (now.toDateString() === targetDate.toDateString()) return targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
     return `${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false})}`;
 }
 
