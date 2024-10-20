@@ -70,6 +70,25 @@ def given_a_user_message(
     return session.id
 
 
+@step(
+    given, parsers.parse("delete the last {num_messages:d} messages"), target_fixture="session_id"
+)
+def given_delete_last_n_messages(
+    context: ContextOfTest,
+    session_id: SessionId,
+    num_messages: int,
+) -> SessionId:
+    store = context.container[SessionStore]
+    session = context.sync_await(store.read_session(session_id=session_id))
+
+    events = context.sync_await(store.list_events(session_id=session.id))
+
+    for event in events[-num_messages:]:
+        context.sync_await(store.delete_event(event_id=event.id))
+
+    return session.id
+
+
 @step(then, "a single message event is emitted")
 def then_a_single_message_event_is_emitted(
     emitted_events: list[EmittedEvent],
