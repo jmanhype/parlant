@@ -20,10 +20,12 @@ interface Event {
     offset: number;
     creation_utc: Date;
     data: {
-        status: string;
+        status?: string;
         message: string;
     };
 }
+
+const emptyPendingMessage: Event = {kind: 'message', source: 'client', creation_utc: new Date(), serverStatus: 'pending', offset: 0, correlation_id: '', data: {message: ''}};
 
 const formatDateTime = (targetDate: Date | string): string => {
     if (typeof targetDate === 'string') targetDate = new Date(targetDate);
@@ -41,13 +43,14 @@ export default function Chat({sessionId}: Props): ReactElement {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const [message, setMessage] = useState('');
+    const [pendingMessage, setPendingMessage] = useState<Event>(emptyPendingMessage);
     const [lastOffset, setLastOffset] = useState(0);
     const [messages, setMessages] = useState<Event[]>([]);
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
     const {data: lastMessages, setRefetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
 
-    useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages]);
+    useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages, pendingMessage]);
 
     useEffect(() => {
         setMessage('');
@@ -63,6 +66,7 @@ export default function Chat({sessionId}: Props): ReactElement {
     useEffect(() => {
         const lastEvent = lastMessages?.events?.at(-1);
         if (!lastEvent) return;
+        if (pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         const offset = lastEvent?.offset;
         if (offset) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: Event) => item?.correlation_id.split('.')[0]);
@@ -83,9 +87,13 @@ export default function Chat({sessionId}: Props): ReactElement {
     }, [lastMessages])
 
     const postMessage = (content: string): void => {
+        setPendingMessage(pendingMessage => ({...pendingMessage, data: {message: content}}));
         setIsSubmitDisabled(true);
         setMessage('');
-        postData(`sessions/${sessionId}/events`, { kind: 'message', content }).then(() => { setRefetch(refetch => !refetch); });
+        postData(`sessions/${sessionId}/events`, { kind: 'message', content }).then(() => {
+            setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
+            setRefetch(refetch => !refetch);
+        });
     }
 
     const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -95,7 +103,7 @@ export default function Chat({sessionId}: Props): ReactElement {
     return (
         <div className="flex flex-col items-center pt-4 h-full">
             <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
-                {messages.map((event, i) => (
+                {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
                     <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
                         <div className="relative">
                             <Markdown>{event?.data?.message}</Markdown>
@@ -103,8 +111,13 @@ export default function Chat({sessionId}: Props): ReactElement {
                                 {formatDateTime(event.creation_utc)}
                             </div>
                         </div>
-                        {event.source === 'client' && event.serverStatus === 'acknowledged' && <Check className="self-end" height={15}/>}
-                        {event.source === 'client' && event.serverStatus && {processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end" height={15}/>}
+                        {event.source === 'client' && event.serverStatus &&
+                        <div className="w-6 h-full flex">
+                            {event.serverStatus === 'accepted' && <Check className="self-end" height={15}/>}
+                            {event.serverStatus === 'acknowledged' && <CheckCheck className="self-end" height={15}/>}
+                            {{processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end text-green-300" height={15}/>}
+                        </div>
+                        }
                     </div>
                 ))}
                 {showSkeleton && 

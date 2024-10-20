@@ -31,12 +31,12 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, data]);
 
-    const deleteSession = async (e: React.MouseEvent, selectedSessionId: string) => {
+    const deleteSession = async (e: React.MouseEvent, selectedSession: Session) => {
         e.stopPropagation();
-        return deleteData(`sessions/${selectedSessionId}`).then(() => {
+        return deleteData(`sessions/${selectedSession.id}`).then(() => {
             setRefetch(refetch => !refetch);
-            if (selectedSessionId === sessionId) setSession(null);
-            toast.success('Session deleted successfully', {closeButton: true});
+            if (selectedSession.id === sessionId) setSession(null);
+            toast.success(`Session "${selectedSession.title}" deleted successfully`, {closeButton: true});
         })
     }
 
@@ -72,7 +72,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
                     </div>
                     <div>
                         {!isEditingTitle[session.id] && <Tooltip value='Edit'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => editTitle(e, session.id)}><Edit/></Button></Tooltip>}
-                        {!isEditingTitle[session.id] && <Tooltip value='Delete'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => deleteSession(e, session.id)}><Trash/></Button></Tooltip>}
+                        {!isEditingTitle[session.id] && <Tooltip value='Delete'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => deleteSession(e, session)}><Trash/></Button></Tooltip>}
                         
                         {isEditingTitle[session.id] && <Tooltip value='Cancel'><Button variant='ghost' className="w-[40px] p-0" onClick={cancel}><X/></Button></Tooltip>}
                         {isEditingTitle[session.id] && <Tooltip value='Save'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => saveTitleChange(e, session.id)}><Check/></Button></Tooltip>}
