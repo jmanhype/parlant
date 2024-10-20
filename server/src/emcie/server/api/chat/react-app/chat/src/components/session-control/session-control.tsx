@@ -16,7 +16,9 @@ export default function SessionControl({setSession, sessionId}: Props): ReactEle
 
     const createNewSession = () => {
        return postData('sessions?allow_greeting=true', {end_user_id: '1122', agent_id: selectedAgent, title: 'New Conversation' })
-        .then(res => setSession(res.session.id))
+        .then(res => {
+            setSession(res.session.id);
+        })
     }
 
     return (

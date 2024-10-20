@@ -5,6 +5,7 @@ import { deleteData, patchData } from "@/utils/api";
 import { Check, Edit, Trash, X } from "lucide-react";
 import { Input } from "../ui/input";
 import Tooltip from "../ui/custom/tooltip";
+import { toast } from "sonner";
 
 interface Props {
     agentId: string | undefined;
@@ -30,9 +31,13 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, data]);
 
-    const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    const deleteSession = async (e: React.MouseEvent, selectedSessionId: string) => {
         e.stopPropagation();
-        return deleteData(`sessions/${sessionId}`).then(() => {setRefetch(refetch => !refetch); setSession(null)})
+        return deleteData(`sessions/${selectedSessionId}`).then(() => {
+            setRefetch(refetch => !refetch);
+            if (selectedSessionId === sessionId) setSession(null);
+            toast.success('Session deleted successfully', {closeButton: true});
+        })
     }
 
     const editTitle = async (e: React.MouseEvent, sessionId: string) => {
@@ -43,7 +48,12 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
 
     const saveTitleChange = (e: React.MouseEvent, sessionId: string) => {
         e.stopPropagation();
-        if (sessionNameRef?.current?.value) patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value}).then(() => {setRefetch(!refetch); setIsEditingTitle({});})
+        if (sessionNameRef?.current?.value) {
+            patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value}).then(() => {
+                setRefetch(refetch => !refetch);
+                setIsEditingTitle({});
+                toast.success('title changed successfully', {closeButton: true});
+            })}
     };
 
     const cancel = (e: React.MouseEvent) => {
