@@ -6,6 +6,7 @@ interface useFetchResponse<T> {
   data: T | null;
   loading: boolean;
   error: null | {message: string};
+  setRefetch: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function objToUrlParams(obj: any) {
@@ -19,11 +20,19 @@ function objToUrlParams(obj: any) {
   return `?${params.join('&')}`;
 }
 
-export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number | string | undefined)[] = []): useFetchResponse<T> {
+export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number | string)[] = [], retry = false): useFetchResponse<T> {
   const [data, setData] = useState<null | any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | {message: string}>(null);
+  const [refetch, setRefetch] = useState(false);
   const params = body ? objToUrlParams(body) : '';
+
+  useEffect(() => {
+    if (retry && error?.message) {
+        setRefetch(r => !r);
+        error.message = '';
+    }
+  }, [retry, error]);
 
   const fetchData = useCallback(() => {
     const controller = new AbortController(); // Create an AbortController
@@ -48,7 +57,8 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [url, ...dependencies]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, refetch, ...dependencies]);
 
   useEffect(() => {
     const abortFetch = fetchData();
@@ -58,5 +68,5 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
     };
   }, [fetchData]);
 
-  return { data, loading, error };
+  return { data, loading, error, setRefetch };
 };

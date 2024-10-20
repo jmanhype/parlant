@@ -25,27 +25,29 @@ interface Event {
     };
 }
 
+const formatDateTime = (targetDate: Date | string): string => {
+    if (typeof targetDate === 'string') targetDate = new Date(targetDate);
+    const now = new Date();
+    const timeDifference = now.getTime() - targetDate.getTime();
+    const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+
+    if (timeDifference < oneDayInMilliseconds) return targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
+    return `${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false})}`;
+}
 
 export default function Chat({sessionId}: Props): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const submitButtonRef = useRef<HTMLButtonElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const [message, setMessage] = useState('');
-    const [refetch, setRefetch] = useState(false);
     const [lastOffset, setLastOffset] = useState(0);
     const [messages, setMessages] = useState<Event[]>([]);
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
-    // const {data, error, loading} = useFetch(`sessions/${sessionId}/events`);
-    const {data: lastMessages, error} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
+    const {data: lastMessages, setRefetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
 
     useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages]);
-    useEffect(() => {
-        if (error?.message) {
-            setRefetch(r => !r);
-            error.message = '';
-        }
-    }, [error]);
 
     useEffect(() => {
         setMessage('');
@@ -53,7 +55,8 @@ export default function Chat({sessionId}: Props): ReactElement {
         setMessages([]);
         setIsSubmitDisabled(false);
         setShowSkeleton(false);
-        setRefetch(!refetch);
+        setRefetch(refetch => !refetch);
+        textareaRef?.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
 
@@ -64,7 +67,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         if (offset) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: Event) => item?.correlation_id.split('.')[0]);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
-        const withStatusMessages = newMessages.map(newMessage => ({...newMessage, creation_utc: new Date(newMessage.creation_utc), serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
+        const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         setMessages(messages => {
             const last = messages.at(-1);
            if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap?.[last?.correlation_id]?.at(-1)?.data?.status;
@@ -74,7 +77,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         if (lastEvent?.data?.status === 'typing') setShowSkeleton(true);
         else setShowSkeleton(false);
 
-        if (lastEvent?.kind !== 'status' || lastEvent?.data?.status !== 'ready') setRefetch(!refetch);
+        if (lastEvent?.kind !== 'status' || lastEvent?.data?.status !== 'ready') setRefetch(refetch => !refetch);
         else setIsSubmitDisabled(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages])
@@ -82,7 +85,7 @@ export default function Chat({sessionId}: Props): ReactElement {
     const postMessage = (content: string): void => {
         setIsSubmitDisabled(true);
         setMessage('');
-        postData(`sessions/${sessionId}/events`, { kind: 'message', content }).then(() => { setRefetch(!refetch); });
+        postData(`sessions/${sessionId}/events`, { kind: 'message', content }).then(() => { setRefetch(refetch => !refetch); });
     }
 
     const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -96,7 +99,9 @@ export default function Chat({sessionId}: Props): ReactElement {
                     <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
                         <div className="relative">
                             <Markdown>{event?.data?.message}</Markdown>
-                            {/* <div className="absolute text-xs">{event.creation_utc.toLocaleString()}</div> */}
+                            <div className="text-end text-[unset] opacity-70 text-xs">
+                                {formatDateTime(event.creation_utc)}
+                            </div>
                         </div>
                         {event.source === 'client' && event.serverStatus === 'acknowledged' && <Check className="self-end" height={15}/>}
                         {event.source === 'client' && event.serverStatus && {processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end" height={15}/>}
@@ -109,7 +114,7 @@ export default function Chat({sessionId}: Props): ReactElement {
                 </div>}
             </div>
             <div className="w-full flex items-center gap-4 p-4 pt-0">
-                <Textarea placeholder="What's on your mind?" value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
+                <Textarea ref={textareaRef} placeholder="What's on your mind?" value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
                 <Button variant='ghost' className="border border-solid border-black" ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
             </div>
         </div>
