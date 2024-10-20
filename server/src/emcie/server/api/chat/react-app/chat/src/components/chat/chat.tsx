@@ -4,15 +4,14 @@ import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { postData } from "@/utils/api";
 import { Skeleton } from "../ui/skeleton";
-import { Check, CheckCheck } from "lucide-react";
-import Markdown from "react-markdown";
 import { groupBy } from "@/utils/obj";
+import Message from "../message/message";
 
 interface Props {
     sessionId: string;
 }
 
-interface Event {
+export interface Event {
     source: 'client' | 'server';
     kind: 'status' | 'message';
     correlation_id: string;
@@ -26,16 +25,6 @@ interface Event {
 }
 
 const emptyPendingMessage: Event = {kind: 'message', source: 'client', creation_utc: new Date(), serverStatus: 'pending', offset: 0, correlation_id: '', data: {message: ''}};
-
-const formatDateTime = (targetDate: Date | string): string => {
-    if (typeof targetDate === 'string') targetDate = new Date(targetDate);
-    const now = new Date();
-    const timeDifference = now.getTime() - targetDate.getTime();
-    const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
-
-    if (timeDifference < oneDayInMilliseconds) return targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
-    return `${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false})}`;
-}
 
 export default function Chat({sessionId}: Props): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -104,20 +93,8 @@ export default function Chat({sessionId}: Props): ReactElement {
         <div className="flex flex-col items-center pt-4 h-full">
             <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                 {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
-                    <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
-                        <div className="relative">
-                            <Markdown>{event?.data?.message}</Markdown>
-                            <div className="text-end text-[unset] opacity-70 text-xs">
-                                {formatDateTime(event.creation_utc)}
-                            </div>
-                        </div>
-                        {event.source === 'client' && event.serverStatus &&
-                        <div className="w-6 h-full flex">
-                            {event.serverStatus === 'accepted' && <Check className="self-end" height={15}/>}
-                            {event.serverStatus === 'acknowledged' && <CheckCheck className="self-end" height={15}/>}
-                            {{processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end text-green-300" height={15}/>}
-                        </div>
-                        }
+                    <div key={i} ref={lastMessageRef} className="flex flex-col">
+                        <Message event={event}/>
                     </div>
                 ))}
                 {showSkeleton && 
