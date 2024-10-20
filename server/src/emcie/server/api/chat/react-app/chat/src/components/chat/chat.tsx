@@ -85,7 +85,7 @@ export default function Chat({sessionId}: Props): ReactElement {
 
     return (
         <div className="flex flex-col items-center pt-4 h-full">
-            <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4">
+            <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                 {messages.map((event, i) => (
                     <div key={i} ref={lastMessageRef} className={(event.source === 'client' ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
                         <div className="relative">

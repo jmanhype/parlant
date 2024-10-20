@@ -7,8 +7,7 @@ interface Agent {
     name: string;
 }
 
-
-export default function AgentsSelect({value, setSelectedAgent}: {value: string | undefined, setSelectedAgent: (val: string) => void}): ReactElement {
+export default function AgentsSelect({value, setSelectedAgent}: {value?: string | undefined, setSelectedAgent: (val: string) => void}): ReactElement {
     const {data} = useFetch<{agents: Agent[]}>('agents');
     return (
         <Select value={value} onValueChange={(val: string) => setSelectedAgent(val)}>

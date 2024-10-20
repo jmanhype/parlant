@@ -3,6 +3,7 @@ import AgentsSelect from "../agents-select/agents-select";
 import Sessions from "../sessions/sessions";
 import { Button } from "../ui/button";
 import { postData } from "@/utils/api";
+import Tooltip from "../ui/custom/tooltip";
 
 interface Props {
     setSession: Dispatch<SetStateAction<string | null>>;
@@ -22,7 +23,7 @@ export default function SessionControl({setSession, sessionId}: Props): ReactEle
         <div className="flex flex-col items-center h-full overflow-auto">
             <div className="flex justify-between gap-4 w-[80%] pt-4 pb-4 sticky top-0 bg-[#e2e8f0]">
                 <AgentsSelect value={selectedAgent} setSelectedAgent={val => {setSelectedAgent(val); setSession(null);}}/>
-                <Button variant='ghost' className="border border-black border-solid" disabled={!selectedAgent} onClick={() => createNewSession()}>+</Button>
+                <Tooltip value="Add Session"><Button variant='ghost' className="border border-black border-solid" disabled={!selectedAgent} onClick={() => createNewSession()}>+</Button></Tooltip>
             </div>
             {selectedAgent && <Sessions agentId={selectedAgent} sessionId={sessionId} setSession={setSession}/>}
         </div>
