@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ReactElement } from 'react';
 // const baseUrl = process.env;
 // console.log(baseUrl);
 
@@ -7,6 +7,7 @@ interface useFetchResponse<T> {
   loading: boolean;
   error: null | {message: string};
   setRefetch: React.Dispatch<React.SetStateAction<boolean>>;
+  ErrorTemplate: (() => ReactElement) | null;
 }
 
 function objToUrlParams(obj: any) {
@@ -27,6 +28,15 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
   const [refetch, setRefetch] = useState(false);
   const params = body ? objToUrlParams(body) : '';
 
+  const ErrorTemplate = () => {
+    return (
+      <div>
+        <div>Something went wrong</div>
+        <div role='button' onClick={() => setRefetch(r => !r)} className='underline cursor-pointer'>Click to retry</div>
+      </div>
+    )
+  }
+
   useEffect(() => {
     if (retry && error?.message) {
         setRefetch(r => !r);
@@ -38,6 +48,7 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
     const controller = new AbortController(); // Create an AbortController
     const { signal } = controller; // Get the abort signal
     setLoading(true);
+    setError(null);
 
     fetch(`http://localhost:8000/${url}${params}`, { signal })
       .then(async (response) => {
@@ -68,5 +79,5 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
     };
   }, [fetchData]);
 
-  return { data, loading, error, setRefetch };
+  return { data, loading, error, setRefetch, ErrorTemplate: error && ErrorTemplate };
 };

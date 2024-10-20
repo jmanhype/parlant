@@ -23,7 +23,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [isEditingTitle, setIsEditingTitle] = useState<{ [key: string]: boolean }>({});
-    const {data, setRefetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
+    const {data, error, ErrorTemplate, loading, setRefetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
 
     useEffect(() => {
         if (data?.sessions) setSessions(data.sessions);
@@ -37,7 +37,9 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
             setRefetch(refetch => !refetch);
             if (selectedSession.id === sessionId) setSession(null);
             toast.success(`Session "${selectedSession.title}" deleted successfully`, {closeButton: true});
-        })
+        }).catch(() => {
+            toast.error('Something went wrong');
+        });
     }
 
     const editTitle = async (e: React.MouseEvent, sessionId: string) => {
@@ -49,10 +51,13 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
     const saveTitleChange = (e: React.MouseEvent, sessionId: string) => {
         e.stopPropagation();
         if (sessionNameRef?.current?.value) {
-            patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value}).then(() => {
+            patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value})
+            .then(() => {
                 setRefetch(refetch => !refetch);
                 setIsEditingTitle({});
                 toast.success('title changed successfully', {closeButton: true});
+            }).catch(() => {
+                toast.error('Something went wrong');
             });
         }
     };
@@ -64,7 +69,9 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
 
     return (
         <div className="flex justify-center pt-4 flex-col gap-4 w-full lg:w-[80%]">
-            {sessions.map(session => (
+            {ErrorTemplate && <ErrorTemplate />}
+            {loading && <div>loading...</div>}
+            {!loading && !error && sessions.map(session => (
                 <div data-testid="session" role="button" tabIndex={0} onKeyDown={e => e.key === ' ' && e.target.click()} onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
                     <div className="flex-1 whitespace-nowrap overflow-hidden">
                         {!isEditingTitle[session.id] && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
