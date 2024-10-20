@@ -162,7 +162,8 @@ def create_router(
 
     @router.get("/")
     async def list_sessions(
-        agent_id: Optional[AgentId] = None, end_user_id: Optional[EndUserId] = None
+        agent_id: Optional[AgentId] = None,
+        end_user_id: Optional[EndUserId] = None,
     ) -> ListSessionsResponse:
         sessions = await session_store.list_sessions(agent_id=agent_id, end_user_id=end_user_id)
 

@@ -164,7 +164,7 @@ class SessionStore(ABC):
     @abstractmethod
     async def list_sessions(
         self,
-        agent_id: Optional[AgentId],
+        agent_id: Optional[AgentId] = None,
         end_user_id: Optional[EndUserId] = None,
     ) -> Sequence[Session]: ...
 
