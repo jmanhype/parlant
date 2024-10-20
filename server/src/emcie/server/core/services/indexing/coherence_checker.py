@@ -19,7 +19,7 @@ from emcie.server.core.agents import Agent
 LLM_RETRY_WAIT_TIME_SECONDS = 5.0
 LLM_MAX_RETRIES = 100
 EVALUATION_BATCH_SIZE = 5
-CRITICAL_INCOHERENCY_THRESHOLD = 6
+CRITICAL_INCOHERENCE_THRESHOLD = 6
 ACTION_CONTRADICTION_SEVERITY_THRESHOLD = 6
 
 
@@ -58,7 +58,7 @@ class ActionsContradictionTestsSchema(DefaultBaseModel):
 
 
 @dataclass(frozen=True)
-class IncoherencyTest:
+class IncoherenceTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     IncoherenceKind: IncoherenceKind
@@ -91,7 +91,7 @@ class CoherenceChecker:
         guidelines_to_evaluate: Sequence[GuidelineContent],
         comparison_guidelines: Sequence[GuidelineContent] = [],
         progress_report: Optional[ProgressReport] = None,
-    ) -> Sequence[IncoherencyTest]:
+    ) -> Sequence[IncoherenceTest]:
         comparison_guidelines_list = list(comparison_guidelines)
         guidelines_to_evaluate_list = list(guidelines_to_evaluate)
         tasks = []
@@ -128,7 +128,7 @@ class CoherenceChecker:
         guideline_to_evaluate: GuidelineContent,
         comparison_guidelines: Sequence[GuidelineContent],
         progress_report: Optional[ProgressReport],
-    ) -> Sequence[IncoherencyTest]:
+    ) -> Sequence[IncoherenceTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
         predicates_entailment_responses, actions_contradiction_responses = await asyncio.gather(
             self._predicates_entailment_checker.evaluate(
@@ -151,11 +151,11 @@ class CoherenceChecker:
                     entailment_severity = w.origin_entails_compared_severity
                     entailment_rationale = w.origin_entails_compared_rationale
                 incoherencies.append(
-                    IncoherencyTest(
+                    IncoherenceTest(
                         guideline_a=guideline_to_evaluate,
                         guideline_b=g,
                         IncoherenceKind=IncoherenceKind.STRICT
-                        if entailment_severity >= CRITICAL_INCOHERENCY_THRESHOLD
+                        if entailment_severity >= CRITICAL_INCOHERENCE_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
                         predicates_entailment_rationale=entailment_rationale,
                         predicates_entailment_severity=entailment_severity,
@@ -222,7 +222,6 @@ Predicate Entailment Test Results:
         )
         guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
 
-        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
@@ -419,6 +418,7 @@ Expected Output:
             """  # noqa
         )
 
+        builder.add_agent_identity(agent)
         terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=guideline_to_evaluate_text + comparison_candidates_text,
@@ -494,7 +494,6 @@ Action Contradiction Test Results:
         )
         guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
 
-        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
@@ -661,7 +660,7 @@ Expected Output:
 
 ###"""  # noqa
         )
-
+        builder.add_agent_identity(agent)
         terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=guideline_to_evaluate_text + comparison_candidates_text,

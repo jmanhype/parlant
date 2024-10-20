@@ -11,7 +11,7 @@ from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     IncoherenceKind,
-    IncoherencyTest,
+    IncoherenceTest,
 )
 
 from tests.test_utilities import SyncAwaiter, nlp_test
@@ -44,22 +44,22 @@ def context(
 
 
 async def incoherence_nlp_test(
-    agent: Agent, glossary_store: GlossaryStore, incoherency: IncoherencyTest
+    agent: Agent, glossary_store: GlossaryStore, incoherence: IncoherenceTest
 ) -> bool:
     action_contradiction_test_result = await nlp_test_action_contradiction(
-        agent, glossary_store, incoherency
+        agent, glossary_store, incoherence
     )
     predicate_entailment_test_result = await nlp_test_predicate_entailment(
-        agent, glossary_store, incoherency
+        agent, glossary_store, incoherence
     )
     return action_contradiction_test_result and predicate_entailment_test_result
 
 
 async def nlp_test_action_contradiction(
-    agent: Agent, glossary_store: GlossaryStore, incoherency: IncoherencyTest
+    agent: Agent, glossary_store: GlossaryStore, incoherence: IncoherenceTest
 ) -> bool:
-    guideline_a_text = f"""{{when: "{incoherency.guideline_a.predicate}", then: "{incoherency.guideline_a.action}"}}"""
-    guideline_b_text = f"""{{when: "{incoherency.guideline_b.predicate}", then: "{incoherency.guideline_b.action}"}}"""
+    guideline_a_text = f"""{{when: "{incoherence.guideline_a.predicate}", then: "{incoherence.guideline_a.action}"}}"""
+    guideline_b_text = f"""{{when: "{incoherence.guideline_b.predicate}", then: "{incoherence.guideline_b.action}"}}"""
     terms = await glossary_store.find_relevant_terms(
         agent.id,
         query=guideline_a_text + guideline_b_text,
@@ -71,7 +71,7 @@ The following two guidelines were found to have contradicting 'then' statements:
 {guideline_b_text}
 
 The rationale for marking these 'then' statements as contradicting is: 
-{incoherency.actions_contradiction_rationale}
+{incoherence.actions_contradiction_rationale}
 
 The following is a description of the agent these guidelines apply to:
 {agent.description}
@@ -83,16 +83,16 @@ The following is a glossary that applies to this agent:
 
 
 async def nlp_test_predicate_entailment(
-    agent: Agent, glossary_store: GlossaryStore, incoherency: IncoherencyTest
+    agent: Agent, glossary_store: GlossaryStore, incoherence: IncoherenceTest
 ) -> bool:
-    guideline_a_text = f"""{{when: "{incoherency.guideline_a.predicate}", then: {incoherency.guideline_a.action}"}}"""
-    guideline_b_text = f"""{{when: "{incoherency.guideline_b.predicate}", then: {incoherency.guideline_b.action}"}}"""
+    guideline_a_text = f"""{{when: "{incoherence.guideline_a.predicate}", then: {incoherence.guideline_a.action}"}}"""
+    guideline_b_text = f"""{{when: "{incoherence.guideline_b.predicate}", then: {incoherence.guideline_b.action}"}}"""
     terms = await glossary_store.find_relevant_terms(
         agent.id,
         query=guideline_a_text + guideline_b_text,
     )
     entailment_found_text = (
-        "found" if incoherency.IncoherenceKind == IncoherenceKind.STRICT else "not found"
+        "found" if incoherence.IncoherenceKind == IncoherenceKind.STRICT else "not found"
     )
     context = f"""Two guidelines should be marked as having entailing 'when' statements if the 'when' statement of one guideline entails the 'when' statement of the other, or vice-versa.
 
@@ -102,7 +102,7 @@ Such an entailment was {entailment_found_text} between these two guidelines:
 {guideline_b_text}
 
 The rationale given for this decision is: 
-{incoherency.predicates_entailment_rationale}
+{incoherence.predicates_entailment_rationale}
 
 The following is a description of the agent these guidelines apply to:
 {agent.description}
@@ -156,7 +156,7 @@ def test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
         predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -165,18 +165,18 @@ def test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.STRICT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -223,7 +223,7 @@ def test_that_contingent_incoherencies_are_detected(
         predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -232,19 +232,19 @@ def test_that_contingent_incoherencies_are_detected(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
 
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -291,7 +291,7 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies(
         predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -300,18 +300,18 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.STRICT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -358,7 +358,7 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
         predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -367,18 +367,18 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -425,7 +425,7 @@ def test_that_non_contradicting_guidelines_arent_false_positives(
         predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -434,7 +434,7 @@ def test_that_non_contradicting_guidelines_arent_false_positives(
         )
     )
 
-    assert len(incoherency_results) == 0
+    assert len(incoherence_results) == 0
 
 
 def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(
@@ -452,7 +452,7 @@ def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_c
         action="list the possible toppings and recommend olives",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -461,18 +461,18 @@ def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_c
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -490,7 +490,7 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
         action="mention that we are out of tomatoes",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -499,18 +499,18 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -529,7 +529,7 @@ def test_that_entailing_predicates_with_unrelated_actions_arent_false_positives(
         action="ask the customer for identification",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -538,7 +538,7 @@ def test_that_entailing_predicates_with_unrelated_actions_arent_false_positives(
         )
     )
 
-    assert len(incoherency_results) == 0
+    assert len(incoherence_results) == 0
 
 
 def test_that_contradicting_actions_that_are_contextualized_by_their_predicates_are_detected(
@@ -556,7 +556,7 @@ def test_that_contradicting_actions_that_are_contextualized_by_their_predicates_
         action="schedule a physician appointment for the next available Monday",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -565,18 +565,18 @@ def test_that_contradicting_actions_that_are_contextualized_by_their_predicates_
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -636,7 +636,7 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
 
     coherence_checker = context.container[CoherenceChecker]
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -645,7 +645,7 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
         )
     )
 
-    assert len(incoherency_results) == 0
+    assert len(incoherence_results) == 0
 
 
 def test_that_guidelines_with_many_incoherencies_are_detected(
@@ -684,7 +684,7 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
 
     coherence_checker = context.container[CoherenceChecker]
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -694,16 +694,16 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
     )
 
     n = len(guidelines_with_incoherencies)
-    assert len(incoherency_results) == n * (n - 1) // 2
+    assert len(incoherence_results) == n * (n - 1) // 2
 
-    # Tests that there's exactly 1 incoherency per pair of guidelines
+    # Tests that there's exactly 1 case of incoherence per pair of guidelines
     expected_pairs = {
         (g1, g2)
         for i, g1 in enumerate(guidelines_with_incoherencies)
         for g2 in guidelines_with_incoherencies[i + 1 :]
     }
 
-    for c in incoherency_results:
+    for c in incoherence_results:
         assert (c.guideline_a, c.guideline_b) in expected_pairs
         assert c.IncoherenceKind == IncoherenceKind.CONTINGENT
         expected_pairs.remove((c.guideline_a, c.guideline_b))
@@ -731,7 +731,7 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
         ),
     ]
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -740,21 +740,21 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
         )
     )
 
-    assert len(incoherency_results) == 3
+    assert len(incoherence_results) == 3
     incoherencies_to_detect = {
         (guideline_a, guideline_b)
         for i, guideline_a in enumerate(guidelines_to_evaluate)
         for guideline_b in guidelines_to_evaluate[i + 1 :]
     }
-    for c in incoherency_results:
+    for c in incoherence_results:
         assert (c.guideline_a, c.guideline_b) in incoherencies_to_detect
         assert c.IncoherenceKind == IncoherenceKind.STRICT
         incoherencies_to_detect.remove((c.guideline_a, c.guideline_b))
     assert len(incoherencies_to_detect) == 0
 
-    for incoherency in incoherency_results:
+    for incoherence in incoherence_results:
         assert context.sync_await(
-            incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency)
+            incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence)
         )
 
 
@@ -778,7 +778,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
         action="refuse to share the document or its summary",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -788,7 +788,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
         )
     )
 
-    assert len(incoherency_results) == 0
+    assert len(incoherence_results) == 0
 
 
 def test_that_a_terminology_based_incoherency_is_detected(
@@ -817,7 +817,7 @@ def test_that_a_terminology_based_incoherency_is_detected(
         action="Add the pizza to the order unless a fruit-based topping is requested",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -826,19 +826,19 @@ def test_that_a_terminology_based_incoherency_is_detected(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
 
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -862,7 +862,7 @@ def test_that_an_agent_description_based_incoherency_is_detected(
         predicate="the client asks for a recommended sweetened soda",
         action="suggest sparkling orange juice",
     )
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -871,19 +871,19 @@ def test_that_an_agent_description_based_incoherency_is_detected(
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.STRICT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
     assert context.sync_await(
         nlp_test_action_contradiction(
-            agent, context.container[GlossaryStore], incoherency_results[0]
+            agent, context.container[GlossaryStore], incoherence_results[0]
         )
     )
 
@@ -902,7 +902,7 @@ def test_that_many_guidelines_which_are_all_contradictory_are_detected(
         )
         for i in range(n)
     ]
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -912,8 +912,8 @@ def test_that_many_guidelines_which_are_all_contradictory_are_detected(
     )
     incoherencies_n = (n * (n - 1)) // 2
 
-    assert len(incoherency_results) == incoherencies_n
-    for c in incoherency_results:
+    assert len(incoherence_results) == incoherencies_n
+    for c in incoherence_results:
         assert c.IncoherenceKind == IncoherenceKind.STRICT
 
 
@@ -929,7 +929,7 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
         action="mention that we are oout of tomatoes",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -938,18 +938,18 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
         )
     )
 
-    assert len(incoherency_results) == 1
+    assert len(incoherence_results) == 1
 
-    correct_guidelines_option_1 = (incoherency_results[0].guideline_a == guideline_a) and (
-        incoherency_results[0].guideline_b == guideline_b
+    correct_guidelines_option_1 = (incoherence_results[0].guideline_a == guideline_a) and (
+        incoherence_results[0].guideline_b == guideline_b
     )
-    correct_guidelines_option_2 = (incoherency_results[0].guideline_b == guideline_a) and (
-        incoherency_results[0].guideline_a == guideline_b
+    correct_guidelines_option_2 = (incoherence_results[0].guideline_b == guideline_a) and (
+        incoherence_results[0].guideline_a == guideline_b
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
@@ -967,7 +967,7 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
         action="add a 10% discount to the order",
     )
 
-    incoherency_results = list(
+    incoherence_results = list(
         context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
@@ -976,8 +976,8 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
         )
     )
 
-    assert len(incoherency_results) == 1
-    assert incoherency_results[0].IncoherenceKind == IncoherenceKind.STRICT
+    assert len(incoherence_results) == 1
+    assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
     assert context.sync_await(
-        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherency_results[0])
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
