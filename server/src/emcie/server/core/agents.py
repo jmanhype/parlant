@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, cast
 
 from emcie.server.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from emcie.server.core.persistence.document_database import (
@@ -12,12 +12,18 @@ from emcie.server.core.persistence.document_database import (
 AgentId = NewType("AgentId", str)
 
 
+class AgentUpdateParams(TypedDict, total=False):
+    description: Optional[str]
+    max_engine_iterations: int
+
+
 @dataclass(frozen=True)
 class Agent:
     id: AgentId
     name: str
     description: Optional[str]
     creation_utc: datetime
+    max_engine_iterations: int
 
 
 class AgentStore(ABC):
@@ -27,6 +33,7 @@ class AgentStore(ABC):
         name: str,
         description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
+        max_engine_iterations: Optional[int] = None,
     ) -> Agent: ...
 
     @abstractmethod
@@ -35,6 +42,13 @@ class AgentStore(ABC):
     @abstractmethod
     async def read_agent(self, agent_id: AgentId) -> Agent: ...
 
+    @abstractmethod
+    async def update_agent(
+        self,
+        agent_id: AgentId,
+        params: AgentUpdateParams,
+    ) -> None: ...
+
 
 class _AgentDocument(TypedDict, total=False):
     id: ObjectId
@@ -42,6 +56,7 @@ class _AgentDocument(TypedDict, total=False):
     creation_utc: str
     name: str
     description: Optional[str]
+    max_engine_iterations: int
 
 
 class AgentDocumentStore(AgentStore):
@@ -63,6 +78,7 @@ class AgentDocumentStore(AgentStore):
             creation_utc=agent.creation_utc.isoformat(),
             name=agent.name,
             description=agent.description,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     def _deserialize(self, agent_document: _AgentDocument) -> Agent:
@@ -71,6 +87,7 @@ class AgentDocumentStore(AgentStore):
             creation_utc=datetime.fromisoformat(agent_document["creation_utc"]),
             name=agent_document["name"],
             description=agent_document["description"],
+            max_engine_iterations=agent_document["max_engine_iterations"],
         )
 
     async def create_agent(
@@ -78,14 +95,17 @@ class AgentDocumentStore(AgentStore):
         name: str,
         description: Optional[str] = None,
         creation_utc: Optional[datetime] = None,
+        max_engine_iterations: Optional[int] = None,
     ) -> Agent:
         creation_utc = creation_utc or datetime.now(timezone.utc)
+        max_engine_iterations = max_engine_iterations or 3
 
         agent = Agent(
             id=AgentId(generate_id()),
             name=name,
             description=description,
             creation_utc=creation_utc,
+            max_engine_iterations=max_engine_iterations,
         )
 
         await self._collection.insert_one(document=self._serialize(agent=agent))
@@ -108,3 +128,13 @@ class AgentDocumentStore(AgentStore):
             raise ItemNotFoundError(item_id=UniqueId(agent_id))
 
         return self._deserialize(agent_document)
+
+    async def update_agent(
+        self,
+        agent_id: AgentId,
+        params: AgentUpdateParams,
+    ) -> None:
+        await self._collection.update_one(
+            filters={"id": {"$eq": agent_id}},
+            params=cast(_AgentDocument, params),
+        )

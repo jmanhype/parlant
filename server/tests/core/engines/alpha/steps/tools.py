@@ -2,7 +2,7 @@ from typing import Any
 from pytest_bdd import given, parsers
 
 from emcie.common.tools import Tool
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
@@ -180,5 +180,21 @@ def given_a_tool(
     context.tools[tool_name] = context.sync_await(
         multiplexed_tool_service.read_tool(
             tool.id, next(iter(multiplexed_tool_service.services.keys()))
+        )
+    )
+
+
+@step(given, parsers.parse("an agent with a maximum of {max_engine_iterations} engine iterations"))
+def given_max_engine_iteration(
+    context: ContextOfTest,
+    agent_id: AgentId,
+    max_engine_iterations: str,
+) -> None:
+    agent_store = context.container[AgentStore]
+
+    context.sync_await(
+        agent_store.update_agent(
+            agent_id=agent_id,
+            params={"max_engine_iterations": int(max_engine_iterations)},
         )
     )

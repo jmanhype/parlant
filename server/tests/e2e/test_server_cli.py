@@ -47,6 +47,7 @@ async def get_first_agent() -> Agent:
                 name=agent["name"],
                 description=agent["description"],
                 creation_utc=agent["creation_utc"],
+                max_engine_iterations=agent["max_engine_iterations"],
             )
         except:
             traceback.print_exc()

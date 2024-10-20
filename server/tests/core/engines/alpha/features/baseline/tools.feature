@@ -124,7 +124,7 @@ Feature: Tools
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
         And a user message, "What is the balance of Scooby Doo's account?"
-        And a guideline "apologize_for_missing_data", to apologize for missing data when the account balance has the value of -1
+        And a guideline "apologize_for_missing_data", to apologize for missing data when the account balance has the value of -555
         When processing is triggered
         Then a single message event is emitted
         And the message contains an apology for missing data
@@ -139,3 +139,14 @@ Feature: Tools
         Then a single tool calls event is emitted
         And a single message event is emitted
         And the tool calls event is correlated with the message event
+
+    Scenario: Relevant guidelines are not refreshed based on tool results if no second iteration of proposing a new guideline is made
+        Given an agent with a maximum of 1 engine iteration
+        And a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
+        And the tool "get_account_balance"
+        And an association between "retrieve_account_information" and "get_account_balance"
+        And a user message, "What is the balance of Scooby Doo's account?"
+        And a guideline "apologize_for_missing_data", to apologize for missing data when the account balance has the value of -555
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains that the balance of Scooby Doo is -$555
