@@ -113,7 +113,7 @@ export default function Chat({sessionId}: Props): ReactElement {
                     <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-400 mt-2" /> 
                 </div>}
             </div>
-            <div className="w-full flex items-center gap-4 p-4 pt-0">
+            <div className="w-full flex flex-col lg:flex-row items-center gap-4 p-4 pt-0">
                 <Textarea ref={textareaRef} placeholder="What's on your mind?" value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
                 <Button variant='ghost' className="border border-solid border-black" ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
             </div>
