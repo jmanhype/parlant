@@ -954,6 +954,7 @@ def test_that_agent_based_connection_is_detected(
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+    
 def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(  # This test fails occasionally
     context: _TestContext,
 ) -> None:
