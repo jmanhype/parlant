@@ -91,13 +91,16 @@ class AlphaEngine(Engine):
         except asyncio.CancelledError:
             return False
         except Exception as exc:
-            self._logger.error(f"Processing error: {traceback.format_exception(exc)}")
+            formatted_exception = traceback.format_exception(exc)
+
+            self._logger.error(f"Processing error: {formatted_exception}")
+
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
                     "status": "error",
                     "acknowledged_offset": interaction_state.last_known_event_offset,
-                    "data": {},
+                    "data": {"exception": formatted_exception},
                 },
             )
             return False
