@@ -142,14 +142,9 @@ class ToolCaller:
 
         builder = PromptBuilder()
 
-        builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_event_list)
-        builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
-
         builder.add_section(
             """
-Before generating your next response, you are highly encouraged to use tools that are provided to you,
+You are an AI agent who is interacting with a user. Before generating your next response, you are highly encouraged to use tools that are provided to you,
 in order to generate a high-quality, well-informed response.
 
 Your task at this point is to evaluate what, if any, tools should be run in order to facilitate
@@ -158,20 +153,9 @@ an informed continuation of your interaction with the user.
 You will also receive a list of tool calls that have already been staged, under the heading STAGED TOOL CALLS.
 If you find what you need in those staged calls, then you don't need to call the corresponding tool(s) again
 with the same arguments, as the staged calls' data is extremely fresh.
-"""  # noqa
-        )
 
-        builder.add_guideline_propositions(
-            ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
-            include_priority=False,
-            include_tool_associations=True,
-        )
+###
 
-        builder.add_tool_definitions(tools)
-
-        builder.add_section(
-            f"""
 Before generating your next response, you must now decide whether to use any of the tools provided.
 Here are the principles by which you can decide whether to use tools:
 
@@ -245,8 +229,23 @@ Here's a hypothetical example, for your reference:
 
 
 Note that the `tool_call_evaluations` list can be empty if no tools need to be called.
+
 """  # noqa
         )
+
+        builder.add_agent_identity(agents[0])
+        builder.add_interaction_history(interaction_event_list)
+        builder.add_context_variables(context_variables)
+        builder.add_glossary(terms)
+
+        builder.add_guideline_propositions(
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
+            include_priority=False,
+            include_tool_associations=True,
+        )
+
+        builder.add_tool_definitions(tools)
 
         if staged_calls:
             builder.add_section(
