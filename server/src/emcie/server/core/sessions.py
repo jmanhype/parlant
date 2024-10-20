@@ -164,7 +164,8 @@ class SessionStore(ABC):
     @abstractmethod
     async def list_sessions(
         self,
-        agent_id: Optional[AgentId],
+        agent_id: Optional[AgentId] = None,
+        end_user_id: Optional[EndUserId] = None,
     ) -> Sequence[Session]: ...
 
 
@@ -400,11 +401,18 @@ class SessionDocumentStore(SessionStore):
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
+        end_user_id: Optional[EndUserId] = None,
     ) -> Sequence[Session]:
         return [
             self._deserialize_session(d)
             for d in await self._session_collection.find(
-                filters={"agent_id": {"$eq": agent_id}} if agent_id else {}
+                filters=cast(
+                    Where,
+                    {
+                        **({"agent_id": {"$eq": agent_id}} if agent_id else {}),
+                        **({"end_user_id": {"$eq": end_user_id}} if end_user_id else {}),
+                    },
+                )
             )
         ]
 
