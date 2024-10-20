@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 // const baseUrl = process.env;
 // console.log(baseUrl);
 
+interface useFetchResponse<T> {
+  data: T | null;
+  loading: boolean;
+  error: null | {message: string};
+}
+
 function objToUrlParams(obj: any) {
   const params = [];
   for (const key in obj) {
@@ -13,10 +19,10 @@ function objToUrlParams(obj: any) {
   return `?${params.join('&')}`;
 }
 
-export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number | string | undefined)[] = []): {data: T | null, loading: boolean, error: string | null} {
+export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number | string | undefined)[] = []): useFetchResponse<T> {
   const [data, setData] = useState<null | any>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<null | string>(null);
+  const [error, setError] = useState<null | {message: string}>(null);
   const params = body ? objToUrlParams(body) : '';
 
   const fetchData = useCallback(() => {
@@ -36,7 +42,7 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
         if (err.name === 'AbortError') {
           console.log('Fetch aborted');
         } else {
-          setError(err.message);
+          setError({message: err.message});
         }
       })
       .finally(() => setLoading(false));

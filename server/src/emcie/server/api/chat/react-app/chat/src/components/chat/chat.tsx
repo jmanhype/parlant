@@ -37,9 +37,15 @@ export default function Chat({sessionId}: Props): ReactElement {
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
     // const {data, error, loading} = useFetch(`sessions/${sessionId}/events`);
-    const {data: lastMessages} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
+    const {data: lastMessages, error} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [refetch]);
 
     useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages]);
+    useEffect(() => {
+        if (error?.message) {
+            setRefetch(r => !r);
+            error.message = '';
+        }
+    }, [error]);
 
     useEffect(() => {
         setMessage('');
@@ -48,6 +54,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         setIsSubmitDisabled(false);
         setShowSkeleton(false);
         setRefetch(!refetch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
 
     useEffect(() => {
@@ -69,7 +76,6 @@ export default function Chat({sessionId}: Props): ReactElement {
 
         if (lastEvent?.kind !== 'status' || lastEvent?.data?.status !== 'ready') setRefetch(!refetch);
         else setIsSubmitDisabled(false);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages])
 
@@ -103,7 +109,7 @@ export default function Chat({sessionId}: Props): ReactElement {
                 </div>}
             </div>
             <div className="w-full flex items-center gap-4 p-4 pt-0">
-                <Textarea value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
+                <Textarea placeholder="What's on your mind?" value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
                 <Button variant='ghost' className="border border-solid border-black" ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
             </div>
         </div>
