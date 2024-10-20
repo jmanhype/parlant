@@ -16,7 +16,7 @@ export default function AgentsSelect({value, setSelectedAgent}: {value?: string 
 
     return (
         <Select value={value} onValueChange={(val: string) => setSelectedAgent(val)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] border border-solid border-black">
                 <SelectValue placeholder="Select an agent" />
             </SelectTrigger>
             <SelectContent>
