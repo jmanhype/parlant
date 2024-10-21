@@ -37,7 +37,7 @@ export default function Chat({sessionId}: Props): ReactElement {
     const [messages, setMessages] = useState<Event[]>([]);
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
-    const {data: lastMessages, setRefetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
+    const {data: lastMessages, refetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
 
     useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages, pendingMessage]);
 
@@ -47,7 +47,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         setMessages([]);
         setIsSubmitDisabled(false);
         setShowSkeleton(false);
-        setRefetch(refetch => !refetch);
+        refetch();
         textareaRef?.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
@@ -72,8 +72,12 @@ export default function Chat({sessionId}: Props): ReactElement {
         if (lastEventStatus === 'typing') setShowSkeleton(true);
         else setShowSkeleton(false);
 
-        if (lastEvent?.kind !== 'status' || (lastEventStatus && !{ready: true, error: true}[lastEventStatus])) setRefetch(refetch => !refetch);
-        else setIsSubmitDisabled(false);
+        // if (lastEvent?.kind !== 'status' || (lastEventStatus && !{ready: true, error: true}[lastEventStatus])) setRefetch(refetch => !refetch);
+        // else setIsSubmitDisabled(false);
+        refetch();
+        if (lastEvent?.kind === 'status' && (lastEventStatus && {ready: true, error: true}[lastEventStatus])) {
+            setIsSubmitDisabled(false);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages])
 
@@ -83,7 +87,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         setMessage('');
         postData(`sessions/${sessionId}/events`, { kind: 'message', content }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
-            setRefetch(refetch => !refetch);
+            refetch();
         });
     }
 

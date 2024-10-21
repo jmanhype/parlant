@@ -6,7 +6,7 @@ interface useFetchResponse<T> {
   data: T | null;
   loading: boolean;
   error: null | {message: string};
-  setRefetch: React.Dispatch<React.SetStateAction<boolean>>;
+  refetch: () => void;
   ErrorTemplate: (() => ReactElement) | null;
 }
 
@@ -25,21 +25,24 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
   const [data, setData] = useState<null | any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | {message: string}>(null);
-  const [refetch, setRefetch] = useState(false);
+  const [refetchData, setRefetchData] = useState(false);
   const params = body ? objToUrlParams(body) : '';
+  
 
   const ErrorTemplate = () => {
     return (
       <div>
         <div>Something went wrong</div>
-        <div role='button' onClick={() => setRefetch(r => !r)} className='underline cursor-pointer'>Click to retry</div>
+        <div role='button' onClick={() => setRefetchData(r => !r)} className='underline cursor-pointer'>Click to retry</div>
       </div>
     )
-  }
+  };
+
+  const refetch = () => setRefetchData(r => !r);
 
   useEffect(() => {
     if (retry && error?.message) {
-        setRefetch(r => !r);
+      setRefetchData(r => !r);
         error.message = '';
     }
   }, [retry, error]);
@@ -69,7 +72,7 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
 
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, refetch, ...dependencies]);
+  }, [url, refetchData, ...dependencies]);
 
   useEffect(() => {
     const abortFetch = fetchData();
@@ -79,5 +82,5 @@ export default function useFetch<T>(url: string, body?: object, dependencies: (b
     };
   }, [fetchData]);
 
-  return { data, loading, error, setRefetch, ErrorTemplate: error && ErrorTemplate };
+  return { data, loading, error, refetch, ErrorTemplate: error && ErrorTemplate };
 };

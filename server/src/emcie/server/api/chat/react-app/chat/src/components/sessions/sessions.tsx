@@ -23,20 +23,20 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [isEditingTitle, setIsEditingTitle] = useState<{ [key: string]: boolean }>({});
-    const {data, error, ErrorTemplate, loading, setRefetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
+    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
 
     useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
 
     useEffect(() => {
         const isNewSession = sessionId && !sessions?.some(s => s.id === sessionId);
-        if (isNewSession) setRefetch(refetch => !refetch);
+        if (isNewSession) refetch();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
 
     const deleteSession = async (e: React.MouseEvent, selectedSession: Session) => {
         e.stopPropagation();
         return deleteData(`sessions/${selectedSession.id}`).then(() => {
-            setRefetch(refetch => !refetch);
+            refetch();
             if (selectedSession.id === sessionId) setSession(null);
             toast.success(`Session "${selectedSession.title}" deleted successfully`, {closeButton: true});
         }).catch(() => {
@@ -55,7 +55,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
         if (sessionNameRef?.current?.value) {
             patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value})
             .then(() => {
-                setRefetch(refetch => !refetch);
+                refetch();
                 setIsEditingTitle({});
                 toast.success('title changed successfully', {closeButton: true});
             }).catch(() => {
