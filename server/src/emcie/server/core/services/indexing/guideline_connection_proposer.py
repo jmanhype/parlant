@@ -51,7 +51,7 @@ class GuidelineConnectionProposer:
         self._logger = logger
         self._glossary_store = glossary_store
         self._schematic_generator = schematic_generator
-        self._batch_size = 5
+        self._batch_size = 1
 
     async def propose_connections(
         self,

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
@@ -536,11 +537,11 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
             },
             {
                 "predicate": "talking about bananas",
-                "action": "say that they're tasty",
+                "action": "say that they're sweet this season",
             },
             {
-                "predicate": "you say that bananas are tasty",
-                "action": "say they're better than mangoes",
+                "predicate": "you say that bananas are sweet",
+                "action": "say they're even sweeter than mangoes",
             },
         ]
     ]
@@ -953,3 +954,100 @@ def test_that_agent_based_connection_is_detected(
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(  # This test fails occasionally
+    context: _TestContext,
+) -> None:
+    agent = Agent(
+        id=AgentId("Sparkleton Agent"),
+        creation_utc=datetime.now(timezone.utc),
+        name="Sparkleton Agent",
+        description="You're an AI assistant to a sparkling water expert at Sparkleton. The expert may consult you while talking to potential clients to retrieve important information from Sparkleton's documentation.",
+        max_engine_iterations=3,
+    )
+
+    glossary_store = context.container[GlossaryStore]
+
+    context.sync_await(
+        glossary_store.create_term(
+            term_set=agent.id,
+            name="Sparkleton",
+            description="The top sparkling water company in the world",
+            synonyms=["sparkleton", "sparkletown", "the company"],
+        )
+    )
+    context.sync_await(
+        glossary_store.create_term(
+            term_set=agent.id,
+            name="tomatola",
+            description="A type of cola made out of tomatoes",
+            synonyms=["tomato cola"],
+        )
+    )
+    context.sync_await(
+        glossary_store.create_term(
+            term_set=agent.id,
+            name="carbon coin",
+            description="a virtual currency awarded to customers. Can be used to buy any Sparkleton product",
+            synonyms=["cc", "C coin"],
+        )
+    )
+
+    introduced_guidelines: Sequence[GuidelineContent] = [
+        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        for i in [
+            {
+                "predicate": "asked a clarifying question",
+                "action": "Keep your answer short and direct",
+            },
+            {
+                "predicate": "The user asks about carbon coin",
+                "action": "Always check the carbon coin terms of use before replying. Do not reply with anything that is not explicitly mentioned in the terms of use.",
+            },
+            {
+                "predicate": "The user seems to be short on time",
+                "action": "suggest continuing the conversation at another time",
+            },
+            {
+                "predicate": "The user asked a question that's not mentioned in the terms of use document",
+                "action": "Forward the user's question to management and inform them that you'll get back to them later",
+            },
+            {
+                "predicate": "The user asks you if you're confident in your reply",
+                "action": "Reply that you are extremely confident, as you're the best ai agent in the world",
+            },
+            {
+                "predicate": "The user asks for ways of earning carbon coin",
+                "action": "Answer the user's question based on the documentation. Be clear that the coin can only be used on Sparkleton products",
+            },
+            {
+                "predicate": "The user asks if tomatola is available",
+                "action": "Check the inventory and reply accordingly",
+            },
+            {
+                "predicate": "The user inquires about anything that doesn't have to do with sparkling drinks",
+                "action": "Let the user know that you are not trained to help with subjects not related to Sparkleton.",
+            },
+            {
+                "predicate": "The user asks further question about an answer you previously provided",
+                "action": "Answer the question, even if it's not related to Sparkleton",
+            },
+            {
+                "predicate": "The user asks multiple questions in one message",
+                "action": "Split the message into each individual question, and reply to each question in a new message.",
+            },
+            {
+                "predicate": "The user asks for further clarification",
+                "action": "Provide a link to the relevant document in full",
+            },
+        ]
+    ]
+
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(agent, introduced_guidelines, [])
+        )
+    )
+
+    assert len(connection_propositions) == 0
