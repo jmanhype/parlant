@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, MatcherOptions, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, MatcherOptions, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import Sessions from "./sessions.tsx";
 import '@testing-library/jest-dom/vitest';

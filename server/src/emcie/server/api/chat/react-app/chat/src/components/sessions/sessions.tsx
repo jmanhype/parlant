@@ -78,7 +78,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
             {ErrorTemplate && <ErrorTemplate />}
             {loading && <div>loading...</div>}
             {!loading && !error && sessions.map(session => (
-                <div data-testid="session" role="button" tabIndex={0} onKeyDown={e => e.key === ' ' && e.target.click()} onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
+                <div data-testid="session" role="button" tabIndex={0} onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()} onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
                     <div className="flex-1 whitespace-nowrap overflow-hidden">
                         {!isEditingTitle[session.id] && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
                         {isEditingTitle[session.id] && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={e => onInputKeyUp(e, session.id)} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}

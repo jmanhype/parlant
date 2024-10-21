@@ -21,7 +21,7 @@ function objToUrlParams(obj: any) {
   return `?${params.join('&')}`;
 }
 
-export default function useFetch<T>(url: string, body?: object, dependencies: (boolean | number | string)[] = [], retry = false): useFetchResponse<T> {
+export default function useFetch<T>(url: string, body?: object, dependencies: any[] = [], retry = false): useFetchResponse<T> {
   const [data, setData] = useState<null | any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | {message: string}>(null);
