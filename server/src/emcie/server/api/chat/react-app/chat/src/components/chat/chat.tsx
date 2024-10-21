@@ -11,7 +11,7 @@ interface Props {
     sessionId: string;
 }
 
-type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
+export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
 
 export interface Event {
     source: 'client' | 'server';

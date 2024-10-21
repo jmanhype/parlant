@@ -8,13 +8,13 @@ interface Props {
 }
 
 const statusIcon = {
-    pending: <Clock height={15} />,
-    error: <CircleAlert height={15} />,
-    accepted: <Check height={15} />,
-    acknowledged: <CheckCheck height={15} />,
-    processing: <CheckCheck className="text-green-300" height={15} />,
-    typing: <CheckCheck className="text-green-300" height={15} />,
-    ready: <CheckCheck className="text-green-300" height={15} />,
+    pending: <Clock data-testid="pending" height={15} />,
+    error: <CircleAlert data-testid="error" height={15} />,
+    accepted: <Check data-testid="accepted" height={15} />,
+    acknowledged: <CheckCheck data-testid="acknowledged" height={15} />,
+    processing: <CheckCheck data-testid="processing" className="text-green-300" height={15} />,
+    typing: <CheckCheck data-testid="typing" className="text-green-300" height={15} />,
+    ready: <CheckCheck data-testid="ready" className="text-green-300" height={15} />,
 };
 
 
