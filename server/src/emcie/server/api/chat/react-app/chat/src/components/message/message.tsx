@@ -31,7 +31,7 @@ export default function Message({event}: Props): ReactElement {
     const serverStatus = event.serverStatus;
 
     return (
-        <div className={(isClient ? 'bg-blue-600 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
+        <div className={(isClient ? 'bg-blue-700 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
             <div className="relative">
                 <Markdown>{event?.data?.message}</Markdown>
                 <div className="text-end text-[unset] opacity-70 text-xs">
