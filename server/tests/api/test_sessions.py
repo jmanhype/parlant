@@ -12,7 +12,14 @@ from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
-from tests.api.utils import create_agent, create_guideline, create_session, post_message, read_reply
+from tests.api.utils import (
+    create_agent,
+    create_guideline,
+    create_session,
+    create_term,
+    post_message,
+    read_reply,
+)
 
 
 @fixture
@@ -643,15 +650,23 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     guideline = await create_guideline(
         container=container,
         agent_id=agent_id,
-        predicate="a user says hello",
+        predicate="a user mentions cows",
         action="answer like a cow",
         tool_function=get_cow_uttering,
+    )
+
+    term = await create_term(
+        container=container,
+        agent_id=agent_id,
+        name="Flubba",
+        description="A type of cow",
+        synonyms=["Bobo"],
     )
 
     user_event = await post_message(
         container=container,
         session_id=session_id,
-        message="Hello there!",
+        message="Bobo!",
         response_timeout=Timeout(60),
     )
 
@@ -678,3 +693,8 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert len(iterations[0]["tool_calls"]) == 1
     assert "get_cow_uttering" in iterations[0]["tool_calls"][0]["tool_name"]
     assert iterations[0]["tool_calls"][0]["result"]["data"] == "moo"
+
+    assert len(iterations[0]["terms"]) == 1
+    assert iterations[0]["terms"][0]["name"] == term.name
+    assert iterations[0]["terms"][0]["description"] == term.description
+    assert iterations[0]["terms"][0]["synonyms"] == term.synonyms

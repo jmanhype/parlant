@@ -6,6 +6,7 @@ from emcie.common.tools import ToolId, ToolResult
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.glossary import GlossaryStore, Term
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.mc import MC
@@ -27,6 +28,21 @@ async def create_session(
         end_user_id or EndUserId("test-user"),
         agent_id=agent_id,
         title=title,
+    )
+
+
+async def create_term(
+    container: Container,
+    agent_id: AgentId,
+    name: str,
+    description: str,
+    synonyms: list[str],
+) -> Term:
+    return await container[GlossaryStore].create_term(
+        term_set=agent_id,
+        name=name,
+        description=description,
+        synonyms=synonyms,
     )
 
 

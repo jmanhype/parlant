@@ -5,6 +5,7 @@ from typing import Any, Literal, Mapping, Optional, Union, cast
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
 
+from emcie.server.api.glossary import TermDTO
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.agents import AgentId
@@ -131,6 +132,7 @@ class GuidelinePropositionDTO(DefaultBaseModel):
 class PreparationIterationDTO(DefaultBaseModel):
     guideline_propositions: list[GuidelinePropositionDTO]
     tool_calls: list[ToolCallDTO]
+    terms: list[TermDTO]
 
 
 class ReadInteractionResponse(DefaultBaseModel):
@@ -421,6 +423,15 @@ def create_router(
                             ),
                         )
                         for tool_call in iteration.tool_calls
+                    ],
+                    terms=[
+                        TermDTO(
+                            id=term["id"],
+                            name=term["name"],
+                            description=term["description"],
+                            synonyms=term["synonyms"],
+                        )
+                        for term in iteration.terms
                     ],
                 )
                 for iteration in inspection.preparation_iterations

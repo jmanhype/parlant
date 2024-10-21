@@ -31,6 +31,7 @@ from emcie.server.core.persistence.document_database import (
     ObjectId,
     Where,
 )
+from emcie.server.core.glossary import TermId
 
 SessionId = NewType("SessionId", str)
 
@@ -94,11 +95,19 @@ class GuidelineProposition(TypedDict):
     rationale: str
 
 
+class Term(TypedDict):
+    id: TermId
+    name: str
+    description: str
+    synonyms: list[str]
+
+
 @dataclass(frozen=True)
 class PreparationIteration:
-    # TODO: Add glossary terms and context variables
+    # TODO: Add context variables
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
+    terms: list[Term]
 
 
 @dataclass(frozen=True)

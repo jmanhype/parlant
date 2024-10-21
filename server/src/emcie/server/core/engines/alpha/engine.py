@@ -27,6 +27,7 @@ from emcie.server.core.sessions import (
     PreparationIteration,
     SessionId,
     SessionStore,
+    Term as StoredTerm,
     ToolEventData,
 )
 from emcie.server.core.engines.alpha.guideline_proposer import GuidelineProposer
@@ -230,6 +231,15 @@ class AlphaEngine(Engine):
                             tool_call
                             for tool_event in tool_events
                             for tool_call in cast(ToolEventData, tool_event.data)["tool_calls"]
+                        ],
+                        terms=[
+                            StoredTerm(
+                                id=term.id,
+                                name=term.name,
+                                description=term.description,
+                                synonyms=term.synonyms,
+                            )
+                            for term in terms
                         ],
                     )
                 )

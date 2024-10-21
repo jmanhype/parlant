@@ -16,7 +16,7 @@ class TermDTO(DefaultBaseModel):
     id: TermId
     name: str
     description: str
-    synonyms: Optional[list[str]] = []
+    synonyms: list[str] = []
 
 
 class ListTermsResponse(DefaultBaseModel):
