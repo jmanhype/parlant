@@ -107,7 +107,7 @@ def then_the_message_contains(
 
     assert context.sync_await(
         nlp_test(
-            context=message,
+            context=f"Here's a message in the context of a conversation: {message}",
             predicate=f"the text contains {something}",
         )
     )
