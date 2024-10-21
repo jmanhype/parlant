@@ -26,7 +26,17 @@ export interface Event {
     };
 }
 
-const emptyPendingMessage: Event = {kind: 'message', source: 'client', creation_utc: new Date(), serverStatus: 'pending', offset: 0, correlation_id: '', data: {message: ''}};
+const emptyPendingMessage: Event = {
+    kind: 'message',
+    source: 'client',
+    creation_utc: new Date(),
+    serverStatus: 'pending',
+    offset: 0,
+    correlation_id: '',
+    data: {
+        message: ''
+    }
+};
 
 export default function Chat({sessionId}: Props): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -41,14 +51,18 @@ export default function Chat({sessionId}: Props): ReactElement {
     const [showSkeleton, setShowSkeleton] = useState(false);
     const {data: lastMessages, refetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
 
-    useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages, pendingMessage]);
-
-    useEffect(() => {
+    const resetChat = () => {
         setMessage('');
         setLastOffset(0);
         setMessages([]);
         setIsSubmitDisabled(false);
         setShowSkeleton(false);
+    };
+
+    useEffect(() => lastMessageRef?.current?.scrollIntoView(), [messages, pendingMessage]);
+
+    useEffect(() => {
+        resetChat();
         refetch();
         textareaRef?.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,9 +88,8 @@ export default function Chat({sessionId}: Props): ReactElement {
         if (lastEventStatus === 'typing') setShowSkeleton(true);
         else setShowSkeleton(false);
 
-        // if (lastEvent?.kind !== 'status' || (lastEventStatus && !{ready: true, error: true}[lastEventStatus])) setRefetch(refetch => !refetch);
-        // else setIsSubmitDisabled(false);
         refetch();
+    
         if (lastEvent?.kind === 'status' && (lastEventStatus === 'ready' || lastEventStatus === 'error')) {
             setIsSubmitDisabled(false);
         }
