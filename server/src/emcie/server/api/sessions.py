@@ -8,6 +8,7 @@ from pydantic import Field
 from emcie.server.api.glossary import TermDTO
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.context_variables import ContextVariableId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import GuidelineId
@@ -129,10 +130,19 @@ class GuidelinePropositionDTO(DefaultBaseModel):
     rationale: str
 
 
+class ContextVariableDTO(DefaultBaseModel):
+    id: ContextVariableId
+    name: str
+    description: str
+    key: str
+    value: Any
+
+
 class PreparationIterationDTO(DefaultBaseModel):
     guideline_propositions: list[GuidelinePropositionDTO]
     tool_calls: list[ToolCallDTO]
     terms: list[TermDTO]
+    context_variables: list[ContextVariableDTO]
 
 
 class ReadInteractionResponse(DefaultBaseModel):
@@ -432,6 +442,16 @@ def create_router(
                             synonyms=term["synonyms"],
                         )
                         for term in iteration.terms
+                    ],
+                    context_variables=[
+                        ContextVariableDTO(
+                            id=cv["id"],
+                            name=cv["name"],
+                            description=cv["description"] or "",
+                            key=cv["key"],
+                            value=cv["value"],
+                        )
+                        for cv in iteration.context_variables
                     ],
                 )
                 for iteration in inspection.preparation_iterations

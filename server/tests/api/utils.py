@@ -3,8 +3,15 @@ from typing import Callable, Optional
 from lagom import Container
 
 from emcie.common.tools import ToolId, ToolResult
+from emcie.server.core.common import JSONSerializable
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.async_utils import Timeout
+from emcie.server.core.context_variables import (
+    ContextVariable,
+    ContextVariableId,
+    ContextVariableStore,
+    ContextVariableValue,
+)
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.glossary import GlossaryStore, Term
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
@@ -43,6 +50,35 @@ async def create_term(
         name=name,
         description=description,
         synonyms=synonyms,
+    )
+
+
+async def create_context_variable(
+    container: Container,
+    agent_id: AgentId,
+    name: str,
+) -> ContextVariable:
+    return await container[ContextVariableStore].create_variable(
+        variable_set=agent_id,
+        name=name,
+        description="",
+        tool_id=None,
+        freshness_rules=None,
+    )
+
+
+async def set_context_variable_value(
+    container: Container,
+    agent_id: AgentId,
+    variable_id: ContextVariableId,
+    key: str,
+    data: JSONSerializable,
+) -> ContextVariableValue:
+    return await container[ContextVariableStore].update_value(
+        variable_set=agent_id,
+        key=key,
+        variable_id=variable_id,
+        data=data,
     )
 
 

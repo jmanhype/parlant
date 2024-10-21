@@ -24,6 +24,7 @@ from emcie.server.core.common import (
     generate_id,
 )
 from emcie.server.core.agents import AgentId
+from emcie.server.core.context_variables import ContextVariableId
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
@@ -102,12 +103,20 @@ class Term(TypedDict):
     synonyms: list[str]
 
 
+class ContextVariable(TypedDict):
+    id: ContextVariableId
+    name: str
+    description: Optional[str]
+    key: str
+    value: JSONSerializable
+
+
 @dataclass(frozen=True)
 class PreparationIteration:
-    # TODO: Add context variables
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
     terms: list[Term]
+    context_variables: list[ContextVariable]
 
 
 @dataclass(frozen=True)
@@ -246,12 +255,19 @@ class _EventDocument(TypedDict, total=False):
     deleted: bool
 
 
+class _PreparationIterationDocument(TypedDict):
+    guideline_propositions: Sequence[GuidelineProposition]
+    tool_calls: Sequence[ToolCall]
+    terms: list[Term]
+    context_variables: list[ContextVariable]
+
+
 class _MessageInspectionDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     session_id: SessionId
     correlation_id: str
-    preparation_iterations: Sequence[PreparationIteration]
+    preparation_iterations: Sequence[_PreparationIterationDocument]
 
 
 class SessionDocumentStore(SessionStore):
@@ -342,7 +358,15 @@ class SessionDocumentStore(SessionStore):
             version=self.VERSION.to_string(),
             session_id=session_id,
             correlation_id=correlation_id,
-            preparation_iterations=message_inspection.preparation_iterations,
+            preparation_iterations=[
+                {
+                    "guideline_propositions": i.guideline_propositions,
+                    "tool_calls": i.tool_calls,
+                    "terms": i.terms,
+                    "context_variables": i.context_variables,
+                }
+                for i in message_inspection.preparation_iterations
+            ],
         )
 
     def _deserialize_message_inspection(
@@ -350,7 +374,15 @@ class SessionDocumentStore(SessionStore):
         message_inspection_document: _MessageInspectionDocument,
     ) -> Inspection:
         return Inspection(
-            preparation_iterations=message_inspection_document["preparation_iterations"],
+            preparation_iterations=[
+                PreparationIteration(
+                    guideline_propositions=i["guideline_propositions"],
+                    tool_calls=i["tool_calls"],
+                    terms=i["terms"],
+                    context_variables=i["context_variables"],
+                )
+                for i in message_inspection_document["preparation_iterations"]
+            ],
         )
 
     async def create_session(

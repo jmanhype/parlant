@@ -11,7 +11,6 @@ from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
-    ContextVariableKey,
 )
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
 from emcie.server.core.evaluations import (
@@ -369,13 +368,13 @@ async def test_context_variable_value_update_and_retrieval(
 
         await context_variable_store.update_value(
             variable_set=context.agent_id,
-            key=ContextVariableKey(end_user_id),
+            key=end_user_id,
             variable_id=variable.id,
             data={"key": "value"},
         )
         value = await context_variable_store.read_value(
             variable_set=context.agent_id,
-            key=ContextVariableKey(end_user_id),
+            key=end_user_id,
             variable_id=variable.id,
         )
 
@@ -435,7 +434,7 @@ async def test_context_variable_deletion(
         for k, d in [("k1", "d1"), ("k2", "d2"), ("k3", "d3")]:
             await context_variable_store.update_value(
                 variable_set=context.agent_id,
-                key=ContextVariableKey(k),
+                key=k,
                 variable_id=variable.id,
                 data=d,
             )

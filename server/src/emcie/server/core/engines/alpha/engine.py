@@ -12,7 +12,6 @@ from emcie.server.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
     ContextVariableValue,
-    ContextVariableKey,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
@@ -22,6 +21,7 @@ from emcie.server.core.guideline_tool_associations import (
 from emcie.server.core.glossary import Term, GlossaryStore
 from emcie.server.core.tools import ToolService
 from emcie.server.core.sessions import (
+    ContextVariable as StoredContextVariable,
     Event,
     GuidelineProposition as StoredGuidelineProposition,
     PreparationIteration,
@@ -128,6 +128,7 @@ class AlphaEngine(Engine):
         event_emitter: EventEmitter,
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
+        end_user_id = (await self._session_store.read_session(context.session_id)).end_user_id
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
@@ -241,6 +242,16 @@ class AlphaEngine(Engine):
                             )
                             for term in terms
                         ],
+                        context_variables=[
+                            StoredContextVariable(
+                                id=variable.id,
+                                name=variable.name,
+                                description=variable.description,
+                                key=end_user_id,
+                                value=value.data,
+                            )
+                            for variable, value in context_variables
+                        ],
                     )
                 )
 
@@ -308,7 +319,7 @@ class AlphaEngine(Engine):
                 variable,
                 await self._context_variable_store.read_value(
                     variable_set=agent_id,
-                    key=ContextVariableKey(session.end_user_id),  # noqa: F821
+                    key=session.end_user_id,  # noqa: F821
                     variable_id=variable.id,
                 ),
             )

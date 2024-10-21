@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, cast
 import dateutil
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -11,14 +11,16 @@ from emcie.common.tools import ToolResult
 from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.sessions import EventSource, SessionId, SessionStore
+from emcie.server.core.sessions import EventSource, MessageEventData, SessionId, SessionStore
 from tests.api.utils import (
     create_agent,
+    create_context_variable,
     create_guideline,
     create_session,
     create_term,
     post_message,
     read_reply,
+    set_context_variable_value,
 )
 
 
@@ -645,13 +647,18 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    session_id: SessionId,
 ) -> None:
+    session = await create_session(
+        container=container,
+        agent_id=agent_id,
+        end_user_id=EndUserId("john.s@peppery.com"),
+    )
+
     guideline = await create_guideline(
         container=container,
         agent_id=agent_id,
         predicate="a user mentions cows",
-        action="answer like a cow",
+        action="answer like a cow while mentioning the user's full name",
         tool_function=get_cow_uttering,
     )
 
@@ -663,24 +670,40 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
         synonyms=["Bobo"],
     )
 
+    context_variable = await create_context_variable(
+        container=container,
+        agent_id=agent_id,
+        name="User full name",
+    )
+
+    await set_context_variable_value(
+        container=container,
+        agent_id=agent_id,
+        variable_id=context_variable.id,
+        key=session.end_user_id,
+        data="John Smith",
+    )
+
     user_event = await post_message(
         container=container,
-        session_id=session_id,
+        session_id=session.id,
         message="Bobo!",
         response_timeout=Timeout(60),
     )
 
     reply_event = await read_reply(
         container=container,
-        session_id=session_id,
+        session_id=session.id,
         user_event_offset=user_event.offset,
     )
 
     inspection_data = (
-        client.get(f"/sessions/{session_id}/interactions/{reply_event.correlation_id}")
+        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
         .raise_for_status()
         .json()
     )
+
+    assert "John Smith" in cast(MessageEventData, reply_event.data)["message"]
 
     iterations = inspection_data["preparation_iterations"]
     assert len(iterations) >= 1
@@ -698,3 +721,8 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert iterations[0]["terms"][0]["name"] == term.name
     assert iterations[0]["terms"][0]["description"] == term.description
     assert iterations[0]["terms"][0]["synonyms"] == term.synonyms
+
+    assert len(iterations[0]["context_variables"]) == 1
+    assert iterations[0]["context_variables"][0]["name"] == context_variable.name
+    assert iterations[0]["context_variables"][0]["key"] == session.end_user_id
+    assert iterations[0]["context_variables"][0]["value"] == "John Smith"

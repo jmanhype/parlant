@@ -10,7 +10,6 @@ from emcie.server.core.context_variables import (
     ContextVariableId,
     ContextVariableStore,
     ContextVariableValueId,
-    ContextVariableKey,
     FreshnessRules,
 )
 from emcie.server.core.tools import ToolService
@@ -80,7 +79,7 @@ class PutContextVariableValueResponse(DefaultBaseModel):
 
 class ReadContextVariableResponse(DefaultBaseModel):
     context_variable: ContextVariableDTO
-    key_value_pairs: Optional[dict[ContextVariableKey, ContextVariableValueDTO]]
+    key_value_pairs: Optional[dict[str, ContextVariableValueDTO]]
 
 
 class DeleteContextVariableValueResponse(DefaultBaseModel):
@@ -193,7 +192,7 @@ def create_router(
     async def set_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
         request: PutContextVariableValueRequest,
     ) -> PutContextVariableValueResponse:
         _ = await context_variable_store.read_variable(
@@ -220,7 +219,7 @@ def create_router(
     async def get_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
     ) -> ContextVariableValueDTO:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
@@ -287,7 +286,7 @@ def create_router(
     async def delete_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
     ) -> DeleteContextVariableValueResponse:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,

@@ -19,7 +19,6 @@ from emcie.server.core.persistence.document_database import (
 
 ContextVariableId = NewType("ContextVariableId", str)
 ContextVariableValueId = NewType("ContextVariableValueId", str)
-ContextVariableKey = NewType("ContextVariableKey", str)
 
 
 @dataclass(frozen=True)
@@ -80,7 +79,7 @@ class ContextVariableStore(ABC):
     async def update_value(
         self,
         variable_set: str,
-        key: ContextVariableKey,
+        key: str,
         variable_id: ContextVariableId,
         data: JSONSerializable,
     ) -> ContextVariableValue: ...
@@ -109,7 +108,7 @@ class ContextVariableStore(ABC):
     async def read_value(
         self,
         variable_set: str,
-        key: ContextVariableKey,
+        key: str,
         variable_id: ContextVariableId,
     ) -> ContextVariableValue: ...
 
@@ -118,7 +117,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
     ) -> Optional[ContextVariableValueId]: ...
 
     @abstractmethod
@@ -126,7 +125,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-    ) -> Sequence[tuple[ContextVariableKey, ContextVariableValue]]: ...
+    ) -> Sequence[tuple[str, ContextVariableValue]]: ...
 
 
 class _FreshnessRulesDocument(TypedDict, total=False):
@@ -166,7 +165,7 @@ class _ContextVariableValueDocument(TypedDict, total=False):
     last_modified: str
     variable_set: str
     variable_id: ContextVariableId
-    key: ContextVariableKey
+    key: str
     data: JSONSerializable
 
 
@@ -218,7 +217,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         context_variable_value: ContextVariableValue,
         variable_set: str,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
     ) -> _ContextVariableValueDocument:
         return _ContextVariableValueDocument(
             id=ObjectId(context_variable_value.id),
@@ -294,7 +293,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     async def update_value(
         self,
         variable_set: str,
-        key: ContextVariableKey,
+        key: str,
         variable_id: ContextVariableId,
         data: JSONSerializable,
     ) -> ContextVariableValue:
@@ -379,7 +378,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
     async def read_value(
         self,
         variable_set: str,
-        key: ContextVariableKey,
+        key: str,
         variable_id: ContextVariableId,
     ) -> ContextVariableValue:
         value_document = await self._value_collection.find_one(
@@ -401,7 +400,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-        key: ContextVariableKey,
+        key: str,
     ) -> Optional[ContextVariableValueId]:
         result = await self._value_collection.delete_one(
             {
@@ -421,7 +420,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         variable_id: ContextVariableId,
-    ) -> Sequence[tuple[ContextVariableKey, ContextVariableValue]]:
+    ) -> Sequence[tuple[str, ContextVariableValue]]:
         return [
             (d["key"], self._deserialize_context_variable_value(d))
             for d in await self._value_collection.find(
