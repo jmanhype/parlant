@@ -15,20 +15,12 @@ vi.mock('@/hooks/useFetch', () => ({
 }))
 
 describe('Agent Select Component', () => {
-    it('select-box should be rendered', () => {
+
+    it('component should be rendered', () => {
         const {getByRole} = render(<AgentsSelect setSelectedAgent={vi.fn()}/>);
         const selectBox = getByRole('combobox');
         expect(selectBox).toBeInTheDocument();
     });
-
-    // it('should have 2 options', async () => {
-    //     const {getByRole} = render(<AgentsSelect setSelectedAgent={vi.fn()}/>);
-    //     const selectBox = getByRole('combobox');
-    //     fireEvent.click(selectBox);
-    //     const selectOptions = await waitFor(() => screen.getAllByRole('option'));
-
-    //     expect(selectOptions).toHaveLength(2);
-    // });
 
     it('none should be selected', async () => {
         const {getByRole} = render(<AgentsSelect setSelectedAgent={vi.fn()}/>);

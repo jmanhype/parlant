@@ -14,7 +14,7 @@ vi.mock('@/utils/api', () => ({
 }))
 
 
-describe('Sessions Component', () => {
+describe('Session Component', () => {
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
     let rerender: (ui: React.ReactNode) => void;
     let container: HTMLElement;
