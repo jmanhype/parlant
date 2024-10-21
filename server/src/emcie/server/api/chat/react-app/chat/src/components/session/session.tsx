@@ -70,10 +70,10 @@ export default function Session({setSession, session, isSelected, refetch}: Prop
                 {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
             </div>
             <div>
-                {!isEditingTitle && <Tooltip value='Rename'><Button variant='ghost' className="w-[40px] p-0" onClick={editTitle}><Edit/></Button></Tooltip>}
-                {!isEditingTitle && <Tooltip value='Delete'><Button variant='ghost' className="w-[40px] p-0" onClick={deleteSession}><Trash/></Button></Tooltip>}
+                {!isEditingTitle && <Tooltip value='Rename'><Button data-testid="edit" variant='ghost' className="w-[40px] p-0" onClick={editTitle}><Edit/></Button></Tooltip>}
+                {!isEditingTitle && <Tooltip value='Delete'><Button data-testid="delete" variant='ghost' className="w-[40px] p-0" onClick={deleteSession}><Trash/></Button></Tooltip>}
                 
-                {isEditingTitle && <Tooltip value='Cancel'><Button variant='ghost' className="w-[40px] p-0" onClick={cancel}><X/></Button></Tooltip>}
+                {isEditingTitle && <Tooltip value='Cancel'><Button data-testid="cancel" variant='ghost' className="w-[40px] p-0" onClick={cancel}><X/></Button></Tooltip>}
                 {isEditingTitle && <Tooltip value='Save'><Button variant='ghost' className="w-[40px] p-0" onClick={saveTitleChange}><Check/></Button></Tooltip>}
             </div>
         </div>

@@ -27,11 +27,11 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
     }, [sessionId]);
 
     return (
-        <div className="flex justify-center pt-4 flex-col gap-4 w-full lg:w-[80%]">
+        <div data-testid="sessions" className="flex justify-center pt-4 flex-col gap-4 w-full lg:w-[80%]">
             {ErrorTemplate && <ErrorTemplate />}
             {loading && <div>loading...</div>}
             {!loading && !error && sessions.map(session => (
-                <Session isSelected={session.id === sessionId} refetch={refetch} session={session} setSession={setSession} key={session.id}/>
+                <Session data-testid="session" isSelected={session.id === sessionId} refetch={refetch} session={session} setSession={setSession} key={session.id}/>
             ))}
         </div>
     )
