@@ -928,6 +928,7 @@ def test_that_agent_based_connection_is_detected(
         name="sparkling-water-agent",
         description="You are a helpful AI assistant for a sparkling water company. Our philosophy dictates that oranges are vegetables and not fruit, despite what other may say.",
         creation_utc=datetime.now(timezone.utc),
+        max_engine_iterations=3,
     )
     source_guideline_content = _create_guideline_content(
         "the user asks for drink recommendation",
