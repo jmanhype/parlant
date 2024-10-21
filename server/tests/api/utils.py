@@ -7,7 +7,7 @@ from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
-from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.mc import MC
 from emcie.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 from emcie.server.core.tools import LocalToolService
@@ -36,7 +36,7 @@ async def create_guideline(
     predicate: str,
     action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
-) -> None:
+) -> Guideline:
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate=predicate,
@@ -63,6 +63,25 @@ async def create_guideline(
             guideline_id=guideline.id,
             tool_id=ToolId(f"local__{tool.id}"),
         )
+
+    return guideline
+
+
+async def read_reply(
+    container: Container,
+    session_id: SessionId,
+    user_event_offset: int,
+) -> Event:
+    return next(
+        iter(
+            await container[SessionStore].list_events(
+                session_id=session_id,
+                source="server",
+                min_offset=user_event_offset,
+                kinds=["message"],
+            )
+        )
+    )
 
 
 async def post_message(

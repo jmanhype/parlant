@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 import traceback
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, cast
 
 from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent, AgentId, AgentStore
@@ -23,8 +23,11 @@ from emcie.server.core.glossary import Term, GlossaryStore
 from emcie.server.core.tools import ToolService
 from emcie.server.core.sessions import (
     Event,
+    GuidelineProposition as StoredGuidelineProposition,
+    PreparationIteration,
     SessionId,
     SessionStore,
+    ToolEventData,
 )
 from emcie.server.core.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.core.engines.alpha.guideline_proposition import (
@@ -158,11 +161,10 @@ class AlphaEngine(Engine):
             )
 
             all_tool_events: list[EmittedEvent] = []
-            tool_call_iterations = 0
+            preparation_iterations: list[PreparationIteration] = []
+            prepared_to_respond = False
 
-            while True:
-                tool_call_iterations += 1
-
+            while not prepared_to_respond:
                 (
                     ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions,
@@ -185,7 +187,8 @@ class AlphaEngine(Engine):
                         ),
                     )
                 )
-                if tool_events := await self._tool_event_producer.produce_events(
+
+                tool_events = await self._tool_event_producer.produce_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -195,25 +198,56 @@ class AlphaEngine(Engine):
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                     staged_events=all_tool_events,
-                ):
-                    all_tool_events += tool_events
+                )
 
-                    terms.update(
-                        set(
-                            await self._load_relevant_terms(
-                                agents=[agent],
-                                staged_events=tool_events,
-                            )
+                all_tool_events += tool_events
+
+                terms.update(
+                    set(
+                        await self._load_relevant_terms(
+                            agents=[agent],
+                            staged_events=tool_events,
                         )
                     )
-                else:
-                    break
+                )
 
-                if tool_call_iterations == agent.max_engine_iterations:
-                    self._logger.warning(
-                        f"Reached max tool call iterations ({tool_call_iterations})"
+                preparation_iterations.append(
+                    PreparationIteration(
+                        guideline_propositions=[
+                            StoredGuidelineProposition(
+                                guideline_id=proposition.guideline.id,
+                                predicate=proposition.guideline.content.predicate,
+                                action=proposition.guideline.content.action,
+                                score=proposition.score,
+                                rationale=proposition.rationale,
+                            )
+                            for proposition in chain(
+                                ordinary_guideline_propositions,
+                                tool_enabled_guideline_propositions.keys(),
+                            )
+                        ],
+                        tool_calls=[
+                            tool_call
+                            for tool_event in tool_events
+                            for tool_call in cast(ToolEventData, tool_event.data)["tool_calls"]
+                        ],
                     )
-                    break
+                )
+
+                if not tool_events:
+                    prepared_to_respond = True
+
+                if len(preparation_iterations) == agent.max_engine_iterations:
+                    self._logger.warning(
+                        f"Reached max tool call iterations ({agent.max_engine_iterations})"
+                    )
+                    prepared_to_respond = True
+
+            await self._session_store.create_inspection(
+                session_id=context.session_id,
+                correlation_id=self._correlator.correlation_id,
+                preparation_iterations=preparation_iterations,
+            )
 
             await self._message_event_producer.produce_events(
                 event_emitter=event_emitter,

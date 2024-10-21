@@ -12,7 +12,7 @@ from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventSource, SessionId, SessionStore
-from tests.api.utils import create_agent, create_guideline, create_session, post_message
+from tests.api.utils import create_agent, create_guideline, create_session, post_message, read_reply
 
 
 @fixture
@@ -80,6 +80,10 @@ def event_is_according_to_params(
             return False
 
     return True
+
+
+def get_cow_uttering() -> ToolResult:
+    return ToolResult("moo")
 
 
 ###############################################################################
@@ -505,9 +509,6 @@ async def test_that_tool_events_are_correlated_with_message_events(
     agent_id: AgentId,
     session_id: SessionId,
 ) -> None:
-    def get_cow_uttering() -> ToolResult:
-        return ToolResult("moo")
-
     await create_guideline(
         container=container,
         agent_id=agent_id,
@@ -631,3 +632,49 @@ async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_mess
     assert interactions[0]["kind"] == "message"
     assert isinstance(interactions[0]["data"], str)
     assert len(interactions[0]["data"]) > 0
+
+
+async def test_that_a_message_interaction_can_be_inspected_using_the_message_event_id(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+    session_id: SessionId,
+) -> None:
+    guideline = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user says hello",
+        action="answer like a cow",
+        tool_function=get_cow_uttering,
+    )
+
+    user_event = await post_message(
+        container=container,
+        session_id=session_id,
+        message="Hello there!",
+        response_timeout=Timeout(60),
+    )
+
+    reply_event = await read_reply(
+        container=container,
+        session_id=session_id,
+        user_event_offset=user_event.offset,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session_id}/interactions/{reply_event.correlation_id}")
+        .raise_for_status()
+        .json()
+    )
+
+    iterations = inspection_data["preparation_iterations"]
+    assert len(iterations) >= 1
+
+    assert len(iterations[0]["guideline_propositions"]) == 1
+    assert iterations[0]["guideline_propositions"][0]["guideline_id"] == guideline.id
+    assert iterations[0]["guideline_propositions"][0]["predicate"] == guideline.content.predicate
+    assert iterations[0]["guideline_propositions"][0]["action"] == guideline.content.action
+
+    assert len(iterations[0]["tool_calls"]) == 1
+    assert "get_cow_uttering" in iterations[0]["tool_calls"][0]["tool_name"]
+    assert iterations[0]["tool_calls"][0]["result"]["data"] == "moo"
