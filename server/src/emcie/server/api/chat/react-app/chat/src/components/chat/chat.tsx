@@ -11,15 +11,17 @@ interface Props {
     sessionId: string;
 }
 
+type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
+
 export interface Event {
     source: 'client' | 'server';
     kind: 'status' | 'message';
     correlation_id: string;
-    serverStatus: string | undefined;
+    serverStatus: ServerStatus;
     offset: number;
     creation_utc: Date;
     data: {
-        status?: string;
+        status?: ServerStatus;
         message: string;
     };
 }
@@ -63,8 +65,8 @@ export default function Chat({sessionId}: Props): ReactElement {
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         setMessages(messages => {
             const last = messages.at(-1);
-           if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap?.[last?.correlation_id]?.at(-1)?.data?.status;
-           return [...messages, ...withStatusMessages];
+           if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
+           return [...messages, ...withStatusMessages] as Event[];
         });
 
         const lastEventStatus = lastEvent?.data?.status;
@@ -75,7 +77,7 @@ export default function Chat({sessionId}: Props): ReactElement {
         // if (lastEvent?.kind !== 'status' || (lastEventStatus && !{ready: true, error: true}[lastEventStatus])) setRefetch(refetch => !refetch);
         // else setIsSubmitDisabled(false);
         refetch();
-        if (lastEvent?.kind === 'status' && (lastEventStatus && {ready: true, error: true}[lastEventStatus])) {
+        if (lastEvent?.kind === 'status' && (lastEventStatus === 'ready' || lastEventStatus === 'error')) {
             setIsSubmitDisabled(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
