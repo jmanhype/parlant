@@ -231,7 +231,7 @@ Expected Output:
         }}
     ]
 }}
-
+```
 
 Example 2
 Input:
@@ -420,6 +420,7 @@ Expected Output:
         }}
     ]
 }}
+```
 
 ###
 Example 4:
@@ -466,6 +467,7 @@ Expected Output:
     ]
 }}
 ```
+
 ###
 Example 5:
 {{
@@ -535,7 +537,7 @@ Expected Output:
         }}
     ]
 }}
-```
+'''
 """  # noqa
         )
         # Find and add glossary to prompt

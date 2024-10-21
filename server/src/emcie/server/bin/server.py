@@ -13,9 +13,6 @@ import click_completion
 import json
 from pathlib import Path
 import sys
-import rich
-from rich.text import Text
-from tabulate import tabulate
 import uvicorn
 
 from emcie.common.tools import ToolId
@@ -35,7 +32,6 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import (
-    GuidelineContent,
     GuidelineDocumentStore,
     GuidelineStore,
 )
@@ -73,7 +69,8 @@ from emcie.server.core.services.indexing.behavioral_change_evaluation import (
 )
 from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
-    ContradictionTestsSchema,
+    PredicatesEntailmentTestsSchema,
+    ActionsContradictionTestsSchema,
 )
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
@@ -216,9 +213,12 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
     c[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema](
         logger=LOGGER
     )
-    c[SchematicGenerator[ContradictionTestsSchema]] = GPT_4o[ContradictionTestsSchema](
-        logger=LOGGER
-    )
+    c[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
+        PredicatesEntailmentTestsSchema
+    ](logger=LOGGER)
+    c[SchematicGenerator[ActionsContradictionTestsSchema]] = GPT_4o[
+        ActionsContradictionTestsSchema
+    ](logger=LOGGER)
     c[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
         GuidelineConnectionPropositionsSchema
     ](logger=LOGGER)
@@ -288,7 +288,9 @@ async def setup_container(config: Any) -> AsyncIterator[Container]:
 
         c[CoherenceChecker] = CoherenceChecker(
             c[Logger],
-            c[SchematicGenerator[ContradictionTestsSchema]],
+            c[SchematicGenerator[PredicatesEntailmentTestsSchema]],
+            c[SchematicGenerator[ActionsContradictionTestsSchema]],
+            c[GlossaryStore],
         )
 
         c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
@@ -426,54 +428,6 @@ async def start_server(params: CLIParams) -> None:
                     last_config_update_time = params.config_file.stat().st_mtime
 
 
-async def check_coherence(params: CLIParams) -> None:
-    def render_guideline(g: GuidelineContent) -> str:
-        return f"When {g.predicate}, then {g.action}"
-
-    checker = CoherenceChecker(
-        LOGGER,
-        GPT_4o[ContradictionTestsSchema](logger=LOGGER),
-    )
-
-    for agent, guideline_specs in params.config["guidelines"].items():
-        guideline_to_evaluate = [
-            GuidelineContent(
-                predicate=str(guideline["when"]),
-                action=str(guideline["then"]),
-            )
-            for guideline in guideline_specs
-        ]
-
-        tests = [
-            t
-            for t in await checker.evaluate_coherence(
-                guidelines_to_evaluate=guideline_to_evaluate,
-            )
-            if t.severity >= 6
-        ]
-
-        if tests:
-            rich.print(Text(f'{len(tests)} issues found in "{agent}"\n', style="bold red"))
-            entries = [
-                {
-                    "first": render_guideline(t.guideline_a),
-                    "second": render_guideline(t.guideline_b),
-                    "issue": t.rationale,
-                    "severity": t.severity,
-                }
-                for t in tests
-            ]
-            rich.print(
-                tabulate(
-                    entries,
-                    headers="keys",
-                    maxcolwidths=[20, 20, 40, 10],
-                    tablefmt="rounded_grid",
-                )
-            )
-            rich.print()
-
-
 def main() -> None:
     click_completion.init()
 
@@ -536,11 +490,6 @@ def main() -> None:
         ctx.obj.index = index
         ctx.obj.force = force
         asyncio.run(start_server(ctx.obj))
-
-    @cli.command(help="Check the configuration's validity and coherence")
-    @click.pass_context
-    def check(ctx: click.Context) -> None:
-        asyncio.run(check_coherence(ctx.obj))
 
     try:
         cli()

@@ -84,5 +84,4 @@ Example #2: ###
 """,
         hints={"temperature": 0.0, "strict": True},
     )
-
     return inference.content.answer
