@@ -67,10 +67,12 @@ export default function Chat({sessionId}: Props): ReactElement {
            return [...messages, ...withStatusMessages];
         });
 
-        if (lastEvent?.data?.status === 'typing') setShowSkeleton(true);
+        const lastEventStatus = lastEvent?.data?.status;
+
+        if (lastEventStatus === 'typing') setShowSkeleton(true);
         else setShowSkeleton(false);
 
-        if (lastEvent?.kind !== 'status' || lastEvent?.data?.status !== 'ready') setRefetch(refetch => !refetch);
+        if (lastEvent?.kind !== 'status' || (lastEventStatus && !{ready: true, error: true}[lastEventStatus])) setRefetch(refetch => !refetch);
         else setIsSubmitDisabled(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages])

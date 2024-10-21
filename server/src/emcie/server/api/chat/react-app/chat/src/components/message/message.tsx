@@ -1,11 +1,12 @@
 import { ReactElement } from "react";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, CircleAlert } from "lucide-react";
 import Markdown from "react-markdown";
 import { Event } from "../chat/chat";
 
 interface Props {
     event: Event
 }
+
 
 const formatDateTime = (targetDate: Date | string): string => {
     if (typeof targetDate === 'string') targetDate = new Date(targetDate);
@@ -26,6 +27,7 @@ export default function Message({event}: Props): ReactElement {
             </div>
             {event.source === 'client' && event.serverStatus &&
             <div className="w-6 self-end">
+                {event.serverStatus === 'error' && <CircleAlert className="self-end" height={15}/>}
                 {event.serverStatus === 'accepted' && <Check className="self-end" height={15}/>}
                 {event.serverStatus === 'acknowledged' && <CheckCheck className="self-end" height={15}/>}
                 {{processing: true, typing: true, ready: true}[event.serverStatus] && <CheckCheck className="self-end text-green-300" height={15}/>}

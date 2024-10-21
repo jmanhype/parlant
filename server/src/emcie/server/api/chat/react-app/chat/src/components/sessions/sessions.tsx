@@ -25,11 +25,13 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
     const [isEditingTitle, setIsEditingTitle] = useState<{ [key: string]: boolean }>({});
     const {data, error, ErrorTemplate, loading, setRefetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
 
+    useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
+
     useEffect(() => {
-        if (data?.sessions) setSessions(data.sessions);
-        if (sessionId && !sessions?.some(s => s.id === sessionId)) setRefetch(refetch => !refetch);
+        const isNewSession = sessionId && !sessions?.some(s => s.id === sessionId);
+        if (isNewSession) setRefetch(refetch => !refetch);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, data]);
+    }, [sessionId]);
 
     const deleteSession = async (e: React.MouseEvent, selectedSession: Session) => {
         e.stopPropagation();
@@ -48,7 +50,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
         setTimeout(() => sessionNameRef?.current?.select(), 0);
     }
 
-    const saveTitleChange = (e: React.MouseEvent, sessionId: string) => {
+    const saveTitleChange = (e: React.MouseEvent | React.KeyboardEvent, sessionId: string) => {
         e.stopPropagation();
         if (sessionNameRef?.current?.value) {
             patchData(`sessions/${sessionId}`, {title: sessionNameRef.current.value})
@@ -67,6 +69,10 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
         setIsEditingTitle({});
     };
 
+    const onInputKeyUp = (e: React.KeyboardEvent, sessionId: string) =>{
+        if (e.key === 'Enter') saveTitleChange(e, sessionId);
+    }
+
     return (
         <div className="flex justify-center pt-4 flex-col gap-4 w-full lg:w-[80%]">
             {ErrorTemplate && <ErrorTemplate />}
@@ -75,7 +81,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
                 <div data-testid="session" role="button" tabIndex={0} onKeyDown={e => e.key === ' ' && e.target.click()} onClick={() => setSession(session.id)} key={session.id} className={"bg-slate-200 border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 " + (session.id === sessionId ? '!bg-blue-600 text-white' : '')}>
                     <div className="flex-1 whitespace-nowrap overflow-hidden">
                         {!isEditingTitle[session.id] && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
-                        {isEditingTitle[session.id] && <Input data-testid='sessionTitle' ref={sessionNameRef} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
+                        {isEditingTitle[session.id] && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={e => onInputKeyUp(e, session.id)} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
                     </div>
                     <div>
                         {!isEditingTitle[session.id] && <Tooltip value='Edit'><Button variant='ghost' className="w-[40px] p-0" onClick={(e: React.MouseEvent) => editTitle(e, session.id)}><Edit/></Button></Tooltip>}
