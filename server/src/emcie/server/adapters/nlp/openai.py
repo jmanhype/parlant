@@ -29,6 +29,14 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
         prompt: str,
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[T]:
+        with self._logger.operation("OpenAI LLM Request"):
+            return await self._do_generate(prompt, hints)
+
+    async def _do_generate(
+        self,
+        prompt: str,
+        hints: Mapping[str, Any] = {},
+    ) -> SchematicGenerationResult[T]:
         openai_api_arguments = {k: v for k, v in hints.items() if k in self.supported_openai_params}
 
         if hints.get("strict", False):
@@ -38,6 +46,9 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
                 response_format=self.schema,
                 **openai_api_arguments,
             )
+
+            if response.usage:
+                self._logger.debug(response.usage.model_dump_json(indent=2))
 
             parsed_object = response.choices[0].message.parsed
             assert parsed_object
@@ -51,6 +62,9 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
                 response_format={"type": "json_object"},
                 **openai_api_arguments,
             )
+
+            if response.usage:
+                self._logger.debug(response.usage.model_dump_json(indent=2))
 
             raw_content = response.choices[0].message.content or "{}"
 
