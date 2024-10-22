@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { Matcher } from 'vite';
 import Session from './session';
-import { Session as SessionInterface } from '../sessions/sessions';
 import { deleteData } from '@/utils/api';
+import { SessionInterface } from '@/utils/interfaces';
 
 const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '' };
 

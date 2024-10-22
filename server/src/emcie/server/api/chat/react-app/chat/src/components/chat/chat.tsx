@@ -7,23 +7,9 @@ import { Skeleton } from '../ui/skeleton';
 import { groupBy } from '@/utils/obj';
 import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
+import { EventInterface } from '@/utils/interfaces';
 
-export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
-
-export interface Event {
-    source: 'client' | 'server';
-    kind: 'status' | 'message';
-    correlation_id: string;
-    serverStatus: ServerStatus;
-    offset: number;
-    creation_utc: Date;
-    data: {
-        status?: ServerStatus;
-        message: string;
-    };
-}
-
-const emptyPendingMessage: Event = {
+const emptyPendingMessage: EventInterface = {
     kind: 'message',
     source: 'client',
     creation_utc: new Date(),
@@ -42,12 +28,12 @@ export default function Chat(): ReactElement {
     const {sessionId} = useSession();
 
     const [message, setMessage] = useState('');
-    const [pendingMessage, setPendingMessage] = useState<Event>(emptyPendingMessage);
+    const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage);
     const [lastOffset, setLastOffset] = useState(0);
-    const [messages, setMessages] = useState<Event[]>([]);
+    const [messages, setMessages] = useState<EventInterface[]>([]);
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
-    const {data: lastMessages, refetch} = useFetch<{events: Event[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
+    const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], true);
 
     const resetChat = () => {
         setMessage('');
@@ -72,13 +58,13 @@ export default function Chat(): ReactElement {
         if (pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         const offset = lastEvent?.offset;
         if (offset) setLastOffset(offset + 1);
-        const correlationsMap = groupBy(lastMessages?.events || [], (item: Event) => item?.correlation_id.split('.')[0]);
+        const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         setMessages(messages => {
             const last = messages.at(-1);
            if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
-           return [...messages, ...withStatusMessages] as Event[];
+           return [...messages, ...withStatusMessages] as EventInterface[];
         });
 
         const lastEventStatus = lastEvent?.data?.status;

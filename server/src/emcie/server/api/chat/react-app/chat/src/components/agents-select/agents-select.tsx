@@ -1,14 +1,10 @@
 import { ReactElement, useEffect } from 'react';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import useFetch from '@/hooks/useFetch';
-
-interface Agent {
-    id: string;
-    name: string;
-}
+import { AgentInterface } from '@/utils/interfaces';
 
 export default function AgentsSelect({value, setSelectedAgent}: {value?: string | undefined, setSelectedAgent: (val: string) => void}): ReactElement {
-    const {data} = useFetch<{agents: Agent[]}>('agents');
+    const {data} = useFetch<{agents: AgentInterface[]}>('agents');
 
     useEffect(() => {
         if (!value && data?.agents?.length) setSelectedAgent(data.agents[0].id);

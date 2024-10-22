@@ -1,5 +1,4 @@
 import { ReactElement, useRef, useState } from 'react';
-import { Session as SessionInterface } from '../sessions/sessions';
 import { Input } from '../ui/input';
 import Tooltip from '../ui/custom/tooltip';
 import { Button } from '../ui/button';
@@ -7,6 +6,7 @@ import { deleteData, patchData } from '@/utils/api';
 import { toast } from 'sonner';
 import { Check, Edit, Trash, X } from 'lucide-react';
 import { useSession } from '../chatbot/chatbot';
+import { SessionInterface } from '@/utils/interfaces';
 
 interface Props {
     session: SessionInterface;

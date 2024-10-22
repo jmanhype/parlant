@@ -2,20 +2,15 @@ import { ReactElement, useEffect, useState } from 'react';
 import useFetch from '@/hooks/useFetch';
 import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
+import { SessionInterface } from '@/utils/interfaces';
 
 interface Props {
     agentId: string | undefined;
 }
 
-export interface Session {
-    id: string;
-    title: string;
-    end_user_id: string;
-}
-
 export default function Sessions({agentId}: Props): ReactElement {
-    const [sessions, setSessions] = useState<Session[]>([]);
-    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
+    const [sessions, setSessions] = useState<SessionInterface[]>([]);
+    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions/', {agent_id: agentId}, [agentId]);
     const {sessionId} = useSession();
 
     useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);

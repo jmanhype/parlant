@@ -1,10 +1,10 @@
 import { ReactElement } from 'react';
 import { Check, CheckCheck, CircleAlert, Clock } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { Event } from '../chat/chat';
+import { EventInterface } from '@/utils/interfaces';
 
 interface Props {
-    event: Event
+    event: EventInterface
 }
 
 const statusIcon = {
