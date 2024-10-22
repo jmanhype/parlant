@@ -1,7 +1,10 @@
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
-from typing import Any, Optional
+import time
+import traceback
+from typing import Any, AsyncIterator, Optional
 import httpx
 
 from tests.test_utilities import (
@@ -44,54 +47,126 @@ async def run_cli_and_get_exit_status(*args: str) -> int:
 
 class API:
     @staticmethod
-    async def get_first_agent_id() -> str:
+    @asynccontextmanager
+    async def _make_client() -> AsyncIterator[httpx.AsyncClient]:
         async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
-            agents_response = await client.get(
-                f"{SERVER_ADDRESS}/agents/",
-            )
-            agents_response.raise_for_status()
+            yield client
 
-            assert len(agents_response.json()["agents"]) > 0
-            agent = agents_response.json()["agents"][0]
+    @staticmethod
+    async def get_first_agent_id() -> str:
+        async with API._make_client() as client:
+            response = await client.get("/agents/")
+            agent = response.raise_for_status().json()["agents"][0]
             return str(agent["id"])
 
     @staticmethod
-    async def get_term_list(agent_id: str) -> Any:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def create_session(agent_id: str, end_user_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                "/sessions",
+                params={"allow_greeting": False},
+                json={
+                    "agent_id": agent_id,
+                    "end_user_id": end_user_id,
+                },
+            )
+
+            return response.raise_for_status().json()["session"]
+
+    @staticmethod
+    async def get_agent_reply(session_id: str, message: str) -> Any:
+        return next(iter(await API.get_agent_replies(session_id, message, 1)))
+
+    @staticmethod
+    async def get_agent_replies(
+        session_id: str,
+        message: str,
+        number_of_replies_to_expect: int,
+    ) -> list[Any]:
+        async with API._make_client() as client:
+            try:
+                user_message_response = await client.post(
+                    f"/sessions/{session_id}/events",
+                    json={
+                        "content": message,
+                    },
+                )
+                user_message_response.raise_for_status()
+                user_message_offset = int(user_message_response.json()["event_offset"])
+
+                last_known_offset = user_message_offset
+
+                replies: list[Any] = []
+                start_time = time.time()
+                timeout = 300
+
+                while len(replies) < number_of_replies_to_expect:
+                    response = await client.get(
+                        f"/sessions/{session_id}/events",
+                        params={
+                            "min_offset": last_known_offset + 1,
+                            "kinds": "message",
+                            "wait": True,
+                        },
+                    )
+                    response.raise_for_status()
+                    events = response.json()["events"]
+
+                    if message_events := [e for e in events if e["kind"] == "message"]:
+                        replies.append(message_events[0])
+
+                    last_known_offset = events[-1]["offset"]
+
+                    if (time.time() - start_time) >= timeout:
+                        raise TimeoutError()
+
+                return replies
+            except:
+                traceback.print_exc()
+                raise
+
+    @staticmethod
+    async def create_term(agent_id: str, name: str, description: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/terms/",
+                json={
+                    "name": name,
+                    "description": description,
+                },
+            )
+
+            return response.raise_for_status().json()
+
+    @staticmethod
+    async def list_terms(agent_id: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
+                f"/agents/{agent_id}/terms/",
             )
             response.raise_for_status()
 
             return response.json()["terms"]
 
     @staticmethod
-    async def get_term(agent_id: str, term_name: str) -> Any:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def read_term(agent_id: str, term_name: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/terms/{term_name}",
+                f"/agents/{agent_id}/terms/{term_name}",
             )
             response.raise_for_status()
 
             return response.json()
 
     @staticmethod
-    async def get_guideline_list(agent_id: str) -> Any:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def list_guidelines(agent_id: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
+                f"/agents/{agent_id}/guidelines/",
             )
 
             response.raise_for_status()
@@ -99,13 +174,10 @@ class API:
             return response.json()["guidelines"]
 
     @staticmethod
-    async def get_guideline(agent_id: str, guideline_id: str) -> Any:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def read_guideline(agent_id: str, guideline_id: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{guideline_id}",
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
             )
 
             response.raise_for_status()
@@ -120,12 +192,9 @@ class API:
         coherence_check: Optional[dict[str, Any]] = None,
         connection_propositions: Optional[dict[str, Any]] = None,
     ) -> Any:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+        async with API._make_client() as client:
             response = await client.post(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
+                f"/agents/{agent_id}/guidelines/",
                 json={
                     "invoices": [
                         {
@@ -154,11 +223,7 @@ class API:
 
     @staticmethod
     async def create_context_variable(agent_id: str, name: str, description: str) -> Any:
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+        async with API._make_client() as client:
             response = await client.post(
                 f"/agents/{agent_id}/context-variables",
                 json={
@@ -172,12 +237,8 @@ class API:
             return response.json()["context_variable"]
 
     @staticmethod
-    async def get_context_variable_list(agent_id: str) -> Any:
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def list_context_variables(agent_id: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(f"/agents/{agent_id}/context-variables/")
 
             response.raise_for_status()
@@ -191,11 +252,7 @@ class API:
         key: str,
         value: Any,
     ) -> Any:
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+        async with API._make_client() as client:
             response = await client.put(
                 f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
                 json={"data": value},
@@ -203,12 +260,8 @@ class API:
             response.raise_for_status()
 
     @staticmethod
-    async def get_context_variable_value(agent_id: str, variable_id: str, key: str) -> Any:
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
+    async def read_context_variable_value(agent_id: str, variable_id: str, key: str) -> Any:
+        async with API._make_client() as client:
             response = await client.get(
                 f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
             )
@@ -292,7 +345,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
             description,
         ) == os.EX_OK
 
-        term = await API.get_term(agent_id, term_name)
+        term = await API.read_term(agent_id, term_name)
         assert term["name"] == term_name
         assert term["description"] == description
         assert term["synonyms"] == []
@@ -338,7 +391,7 @@ async def test_that_terms_can_be_listed(
             == os.EX_OK
         )
 
-        terms = await API.get_term_list(agent_id)
+        terms = await API.list_terms(agent_id)
         assert len(terms) == 2
 
         term_names = {term["name"] for term in terms}
@@ -383,7 +436,7 @@ async def test_that_a_term_can_be_deleted(
             == os.EX_OK
         )
 
-        terms = await API.get_term_list(agent_id)
+        terms = await API.list_terms(agent_id)
         assert len(terms) == 0
 
 
@@ -415,7 +468,7 @@ async def test_that_terms_are_loaded_on_server_startup(
 
         agent_id = await API.get_first_agent_id()
 
-        term = await API.get_term(agent_id, term_name)
+        term = await API.read_term(agent_id, term_name)
         assert term["name"] == term_name
         assert term["description"] == description
         assert term["synonyms"] == []
@@ -444,7 +497,7 @@ async def test_that_guideline_can_be_added(
             == os.EX_OK
         )
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
         assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
 
 
@@ -489,7 +542,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 
         assert "Detected incoherence with other guidelines" in output
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         assert not any(
             g["predicate"] == predicate and g["action"] == conflicting_action for g in guidelines
@@ -534,13 +587,13 @@ async def test_that_adding_connected_guidelines_creates_connections(
             == os.EX_OK
         )
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         assert len(guidelines) == 2
         source = guidelines[0]
         target = guidelines[1]
 
-        source_guideline = await API.get_guideline(agent_id, source["id"])
+        source_guideline = await API.read_guideline(agent_id, source["id"])
         source_connections = source_guideline["connections"]
 
         assert len(source_connections) == 1
@@ -817,7 +870,7 @@ async def test_that_guidelines_can_be_entailed(
             == os.EX_OK
         )
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
@@ -840,7 +893,7 @@ async def test_that_guidelines_can_be_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await API.get_guideline(agent_id, first_guideline["id"])
+        guideline = await API.read_guideline(agent_id, first_guideline["id"])
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
         assert (
@@ -892,7 +945,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             == os.EX_OK
         )
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
@@ -916,7 +969,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await API.get_guideline(agent_id, first_guideline["id"])
+        guideline = await API.read_guideline(agent_id, first_guideline["id"])
 
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
@@ -950,7 +1003,7 @@ async def test_that_guideline_can_be_removed(
             == os.EX_OK
         )
 
-        guidelines = await API.get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
         assert len(guidelines) == 0
 
 
@@ -1044,7 +1097,7 @@ async def test_that_connection_can_be_removed(
             == os.EX_OK
         )
 
-        guideline = await API.get_guideline(agent_id, first)
+        guideline = await API.read_guideline(agent_id, first)
         assert len(guideline["connections"]) == 0
 
 
@@ -1107,7 +1160,7 @@ async def test_that_variable_can_be_added(
             == os.EX_OK
         )
 
-        variables = await API.get_context_variable_list(agent_id)
+        variables = await API.list_context_variables(agent_id)
 
         variable = next(
             (v for v in variables if v["name"] == name and v["description"] == description),
@@ -1140,7 +1193,7 @@ async def test_that_variable_can_be_removed(
             == os.EX_OK
         )
 
-        variables = await API.get_context_variable_list(agent_id)
+        variables = await API.list_context_variables(agent_id)
         assert len(variables) == 0
 
 
@@ -1171,7 +1224,7 @@ async def test_that_variable_value_can_be_set_with_json(
             == os.EX_OK
         )
 
-        value = await API.get_context_variable_value(agent_id, variable["id"], key)
+        value = await API.read_context_variable_value(agent_id, variable["id"], key)
         assert value["data"] == data
 
 
@@ -1202,7 +1255,7 @@ async def test_that_variable_value_can_be_set_with_string(
             == os.EX_OK
         )
 
-        value = await API.get_context_variable_value(agent_id, variable["id"], key)
+        value = await API.read_context_variable_value(agent_id, variable["id"], key)
 
         assert value["data"] == data
 
@@ -1257,9 +1310,72 @@ async def test_that_variable_values_can_be_retrieved(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout_get_value_by_key, stderr_get_key = await process.communicate()
-        output_get_value_by_key = stdout_get_value_by_key.decode() + stderr_get_key.decode()
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
         assert process.returncode == os.EX_OK
 
-        assert specific_key in output_get_value_by_key
-        assert expected_value in output_get_value_by_key
+        assert specific_key in output
+        assert expected_value in output
+
+
+async def test_that_a_message_interaction_can_be_inspected(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id=agent_id,
+            predicate="the user talks about cows",
+            action="address the user by his first name and say you like Pepsi",
+        )
+
+        term = await API.create_term(
+            agent_id=agent_id,
+            name="Bazoo",
+            description="a type of cow",
+        )
+
+        variable = await API.create_context_variable(
+            agent_id=agent_id,
+            name="User first name",
+            description="",
+        )
+
+        end_user_id = "john.s@peppery.co"
+
+        await API.update_context_variable_value(
+            agent_id=agent_id,
+            variable_id=variable["id"],
+            key=end_user_id,
+            value="Johnny",
+        )
+
+        session = await API.create_session(agent_id, end_user_id)
+
+        reply_event = await API.get_agent_reply(session["id"], "Oh do I like bazoos")
+
+        assert "Johnny" in reply_event["data"]["message"]
+        assert "Pepsi" in reply_event["data"]["message"]
+
+        process = await run_cli(
+            "session",
+            "inspect",
+            session["id"],
+            reply_event["correlation_id"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert guideline["predicate"] in output
+        assert guideline["action"] in output
+        assert term["name"] in output
+        assert term["description"] in output
+        assert variable["name"] in output
+        assert end_user_id in output
