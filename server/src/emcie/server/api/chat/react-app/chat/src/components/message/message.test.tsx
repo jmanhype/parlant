@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { MatcherOptions, render } from '@testing-library/react';
 import { Matcher } from 'vite';
 import Message from './message';
-import { Event, ServerStatus } from '../chat/chat';
+import { EventInterface, ServerStatus } from '@/utils/interfaces';
 
 const serverStatuses: ServerStatus[] = ['pending', 'error', 'accepted', 'acknowledged', 'processing', 'typing', 'ready'];
 
-const event: Event = {
+const event: EventInterface = {
     correlation_id: '',
     creation_utc: new Date(),
     data: {message: 'Hi'},
