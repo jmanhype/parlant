@@ -3,8 +3,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ReactElement } from "react";
+} from '@/components/ui/tooltip';
+import { ReactElement } from 'react';
 
 interface Props {
     children: ReactElement;
@@ -24,5 +24,5 @@ export default function Tooltip({children, value, delayDuration = 0}: Props) {
         </TooltipContent>
       </ShadcnTooltip>
     </TooltipProvider>
-  )
+  );
 }
