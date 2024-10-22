@@ -62,7 +62,11 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+		fontFamily: {
+			'ubuntu-sans': 'Ubuntu Sans',
+			inter: 'inter'
+		}
   	}
   },
   plugins: [require("tailwindcss-animate")],

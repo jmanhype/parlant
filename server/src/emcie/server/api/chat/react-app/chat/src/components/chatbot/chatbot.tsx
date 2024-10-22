@@ -1,28 +1,38 @@
 import { createContext, Dispatch, ReactElement, SetStateAction, useContext, useState } from 'react';
 import SessionControl from '../session-control/session-control';
 import Chat from '../chat/chat';
+import ChatHeader from '../chat-header/chat-header';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null>>;
     sessionId: string | null;
-}
+    setAgentId: Dispatch<SetStateAction<string | null>>;
+    agentId: string | null;
+};
 
-const SessionProvider = createContext<SessionContext>({sessionId: null, setSessionId: () => null});
+const SessionProvider = createContext<SessionContext>({
+    sessionId: null,
+    setSessionId: () => null,
+    agentId: null,
+    setAgentId: () => null
+});
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useSession = () => useContext(SessionProvider);
 
 export default function Chatbot(): ReactElement {
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [agentId, setAgentId] = useState<string | null>(null);
 
     return (
-        <SessionProvider.Provider value={{sessionId, setSessionId}}>
-            <div data-testid="chatbot" className="main bg-slate-200 flex justify-center items-center h-screen">
-                <div className="flex justify-between max-w-[1500px] items-center w-4/5 h-[80%] border border-gray-800 border-solid rounded-lg flex-col lg:flex-row">
-                    <div className="h-2/5 lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-r-gray-900 lg:border-b-[transparent] lg:w-[30%] lg:border-r">
+        <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId}}>
+            <div data-testid="chatbot" className="main bg-[#FBFBFB] h-screen flex flex-col">
+                <ChatHeader />
+                <div className="flex justify-between flex-1 w-full overflow-auto flex-col lg:flex-row">
+                    <div className="h-2/5 bg-white lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-b-[transparent] lg:w-[308px] lg:border-r">
                         <SessionControl />
                     </div>
-                    <div className="h-3/5 w-full lg:w-[70%] lg:h-full">
+                    <div className="h-3/5 w-full flex-1 overflow-auto lg:h-full">
                         {sessionId && <Chat />}
                     </div>
                 </div>

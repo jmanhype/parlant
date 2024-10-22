@@ -8,6 +8,7 @@ import { groupBy } from '@/utils/obj';
 import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
 import { EventInterface } from '@/utils/interfaces';
+import { SendHorizontal } from 'lucide-react';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -95,7 +96,7 @@ export default function Chat(): ReactElement {
     };
 
     return (
-        <div className="flex flex-col items-center pt-4 h-full">
+        <div className="flex flex-col items-center h-full max-w-[1200px] m-auto">
             <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                 {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
                     <div key={i} ref={lastMessageRef} className="flex flex-col">
@@ -108,9 +109,24 @@ export default function Chat(): ReactElement {
                     <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-400 mt-2" /> 
                 </div>}
             </div>
-            <div className="w-full flex flex-col lg:flex-row items-center gap-4 p-4 pt-0">
-                <Textarea role="textbox" ref={textareaRef} placeholder="What's on your mind?" value={message} onKeyUp={onKeyUp} onChange={(e) => setMessage(e.target.value)} className="resize-none"/>
-                <Button variant='ghost' className="border border-solid border-black" ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
+            <div className="w-full flex flex-row justify-center items-center gap-4 p-4 pt-0 pr-0 max-w-[1200px] relative">
+                <img src="/icons/edit.svg" alt="" className="absolute left-[38px] h-[14px] w-[14px]"/>
+                <Textarea role="textbox"
+                    ref={textareaRef}
+                    placeholder="Message..."
+                    value={message}
+                    onKeyUp={onKeyUp}
+                    onChange={(e) => setMessage(e.target.value)}
+                    style={{boxShadow: 'none'}}
+                    rows={1}
+                    className="resize-none h-[48.67px] min-h-[unset] ps-[41px] pe-[60px] rounded-3xl pt-0 pb-0 leading-[48px]"/>
+                <Button variant='ghost'
+                    className="absolute right-0 max-w-[60px]"
+                    ref={submitButtonRef}
+                    disabled={isSubmitDisabled ||!message?.trim()}
+                    onClick={() => postMessage(message)}>
+                    <img src="/icons/send.svg" alt="" />
+                </Button>
             </div>
         </div>
     );

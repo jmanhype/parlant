@@ -12,12 +12,19 @@ export default function AgentsSelect({value, setSelectedAgent}: {value?: string 
 
     return (
         <Select value={value} onValueChange={(val: string) => setSelectedAgent(val)}>
-            <SelectTrigger className="w-[180px] border border-solid border-black bg-transparent">
-                <SelectValue placeholder="Select an agent" />
+            <SelectTrigger style={{boxShadow: 'none'}} className="w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium">
+                <div className='flex flex-col'>
+                    <SelectValue placeholder="Select an agent" />
+                </div>
             </SelectTrigger>
             <SelectContent>
                 <SelectGroup>
-                    {data?.agents && data.agents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
+                    {data?.agents && data.agents.map(agent =>
+                        <SelectItem className='text-[16px] text-[#151515] font-medium h-[69px] font-ubuntu-sans' key={agent.id} value={agent.id}>
+                            {agent.name}
+                            {value && <p className='font-light text-[14px] text-[#A9A9A9] font-inter'>(id={value})</p>}
+                        </SelectItem>)
+                    }
                 </SelectGroup>
             </SelectContent>
         </Select>

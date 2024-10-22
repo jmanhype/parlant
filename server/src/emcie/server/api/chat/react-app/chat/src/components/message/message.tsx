@@ -31,14 +31,21 @@ export default function Message({event}: Props): ReactElement {
     const serverStatus = event.serverStatus;
 
     return (
-        <div data-testid="message" className={(isClient ? 'bg-blue-700 text-white self-start' : 'bg-white self-end') + ' animate-fade-in border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
-            <div className="relative">
-                <Markdown>{event?.data?.message}</Markdown>
-                <div className="text-end text-[unset] opacity-70 text-xs">
-                    {formatDateTime(event.creation_utc)}
+        <div className={(isClient ? 'self-end' : 'self-start') + ' flex m-4  mb-1 gap-[14px]'}>
+            {!isClient &&
+                <div className='flex items-end'>
+                    <img src="parlant-bubble.svg" alt="" className='pt-[11px] p-[9px] bg-white rounded-full'/>
+                </div>
+            }
+            <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-[#EBECF0] border-solid rounded-bl-none') + ' animate-fade-in rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
+                <div className="relative font-light text-[13px] pt-[20px] pb-[24px] ps-[34px] pe-[13px]">
+                    <Markdown>{event?.data?.message}</Markdown>
+                </div>
+                <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[14px] font-inter items-end whitespace-nowrap'>
+                    <div>{formatDateTime(event.creation_utc)}</div>
+                    {isClient && serverStatus && <div className="w-6">{statusIcon[serverStatus]}</div>}
                 </div>
             </div>
-            {isClient && serverStatus && <div className="w-6 self-end">{statusIcon[serverStatus]}</div>}
         </div>
     );
 }

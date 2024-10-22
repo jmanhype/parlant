@@ -4,14 +4,10 @@ import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 
-interface Props {
-    agentId: string | undefined;
-}
-
-export default function Sessions({agentId}: Props): ReactElement {
+export default function Sessions(): ReactElement {
     const [sessions, setSessions] = useState<SessionInterface[]>([]);
+    const {sessionId, agentId} = useSession();
     const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions/', {agent_id: agentId}, [agentId]);
-    const {sessionId} = useSession();
 
     useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
 
@@ -22,7 +18,7 @@ export default function Sessions({agentId}: Props): ReactElement {
     }, [sessionId]);
 
     return (
-        <div data-testid="sessions" className="flex justify-center pt-4 flex-col gap-4 w-full lg:w-[80%]">
+        <div data-testid="sessions" className="bg-white flex justify-center flex-col w-full">
             {ErrorTemplate && <ErrorTemplate />}
             {loading && <div>loading...</div>}
             {!loading && !error && sessions.map(session => (
