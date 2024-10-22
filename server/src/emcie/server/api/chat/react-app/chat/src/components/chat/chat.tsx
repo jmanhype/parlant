@@ -8,7 +8,6 @@ import { groupBy } from '@/utils/obj';
 import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
 import { EventInterface } from '@/utils/interfaces';
-import { SendHorizontal } from 'lucide-react';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -104,13 +103,18 @@ export default function Chat(): ReactElement {
                     </div>
                 ))}
                 {showSkeleton && 
-                <div ref={lastMessageRef} className="border bg-white border-black self-end rounded-lg p-2 m-4 mb-1 w-[250px]">
-                    <Skeleton className="w-[200px] h-[20px] rounded-full bg-gray-400" /> 
-                    <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-400 mt-2" /> 
+                <div className='flex m-4 mb-1 gap-[14px]'>
+                    <div className='flex items-end'>
+                        <img src="parlant-bubble.svg" alt="" className='pt-[11px] p-[9px] bg-white rounded-full'/>
+                    </div>
+                    <div ref={lastMessageRef} className="bg-transparent border-[1.3px] border-[#EBECF0] border-solid rounded-bl-none self-start  rounded-[22px] p-2 m-4 mb-1 w-[250px]">
+                        <Skeleton className="w-[200px] h-[20px] rounded-full bg-gray-400" /> 
+                        <Skeleton className="w-[150px] h-[20px] rounded-full bg-gray-400 mt-2" /> 
+                    </div>
                 </div>}
             </div>
-            <div className="w-full flex flex-row justify-center items-center gap-4 p-4 pt-0 pr-0 max-w-[1200px] relative">
-                <img src="/icons/edit.svg" alt="" className="absolute left-[38px] h-[14px] w-[14px]"/>
+            <div className="w-full border border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px]">
+                <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
                 <Textarea role="textbox"
                     ref={textareaRef}
                     placeholder="Message..."
@@ -119,9 +123,9 @@ export default function Chat(): ReactElement {
                     onChange={(e) => setMessage(e.target.value)}
                     style={{boxShadow: 'none'}}
                     rows={1}
-                    className="resize-none h-[48.67px] min-h-[unset] ps-[41px] pe-[60px] rounded-3xl pt-0 pb-0 leading-[48px]"/>
+                    className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar"/>
                 <Button variant='ghost'
-                    className="absolute right-0 max-w-[60px]"
+                    className="max-w-[60px] rounded-full hover:bg-white"
                     ref={submitButtonRef}
                     disabled={isSubmitDisabled ||!message?.trim()}
                     onClick={() => postMessage(message)}>
