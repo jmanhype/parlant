@@ -1,10 +1,10 @@
-import { cleanup, fireEvent, MatcherOptions, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, MatcherOptions, render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { Matcher } from "vite";
-import Session from "./session";
-import { Session as SessionInterface } from "../sessions/sessions";
-import { deleteData } from "@/utils/api";
+import { Matcher } from 'vite';
+import Session from './session';
+import { Session as SessionInterface } from '../sessions/sessions';
+import { deleteData } from '@/utils/api';
 
 const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '' };
 
@@ -21,7 +21,7 @@ vi.mock('react', async () => {
     }
 });
 
-describe('Session Component', () => {
+describe(Session, () => {
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
     let rerender: (ui: React.ReactNode) => void;
     let container: HTMLElement;

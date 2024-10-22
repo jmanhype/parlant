@@ -1,15 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, MatcherOptions, render } from "@testing-library/react";
-import { Matcher } from "vite";
-import Chat from "./chat";
-import { postData } from "@/utils/api";
+import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, MatcherOptions, render } from '@testing-library/react';
+import { Matcher } from 'vite';
+import Chat from './chat';
+import { postData } from '@/utils/api';
 
 
 vi.mock('@/utils/api', () => ({
     postData: vi.fn(() => Promise.resolve())
 }))
 
-describe('Chat Component', () => {
+describe(Chat, () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -18,7 +18,7 @@ describe('Chat Component', () => {
     
     beforeEach(async () => {
         await act(() => {
-            const utils = render(<Chat sessionId=""/>);
+            const utils = render(<Chat/>);
             getByRole = utils.getByRole as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
         });
     });

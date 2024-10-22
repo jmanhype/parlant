@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { MatcherOptions, render } from "@testing-library/react";
-import { Matcher } from "vite";
-import Message from "./message";
-import { Event, ServerStatus } from "../chat/chat";
+import { describe, expect, it } from 'vitest';
+import { MatcherOptions, render } from '@testing-library/react';
+import { Matcher } from 'vite';
+import Message from './message';
+import { Event, ServerStatus } from '../chat/chat';
 
 const serverStatuses: ServerStatus[] = ['pending', 'error', 'accepted', 'acknowledged', 'processing', 'typing', 'ready']
 
@@ -16,7 +16,7 @@ const event: Event = {
     source: 'client'
 };
 
-describe('Message Component', () => {
+describe(Message, () => {
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
     let rerender: (ui: React.ReactNode) => void;
     

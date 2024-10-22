@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { MatcherOptions, render } from "@testing-library/react";
-import { Matcher } from "vite";
-import Chatbot from "./chatbot";
+import { describe, expect, it } from 'vitest';
+import { MatcherOptions, render } from '@testing-library/react';
+import { Matcher } from 'vite';
+import Chatbot from './chatbot';
 
-describe('Chatbot Component', () => {
+describe(Chatbot, () => {
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
     
     beforeEach(() => {

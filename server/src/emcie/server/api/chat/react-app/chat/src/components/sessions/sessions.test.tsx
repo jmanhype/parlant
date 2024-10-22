@@ -1,9 +1,9 @@
-import { cleanup, MatcherOptions, render } from "@testing-library/react";
-import { describe, expect, it, Mock, vi } from "vitest";
-import Sessions from "./sessions.tsx";
+import { cleanup, MatcherOptions, render, SelectorMatcherOptions } from '@testing-library/react';
+import { describe, expect, it, Mock, vi } from 'vitest';
+import Sessions from './sessions.tsx';
 import '@testing-library/jest-dom/vitest';
-import { Matcher } from "vite";
-import useFetch from "@/hooks/useFetch.tsx";
+import { Matcher } from 'vite';
+import useFetch from '@/hooks/useFetch.tsx';
 
 const sessionsArr = [
     { id: 'session1', title: 'Session One' },
@@ -19,19 +19,19 @@ vi.mock('@/hooks/useFetch', () => ({
     })
 }));
 
-describe('Sessions Component', () => {
+describe(Sessions, () => {
     let getAllByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement[];
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
-    let getByText: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+    let getByText: (id: Matcher, options?: SelectorMatcherOptions | undefined) => HTMLElement;
     let sessions: HTMLElement;
     let session: HTMLElement[];
     let rerender: (ui: React.ReactNode) => void;
     
     beforeEach(() => {
-        const utils = render(<Sessions agentId="" setSession={vi.fn()} sessionId="session1"/>);
+        const utils = render(<Sessions agentId=''/>);
         getAllByTestId = utils.getAllByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement[];
         getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
-        getByText = utils.getByText as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+        getByText = utils.getByText as (id: Matcher, options?: SelectorMatcherOptions | undefined) => HTMLElement;
         rerender = utils.rerender;
         sessions = getByTestId('sessions');
         session = getAllByTestId('session');
@@ -53,7 +53,7 @@ describe('Sessions Component', () => {
             loading: true,
             refetch: vi.fn()
         }));
-        rerender(<Sessions agentId="" setSession={vi.fn()} sessionId="session1"/>);
+        rerender(<Sessions agentId=''/>);
         const loading = getByText('loading...');
         expect(loading).toBeInTheDocument();
     });
@@ -64,7 +64,7 @@ describe('Sessions Component', () => {
             ErrorTemplate: () => <div>error</div>,
             refetch: vi.fn()
         }));
-        rerender(<Sessions agentId="" setSession={vi.fn()} sessionId="session1"/>);
+        rerender(<Sessions agentId=''/>);
         const error = getByText('error');
         expect(error).toBeInTheDocument();
     });

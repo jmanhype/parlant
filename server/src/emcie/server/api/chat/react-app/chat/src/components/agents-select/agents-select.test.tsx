@@ -14,7 +14,7 @@ vi.mock('@/hooks/useFetch', () => ({
     }),
 }))
 
-describe('Agent Select Component', () => {
+describe(AgentsSelect, () => {
     afterEach(() => cleanup());
     
     it('component should be rendered', () => {
