@@ -11,7 +11,6 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
 )
 from emcie.server.core.glossary import GlossaryStore
 from tests.test_utilities import SyncAwaiter
-from datetime import datetime, timezone
 
 
 @dataclass
