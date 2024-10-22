@@ -24,17 +24,19 @@ from emcie.server.core.common import (
     generate_id,
 )
 from emcie.server.core.agents import AgentId
+from emcie.server.core.context_variables import ContextVariableId
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
     Where,
 )
+from emcie.server.core.glossary import TermId
 
 SessionId = NewType("SessionId", str)
+
 EventId = NewType("EventId", str)
-
-
 EventSource: TypeAlias = Literal["client", "server"]
 EventKind: TypeAlias = Literal["message", "tool", "status", "custom"]
 
@@ -86,6 +88,42 @@ class StatusEventData(TypedDict):
     data: JSONSerializable
 
 
+class GuidelineProposition(TypedDict):
+    guideline_id: GuidelineId
+    predicate: str
+    action: str
+    score: int
+    rationale: str
+
+
+class Term(TypedDict):
+    id: TermId
+    name: str
+    description: str
+    synonyms: list[str]
+
+
+class ContextVariable(TypedDict):
+    id: ContextVariableId
+    name: str
+    description: Optional[str]
+    key: str
+    value: JSONSerializable
+
+
+@dataclass(frozen=True)
+class PreparationIteration:
+    guideline_propositions: Sequence[GuidelineProposition]
+    tool_calls: Sequence[ToolCall]
+    terms: list[Term]
+    context_variables: list[ContextVariable]
+
+
+@dataclass(frozen=True)
+class Inspection:
+    preparation_iterations: Sequence[PreparationIteration]
+
+
 ConsumerId: TypeAlias = Literal["client"]
 """In the future we may support multiple consumer IDs"""
 
@@ -97,14 +135,14 @@ class Session:
     end_user_id: EndUserId
     agent_id: AgentId
     title: Optional[str]
-    consumption_offsets: dict[ConsumerId, int]
+    consumption_offsets: Mapping[ConsumerId, int]
 
 
 class SessionUpdateParams(TypedDict, total=False):
     end_user_id: EndUserId
     agent_id: AgentId
     title: Optional[str]
-    consumption_offsets: dict[ConsumerId, int]
+    consumption_offsets: Mapping[ConsumerId, int]
 
 
 class SessionStore(ABC):
@@ -137,6 +175,13 @@ class SessionStore(ABC):
     ) -> None: ...
 
     @abstractmethod
+    async def list_sessions(
+        self,
+        agent_id: Optional[AgentId] = None,
+        end_user_id: Optional[EndUserId] = None,
+    ) -> Sequence[Session]: ...
+
+    @abstractmethod
     async def create_event(
         self,
         session_id: SessionId,
@@ -145,6 +190,13 @@ class SessionStore(ABC):
         correlation_id: str,
         data: JSONSerializable,
         creation_utc: Optional[datetime] = None,
+    ) -> Event: ...
+
+    @abstractmethod
+    async def read_event(
+        self,
+        session_id: SessionId,
+        event_id: EventId,
     ) -> Event: ...
 
     @abstractmethod
@@ -158,17 +210,26 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        correlation_id: Optional[str] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
         exclude_deleted: bool = True,
     ) -> Sequence[Event]: ...
 
     @abstractmethod
-    async def list_sessions(
+    async def create_inspection(
         self,
-        agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
-    ) -> Sequence[Session]: ...
+        session_id: SessionId,
+        correlation_id: str,
+        preparation_iterations: Sequence[PreparationIteration],
+    ) -> Inspection: ...
+
+    @abstractmethod
+    async def read_inspection(
+        self,
+        session_id: SessionId,
+        correlation_id: str,
+    ) -> Inspection: ...
 
 
 class _SessionDocument(TypedDict, total=False):
@@ -178,7 +239,7 @@ class _SessionDocument(TypedDict, total=False):
     end_user_id: EndUserId
     agent_id: AgentId
     title: Optional[str]
-    consumption_offsets: dict[ConsumerId, int]
+    consumption_offsets: Mapping[ConsumerId, int]
 
 
 class _EventDocument(TypedDict, total=False):
@@ -194,6 +255,21 @@ class _EventDocument(TypedDict, total=False):
     deleted: bool
 
 
+class _PreparationIterationDocument(TypedDict):
+    guideline_propositions: Sequence[GuidelineProposition]
+    tool_calls: Sequence[ToolCall]
+    terms: list[Term]
+    context_variables: list[ContextVariable]
+
+
+class _MessageInspectionDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+    session_id: SessionId
+    correlation_id: str
+    preparation_iterations: Sequence[_PreparationIterationDocument]
+
+
 class SessionDocumentStore(SessionStore):
     VERSION = Version.from_string("0.1.0")
 
@@ -205,6 +281,10 @@ class SessionDocumentStore(SessionStore):
         self._event_collection = database.get_or_create_collection(
             name="events",
             schema=_EventDocument,
+        )
+        self._message_inspection_collection = database.get_or_create_collection(
+            name="message_inspections",
+            schema=_MessageInspectionDocument,
         )
 
     def _serialize_session(
@@ -267,6 +347,44 @@ class SessionDocumentStore(SessionStore):
             deleted=event_document["deleted"],
         )
 
+    def _serialize_message_inspection(
+        self,
+        message_inspection: Inspection,
+        session_id: SessionId,
+        correlation_id: str,
+    ) -> _MessageInspectionDocument:
+        return _MessageInspectionDocument(
+            id=ObjectId(generate_id()),
+            version=self.VERSION.to_string(),
+            session_id=session_id,
+            correlation_id=correlation_id,
+            preparation_iterations=[
+                {
+                    "guideline_propositions": i.guideline_propositions,
+                    "tool_calls": i.tool_calls,
+                    "terms": i.terms,
+                    "context_variables": i.context_variables,
+                }
+                for i in message_inspection.preparation_iterations
+            ],
+        )
+
+    def _deserialize_message_inspection(
+        self,
+        message_inspection_document: _MessageInspectionDocument,
+    ) -> Inspection:
+        return Inspection(
+            preparation_iterations=[
+                PreparationIteration(
+                    guideline_propositions=i["guideline_propositions"],
+                    tool_calls=i["tool_calls"],
+                    terms=i["terms"],
+                    context_variables=i["context_variables"],
+                )
+                for i in message_inspection_document["preparation_iterations"]
+            ],
+        )
+
     async def create_session(
         self,
         end_user_id: EndUserId,
@@ -311,8 +429,9 @@ class SessionDocumentStore(SessionStore):
         session_document = await self._session_collection.find_one(
             filters={"id": {"$eq": session_id}}
         )
+
         if not session_document:
-            raise ItemNotFoundError(item_id=UniqueId(session_id))
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
 
         return self._deserialize_session(session_document)
 
@@ -326,6 +445,21 @@ class SessionDocumentStore(SessionStore):
             params=cast(_SessionDocument, params),
         )
 
+    async def list_sessions(
+        self,
+        agent_id: Optional[AgentId] = None,
+        end_user_id: Optional[EndUserId] = None,
+    ) -> Sequence[Session]:
+        filters = {
+            **({"agent_id": {"$eq": agent_id}} if agent_id else {}),
+            **({"end_user_id": {"$eq": end_user_id}} if end_user_id else {}),
+        }
+
+        return [
+            self._deserialize_session(d)
+            for d in await self._session_collection.find(filters=cast(Where, filters))
+        ]
+
     async def create_event(
         self,
         session_id: SessionId,
@@ -336,9 +470,11 @@ class SessionDocumentStore(SessionStore):
         creation_utc: Optional[datetime] = None,
     ) -> Event:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
-            raise ItemNotFoundError(item_id=UniqueId(session_id))
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
 
-        session_events = await self.list_events(session_id)
+        session_events = await self.list_events(
+            session_id
+        )  # FIXME: we need a more efficient way to do this
         creation_utc = creation_utc or datetime.now(timezone.utc)
         offset = len(list(session_events))
 
@@ -357,14 +493,32 @@ class SessionDocumentStore(SessionStore):
 
         return event
 
+    async def read_event(
+        self,
+        session_id: SessionId,
+        event_id: EventId,
+    ) -> Event:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
+
+        if event_document := await self._event_collection.find_one(
+            filters={"id": {"$eq": event_id}}
+        ):
+            return self._deserialize_event(event_document)
+
+        raise ItemNotFoundError(item_id=UniqueId(event_id), message="Event not found")
+
     async def delete_event(
         self,
         event_id: EventId,
     ) -> EventId:
-        _ = await self._event_collection.update_one(
+        result = await self._event_collection.update_one(
             filters={"id": {"$eq": event_id}},
             params=cast(_EventDocument, {"deleted": True}),
         )
+
+        if result.matched_count == 0:
+            raise ItemNotFoundError(item_id=UniqueId(event_id), message="Event not found")
 
         return event_id
 
@@ -372,17 +526,19 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
         source: Optional[EventSource] = None,
+        correlation_id: Optional[str] = None,
         kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
         exclude_deleted: bool = True,
     ) -> Sequence[Event]:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
-            raise ItemNotFoundError(item_id=UniqueId(session_id))
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
 
         base_filters = {
             "session_id": {"$eq": session_id},
             **({"source": {"$eq": source}} if source else {}),
             **({"offset": {"$gte": min_offset}} if min_offset else {}),
+            **({"correlation_id": {"$eq": correlation_id}} if correlation_id else {}),
             **({"deleted": {"$eq": False}} if exclude_deleted else {}),
         }
 
@@ -400,23 +556,55 @@ class SessionDocumentStore(SessionStore):
 
         return [self._deserialize_event(d) for d in event_documents]
 
-    async def list_sessions(
+    async def create_inspection(
         self,
-        agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
-    ) -> Sequence[Session]:
-        return [
-            self._deserialize_session(d)
-            for d in await self._session_collection.find(
-                filters=cast(
-                    Where,
-                    {
-                        **({"agent_id": {"$eq": agent_id}} if agent_id else {}),
-                        **({"end_user_id": {"$eq": end_user_id}} if end_user_id else {}),
-                    },
-                )
+        session_id: SessionId,
+        correlation_id: str,
+        preparation_iterations: Sequence[PreparationIteration],
+    ) -> Inspection:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
+
+        message_inspection = Inspection(
+            preparation_iterations=preparation_iterations,
+        )
+
+        await self._message_inspection_collection.insert_one(
+            document=self._serialize_message_inspection(
+                message_inspection,
+                session_id,
+                correlation_id,
             )
-        ]
+        )
+
+        return message_inspection
+
+    async def read_inspection(
+        self,
+        session_id: SessionId,
+        correlation_id: str,
+    ) -> Inspection:
+        if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
+
+        if not await self._event_collection.find_one(
+            filters={
+                "correlation_id": {"$eq": correlation_id},
+                "kind": {"$eq": "message"},
+            }
+        ):
+            raise ItemNotFoundError(
+                item_id=UniqueId(correlation_id), message="Message event not found"
+            )
+
+        if message_inspection_document := await self._message_inspection_collection.find_one(
+            filters={"correlation_id": {"$eq": correlation_id}}
+        ):
+            return self._deserialize_message_inspection(message_inspection_document)
+
+        raise ItemNotFoundError(
+            item_id=UniqueId(correlation_id), message="Message inspection not found"
+        )
 
 
 class SessionListener(ABC):

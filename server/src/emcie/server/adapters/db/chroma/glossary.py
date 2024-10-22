@@ -53,7 +53,7 @@ class GlossaryChromaStore(GlossaryStore):
             creation_utc=datetime.fromisoformat(term_document["creation_utc"]),
             name=term_document["name"],
             description=term_document["description"],
-            synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else None,
+            synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else [],
         )
 
     async def create_term(
@@ -77,7 +77,7 @@ class GlossaryChromaStore(GlossaryStore):
             creation_utc=creation_utc,
             name=name,
             description=description,
-            synonyms=list(synonyms) if synonyms else None,
+            synonyms=list(synonyms) if synonyms else [],
         )
 
         await self._collection.insert_one(document=self._serialize(term, term_set, content))

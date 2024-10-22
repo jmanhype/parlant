@@ -3,7 +3,6 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-import json
 import os
 import sys
 import time
@@ -18,6 +17,8 @@ from rich.text import Text
 from tabulate import tabulate
 from textwrap import wrap
 from tqdm import tqdm
+
+INDENT = "  "
 
 
 class CoherenceCheckFailure(Exception):
@@ -48,11 +49,16 @@ class EventDTO(TypedDict):
     data: Any
 
 
+class CreateEventResponse(TypedDict):
+    event_id: str
+    event_offset: int
+
+
 class TermDTO(TypedDict):
     id: str
     name: str
     description: str
-    synonyms: Optional[list[str]]
+    synonyms: list[str]
 
 
 class GuidelineDTO(TypedDict):
@@ -109,13 +115,65 @@ class ContextVariableValueDTO(TypedDict):
     data: Any
 
 
+class GuidelinePropositionDTO(TypedDict):
+    guideline_id: str
+    predicate: str
+    action: str
+    score: int
+    rationale: str
+
+
+class ToolResultDTO(TypedDict):
+    data: Any
+    metadata: dict[str, Any]
+
+
+class ToolCallDTO(TypedDict):
+    tool_name: str
+    arguments: dict[str, Any]
+    result: ToolResultDTO
+
+
+class InspectedContextVariableDTO(TypedDict):
+    id: str
+    name: str
+    description: str
+    key: str
+    value: str
+
+
 class ReadContextVariableResponse(TypedDict):
     context_variable: ContextVariableDTO
     key_value_pairs: dict[str, ContextVariableValueDTO]
 
 
+class PreparationIterationDTO(TypedDict):
+    guideline_propositions: list[GuidelinePropositionDTO]
+    tool_calls: list[ToolCallDTO]
+    terms: list[TermDTO]
+    context_variables: list[InspectedContextVariableDTO]
+
+
+class ReadInteractionResponse(TypedDict):
+    session_id: str
+    correlation_id: str
+    preparation_iterations: list[PreparationIterationDTO]
+
+
 def format_datetime(datetime_str: str) -> str:
     return datetime.fromisoformat(datetime_str).strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
+
+_EXIT_STATUS = 0
+
+
+def get_exit_status() -> int:
+    return _EXIT_STATUS
+
+
+def set_exit_status(status: int) -> None:
+    global _EXIT_STATUS
+    _EXIT_STATUS = status
 
 
 class Actions:
@@ -165,19 +223,33 @@ class Actions:
         return cast(SessionDTO, response.json()["session"])
 
     @staticmethod
+    def inspect_interaction(
+        ctx: click.Context,
+        session_id: str,
+        correlation_id: str,
+    ) -> ReadInteractionResponse:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/interactions/{correlation_id}")
+        )
+
+        response.raise_for_status()
+
+        return cast(ReadInteractionResponse, response.json())
+
+    @staticmethod
     def list_events(ctx: click.Context, session_id: str) -> list[EventDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
         response.raise_for_status()
         return cast(list[EventDTO], response.json()["events"])
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> EventDTO:
+    def create_event(ctx: click.Context, session_id: str, message: str) -> CreateEventResponse:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
         )
         response.raise_for_status()
-        return cast(EventDTO, response.json())
+        return cast(CreateEventResponse, response.json())
 
     @staticmethod
     def create_term(
@@ -431,7 +503,7 @@ class Actions:
         agent_id: str,
         variable_id: str,
         key: str,
-        value: Any,
+        value: str,
     ) -> ContextVariableValueDTO:
         response = requests.put(
             urljoin(
@@ -443,7 +515,7 @@ class Actions:
             },
         )
         response.raise_for_status()
-        return cast(ContextVariableValueDTO, response.json())
+        return cast(ContextVariableValueDTO, response.json()["context_variable_value"])
 
     @staticmethod
     def read_variable(
@@ -527,6 +599,7 @@ class Interface:
             Interface._write_success(f"Updated agent (id={agent_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
@@ -575,10 +648,63 @@ class Interface:
         )
 
     @staticmethod
+    def inspect_interaction(
+        ctx: click.Context,
+        session_id: str,
+        correlation_id: str,
+    ) -> None:
+        interaction = Actions.inspect_interaction(ctx, session_id, correlation_id)
+
+        rich.print(f"Session ID: '{session_id}'")
+        rich.print(f"Correlation ID: '{correlation_id}'\n")
+
+        for i, iteration in enumerate(interaction["preparation_iterations"]):
+            rich.print(Text(f"Iteration #{i}:", style="bold yellow"))
+
+            rich.print(Text(f"{INDENT}Guideline Propositions:", style="bold"))
+
+            if iteration["guideline_propositions"]:
+                for proposition in iteration["guideline_propositions"]:
+                    rich.print(f"{INDENT*2}Predicate: {proposition['predicate']}")
+                    rich.print(f"{INDENT*2}Action: {proposition['action']}")
+                    rich.print(f"{INDENT*2}Score: {proposition['score']}")
+                    rich.print(f"{INDENT*2}Rationale: {proposition['rationale']}\n")
+            else:
+                rich.print(f"{INDENT*2}(none)\n")
+
+            rich.print(Text(f"{INDENT}Tool Calls:", style="bold"))
+
+            if iteration["tool_calls"]:
+                for tool_call in iteration["tool_calls"]:
+                    rich.print(f"{INDENT*2}Tool Name: {tool_call['tool_name']}")
+                    rich.print(f"{INDENT*2}Arguments: {tool_call['arguments']}")
+                    rich.print(f"{INDENT*2}Result: {tool_call['result']}\n")
+            else:
+                rich.print(f"{INDENT*2}(none)\n")
+
+            rich.print(Text(f"{INDENT}Context Variables:", style="bold"))
+
+            if iteration["context_variables"]:
+                for variable in iteration["context_variables"]:
+                    rich.print(f"{INDENT*2}Name: {variable['name']}")
+                    rich.print(f"{INDENT*2}Key: {variable['key']}")
+                    rich.print(f"{INDENT*2}Value: {variable['value']}\n")
+            else:
+                rich.print(f"{INDENT*2}(none)\n")
+
+            rich.print(Text(f"{INDENT}Glossary Terms:", style="bold"))
+
+            if iteration["terms"]:
+                for term in iteration["terms"]:
+                    rich.print(f"{INDENT*2}Name: {term['name']}")
+                    rich.print(f"{INDENT*2}Description: {term['description']}\n")
+            else:
+                rich.print(f"{INDENT*2}(none)\n")
+
+    @staticmethod
     def create_event(ctx: click.Context, session_id: str, message: str) -> None:
         event = Actions.create_event(ctx, session_id, message)
-        Interface._write_success(f"Added event (id={event['id']})")
-        Interface._render_events([event])
+        Interface._write_success(f"Added event (id={event['event_id']})")
 
     @staticmethod
     def chat(ctx: click.Context, session_id: str) -> None:
@@ -789,8 +915,10 @@ class Interface:
                     style="bold",
                 )
             )
+            set_exit_status(1)
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
@@ -799,6 +927,7 @@ class Interface:
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
@@ -814,6 +943,7 @@ class Interface:
             )
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def list_guidelines(ctx: click.Context, agent_id: str) -> None:
@@ -828,6 +958,7 @@ class Interface:
 
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def create_entailment(
@@ -849,6 +980,7 @@ class Interface:
             Interface._print_table([connection])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def remove_entailment(
@@ -867,6 +999,7 @@ class Interface:
             Interface._write_success(f"Removed entailment (id={connection_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
@@ -947,6 +1080,7 @@ class Interface:
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def _render_variable_key_value_pairs(
@@ -970,7 +1104,7 @@ class Interface:
         agent_id: str,
         variable_name: str,
         key: str,
-        value: Any,
+        value: str,
     ) -> None:
         try:
             variable = Actions.get_variable_by_name(ctx, agent_id, variable_name)
@@ -987,6 +1121,7 @@ class Interface:
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def view_variable(
@@ -1015,6 +1150,7 @@ class Interface:
             )
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def view_variable_value(
@@ -1029,6 +1165,7 @@ class Interface:
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
 
 async def async_main() -> None:
@@ -1130,38 +1267,23 @@ async def async_main() -> None:
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("view", help="View session content")
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
     @click.argument("session_id")
     @click.pass_context
-    def session_view(ctx: click.Context, agent_id: str, session_id: str) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-
+    def session_view(ctx: click.Context, session_id: str) -> None:
         Interface.view_session(ctx, session_id)
 
+    @session.command("inspect", help="Inspect an interaction from a session")
+    @click.argument("session_id")
+    @click.argument("correlation_id")
+    @click.pass_context
+    def session_inspect(ctx: click.Context, session_id: str, correlation_id: str) -> None:
+        Interface.inspect_interaction(ctx, session_id, correlation_id)
+
     @session.command("post", help="Post user message to session")
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
-    def session_post(ctx: click.Context, agent_id: str, session_id: str, message: str) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-
+    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
         Interface.create_event(ctx, session_id, message)
 
     @session.command("chat", help="Enter chat mode within the session")
@@ -1547,7 +1669,7 @@ async def async_main() -> None:
             agent_id=agent_id,
             variable_name=name,
             key=key,
-            value=json.loads(value),
+            value=value,
         )
 
     @variable.command("get", help="Get the value(s) of a variable")
@@ -1594,3 +1716,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    sys.exit(get_exit_status())

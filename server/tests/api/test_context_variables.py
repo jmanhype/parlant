@@ -7,7 +7,6 @@ from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.context_variables import (
     ContextVariableStore,
-    ContextVariableKey,
     FreshnessRules,
 )
 from emcie.server.core.tools import LocalToolService
@@ -193,7 +192,7 @@ async def test_that_context_variable_value_can_be_retrieved(
         freshness_rules=None,
     )
 
-    key = ContextVariableKey("test_key")
+    key = "test_key"
     data = {"value": 42}
 
     _ = await context_variable_store.update_value(
@@ -272,9 +271,9 @@ async def test_that_context_variable_values_can_be_listed(
     )
 
     keys_and_data = {
-        ContextVariableKey("key1"): {"value": 1},
-        ContextVariableKey("key2"): {"value": 2},
-        ContextVariableKey("key3"): {"value": 3},
+        "key1": {"value": 1},
+        "key2": {"value": 2},
+        "key3": {"value": 3},
     }
 
     for key, data in keys_and_data.items():

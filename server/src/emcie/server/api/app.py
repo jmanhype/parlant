@@ -49,7 +49,7 @@ async def create_app(container: Container) -> FastAPI:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        with correlator.correlation_scope(generate_id()):
+        with correlator.correlation_scope(f"request({generate_id()})"):
             logger.info(f"{request.method} {request.url.path}")
             return await call_next(request)
 

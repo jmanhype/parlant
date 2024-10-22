@@ -13,12 +13,12 @@ class Term:
     creation_utc: datetime
     name: str
     description: str
-    synonyms: Optional[list[str]]
+    synonyms: list[str]
 
     def __repr__(self) -> str:
-        term_string = f"Name: {self.name}, Description: {self.description}"
+        term_string = f"Name: '{self.name}', Description: {self.description}"
         if self.synonyms:
-            term_string += f", Sysnonyms: {", ".join(self.synonyms)}"
+            term_string += f", Synonyms: {", ".join(self.synonyms)}"
         return term_string
 
     def __hash__(self) -> int:

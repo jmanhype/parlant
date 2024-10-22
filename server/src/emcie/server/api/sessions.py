@@ -5,10 +5,13 @@ from typing import Any, Literal, Mapping, Optional, Union, cast
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
 
+from emcie.server.api.glossary import TermDTO
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import DefaultBaseModel
+from emcie.server.core.context_variables import ContextVariableId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.end_users import EndUserId
+from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.sessions import (
     EventId,
     EventKind,
@@ -119,6 +122,35 @@ class DeleteEventsResponse(DefaultBaseModel):
     event_ids: list[EventId]
 
 
+class GuidelinePropositionDTO(DefaultBaseModel):
+    guideline_id: GuidelineId
+    predicate: str
+    action: str
+    score: int
+    rationale: str
+
+
+class ContextVariableDTO(DefaultBaseModel):
+    id: ContextVariableId
+    name: str
+    description: str
+    key: str
+    value: Any
+
+
+class PreparationIterationDTO(DefaultBaseModel):
+    guideline_propositions: list[GuidelinePropositionDTO]
+    tool_calls: list[ToolCallDTO]
+    terms: list[TermDTO]
+    context_variables: list[ContextVariableDTO]
+
+
+class ReadInteractionResponse(DefaultBaseModel):
+    session_id: SessionId
+    correlation_id: str
+    preparation_iterations: list[PreparationIterationDTO]
+
+
 def create_router(
     mc: MC,
     session_store: SessionStore,
@@ -169,7 +201,10 @@ def create_router(
         agent_id: Optional[AgentId] = None,
         end_user_id: Optional[EndUserId] = None,
     ) -> ListSessionsResponse:
-        sessions = await session_store.list_sessions(agent_id=agent_id, end_user_id=end_user_id)
+        sessions = await session_store.list_sessions(
+            agent_id=agent_id,
+            end_user_id=end_user_id,
+        )
 
         return ListSessionsResponse(
             sessions=[
@@ -362,5 +397,65 @@ def create_router(
         deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
 
         return DeleteEventsResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+
+    @router.get("/{session_id}/interactions/{correlation_id}")
+    async def read_interaction(
+        session_id: SessionId,
+        correlation_id: str,
+    ) -> ReadInteractionResponse:
+        inspection = await session_store.read_inspection(
+            session_id=session_id,
+            correlation_id=correlation_id,
+        )
+
+        return ReadInteractionResponse(
+            session_id=session_id,
+            correlation_id=correlation_id,
+            preparation_iterations=[
+                PreparationIterationDTO(
+                    guideline_propositions=[
+                        GuidelinePropositionDTO(
+                            guideline_id=proposition["guideline_id"],
+                            predicate=proposition["predicate"],
+                            action=proposition["action"],
+                            score=proposition["score"],
+                            rationale=proposition["rationale"],
+                        )
+                        for proposition in iteration.guideline_propositions
+                    ],
+                    tool_calls=[
+                        ToolCallDTO(
+                            tool_name=tool_call["tool_name"],
+                            arguments=tool_call["arguments"],
+                            result=ToolResultDTO(
+                                data=tool_call["result"]["data"],
+                                metadata=tool_call["result"]["metadata"],
+                            ),
+                        )
+                        for tool_call in iteration.tool_calls
+                    ],
+                    terms=[
+                        TermDTO(
+                            id=term["id"],
+                            name=term["name"],
+                            description=term["description"],
+                            synonyms=term["synonyms"],
+                        )
+                        for term in iteration.terms
+                    ],
+                    context_variables=[
+                        ContextVariableDTO(
+                            id=cv["id"],
+                            name=cv["name"],
+                            description=cv["description"] or "",
+                            key=cv["key"],
+                            value=cv["value"],
+                        )
+                        for cv in iteration.context_variables
+                    ],
+                )
+                for iteration in inspection.preparation_iterations
+            ],
+        )
 
     return router

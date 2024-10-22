@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, cast
 import dateutil
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -11,8 +11,17 @@ from emcie.common.tools import ToolResult
 from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
-from emcie.server.core.sessions import EventSource, SessionId, SessionStore
-from tests.api.utils import create_agent, create_guideline, create_session, post_message
+from emcie.server.core.sessions import EventSource, MessageEventData, SessionId, SessionStore
+from tests.api.utils import (
+    create_agent,
+    create_context_variable,
+    create_guideline,
+    create_session,
+    create_term,
+    post_message,
+    read_reply,
+    set_context_variable_value,
+)
 
 
 @fixture
@@ -80,6 +89,10 @@ def event_is_according_to_params(
             return False
 
     return True
+
+
+def get_cow_uttering() -> ToolResult:
+    return ToolResult("moo")
 
 
 ###############################################################################
@@ -505,9 +518,6 @@ async def test_that_tool_events_are_correlated_with_message_events(
     agent_id: AgentId,
     session_id: SessionId,
 ) -> None:
-    def get_cow_uttering() -> ToolResult:
-        return ToolResult("moo")
-
     await create_guideline(
         container=container,
         agent_id=agent_id,
@@ -631,3 +641,88 @@ async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_mess
     assert interactions[0]["kind"] == "message"
     assert isinstance(interactions[0]["data"], str)
     assert len(interactions[0]["data"]) > 0
+
+
+async def test_that_a_message_interaction_can_be_inspected_using_the_message_event_id(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    session = await create_session(
+        container=container,
+        agent_id=agent_id,
+        end_user_id=EndUserId("john.s@peppery.com"),
+    )
+
+    guideline = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user mentions cows",
+        action="answer like a cow while mentioning the user's full name",
+        tool_function=get_cow_uttering,
+    )
+
+    term = await create_term(
+        container=container,
+        agent_id=agent_id,
+        name="Flubba",
+        description="A type of cow",
+        synonyms=["Bobo"],
+    )
+
+    context_variable = await create_context_variable(
+        container=container,
+        agent_id=agent_id,
+        name="User full name",
+    )
+
+    await set_context_variable_value(
+        container=container,
+        agent_id=agent_id,
+        variable_id=context_variable.id,
+        key=session.end_user_id,
+        data="John Smith",
+    )
+
+    user_event = await post_message(
+        container=container,
+        session_id=session.id,
+        message="Bobo!",
+        response_timeout=Timeout(60),
+    )
+
+    reply_event = await read_reply(
+        container=container,
+        session_id=session.id,
+        user_event_offset=user_event.offset,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+        .raise_for_status()
+        .json()
+    )
+
+    assert "John Smith" in cast(MessageEventData, reply_event.data)["message"]
+
+    iterations = inspection_data["preparation_iterations"]
+    assert len(iterations) >= 1
+
+    assert len(iterations[0]["guideline_propositions"]) == 1
+    assert iterations[0]["guideline_propositions"][0]["guideline_id"] == guideline.id
+    assert iterations[0]["guideline_propositions"][0]["predicate"] == guideline.content.predicate
+    assert iterations[0]["guideline_propositions"][0]["action"] == guideline.content.action
+
+    assert len(iterations[0]["tool_calls"]) == 1
+    assert "get_cow_uttering" in iterations[0]["tool_calls"][0]["tool_name"]
+    assert iterations[0]["tool_calls"][0]["result"]["data"] == "moo"
+
+    assert len(iterations[0]["terms"]) == 1
+    assert iterations[0]["terms"][0]["name"] == term.name
+    assert iterations[0]["terms"][0]["description"] == term.description
+    assert iterations[0]["terms"][0]["synonyms"] == term.synonyms
+
+    assert len(iterations[0]["context_variables"]) == 1
+    assert iterations[0]["context_variables"][0]["name"] == context_variable.name
+    assert iterations[0]["context_variables"][0]["key"] == session.end_user_id
+    assert iterations[0]["context_variables"][0]["value"] == "John Smith"

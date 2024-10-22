@@ -1,7 +1,10 @@
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
-from typing import Any, Optional
+import time
+import traceback
+from typing import Any, AsyncIterator, Optional
 import httpx
 
 from tests.test_utilities import (
@@ -15,160 +18,257 @@ REASONABLE_AMOUNT_OF_TIME = 5
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 
-async def get_first_agent_id() -> str:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        agents_response = await client.get(
-            f"{SERVER_ADDRESS}/agents/",
-        )
-        agents_response.raise_for_status()
+async def run_cli(*args: str, **kwargs: Any) -> asyncio.subprocess.Process:
+    exec_args = [
+        "poetry",
+        "run",
+        "python",
+        CLI_CLIENT_PATH.as_posix(),
+        "--server",
+        SERVER_ADDRESS,
+    ] + list(args)
 
-        assert len(agents_response.json()["agents"]) > 0
-        agent = agents_response.json()["agents"][0]
-        return str(agent["id"])
+    return await asyncio.create_subprocess_exec(*exec_args, **kwargs)
 
 
-async def get_term_list(agent_id: str) -> Any:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
-        )
-        response.raise_for_status()
+async def run_cli_and_get_exit_status(*args: str) -> int:
+    exec_args = [
+        "poetry",
+        "run",
+        "python",
+        CLI_CLIENT_PATH.as_posix(),
+        "--server",
+        SERVER_ADDRESS,
+    ] + list(args)
 
-        return response.json()["terms"]
-
-
-async def get_term(agent_id: str, term_name: str) -> Any:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/terms/{term_name}",
-        )
-        response.raise_for_status()
-
-        return response.json()
+    process = await asyncio.create_subprocess_exec(*exec_args)
+    return await process.wait()
 
 
-async def get_guideline_list(agent_id: str) -> Any:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
-        )
+class API:
+    @staticmethod
+    @asynccontextmanager
+    async def _make_client() -> AsyncIterator[httpx.AsyncClient]:
+        async with httpx.AsyncClient(
+            base_url=SERVER_ADDRESS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30),
+        ) as client:
+            yield client
 
-        response.raise_for_status()
+    @staticmethod
+    async def get_first_agent_id() -> str:
+        async with API._make_client() as client:
+            response = await client.get("/agents/")
+            agent = response.raise_for_status().json()["agents"][0]
+            return str(agent["id"])
 
-        return response.json()["guidelines"]
+    @staticmethod
+    async def create_session(agent_id: str, end_user_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                "/sessions",
+                params={"allow_greeting": False},
+                json={
+                    "agent_id": agent_id,
+                    "end_user_id": end_user_id,
+                },
+            )
 
+            return response.raise_for_status().json()["session"]
 
-async def get_guideline(agent_id: str, guideline_id: str) -> Any:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/{guideline_id}",
-        )
+    @staticmethod
+    async def get_agent_reply(session_id: str, message: str) -> Any:
+        return next(iter(await API.get_agent_replies(session_id, message, 1)))
 
-        response.raise_for_status()
+    @staticmethod
+    async def get_agent_replies(
+        session_id: str,
+        message: str,
+        number_of_replies_to_expect: int,
+    ) -> list[Any]:
+        async with API._make_client() as client:
+            try:
+                user_message_response = await client.post(
+                    f"/sessions/{session_id}/events",
+                    json={
+                        "content": message,
+                    },
+                )
+                user_message_response.raise_for_status()
+                user_message_offset = int(user_message_response.json()["event_offset"])
 
-        return response.json()
+                last_known_offset = user_message_offset
 
+                replies: list[Any] = []
+                start_time = time.time()
+                timeout = 300
 
-async def create_guideline(
-    agent_id: str,
-    predicate: str,
-    action: str,
-    coherence_check: Optional[dict[str, Any]] = None,
-    connection_propositions: Optional[dict[str, Any]] = None,
-) -> Any:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.post(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
-            json={
-                "invoices": [
-                    {
-                        "payload": {
-                            "kind": "guideline",
-                            "predicate": predicate,
-                            "action": action,
+                while len(replies) < number_of_replies_to_expect:
+                    response = await client.get(
+                        f"/sessions/{session_id}/events",
+                        params={
+                            "min_offset": last_known_offset + 1,
+                            "kinds": "message",
+                            "wait": True,
                         },
-                        "checksum": "checksum_value",
-                        "approved": True if coherence_check is None else False,
-                        "data": {
-                            "coherence_checks": coherence_check if coherence_check else [],
-                            "connection_propositions": connection_propositions
-                            if connection_propositions
-                            else None,
-                        },
-                        "error": None,
-                    }
-                ]
-            },
-        )
+                    )
+                    response.raise_for_status()
+                    events = response.json()["events"]
 
-        response.raise_for_status()
+                    if message_events := [e for e in events if e["kind"] == "message"]:
+                        replies.append(message_events[0])
 
-        return response.json()["items"][0]["guideline"]
+                    last_known_offset = events[-1]["offset"]
 
+                    if (time.time() - start_time) >= timeout:
+                        raise TimeoutError()
 
-async def create_context_variable(agent_id: str, name: str, description: str) -> Any:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.post(
-            f"/agents/{agent_id}/context-variables",
-            json={
-                "name": name,
-                "description": description,
-            },
-        )
+                return replies
+            except:
+                traceback.print_exc()
+                raise
 
-        response.raise_for_status()
+    @staticmethod
+    async def create_term(agent_id: str, name: str, description: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/terms/",
+                json={
+                    "name": name,
+                    "description": description,
+                },
+            )
 
-        return response.json()["context_variable"]
+            return response.raise_for_status().json()
 
+    @staticmethod
+    async def list_terms(agent_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/terms/",
+            )
+            response.raise_for_status()
 
-async def get_context_variable_list(agent_id: str) -> Any:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(f"/agents/{agent_id}/context-variables/")
+            return response.json()["terms"]
 
-        response.raise_for_status()
+    @staticmethod
+    async def read_term(agent_id: str, term_name: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/terms/{term_name}",
+            )
+            response.raise_for_status()
 
-        return response.json()["context_variables"]
+            return response.json()
 
+    @staticmethod
+    async def list_guidelines(agent_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/guidelines/",
+            )
 
-async def get_context_variable_value(agent_id: str, variable_id: str, key: str) -> Any:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()["guidelines"]
 
-        return response.json()
+    @staticmethod
+    async def read_guideline(agent_id: str, guideline_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
+            )
+
+            response.raise_for_status()
+
+            return response.json()
+
+    @staticmethod
+    async def create_guideline(
+        agent_id: str,
+        predicate: str,
+        action: str,
+        coherence_check: Optional[dict[str, Any]] = None,
+        connection_propositions: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "kind": "guideline",
+                                "predicate": predicate,
+                                "action": action,
+                            },
+                            "checksum": "checksum_value",
+                            "approved": True if coherence_check is None else False,
+                            "data": {
+                                "coherence_checks": coherence_check if coherence_check else [],
+                                "connection_propositions": connection_propositions
+                                if connection_propositions
+                                else None,
+                            },
+                            "error": None,
+                        }
+                    ]
+                },
+            )
+
+            response.raise_for_status()
+
+            return response.json()["items"][0]["guideline"]
+
+    @staticmethod
+    async def create_context_variable(agent_id: str, name: str, description: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/context-variables",
+                json={
+                    "name": name,
+                    "description": description,
+                },
+            )
+
+            response.raise_for_status()
+
+            return response.json()["context_variable"]
+
+    @staticmethod
+    async def list_context_variables(agent_id: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(f"/agents/{agent_id}/context-variables/")
+
+            response.raise_for_status()
+
+            return response.json()["context_variables"]
+
+    @staticmethod
+    async def update_context_variable_value(
+        agent_id: str,
+        variable_id: str,
+        key: str,
+        value: Any,
+    ) -> Any:
+        async with API._make_client() as client:
+            response = await client.put(
+                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
+                json={"data": value},
+            )
+            response.raise_for_status()
+
+    @staticmethod
+    async def read_context_variable_value(agent_id: str, variable_id: str, key: str) -> Any:
+        async with API._make_client() as client:
+            response = await client.get(
+                f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
+            )
+
+            response.raise_for_status()
+
+            return response.json()
 
 
 async def test_that_agent_can_be_updated(
@@ -180,24 +280,14 @@ async def test_that_agent_can_be_updated(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        await run_cli_and_get_exit_status(
             "agent",
             "update",
             "--description",
             new_description,
             "--max-engine-iterations",
             str(new_max_engine_iterations),
-        ]
-
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
+        ) == os.EX_OK
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -221,15 +311,9 @@ async def test_that_a_term_can_be_created_with_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        await run_cli_and_get_exit_status(
             "glossary",
             "add",
             "--agent-id",
@@ -238,12 +322,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
             description,
             "--synonyms",
             synonyms,
-        ]
-
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
+        ) == os.EX_OK
 
 
 async def test_that_a_term_can_be_created_without_synonyms(
@@ -255,32 +334,21 @@ async def test_that_a_term_can_be_created_without_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        await run_cli_and_get_exit_status(
             "glossary",
             "add",
             "--agent-id",
             agent_id,
             term_name,
             description,
-        ]
+        ) == os.EX_OK
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        term = await get_term(agent_id, term_name)
+        term = await API.read_term(agent_id, term_name)
         assert term["name"] == term_name
         assert term["description"] == description
-        assert term["synonyms"] is None
+        assert term["synonyms"] == []
 
 
 async def test_that_terms_can_be_listed(
@@ -295,43 +363,35 @@ async def test_that_terms_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        first_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "glossary",
-            "add",
-            "--agent-id",
-            agent_id,
-            guideline_term_name,
-            guideline_description,
-            "--synonyms",
-            guideline_synonyms,
-        ]
-        seconds_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "glossary",
-            "add",
-            "--agent-id",
-            agent_id,
-            tool_term_name,
-            tool_description,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "glossary",
+                "add",
+                "--agent-id",
+                agent_id,
+                guideline_term_name,
+                guideline_description,
+                "--synonyms",
+                guideline_synonyms,
+            )
+            == os.EX_OK
+        )
 
-        assert await (await asyncio.create_subprocess_exec(*first_exec_args)).wait() == os.EX_OK
-        assert await (await asyncio.create_subprocess_exec(*seconds_exec_args)).wait() == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "glossary",
+                "add",
+                "--agent-id",
+                agent_id,
+                tool_term_name,
+                tool_description,
+            )
+            == os.EX_OK
+        )
 
-        terms = await get_term_list(agent_id)
+        terms = await API.list_terms(agent_id)
         assert len(terms) == 2
 
         term_names = {term["name"] for term in terms}
@@ -349,48 +409,34 @@ async def test_that_a_term_can_be_deleted(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "glossary",
-            "add",
-            "--agent-id",
-            agent_id,
-            name,
-            description,
-            "--synonyms",
-            synonyms,
-        ]
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
+        assert (
+            await run_cli_and_get_exit_status(
+                "glossary",
+                "add",
+                "--agent-id",
+                agent_id,
+                name,
+                description,
+                "--synonyms",
+                synonyms,
+            )
+            == os.EX_OK
+        )
 
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "glossary",
+                "remove",
+                "--agent-id",
+                agent_id,
+                name,
+            )
+            == os.EX_OK
+        )
 
-        exec_args_delete = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "glossary",
-            "remove",
-            "--agent-id",
-            agent_id,
-            name,
-        ]
-        process = await asyncio.create_subprocess_exec(*exec_args_delete)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        terms = await get_term_list(agent_id)
+        terms = await API.list_terms(agent_id)
         assert len(terms) == 0
 
 
@@ -403,37 +449,29 @@ async def test_that_terms_are_loaded_on_server_startup(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "glossary",
-            "add",
-            "--agent-id",
-            agent_id,
-            term_name,
-            description,
-        ]
-
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "glossary",
+                "add",
+                "--agent-id",
+                agent_id,
+                term_name,
+                description,
+            )
+            == os.EX_OK
+        )
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        term = await get_term(agent_id, term_name)
+        term = await API.read_term(agent_id, term_name)
         assert term["name"] == term_name
         assert term["description"] == description
-        assert term["synonyms"] is None
+        assert term["synonyms"] == []
 
 
 async def test_that_guideline_can_be_added(
@@ -445,29 +483,21 @@ async def test_that_guideline_can_be_added(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            predicate,
-            action,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                predicate,
+                action,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
         assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
 
 
@@ -482,52 +512,37 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        first_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            predicate,
-            action,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                predicate,
+                action,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*first_exec_args)
-        await process.wait()
-
-        second_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "add",
             "-a",
             agent_id,
             predicate,
             conflicting_action,
-        ]
-
-        process = await asyncio.create_subprocess_exec(
-            *second_exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+
         stdout, stderr = await process.communicate()
         output = stdout.decode() + stderr.decode()
 
         assert "Detected incoherence with other guidelines" in output
 
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         assert not any(
             g["predicate"] == predicate and g["action"] == conflicting_action for g in guidelines
@@ -546,55 +561,39 @@ async def test_that_adding_connected_guidelines_creates_connections(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        first_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            predicate1,
-            action1,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                predicate1,
+                action1,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*first_exec_args)
-        await process.wait()
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                predicate2,
+                action2,
+            )
+            == os.EX_OK
+        )
 
-        assert process.returncode == os.EX_OK
-
-        second_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            predicate2,
-            action2,
-        ]
-
-        process = await asyncio.create_subprocess_exec(*second_exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         assert len(guidelines) == 2
         source = guidelines[0]
         target = guidelines[1]
 
-        source_guideline = await get_guideline(agent_id, source["id"])
+        source_guideline = await API.read_guideline(agent_id, source["id"])
         source_connections = source_guideline["connections"]
 
         assert len(source_connections) == 1
@@ -614,25 +613,18 @@ async def test_that_guideline_can_be_viewed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        guideline = await create_guideline(agent_id=agent_id, predicate=predicate, action=action)
+        guideline = await API.create_guideline(
+            agent_id=agent_id, predicate=predicate, action=action
+        )
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "view",
             "-a",
             agent_id,
             guideline["id"],
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -660,7 +652,7 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -773,21 +765,12 @@ async def test_that_view_guideline_with_connections_displays_indirect_and_direct
         first_connection = add_guidelines_response.json()["items"][0]["connections"][0]
         second_connection = add_guidelines_response.json()["items"][1]["connections"][0]
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "view",
             "-a",
             agent_id,
             first["id"],
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -822,31 +805,22 @@ async def test_that_guidelines_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        _ = await create_guideline(agent_id=agent_id, predicate=predicate1, action=action1)
-        _ = await create_guideline(agent_id=agent_id, predicate=predicate2, action=action2)
+        _ = await API.create_guideline(agent_id=agent_id, predicate=predicate1, action=action1)
+        _ = await API.create_guideline(agent_id=agent_id, predicate=predicate2, action=action2)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "list",
             "-a",
             agent_id,
-        ]
-        process_list = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout_list, stderr_list = await process_list.communicate()
-        output_list = stdout_list.decode() + stderr_list.decode()
-        assert process_list.returncode == os.EX_OK
+        stdout, stderr = await process.communicate()
+        output_list = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
 
         assert predicate1 in output_list
         assert action1 in output_list
@@ -866,49 +840,37 @@ async def test_that_guidelines_can_be_entailed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        first_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            "--no-check",
-            "--no-index",
-            predicate1,
-            action1,
-        ]
-        process = await asyncio.create_subprocess_exec(*first_exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                "--no-check",
+                "--no-index",
+                predicate1,
+                action1,
+            )
+            == os.EX_OK
+        )
 
-        second_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            "--no-check",
-            "--no-index",
-            predicate2,
-            action2,
-        ]
-        process = await asyncio.create_subprocess_exec(*second_exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                "--no-check",
+                "--no-index",
+                predicate2,
+                action2,
+            )
+            == os.EX_OK
+        )
 
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
@@ -917,22 +879,13 @@ async def test_that_guidelines_can_be_entailed(
             g for g in guidelines if g["predicate"] == predicate2 and g["action"] == action2
         )
 
-        third_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "entail",
             "-a",
             agent_id,
             first_guideline["id"],
             second_guideline["id"],
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *third_exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -940,7 +893,7 @@ async def test_that_guidelines_can_be_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await get_guideline(agent_id, first_guideline["id"])
+        guideline = await API.read_guideline(agent_id, first_guideline["id"])
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
         assert (
@@ -962,49 +915,37 @@ async def test_that_guidelines_can_be_suggestively_entailed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        first_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            "--no-check",
-            "--no-index",
-            predicate1,
-            action1,
-        ]
-        process = await asyncio.create_subprocess_exec(*first_exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                "--no-check",
+                "--no-index",
+                predicate1,
+                action1,
+            )
+            == os.EX_OK
+        )
 
-        second_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "add",
-            "-a",
-            agent_id,
-            "--no-check",
-            "--no-index",
-            predicate2,
-            action2,
-        ]
-        process = await asyncio.create_subprocess_exec(*second_exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "add",
+                "-a",
+                agent_id,
+                "--no-check",
+                "--no-index",
+                predicate2,
+                action2,
+            )
+            == os.EX_OK
+        )
 
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
@@ -1013,13 +954,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             g for g in guidelines if g["predicate"] == predicate2 and g["action"] == action2
         )
 
-        third_exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "guideline",
             "entail",
             "-a",
@@ -1027,9 +962,6 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             "--suggestive",
             first_guideline["id"],
             second_guideline["id"],
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *third_exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -1037,7 +969,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await get_guideline(agent_id, first_guideline["id"])
+        guideline = await API.read_guideline(agent_id, first_guideline["id"])
 
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
@@ -1054,32 +986,24 @@ async def test_that_guideline_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        guideline = await create_guideline(
+        guideline = await API.create_guideline(
             agent_id, predicate="the user greets you", action="greet them back with 'Hello'"
         )
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "remove",
-            "-a",
-            agent_id,
-            guideline["id"],
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "remove",
+                "-a",
+                agent_id,
+                guideline["id"],
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        guidelines = await get_guideline_list(agent_id)
+        guidelines = await API.list_guidelines(agent_id)
         assert len(guidelines) == 0
 
 
@@ -1089,7 +1013,7 @@ async def test_that_connection_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -1161,27 +1085,19 @@ async def test_that_connection_can_be_removed(
             first = guidelines_response.json()["items"][0]["guideline"]["id"]
             second = guidelines_response.json()["items"][1]["guideline"]["id"]
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "guideline",
-            "disentail",
-            "-a",
-            agent_id,
-            first,
-            second,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "disentail",
+                "-a",
+                agent_id,
+                first,
+                second,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-
-        assert process.returncode == os.EX_OK
-
-        guideline = await get_guideline(agent_id, first)
+        guideline = await API.read_guideline(agent_id, first)
         assert len(guideline["connections"]) == 0
 
 
@@ -1197,31 +1113,21 @@ async def test_that_variables_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
-        _ = await create_context_variable(agent_id, name1, description1)
-        _ = await create_context_variable(agent_id, name2, description2)
+        agent_id = await API.get_first_agent_id()
+        _ = await API.create_context_variable(agent_id, name1, description1)
+        _ = await API.create_context_variable(agent_id, name2, description2)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "variable",
             "list",
             "--agent-id",
             agent_id,
-        ]
-
-        process = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+
         stdout, stderr = await process.communicate()
         process_output = stdout.decode() + stderr.decode()
-
         assert process.returncode == os.EX_OK
 
         assert name1 in process_output
@@ -1239,29 +1145,22 @@ async def test_that_variable_can_be_added(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "variable",
-            "add",
-            "--agent-id",
-            agent_id,
-            "--description",
-            description,
-            name,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "variable",
+                "add",
+                "--agent-id",
+                agent_id,
+                "--description",
+                description,
+                name,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
-
-        variables = await get_context_variable_list(agent_id)
+        variables = await API.list_context_variables(agent_id)
 
         variable = next(
             (v for v in variables if v["name"] == name and v["description"] == description),
@@ -1279,29 +1178,22 @@ async def test_that_variable_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
+        agent_id = await API.get_first_agent_id()
 
-        _ = await create_context_variable(agent_id, name, description)
+        _ = await API.create_context_variable(agent_id, name, description)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "variable",
-            "remove",
-            "--agent-id",
-            agent_id,
-            name,
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "variable",
+                "remove",
+                "--agent-id",
+                agent_id,
+                name,
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
-
-        variables = await get_context_variable_list(agent_id)
+        variables = await API.list_context_variables(agent_id)
         assert len(variables) == 0
 
 
@@ -1316,30 +1208,23 @@ async def test_that_variable_value_can_be_set_with_json(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
-        variable = await create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = await API.get_first_agent_id()
+        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "variable",
-            "set",
-            "--agent-id",
-            agent_id,
-            variable_name,
-            key,
-            json.dumps(data),
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "variable",
+                "set",
+                "--agent-id",
+                agent_id,
+                variable_name,
+                key,
+                json.dumps(data),
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args)
-        await process.wait()
-        assert process.returncode == os.EX_OK
-
-        value = await get_context_variable_value(agent_id, variable["id"], key)
+        value = await API.read_context_variable_value(agent_id, variable["id"], key)
         assert value["data"] == data
 
 
@@ -1354,30 +1239,23 @@ async def test_that_variable_value_can_be_set_with_string(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
-        variable = await create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = await API.get_first_agent_id()
+        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
 
-        exec_args_set = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
-            "variable",
-            "set",
-            "--agent-id",
-            agent_id,
-            variable_name,
-            key,
-            json.dumps(data),
-        ]
+        assert (
+            await run_cli_and_get_exit_status(
+                "variable",
+                "set",
+                "--agent-id",
+                agent_id,
+                variable_name,
+                key,
+                json.dumps(data),
+            )
+            == os.EX_OK
+        )
 
-        process = await asyncio.create_subprocess_exec(*exec_args_set)
-        await process.wait()
-        assert process.returncode == os.EX_OK
-
-        value = await get_context_variable_value(agent_id, variable["id"], key)
+        value = await API.read_context_variable_value(agent_id, variable["id"], key)
 
         assert value["data"] == data
 
@@ -1396,37 +1274,18 @@ async def test_that_variable_values_can_be_retrieved(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await get_first_agent_id()
-        variable = await create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = await API.get_first_agent_id()
+        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
 
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(30),
-        ) as client:
-            for key, data in values.items():
-                response = await client.put(
-                    f"/agents/{agent_id}/context-variables/{variable["id"]}/{key}",
-                    json={"data": data},
-                )
-                response.raise_for_status()
+        for key, data in values.items():
+            await API.update_context_variable_value(agent_id, variable["id"], key, data)
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "variable",
             "get",
             "--agent-id",
             agent_id,
             variable_name,
-        ]
-
-        process = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -1441,28 +1300,82 @@ async def test_that_variable_values_can_be_retrieved(
         specific_key = "key2"
         expected_value = values[specific_key]
 
-        exec_args = [
-            "poetry",
-            "run",
-            "python",
-            CLI_CLIENT_PATH.as_posix(),
-            "--server",
-            SERVER_ADDRESS,
+        process = await run_cli(
             "variable",
             "get",
             "--agent-id",
             agent_id,
             variable_name,
             specific_key,
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *exec_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout_get_value_by_key, stderr_get_key = await process.communicate()
-        output_get_value_by_key = stdout_get_value_by_key.decode() + stderr_get_key.decode()
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
         assert process.returncode == os.EX_OK
 
-        assert specific_key in output_get_value_by_key
-        assert expected_value in output_get_value_by_key
+        assert specific_key in output
+        assert expected_value in output
+
+
+async def test_that_a_message_interaction_can_be_inspected(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id=agent_id,
+            predicate="the user talks about cows",
+            action="address the user by his first name and say you like Pepsi",
+        )
+
+        term = await API.create_term(
+            agent_id=agent_id,
+            name="Bazoo",
+            description="a type of cow",
+        )
+
+        variable = await API.create_context_variable(
+            agent_id=agent_id,
+            name="User first name",
+            description="",
+        )
+
+        end_user_id = "john.s@peppery.co"
+
+        await API.update_context_variable_value(
+            agent_id=agent_id,
+            variable_id=variable["id"],
+            key=end_user_id,
+            value="Johnny",
+        )
+
+        session = await API.create_session(agent_id, end_user_id)
+
+        reply_event = await API.get_agent_reply(session["id"], "Oh do I like bazoos")
+
+        assert "Johnny" in reply_event["data"]["message"]
+        assert "Pepsi" in reply_event["data"]["message"]
+
+        process = await run_cli(
+            "session",
+            "inspect",
+            session["id"],
+            reply_event["correlation_id"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert guideline["predicate"] in output
+        assert guideline["action"] in output
+        assert term["name"] in output
+        assert term["description"] in output
+        assert variable["name"] in output
+        assert end_user_id in output

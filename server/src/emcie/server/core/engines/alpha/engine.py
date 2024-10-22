@@ -3,16 +3,14 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 import traceback
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, cast
 
 from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent, AgentId, AgentStore
-from emcie.server.core.common import generate_id
 from emcie.server.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
     ContextVariableValue,
-    ContextVariableKey,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
@@ -22,9 +20,14 @@ from emcie.server.core.guideline_tool_associations import (
 from emcie.server.core.glossary import Term, GlossaryStore
 from emcie.server.core.tools import ToolService
 from emcie.server.core.sessions import (
+    ContextVariable as StoredContextVariable,
     Event,
+    GuidelineProposition as StoredGuidelineProposition,
+    PreparationIteration,
     SessionId,
     SessionStore,
+    Term as StoredTerm,
+    ToolEventData,
 )
 from emcie.server.core.engines.alpha.guideline_proposer import GuidelineProposer
 from emcie.server.core.engines.alpha.guideline_proposition import (
@@ -85,19 +88,22 @@ class AlphaEngine(Engine):
         interaction_state = await self._load_interaction_state(context)
 
         try:
-            with self._correlator.correlation_scope(generate_id()):
+            with self._correlator.correlation_scope(f"process-session({context.session_id})"):
                 await self._do_process(context, interaction_state, event_emitter)
             return True
         except asyncio.CancelledError:
             return False
         except Exception as exc:
-            self._logger.error(f"Processing error: {traceback.format_exception(exc)}")
+            formatted_exception = traceback.format_exception(exc)
+
+            self._logger.error(f"Processing error: {formatted_exception}")
+
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
                     "status": "error",
                     "acknowledged_offset": interaction_state.last_known_event_offset,
-                    "data": {},
+                    "data": {"exception": formatted_exception},
                 },
             )
             return False
@@ -121,6 +127,7 @@ class AlphaEngine(Engine):
         event_emitter: EventEmitter,
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
+        end_user_id = (await self._session_store.read_session(context.session_id)).end_user_id
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
@@ -155,11 +162,10 @@ class AlphaEngine(Engine):
             )
 
             all_tool_events: list[EmittedEvent] = []
-            tool_call_iterations = 0
+            preparation_iterations: list[PreparationIteration] = []
+            prepared_to_respond = False
 
-            while True:
-                tool_call_iterations += 1
-
+            while not prepared_to_respond:
                 (
                     ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions,
@@ -182,7 +188,8 @@ class AlphaEngine(Engine):
                         ),
                     )
                 )
-                if tool_events := await self._tool_event_producer.produce_events(
+
+                tool_events = await self._tool_event_producer.produce_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -192,25 +199,75 @@ class AlphaEngine(Engine):
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                     staged_events=all_tool_events,
-                ):
-                    all_tool_events += tool_events
+                )
 
-                    terms.update(
-                        set(
-                            await self._load_relevant_terms(
-                                agents=[agent],
-                                staged_events=tool_events,
-                            )
+                all_tool_events += tool_events
+
+                terms.update(
+                    set(
+                        await self._load_relevant_terms(
+                            agents=[agent],
+                            staged_events=tool_events,
                         )
                     )
-                else:
-                    break
+                )
 
-                if tool_call_iterations == agent.max_engine_iterations:
-                    self._logger.warning(
-                        f"Reached max tool call iterations ({tool_call_iterations})"
+                preparation_iterations.append(
+                    PreparationIteration(
+                        guideline_propositions=[
+                            StoredGuidelineProposition(
+                                guideline_id=proposition.guideline.id,
+                                predicate=proposition.guideline.content.predicate,
+                                action=proposition.guideline.content.action,
+                                score=proposition.score,
+                                rationale=proposition.rationale,
+                            )
+                            for proposition in chain(
+                                ordinary_guideline_propositions,
+                                tool_enabled_guideline_propositions.keys(),
+                            )
+                        ],
+                        tool_calls=[
+                            tool_call
+                            for tool_event in tool_events
+                            for tool_call in cast(ToolEventData, tool_event.data)["tool_calls"]
+                        ],
+                        terms=[
+                            StoredTerm(
+                                id=term.id,
+                                name=term.name,
+                                description=term.description,
+                                synonyms=term.synonyms,
+                            )
+                            for term in terms
+                        ],
+                        context_variables=[
+                            StoredContextVariable(
+                                id=variable.id,
+                                name=variable.name,
+                                description=variable.description,
+                                key=end_user_id,
+                                value=value.data,
+                            )
+                            for variable, value in context_variables
+                        ],
                     )
-                    break
+                )
+
+                if not tool_events:
+                    prepared_to_respond = True
+
+                if len(preparation_iterations) == agent.max_engine_iterations:
+                    self._logger.warning(
+                        f"Reached max tool call iterations ({agent.max_engine_iterations})"
+                    )
+                    prepared_to_respond = True
+
+            await self._session_store.create_inspection(
+                session_id=context.session_id,
+                correlation_id=self._correlator.correlation_id,
+                preparation_iterations=preparation_iterations,
+            )
 
             await self._message_event_producer.produce_events(
                 event_emitter=event_emitter,
@@ -261,7 +318,7 @@ class AlphaEngine(Engine):
                 variable,
                 await self._context_variable_store.read_value(
                     variable_set=agent_id,
-                    key=ContextVariableKey(session.end_user_id),  # noqa: F821
+                    key=session.end_user_id,  # noqa: F821
                     variable_id=variable.id,
                 ),
             )
