@@ -6,10 +6,7 @@ import { postData } from "@/utils/api";
 import { Skeleton } from "../ui/skeleton";
 import { groupBy } from "@/utils/obj";
 import Message from "../message/message";
-
-interface Props {
-    sessionId: string;
-}
+import { useSession } from "../chatbot/chatbot";
 
 export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
 
@@ -38,10 +35,11 @@ const emptyPendingMessage: Event = {
     }
 };
 
-export default function Chat({sessionId}: Props): ReactElement {
+export default function Chat(): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const submitButtonRef = useRef<HTMLButtonElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const {sessionId} = useSession();
 
     const [message, setMessage] = useState('');
     const [pendingMessage, setPendingMessage] = useState<Event>(emptyPendingMessage);

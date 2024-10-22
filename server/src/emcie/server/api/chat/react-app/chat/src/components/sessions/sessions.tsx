@@ -1,11 +1,10 @@
-import { Dispatch, ReactElement, SetStateAction, useEffect, useState } from "react";
+import { ReactElement, useEffect, useState } from "react";
 import useFetch from "@/hooks/useFetch";
 import Session from "../session/session";
+import { useSession } from "../chatbot/chatbot";
 
 interface Props {
     agentId: string | undefined;
-    setSession: Dispatch<SetStateAction<null | string>>;
-    sessionId: string | null;
 }
 
 export interface Session {
@@ -14,9 +13,10 @@ export interface Session {
     end_user_id: string;
 }
 
-export default function Sessions({agentId, setSession, sessionId}: Props): ReactElement {
+export default function Sessions({agentId}: Props): ReactElement {
     const [sessions, setSessions] = useState<Session[]>([]);
     const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: Session[]}>('sessions/', {agent_id: agentId}, [agentId]);
+    const {sessionId} = useSession();
 
     useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
 
@@ -31,7 +31,7 @@ export default function Sessions({agentId, setSession, sessionId}: Props): React
             {ErrorTemplate && <ErrorTemplate />}
             {loading && <div>loading...</div>}
             {!loading && !error && sessions.map(session => (
-                <Session data-testid="session" isSelected={session.id === sessionId} refetch={refetch} session={session} setSession={setSession} key={session.id}/>
+                <Session data-testid="session" isSelected={session.id === sessionId} refetch={refetch} session={session} key={session.id}/>
             ))}
         </div>
     )

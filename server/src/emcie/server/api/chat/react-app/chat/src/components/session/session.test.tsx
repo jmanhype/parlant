@@ -8,20 +8,26 @@ import { deleteData } from "@/utils/api";
 
 const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '' };
 
-
 vi.mock('@/utils/api', () => ({
     deleteData: vi.fn(() => Promise.resolve()),
 }))
 
+const setSessionFn = vi.fn();
+vi.mock('react', async () => {
+    const actualReact = await vi.importActual('react');
+    return {
+        ...actualReact,
+        useContext: vi.fn(() => ({setSessionId: setSessionFn}))
+    }
+});
 
 describe('Session Component', () => {
     let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
     let rerender: (ui: React.ReactNode) => void;
     let container: HTMLElement;
-    const setSession = vi.fn();
     
     beforeEach(() => {
-        const utils = render(<Session setSession={setSession} session={session as SessionInterface} refetch={vi.fn()} isSelected={true}/>);
+        const utils = render(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={true}/>);
         getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
         rerender = utils.rerender;
         container = utils.container;
@@ -52,14 +58,14 @@ describe('Session Component', () => {
     it('active session should be closed if deleted', async () => {
         const deleteBtn = getByTestId('delete');
         await fireEvent.click(deleteBtn);
-        expect(setSession).toBeCalledWith(null);
+        expect(setSessionFn).toBeCalledWith(null);
     });
 
     it('inactive session should not be closed if deleted', async () => {
-        rerender(<Session setSession={setSession} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>)
+        rerender(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>)
         const deleteBtn = getByTestId('delete');
         await fireEvent.click(deleteBtn);
-        expect(setSession).not.toBeCalled();
+        expect(setSessionFn).not.toBeCalled();
     });
 
     it('text field opened when "edit" button is clicked', () => {

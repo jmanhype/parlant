@@ -1,4 +1,4 @@
-import { Dispatch, ReactElement, SetStateAction, useRef, useState } from "react";
+import { ReactElement, useRef, useState } from "react";
 import { Session as SessionInterface } from "../sessions/sessions";
 import { Input } from "../ui/input";
 import Tooltip from "../ui/custom/tooltip";
@@ -6,23 +6,24 @@ import { Button } from "../ui/button";
 import { deleteData, patchData } from "@/utils/api";
 import { toast } from "sonner";
 import { Check, Edit, Trash, X } from "lucide-react";
+import { useSession } from "../chatbot/chatbot";
 
 interface Props {
-    setSession: Dispatch<SetStateAction<null | string>>;
     session: SessionInterface;
     isSelected: boolean;
     refetch: () => void;
 }
 
-export default function Session({setSession, session, isSelected, refetch}: Props): ReactElement {
+export default function Session({session, isSelected, refetch}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+    const {setSessionId} = useSession();
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
         return deleteData(`sessions/${session.id}`).then(() => {
             refetch();
-            if (isSelected) setSession(null);
+            if (isSelected) setSessionId(null);
             toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
         }).catch(() => {
             toast.error('Something went wrong');
@@ -63,7 +64,7 @@ export default function Session({setSession, session, isSelected, refetch}: Prop
             role="button"
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
-            onClick={() => setSession(session.id)} key={session.id}
+            onClick={() => setSessionId(session.id)} key={session.id}
             className={"bg-white border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl " + (isSelected ? '!bg-blue-700 text-white' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
