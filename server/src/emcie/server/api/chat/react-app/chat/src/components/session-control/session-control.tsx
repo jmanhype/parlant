@@ -16,8 +16,8 @@ export default function SessionControl(): ReactElement {
        return postData('sessions?allow_greeting=true', {end_user_id: '1122', agent_id: selectedAgent, title: 'New Conversation' })
         .then(res => {
             setSessionId(res.session.id);
-        })
-    }
+        });
+    };
 
     return (
         <div className="flex flex-col items-center h-full overflow-auto">
@@ -31,5 +31,5 @@ export default function SessionControl(): ReactElement {
             </div>
             {selectedAgent && <Sessions agentId={selectedAgent} />}
         </div>
-    )
+    );
 }

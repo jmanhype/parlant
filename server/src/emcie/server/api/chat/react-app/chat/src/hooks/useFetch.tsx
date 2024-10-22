@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback, ReactElement } from 'react';
-// const baseUrl = process.env;
-// console.log(baseUrl);
 
 interface useFetchResponse<T> {
   data: T | null;
@@ -10,19 +8,19 @@ interface useFetchResponse<T> {
   ErrorTemplate: (() => ReactElement) | null;
 }
 
-function objToUrlParams(obj: any) {
+function objToUrlParams(obj: Record<string, unknown>) {
   const params = [];
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const value = encodeURIComponent(obj[key]);
+      const value = encodeURIComponent(`${obj[key]}`);
       params.push(`${key}=${value}`);
     }
   }
   return `?${params.join('&')}`;
 }
 
-export default function useFetch<T>(url: string, body?: object, dependencies: any[] = [], retry = false): useFetchResponse<T> {
-  const [data, setData] = useState<null | any>(null);
+export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false): useFetchResponse<T> {
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | {message: string}>(null);
   const [refetchData, setRefetchData] = useState(false);
@@ -35,7 +33,7 @@ export default function useFetch<T>(url: string, body?: object, dependencies: an
         <div>Something went wrong</div>
         <div role='button' onClick={() => setRefetchData(r => !r)} className='underline cursor-pointer'>Click to retry</div>
       </div>
-    )
+    );
   };
 
   const refetch = () => setRefetchData(r => !r);

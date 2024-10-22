@@ -28,13 +28,13 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
         }).catch(() => {
             toast.error('Something went wrong');
         });
-    }
+    };
 
     const editTitle = async (e: React.MouseEvent) => {
         e.stopPropagation();
         setIsEditingTitle(true);
         setTimeout(() => sessionNameRef?.current?.select(), 0);
-    }
+    };
 
     const saveTitleChange = (e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
@@ -57,7 +57,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
 
     const onInputKeyUp = (e: React.KeyboardEvent) =>{
         if (e.key === 'Enter') saveTitleChange(e);
-    }
+    };
 
     return (
         <div data-testid="session"
@@ -65,7 +65,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => setSessionId(session.id)} key={session.id}
-            className={'bg-white border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl ' + (isSelected ? '!bg-blue-700 text-white' : '')}>
+            className={'bg-white animate-fade-in duration-500 transition-none border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl ' + (isSelected ? '!bg-blue-700 text-white' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
                 {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
@@ -78,5 +78,5 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                 {isEditingTitle && <Tooltip value='Save'><Button variant='ghost' className="w-[40px] p-0" onClick={saveTitleChange}><Check/></Button></Tooltip>}
             </div>
         </div>
-    )
+    );
 }

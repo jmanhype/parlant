@@ -62,7 +62,7 @@ export default function Chat(): ReactElement {
     useEffect(() => {
         resetChat();
         refetch();
-        textareaRef?.current?.focus()
+        textareaRef?.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
 
@@ -92,7 +92,7 @@ export default function Chat(): ReactElement {
             setIsSubmitDisabled(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lastMessages])
+    }, [lastMessages]);
 
     const postMessage = (content: string): void => {
         setPendingMessage(pendingMessage => ({...pendingMessage, data: {message: content}}));
@@ -102,11 +102,11 @@ export default function Chat(): ReactElement {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         });
-    }
+    };
 
     const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
         if (e.key === 'Enter' && !e.shiftKey) submitButtonRef?.current?.click();
-    }
+    };
 
     return (
         <div className="flex flex-col items-center pt-4 h-full">
@@ -127,5 +127,5 @@ export default function Chat(): ReactElement {
                 <Button variant='ghost' className="border border-solid border-black" ref={submitButtonRef} disabled={isSubmitDisabled ||!message?.trim()} onClick={() => postMessage(message)}>Submit</Button>
             </div>
         </div>
-    )
+    );
 }

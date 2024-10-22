@@ -15,7 +15,7 @@ vi.mock('@/hooks/useFetch', () => ({
         return {
             data: {sessions: sessionsArr},
             refetch: vi.fn()
-        }
+        };
     })
 }));
 

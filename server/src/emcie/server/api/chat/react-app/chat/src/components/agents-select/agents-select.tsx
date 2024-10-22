@@ -25,5 +25,5 @@ export default function AgentsSelect({value, setSelectedAgent}: {value?: string 
                 </SelectGroup>
             </SelectContent>
         </Select>
-    )
+    );
 }

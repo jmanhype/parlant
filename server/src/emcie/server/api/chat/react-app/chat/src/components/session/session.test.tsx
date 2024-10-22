@@ -10,7 +10,7 @@ const session: SessionInterface | null = { id: 'session1', title: 'Session One',
 
 vi.mock('@/utils/api', () => ({
     deleteData: vi.fn(() => Promise.resolve()),
-}))
+}));
 
 const setSessionFn = vi.fn();
 vi.mock('react', async () => {
@@ -18,7 +18,7 @@ vi.mock('react', async () => {
     return {
         ...actualReact,
         useContext: vi.fn(() => ({setSessionId: setSessionFn}))
-    }
+    };
 });
 
 describe(Session, () => {
@@ -62,7 +62,7 @@ describe(Session, () => {
     });
 
     it('inactive session should not be closed if deleted', async () => {
-        rerender(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>)
+        rerender(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const deleteBtn = getByTestId('delete');
         await fireEvent.click(deleteBtn);
         expect(setSessionFn).not.toBeCalled();

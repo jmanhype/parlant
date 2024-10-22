@@ -17,12 +17,10 @@ const request = async (url: string, options: RequestInit = {}) => {
   }
 };
 
-// GET request
 export const getData = async (endpoint:string) => {
   return request(`${BASE_URL}/${endpoint}`);
 };
 
-// POST request
 export const postData = async (endpoint:string, data: object) => {
   return request(`${BASE_URL}/${endpoint}`, {
     method: 'POST',
@@ -33,7 +31,6 @@ export const postData = async (endpoint:string, data: object) => {
   });
 };
 
-// PUT request
 export const patchData = async (endpoint: string, data: object) => {
   return request(`${BASE_URL}/${endpoint}`, {
     method: 'PATCH',
@@ -44,7 +41,6 @@ export const patchData = async (endpoint: string, data: object) => {
   });
 };
 
-// DELETE request
 export const deleteData = async (endpoint: string) => {
   return request(`${BASE_URL}/${endpoint}`, {
     method: 'DELETE',

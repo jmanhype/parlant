@@ -12,7 +12,7 @@ vi.mock('@/hooks/useFetch', () => ({
             ],
         },
     }),
-}))
+}));
 
 describe(AgentsSelect, () => {
     afterEach(() => cleanup());

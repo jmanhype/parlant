@@ -34,5 +34,5 @@ export default function Sessions({agentId}: Props): ReactElement {
                 <Session data-testid="session" isSelected={session.id === sessionId} refetch={refetch} session={session} key={session.id}/>
             ))}
         </div>
-    )
+    );
 }

@@ -19,7 +19,8 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "quotes": ["warn", "single"],
+      quotes: ['warn', 'single'],
+      semi: ['warn', 'always'],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

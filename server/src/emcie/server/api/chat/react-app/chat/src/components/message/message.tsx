@@ -24,14 +24,14 @@ const formatDateTime = (targetDate: Date | string): string => {
 
     if (now.toDateString() === date.toDateString()) return date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false})}`;
-}
+};
 
 export default function Message({event}: Props): ReactElement {
     const isClient = event.source === 'client';
     const serverStatus = event.serverStatus;
 
     return (
-        <div data-testid="message" className={(isClient ? 'bg-blue-700 text-white self-start' : 'bg-white self-end') + ' border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
+        <div data-testid="message" className={(isClient ? 'bg-blue-700 text-white self-start' : 'bg-white self-end') + ' animate-fade-in border border-solid border-black rounded-lg p-2 m-4 mb-1 w-fit max-w-[90%] flex gap-1 items-center relative'}>
             <div className="relative">
                 <Markdown>{event?.data?.message}</Markdown>
                 <div className="text-end text-[unset] opacity-70 text-xs">
@@ -40,5 +40,5 @@ export default function Message({event}: Props): ReactElement {
             </div>
             {isClient && serverStatus && <div className="w-6 self-end">{statusIcon[serverStatus]}</div>}
         </div>
-    )
+    );
 }

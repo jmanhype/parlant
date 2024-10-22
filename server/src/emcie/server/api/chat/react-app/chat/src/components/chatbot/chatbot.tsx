@@ -28,5 +28,5 @@ export default function Chatbot(): ReactElement {
                 </div>
             </div>
         </SessionProvider.Provider>
-    )
+    );
 }

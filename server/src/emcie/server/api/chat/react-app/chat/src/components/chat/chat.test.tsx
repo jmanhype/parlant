@@ -7,7 +7,7 @@ import { postData } from '@/utils/api';
 
 vi.mock('@/utils/api', () => ({
     postData: vi.fn(() => Promise.resolve())
-}))
+}));
 
 describe(Chat, () => {
     beforeEach(() => {

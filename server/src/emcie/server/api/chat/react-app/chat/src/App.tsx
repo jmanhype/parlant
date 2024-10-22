@@ -1,4 +1,4 @@
-import './App.css'
+import './App.css';
 import Chatbot from './components/chatbot/chatbot';
 
 function App() {
@@ -6,7 +6,7 @@ function App() {
     <div>
       <Chatbot />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

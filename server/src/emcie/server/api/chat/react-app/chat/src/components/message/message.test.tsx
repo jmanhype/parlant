@@ -4,7 +4,7 @@ import { Matcher } from 'vite';
 import Message from './message';
 import { Event, ServerStatus } from '../chat/chat';
 
-const serverStatuses: ServerStatus[] = ['pending', 'error', 'accepted', 'acknowledged', 'processing', 'typing', 'ready']
+const serverStatuses: ServerStatus[] = ['pending', 'error', 'accepted', 'acknowledged', 'processing', 'typing', 'ready'];
 
 const event: Event = {
     correlation_id: '',
