@@ -21,7 +21,7 @@ class CreateAgentRequest(DefaultBaseModel):
 
 
 class CreateAgentResponse(DefaultBaseModel):
-    agent_id: AgentId
+    agent: AgentDTO
 
 
 class ListAgentsResponse(DefaultBaseModel):
@@ -48,7 +48,15 @@ def create_router(
             max_engine_iterations=request and request.max_engine_iterations or None,
         )
 
-        return CreateAgentResponse(agent_id=agent.id)
+        return CreateAgentResponse(
+            agent=AgentDTO(
+                id=agent.id,
+                name=agent.name,
+                description=agent.description,
+                creation_utc=agent.creation_utc,
+                max_engine_iterations=agent.max_engine_iterations,
+            )
+        )
 
     @router.get("/")
     async def list_agents() -> ListAgentsResponse:
