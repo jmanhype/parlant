@@ -1,12 +1,12 @@
-import { ReactElement, useEffect, useRef, useState } from "react";
-import useFetch from "@/hooks/useFetch";
-import { Textarea } from "../ui/textarea";
-import { Button } from "../ui/button";
-import { postData } from "@/utils/api";
-import { Skeleton } from "../ui/skeleton";
-import { groupBy } from "@/utils/obj";
-import Message from "../message/message";
-import { useSession } from "../chatbot/chatbot";
+import { ReactElement, useEffect, useRef, useState } from 'react';
+import useFetch from '@/hooks/useFetch';
+import { Textarea } from '../ui/textarea';
+import { Button } from '../ui/button';
+import { postData } from '@/utils/api';
+import { Skeleton } from '../ui/skeleton';
+import { groupBy } from '@/utils/obj';
+import Message from '../message/message';
+import { useSession } from '../chatbot/chatbot';
 
 export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
 

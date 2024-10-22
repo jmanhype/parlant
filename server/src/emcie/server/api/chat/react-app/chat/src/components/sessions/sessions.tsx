@@ -1,7 +1,7 @@
-import { ReactElement, useEffect, useState } from "react";
-import useFetch from "@/hooks/useFetch";
-import Session from "../session/session";
-import { useSession } from "../chatbot/chatbot";
+import { ReactElement, useEffect, useState } from 'react';
+import useFetch from '@/hooks/useFetch';
+import Session from '../session/session';
+import { useSession } from '../chatbot/chatbot';
 
 interface Props {
     agentId: string | undefined;

@@ -1,6 +1,6 @@
-import { createContext, Dispatch, ReactElement, SetStateAction, useContext, useState } from "react";
-import SessionControl from "../session-control/session-control";
-import Chat from "../chat/chat";
+import { createContext, Dispatch, ReactElement, SetStateAction, useContext, useState } from 'react';
+import SessionControl from '../session-control/session-control';
+import Chat from '../chat/chat';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null>>;

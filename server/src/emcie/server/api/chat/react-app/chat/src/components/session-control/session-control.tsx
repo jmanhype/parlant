@@ -1,11 +1,11 @@
-import { ReactElement, useState } from "react";
-import AgentsSelect from "../agents-select/agents-select";
-import Sessions from "../sessions/sessions";
-import { Button } from "../ui/button";
-import { postData } from "@/utils/api";
-import Tooltip from "../ui/custom/tooltip";
-import { Plus } from "lucide-react";
-import { useSession } from "../chatbot/chatbot";
+import { ReactElement, useState } from 'react';
+import AgentsSelect from '../agents-select/agents-select';
+import Sessions from '../sessions/sessions';
+import { Button } from '../ui/button';
+import { postData } from '@/utils/api';
+import Tooltip from '../ui/custom/tooltip';
+import { Plus } from 'lucide-react';
+import { useSession } from '../chatbot/chatbot';
 
 
 export default function SessionControl(): ReactElement {

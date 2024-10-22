@@ -1,6 +1,6 @@
-import { ReactElement, useEffect } from "react";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import useFetch from "@/hooks/useFetch";
+import { ReactElement, useEffect } from 'react';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import useFetch from '@/hooks/useFetch';
 
 interface Agent {
     id: string;

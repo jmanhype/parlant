@@ -1,12 +1,12 @@
-import { ReactElement, useRef, useState } from "react";
-import { Session as SessionInterface } from "../sessions/sessions";
-import { Input } from "../ui/input";
-import Tooltip from "../ui/custom/tooltip";
-import { Button } from "../ui/button";
-import { deleteData, patchData } from "@/utils/api";
-import { toast } from "sonner";
-import { Check, Edit, Trash, X } from "lucide-react";
-import { useSession } from "../chatbot/chatbot";
+import { ReactElement, useRef, useState } from 'react';
+import { Session as SessionInterface } from '../sessions/sessions';
+import { Input } from '../ui/input';
+import Tooltip from '../ui/custom/tooltip';
+import { Button } from '../ui/button';
+import { deleteData, patchData } from '@/utils/api';
+import { toast } from 'sonner';
+import { Check, Edit, Trash, X } from 'lucide-react';
+import { useSession } from '../chatbot/chatbot';
 
 interface Props {
     session: SessionInterface;
@@ -65,7 +65,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => setSessionId(session.id)} key={session.id}
-            className={"bg-white border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl " + (isSelected ? '!bg-blue-700 text-white' : '')}>
+            className={'bg-white border border-solid border-black cursor-pointer p-1 rounded flex items-center gap-4 justify-between ps-4 h-[50px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl ' + (isSelected ? '!bg-blue-700 text-white' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle && <div className="overflow-hidden overflow-ellipsis">{session.title}</div>}
                 {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
