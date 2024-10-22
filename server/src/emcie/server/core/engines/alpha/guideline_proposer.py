@@ -189,35 +189,16 @@ class GuidelineProposer:
 
         builder = PromptBuilder()
 
-        builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_history)
-
-        builder.add_section(
-            f"""
-The following is an additional list of staged events that were just added: ###
-{staged_events}
-###
-"""
-        )
-
-        builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
-
         builder.add_section(
             """
 Task Description
 ----------------
-Your job is to assess the relevance and/or applicability of the provided predicates
-to the last known state of an interaction between yourself, AI assistant, and a user.
+Your job is to assess the relevance and/or applicability of a few provided predicates
+to the last known state of an interaction between yourself, AI assistant, and a user. The predicates and the interaction will be provided to you later in this message.
 """
         )
-
-        builder.add_guideline_predicates(predicates)
-
         builder.add_section(
             f"""
-IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
-
 Process Description
 -------------------
 a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
@@ -458,6 +439,25 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     ]
 }}
 ```
+"""  # noqa
+        )
+        builder.add_agent_identity(agents[0])
+        builder.add_interaction_history(interaction_history)
+
+        builder.add_section(
+            f"""
+The following is an additional list of staged events that were just added: ###
+{staged_events}
+###
+"""
+        )
+
+        builder.add_context_variables(context_variables)
+        builder.add_glossary(terms)
+
+        builder.add_guideline_predicates(predicates)
+        builder.add_section(f"""
+IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
 
 Expected Output
 ---------------------------
@@ -468,8 +468,5 @@ Expected Output
         "checks":
         {json.dumps(result_structure)}
     }}
-    ```
-"""  # noqa
-        )
-
+    ```""")
         return builder.build()

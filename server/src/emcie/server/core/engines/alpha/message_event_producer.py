@@ -10,9 +10,7 @@ from emcie.server.core.context_variables import ContextVariable, ContextVariable
 from emcie.server.core.nlp.generation import SchematicGenerator
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.engines.alpha.prompt_builder import (
-    BuiltInSection,
     PromptBuilder,
-    SectionStatus,
 )
 from emcie.server.core.glossary import Term
 from emcie.server.core.emissions import EmittedEvent, EventEmitter
@@ -170,17 +168,9 @@ class MessageEventProducer:
 
         builder = PromptBuilder()
 
-        builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_history)
-        builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
-        builder.add_guideline_propositions(
-            ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
-        )
-
         builder.add_section(
             """
+You are an AI agent who is interacting with a user. The current state of this interaction will be provided to you later in this message.
 You must generate your reply message to the current (latest) state of the interaction.
 IMPORTANT: Strive to continue the interaction/conversation in the most natural way for a normal human conversation,
 and when replying—if you're asked a question you've already been asked—try to avoid repeating yourself
@@ -190,28 +180,7 @@ are considered appropriate in a natural conversation.
 """
         )
 
-        builder.add_staged_events(staged_events)
-
-        if builder.section_status(BuiltInSection.GUIDELINE_PROPOSITIONS) != SectionStatus.ACTIVE:
-            builder.add_section(
-                """
-Produce a valid JSON object in the following format: ###
-{{
-    “last_message_of_user”: “<the user’s last message in the interaction>”,
-    "rationale": "<a few words to explain why you should or shouldn't produce a reply to the user in this case>",
-    "produced_reply": <BOOL>,
-    "revisions": [
-        {
-            "revision_number": 1,
-            "content": "<your message here>",
-            "followed_all_guidelines": true
-        }
-    ]
-}}
-###
-"""
-            )
-        else:
+        if tool_enabled_guideline_propositions:  # TODO make sure this is correct with Dor, was set according to the status (active or passive) of the guideline_proposition section
             builder.add_section(
                 f"""
 Propose incremental revisions to your reply, ensuring that your proposals adhere
@@ -391,8 +360,39 @@ Example 4: Non-Adherence Due to Missing Data: ###
 ###
 """  # noqa
             )
+        else:
+            builder.add_section(
+                """
+Produce a valid JSON object in the following format: ###
+{{
+    “last_message_of_user”: “<the user’s last message in the interaction>”,
+    "rationale": "<a few words to explain why you should or shouldn't produce a reply to the user in this case>",
+    "produced_reply": <BOOL>,
+    "revisions": [
+        {
+            "revision_number": 1,
+            "content": "<your message here>",
+            "followed_all_guidelines": true
+        }
+    ]
+}}
+###"""
+            )
 
-        return builder.build()
+        builder.add_agent_identity(agents[0])
+        builder.add_interaction_history(interaction_history)
+        builder.add_context_variables(context_variables)
+        builder.add_glossary(terms)
+        builder.add_guideline_propositions(
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
+        )
+        builder.add_staged_events(staged_events)
+
+        prompt = builder.build()
+        with open("message event producer prompt.txt", "w") as f:
+            f.write(prompt)
+        return prompt
 
     async def _generate_response_message(
         self,

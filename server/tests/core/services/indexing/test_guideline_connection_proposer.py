@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
-from emcie.server.core.agents import Agent
+from emcie.server.core.agents import Agent, AgentId
 from emcie.server.core.guideline_connections import ConnectionKind
 from emcie.server.core.guidelines import GuidelineContent
 from emcie.server.core.services.indexing.guideline_connection_proposer import (
@@ -10,6 +10,7 @@ from emcie.server.core.services.indexing.guideline_connection_proposer import (
 )
 from emcie.server.core.glossary import GlossaryStore
 from tests.test_utilities import SyncAwaiter
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -911,6 +912,43 @@ def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that e
             )
         )
     )
+    assert len(connection_propositions) == 1
+    assert connection_propositions[0].source == source_guideline_content
+    assert connection_propositions[0].target == target_guideline_content
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+
+
+def test_that_agent_based_connection_is_detected(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+    agent = Agent(
+        id=AgentId("sparkling-water-agent"),
+        name="sparkling-water-agent",
+        description="You are a helpful AI assistant for a sparkling water company. Our philosophy dictates that oranges are vegetables and not fruit, despite what other may say.",
+        creation_utc=datetime.now(timezone.utc),
+        max_engine_iterations=3,
+    )
+    source_guideline_content = _create_guideline_content(
+        "the user asks for drink recommendation",
+        "recommend orange soda",
+    )
+
+    target_guideline_content = _create_guideline_content(
+        "recommending a vegetable based soda",
+        "mention that between exchanges, there can be minor differences",
+    )
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
+
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content

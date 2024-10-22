@@ -255,7 +255,7 @@ Expected Output:
             "source_then": "suggest a book",
             "target_when": "suggesting a book",
             "is_target_when_caused_by_source_then": true,
-            "rationale": "the agent's suggusting a book causes the suggestion of a book",
+            "rationale": "the agent's suggesting a book causes the suggestion of a book",
             "causation_score": 10
         }},
         {{
@@ -540,6 +540,8 @@ Expected Output:
 '''
 """  # noqa
         )
+
+        builder.add_agent_identity(agent)
         # Find and add glossary to prompt
         causation_candidates = "\n\t".join(
             f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
