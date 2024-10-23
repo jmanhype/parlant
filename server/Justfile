@@ -14,4 +14,7 @@ setup-cache:
 
 
 test-ci-initial:
-  poetry run pytest -v --plan=initial --tap-combined --capture=tee-sys | tee testresults.log
+  mkdir -p logs 
+  poetry run pytest -v --plan=disabled --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
+  EXIT1=${PIPESTATUS[0]}
+  echo $EXIT1

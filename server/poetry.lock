@@ -3958,7 +3958,7 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-stochastics"
-version = "0.2.2"
+version = "0.2.3"
 description = "pytest plugin that allows selectively running tests several times and accepting *some* failures."
 optional = false
 python-versions = "^3.12"
@@ -3973,8 +3973,8 @@ pytest = "^8.0.0"
 [package.source]
 type = "git"
 url = "ssh://git@github.com/emcie-co/pytest-stochastics.git"
-reference = "v0.2.2"
-resolved_reference = "bb7e6e660da168ff9757b7bd8b347655b2a919e7"
+reference = "v0.2.3"
+resolved_reference = "035646374f81a51c5ade6c7c167a6afb8739961a"
 
 [[package]]
 name = "pytest-tap"
