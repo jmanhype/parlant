@@ -68,7 +68,11 @@ class GuidelineProposer:
         }
 
         unique_predicates = list(guidelines_grouped_by_predicate.keys())
-        batches = self._create_predicate_batches(unique_predicates, batch_size=5)
+
+        batches = self._create_predicate_batches(
+            unique_predicates,
+            batch_size=self._get_optimal_batch_size(unique_predicates),
+        )
 
         with self._logger.operation(
             f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
@@ -98,6 +102,18 @@ class GuidelineProposer:
                 ]
 
             return guideline_propositions
+
+    def _get_optimal_batch_size(self, predicates: list[str]) -> int:
+        predicate_count = len(predicates)
+
+        if predicate_count <= 10:
+            return 1
+        elif predicate_count <= 20:
+            return 2
+        elif predicate_count <= 30:
+            return 3
+        else:
+            return 5
 
     def _create_predicate_batches(
         self,
