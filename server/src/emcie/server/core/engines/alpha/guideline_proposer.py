@@ -194,7 +194,8 @@ class GuidelineProposer:
 Task Description
 ----------------
 Your job is to assess the relevance and/or applicability of a few provided predicates
-to the last known state of an interaction between yourself, AI assistant, and a user. The predicates and the interaction will be provided to you later in this message.
+to the last known state of an interaction between yourself, AI assistant, and a user.
+The predicates and the interaction will be provided to you later in this message.
 """
         )
         builder.add_section(
@@ -469,4 +470,7 @@ Expected Output
         {json.dumps(result_structure)}
     }}
     ```""")
-        return builder.build()
+
+        prompt = builder.build()
+
+        return prompt
