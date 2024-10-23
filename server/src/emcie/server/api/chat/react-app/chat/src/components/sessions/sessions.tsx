@@ -6,8 +6,8 @@ import { SessionInterface } from '@/utils/interfaces';
 
 export default function Sessions(): ReactElement {
     const [sessions, setSessions] = useState<SessionInterface[]>([]);
-    const {sessionId, agentId} = useSession();
-    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions/', {agent_id: agentId}, [agentId]);
+    const {sessionId, newSession} = useSession();
+    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
 
     useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
 
@@ -21,8 +21,12 @@ export default function Sessions(): ReactElement {
         <div data-testid="sessions" className="bg-white flex justify-center flex-col w-full">
             {ErrorTemplate && <ErrorTemplate />}
             {loading && <div>loading...</div>}
-            {!loading && !error && sessions.map(session => (
-                <Session data-testid="session" isSelected={session.id === sessionId} refetch={refetch} session={session} key={session.id}/>
+            {!loading && !error && (newSession ? ([newSession, ...sessions]) :  sessions).map(session => (
+                <Session data-testid="session"
+                    isSelected={session.id === sessionId}
+                    refetch={refetch}
+                    session={session}
+                    key={session.id}/>
             ))}
         </div>
     );

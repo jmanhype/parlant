@@ -22,4 +22,6 @@ export interface SessionInterface {
     id: string;
     title: string;
     end_user_id: string;
+    agentId: string;
+    creation_utc: string;
 };

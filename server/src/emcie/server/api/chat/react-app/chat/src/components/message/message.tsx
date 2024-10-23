@@ -34,7 +34,11 @@ export default function Message({event}: Props): ReactElement {
         <div className={(isClient ? 'self-end' : 'self-start') + ' flex m-4 mb-1 gap-[14px]'}>
             {!isClient &&
                 <div className='flex items-end'>
-                    <img src="parlant-bubble.svg" alt="" className='pt-[11px] p-[9px] bg-white rounded-full'/>
+                    <img src="parlant-bubble.svg"
+                        alt=""
+                        height={34}
+                        width={36}
+                        className='pt-[11px] p-[9px] bg-white rounded-full'/>
                 </div>
             }
             <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-[#EBECF0] border-solid rounded-bl-none') + ' animate-fade-in rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>

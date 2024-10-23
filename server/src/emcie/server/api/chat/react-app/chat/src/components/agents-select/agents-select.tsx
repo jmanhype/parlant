@@ -1,20 +1,23 @@
-import { ReactElement, useEffect } from 'react';
+import { ReactElement } from 'react';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import useFetch from '@/hooks/useFetch';
 import { AgentInterface } from '@/utils/interfaces';
+import { useSession } from '../chatbot/chatbot';
 
-export default function AgentsSelect({value, setSelectedAgent}: {value?: string | undefined, setSelectedAgent: (val: string) => void}): ReactElement {
+export default function AgentsSelect({value}: {value?: string | undefined}): ReactElement {
     const {data} = useFetch<{agents: AgentInterface[]}>('agents');
+    const {sessionId, setAgentId} = useSession();
 
-    useEffect(() => {
-        if (!value && data?.agents?.length) setSelectedAgent(data.agents[0].id);
-    }, [value, setSelectedAgent, data]);
+    const valueChanged = (val: string) => {
+        setAgentId(val);
+    };
 
     return (
-        <Select value={value} onValueChange={(val: string) => setSelectedAgent(val)}>
-            <SelectTrigger style={{boxShadow: 'none'}} className="w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium">
+        <Select value={value} onValueChange={valueChanged}>
+            <SelectTrigger disabled={sessionId !== 'NEW_SESSION'} style={{boxShadow: 'none'}} className="w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium">
                 <div className='flex flex-col'>
                     <SelectValue placeholder="Select an agent" />
+                    {!value && <div>Select an agent</div>}
                 </div>
             </SelectTrigger>
             <SelectContent>
@@ -22,7 +25,7 @@ export default function AgentsSelect({value, setSelectedAgent}: {value?: string 
                     {data?.agents && data.agents.map(agent =>
                         <SelectItem className='text-[16px] text-[#151515] font-medium h-[69px] font-ubuntu-sans' key={agent.id} value={agent.id}>
                             {agent.name}
-                            {value && <p className='font-light text-[14px] text-[#A9A9A9] font-inter'>(id={value})</p>}
+                            {<p className='font-light text-[14px] text-[#A9A9A9] font-inter'>(id={agent.id})</p>}
                         </SelectItem>)
                     }
                 </SelectGroup>
