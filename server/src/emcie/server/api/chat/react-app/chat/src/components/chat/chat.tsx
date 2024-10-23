@@ -24,7 +24,7 @@ const DateHeader = ({date, isFirst}: {date: string | Date, isFirst: boolean}): R
     return (
         <div className={'text-center flex min-h-[30px] z-[1] bg-[#FBFBFB] h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0' + (isFirst ? ' pt-0 !mt-1' : '')}>
             <hr className='h-full -translate-y-[-50%] flex-1'/>
-            <div className='w-[136px] border-[0.6px] border-[#EBECF0] font-light text-[12px] bg-white text-[#656565] flex items-center justify-center'>
+            <div className='w-[136px] border-[0.6px] border-[#EBECF0] font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>
                 {new Date(date).toDateString()}
             </div>
             <hr className='h-full -translate-y-[-50%] flex-1' />
@@ -149,24 +149,28 @@ export default function Chat(): ReactElement {
                     <div className='w-[206px]'></div>
                 </div>}
             </div>
-            <div className="group w-full border border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
-                <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
-                <Textarea role="textbox"
-                    ref={textareaRef}
-                    placeholder="Message..."
-                    value={message}
-                    onKeyUp={onKeyUp}
-                    onChange={(e) => setMessage(e.target.value)}
-                    style={{boxShadow: 'none'}}
-                    rows={1}
-                    className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
-                <Button variant='ghost'
-                    className="max-w-[60px] rounded-full hover:bg-white"
-                    ref={submitButtonRef}
-                    disabled={isSubmitDisabled || !message?.trim() || !agentId}
-                    onClick={() => postMessage(message)}>
-                    <img src="/icons/send.svg" alt="" />
-                </Button>
+            <div className='w-full flex'>
+                <div className='w-[206px]'></div>
+                <div className="group border flex-1 border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
+                    <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
+                    <Textarea role="textbox"
+                        ref={textareaRef}
+                        placeholder="Message..."
+                        value={message}
+                        onKeyUp={onKeyUp}
+                        onChange={(e) => setMessage(e.target.value)}
+                        style={{boxShadow: 'none'}}
+                        rows={1}
+                        className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
+                    <Button variant='ghost'
+                        className="max-w-[60px] rounded-full hover:bg-white"
+                        ref={submitButtonRef}
+                        disabled={isSubmitDisabled || !message?.trim() || !agentId}
+                        onClick={() => postMessage(message)}>
+                        <img src="/icons/send.svg" alt="" />
+                    </Button>
+                </div>
+                <div className='w-[206px]'></div>
             </div>
         </div>
     );
