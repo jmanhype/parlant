@@ -149,7 +149,7 @@ export default function Chat(): ReactElement {
                     <div className='w-[206px]'></div>
                 </div>}
             </div>
-            <div className="w-full border border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px]">
+            <div className="group w-full border border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
                 <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
                 <Textarea role="textbox"
                     ref={textareaRef}
@@ -159,7 +159,7 @@ export default function Chat(): ReactElement {
                     onChange={(e) => setMessage(e.target.value)}
                     style={{boxShadow: 'none'}}
                     rows={1}
-                    className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar"/>
+                    className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
                 <Button variant='ghost'
                     className="max-w-[60px] rounded-full hover:bg-white"
                     ref={submitButtonRef}
