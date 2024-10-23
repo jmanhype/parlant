@@ -1,25 +1,32 @@
-import { ReactElement } from 'react';
+import { ReactElement, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import useFetch from '@/hooks/useFetch';
 import { AgentInterface } from '@/utils/interfaces';
 import { useSession } from '../chatbot/chatbot';
+import styles from './agent-select.module.scss';
 
 export default function AgentsSelect({value}: {value?: string | undefined}): ReactElement {
     const {data} = useFetch<{agents: AgentInterface[]}>('agents');
-    const {sessionId, setAgentId} = useSession();
+    const {sessionId, setAgentId, agentId} = useSession();
+
+    const selectTriggerRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() =>  {
+        if (sessionId === 'NEW_SESSION' && !agentId) selectTriggerRef?.current?.click();
+    }, [sessionId, agentId]);
 
     const valueChanged = (val: string) => {
         setAgentId(val);
     };
 
     return (
-        <Select open={sessionId === 'NEW_SESSION' && !value} value={value} onValueChange={valueChanged}>
-            <SelectTrigger disabled={sessionId !== 'NEW_SESSION'} style={{boxShadow: 'none'}} className="w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium">
+        <Select value={value} onValueChange={valueChanged}>
+            {sessionId && <SelectTrigger ref={selectTriggerRef} disabled={sessionId !== 'NEW_SESSION'} style={{boxShadow: 'none'}} className={'w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium' + ` ${styles.selectTrigger}`}>
                 <div className='flex flex-col'>
                     <SelectValue placeholder="Select an agent" />
                     {!value && <div>Select an agent</div>}
                 </div>
-            </SelectTrigger>
+            </SelectTrigger>}
             <SelectContent>
                 <SelectGroup>
                     {data?.agents && data.agents.map(agent =>
