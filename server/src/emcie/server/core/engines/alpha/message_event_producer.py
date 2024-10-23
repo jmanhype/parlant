@@ -390,8 +390,7 @@ Produce a valid JSON object in the following format: ###
         builder.add_staged_events(staged_events)
 
         prompt = builder.build()
-        with open("message event producer prompt.txt", "w") as f:
-            f.write(prompt)
+
         return prompt
 
     async def _generate_response_message(
