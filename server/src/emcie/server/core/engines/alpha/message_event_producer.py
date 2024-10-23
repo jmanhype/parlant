@@ -368,6 +368,15 @@ Produce a valid JSON object in the following format: ###
     “last_message_of_user”: “<the user’s last message in the interaction>”,
     "rationale": "<a few words to explain why you should or shouldn't produce a reply to the user in this case>",
     "produced_reply": <BOOL>,
+    "evaluations_for_each_of_the_provided_guidelines": [
+        {{
+            "number": 1,
+            "instruction": "<the instruction as given by guideline #1>"
+            "evaluation": "<your evaluation of the guideline to the present state of the interaction>",
+            "adds_value": "<your assessment if and to what extent following this guideline now would add value>",
+            "data_available": "<explanation whether you are provided with the required data to follow this guideline now>"
+        }}
+    ],
     "revisions": [
         {
             "revision_number": 1,
@@ -406,8 +415,14 @@ Produce a valid JSON object in the following format: ###
         if not message_event_response.content.produced_reply:
             return None
 
+        if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
+            self._logger.debug(
+                "MessageEventProducer guideline evaluations: "
+                f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
+            )
+
         self._logger.debug(
-            "Message event producer response: "
+            "MessageEventProducer revisions: "
             f"{json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
         )
 
