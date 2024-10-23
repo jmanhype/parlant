@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState } from 'react';
+import React, { ReactElement, useEffect, useRef, useState } from 'react';
 import useFetch from '@/hooks/useFetch';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
@@ -20,6 +20,18 @@ const emptyPendingMessage: EventInterface = {
     }
 };
 
+const DateHeader = ({date, isFirst}: {date: string | Date, isFirst: boolean}): ReactElement => {
+    return (
+        <div className={'text-center flex min-h-[30px] z-[1] bg-[#FBFBFB] h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0' + (isFirst ? ' pt-0 !mt-1' : '')}>
+            <hr className='h-full -translate-y-[-50%] flex-1'/>
+            <div className='w-[136px] border-[0.6px] border-[#EBECF0] font-light text-[12px] bg-white text-[#656565] flex items-center justify-center'>
+                {new Date(date).toDateString()}
+            </div>
+            <hr className='h-full -translate-y-[-50%] flex-1' />
+        </div>
+    );
+};
+
 export default function Chat(): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const submitButtonRef = useRef<HTMLButtonElement>(null);
@@ -30,7 +42,7 @@ export default function Chat(): ReactElement {
     const [lastOffset, setLastOffset] = useState(0);
     const [messages, setMessages] = useState<EventInterface[]>([]);
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
-    const [showSkeleton, setShowSkeleton] = useState(false);
+    const [showTyping, setShowTyping] = useState(false);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession} = useSession();
     const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== 'NEW_SESSION');
@@ -40,12 +52,13 @@ export default function Chat(): ReactElement {
         setLastOffset(0);
         setMessages([]);
         setIsSubmitDisabled(false);
-        setShowSkeleton(false);
+        setShowTyping(false);
     };
 
     useEffect(() => lastMessageRef?.current?.scrollIntoView?.(), [messages, pendingMessage]);
 
     useEffect(() => {
+        if (newSession && sessionId !== 'NEW_SESSION') setNewSession(null);
         resetChat();
         refetch();
         textareaRef?.current?.focus();
@@ -70,8 +83,8 @@ export default function Chat(): ReactElement {
 
         const lastEventStatus = lastEvent?.data?.status;
 
-        if (lastEventStatus === 'typing') setShowSkeleton(true);
-        else setShowSkeleton(false);
+        if (lastEventStatus === 'typing') setShowTyping(true);
+        else setShowTyping(false);
 
         refetch();
     
@@ -92,34 +105,48 @@ export default function Chat(): ReactElement {
         setIsSubmitDisabled(true);
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
-        if (newSession) {
-            setSessionId(eventSession);
-            setNewSession(null);
-        }
         postData(`sessions/${eventSession}/events`, { kind: 'message', content }).then(() => {
+            if (newSession) {
+                setSessionId(eventSession);
+                setNewSession(null);
+            }
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         });
     };
 
     const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-        if (e.key === 'Enter' && !e.shiftKey) submitButtonRef?.current?.click();
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitButtonRef?.current?.click();
+        }
+    };
+
+    const isSameDay = (dateA: string, dateB: string): boolean => {
+        if (!dateA) return false;
+        return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
     };
 
     return (
         <div className="flex flex-col items-center h-full max-w-[1200px] mx-auto">
             <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                 {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
-                    <div key={i} ref={lastMessageRef} className="flex flex-col">
-                        <Message event={event}/>
-                    </div>
+                    <React.Fragment key={i}>
+                        {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
+                        <DateHeader date={event.creation_utc} isFirst={!i}/>}
+                        <div ref={lastMessageRef} className="flex flex-col">
+                            <Message event={event}/>
+                        </div>
+                    </React.Fragment>
                 ))}
-                {showSkeleton && 
+                {showTyping && 
                 <div className='flex m-4 mb-1 gap-[14px]'>
+                    <div className='w-[206px]'></div>
                     <div className='flex items-center'>
                         <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-[#EBECF0] border-[1.4px] border-solid me-[11.5px]'/>
                         <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                     </div>
+                    <div className='w-[206px]'></div>
                 </div>}
             </div>
             <div className="w-full border border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px]">

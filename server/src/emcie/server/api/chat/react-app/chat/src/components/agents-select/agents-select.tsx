@@ -13,7 +13,7 @@ export default function AgentsSelect({value}: {value?: string | undefined}): Rea
     };
 
     return (
-        <Select value={value} onValueChange={valueChanged}>
+        <Select open={sessionId === 'NEW_SESSION' && !value} value={value} onValueChange={valueChanged}>
             <SelectTrigger disabled={sessionId !== 'NEW_SESSION'} style={{boxShadow: 'none'}} className="w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium">
                 <div className='flex flex-col'>
                     <SelectValue placeholder="Select an agent" />

@@ -17,17 +17,23 @@ interface Props {
 export default function Session({session, isSelected, refetch}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
-    const {setSessionId, setAgentId} = useSession();
+    const {setSessionId, setAgentId, setNewSession} = useSession();
 
     useEffect(() => {
         if (!isSelected) return;
 
         if (session.id === 'NEW_SESSION' && !session.agentId) setAgentId(null);
         else setAgentId('Mr0uvCuu6g');
-    }, [isSelected, setAgentId, session]);
+    }, [isSelected, setAgentId, session.id]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (session.id === 'NEW_SESSION') {
+            setNewSession(null);
+            setSessionId(null);
+            setAgentId(null);
+            return;
+        }
         return deleteData(`sessions/${session.id}`).then(() => {
             refetch();
             if (isSelected) setSessionId(null);
@@ -45,11 +51,17 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
 
     const saveTitleChange = (e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
-        if (sessionNameRef?.current?.value) {
-            patchData(`sessions/${session.id}`, {title: sessionNameRef.current.value})
+        const title = sessionNameRef?.current?.value;
+        if (title) {
+            if (session.id === 'NEW_SESSION') {
+                setIsEditingTitle(false);
+                setNewSession(session => session ? {...session, title} : session);
+                toast.success('title changed successfully', {closeButton: true});
+                return;
+            }
+            patchData(`sessions/${session.id}`, {title})
             .then(() => {
                 refetch();
-                setIsEditingTitle(false);
                 toast.success('title changed successfully', {closeButton: true});
             }).catch(() => {
                 toast.error('Something went wrong');
@@ -72,7 +84,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => setSessionId(session.id)} key={session.id}
-            className={'bg-white animate-fade-in duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-[#EBECF0] cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
+            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-[#EBECF0] cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:shadow-xl ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle &&
                     <div className="overflow-hidden overflow-ellipsis">

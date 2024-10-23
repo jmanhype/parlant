@@ -38,11 +38,9 @@ export default function Chatbot(): ReactElement {
                     <div className="h-2/5 bg-white lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-b-[transparent] lg:w-[308px] lg:border-r">
                         <SessionControl />
                     </div>
-                    <div className='w-[206px]'></div>
                     <div className="h-3/5 w-full flex-1 overflow-auto lg:h-full">
                         {sessionId && <Chat />}
                     </div>
-                    <div className='w-[206px]'></div>
                 </div>
             </div>
         </SessionProvider.Provider>

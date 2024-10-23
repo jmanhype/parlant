@@ -20,10 +20,8 @@ const statusIcon = {
 
 const formatDateTime = (targetDate: Date | string): string => {
     const date = new Date(targetDate);
-    const now = new Date();
 
-    if (now.toDateString() === date.toDateString()) return date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false})}`;
+    return date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
 };
 
 export default function Message({event}: Props): ReactElement {
@@ -32,6 +30,7 @@ export default function Message({event}: Props): ReactElement {
 
     return (
         <div className={(isClient ? 'self-end' : 'self-start') + ' flex m-4 mb-1 gap-[14px]'}>
+            <div className='w-[206px]'></div>
             {!isClient &&
                 <div className='flex items-end'>
                     <img src="parlant-bubble.svg"
@@ -41,7 +40,7 @@ export default function Message({event}: Props): ReactElement {
                         className='pt-[11px] p-[9px] bg-white rounded-full'/>
                 </div>
             }
-            <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-[#EBECF0] border-solid rounded-bl-none') + ' animate-fade-in rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
+            <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-[#EBECF0] border-solid rounded-bl-none') + ' rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
                 <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[20px] pb-[24px] ps-[34px] pe-[13px]">
                     <Markdown>{event?.data?.message}</Markdown>
                 </div>
@@ -50,6 +49,7 @@ export default function Message({event}: Props): ReactElement {
                     {isClient && serverStatus && <div className="w-6">{statusIcon[serverStatus]}</div>}
                 </div>
             </div>
+            <div className='w-[206px]'></div>
         </div>
     );
 }
