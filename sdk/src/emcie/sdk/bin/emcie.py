@@ -102,7 +102,8 @@ class ContextVariableDTO(TypedDict):
     id: str
     name: str
     description: NotRequired[str]
-    tool_id: NotRequired[str]
+    service_name: NotRequired[str]
+    tool_name: NotRequired[str]
     freshness_rules: NotRequired[FreshnessRulesDTO]
 
 
@@ -164,7 +165,6 @@ class ToolParameterDTO(TypedDict):
 
 
 class ToolDTO(TypedDict):
-    id: str
     creation_utc: datetime
     name: str
     description: str
@@ -1345,7 +1345,8 @@ class Interface:
                 "ID": variable["id"],
                 "Name": variable["name"],
                 "Description": variable["description"] or "",
-                "Tool ID": variable["tool_id"] or "",
+                "Service Name": variable["service_name"] or "",
+                "Tool Name": variable["tool_name"] or "",
                 "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
             }
             for variable in variables
@@ -1518,7 +1519,6 @@ class Interface:
             if service["tools"]:
                 rich.print(Text("Tools:", style="bold"))
                 for tool in service["tools"]:
-                    rich.print(Text("    ID:", style="bold"), tool["id"])
                     rich.print(Text("    Name:", style="bold"), tool["name"])
                     if tool["description"]:
                         # description_lines = wrap(tool["description"], width=70)
