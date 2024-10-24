@@ -29,7 +29,6 @@ from emcie.common.types.common import JSONSerializable
 from emcie.common.tools import (
     Tool,
     ToolContext,
-    ToolId,
     ToolParameter,
     ToolParameterType,
     ToolResult,
@@ -164,7 +163,6 @@ def _tool_decorator_impl(
 
         entry = ToolEntry(
             tool=Tool(
-                id=ToolId(kwargs.get("id") or func.__qualname__),
                 creation_utc=datetime.now(timezone.utc),
                 name=kwargs.get("name") or func.__name__,
                 description=func.__doc__ or "",
@@ -220,7 +218,7 @@ class PluginServer:
         port: int = 8089,
         host: str = "0.0.0.0",
     ) -> None:
-        self.tools = {entry.tool.id: entry for entry in tools}
+        self.tools = {entry.tool.name: entry for entry in tools}
         self.host = host
         self.port = port
         self.url = f"http://{self.host}:{self.port}"
@@ -286,13 +284,13 @@ class PluginServer:
         async def list_tools() -> ListToolsResponse:
             return ListToolsResponse(tools=[t.tool for t in self.tools.values()])
 
-        @app.get("/tools/{tool_id}")
-        async def read_tool(tool_id: ToolId) -> ReadToolResponse:
-            return ReadToolResponse(tool=self.tools[tool_id].tool)
+        @app.get("/tools/{name}")
+        async def read_tool(name: str) -> ReadToolResponse:
+            return ReadToolResponse(tool=self.tools[name].tool)
 
-        @app.post("/tools/{tool_id}/calls")
+        @app.post("/tools/{name}/calls")
         async def call_tool(
-            tool_id: ToolId,
+            name: str,
             request: CallToolRequest,
         ) -> StreamingResponse:
             end = asyncio.Event()
@@ -364,7 +362,7 @@ class PluginServer:
                 emit_status=emit_status,
             )
 
-            result = self.tools[tool_id].function(context, **request.arguments)  # type: ignore
+            result = self.tools[name].function(context, **request.arguments)  # type: ignore
 
             result_future: asyncio.Future[ToolResult]
 

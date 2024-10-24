@@ -2,7 +2,6 @@ from datetime import datetime
 from fastapi import HTTPException, status
 from typing import Any, Literal, Optional
 
-from emcie.common.tools import ToolId
 from fastapi import APIRouter
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
@@ -12,7 +11,8 @@ from emcie.server.core.context_variables import (
     ContextVariableValueId,
     FreshnessRules,
 )
-from emcie.server.core.tools import ToolService
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
+from emcie.server.core.tools import ToolId
 
 
 class FreshnessRulesDTO(DefaultBaseModel):
@@ -40,14 +40,16 @@ class ContextVariableDTO(DefaultBaseModel):
     id: ContextVariableId
     name: str
     description: Optional[str] = None
-    tool_id: Optional[ToolId]
+    service_name: Optional[str] = None
+    tool_name: Optional[str] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
 class CreateContextVariableRequest(DefaultBaseModel):
     name: str
     description: Optional[str] = None
-    tool_id: Optional[ToolId] = None
+    service_name: Optional[str] = None
+    tool_name: Optional[str] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
@@ -110,7 +112,7 @@ def _freshness_ruless_to_dto(freshness_rules: FreshnessRules) -> FreshnessRulesD
 
 def create_router(
     context_variable_store: ContextVariableStore,
-    tool_service: ToolService,
+    service_registry: ServiceRegistry,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -119,14 +121,22 @@ def create_router(
         agent_id: AgentId,
         request: CreateContextVariableRequest,
     ) -> CreateContextVariableResponse:
-        if request.tool_id:
-            _ = await tool_service.read_tool(request.tool_id)
+        if request.service_name and request.tool_name:
+            service = await service_registry.read_tool_service(request.service_name)
+            _ = await service.read_tool(request.tool_name)
+        elif request.service_name or request.tool_name:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Fields 'service_name' and 'tool_name' must be provided together",
+            )
 
         variable = await context_variable_store.create_variable(
             variable_set=agent_id,
             name=request.name,
             description=request.description,
-            tool_id=request.tool_id if request.tool_id else None,
+            tool_id=ToolId(request.service_name, request.tool_name)
+            if request.service_name and request.tool_name
+            else None,
             freshness_rules=_freshness_ruless_dto_to_freshness_rules(request.freshness_rules)
             if request.freshness_rules
             else None,
@@ -137,7 +147,8 @@ def create_router(
                 id=variable.id,
                 name=variable.name,
                 description=variable.description,
-                tool_id=variable.tool_id,
+                service_name=variable.tool_id.service_name if variable.tool_id else None,
+                tool_name=variable.tool_id.tool_name if variable.tool_id else None,
                 freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
                 if variable.freshness_rules
                 else None,
@@ -179,7 +190,8 @@ def create_router(
                     id=variable.id,
                     name=variable.name,
                     description=variable.description,
-                    tool_id=variable.tool_id,
+                    service_name=variable.tool_id.service_name if variable.tool_id else None,
+                    tool_name=variable.tool_id.tool_name if variable.tool_id else None,
                     freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
                     if variable.freshness_rules
                     else None,
@@ -253,7 +265,8 @@ def create_router(
             id=variable.id,
             name=variable.name,
             description=variable.description,
-            tool_id=variable.tool_id,
+            service_name=variable.tool_id.service_name if variable.tool_id else None,
+            tool_name=variable.tool_id.tool_name if variable.tool_id else None,
             freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
             if variable.freshness_rules
             else None,

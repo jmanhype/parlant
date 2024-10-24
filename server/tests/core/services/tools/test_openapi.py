@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pytest import mark
 import uvicorn
 
-from emcie.common.tools import ToolId, ToolContext
+from emcie.common.tools import ToolContext
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.common.base_models import DefaultBaseModel
 
@@ -119,11 +119,13 @@ async def test_that_tools_are_exposed_via_an_openapi_server() -> None:
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
+        async with OpenAPIClient(
+            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
+        ) as client:
             tools = await client.list_tools()
 
-            for tool_id, tool in {t.__name__: t for t in TOOLS}.items():
-                listed_tool = next((t for t in tools if t.id == tool_id), None)
+            for tool_name, tool in {t.__name__: t for t in TOOLS}.items():
+                listed_tool = next((t for t in tools if t.name == tool_name), None)
                 assert listed_tool
 
 
@@ -131,15 +133,17 @@ async def test_that_tools_can_be_read_via_an_openapi_server() -> None:
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
+        async with OpenAPIClient(
+            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
+        ) as client:
             tools = await client.list_tools()
 
             for t in tools:
-                assert (await client.read_tool(t.id)) == t
+                assert (await client.read_tool(t.name)) == t
 
 
 @mark.parametrize(
-    ["tool_id", "tool_args", "expected_result"],
+    ["tool_name", "tool_args", "expected_result"],
     [
         (
             one_required_query_param.__name__,
@@ -169,14 +173,16 @@ async def test_that_tools_can_be_read_via_an_openapi_server() -> None:
     ],
 )
 async def test_that_a_tool_can_be_called_via_an_openapi_server(
-    tool_id: ToolId,
+    tool_name: str,
     tool_args: dict[str, Any],
     expected_result: Any,
 ) -> None:
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
+        async with OpenAPIClient(
+            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
+        ) as client:
             stub_context = ToolContext(session_id="test_session")
-            result = await client.call_tool(tool_id, stub_context, tool_args)
+            result = await client.call_tool(tool_name, stub_context, tool_args)
             assert result.data == expected_result

@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 from itertools import chain
 import json
 import traceback
-from typing import Any, Mapping, NewType, Optional, Sequence
+from typing import Any, Iterable, Mapping, NewType, Optional, Sequence
 
 
 from emcie.common.tools import Tool, ToolContext
@@ -11,8 +11,8 @@ from emcie.server.core.agents import Agent
 from emcie.server.core.common import JSONSerializable, generate_id
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
 from emcie.server.core.nlp.generation import SchematicGenerator
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.sessions import Event, ToolResult
-from emcie.server.core.tools import ToolService
 from emcie.server.core.glossary import Term
 from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
 from emcie.server.core.engines.alpha.prompt_builder import PromptBuilder
@@ -20,6 +20,7 @@ from emcie.server.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.logging import Logger
+from emcie.server.core.tools import ToolId, ToolService
 
 ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)
@@ -59,10 +60,10 @@ class ToolCaller:
     def __init__(
         self,
         logger: Logger,
-        tool_service: ToolService,
+        service_registry: ServiceRegistry,
         schematic_generator: SchematicGenerator[ToolCallInferenceSchema],
     ) -> None:
-        self._tool_service = tool_service
+        self._service_registry = service_registry
         self._logger = logger
         self._schematic_generator = schematic_generator
 
@@ -73,10 +74,10 @@ class ToolCaller:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[ToolCall]:
-        inference_prompt = self._format_tool_call_inference_prompt(
+        inference_prompt = await self._format_tool_call_inference_prompt(
             agents,
             context_variables,
             interaction_history,
@@ -107,9 +108,9 @@ class ToolCaller:
         self,
         context: ToolContext,
         tool_calls: Sequence[ToolCall],
-        tools: Sequence[Tool],
+        tool_ids: Iterable[ToolId],
     ) -> Sequence[ToolCallResult]:
-        tools_by_name = {t.name: t for t in tools}
+        tool_ids_by_name = {id.tool_name: id for id in tool_ids}
 
         with self._logger.operation("Tool calls"):
             tool_results = await asyncio.gather(
@@ -117,7 +118,7 @@ class ToolCaller:
                     self._run_tool(
                         context=context,
                         tool_call=tool_call,
-                        tool=tools_by_name[tool_call.name],
+                        tool_id=tool_ids_by_name[tool_call.name],
                     )
                     for tool_call in tool_calls
                 )
@@ -125,20 +126,31 @@ class ToolCaller:
 
             return tool_results
 
-    def _format_tool_call_inference_prompt(
+    async def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> str:
+        async def _get_tools_by_tool_ids(tool_ids: Iterable[ToolId]) -> Sequence[Tool]:
+            services: dict[str, ToolService] = {}
+            tools = []
+            for id in tool_ids:
+                if id.service_name not in services:
+                    services[id.service_name] = await self._service_registry.read_tool_service(
+                        id.service_name
+                    )
+                tools.append(await services[id.service_name].read_tool(id.tool_name))
+            return tools
+
         assert len(agents) == 1
 
         staged_calls = self._get_staged_calls(staged_events)
-        tools = list(chain(*tool_enabled_guideline_propositions.values()))
+        tools = await _get_tools_by_tool_ids(*tool_enabled_guideline_propositions.values())
 
         builder = PromptBuilder()
 
@@ -315,12 +327,13 @@ There are no staged tool calls at this moment.
         self,
         context: ToolContext,
         tool_call: ToolCall,
-        tool: Tool,
+        tool_id: ToolId,
     ) -> ToolCallResult:
         try:
             self._logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
-            result = await self._tool_service.call_tool(
-                tool.id,
+            service = await self._service_registry.read_tool_service(tool_id.service_name)
+            result = await service.call_tool(
+                tool_id.tool_name,
                 context,
                 tool_call.arguments,
             )

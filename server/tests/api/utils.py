@@ -1,8 +1,8 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, cast
 
 from lagom import Container
 
-from emcie.common.tools import ToolId, ToolResult
+from emcie.common.tools import ToolResult
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.async_utils import Timeout
@@ -17,8 +17,9 @@ from emcie.server.core.glossary import GlossaryStore, Term
 from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.mc import MC
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService
+from emcie.server.core.tools import _LocalToolService, ToolId
 
 
 async def create_agent(container: Container, name: str) -> Agent:
@@ -96,14 +97,16 @@ async def create_guideline(
     )
 
     if tool_function:
-        tool_service = container[LocalToolService]
+        local_tool_service = cast(
+            _LocalToolService, await container[ServiceRegistry].read_tool_service("_local")
+        )
 
-        existing_tools = await tool_service.list_tools()
+        existing_tools = await local_tool_service.list_tools()
 
         tool = next((t for t in existing_tools if t.name == tool_function.__name__), None)
 
         if not tool:
-            tool = await tool_service.create_tool(
+            tool = await local_tool_service.create_tool(
                 name=tool_function.__name__,
                 module_path=tool_function.__module__,
                 description="",
@@ -113,7 +116,7 @@ async def create_guideline(
 
         await container[GuidelineToolAssociationStore].create_association(
             guideline_id=guideline.id,
-            tool_id=ToolId(f"local__{tool.id}"),
+            tool_id=ToolId("local", tool_function.__name__),
         )
 
     return guideline

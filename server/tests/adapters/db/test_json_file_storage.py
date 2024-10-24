@@ -7,7 +7,6 @@ import tempfile
 from lagom import Container
 from pytest import fixture, mark
 
-from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariableDocumentStore,
@@ -29,11 +28,11 @@ from emcie.server.core.guidelines import (
 )
 from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
 from emcie.server.core.sessions import SessionDocumentStore
-from emcie.server.core.tools import LocalToolService
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
 from emcie.server.core.logging import Logger
+from emcie.server.core.tools import ToolId
 from tests.test_utilities import SyncAwaiter
 
 
@@ -233,57 +232,6 @@ async def test_guideline_retrieval(
         assert loaded_guideline.content.action == "Test content for loading guideline"
 
 
-async def test_tool_creation(
-    context: _TestContext,
-    new_file: Path,
-) -> None:
-    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as tool_db:
-        tool_store = LocalToolService(tool_db)
-        tool = await tool_store.create_tool(
-            name="Unique tool name",
-            module_path="path/to/module",
-            description="A tool for testing JSON persistence",
-            parameters={"param1": {"type": "string"}, "param2": {"type": "number"}},
-            required=["param1"],
-            consequential=True,
-        )
-
-    with open(new_file) as f:
-        tools_from_json = json.load(f)
-
-    assert len(tools_from_json["tools"]) == 1
-    json_tool = tools_from_json["tools"][0]
-
-    assert json_tool["name"] == tool.name
-    assert json_tool["description"] == tool.description
-    assert json_tool["parameters"] == tool.parameters
-    assert json_tool["required"] == tool.required
-    assert json_tool["consequential"] == tool.consequential
-
-
-async def test_tool_retrieval(
-    context: _TestContext,
-    new_file: Path,
-) -> None:
-    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as tool_db:
-        tool_store = LocalToolService(tool_db)
-        tool = await tool_store.create_tool(
-            name="Tool for loading test",
-            module_path="path/to/tool/module",
-            description="Testing tool load functionality",
-            parameters={"param1": {"type": "string"}},
-            required=["param1"],
-            consequential=False,
-        )
-
-        loaded_tools = await tool_store.list_tools()
-        loaded_tool_list = list(loaded_tools)
-
-        assert len(loaded_tool_list) == 1
-        loaded_tool = loaded_tool_list[0]
-        assert loaded_tool == tool
-
-
 async def test_end_user_creation(
     context: _TestContext,
     new_file: Path,
@@ -329,7 +277,7 @@ async def test_context_variable_creation(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("test_tool")
+        tool_id = ToolId("local", "test_tool")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Sample Variable",
@@ -347,7 +295,8 @@ async def test_context_variable_creation(
     assert json_variable["variable_set"] == context.agent_id
     assert json_variable["name"] == variable.name
     assert json_variable["description"] == variable.description
-    assert json_variable["tool_id"] == tool_id
+    assert json_variable["service_name"] == "local"
+    assert json_variable["tool_name"] == "test_tool"
 
 
 async def test_context_variable_value_update_and_retrieval(
@@ -356,7 +305,7 @@ async def test_context_variable_value_update_and_retrieval(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("test_tool")
+        tool_id = ToolId("local", "test_tool")
         end_user_id = EndUserId("test_user")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
@@ -393,7 +342,7 @@ async def test_context_variable_listing(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("test_tool")
+        tool_id = ToolId("local", "test_tool")
         var1 = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Variable One",
@@ -422,7 +371,7 @@ async def test_context_variable_deletion(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("test_tool")
+        tool_id = ToolId("local", "test_tool")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Deletable Variable",
@@ -475,7 +424,7 @@ async def test_guideline_tool_association_creation(
             guideline_tool_association_db
         )
         guideline_id = GuidelineId("guideline-789")
-        tool_id = ToolId("tool-012")
+        tool_id = ToolId("local", "test_tool")
 
         await guideline_tool_association_store.create_association(
             guideline_id=guideline_id, tool_id=tool_id
@@ -488,7 +437,8 @@ async def test_guideline_tool_association_creation(
     json_variable = guideline_tool_associations_from_json["associations"][0]
 
     assert json_variable["guideline_id"] == guideline_id
-    assert json_variable["tool_id"] == tool_id
+    assert json_variable["service_name"] == tool_id.service_name
+    assert json_variable["tool_name"] == tool_id.tool_name
 
 
 async def test_guideline_tool_association_retrieval(
@@ -502,7 +452,7 @@ async def test_guideline_tool_association_retrieval(
             guideline_tool_association_db
         )
         guideline_id = GuidelineId("test_guideline")
-        tool_id = ToolId("test_tool")
+        tool_id = ToolId("local", "test_tool")
         creation_utc = datetime.now(timezone.utc)
 
         created_association = await guideline_tool_association_store.create_association(

@@ -10,14 +10,15 @@ from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.core.tools import ToolService
+from emcie.server.core.tools import _LocalToolService, ToolService
 from emcie.server.core.common import ItemNotFoundError, Version, UniqueId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
 )
 
-ToolServiceKind = Literal["openapi", "sdk"]
+
+ToolServiceKind = Literal["openapi", "sdk", "_local"]
 
 
 class ServiceRegistry(ABC):
@@ -146,11 +147,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
             openapi_json = await self._get_openapi_json_from_source(cast(str, document["source"]))
 
             return OpenAPIClient(
+                name=document["name"],
                 server_url=document["url"],
                 openapi_json=openapi_json,
             )
         elif document["kind"] == "sdk":
             return PluginClient(
+                name=document["name"],
                 url=document["url"],
                 event_emitter_factory=self._event_emitter_factory,
                 correlator=self._correlator,
@@ -167,13 +170,17 @@ class ServiceDocumentRegistry(ServiceRegistry):
     ) -> ToolService:
         service: ToolService
 
-        if kind == "openapi":
+        if kind == "_local":
+            self._running_services[name] = _LocalToolService()
+            return self._running_services[name]
+        elif kind == "openapi":
             assert source
             openapi_json = await self._get_openapi_json_from_source(source)
-            service = OpenAPIClient(server_url=url, openapi_json=openapi_json)
+            service = OpenAPIClient(name=name, server_url=url, openapi_json=openapi_json)
             self._service_sources[name] = source
         else:
             service = PluginClient(
+                name=name,
                 url=url,
                 event_emitter_factory=self._event_emitter_factory,
                 correlator=self._correlator,
@@ -213,6 +220,10 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
     async def delete_service(self, name: str) -> None:
         if name in self._running_services:
+            if isinstance(self._running_services[name], _LocalToolService):
+                del self._running_services[name]
+                return
+
             service = self._running_services[name]
             await (self._cast_to_specific_tool_service_class(service)).__aexit__(None, None, None)
             del self._running_services[name]

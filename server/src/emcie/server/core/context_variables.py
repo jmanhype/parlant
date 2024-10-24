@@ -4,7 +4,6 @@ from typing import Literal, NewType, Optional, Sequence, TypedDict
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
-from emcie.common.tools import ToolId
 from emcie.server.core.common import (
     ItemNotFoundError,
     JSONSerializable,
@@ -16,6 +15,7 @@ from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
 )
+from emcie.server.core.tools import ToolId
 
 ContextVariableId = NewType("ContextVariableId", str)
 ContextVariableValueId = NewType("ContextVariableValueId", str)
@@ -71,8 +71,8 @@ class ContextVariableStore(ABC):
         variable_set: str,
         name: str,
         description: Optional[str],
-        tool_id: Optional[ToolId],
-        freshness_rules: Optional[FreshnessRules],
+        tool_id: Optional[ToolId] = None,
+        freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable: ...
 
     @abstractmethod
@@ -155,7 +155,8 @@ class _ContextVariableDocument(TypedDict, total=False):
     variable_set: str
     name: str
     description: Optional[str]
-    tool_id: Optional[ToolId]
+    service_name: Optional[str]
+    tool_name: Optional[str]
     freshness_rules: Optional[_FreshnessRulesDocument]
 
 
@@ -206,7 +207,10 @@ class ContextVariableDocumentStore(ContextVariableStore):
             variable_set=variable_set,
             name=context_variable.name,
             description=context_variable.description,
-            tool_id=context_variable.tool_id,
+            service_name=context_variable.tool_id.service_name
+            if context_variable.tool_id
+            else None,
+            tool_name=context_variable.tool_id.tool_name if context_variable.tool_id else None,
             freshness_rules=self._serialize_freshness_rules(context_variable.freshness_rules)
             if context_variable.freshness_rules
             else None,
@@ -250,7 +254,11 @@ class ContextVariableDocumentStore(ContextVariableStore):
             id=ContextVariableId(context_variable_document["id"]),
             name=context_variable_document["name"],
             description=context_variable_document.get("description"),
-            tool_id=context_variable_document["tool_id"],
+            tool_id=ToolId(
+                context_variable_document["service_name"], context_variable_document["tool_name"]
+            )
+            if context_variable_document["service_name"] and context_variable_document["tool_name"]
+            else None,
             freshness_rules=self._deserialize_freshness_rules(
                 context_variable_document["freshness_rules"]
             )
@@ -273,8 +281,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         name: str,
         description: Optional[str],
-        tool_id: Optional[ToolId],
-        freshness_rules: Optional[FreshnessRules],
+        tool_id: Optional[ToolId] = None,
+        freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable:
         context_variable = ContextVariable(
             id=ContextVariableId(generate_id()),

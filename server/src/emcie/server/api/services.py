@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from typing_extensions import Literal
 
 from emcie.server.core.common import DefaultBaseModel
-from emcie.common.tools import Tool, ToolParameter, ToolParameterType, ToolId
+from emcie.common.tools import Tool, ToolParameter, ToolParameterType
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.server.core.services.tools.plugins import PluginClient
 from emcie.server.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
@@ -42,7 +42,6 @@ class ToolParameterDTO(DefaultBaseModel):
 
 
 class ToolDTO(DefaultBaseModel):
-    id: ToolId
     creation_utc: datetime
     name: str
     description: str
@@ -71,7 +70,6 @@ def _tool_parameters_to_dto(parameters: ToolParameter) -> ToolParameterDTO:
 
 def _tool_to_dto(tool: Tool) -> ToolDTO:
     return ToolDTO(
-        id=tool.id,
         creation_utc=tool.creation_utc,
         name=tool.name,
         description=tool.description,

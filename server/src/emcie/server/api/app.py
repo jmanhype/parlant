@@ -24,7 +24,6 @@ from emcie.server.core.services.indexing.behavioral_change_evaluation import (
 )
 from emcie.server.core.logging import Logger
 from emcie.server.core.mc import MC
-from emcie.server.core.tools import ToolService
 
 
 async def create_app(container: Container) -> FastAPI:
@@ -39,7 +38,6 @@ async def create_app(container: Container) -> FastAPI:
     guideline_store = container[GuidelineStore]
     guideline_connection_store = container[GuidelineConnectionStore]
     context_variable_store = container[ContextVariableStore]
-    tool_service = container[ToolService]
     service_registry = container[ServiceRegistry]
     mc = container[MC]
 
@@ -97,7 +95,7 @@ async def create_app(container: Container) -> FastAPI:
     agent_router.include_router(
         variables.create_router(
             context_variable_store=context_variable_store,
-            tool_service=tool_service,
+            service_registry=service_registry,
         )
     )
 

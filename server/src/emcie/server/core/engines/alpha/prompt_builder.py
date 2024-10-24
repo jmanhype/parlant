@@ -16,6 +16,7 @@ from emcie.server.core.engines.alpha.utils import (
     emitted_tool_events_to_dicts,
 )
 from emcie.server.core.emissions import EmittedEvent
+from emcie.server.core.tools import ToolId
 
 
 class BuiltInSection(Enum):
@@ -197,7 +198,7 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
     def add_guideline_propositions(
         self,
         ordinary: Sequence[GuidelineProposition],
-        tool_enabled: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled: Mapping[GuidelineProposition, Sequence[ToolId]],
         include_priority: bool = True,
         include_tool_associations: bool = False,
     ) -> PromptBuilder:
@@ -216,8 +217,7 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
 
                 if include_tool_associations:
                     if p in tool_enabled:
-                        tools = tool_enabled[p]
-                        tool_names = ", ".join([f"'{t.name}'" for t in tools])
+                        tool_names = ", ".join([f"'{t_id.tool_name}'" for t_id in tool_enabled[p]])
                         guideline += f"\n    [Associated Tools: {tool_names}]"
 
                 guidelines.append(guideline)

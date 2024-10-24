@@ -8,8 +8,8 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.tools import LocalToolService, MultiplexedToolService
 
+from emcie.server.core.tools import _LocalToolService, ToolId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -24,7 +24,7 @@ def given_a_guideline_tool_association(
     return context.sync_await(
         guideline_tool_association_store.create_association(
             guideline_id=context.guidelines[guideline_name].id,
-            tool_id=context.tools[tool_name].id,
+            tool_id=ToolId("_local", tool_name),
         )
     )
 
@@ -54,10 +54,9 @@ def given_a_guideline_name_to_when(
 @step(given, parsers.parse('the tool "{tool_name}"'))
 def given_a_tool(
     context: ContextOfTest,
+    local_tool_service: _LocalToolService,
     tool_name: str,
 ) -> None:
-    tool_store = context.container[LocalToolService]
-
     async def create_tool(
         name: str,
         module_path: str,
@@ -65,7 +64,7 @@ def given_a_tool(
         parameters: dict[str, Any],
         required: list[str],
     ) -> Tool:
-        return await tool_store.create_tool(
+        return await local_tool_service.create_tool(
             name=name,
             module_path=module_path,
             description=description,
@@ -175,13 +174,7 @@ def given_a_tool(
 
     tool = context.sync_await(create_tool(**tools[tool_name]))
 
-    multiplexed_tool_service = context.container[MultiplexedToolService]
-
-    context.tools[tool_name] = context.sync_await(
-        multiplexed_tool_service.read_tool(
-            tool.id, next(iter(multiplexed_tool_service.services.keys()))
-        )
-    )
+    context.tools[tool_name] = tool
 
 
 @step(given, parsers.parse("an agent with a maximum of {max_engine_iterations} engine iterations"))

@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import logging
 from typing import Any, Awaitable, Generator, Iterator, TypeVar
 
+
 from emcie.server.adapters.nlp.openai import GPT_4o
 from emcie.server.core.logging import Logger
 from emcie.server.core.common import DefaultBaseModel

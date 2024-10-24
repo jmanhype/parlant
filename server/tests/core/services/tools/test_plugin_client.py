@@ -47,6 +47,7 @@ def create_client(
     event_emitter_factory: EventEmitterFactory = EventBufferFactory(),
 ) -> PluginClient:
     return PluginClient(
+        name="test_plugin_client",
         url=server.url,
         event_emitter_factory=event_emitter_factory,
         correlator=ContextualCorrelator(),
@@ -93,7 +94,7 @@ async def test_that_a_plugin_reads_a_tool() -> None:
 
     async with run_service_server([my_tool]) as server:
         async with create_client(server) as client:
-            returned_tool = await client.read_tool(my_tool.tool.id)
+            returned_tool = await client.read_tool(my_tool.tool.name)
             assert my_tool.tool == returned_tool
 
 
@@ -105,7 +106,7 @@ async def test_that_a_plugin_calls_a_tool(context: ToolContext) -> None:
     async with run_service_server([my_tool]) as server:
         async with create_client(server) as client:
             result = await client.call_tool(
-                my_tool.tool.id,
+                my_tool.tool.name,
                 context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
@@ -120,7 +121,7 @@ async def test_that_a_plugin_calls_an_async_tool(context: ToolContext) -> None:
     async with run_service_server([my_tool]) as server:
         async with create_client(server) as client:
             result = await client.call_tool(
-                my_tool.tool.id,
+                my_tool.tool.name,
                 context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
@@ -137,7 +138,7 @@ async def test_that_a_plugin_tool_has_access_to_the_current_session(
     async with run_service_server([my_tool]) as server:
         async with create_client(server) as client:
             result = await client.call_tool(
-                my_tool.tool.id,
+                my_tool.tool.name,
                 context,
                 arguments={},
             )
@@ -163,7 +164,7 @@ async def test_that_a_plugin_tool_can_emit_events(
             event_emitter_factory=buffers,
         ) as client:
             result = await client.call_tool(
-                my_tool.tool.id,
+                my_tool.tool.name,
                 context,
                 arguments={},
             )
@@ -203,7 +204,7 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
         ) as client:
             with pytest.raises(ToolExecutionError):
                 await client.call_tool(
-                    my_tool.tool.id,
+                    my_tool.tool.name,
                     context,
                     arguments={},
                 )

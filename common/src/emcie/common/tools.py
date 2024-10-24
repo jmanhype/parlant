@@ -5,7 +5,6 @@ from typing import (
     Callable,
     Literal,
     Mapping,
-    NewType,
     Optional,
     TypedDict,
     Union,
@@ -14,8 +13,6 @@ from typing_extensions import NotRequired
 
 from emcie.common.types.common import JSONSerializable
 
-
-ToolId = NewType("ToolId", str)
 
 ToolParameterType = Literal[
     "string",
@@ -71,13 +68,12 @@ class ToolResult:
 
 @dataclass(frozen=True)
 class Tool:
-    id: ToolId
-    creation_utc: datetime
     name: str
+    creation_utc: datetime
     description: str
     parameters: dict[str, ToolParameter]
     required: list[str]
     consequential: bool
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash(self.name)

@@ -1,38 +1,17 @@
 from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
-from pytest import fixture
 
-from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.context_variables import (
     ContextVariableStore,
     FreshnessRules,
 )
-from emcie.server.core.tools import LocalToolService
-
-
-@fixture
-async def tool_id(
-    container: Container,
-) -> ToolId:
-    tool_store = container[LocalToolService]
-
-    return (
-        await tool_store.create_tool(
-            name="get_terrys_offering",
-            module_path="tests.tool_utilities",
-            description="Explain Terry's offering",
-            parameters={},
-            required=[],
-        )
-    ).id
 
 
 async def test_that_context_variable_can_be_created(
     client: TestClient,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     freshness_rules = {
         "months": [5],
@@ -48,7 +27,6 @@ async def test_that_context_variable_can_be_created(
         json={
             "name": "test_variable",
             "description": "test of context variable",
-            "tool_id": f"local__{tool_id}",
             "freshness_rules": freshness_rules,
         },
     )
@@ -65,7 +43,6 @@ async def test_that_all_context_variables_can_be_deleted(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -73,16 +50,12 @@ async def test_that_all_context_variables_can_be_deleted(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=ToolId(f"local__{tool_id}"),
-        freshness_rules=None,
     )
 
     _ = await context_variable_store.create_variable(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=ToolId(f"local__{tool_id}"),
-        freshness_rules=None,
     )
 
     vars = await context_variable_store.list_variables(variable_set=agent_id)
@@ -99,7 +72,6 @@ async def test_that_context_variable_can_be_deleted(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -107,8 +79,6 @@ async def test_that_context_variable_can_be_deleted(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
-        freshness_rules=None,
     )
 
     respone = (
@@ -127,7 +97,6 @@ async def test_that_context_variables_can_be_listed(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -135,7 +104,6 @@ async def test_that_context_variables_can_be_listed(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
         freshness_rules=FreshnessRules(
             months=[5],
             days_of_month=None,
@@ -150,7 +118,6 @@ async def test_that_context_variables_can_be_listed(
         variable_set=agent_id,
         name="second_test_variable",
         description=None,
-        tool_id=tool_id,
         freshness_rules=None,
     )
 
@@ -180,7 +147,6 @@ async def test_that_context_variable_value_can_be_retrieved(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -188,8 +154,6 @@ async def test_that_context_variable_value_can_be_retrieved(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
-        freshness_rules=None,
     )
 
     key = "test_key"
@@ -215,7 +179,6 @@ async def test_that_context_variable_value_can_be_set(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -223,7 +186,6 @@ async def test_that_context_variable_value_can_be_set(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
         freshness_rules=None,
     )
 
@@ -258,7 +220,6 @@ async def test_that_context_variable_values_can_be_listed(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -266,8 +227,6 @@ async def test_that_context_variable_values_can_be_listed(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=ToolId(f"local__{tool_id}"),
-        freshness_rules=None,
     )
 
     keys_and_data = {
@@ -291,7 +250,6 @@ async def test_that_context_variable_values_can_be_listed(
     assert retrieved_variable["id"] == variable.id
     assert retrieved_variable["name"] == "test_variable"
     assert retrieved_variable["description"] == "test variable"
-    assert retrieved_variable["tool_id"] == f"local__{tool_id}"
 
     retrieved_values = response.json()["key_value_pairs"]
 
@@ -305,7 +263,6 @@ async def test_that_context_variable_value_can_be_deleted(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
-    tool_id: ToolId,
 ) -> None:
     context_variable_store = container[ContextVariableStore]
 
@@ -313,8 +270,6 @@ async def test_that_context_variable_value_can_be_deleted(
         variable_set=agent_id,
         name="test_variable",
         description="test variable",
-        tool_id=tool_id,
-        freshness_rules=None,
     )
 
     key = "yam_choock"
