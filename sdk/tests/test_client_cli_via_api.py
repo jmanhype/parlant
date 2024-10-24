@@ -389,6 +389,45 @@ class API:
             response.raise_for_status()
 
 
+async def test_that_agent_can_be_added(context: ContextOfTest) -> None:
+    name = "TestAgent"
+    description = "This is a test agent"
+    max_engine_iterations = 2
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        exit_status = await run_cli_and_get_exit_status(
+            "agent",
+            "add",
+            name,
+            "-d",
+            description,
+            "--max-engine-iterations",
+            str(max_engine_iterations),
+        )
+        assert exit_status == os.EX_OK
+
+        agents = await API.list_agents()
+        new_agent = next((a for a in agents if a["name"] == name), None)
+        assert new_agent
+        assert new_agent["description"] == description
+        assert new_agent["max_engine_iterations"] == max_engine_iterations
+
+        agent_name_no_desc = "TestAgentNoDesc"
+        exit_status = await run_cli_and_get_exit_status(
+            "agent",
+            "add",
+            agent_name_no_desc,
+        )
+        assert exit_status == os.EX_OK
+
+        agents = await API.list_agents()
+        new_agent_no_desc = next((a for a in agents if a["name"] == agent_name_no_desc), None)
+        assert new_agent_no_desc
+        assert new_agent_no_desc["description"] is None
+
+
 async def test_that_agent_can_be_updated(
     context: ContextOfTest,
 ) -> None:

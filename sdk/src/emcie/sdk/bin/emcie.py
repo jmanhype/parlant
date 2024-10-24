@@ -30,6 +30,8 @@ class AgentDTO(TypedDict):
     id: str
     name: str
     description: Optional[str]
+    creation_utc: str
+    max_engine_iterations: int
 
 
 class SessionDTO(TypedDict):
@@ -195,6 +197,26 @@ def set_exit_status(status: int) -> None:
 
 
 class Actions:
+    @staticmethod
+    def create_agent(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> AgentDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, "/agents"),
+            json={
+                "name": name,
+                "description": description,
+                "max_engine_iterations": max_engine_iterations,
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(AgentDTO, response.json()["agent"])
+
     @staticmethod
     def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
@@ -739,6 +761,36 @@ class Interface:
         )
 
     @staticmethod
+    def _render_agents(agents: list[AgentDTO]) -> None:
+        agent_items = [
+            {
+                "ID": a["id"],
+                "Creation Date": format_datetime(a["creation_utc"]),
+                "Name": a["name"],
+                "Description": a["description"] or "",
+                "Max Engine Iterations": a["max_engine_iterations"] or "",
+            }
+            for a in agents
+        ]
+
+        Interface._print_table(agent_items, maxcolwidths=[None, None, None, 60, None])
+
+    @staticmethod
+    def create_agent(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        try:
+            agent = Actions.create_agent(ctx, name, description, max_engine_iterations)
+            Interface._write_success(f"Added agent (id={agent['id']})")
+            Interface._render_agents([agent])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def list_agents(ctx: click.Context) -> None:
         agents = Actions.list_agents(ctx)
 
@@ -746,7 +798,7 @@ class Interface:
             rich.print("No data available")
             return
 
-        Interface._print_table(agents)
+        Interface._render_agents(agents)
 
     @staticmethod
     def get_default_agent(ctx: click.Context) -> str:
@@ -1497,6 +1549,24 @@ async def async_main() -> None:
     @cli.group(help="Manage agents")
     def agent() -> None:
         pass
+
+    @agent.command("add", help="Add a new agent")
+    @click.argument("name")
+    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option("--max-engine-iterations", type=int, help="Max engine iterations", required=False)
+    @click.pass_context
+    def agent_add(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        Interface.create_agent(
+            ctx=ctx,
+            name=name,
+            description=description,
+            max_engine_iterations=max_engine_iterations,
+        )
 
     @agent.command("list", help="List agents")
     @click.pass_context

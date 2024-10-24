@@ -15,8 +15,8 @@ class AgentDTO(DefaultBaseModel):
 
 
 class CreateAgentRequest(DefaultBaseModel):
-    agent_name: str
-    agent_description: Optional[str] = None
+    name: str
+    description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
 
@@ -43,8 +43,8 @@ def create_router(
         request: Optional[CreateAgentRequest] = None,
     ) -> CreateAgentResponse:
         agent = await agent_store.create_agent(
-            name=request and request.agent_name or "Unnamed Agent",
-            description=request and request.agent_description or None,
+            name=request and request.name or "Unnamed Agent",
+            description=request and request.description or None,
             max_engine_iterations=request and request.max_engine_iterations or None,
         )
 
