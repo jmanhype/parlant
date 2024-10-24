@@ -33,6 +33,7 @@ class ConsumptionOffsetsDTO(DefaultBaseModel):
 
 class SessionDTO(DefaultBaseModel):
     id: SessionId
+    agent_id: AgentId
     end_user_id: EndUserId
     creation_utc: datetime
     title: Optional[str] = None
@@ -172,6 +173,7 @@ def create_router(
         return CreateSessionResponse(
             session=SessionDTO(
                 id=session.id,
+                agent_id=session.agent_id,
                 end_user_id=session.end_user_id,
                 creation_utc=session.creation_utc,
                 consumption_offsets=ConsumptionOffsetsDTO(
@@ -187,6 +189,7 @@ def create_router(
 
         return SessionDTO(
             id=session.id,
+            agent_id=session.agent_id,
             creation_utc=session.creation_utc,
             title=session.title,
             end_user_id=session.end_user_id,
@@ -209,6 +212,7 @@ def create_router(
             sessions=[
                 SessionDTO(
                     id=s.id,
+                    agent_id=s.agent_id,
                     creation_utc=s.creation_utc,
                     title=s.title,
                     end_user_id=s.end_user_id,
