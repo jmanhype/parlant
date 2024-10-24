@@ -85,14 +85,14 @@ class _LocalToolService(ToolService):
         self._service_name = "_local"
         self._local_tools_by_name: dict[str, _LocalTool] = {}
 
-    def _local_tool_to_tool(self, local: _LocalTool) -> Tool:
+    def _local_tool_to_tool(self, local_tool: _LocalTool) -> Tool:
         return Tool(
-            creation_utc=local.creation_utc,
-            name=local.name,
-            description=local.description,
-            parameters=local.parameters,
-            required=local.required,
-            consequential=local.consequential,
+            creation_utc=local_tool.creation_utc,
+            name=local_tool.name,
+            description=local_tool.description,
+            parameters=local_tool.parameters,
+            required=local_tool.required,
+            consequential=local_tool.consequential,
         )
 
     async def create_tool(
@@ -106,7 +106,7 @@ class _LocalToolService(ToolService):
     ) -> Tool:
         creation_utc = datetime.now(timezone.utc)
 
-        local = _LocalTool(
+        local_tool = _LocalTool(
             name=name,
             module_path=module_path,
             description=description,
@@ -116,14 +116,14 @@ class _LocalToolService(ToolService):
             consequential=consequential,
         )
 
-        self._local_tools_by_name[name] = local
+        self._local_tools_by_name[name] = local_tool
 
-        return self._local_tool_to_tool(local)
+        return self._local_tool_to_tool(local_tool)
 
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
-        return [self._local_tool_to_tool(local) for local in self._local_tools_by_name.values()]
+        return [self._local_tool_to_tool(t) for t in self._local_tools_by_name.values()]
 
     async def read_tool(
         self,
