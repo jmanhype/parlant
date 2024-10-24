@@ -116,7 +116,7 @@ async def create_guideline(
 
         await container[GuidelineToolAssociationStore].create_association(
             guideline_id=guideline.id,
-            tool_id=ToolId("local", tool_function.__name__),
+            tool_id=ToolId("_local", tool_function.__name__),
         )
 
     return guideline
