@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Mapping, Sequence
 
 from emcie.common.tools import ToolContext
@@ -65,7 +66,7 @@ class ToolEventProducer:
         tool_results = await self._tool_caller.execute_tool_calls(
             ToolContext(session_id=session_id),
             tool_calls,
-            *tool_enabled_guideline_propositions.values(),
+            list(chain(*tool_enabled_guideline_propositions.values())),
         )
 
         if not tool_results:

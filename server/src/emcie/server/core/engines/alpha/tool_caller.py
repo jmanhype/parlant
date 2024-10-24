@@ -108,7 +108,7 @@ class ToolCaller:
         self,
         context: ToolContext,
         tool_calls: Sequence[ToolCall],
-        tool_ids: Iterable[ToolId],
+        tool_ids: Sequence[ToolId],
     ) -> Sequence[ToolCallResult]:
         tool_ids_by_name = {id.tool_name: id for id in tool_ids}
 
@@ -150,7 +150,9 @@ class ToolCaller:
         assert len(agents) == 1
 
         staged_calls = self._get_staged_calls(staged_events)
-        tools = await _get_tools_by_tool_ids(*tool_enabled_guideline_propositions.values())
+        tools = await _get_tools_by_tool_ids(
+            list(chain(*tool_enabled_guideline_propositions.values()))
+        )
 
         builder = PromptBuilder()
 
