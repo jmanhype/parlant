@@ -697,6 +697,7 @@ class Interface:
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
+        rich.print(f"DorZO: {events}")
         event_items = [
             {
                 "ID": e["id"],
@@ -704,7 +705,8 @@ class Interface:
                 "Correlation ID": e["correlation_id"],
                 "Source": e["source"],
                 "Offset": e["offset"],
-                "Message": e["data"]["message"],
+                "Kind": e["kind"],
+                "Data": e["data"],
             }
             for e in events
         ]
