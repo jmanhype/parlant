@@ -85,6 +85,7 @@ async def set_context_variable_value(
 
 async def create_guideline(
     container: Container,
+    local_tool_service: _LocalToolService,
     agent_id: AgentId,
     predicate: str,
     action: str,
