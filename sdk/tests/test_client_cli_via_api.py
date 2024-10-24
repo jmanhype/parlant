@@ -137,6 +137,24 @@ class API:
             return str(agent["id"])
 
     @staticmethod
+    async def create_agent(
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> Any:
+        async with API.make_client() as client:
+            response = await client.post(
+                "/agents",
+                json={
+                    "name": name,
+                    "description": description,
+                    "max_engine_iterations": max_engine_iterations,
+                },
+            )
+
+            return response.raise_for_status().json()["agent"]
+
+    @staticmethod
     async def list_agents() -> Any:
         async with API.make_client() as client:
             response = await client.get("/agents/")
@@ -450,6 +468,39 @@ async def test_that_agent_can_be_updated(
 
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
+
+
+async def test_that_agent_can_be_viewed(
+    context: ContextOfTest,
+) -> None:
+    name = "Test Agent"
+    description = "Agent Description"
+    max_engine_iterations = 2
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await API.create_agent(
+            name=name,
+            description=description,
+            max_engine_iterations=max_engine_iterations,
+        )
+
+        process = await run_cli(
+            "agent",
+            "view",
+            agent["id"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_view, stderr_view = await process.communicate()
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert process.returncode == os.EX_OK
+
+        assert agent["id"] in output_view
+        assert name in output_view
+        assert description in output_view
+        assert str(max_engine_iterations) in output_view
 
 
 async def test_that_sessions_can_be_listed(

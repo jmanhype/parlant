@@ -75,6 +75,18 @@ def create_router(
             ]
         )
 
+    @router.get("/{agent_id}")
+    async def read_agent(agent_id: AgentId) -> AgentDTO:
+        agent = await agent_store.read_agent(agent_id=agent_id)
+
+        return AgentDTO(
+            id=agent.id,
+            name=agent.name,
+            description=agent.description,
+            creation_utc=agent.creation_utc,
+            max_engine_iterations=agent.max_engine_iterations,
+        )
+
     @router.patch("/{agent_id}")
     async def patch_agent(
         agent_id: AgentId,
