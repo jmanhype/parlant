@@ -241,6 +241,20 @@ class Actions:
         return cast(SessionDTO, response.json()["session"])
 
     @staticmethod
+    def list_sessions(
+        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+    ) -> list[SessionDTO]:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, "/sessions"),
+            params={
+                "agent_id": agent_id,
+                "end_user_id": end_user_id,
+            },
+        )
+        response.raise_for_status()
+        return cast(list[SessionDTO], response.json()["sessions"])
+
+    @staticmethod
     def inspect_interaction(
         ctx: click.Context,
         session_id: str,
@@ -668,6 +682,20 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def _render_sessions(sessions: list[SessionDTO]) -> None:
+        session_items = [
+            {
+                "ID": s["id"],
+                "Creation Date": format_datetime(s["creation_utc"]),
+                "End User ID": s["end_user_id"],
+                "Title": s["title"] or "",
+            }
+            for s in sessions
+        ]
+
+        Interface._print_table(session_items, maxcolwidths=[None, None, None, 40])
+
+    @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
         event_items = [
             {
@@ -694,6 +722,18 @@ class Interface:
         Interface._render_events(events=events)
 
     @staticmethod
+    def list_sessions(
+        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+    ) -> None:
+        sessions = Actions.list_sessions(ctx, agent_id, end_user_id)
+
+        if not sessions:
+            rich.print("No data available")
+            return
+
+        Interface._render_sessions(sessions)
+
+    @staticmethod
     def create_session(
         ctx: click.Context,
         agent_id: str,
@@ -702,16 +742,7 @@ class Interface:
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
         Interface._write_success(f"Added session (id={session['id']})")
-        Interface._print_table(
-            [
-                {
-                    "ID": session["id"],
-                    "Creation Date": format_datetime(session["creation_utc"]),
-                    "Title": session["title"],
-                    "End User ID": session["end_user_id"],
-                }
-            ]
-        )
+        Interface._render_sessions([session])
 
     @staticmethod
     def inspect_interaction(
@@ -1406,6 +1437,15 @@ async def async_main() -> None:
         assert agent_id
 
         Interface.create_session(ctx, agent_id, end_user_id, title)
+
+    @session.command("list", help="List all sessions")
+    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
+    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=False)
+    @click.pass_context
+    def session_list(
+        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+    ) -> None:
+        Interface.list_sessions(ctx, agent_id, end_user_id)
 
     @session.command("view", help="View session content")
     @click.argument("session_id")

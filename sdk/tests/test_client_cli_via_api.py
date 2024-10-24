@@ -139,7 +139,7 @@ class API:
             return response.raise_for_status().json()["agents"]
 
     @staticmethod
-    async def create_session(agent_id: str, end_user_id: str) -> Any:
+    async def create_session(agent_id: str, end_user_id: str, title: Optional[str] = None) -> Any:
         async with API.make_client() as client:
             response = await client.post(
                 "/sessions",
@@ -147,6 +147,7 @@ class API:
                 json={
                     "agent_id": agent_id,
                     "end_user_id": end_user_id,
+                    "title": title,
                 },
             )
 
@@ -377,6 +378,54 @@ async def test_that_agent_can_be_updated(
 
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
+
+
+async def test_that_sessions_can_be_listed(
+    context: ContextOfTest,
+) -> None:
+    first_user = "First User"
+    second_user = "Second User"
+
+    first_title = "First Title"
+    second_title = "Second Title"
+    third_title = "Third Title"
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+        _ = await API.create_session(agent_id=agent_id, end_user_id=first_user, title=first_title)
+        _ = await API.create_session(agent_id=agent_id, end_user_id=first_user, title=second_title)
+        _ = await API.create_session(agent_id=agent_id, end_user_id=second_user, title=third_title)
+
+        process = await run_cli(
+            "session",
+            "list",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output_list = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert first_title in output_list
+        assert second_title in output_list
+        assert third_title in output_list
+
+        process = await run_cli(
+            "session",
+            "list",
+            "-u",
+            first_user,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output_list = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert first_title in output_list
+        assert second_title in output_list
+        assert third_title not in output_list
 
 
 async def test_that_a_term_can_be_created_with_synonyms(
