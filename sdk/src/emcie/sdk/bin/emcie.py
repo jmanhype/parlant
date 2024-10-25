@@ -198,7 +198,9 @@ class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
+
         response.raise_for_status()
+
         return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
@@ -218,6 +220,7 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
             json=patch_data,
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -253,7 +256,9 @@ class Actions:
                 "end_user_id": end_user_id,
             },
         )
+
         response.raise_for_status()
+
         return cast(list[SessionDTO], response.json()["sessions"])
 
     @staticmethod
@@ -276,7 +281,9 @@ class Actions:
         session_id: str,
     ) -> list[EventDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+
         response.raise_for_status()
+
         return cast(list[EventDTO], response.json()["events"])
 
     @staticmethod
@@ -289,7 +296,9 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
         )
+
         response.raise_for_status()
+
         return cast(EventDTO, response.json()["event"])
 
     @staticmethod
@@ -308,7 +317,9 @@ class Actions:
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
+
         response.raise_for_status()
+
         return cast(TermDTO, response.json()["term"])
 
     @staticmethod
@@ -320,6 +331,7 @@ class Actions:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -328,7 +340,9 @@ class Actions:
         agent_id: str,
     ) -> list[TermDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
+
         response.raise_for_status()
+
         return cast(list[TermDTO], response.json()["terms"])
 
     @staticmethod
@@ -354,7 +368,9 @@ class Actions:
                 "connection_proposition": index,
             },
         )
+
         response.raise_for_status()
+
         evaluation_id = response.json()["evaluation_id"]
 
         with tqdm(
@@ -370,7 +386,9 @@ class Actions:
                         f"/agents/index/evaluations/{evaluation_id}",
                     )
                 )
+
                 response.raise_for_status()
+
                 evaluation = response.json()
 
                 if evaluation["status"] in ["pending", "running"]:
@@ -394,6 +412,7 @@ class Actions:
                                 "invoices": [invoice],
                             },
                         )
+
                         guideline_response.raise_for_status()
 
                         return cast(
@@ -418,6 +437,7 @@ class Actions:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -429,7 +449,9 @@ class Actions:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
+
         response.raise_for_status()
+
         return cast(GuidelineWithConnectionsDTO, response.json())
 
     @staticmethod
@@ -438,7 +460,9 @@ class Actions:
         agent_id: str,
     ) -> list[GuidelineDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+
         response.raise_for_status()
+
         return cast(list[GuidelineDTO], response.json()["guidelines"])
 
     @staticmethod
@@ -466,7 +490,9 @@ class Actions:
                 },
             },
         )
+
         response.raise_for_status()
+
         return cast(GuidelineWithConnectionsDTO, response.json())
 
     @staticmethod
@@ -482,6 +508,7 @@ class Actions:
                 f"/agents/{agent_id}/guidelines/{source_guideline_id}",
             )
         )
+
         guideline_response.raise_for_status()
 
         connections: list[GuidelineConnectionDTO] = guideline_response.json()["connections"]
@@ -503,7 +530,9 @@ class Actions:
                     "connections": {"remove": [target_guideline_id]},
                 },
             )
+
             connection_response.raise_for_status()
+
             return connection["id"]
 
         raise ValueError(
@@ -518,7 +547,9 @@ class Actions:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/context-variables/")
         )
+
         response.raise_for_status()
+
         return cast(list[ContextVariableDTO], response.json()["context_variables"])
 
     @staticmethod
@@ -548,7 +579,9 @@ class Actions:
                 "description": description,
             },
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableDTO, response.json()["context_variable"])
 
     @staticmethod
@@ -563,6 +596,7 @@ class Actions:
                 f"/agents/{agent_id}/context-variables/{variable_id}",
             )
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -582,7 +616,9 @@ class Actions:
                 "data": value,
             },
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableValueDTO, response.json()["context_variable_value"])
 
     @staticmethod
@@ -599,7 +635,9 @@ class Actions:
             ),
             params={"include_values": include_values},
         )
+
         response.raise_for_status()
+
         return cast(ReadContextVariableResponse, response.json())
 
     @staticmethod
@@ -615,7 +653,9 @@ class Actions:
                 f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
             )
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableValueDTO, response.json())
 
     @staticmethod
@@ -644,6 +684,7 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/services/{name}"),
             json=payload,
         )
+
         response.raise_for_status()
 
         return cast(ServiceDTO, response.json())
@@ -654,17 +695,21 @@ class Actions:
         name: str,
     ) -> None:
         response = requests.delete(urljoin(ctx.obj.server_address, f"/services/{name}"))
+
         response.raise_for_status()
 
     @staticmethod
     def list_services(ctx: click.Context) -> list[ServiceDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "services"))
+
         response.raise_for_status()
+
         return cast(list[ServiceDTO], response.json()["services"])
 
     @staticmethod
     def get_service(ctx: click.Context, service_name: str) -> ServiceDTO:
         response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
+
         response.raise_for_status()
 
         return cast(ServiceDTO, response.json())
@@ -878,6 +923,7 @@ class Interface:
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+
         response.raise_for_status()
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
@@ -909,7 +955,9 @@ class Interface:
                     ),
                     json={"content": new_message},
                 )
+
                 response.raise_for_status()
+
                 new_event = response.json()["event"]
 
                 last_known_offset = new_event["offset"]
