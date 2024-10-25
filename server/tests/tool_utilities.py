@@ -56,3 +56,11 @@ def transfer_money(from_account: str, to_account: str) -> ToolResult:
 
 def get_terrys_offering() -> ToolResult:
     return ToolResult("Terry offers leaf")
+
+
+def fetch_weather_data_a() -> ToolResult:
+    return ToolResult("Warm")
+
+
+def fetch_weather_data_b() -> ToolResult:
+    return ToolResult("Cold")

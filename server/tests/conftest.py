@@ -180,12 +180,3 @@ async def async_client(api_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
         base_url="http://testserver",
     ) as client:
         yield client
-
-
-@fixture
-def local_tool_service(sync_await: SyncAwaiter, container: Container) -> LocalToolService:
-    service_registry = container[ServiceRegistry]
-    return cast(
-        LocalToolService,
-        sync_await(service_registry.update_tool_service(name="local", kind="local", url="")),
-    )

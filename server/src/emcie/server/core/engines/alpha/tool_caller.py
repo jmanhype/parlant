@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 from itertools import chain
 import json
 import traceback
-from typing import Any, Iterable, Mapping, NewType, Optional, Sequence
+from typing import Any, Mapping, NewType, Optional, Sequence
 
 
 from emcie.common.tools import Tool, ToolContext
@@ -77,13 +77,27 @@ class ToolCaller:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[ToolCall]:
-        inference_prompt = await self._format_tool_call_inference_prompt(
+        async def _get_id_tool_pairs(tool_ids: Sequence[ToolId]) -> Sequence[tuple[ToolId, Tool]]:
+            services: dict[str, ToolService] = {}
+            tools = []
+            for id in tool_ids:
+                if id.service_name not in services:
+                    services[id.service_name] = await self._service_registry.read_tool_service(
+                        id.service_name
+                    )
+                tools.append((id, await services[id.service_name].read_tool(id.tool_name)))
+            return tools
+
+        inference_prompt = self._format_tool_call_inference_prompt(
             agents,
             context_variables,
             interaction_history,
             terms,
             ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
+            {
+                p: await _get_id_tool_pairs(tool_ids)
+                for p, tool_ids in tool_enabled_guideline_propositions.items()
+            },
             staged_events,
         )
 
@@ -126,33 +140,28 @@ class ToolCaller:
 
             return tool_results
 
-    async def _format_tool_call_inference_prompt(
+    def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        tool_enabled_guideline_propositions: Mapping[
+            GuidelineProposition, Sequence[tuple[ToolId, Tool]]
+        ],
         staged_events: Sequence[EmittedEvent],
     ) -> str:
-        async def _get_tools_by_tool_ids(tool_ids: Iterable[ToolId]) -> Sequence[Tool]:
-            services: dict[str, ToolService] = {}
-            tools = []
-            for id in tool_ids:
-                if id.service_name not in services:
-                    services[id.service_name] = await self._service_registry.read_tool_service(
-                        id.service_name
-                    )
-                tools.append(await services[id.service_name].read_tool(id.tool_name))
-            return tools
-
         assert len(agents) == 1
 
+        id_tool_pairs = list(chain(*tool_enabled_guideline_propositions.values()))
+
+        proposition_tool_ids = {
+            p: [t_id for t_id, _ in pairs]
+            for p, pairs in tool_enabled_guideline_propositions.items()
+        }
+
         staged_calls = self._get_staged_calls(staged_events)
-        tools = await _get_tools_by_tool_ids(
-            list(chain(*tool_enabled_guideline_propositions.values()))
-        )
 
         builder = PromptBuilder()
 
@@ -177,12 +186,12 @@ with the same arguments, as the staged calls' data is extremely fresh.
 
         builder.add_guideline_propositions(
             ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
+            proposition_tool_ids,
             include_priority=False,
             include_tool_associations=True,
         )
 
-        builder.add_tool_definitions(tools)
+        builder.add_tool_definitions(id_tool_pairs)
 
         builder.add_section(
             f"""

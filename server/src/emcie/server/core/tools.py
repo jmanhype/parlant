@@ -163,8 +163,6 @@ class LocalToolService(ToolService):
             raise ToolExecutionError(name) from e
 
         if not isinstance(result, ToolResult):
-            raise ToolResultError(
-                self._service_name, name, "Tool result is not an instance of ToolResult"
-            )
+            raise ToolResultError(name, "Tool result is not an instance of ToolResult")
 
         return result
