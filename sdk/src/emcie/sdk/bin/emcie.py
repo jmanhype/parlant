@@ -773,14 +773,14 @@ class Interface:
         session_items = [
             {
                 "ID": s["id"],
+                "Title": s["title"] or "",
                 "Creation Date": format_datetime(s["creation_utc"]),
                 "End User ID": s["end_user_id"],
-                "Title": s["title"] or "",
             }
             for s in sessions
         ]
 
-        Interface._print_table(session_items, maxcolwidths=[None, None, None, 40])
+        Interface._print_table(session_items, maxcolwidths=[None, 40, None, None])
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
