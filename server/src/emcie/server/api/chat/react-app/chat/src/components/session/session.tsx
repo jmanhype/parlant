@@ -4,10 +4,10 @@ import Tooltip from '../ui/custom/tooltip';
 import { Button } from '../ui/button';
 import { deleteData, patchData } from '@/utils/api';
 import { toast } from 'sonner';
-import { Check, Edit, Trash, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface Props {
     session: SessionInterface;
@@ -25,7 +25,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
 
         if (session.id === 'NEW_SESSION' && !session.agentId) setAgentId(null);
         else setAgentId('Mr0uvCuu6g');
-    }, [isSelected, setAgentId, session.id]);
+    }, [isSelected, setAgentId, session.id, session.agentId]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -98,15 +98,22 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                 {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
             </div>
             <div>
-                {!isEditingTitle && <DropdownMenu>
+                {!isEditingTitle && 
+                <DropdownMenu>
                     <DropdownMenuTrigger tabIndex={-1}>
                         <div role='button' className='rounded-full py-2 px-4' onClick={e => e.stopPropagation()}>
                             <img src='/icons/more.svg' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={editTitle}>Rename</DropdownMenuItem>
-                        <DropdownMenuItem onClick={deleteSession}>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={editTitle} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
+                            <img src="icons/rename.svg" height={16} width={18} className='me-[8px]' alt="" />
+                            Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={deleteSession} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
+                            <img src="icons/delete.svg" height={16} width={18} className='me-[8px]' alt="" />
+                            Delete
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>}
                 
