@@ -45,7 +45,7 @@ class ToolCallInferenceSchema(DefaultBaseModel):
 @dataclass(frozen=True)
 class ToolCall:
     id: ToolCallId
-    name: str
+    tool_id: ToolId
     arguments: Mapping[str, JSONSerializable]
 
 
@@ -111,7 +111,7 @@ class ToolCaller:
         return [
             ToolCall(
                 id=ToolCallId(generate_id()),
-                name=tc.name,
+                tool_id=ToolId.from_string(tc.name),
                 arguments=tc.arguments,
             )
             for tc in tool_calls_that_need_to_run
@@ -122,17 +122,14 @@ class ToolCaller:
         self,
         context: ToolContext,
         tool_calls: Sequence[ToolCall],
-        tool_ids: Sequence[ToolId],
     ) -> Sequence[ToolCallResult]:
-        tool_ids_by_name = {id.tool_name: id for id in tool_ids}
-
         with self._logger.operation("Tool calls"):
             tool_results = await asyncio.gather(
                 *(
                     self._run_tool(
                         context=context,
                         tool_call=tool_call,
-                        tool_id=tool_ids_by_name[tool_call.name],
+                        tool_id=tool_call.tool_id,
                     )
                     for tool_call in tool_calls
                 )
@@ -310,7 +307,7 @@ There are no staged tool calls at this moment.
         return json.dumps(
             [
                 {
-                    "name": invocation["tool_name"],
+                    "tool_id": invocation["tool_id"],
                     "arguments": invocation["arguments"],
                     "result": invocation["result"],
                 }
@@ -341,7 +338,9 @@ There are no staged tool calls at this moment.
         tool_id: ToolId,
     ) -> ToolCallResult:
         try:
-            self._logger.debug(f"Tool call executing: {tool_call.name}/{tool_call.id}")
+            self._logger.debug(
+                f"Tool call executing: {tool_call.tool_id.to_string()}/{tool_call.id}"
+            )
             service = await self._service_registry.read_tool_service(tool_id.service_name)
             result = await service.call_tool(
                 tool_id.tool_name,
@@ -349,7 +348,7 @@ There are no staged tool calls at this moment.
                 tool_call.arguments,
             )
             self._logger.debug(
-                f"Tool call returned: {tool_call.name}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
+                f"Tool call returned: {tool_call.tool_id.to_string()}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
             )
 
             return ToolCallResult(
@@ -359,7 +358,7 @@ There are no staged tool calls at this moment.
             )
         except Exception as e:
             self._logger.error(
-                f"Tool execution error (tool='{tool_call.name}', "
+                f"Tool execution error (tool='{tool_call.tool_id.to_string()}', "
                 "arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
             )
 

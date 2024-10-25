@@ -58,9 +58,5 @@ def get_terrys_offering() -> ToolResult:
     return ToolResult("Terry offers leaf")
 
 
-def fetch_weather_data_a() -> ToolResult:
+def fetch_data() -> ToolResult:
     return ToolResult("Warm")
-
-
-def fetch_weather_data_b() -> ToolResult:
-    return ToolResult("Cold")

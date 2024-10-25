@@ -105,20 +105,20 @@ def given_the_tool_from_service(
         )
 
     service_tools: dict[str, dict[str, Any]] = {
-        "TodaysWeatherStation": {
-            "fetch_todays_weather_data": {
-                "name": "fetch_weather_data_a",
-                "description": "Get Weather",
+        "ServiceX": {
+            "fetch_data": {
+                "name": "fetch_data",
+                "description": "",
                 "module_path": "tests.tool_utilities",
                 "parameters": {},
                 "required": [],
             }
         },
-        "TomorrowWeatherStation": {
-            "fetch_tomorrow_weather_data": {
-                "name": "fetch_weather_data_b",
-                "description": "Get Weather",
-                "module_path": "tests.tool_utilities",
+        "ServiceY": {
+            "fetch_data": {
+                "name": "fetch_data",
+                "description": "",
+                "module_path": "tests.second_tool_utilities",
                 "parameters": {},
                 "required": [],
             }

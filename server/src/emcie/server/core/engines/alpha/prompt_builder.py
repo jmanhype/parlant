@@ -218,10 +218,7 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
                 if include_tool_associations:
                     if p in tool_enabled:
                         service_tool_names = ", ".join(
-                            [
-                                f"service: {t_id.service_name}, tool: {t_id.tool_name}"
-                                for t_id in tool_enabled[p]
-                            ]
+                            [f"{t_id.service_name}:{t_id.tool_name}" for t_id in tool_enabled[p]]
                         )
                         guideline += f"\n    [Associated Tools: {service_tool_names}]"
 
@@ -273,8 +270,7 @@ However, in this case, no special behavrioal guidelines were provided.
 
         tool_specs = [
             {
-                "service_name": tool_id.service_name,
-                "name": tool.name,
+                "name": tool_id.to_string(),
                 "description": tool.description,
                 "parameters": tool.parameters,
                 "required_parameters": tool.required,
