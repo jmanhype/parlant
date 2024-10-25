@@ -1567,8 +1567,22 @@ async def async_main() -> None:
         Interface.create_session(ctx, agent_id, end_user_id, title)
 
     @session.command("list", help="List all sessions")
-    @click.option("-a", "--agent-id", type=str, help="Agent ID", metavar="ID", required=False)
-    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=False)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Filter by agent ID",
+        metavar="ID",
+        required=False,
+    )
+    @click.option(
+        "-u",
+        "--end-user-id",
+        type=str,
+        help="Filter by End User ID",
+        metavar="ID",
+        required=False,
+    )
     @click.pass_context
     def session_list(
         ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
