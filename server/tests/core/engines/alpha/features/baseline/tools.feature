@@ -100,7 +100,7 @@ Feature: Tools
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
         And a user message, "What is the balance of Larry David's account?"
-        And a tool event with data, [{ "tool_calls": { "tool_name": "get_account_balance", "parameters": { "account_name": "Larry David"}, "result": { "data": 451000000, "metadata": {} }}}]
+        And a tool event with data, [{ "tool_calls": { "tool_id": "local:get_account_balance", "parameters": { "account_name": "Larry David"}, "result": { "data": 451000000, "metadata": {} }}}]
         And an agent message, "Larry David currently has 451 million dollars."
         And a user message, "And what about now?"
         When processing is triggered
