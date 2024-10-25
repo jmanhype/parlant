@@ -28,7 +28,9 @@ OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
 
 
 @asynccontextmanager
-async def run_openapi_server(app: FastAPI) -> AsyncIterator[None]:
+async def run_openapi_server(
+    app: FastAPI,
+) -> AsyncIterator[None]:
     config = uvicorn.Config(app=app, port=OPENAPI_SERVER_PORT)
     server = uvicorn.Server(config)
     task = asyncio.create_task(server.serve())
@@ -75,7 +77,9 @@ def rng_app() -> FastAPI:
 
 
 @asynccontextmanager
-async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
+async def run_service_server(
+    tools: list[ToolEntry],
+) -> AsyncIterator[PluginServer]:
     async with PluginServer(
         tools=tools,
         port=8091,
@@ -139,7 +143,11 @@ class API:
             return response.raise_for_status().json()["agents"]
 
     @staticmethod
-    async def create_session(agent_id: str, end_user_id: str, title: Optional[str] = None) -> Any:
+    async def create_session(
+        agent_id: str,
+        end_user_id: str,
+        title: Optional[str] = None,
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
                 "/sessions",
@@ -154,7 +162,10 @@ class API:
             return response.raise_for_status().json()["session"]
 
     @staticmethod
-    async def get_agent_reply(session_id: str, message: str) -> Any:
+    async def get_agent_reply(
+        session_id: str,
+        message: str,
+    ) -> Any:
         return next(iter(await API.get_agent_replies(session_id, message, 1)))
 
     @staticmethod
@@ -206,7 +217,12 @@ class API:
                 raise
 
     @staticmethod
-    async def create_term(agent_id: str, name: str, description: str, synonyms: str = "") -> Any:
+    async def create_term(
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: str = "",
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
                 f"/agents/{agent_id}/terms/",
@@ -230,7 +246,10 @@ class API:
             return response.json()["terms"]
 
     @staticmethod
-    async def read_term(agent_id: str, term_name: str) -> Any:
+    async def read_term(
+        agent_id: str,
+        term_name: str,
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.get(
                 f"/agents/{agent_id}/terms/{term_name}",
@@ -251,7 +270,10 @@ class API:
             return response.json()["guidelines"]
 
     @staticmethod
-    async def read_guideline(agent_id: str, guideline_id: str) -> Any:
+    async def read_guideline(
+        agent_id: str,
+        guideline_id: str,
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.get(
                 f"/agents/{agent_id}/guidelines/{guideline_id}",
@@ -299,7 +321,11 @@ class API:
             return response.json()["items"][0]["guideline"]
 
     @staticmethod
-    async def create_context_variable(agent_id: str, name: str, description: str) -> Any:
+    async def create_context_variable(
+        agent_id: str,
+        name: str,
+        description: str,
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
                 f"/agents/{agent_id}/context-variables",
@@ -337,7 +363,11 @@ class API:
             response.raise_for_status()
 
     @staticmethod
-    async def read_context_variable_value(agent_id: str, variable_id: str, key: str) -> Any:
+    async def read_context_variable_value(
+        agent_id: str,
+        variable_id: str,
+        key: str,
+    ) -> Any:
         async with API.make_client() as client:
             response = await client.get(
                 f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
@@ -348,7 +378,10 @@ class API:
             return response.json()
 
     @staticmethod
-    async def create_openapi_service(service_name: str, url: str) -> None:
+    async def create_openapi_service(
+        service_name: str,
+        url: str,
+    ) -> None:
         payload = {"kind": "openapi", "source": f"{url}/openapi.json", "url": url}
 
         async with API.make_client() as client:
@@ -389,6 +422,7 @@ async def test_that_sessions_can_be_listed(
     first_title = "First Title"
     second_title = "Second Title"
     third_title = "Third Title"
+
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
@@ -1613,7 +1647,9 @@ async def test_that_service_can_be_removed(
             assert not any(s["name"] == service_name for s in services)
 
 
-async def test_that_services_can_be_listed(context: ContextOfTest) -> None:
+async def test_that_services_can_be_listed(
+    context: ContextOfTest,
+) -> None:
     service_name_1 = "test_openapi_service_1"
     service_name_2 = "test_openapi_service_2"
 
@@ -1640,7 +1676,9 @@ async def test_that_services_can_be_listed(context: ContextOfTest) -> None:
         assert "openapi" in output, "Service type 'openapi' was not found in the output"
 
 
-async def test_that_services_can_be_viewed(context: ContextOfTest) -> None:
+async def test_that_services_can_be_viewed(
+    context: ContextOfTest,
+) -> None:
     service_name = "test_service_view"
     service_url = OPENAPI_SERVER_URL
 
