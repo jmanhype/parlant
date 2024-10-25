@@ -1,8 +1,7 @@
 import { createContext, Dispatch, ReactElement, SetStateAction, useContext, useState } from 'react';
-import SessionControl from '../session-control/session-control';
 import Chat from '../chat/chat';
-import ChatHeader from '../chat-header/chat-header';
 import { SessionInterface } from '@/utils/interfaces';
+import Sessions from '../sessions/sessions';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null>>;
@@ -33,12 +32,11 @@ export default function Chatbot(): ReactElement {
     return (
         <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId, newSession, setNewSession}}>
             <div data-testid="chatbot" className="main bg-[#FBFBFB] h-screen flex flex-col">
-                <ChatHeader />
                 <div className="flex justify-between flex-1 w-full overflow-auto flex-col lg:flex-row">
                     <div className="h-2/5 bg-white lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-b-[transparent] lg:w-[308px] lg:border-r">
-                        <SessionControl />
+                        <Sessions />
                     </div>
-                    <div className="h-3/5 w-full flex-1 overflow-auto lg:h-full">
+                    <div className='h-full w-full'>
                         {sessionId && <Chat />}
                     </div>
                 </div>

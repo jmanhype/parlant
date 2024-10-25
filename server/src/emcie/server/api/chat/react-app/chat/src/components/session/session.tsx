@@ -85,7 +85,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => setSessionId(session.id)} key={session.id}
-            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-[#EBECF0] cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:bg-[#FBFBFB] ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
+            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-[#EBECF0] cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 min-h-[80px] h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:bg-[#FBFBFB] ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle &&
                     <div className="overflow-hidden overflow-ellipsis">

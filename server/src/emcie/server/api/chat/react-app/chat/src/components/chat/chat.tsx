@@ -7,6 +7,7 @@ import { groupBy } from '@/utils/obj';
 import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
 import { EventInterface, SessionInterface } from '@/utils/interfaces';
+import AgentsSelect from '../agents-select/agents-select';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -128,49 +129,56 @@ export default function Chat(): ReactElement {
     };
 
     return (
-        <div className="flex flex-col items-center h-full max-w-[1200px] mx-auto">
-            <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
-                {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
-                    <React.Fragment key={i}>
-                        {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
-                        <DateHeader date={event.creation_utc} isFirst={!i}/>}
-                        <div ref={lastMessageRef} className="flex flex-col">
-                            <Message event={event}/>
+        <div className='h-full w-full flex flex-col'>
+            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-[#EBECF0] w-full'>
+                <div className='lg:w-[308px] flex items-center justify-center self-start'>
+                    <AgentsSelect value={agentId as (string | undefined)} />
+                </div>
+            </div>
+            <div className="flex flex-col items-center h-full max-w-[1200px] mx-auto w-full flex-1 overflow-auto">
+                <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
+                    {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
+                        <React.Fragment key={i}>
+                            {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
+                            <DateHeader date={event.creation_utc} isFirst={!i}/>}
+                            <div ref={lastMessageRef} className="flex flex-col">
+                                <Message event={event}/>
+                            </div>
+                        </React.Fragment>
+                    ))}
+                    {showTyping && 
+                    <div className='flex m-4 mb-1 gap-[14px]'>
+                        <div className='w-[206px]'></div>
+                        <div className='flex items-center'>
+                            <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-[#EBECF0] border-[1.4px] border-solid me-[11.5px]'/>
+                            <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>
-                    </React.Fragment>
-                ))}
-                {showTyping && 
-                <div className='flex m-4 mb-1 gap-[14px]'>
+                        <div className='w-[206px]'></div>
+                    </div>}
+                </div>
+                <div className='w-full flex'>
                     <div className='w-[206px]'></div>
-                    <div className='flex items-center'>
-                        <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-[#EBECF0] border-[1.4px] border-solid me-[11.5px]'/>
-                        <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
+                    <div className="group border flex-1 border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
+                        <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
+                        <Textarea role="textbox"
+                            ref={textareaRef}
+                            placeholder="Message..."
+                            value={message}
+                            onKeyUp={onKeyUp}
+                            onChange={(e) => setMessage(e.target.value)}
+                            style={{boxShadow: 'none'}}
+                            rows={1}
+                            className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
+                        <Button variant='ghost'
+                            className="max-w-[60px] rounded-full hover:bg-white"
+                            ref={submitButtonRef}
+                            disabled={isSubmitDisabled || !message?.trim() || !agentId}
+                            onClick={() => postMessage(message)}>
+                            <img src="/icons/send.svg" alt="" />
+                        </Button>
                     </div>
                     <div className='w-[206px]'></div>
-                </div>}
-            </div>
-            <div className='w-full flex'>
-                <div className='w-[206px]'></div>
-                <div className="group border flex-1 border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
-                    <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
-                    <Textarea role="textbox"
-                        ref={textareaRef}
-                        placeholder="Message..."
-                        value={message}
-                        onKeyUp={onKeyUp}
-                        onChange={(e) => setMessage(e.target.value)}
-                        style={{boxShadow: 'none'}}
-                        rows={1}
-                        className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
-                    <Button variant='ghost'
-                        className="max-w-[60px] rounded-full hover:bg-white"
-                        ref={submitButtonRef}
-                        disabled={isSubmitDisabled || !message?.trim() || !agentId}
-                        onClick={() => postMessage(message)}>
-                        <img src="/icons/send.svg" alt="" />
-                    </Button>
                 </div>
-                <div className='w-[206px]'></div>
             </div>
         </div>
     );

@@ -33,7 +33,7 @@ export default function Message({event}: Props): ReactElement {
             <div className='w-[206px]'></div>
             <div className='flex-1 flex'>
                 {!isClient &&
-                    <div className='flex items-end'>
+                    <div className='flex items-end me-[14px]'>
                         <img src="parlant-bubble.svg"
                             alt=""
                             height={34}
