@@ -15,13 +15,13 @@ class AgentDTO(DefaultBaseModel):
 
 
 class CreateAgentRequest(DefaultBaseModel):
-    agent_name: str
-    agent_description: Optional[str] = None
+    name: str
+    description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
 
 class CreateAgentResponse(DefaultBaseModel):
-    agent_id: AgentId
+    agent: AgentDTO
 
 
 class ListAgentsResponse(DefaultBaseModel):
@@ -43,12 +43,20 @@ def create_router(
         request: Optional[CreateAgentRequest] = None,
     ) -> CreateAgentResponse:
         agent = await agent_store.create_agent(
-            name=request and request.agent_name or "Unnamed Agent",
-            description=request and request.agent_description or None,
+            name=request and request.name or "Unnamed Agent",
+            description=request and request.description or None,
             max_engine_iterations=request and request.max_engine_iterations or None,
         )
 
-        return CreateAgentResponse(agent_id=agent.id)
+        return CreateAgentResponse(
+            agent=AgentDTO(
+                id=agent.id,
+                name=agent.name,
+                description=agent.description,
+                creation_utc=agent.creation_utc,
+                max_engine_iterations=agent.max_engine_iterations,
+            )
+        )
 
     @router.get("/")
     async def list_agents() -> ListAgentsResponse:
@@ -65,6 +73,18 @@ def create_router(
                 )
                 for a in agents
             ]
+        )
+
+    @router.get("/{agent_id}")
+    async def read_agent(agent_id: AgentId) -> AgentDTO:
+        agent = await agent_store.read_agent(agent_id=agent_id)
+
+        return AgentDTO(
+            id=agent.id,
+            name=agent.name,
+            description=agent.description,
+            creation_utc=agent.creation_utc,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     @router.patch("/{agent_id}")

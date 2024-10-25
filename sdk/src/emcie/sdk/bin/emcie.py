@@ -30,6 +30,8 @@ class AgentDTO(TypedDict):
     id: str
     name: str
     description: Optional[str]
+    creation_utc: str
+    max_engine_iterations: int
 
 
 class SessionDTO(TypedDict):
@@ -195,6 +197,36 @@ def set_exit_status(status: int) -> None:
 
 
 class Actions:
+    @staticmethod
+    def create_agent(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> AgentDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, "/agents"),
+            json={
+                "name": name,
+                "description": description,
+                "max_engine_iterations": max_engine_iterations,
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(AgentDTO, response.json()["agent"])
+
+    @staticmethod
+    def read_agent(ctx: click.Context, agent_id: str) -> AgentDTO:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
+        )
+
+        response.raise_for_status()
+
+        return cast(AgentDTO, response.json())
+
     @staticmethod
     def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
@@ -441,7 +473,7 @@ class Actions:
         response.raise_for_status()
 
     @staticmethod
-    def get_guideline(
+    def read_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -553,7 +585,7 @@ class Actions:
         return cast(list[ContextVariableDTO], response.json()["context_variables"])
 
     @staticmethod
-    def get_variable_by_name(
+    def read_variable_by_name(
         ctx: click.Context,
         agent_id: str,
         name: str,
@@ -707,7 +739,7 @@ class Actions:
         return cast(list[ServiceDTO], response.json()["services"])
 
     @staticmethod
-    def get_service(ctx: click.Context, service_name: str) -> ServiceDTO:
+    def read_service(ctx: click.Context, service_name: str) -> ServiceDTO:
         response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
 
         response.raise_for_status()
@@ -739,6 +771,45 @@ class Interface:
         )
 
     @staticmethod
+    def _render_agents(agents: list[AgentDTO]) -> None:
+        agent_items = [
+            {
+                "ID": a["id"],
+                "Name": a["name"],
+                "Creation Date": format_datetime(a["creation_utc"]),
+                "Description": a["description"] or "",
+                "Max Engine Iterations": a["max_engine_iterations"],
+            }
+            for a in agents
+        ]
+
+        Interface._print_table(agent_items, maxcolwidths=[None, None, None, 60, None])
+
+    @staticmethod
+    def create_agent(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        try:
+            agent = Actions.create_agent(ctx, name, description, max_engine_iterations)
+            Interface._write_success(f"Added agent (id={agent['id']})")
+            Interface._render_agents([agent])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def view_agent(ctx: click.Context, agent_id: str) -> None:
+        try:
+            agent = Actions.read_agent(ctx, agent_id)
+            Interface._render_agents([agent])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def list_agents(ctx: click.Context) -> None:
         agents = Actions.list_agents(ctx)
 
@@ -746,7 +817,7 @@ class Interface:
             rich.print("No data available")
             return
 
-        Interface._print_table(agents)
+        Interface._render_agents(agents)
 
     @staticmethod
     def get_default_agent(ctx: click.Context) -> str:
@@ -1147,7 +1218,7 @@ class Interface:
         guideline_id: str,
     ) -> None:
         try:
-            guideline_with_connections = Actions.get_guideline(ctx, agent_id, guideline_id)
+            guideline_with_connections = Actions.read_guideline(ctx, agent_id, guideline_id)
 
             Interface._render_guidelines([guideline_with_connections["guideline"]])
 
@@ -1296,7 +1367,7 @@ class Interface:
     @staticmethod
     def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
         try:
-            variable = Actions.get_variable_by_name(ctx, agent_id, name)
+            variable = Actions.read_variable_by_name(ctx, agent_id, name)
             Actions.remove_variable(ctx, agent_id, variable["id"])
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
@@ -1326,7 +1397,7 @@ class Interface:
         value: str,
     ) -> None:
         try:
-            variable = Actions.get_variable_by_name(ctx, agent_id, variable_name)
+            variable = Actions.read_variable_by_name(ctx, agent_id, variable_name)
 
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
@@ -1349,7 +1420,7 @@ class Interface:
         name: str,
     ) -> None:
         try:
-            variable = Actions.get_variable_by_name(ctx, agent_id, name)
+            variable = Actions.read_variable_by_name(ctx, agent_id, name)
 
             read_variable_response = Actions.read_variable(
                 ctx,
@@ -1379,7 +1450,7 @@ class Interface:
         key: str,
     ) -> None:
         try:
-            variable = Actions.get_variable_by_name(ctx, agent_id, variable_name)
+            variable = Actions.read_variable_by_name(ctx, agent_id, variable_name)
             value = Actions.read_variable_value(ctx, agent_id, variable["id"], key)
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
@@ -1400,6 +1471,7 @@ class Interface:
             Interface._print_table([result])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def remove_service(
@@ -1411,6 +1483,7 @@ class Interface:
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def list_services(ctx: click.Context) -> None:
@@ -1437,7 +1510,7 @@ class Interface:
         service_name: str,
     ) -> None:
         try:
-            service = Actions.get_service(ctx, service_name)
+            service = Actions.read_service(ctx, service_name)
             rich.print(Text("Name:", style="bold"), service["name"])
             rich.print(Text("Kind:", style="bold"), service["kind"])
             rich.print(Text("Source:", style="bold"), service["url"])
@@ -1466,6 +1539,7 @@ class Interface:
                 rich.print("\nNo tools available for this service.")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
 
 async def async_main() -> None:
@@ -1497,6 +1571,30 @@ async def async_main() -> None:
     @cli.group(help="Manage agents")
     def agent() -> None:
         pass
+
+    @agent.command("add", help="Add a new agent")
+    @click.argument("name")
+    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option("--max-engine-iterations", type=int, help="Max engine iterations", required=False)
+    @click.pass_context
+    def agent_add(
+        ctx: click.Context,
+        name: str,
+        description: Optional[str],
+        max_engine_iterations: Optional[int],
+    ) -> None:
+        Interface.create_agent(
+            ctx=ctx,
+            name=name,
+            description=description,
+            max_engine_iterations=max_engine_iterations,
+        )
+
+    @agent.command("view", help="View agent information")
+    @click.argument("agent_id")
+    @click.pass_context
+    def agent_view(ctx: click.Context, agent_id: str) -> None:
+        Interface.view_agent(ctx, agent_id)
 
     @agent.command("list", help="List agents")
     @click.pass_context

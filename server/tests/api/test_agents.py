@@ -17,15 +17,10 @@ def test_that_an_agent_can_be_created_without_description(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    response = client.get("/agents")
+    agent = response.json()["agent"]
 
-    assert response.status_code == status.HTTP_200_OK
-
-    data = response.json()
-
-    assert len(data["agents"]) == 1
-    assert data["agents"][0]["name"] == "test-agent"
-    assert data["agents"][0]["description"] is None
+    assert agent["name"] == "test-agent"
+    assert agent["description"] is None
 
 
 def test_that_an_agent_can_be_created_with_description(
@@ -38,15 +33,10 @@ def test_that_an_agent_can_be_created_with_description(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    response = client.get("/agents")
+    agent = response.json()["agent"]
 
-    assert response.status_code == status.HTTP_200_OK
-
-    data = response.json()
-
-    assert len(data["agents"]) == 1
-    assert data["agents"][0]["name"] == "test-agent"
-    assert data["agents"][0]["description"] == "You are a test agent"
+    assert agent["name"] == "test-agent"
+    assert agent["description"] == "You are a test agent"
 
 
 def test_that_an_agent_can_be_created_without_max_engine_iterations(
@@ -59,15 +49,10 @@ def test_that_an_agent_can_be_created_without_max_engine_iterations(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    response = client.get("/agents")
+    agent = response.json()["agent"]
 
-    assert response.status_code == status.HTTP_200_OK
-
-    data = response.json()
-
-    assert len(data["agents"]) == 1
-    assert data["agents"][0]["name"] == "test-agent"
-    assert data["agents"][0]["max_engine_iterations"] == 3
+    assert agent["name"] == "test-agent"
+    assert agent["max_engine_iterations"] == 3
 
 
 def test_that_an_agent_can_be_created_with_max_engine_iterations(
@@ -80,15 +65,10 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    response = client.get("/agents")
+    agent = response.json()["agent"]
 
-    assert response.status_code == status.HTTP_200_OK
-
-    data = response.json()
-
-    assert len(data["agents"]) == 1
-    assert data["agents"][0]["name"] == "test-agent"
-    assert data["agents"][0]["max_engine_iterations"] == 1
+    assert agent["name"] == "test-agent"
+    assert agent["max_engine_iterations"] == 1
 
 
 @mark.parametrize(
