@@ -784,7 +784,6 @@ class Interface:
 
     @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
-        rich.print(f"DorZO: {events}")
         event_items = [
             {
                 "ID": e["id"],
