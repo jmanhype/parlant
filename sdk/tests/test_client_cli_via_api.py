@@ -407,10 +407,9 @@ class API:
             response.raise_for_status()
 
 
-async def test_that_agent_can_be_added(context: ContextOfTest) -> None:
+async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
     name = "TestAgent"
     description = "This is a test agent"
-    max_engine_iterations = 2
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -422,7 +421,7 @@ async def test_that_agent_can_be_added(context: ContextOfTest) -> None:
             "-d",
             description,
             "--max-engine-iterations",
-            str(max_engine_iterations),
+            str(123),
         )
         assert exit_status == os.EX_OK
 
@@ -430,23 +429,24 @@ async def test_that_agent_can_be_added(context: ContextOfTest) -> None:
         new_agent = next((a for a in agents if a["name"] == name), None)
         assert new_agent
         assert new_agent["description"] == description
-        assert new_agent["max_engine_iterations"] == max_engine_iterations
+        assert new_agent["max_engine_iterations"] == 123
 
-        agent_name_no_desc = "TestAgentNoDesc"
         exit_status = await run_cli_and_get_exit_status(
             "agent",
             "add",
-            agent_name_no_desc,
+            "Test Agent With No Description",
         )
         assert exit_status == os.EX_OK
 
         agents = await API.list_agents()
-        new_agent_no_desc = next((a for a in agents if a["name"] == agent_name_no_desc), None)
+        new_agent_no_desc = next(
+            (a for a in agents if a["name"] == "Test Agent With No Description"), None
+        )
         assert new_agent_no_desc
         assert new_agent_no_desc["description"] is None
 
 
-async def test_that_agent_can_be_updated(
+async def test_that_an_agent_can_be_updated(
     context: ContextOfTest,
 ) -> None:
     new_description = "Updated description"
@@ -470,7 +470,7 @@ async def test_that_agent_can_be_updated(
         assert agent["max_engine_iterations"] == new_max_engine_iterations
 
 
-async def test_that_agent_can_be_viewed(
+async def test_that_an_agent_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
     name = "Test Agent"
@@ -683,7 +683,7 @@ async def test_that_terms_are_loaded_on_server_startup(
         assert term["synonyms"] == []
 
 
-async def test_that_guideline_can_be_added(
+async def test_that_a_guideline_can_be_added(
     context: ContextOfTest,
 ) -> None:
     predicate = "the user greets you"
@@ -813,7 +813,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
         assert connection["kind"] == "entails"
 
 
-async def test_that_guideline_can_be_viewed(
+async def test_that_a_guideline_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
     predicate = "the user says goodbye"
@@ -846,7 +846,7 @@ async def test_that_guideline_can_be_viewed(
         assert action in output_view
 
 
-async def test_that_view_guideline_with_connections_displays_indirect_and_direct_connections(
+async def test_that_view_a_guideline_with_connections_displays_indirect_and_direct_connections(
     context: ContextOfTest,
 ) -> None:
     predicate1 = "AAA"
@@ -1189,7 +1189,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         )
 
 
-async def test_that_guideline_can_be_removed(
+async def test_that_a_guideline_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1216,7 +1216,7 @@ async def test_that_guideline_can_be_removed(
         assert len(guidelines) == 0
 
 
-async def test_that_connection_can_be_removed(
+async def test_that__a_connection_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1310,7 +1310,7 @@ async def test_that_connection_can_be_removed(
         assert len(guideline["connections"]) == 0
 
 
-async def test_that_variables_can_be_listed(
+async def test_that_a_variables_can_be_listed(
     context: ContextOfTest,
 ) -> None:
     name1 = "test_variable1"
@@ -1345,7 +1345,7 @@ async def test_that_variables_can_be_listed(
         assert description2 in process_output
 
 
-async def test_that_variable_can_be_added(
+async def test_that_a_variable_can_be_added(
     context: ContextOfTest,
 ) -> None:
     name = "test_variable_cli"
@@ -1378,7 +1378,7 @@ async def test_that_variable_can_be_added(
         assert variable is not None, "Variable was not added"
 
 
-async def test_that_variable_can_be_removed(
+async def test_that_a_variable_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     name = "test_variable_to_remove"
@@ -1406,7 +1406,7 @@ async def test_that_variable_can_be_removed(
         assert len(variables) == 0
 
 
-async def test_that_variable_value_can_be_set_with_json(
+async def test_that_a_variable_value_can_be_set_with_json(
     context: ContextOfTest,
 ) -> None:
     variable_name = "test_variable_set"
@@ -1437,7 +1437,7 @@ async def test_that_variable_value_can_be_set_with_json(
         assert json.loads(value["data"]) == data
 
 
-async def test_that_variable_value_can_be_set_with_string(
+async def test_that_a_variable_value_can_be_set_with_string(
     context: ContextOfTest,
 ) -> None:
     variable_name = "test_variable_set"
@@ -1469,7 +1469,7 @@ async def test_that_variable_value_can_be_set_with_string(
         assert value["data"] == data
 
 
-async def test_that_variable_values_can_be_retrieved(
+async def test_that_a_variable_values_can_be_retrieved(
     context: ContextOfTest,
 ) -> None:
     variable_name = "test_variable_get"
@@ -1590,7 +1590,7 @@ async def test_that_a_message_interaction_can_be_inspected(
         assert end_user_id in output
 
 
-async def test_that_openapi_service_can_be_added_via_file(
+async def test_that_an_openapi_service_can_be_added_via_file(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_openapi_service"
@@ -1634,7 +1634,7 @@ async def test_that_openapi_service_can_be_added_via_file(
                     )
 
 
-async def test_that_openapi_service_can_be_added_via_url(
+async def test_that_an_openapi_service_can_be_added_via_url(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_openapi_service_via_url"
@@ -1670,7 +1670,7 @@ async def test_that_openapi_service_can_be_added_via_url(
                 )
 
 
-async def test_that_sdk_service_can_be_added(
+async def test_that_a_sdk_service_can_be_added(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_sdk_service"
@@ -1710,7 +1710,7 @@ async def test_that_sdk_service_can_be_added(
                 )
 
 
-async def test_that_service_can_be_removed(
+async def test_that_a_service_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_service_to_remove"
@@ -1737,7 +1737,7 @@ async def test_that_service_can_be_removed(
             assert not any(s["name"] == service_name for s in services)
 
 
-async def test_that_services_can_be_listed(
+async def test_that_a_services_can_be_listed(
     context: ContextOfTest,
 ) -> None:
     service_name_1 = "test_openapi_service_1"
@@ -1766,7 +1766,7 @@ async def test_that_services_can_be_listed(
         assert "openapi" in output, "Service type 'openapi' was not found in the output"
 
 
-async def test_that_services_can_be_viewed(
+async def test_that_a_services_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_service_view"
