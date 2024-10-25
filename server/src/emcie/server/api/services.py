@@ -126,6 +126,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
                     url=_get_service_url(service),
                 )
                 for name, service in await service_registry.list_tool_services()
+                if type(service) in [OpenAPIClient, PluginClient]
             ]
         )
 

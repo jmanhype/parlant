@@ -438,8 +438,7 @@ async def test_guideline_tool_association_creation(
     json_variable = guideline_tool_associations_from_json["associations"][0]
 
     assert json_variable["guideline_id"] == guideline_id
-    assert json_variable["service_name"] == tool_id.service_name
-    assert json_variable["tool_name"] == tool_id.tool_name
+    assert json_variable["tool_id"] == tool_id.to_string()
 
 
 async def test_guideline_tool_association_retrieval(
