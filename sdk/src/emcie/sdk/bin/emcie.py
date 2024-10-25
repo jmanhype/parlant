@@ -775,10 +775,10 @@ class Interface:
         agent_items = [
             {
                 "ID": a["id"],
-                "Creation Date": format_datetime(a["creation_utc"]),
                 "Name": a["name"],
+                "Creation Date": format_datetime(a["creation_utc"]),
                 "Description": a["description"] or "",
-                "Max Engine Iterations": a["max_engine_iterations"] or "",
+                "Max Engine Iterations": a["max_engine_iterations"],
             }
             for a in agents
         ]
@@ -807,6 +807,7 @@ class Interface:
             Interface._render_agents([agent])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def list_agents(ctx: click.Context) -> None:
@@ -1470,6 +1471,7 @@ class Interface:
             Interface._print_table([result])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def remove_service(
@@ -1481,6 +1483,7 @@ class Interface:
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def list_services(ctx: click.Context) -> None:
@@ -1536,6 +1539,7 @@ class Interface:
                 rich.print("\nNo tools available for this service.")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
 
 async def async_main() -> None:
