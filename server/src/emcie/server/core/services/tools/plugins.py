@@ -17,12 +17,10 @@ from emcie.server.core.tools import ToolExecutionError, ToolService
 class PluginClient(ToolService):
     def __init__(
         self,
-        name: str,
         url: str,
         event_emitter_factory: EventEmitterFactory,
         correlator: ContextualCorrelator,
     ) -> None:
-        self._name = name
         self.url = url
         self._event_emitter_factory = event_emitter_factory
         self._correlator = correlator
@@ -87,7 +85,9 @@ class PluginClient(ToolService):
                 },
             ) as response:
                 if response.is_error:
-                    raise ToolExecutionError(service_name=self._name, tool_name=name)
+                    raise ToolExecutionError(
+                        tool_name=name, message=f"url='{self.url}', arguments='{arguments}'"
+                    )
 
                 event_emitter = self._event_emitter_factory.create_event_emitter(
                     session_id=SessionId(context.session_id),
@@ -116,21 +116,20 @@ class PluginClient(ToolService):
                         )
                     elif "error" in chunk_dict:
                         raise ToolExecutionError(
-                            service_name=self._name, tool_name=name, message=chunk_dict["error"]
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}', error: {chunk_dict["error"]}",
                         )
                     else:
                         raise ToolExecutionError(
-                            service_name=self._name,
                             tool_name=name,
-                            message=f"Unexpected chunk dict: {chunk_dict}",
+                            message=f"url='{self.url}', arguments='{arguments}', Unexpected chunk dict: {chunk_dict}",
                         )
         except Exception as exc:
-            raise ToolExecutionError(service_name=self._name, tool_name=name) from exc
+            raise ToolExecutionError(tool_name=name) from exc
 
         raise ToolExecutionError(
-            service_name=self._name,
             tool_name=name,
-            message="Unexpected response (no result chunk)",
+            message=f"url='{self.url}', Unexpected response (no result chunk)",
         )
 
     def _get_url(self, path: str) -> str:

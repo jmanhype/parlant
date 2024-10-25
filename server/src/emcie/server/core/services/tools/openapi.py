@@ -30,8 +30,7 @@ class _ToolSpec(NamedTuple):
 
 
 class OpenAPIClient(ToolService):
-    def __init__(self, name: str, server_url: str, openapi_json: str) -> None:
-        self._name = name
+    def __init__(self, server_url: str, openapi_json: str) -> None:
         self.server_url = server_url
         self.openapi_json = openapi_json
         self._tools = self._parse_tools(openapi_json)

@@ -119,9 +119,7 @@ async def test_that_tools_are_exposed_via_an_openapi_server() -> None:
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(
-            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
-        ) as client:
+        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
             tools = await client.list_tools()
 
             for tool_name, tool in {t.__name__: t for t in TOOLS}.items():
@@ -133,9 +131,7 @@ async def test_that_tools_can_be_read_via_an_openapi_server() -> None:
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(
-            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
-        ) as client:
+        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
             tools = await client.list_tools()
 
             for t in tools:
@@ -180,9 +176,7 @@ async def test_that_a_tool_can_be_called_via_an_openapi_server(
     async with run_openapi_server(rng_app()):
         openapi_json = await get_openapi_spec(OPENAPI_SERVER_URL)
 
-        async with OpenAPIClient(
-            "test_openapi_service", OPENAPI_SERVER_URL, openapi_json
-        ) as client:
+        async with OpenAPIClient(OPENAPI_SERVER_URL, openapi_json) as client:
             stub_context = ToolContext(session_id="test_session")
             result = await client.call_tool(tool_name, stub_context, tool_args)
             assert result.data == expected_result

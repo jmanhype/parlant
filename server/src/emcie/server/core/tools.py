@@ -19,18 +19,14 @@ class ToolId(NamedTuple):
 class ToolError(Exception):
     def __init__(
         self,
-        service_name: str,
         tool_name: str,
         message: Optional[str] = None,
     ) -> None:
         if message:
-            super().__init__(
-                f"Tool error (service='{service_name}', tool='{tool_name}'): {message}"
-            )
+            super().__init__(f"Tool error (tool='{tool_name}'): {message}")
         else:
-            super().__init__(f"Tool error (service='{service_name}', tool='{tool_name}')")
+            super().__init__(f"Tool error (tool='{tool_name}')")
 
-        self.service_name = service_name
         self.tool_name = tool_name
 
 

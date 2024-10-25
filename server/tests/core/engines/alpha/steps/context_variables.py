@@ -7,7 +7,6 @@ from emcie.server.core.context_variables import (
 )
 from emcie.server.core.sessions import SessionId, SessionStore
 
-from emcie.server.core.tools import ToolId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -31,7 +30,7 @@ def given_a_context_variable(
             variable_set=agent_id,
             name=variable_name,
             description="",
-            tool_id=ToolId("", ""),
+            tool_id=None,
             freshness_rules=None,
         )
     )

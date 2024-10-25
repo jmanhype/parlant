@@ -98,12 +98,16 @@ class FreshnessRulesDTO(TypedDict):
     seconds: NotRequired[list[int]]
 
 
+class ToolIdDTO(TypedDict):
+    service_name: str
+    tool_name: str
+
+
 class ContextVariableDTO(TypedDict):
     id: str
     name: str
     description: NotRequired[str]
-    service_name: NotRequired[str]
-    tool_name: NotRequired[str]
+    tool_id: NotRequired[ToolIdDTO]
     freshness_rules: NotRequired[FreshnessRulesDTO]
 
 
@@ -1345,8 +1349,8 @@ class Interface:
                 "ID": variable["id"],
                 "Name": variable["name"],
                 "Description": variable["description"] or "",
-                "Service Name": variable["service_name"] or "",
-                "Tool Name": variable["tool_name"] or "",
+                "Service Name": variable["tool_id"]["service_name"] if variable["tool_id"] else "",
+                "Tool Name": variable["tool_id"]["tool_name"] if variable["tool_id"] else "",
                 "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
             }
             for variable in variables

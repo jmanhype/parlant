@@ -203,12 +203,6 @@ async def setup_container() -> AsyncIterator[Container]:
         c[GlossaryStore],
     )
 
-    c[MessageEventProducer] = MessageEventProducer(
-        c[Logger],
-        c[ContextualCorrelator],
-        c[SchematicGenerator[MessageEventSchema]],
-    )
-
     c[CoherenceChecker] = CoherenceChecker(
         c[Logger],
         c[SchematicGenerator[PredicatesEntailmentTestsSchema]],
@@ -233,6 +227,12 @@ async def setup_container() -> AsyncIterator[Container]:
             c[EventEmitterFactory],
             c[ContextualCorrelator],
         )
+    )
+
+    c[MessageEventProducer] = MessageEventProducer(
+        c[Logger],
+        c[ContextualCorrelator],
+        c[SchematicGenerator[MessageEventSchema]],
     )
 
     c[ToolEventProducer] = ToolEventProducer(

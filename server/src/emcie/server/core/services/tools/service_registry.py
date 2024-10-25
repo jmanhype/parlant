@@ -147,13 +147,11 @@ class ServiceDocumentRegistry(ServiceRegistry):
             openapi_json = await self._get_openapi_json_from_source(cast(str, document["source"]))
 
             return OpenAPIClient(
-                name=document["name"],
                 server_url=document["url"],
                 openapi_json=openapi_json,
             )
         elif document["kind"] == "sdk":
             return PluginClient(
-                name=document["name"],
                 url=document["url"],
                 event_emitter_factory=self._event_emitter_factory,
                 correlator=self._correlator,
@@ -176,11 +174,10 @@ class ServiceDocumentRegistry(ServiceRegistry):
         elif kind == "openapi":
             assert source
             openapi_json = await self._get_openapi_json_from_source(source)
-            service = OpenAPIClient(name=name, server_url=url, openapi_json=openapi_json)
+            service = OpenAPIClient(server_url=url, openapi_json=openapi_json)
             self._service_sources[name] = source
         else:
             service = PluginClient(
-                name=name,
                 url=url,
                 event_emitter_factory=self._event_emitter_factory,
                 correlator=self._correlator,

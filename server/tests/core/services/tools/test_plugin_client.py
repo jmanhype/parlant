@@ -47,7 +47,6 @@ def create_client(
     event_emitter_factory: EventEmitterFactory = EventBufferFactory(),
 ) -> PluginClient:
     return PluginClient(
-        name="test_plugin_client",
         url=server.url,
         event_emitter_factory=event_emitter_factory,
         correlator=ContextualCorrelator(),

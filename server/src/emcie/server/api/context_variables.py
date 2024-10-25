@@ -36,20 +36,23 @@ class FreshnessRulesDTO(DefaultBaseModel):
     seconds: Optional[list[int]] = None
 
 
+class ToolIdDTO(DefaultBaseModel):
+    service_name: str
+    tool_name: str
+
+
 class ContextVariableDTO(DefaultBaseModel):
     id: ContextVariableId
     name: str
     description: Optional[str] = None
-    service_name: Optional[str] = None
-    tool_name: Optional[str] = None
+    tool_id: Optional[ToolIdDTO] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
 class CreateContextVariableRequest(DefaultBaseModel):
     name: str
     description: Optional[str] = None
-    service_name: Optional[str] = None
-    tool_name: Optional[str] = None
+    tool_id: Optional[ToolIdDTO] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
@@ -121,21 +124,16 @@ def create_router(
         agent_id: AgentId,
         request: CreateContextVariableRequest,
     ) -> CreateContextVariableResponse:
-        if request.service_name and request.tool_name:
-            service = await service_registry.read_tool_service(request.service_name)
-            _ = await service.read_tool(request.tool_name)
-        elif request.service_name or request.tool_name:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Fields 'service_name' and 'tool_name' must be provided together",
-            )
+        if request.tool_id:
+            service = await service_registry.read_tool_service(request.tool_id.service_name)
+            _ = await service.read_tool(request.tool_id.tool_name)
 
         variable = await context_variable_store.create_variable(
             variable_set=agent_id,
             name=request.name,
             description=request.description,
-            tool_id=ToolId(request.service_name, request.tool_name)
-            if request.service_name and request.tool_name
+            tool_id=ToolId(request.tool_id.service_name, request.tool_id.tool_name)
+            if request.tool_id
             else None,
             freshness_rules=_freshness_ruless_dto_to_freshness_rules(request.freshness_rules)
             if request.freshness_rules
@@ -147,8 +145,11 @@ def create_router(
                 id=variable.id,
                 name=variable.name,
                 description=variable.description,
-                service_name=variable.tool_id.service_name if variable.tool_id else None,
-                tool_name=variable.tool_id.tool_name if variable.tool_id else None,
+                tool_id=ToolIdDTO(
+                    service_name=variable.tool_id.service_name, tool_name=variable.tool_id.tool_name
+                )
+                if variable.tool_id
+                else None,
                 freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
                 if variable.freshness_rules
                 else None,
@@ -190,8 +191,12 @@ def create_router(
                     id=variable.id,
                     name=variable.name,
                     description=variable.description,
-                    service_name=variable.tool_id.service_name if variable.tool_id else None,
-                    tool_name=variable.tool_id.tool_name if variable.tool_id else None,
+                    tool_id=ToolIdDTO(
+                        service_name=variable.tool_id.service_name,
+                        tool_name=variable.tool_id.tool_name,
+                    )
+                    if variable.tool_id
+                    else None,
                     freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
                     if variable.freshness_rules
                     else None,
@@ -265,8 +270,12 @@ def create_router(
             id=variable.id,
             name=variable.name,
             description=variable.description,
-            service_name=variable.tool_id.service_name if variable.tool_id else None,
-            tool_name=variable.tool_id.tool_name if variable.tool_id else None,
+            tool_id=ToolIdDTO(
+                service_name=variable.tool_id.service_name,
+                tool_name=variable.tool_id.tool_name,
+            )
+            if variable.tool_id
+            else None,
             freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
             if variable.freshness_rules
             else None,
