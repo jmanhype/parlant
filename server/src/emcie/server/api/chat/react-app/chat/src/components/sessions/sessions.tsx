@@ -4,7 +4,8 @@ import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 
-const newSessionObj: SessionInterface = {end_user_id: '', title: 'New Conversation', agentId: '', creation_utc: new Date().toLocaleString(), id: 'NEW_SESSION'};
+export const NEW_SESSION_ID = 'NEW_SESSION';
+const newSessionObj: SessionInterface = {end_user_id: '', title: 'New Conversation', agentId: '', creation_utc: new Date().toLocaleString(), id: NEW_SESSION_ID};
 
 export default function Sessions(): ReactElement {
     const [sessions, setSessions] = useState<SessionInterface[]>([]);

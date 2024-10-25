@@ -8,6 +8,7 @@ import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
 import { EventInterface, SessionInterface } from '@/utils/interfaces';
 import AgentsSelect from '../agents-select/agents-select';
+import { NEW_SESSION_ID } from '../sessions/sessions';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -23,9 +24,9 @@ const emptyPendingMessage: EventInterface = {
 
 const DateHeader = ({date, isFirst}: {date: string | Date, isFirst: boolean}): ReactElement => {
     return (
-        <div className={'text-center flex min-h-[30px] z-[1] bg-[#FBFBFB] h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0' + (isFirst ? ' pt-0 !mt-1' : '')}>
+        <div className={'text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0' + (isFirst ? ' pt-0 !mt-1' : '')}>
             <hr className='h-full -translate-y-[-50%] flex-1'/>
-            <div className='w-[136px] border-[0.6px] border-[#EBECF0] font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>
+            <div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>
                 {new Date(date).toDateString()}
             </div>
             <hr className='h-full -translate-y-[-50%] flex-1' />
@@ -46,7 +47,7 @@ export default function Chat(): ReactElement {
     const [showTyping, setShowTyping] = useState(false);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession} = useSession();
-    const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== 'NEW_SESSION');
+    const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID);
 
     const resetChat = () => {
         setMessage('');
@@ -59,7 +60,7 @@ export default function Chat(): ReactElement {
     useEffect(() => lastMessageRef?.current?.scrollIntoView?.(), [messages, pendingMessage]);
 
     useEffect(() => {
-        if (newSession && sessionId !== 'NEW_SESSION') setNewSession(null);
+        if (newSession && sessionId !== NEW_SESSION_ID) setNewSession(null);
         resetChat();
         refetch();
         textareaRef?.current?.focus();
@@ -67,7 +68,7 @@ export default function Chat(): ReactElement {
     }, [sessionId]);
 
     useEffect(() => {
-        if (sessionId === 'NEW_SESSION') return;
+        if (sessionId === NEW_SESSION_ID) return;
         const lastEvent = lastMessages?.events?.at(-1);
         if (!lastEvent) return;
         if (pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
@@ -130,8 +131,8 @@ export default function Chat(): ReactElement {
 
     return (
         <div className='h-full w-full flex flex-col'>
-            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-[#EBECF0] w-full'>
-                <div className='lg:w-[308px] flex items-center justify-center self-start'>
+            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'>
+                <div className='lg:w-[308px] flex items-center justify-center self-start h-full'>
                     <AgentsSelect value={agentId as (string | undefined)} />
                 </div>
             </div>
@@ -150,7 +151,7 @@ export default function Chat(): ReactElement {
                     <div className='flex m-4 mb-1 gap-[14px]'>
                         <div className='w-[206px]'></div>
                         <div className='flex items-center'>
-                            <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-[#EBECF0] border-[1.4px] border-solid me-[11.5px]'/>
+                            <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-muted border-[1.4px] border-solid me-[11.5px]'/>
                             <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>
                         <div className='w-[206px]'></div>
@@ -158,7 +159,7 @@ export default function Chat(): ReactElement {
                 </div>
                 <div className='w-full flex'>
                     <div className='w-[206px]'></div>
-                    <div className="group border flex-1 border-[#EBECF0] border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-[#FBFBFB]">
+                    <div className="group border flex-1 border-muted border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-main">
                         <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
                         <Textarea role="textbox"
                             ref={textareaRef}
@@ -168,7 +169,7 @@ export default function Chat(): ReactElement {
                             onChange={(e) => setMessage(e.target.value)}
                             style={{boxShadow: 'none'}}
                             rows={1}
-                            className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar group-hover:bg-[#FBFBFB]"/>
+                            className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>
                         <Button variant='ghost'
                             className="max-w-[60px] rounded-full hover:bg-white"
                             ref={submitButtonRef}

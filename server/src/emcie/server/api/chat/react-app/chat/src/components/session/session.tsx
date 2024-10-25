@@ -8,6 +8,7 @@ import { Check, X } from 'lucide-react';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { NEW_SESSION_ID } from '../sessions/sessions';
 
 interface Props {
     session: SessionInterface;
@@ -23,13 +24,13 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
     useEffect(() => {
         if (!isSelected) return;
 
-        if (session.id === 'NEW_SESSION' && !session.agentId) setAgentId(null);
+        if (session.id === NEW_SESSION_ID && !session.agentId) setAgentId(null);
         else setAgentId('Mr0uvCuu6g');
     }, [isSelected, setAgentId, session.id, session.agentId]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (session.id === 'NEW_SESSION') {
+        if (session.id === NEW_SESSION_ID) {
             setNewSession(null);
             setSessionId(null);
             setAgentId(null);
@@ -54,7 +55,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
         e.stopPropagation();
         const title = sessionNameRef?.current?.value;
         if (title) {
-            if (session.id === 'NEW_SESSION') {
+            if (session.id === NEW_SESSION_ID) {
                 setIsEditingTitle(false);
                 setNewSession(session => session ? {...session, title} : session);
                 toast.success('title changed successfully', {closeButton: true});
@@ -85,7 +86,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => setSessionId(session.id)} key={session.id}
-            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-[#EBECF0] cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 min-h-[80px] h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:bg-[#FBFBFB] ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
+            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center gap-4 justify-between ps-4 min-h-[80px] h-[80px] ml-4 mr-4 lg:ml-0 lg:mr-0 hover:bg-main ' + (isSelected ? '!bg-[#FAF9FF]' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden">
                 {!isEditingTitle &&
                     <div className="overflow-hidden overflow-ellipsis">
