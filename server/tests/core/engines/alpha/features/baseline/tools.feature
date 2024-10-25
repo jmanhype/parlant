@@ -141,7 +141,7 @@ Feature: Tools
         And the tool calls event is correlated with the message event
 
     Scenario: Relevant guidelines are not refreshed based on tool results if no second iteration of proposing a new guideline is made
-        Given an agent with a maximum of 1 engine iteration
+        Given an agent with a maximum of 1 engine iterations
         And a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
