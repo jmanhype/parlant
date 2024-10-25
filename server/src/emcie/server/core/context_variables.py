@@ -155,8 +155,7 @@ class _ContextVariableDocument(TypedDict, total=False):
     variable_set: str
     name: str
     description: Optional[str]
-    service_name: Optional[str]
-    tool_name: Optional[str]
+    tool_id: Optional[str]
     freshness_rules: Optional[_FreshnessRulesDocument]
 
 
@@ -207,10 +206,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             variable_set=variable_set,
             name=context_variable.name,
             description=context_variable.description,
-            service_name=context_variable.tool_id.service_name
-            if context_variable.tool_id
-            else None,
-            tool_name=context_variable.tool_id.tool_name if context_variable.tool_id else None,
+            tool_id=context_variable.tool_id.to_string() if context_variable.tool_id else None,
             freshness_rules=self._serialize_freshness_rules(context_variable.freshness_rules)
             if context_variable.freshness_rules
             else None,
@@ -254,10 +250,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
             id=ContextVariableId(context_variable_document["id"]),
             name=context_variable_document["name"],
             description=context_variable_document.get("description"),
-            tool_id=ToolId(
-                context_variable_document["service_name"], context_variable_document["tool_name"]
-            )
-            if context_variable_document["service_name"] and context_variable_document["tool_name"]
+            tool_id=ToolId.from_string(context_variable_document["tool_id"])
+            if context_variable_document["tool_id"]
             else None,
             freshness_rules=self._deserialize_freshness_rules(
                 context_variable_document["freshness_rules"]

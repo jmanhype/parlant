@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -14,6 +15,18 @@ from emcie.server.core.common import (
 class ToolId(NamedTuple):
     service_name: str
     tool_name: str
+
+    @staticmethod
+    def from_string(s: str) -> ToolId:
+        parts = s.split(":", 1)
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid ToolId string format: '{s}'. Expected 'service_name:tool_name'."
+            )
+        return ToolId(service_name=parts[0], tool_name=parts[1])
+
+    def to_string(self) -> str:
+        return f"{self.service_name}:{self.tool_name}"
 
 
 class ToolError(Exception):
@@ -74,11 +87,10 @@ class _LocalTool:
     consequential: bool
 
 
-class _LocalToolService(ToolService):
+class LocalToolService(ToolService):
     def __init__(
         self,
     ) -> None:
-        self._service_name = "_local"
         self._local_tools_by_name: dict[str, _LocalTool] = {}
 
     def _local_tool_to_tool(self, local_tool: _LocalTool) -> Tool:
@@ -140,7 +152,7 @@ class _LocalToolService(ToolService):
             module = importlib.import_module(local_tool.module_path)
             func = getattr(module, local_tool.name)
         except Exception as e:
-            raise ToolImportError(self._service_name, name) from e
+            raise ToolImportError(name) from e
 
         try:
             result: ToolResult = func(**arguments)
@@ -148,7 +160,7 @@ class _LocalToolService(ToolService):
             if inspect.isawaitable(result):
                 result = await result
         except Exception as e:
-            raise ToolExecutionError(self._service_name, name) from e
+            raise ToolExecutionError(name) from e
 
         if not isinstance(result, ToolResult):
             raise ToolResultError(

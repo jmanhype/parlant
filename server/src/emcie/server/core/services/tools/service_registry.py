@@ -10,7 +10,7 @@ from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.core.tools import _LocalToolService, ToolService
+from emcie.server.core.tools import LocalToolService, ToolService
 from emcie.server.core.common import ItemNotFoundError, Version, UniqueId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -18,7 +18,7 @@ from emcie.server.core.persistence.document_database import (
 )
 
 
-ToolServiceKind = Literal["openapi", "sdk", "_local"]
+ToolServiceKind = Literal["openapi", "sdk", "local"]
 
 
 class ServiceRegistry(ABC):
@@ -168,8 +168,8 @@ class ServiceDocumentRegistry(ServiceRegistry):
     ) -> ToolService:
         service: ToolService
 
-        if kind == "_local":
-            self._running_services[name] = _LocalToolService()
+        if kind == "local":
+            self._running_services[name] = LocalToolService()
             return self._running_services[name]
         elif kind == "openapi":
             assert source
@@ -217,7 +217,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
     async def delete_service(self, name: str) -> None:
         if name in self._running_services:
-            if isinstance(self._running_services[name], _LocalToolService):
+            if isinstance(self._running_services[name], LocalToolService):
                 del self._running_services[name]
                 return
 

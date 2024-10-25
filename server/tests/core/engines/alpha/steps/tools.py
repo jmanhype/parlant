@@ -9,7 +9,7 @@ from emcie.server.core.guideline_tool_associations import (
 )
 from emcie.server.core.guidelines import GuidelineStore
 
-from emcie.server.core.tools import _LocalToolService, ToolId
+from emcie.server.core.tools import LocalToolService, ToolId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -24,7 +24,7 @@ def given_a_guideline_tool_association(
     return context.sync_await(
         guideline_tool_association_store.create_association(
             guideline_id=context.guidelines[guideline_name].id,
-            tool_id=ToolId("_local", tool_name),
+            tool_id=ToolId("local", tool_name),
         )
     )
 
@@ -54,7 +54,7 @@ def given_a_guideline_name_to_when(
 @step(given, parsers.parse('the tool "{tool_name}"'))
 def given_a_tool(
     context: ContextOfTest,
-    local_tool_service: _LocalToolService,
+    local_tool_service: LocalToolService,
     tool_name: str,
 ) -> None:
     async def create_tool(

@@ -43,8 +43,7 @@ class _GuidelineToolAssociationDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     guideline_id: GuidelineId
-    service_name: str
-    tool_name: str
+    tool_id: str
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
@@ -64,8 +63,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             version=self.VERSION.to_string(),
             creation_utc=association.creation_utc.isoformat(),
             guideline_id=association.guideline_id,
-            service_name=association.tool_id.service_name,
-            tool_name=association.tool_id.tool_name,
+            tool_id=association.tool_id.to_string(),
         )
 
     def _deserialize(
@@ -76,7 +74,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             id=GuidelineToolAssociationId(association_document["id"]),
             creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
             guideline_id=association_document["guideline_id"],
-            tool_id=ToolId(association_document["service_name"], association_document["tool_name"]),
+            tool_id=ToolId.from_string(association_document["tool_id"]),
         )
 
     async def create_association(

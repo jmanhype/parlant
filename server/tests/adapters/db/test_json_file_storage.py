@@ -277,7 +277,7 @@ async def test_context_variable_creation(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Sample Variable",
@@ -295,8 +295,9 @@ async def test_context_variable_creation(
     assert json_variable["variable_set"] == context.agent_id
     assert json_variable["name"] == variable.name
     assert json_variable["description"] == variable.description
-    assert json_variable["service_name"] == "_local"
-    assert json_variable["tool_name"] == "test_tool"
+
+    assert json_variable["tool_id"]
+    assert json_variable["tool_id"] == tool_id.to_string()
 
 
 async def test_context_variable_value_update_and_retrieval(
@@ -305,7 +306,7 @@ async def test_context_variable_value_update_and_retrieval(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
         end_user_id = EndUserId("test_user")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
@@ -342,7 +343,7 @@ async def test_context_variable_listing(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
         var1 = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Variable One",
@@ -371,7 +372,7 @@ async def test_context_variable_deletion(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Deletable Variable",
@@ -424,7 +425,7 @@ async def test_guideline_tool_association_creation(
             guideline_tool_association_db
         )
         guideline_id = GuidelineId("guideline-789")
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
 
         await guideline_tool_association_store.create_association(
             guideline_id=guideline_id, tool_id=tool_id
@@ -452,7 +453,7 @@ async def test_guideline_tool_association_retrieval(
             guideline_tool_association_db
         )
         guideline_id = GuidelineId("test_guideline")
-        tool_id = ToolId("_local", "test_tool")
+        tool_id = ToolId("local", "test_tool")
         creation_utc = datetime.now(timezone.utc)
 
         created_association = await guideline_tool_association_store.create_association(

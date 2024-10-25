@@ -72,7 +72,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
-from emcie.server.core.tools import _LocalToolService
+from emcie.server.core.tools import LocalToolService
 
 from .test_utilities import SyncAwaiter
 
@@ -176,9 +176,9 @@ async def async_client(api_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
 
 
 @fixture
-def local_tool_service(sync_await: SyncAwaiter, container: Container) -> _LocalToolService:
+def local_tool_service(sync_await: SyncAwaiter, container: Container) -> LocalToolService:
     service_registry = container[ServiceRegistry]
     return cast(
-        _LocalToolService,
-        sync_await(service_registry.update_tool_service(name="_local", kind="_local", url="")),
+        LocalToolService,
+        sync_await(service_registry.update_tool_service(name="local", kind="local", url="")),
     )

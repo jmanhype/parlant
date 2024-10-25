@@ -7,7 +7,7 @@ from emcie.server.core.common import DefaultBaseModel
 from emcie.common.tools import Tool, ToolParameter, ToolParameterType
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.tools import ToolService
 
 
@@ -23,6 +23,8 @@ class CreateOpenAPIServiceRequest(DefaultBaseModel):
 
 
 CreateServiceRequest = Union[CreateSDKServiceRequest, CreateOpenAPIServiceRequest]
+
+ToolServiceKind = Literal["openapi", "sdk"]
 
 
 class CreateServiceResponse(DefaultBaseModel):

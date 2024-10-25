@@ -19,7 +19,7 @@ from emcie.server.core.guidelines import Guideline, GuidelineStore
 from emcie.server.core.mc import MC
 from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
-from emcie.server.core.tools import _LocalToolService, ToolId
+from emcie.server.core.tools import LocalToolService, ToolId
 
 
 async def create_agent(container: Container, name: str) -> Agent:
@@ -85,7 +85,7 @@ async def set_context_variable_value(
 
 async def create_guideline(
     container: Container,
-    local_tool_service: _LocalToolService,
+    local_tool_service: LocalToolService,
     agent_id: AgentId,
     predicate: str,
     action: str,
@@ -99,7 +99,7 @@ async def create_guideline(
 
     if tool_function:
         local_tool_service = cast(
-            _LocalToolService, await container[ServiceRegistry].read_tool_service("_local")
+            LocalToolService, await container[ServiceRegistry].read_tool_service("local")
         )
 
         existing_tools = await local_tool_service.list_tools()
@@ -117,7 +117,7 @@ async def create_guideline(
 
         await container[GuidelineToolAssociationStore].create_association(
             guideline_id=guideline.id,
-            tool_id=ToolId("_local", tool_function.__name__),
+            tool_id=ToolId("local", tool_function.__name__),
         )
 
     return guideline
