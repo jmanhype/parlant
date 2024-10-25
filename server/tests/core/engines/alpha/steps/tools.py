@@ -54,9 +54,10 @@ def given_a_guideline_name_to_when(
 @step(given, parsers.parse('the tool "{tool_name}"'))
 def given_a_tool(
     context: ContextOfTest,
-    local_tool_service: LocalToolService,
     tool_name: str,
 ) -> None:
+    local_tool_service = context.container[LocalToolService]
+
     async def create_tool(
         name: str,
         module_path: str,

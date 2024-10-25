@@ -85,12 +85,13 @@ async def set_context_variable_value(
 
 async def create_guideline(
     container: Container,
-    local_tool_service: LocalToolService,
     agent_id: AgentId,
     predicate: str,
     action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
 ) -> Guideline:
+    local_tool_service = container[LocalToolService]
+
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         predicate=predicate,

@@ -127,7 +127,6 @@ async def container() -> AsyncIterator[Container]:
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
-    container[MessageEventProducer] = Singleton(MessageEventProducer)
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
@@ -146,6 +145,14 @@ async def container() -> AsyncIterator[Container]:
                 correlator=container[ContextualCorrelator],
             )
         )
+        container[LocalToolService] = cast(
+            LocalToolService,
+            await container[ServiceRegistry].update_tool_service(
+                name="local", kind="local", url=""
+            ),
+        )
+
+        container[MessageEventProducer] = Singleton(MessageEventProducer)
         container[ToolEventProducer] = Singleton(ToolEventProducer)
 
         container[Engine] = AlphaEngine

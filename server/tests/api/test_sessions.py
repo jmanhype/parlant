@@ -12,7 +12,6 @@ from emcie.server.core.agents import AgentId
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.sessions import EventSource, MessageEventData, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService
 from tests.api.utils import (
     create_agent,
     create_context_variable,
@@ -521,13 +520,11 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
 async def test_that_tool_events_are_correlated_with_message_events(
     client: TestClient,
     container: Container,
-    local_tool_service: LocalToolService,
     agent_id: AgentId,
     session_id: SessionId,
 ) -> None:
     await create_guideline(
         container=container,
-        local_tool_service=local_tool_service,
         agent_id=agent_id,
         predicate="a user says hello",
         action="answer like a cow",
@@ -654,7 +651,6 @@ async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_mess
 async def test_that_a_message_interaction_can_be_inspected_using_the_message_event_id(
     client: TestClient,
     container: Container,
-    local_tool_service: LocalToolService,
     agent_id: AgentId,
 ) -> None:
     session = await create_session(
@@ -665,7 +661,6 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
 
     guideline = await create_guideline(
         container=container,
-        local_tool_service=local_tool_service,
         agent_id=agent_id,
         predicate="a user mentions cows",
         action="answer like a cow while mentioning the user's full name",
