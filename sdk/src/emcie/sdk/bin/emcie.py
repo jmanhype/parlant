@@ -198,7 +198,9 @@ class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[AgentDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "agents"))
+
         response.raise_for_status()
+
         return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
@@ -218,6 +220,7 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
             json=patch_data,
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -241,6 +244,24 @@ class Actions:
         return cast(SessionDTO, response.json()["session"])
 
     @staticmethod
+    def list_sessions(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        end_user_id: Optional[str],
+    ) -> list[SessionDTO]:
+        response = requests.get(
+            urljoin(ctx.obj.server_address, "/sessions"),
+            params={
+                "agent_id": agent_id,
+                "end_user_id": end_user_id,
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(list[SessionDTO], response.json()["sessions"])
+
+    @staticmethod
     def inspect_interaction(
         ctx: click.Context,
         session_id: str,
@@ -255,18 +276,29 @@ class Actions:
         return cast(ReadInteractionResponse, response.json())
 
     @staticmethod
-    def list_events(ctx: click.Context, session_id: str) -> list[EventDTO]:
+    def list_events(
+        ctx: click.Context,
+        session_id: str,
+    ) -> list[EventDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+
         response.raise_for_status()
+
         return cast(list[EventDTO], response.json()["events"])
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> EventDTO:
+    def create_event(
+        ctx: click.Context,
+        session_id: str,
+        message: str,
+    ) -> EventDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
             json={"content": message},
         )
+
         response.raise_for_status()
+
         return cast(EventDTO, response.json()["event"])
 
     @staticmethod
@@ -285,20 +317,32 @@ class Actions:
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
+
         response.raise_for_status()
+
         return cast(TermDTO, response.json()["term"])
 
     @staticmethod
-    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
+    def remove_term(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+    ) -> None:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{name}")
         )
+
         response.raise_for_status()
 
     @staticmethod
-    def list_terms(ctx: click.Context, agent_id: str) -> list[TermDTO]:
+    def list_terms(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> list[TermDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
+
         response.raise_for_status()
+
         return cast(list[TermDTO], response.json()["terms"])
 
     @staticmethod
@@ -324,7 +368,9 @@ class Actions:
                 "connection_proposition": index,
             },
         )
+
         response.raise_for_status()
+
         evaluation_id = response.json()["evaluation_id"]
 
         with tqdm(
@@ -340,7 +386,9 @@ class Actions:
                         f"/agents/index/evaluations/{evaluation_id}",
                     )
                 )
+
                 response.raise_for_status()
+
                 evaluation = response.json()
 
                 if evaluation["status"] in ["pending", "running"]:
@@ -364,6 +412,7 @@ class Actions:
                                 "invoices": [invoice],
                             },
                         )
+
                         guideline_response.raise_for_status()
 
                         return cast(
@@ -380,26 +429,40 @@ class Actions:
                     raise ValueError(evaluation["error"])
 
     @staticmethod
-    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+    def remove_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
         response = requests.delete(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
+
         response.raise_for_status()
 
     @staticmethod
     def get_guideline(
-        ctx: click.Context, agent_id: str, guideline_id: str
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
     ) -> GuidelineWithConnectionsDTO:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
+
         response.raise_for_status()
+
         return cast(GuidelineWithConnectionsDTO, response.json())
 
     @staticmethod
-    def list_guidelines(ctx: click.Context, agent_id: str) -> list[GuidelineDTO]:
+    def list_guidelines(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> list[GuidelineDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+
         response.raise_for_status()
+
         return cast(list[GuidelineDTO], response.json()["guidelines"])
 
     @staticmethod
@@ -427,7 +490,9 @@ class Actions:
                 },
             },
         )
+
         response.raise_for_status()
+
         return cast(GuidelineWithConnectionsDTO, response.json())
 
     @staticmethod
@@ -443,6 +508,7 @@ class Actions:
                 f"/agents/{agent_id}/guidelines/{source_guideline_id}",
             )
         )
+
         guideline_response.raise_for_status()
 
         connections: list[GuidelineConnectionDTO] = guideline_response.json()["connections"]
@@ -464,7 +530,9 @@ class Actions:
                     "connections": {"remove": [target_guideline_id]},
                 },
             )
+
             connection_response.raise_for_status()
+
             return connection["id"]
 
         raise ValueError(
@@ -472,15 +540,24 @@ class Actions:
         )
 
     @staticmethod
-    def list_variables(ctx: click.Context, agent_id: str) -> list[ContextVariableDTO]:
+    def list_variables(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> list[ContextVariableDTO]:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/context-variables/")
         )
+
         response.raise_for_status()
+
         return cast(list[ContextVariableDTO], response.json()["context_variables"])
 
     @staticmethod
-    def get_variable_by_name(ctx: click.Context, agent_id: str, name: str) -> ContextVariableDTO:
+    def get_variable_by_name(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+    ) -> ContextVariableDTO:
         variables = Actions.list_variables(ctx, agent_id)
 
         if variable := next((v for v in variables if v["name"] == name), None):
@@ -502,17 +579,24 @@ class Actions:
                 "description": description,
             },
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableDTO, response.json()["context_variable"])
 
     @staticmethod
-    def remove_variable(ctx: click.Context, agent_id: str, variable_id: str) -> None:
+    def remove_variable(
+        ctx: click.Context,
+        agent_id: str,
+        variable_id: str,
+    ) -> None:
         response = requests.delete(
             urljoin(
                 ctx.obj.server_address,
                 f"/agents/{agent_id}/context-variables/{variable_id}",
             )
         )
+
         response.raise_for_status()
 
     @staticmethod
@@ -532,7 +616,9 @@ class Actions:
                 "data": value,
             },
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableValueDTO, response.json()["context_variable_value"])
 
     @staticmethod
@@ -549,7 +635,9 @@ class Actions:
             ),
             params={"include_values": include_values},
         )
+
         response.raise_for_status()
+
         return cast(ReadContextVariableResponse, response.json())
 
     @staticmethod
@@ -565,7 +653,9 @@ class Actions:
                 f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
             )
         )
+
         response.raise_for_status()
+
         return cast(ContextVariableValueDTO, response.json())
 
     @staticmethod
@@ -594,24 +684,32 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/services/{name}"),
             json=payload,
         )
+
         response.raise_for_status()
 
         return cast(ServiceDTO, response.json())
 
     @staticmethod
-    def remove_service(ctx: click.Context, name: str) -> None:
+    def remove_service(
+        ctx: click.Context,
+        name: str,
+    ) -> None:
         response = requests.delete(urljoin(ctx.obj.server_address, f"/services/{name}"))
+
         response.raise_for_status()
 
     @staticmethod
     def list_services(ctx: click.Context) -> list[ServiceDTO]:
         response = requests.get(urljoin(ctx.obj.server_address, "services"))
+
         response.raise_for_status()
+
         return cast(list[ServiceDTO], response.json()["services"])
 
     @staticmethod
     def get_service(ctx: click.Context, service_name: str) -> ServiceDTO:
         response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
+
         response.raise_for_status()
 
         return cast(ServiceDTO, response.json())
@@ -627,7 +725,10 @@ class Interface:
         rich.print(Text(message, style="bold red"), file=sys.stderr)
 
     @staticmethod
-    def _print_table(data: Iterable[Any], **kwargs: Any) -> None:
+    def _print_table(
+        data: Iterable[Any],
+        **kwargs: Any,
+    ) -> None:
         rich.print(
             tabulate(
                 data,
@@ -668,6 +769,20 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def _render_sessions(sessions: list[SessionDTO]) -> None:
+        session_items = [
+            {
+                "ID": s["id"],
+                "Title": s["title"] or "",
+                "Creation Date": format_datetime(s["creation_utc"]),
+                "End User ID": s["end_user_id"],
+            }
+            for s in sessions
+        ]
+
+        Interface._print_table(session_items, maxcolwidths=[None, 40, None, None])
+
+    @staticmethod
     def _render_events(events: list[EventDTO]) -> None:
         event_items = [
             {
@@ -676,7 +791,8 @@ class Interface:
                 "Correlation ID": e["correlation_id"],
                 "Source": e["source"],
                 "Offset": e["offset"],
-                "Message": e["data"]["message"],
+                "Kind": e["kind"],
+                "Data": e["data"],
             }
             for e in events
         ]
@@ -684,7 +800,10 @@ class Interface:
         Interface._print_table(event_items, maxcolwidths=[None, None, None, None, None, 40])
 
     @staticmethod
-    def view_session(ctx: click.Context, session_id: str) -> None:
+    def view_session(
+        ctx: click.Context,
+        session_id: str,
+    ) -> None:
         events = Actions.list_events(ctx, session_id)
 
         if not events:
@@ -692,6 +811,20 @@ class Interface:
             return
 
         Interface._render_events(events=events)
+
+    @staticmethod
+    def list_sessions(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        end_user_id: Optional[str],
+    ) -> None:
+        sessions = Actions.list_sessions(ctx, agent_id, end_user_id)
+
+        if not sessions:
+            rich.print("No data available")
+            return
+
+        Interface._render_sessions(sessions)
 
     @staticmethod
     def create_session(
@@ -702,16 +835,7 @@ class Interface:
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
         Interface._write_success(f"Added session (id={session['id']})")
-        Interface._print_table(
-            [
-                {
-                    "ID": session["id"],
-                    "Creation Date": format_datetime(session["creation_utc"]),
-                    "Title": session["title"],
-                    "End User ID": session["end_user_id"],
-                }
-            ]
-        )
+        Interface._render_sessions([session])
 
     @staticmethod
     def inspect_interaction(
@@ -768,12 +892,19 @@ class Interface:
                 rich.print(f"{INDENT*2}(none)\n")
 
     @staticmethod
-    def create_event(ctx: click.Context, session_id: str, message: str) -> None:
+    def create_event(
+        ctx: click.Context,
+        session_id: str,
+        message: str,
+    ) -> None:
         event = Actions.create_event(ctx, session_id, message)
         Interface._write_success(f"Added event (id={event['id']})")
 
     @staticmethod
-    def chat(ctx: click.Context, session_id: str) -> None:
+    def chat(
+        ctx: click.Context,
+        session_id: str,
+    ) -> None:
         def print_message(message_event: dict[str, Any]) -> None:
             role = {"client": "User", "server": "Agent"}[message_event["source"]]
             prefix = Text(
@@ -791,6 +922,7 @@ class Interface:
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+
         response.raise_for_status()
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
@@ -822,7 +954,9 @@ class Interface:
                     ),
                     json={"content": new_message},
                 )
+
                 response.raise_for_status()
+
                 new_event = response.json()["event"]
 
                 last_known_offset = new_event["offset"]
@@ -869,12 +1003,19 @@ class Interface:
         Interface._print_table([term])
 
     @staticmethod
-    def remove_term(ctx: click.Context, agent_id: str, name: str) -> None:
+    def remove_term(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+    ) -> None:
         Actions.remove_term(ctx, agent_id, name)
         Interface._write_success(f"Removed term '{name}'")
 
     @staticmethod
-    def list_terms(ctx: click.Context, agent_id: str) -> None:
+    def list_terms(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
         terms = Actions.list_terms(ctx, agent_id)
 
         if not terms:
@@ -987,7 +1128,11 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+    def remove_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
         try:
             Actions.remove_guideline(ctx, agent_id, guideline_id)
             Interface._write_success(f"Removed guideline (id={guideline_id})")
@@ -996,7 +1141,11 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def view_guideline(ctx: click.Context, agent_id: str, guideline_id: str) -> None:
+    def view_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+    ) -> None:
         try:
             guideline_with_connections = Actions.get_guideline(ctx, agent_id, guideline_id)
 
@@ -1012,7 +1161,10 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def list_guidelines(ctx: click.Context, agent_id: str) -> None:
+    def list_guidelines(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
         try:
             guidelines = Actions.list_guidelines(ctx, agent_id)
 
@@ -1107,7 +1259,10 @@ class Interface:
         )
 
     @staticmethod
-    def list_variables(ctx: click.Context, agent_id: str) -> None:
+    def list_variables(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
         variables = Actions.list_variables(ctx, agent_id)
 
         if not variables:
@@ -1149,9 +1304,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_variable_key_value_pairs(
-        pairs: dict[str, ContextVariableValueDTO],
-    ) -> None:
+    def _render_variable_key_value_pairs(pairs: dict[str, ContextVariableValueDTO]) -> None:
         values_items = [
             {
                 "ID": value["id"],
@@ -1249,7 +1402,10 @@ class Interface:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
 
     @staticmethod
-    def remove_service(ctx: click.Context, name: str) -> None:
+    def remove_service(
+        ctx: click.Context,
+        name: str,
+    ) -> None:
         try:
             Actions.remove_service(ctx, name)
             Interface._write_success(f"Removed service '{name}'")
@@ -1276,7 +1432,10 @@ class Interface:
         Interface._print_table(service_items)
 
     @staticmethod
-    def view_service(ctx: click.Context, service_name: str) -> None:
+    def view_service(
+        ctx: click.Context,
+        service_name: str,
+    ) -> None:
         try:
             service = Actions.get_service(ctx, service_name)
             rich.print(Text("Name:", style="bold"), service["name"])
@@ -1406,6 +1565,29 @@ async def async_main() -> None:
         assert agent_id
 
         Interface.create_session(ctx, agent_id, end_user_id, title)
+
+    @session.command("list", help="List all sessions")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Filter by agent ID",
+        metavar="ID",
+        required=False,
+    )
+    @click.option(
+        "-u",
+        "--end-user-id",
+        type=str,
+        help="Filter by End User ID",
+        metavar="ID",
+        required=False,
+    )
+    @click.pass_context
+    def session_list(
+        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+    ) -> None:
+        Interface.list_sessions(ctx, agent_id, end_user_id)
 
     @session.command("view", help="View session content")
     @click.argument("session_id")

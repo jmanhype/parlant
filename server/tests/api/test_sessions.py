@@ -115,6 +115,8 @@ def test_that_a_session_can_be_created_without_a_title(
     data = response.json()["session"]
 
     assert "id" in data
+    assert "agent_id" in data
+    assert data["agent_id"] == agent_id
     assert "title" in data
     assert data["title"] is None
 
@@ -137,6 +139,8 @@ def test_that_a_session_can_be_created_with_title(
     data = response.json()["session"]
 
     assert "id" in data
+    assert "agent_id" in data
+    assert data["agent_id"] == agent_id
     assert data["title"] == title
 
 
@@ -223,6 +227,7 @@ async def test_that_sessions_can_be_listed_by_agent_id(
         assert len(data["sessions"]) == len(agent_sessions)
 
         for listed_session, created_session in zip(data["sessions"], agent_sessions):
+            assert listed_session["agent_id"] == agent.id
             assert listed_session["title"] == created_session.title
             assert listed_session["end_user_id"] == created_session.end_user_id
 
