@@ -43,6 +43,7 @@ contextvars = "^2.4"
 together = "^1.2.12"
 types-tqdm = "^4.66.0.20240417"
 semver = "^3.0.2"
+anthropic = "^0.37.1"
 
 
 [tool.poetry.group.dev.dependencies]
