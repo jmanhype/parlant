@@ -40,10 +40,7 @@ export default function Message({event}: Props): ReactElement {
                 {!isClient &&
                     <div className='flex items-end me-[14px]'>
                         <img src="parlant-bubble.svg"
-                            alt=""
-                            height={34}
-                            width={36}
-                            className='pt-[11px] p-[9px] bg-white rounded-full'/>
+                            alt=""/>
                     </div>
                 }
                 <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + ' rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>

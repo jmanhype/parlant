@@ -26,10 +26,12 @@ export default function Sessions(): ReactElement {
 
     return (
         <div className="flex flex-col items-center h-full">
-            <div role='button' className='min-h-[70px] h-[70px] text-[16px] text-[#213547] font-medium cursor-pointer lg:w-[308px] flex rounded-[6px] border-[10px] border-solid border-white items-center justify-center hover:bg-gray-100'
-                onClick={createNewSession}>
-                <img src="parlant-bubble.svg" alt="chat bubble" className='pe-2' />
-                New Session
+            <div className='min-h-[70px] h-[70px] flex justify-center items-center w-[308px] border-b-[0.6px] border-b-solid border-muted'>
+                <div role='button' className='min-h-[50px] h-[50px] py-[10px] text-[16px] text-[#213547] font-medium cursor-pointer w-[288px] flex rounded-[6px] items-center justify-center hover:bg-gray-100'
+                    onClick={createNewSession}>
+                    <img src="logo.svg" alt="chat bubble" className='pe-2'/>
+                    New Session
+                </div>
             </div>
             <div data-testid="sessions" className="bg-white flex-1 justify-center w-full overflow-auto">
                 {ErrorTemplate && <ErrorTemplate />}

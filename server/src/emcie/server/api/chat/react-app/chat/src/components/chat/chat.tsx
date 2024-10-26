@@ -153,10 +153,10 @@ export default function Chat(): ReactElement {
                         </React.Fragment>
                     ))}
                     {showTyping && 
-                    <div className='flex m-4 mb-1 gap-[14px]'>
+                    <div className='flex mb-1 gap-[14px]'>
                         <div className='w-[206px]'></div>
                         <div className='flex items-center'>
-                            <img src="parlant-bubble-muted.svg" alt="" height={34} width={36} className='pt-[11px] p-[9px] bg-white rounded-full border-muted border-[1.4px] border-solid me-[11.5px]'/>
+                            <img src="parlant-bubble-muted.svg" alt="" height={36} width={36} className='me-[8px]'/>
                             <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>
                         <div className='w-[206px]'></div>

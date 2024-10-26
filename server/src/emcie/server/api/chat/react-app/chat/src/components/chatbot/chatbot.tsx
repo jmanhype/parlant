@@ -38,11 +38,11 @@ export default function Chatbot(): ReactElement {
         <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId, newSession, setNewSession, sessions, setSessions}}>
             <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
                 <div className="flex justify-between flex-1 w-full overflow-auto flex-col lg:flex-row">
-                    <div className="h-2/5 bg-white lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-b-[transparent] lg:w-[308px] lg:border-r">
+                    <div className="h-2/5 bg-white lg:h-full pb-4 border-b border-b-gray-900 border-solid w-full lg:border-b-[transparent] lg:w-[308px]">
                         <Sessions />
                     </div>
                     <div className='h-full w-full'>
-                        {sessionId && <Chat />}
+                        {sessionId ? <Chat /> : <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
                     </div>
                 </div>
             </div>
