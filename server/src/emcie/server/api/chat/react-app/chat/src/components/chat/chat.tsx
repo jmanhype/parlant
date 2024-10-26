@@ -171,6 +171,7 @@ export default function Chat(): ReactElement {
                             rows={1}
                             className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>
                         <Button variant='ghost'
+                            data-testid="submit-button"
                             className="max-w-[60px] rounded-full hover:bg-white"
                             ref={submitButtonRef}
                             disabled={isSubmitDisabled || !message?.trim() || !agentId}

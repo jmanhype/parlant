@@ -101,18 +101,18 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             <div>
                 {!isEditingTitle && 
                 <DropdownMenu>
-                    <DropdownMenuTrigger tabIndex={-1}>
+                    <DropdownMenuTrigger data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
                         <div role='button' className='rounded-full py-2 px-4' onClick={e => e.stopPropagation()}>
                             <img src='/icons/more.svg' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuItem onClick={editTitle} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
-                            <img src="icons/rename.svg" height={16} width={18} className='me-[8px]' alt="" />
+                            <img data-testid="rename" src="icons/rename.svg" height={16} width={18} className='me-[8px]' alt="" />
                             Rename
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={deleteSession} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
-                            <img src="icons/delete.svg" height={16} width={18} className='me-[8px]' alt="" />
+                            <img data-testid="delete" src="icons/delete.svg" height={16} width={18} className='me-[8px]' alt="" />
                             Delete
                         </DropdownMenuItem>
                     </DropdownMenuContent>

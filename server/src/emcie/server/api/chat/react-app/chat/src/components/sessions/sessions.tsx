@@ -8,8 +8,7 @@ export const NEW_SESSION_ID = 'NEW_SESSION';
 const newSessionObj: SessionInterface = {end_user_id: '', title: 'New Conversation', agentId: '', creation_utc: new Date().toLocaleString(), id: NEW_SESSION_ID};
 
 export default function Sessions(): ReactElement {
-    const [sessions, setSessions] = useState<SessionInterface[]>([]);
-    const {sessionId, newSession, setSessionId, setNewSession} = useSession();
+    const {sessionId, newSession, setSessionId, setNewSession, setSessions, sessions} = useSession();
     const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
 
     const createNewSession = () => {
@@ -17,7 +16,10 @@ export default function Sessions(): ReactElement {
         setSessionId(newSessionObj.id);
      };
 
-    useEffect(() => data?.sessions && setSessions(data.sessions.reverse()), [data]);
+    useEffect(() => {
+        if (data?.sessions) setSessions(data.sessions.reverse());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
 
     useEffect(() => {
         const isNewSession = sessionId && !sessions?.some(s => s.id === sessionId);
@@ -34,8 +36,8 @@ export default function Sessions(): ReactElement {
             </div>
             <div data-testid="sessions" className="bg-white flex-1 justify-center w-full overflow-auto">
                 {ErrorTemplate && <ErrorTemplate />}
-                {loading && <div>loading...</div>}
-                {!loading && !error && (newSession ? ([newSession, ...sessions]) :  sessions).map(session => (
+                {loading && !sessions?.length && <div>loading...</div>}
+                {!error && (newSession ? ([newSession, ...sessions]) :  sessions).map(session => (
                     <Session data-testid="session"
                         isSelected={session.id === sessionId}
                         refetch={refetch}
