@@ -58,5 +58,5 @@ def get_terrys_offering() -> ToolResult:
     return ToolResult("Terry offers leaf")
 
 
-def fetch_data() -> ToolResult:
-    return ToolResult("Warm")
+def schedule() -> ToolResult:
+    return ToolResult("Meeting got scheduled!")

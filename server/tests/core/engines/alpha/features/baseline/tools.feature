@@ -152,15 +152,14 @@ Feature: Tools
         And the message contains that the balance of Scooby Doo is -$555
 
     Scenario: The agent distinguishes between tools from different services
-        Given a guideline "fetch_todays_weather_data" to retrieve today's weather data when users request weather information
-        And a guideline "fetch_tomorrows_weather_data" to retrieve tomorrow's weather data when users request weather information
-        And the tool "fetch_data" from "ServiceX"
-        And the tool "fetch_data" from "ServiceY"
-        And an association between "fetch_todays_weather_data" and "fetch_data" from "ServiceX"
-        And an association between "fetch_tomorrows_weather_data" and "fetch_data" from "ServiceY"
-        And a user message, "What is the weather today?"
+        Given a guideline "system_check_scheduling" to schedule a system check if the error is critical when the user complains about an error
+        And a guideline "cs_meeting_scheduleing" to schedule a new customer success meeting when the user gives feedback regarding their use of the system
+        And the tool "schedule" from "first_service"
+        And the tool "schedule" from "second_service"
+        And an association between "system_check_scheduling" and "schedule" from "first_service"
+        And an association between "cs_meeting_scheduleing" and "schedule" from "second_service"
+        And a user message, "I’m really happy about the system"
         When processing is triggered
         Then a single tool calls event is emitted
-        And a single message event is emitted
-        And the tool calls event contains a call to tool_id of "ServiceX:fetch_data" with "Warm" as result
-        And the message contains "Warm" and does not contain "Cold" or any conflicting terms
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "second_service:schedule

@@ -105,20 +105,20 @@ def given_the_tool_from_service(
         )
 
     service_tools: dict[str, dict[str, Any]] = {
-        "ServiceX": {
-            "fetch_data": {
-                "name": "fetch_data",
+        "first_service": {
+            "schedule": {
+                "name": "schedule",
                 "description": "",
                 "module_path": "tests.tool_utilities",
                 "parameters": {},
                 "required": [],
             }
         },
-        "ServiceY": {
-            "fetch_data": {
-                "name": "fetch_data",
+        "second_service": {
+            "schedule": {
+                "name": "schedule",
                 "description": "",
-                "module_path": "tests.second_tool_utilities",
+                "module_path": "tests.tool_utilities",
                 "parameters": {},
                 "required": [],
             }
