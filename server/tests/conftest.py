@@ -94,7 +94,7 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
 
 @fixture
 async def container() -> AsyncIterator[Container]:
-    container = Container(log_undefined_deps=True)
+    container = Container()
 
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
