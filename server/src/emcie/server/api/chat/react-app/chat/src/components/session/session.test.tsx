@@ -7,7 +7,7 @@ import { deleteData } from '@/utils/api';
 import { SessionInterface } from '@/utils/interfaces';
 import userEvent from '@testing-library/user-event';
 
-const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '' };
+const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '', agentId: '', creation_utc: new Date().toLocaleString()};
 
 vi.mock('@/utils/api', () => ({
     deleteData: vi.fn(() => Promise.resolve()),

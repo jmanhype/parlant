@@ -129,7 +129,7 @@ export default function Chat(): ReactElement {
         }
     };
 
-    const isSameDay = (dateA: string, dateB: string): boolean => {
+    const isSameDay = (dateA: string | Date, dateB: string | Date): boolean => {
         if (!dateA) return false;
         return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
     };

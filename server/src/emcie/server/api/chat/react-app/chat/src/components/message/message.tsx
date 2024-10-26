@@ -1,5 +1,5 @@
 import { ReactElement } from 'react';
-import { Check, CheckCheck, Clock } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { EventInterface } from '@/utils/interfaces';
 

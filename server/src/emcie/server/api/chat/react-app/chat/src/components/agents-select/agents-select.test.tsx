@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import AgentsSelect from './agents-select.tsx';
 import '@testing-library/jest-dom/vitest';

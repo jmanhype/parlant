@@ -5,7 +5,7 @@ import Sessions from '../sessions/sessions';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
-    sessionId: string | null;
+    sessionId: string | null | undefined;
     setAgentId: Dispatch<SetStateAction<string | null>>;
     agentId: string | null;
     setNewSession: Dispatch<SetStateAction<SessionInterface | null>>;
@@ -29,7 +29,7 @@ export const SessionProvider = createContext<SessionContext>({
 export const useSession = () => useContext(SessionProvider);
 
 export default function Chatbot(): ReactElement {
-    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string | null | undefined>(null);
     const [sessions, setSessions] = useState<SessionInterface[]>([]);
     const [agentId, setAgentId] = useState<string | null>(null);
     const [newSession, setNewSession] = useState<SessionInterface | null>(null);
