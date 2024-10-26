@@ -23,10 +23,11 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
 
     useEffect(() => {
         if (!isSelected) return;
+        document.title = `Parlant | ${session.title}`;
 
         if (session.id === NEW_SESSION_ID && !session.agentId) setAgentId(null);
         else setAgentId('Mr0uvCuu6g');
-    }, [isSelected, setAgentId, session.id, session.agentId]);
+    }, [isSelected, setAgentId, session.id, session.agentId, session.title]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -38,7 +39,10 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
         }
         return deleteData(`sessions/${session.id}`).then(() => {
             refetch();
-            if (isSelected) setSessionId(null);
+            if (isSelected) {
+                setSessionId(null);
+                document.title = 'Parlant';
+            }
             toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
         }).catch(() => {
             toast.error('Something went wrong');
