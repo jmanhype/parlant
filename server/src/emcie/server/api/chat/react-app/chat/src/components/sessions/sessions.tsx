@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useEffect } from 'react';
 import useFetch from '@/hooks/useFetch';
 import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
@@ -17,15 +17,12 @@ export default function Sessions(): ReactElement {
      };
 
     useEffect(() => {
-        if (data?.sessions) setSessions(data.sessions.reverse());
+        if (data?.sessions) {
+            const reversed = data.sessions.reverse();
+            setSessions(reversed);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
-
-    useEffect(() => {
-        const isNewSession = sessionId && !sessions?.some(s => s.id === sessionId);
-        if (isNewSession) refetch();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId]);
 
     return (
         <div className="flex flex-col items-center h-full">

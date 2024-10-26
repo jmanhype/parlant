@@ -63,6 +63,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
             }
             patchData(`sessions/${session.id}`, {title})
             .then(() => {
+                setIsEditingTitle(false);
                 refetch();
                 toast.success('title changed successfully', {closeButton: true});
             }).catch(() => {

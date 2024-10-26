@@ -4,7 +4,7 @@ import { SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
 
 interface SessionContext {
-    setSessionId: Dispatch<SetStateAction<string | null>>;
+    setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
     sessionId: string | null;
     setAgentId: Dispatch<SetStateAction<string | null>>;
     agentId: string | null;

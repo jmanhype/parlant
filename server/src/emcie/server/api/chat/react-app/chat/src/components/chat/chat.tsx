@@ -46,7 +46,7 @@ export default function Chat(): ReactElement {
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showTyping, setShowTyping] = useState(false);
     
-    const {sessionId, setSessionId, agentId, newSession, setNewSession} = useSession();
+    const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
     const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID);
 
     const resetChat = () => {
@@ -96,10 +96,19 @@ export default function Chat(): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages]);
 
-    const createSession = async (): Promise<SessionInterface | undefined> => {
+    const createSession = async (): Promise<{session: SessionInterface} | undefined> => {
         if (!newSession) return;
         const {end_user_id, title} = newSession;
-        return postData('sessions?allow_greeting=true', {end_user_id, agent_id: agentId, title} as object);
+        return postData('sessions?allow_greeting=true', {end_user_id, agent_id: agentId, title} as object)
+            .then((res: {session: SessionInterface}) => {
+                if (newSession) {
+                    setSessionId(res.session.id);
+                    setNewSession(null);
+                }
+                setSessions(sessions => [res.session, ...sessions]);
+                return res;
+            }
+        );
      };
 
     const postMessage = async (content: string): Promise<void> => {
@@ -108,10 +117,6 @@ export default function Chat(): ReactElement {
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
         postData(`sessions/${eventSession}/events`, { kind: 'message', content }).then(() => {
-            if (newSession) {
-                setSessionId(eventSession);
-                setNewSession(null);
-            }
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         });
