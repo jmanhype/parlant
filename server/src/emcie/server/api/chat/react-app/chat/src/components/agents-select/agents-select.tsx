@@ -22,7 +22,7 @@ export default function AgentsSelect({value}: {value?: string | undefined}): Rea
 
     return (
         <Select value={value} onValueChange={valueChanged}>
-            {sessionId && <SelectTrigger ref={selectTriggerRef} disabled={sessionId !== NEW_SESSION_ID} style={{boxShadow: 'none'}} className={'w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium' + ` ${styles.selectTrigger}`}>
+            {sessionId && <SelectTrigger ref={selectTriggerRef} disabled={sessionId !== NEW_SESSION_ID} className={'box-shadow-none w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium' + ` ${styles.selectTrigger}`}>
                 <div className='flex flex-col'>
                     <SelectValue placeholder="Select an agent" />
                     {!value && <div>Select an agent</div>}

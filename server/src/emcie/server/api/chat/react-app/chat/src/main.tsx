@@ -7,6 +7,6 @@ import { Toaster } from './components/ui/sonner.tsx';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    <Toaster richColors position='bottom-left'/>
+    <Toaster richColors position='bottom-right'/>
   </StrictMode>,
 );

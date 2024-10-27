@@ -5,13 +5,20 @@ import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
-const newSessionObj: SessionInterface = {end_user_id: '', title: 'New Conversation', agentId: '', creation_utc: new Date().toLocaleString(), id: NEW_SESSION_ID};
+const newSessionObj: SessionInterface = {
+    end_user_id: '',
+    title: 'New Conversation',
+    agentId: '',
+    creation_utc: new Date().toLocaleString(),
+    id: NEW_SESSION_ID
+};
 
 export default function Sessions(): ReactElement {
-    const {sessionId, newSession, setSessionId, setNewSession, setSessions, sessions} = useSession();
+    const {sessionId, setSessionId, setNewSession, setSessions, sessions, setAgentId} = useSession();
     const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
 
     const createNewSession = () => {
+        setAgentId(null);
         setNewSession(newSessionObj);
         setSessionId(newSessionObj.id);
      };
@@ -36,7 +43,7 @@ export default function Sessions(): ReactElement {
             <div data-testid="sessions" className="bg-white flex-1 justify-center w-full overflow-auto">
                 {ErrorTemplate && <ErrorTemplate />}
                 {loading && !sessions?.length && <div>loading...</div>}
-                {!error && (newSession ? ([newSession, ...sessions]) :  sessions).map(session => (
+                {!error && sessions.map(session => (
                     <Session data-testid="session"
                         isSelected={session.id === sessionId}
                         refetch={refetch}

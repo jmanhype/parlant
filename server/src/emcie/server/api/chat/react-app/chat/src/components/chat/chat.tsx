@@ -173,16 +173,15 @@ export default function Chat(): ReactElement {
                             value={message}
                             onKeyUp={onKeyUp}
                             onChange={(e) => setMessage(e.target.value)}
-                            style={{boxShadow: 'none'}}
                             rows={1}
-                            className="resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>
+                            className="box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>
                         <Button variant='ghost'
                             data-testid="submit-button"
                             className="max-w-[60px] rounded-full hover:bg-white"
                             ref={submitButtonRef}
                             disabled={isSubmitDisabled || !message?.trim() || !agentId}
                             onClick={() => postMessage(message)}>
-                            <img src="/icons/send.svg" alt="" />
+                            <img src="/icons/send.svg" alt="Send" />
                         </Button>
                     </div>
                     <div className='w-[206px]'></div>

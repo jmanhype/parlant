@@ -67,7 +67,10 @@
   .no-scrollbar {
       -ms-overflow-style: none;
       scrollbar-width: none;
-}
+  }
+  .box-shadow-none {
+    box-shadow: none !important;
+  }
 }
 @layer base {
   * {

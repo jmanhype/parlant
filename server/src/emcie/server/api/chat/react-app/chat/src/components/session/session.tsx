@@ -86,6 +86,11 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
         if (e.key === 'Enter') saveTitleChange(e);
     };
 
+    const sessionActions = [
+        {title: 'rename', onClick: editTitle, imgPath: 'icons/rename.svg'},
+        {title: 'delete', onClick: deleteSession, imgPath: 'icons/delete.svg'},
+    ];
+
     return (
         <div data-testid="session"
             role="button"
@@ -104,7 +109,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                         </small>
                     </div>
                 }
-                {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} style={{boxShadow: 'none'}} className="bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
+                {isEditingTitle && <Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={e => e.stopPropagation()} autoFocus defaultValue={session.title} className="box-shadow-none bg-[#e2e8f0] text-foreground h-fit p-1 border border-solid border-black"/>}
             </div>
             <div>
                 {!isEditingTitle && 
@@ -115,14 +120,12 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={editTitle} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
-                            <img data-testid="rename" src="icons/rename.svg" height={16} width={18} className='me-[8px]' alt="" />
-                            Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={deleteSession} className='gap-0 font-medium text-[14px] font-ubuntu-sans'>
-                            <img data-testid="delete" src="icons/delete.svg" height={16} width={18} className='me-[8px]' alt="" />
-                            Delete
-                        </DropdownMenuItem>
+                        {sessionActions.map(sessionAction => (
+                            <DropdownMenuItem onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
+                                <img data-testid={sessionAction.title} src={sessionAction.imgPath} height={16} width={18} className='me-[8px]' alt="" />
+                                {sessionAction.title}
+                            </DropdownMenuItem>
+                        ))}
                     </DropdownMenuContent>
                 </DropdownMenu>}
                 
