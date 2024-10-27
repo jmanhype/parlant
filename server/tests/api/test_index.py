@@ -654,3 +654,101 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
         content["error"]
         == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} in {agent_name} agent do not exist."
     )
+
+
+async def test_that_evaluation_task_with_update_of_existing_guideline_is_approved(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    existing_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user asks for help",
+        action="provide assistance",
+    )
+
+    update_payload = {
+        "kind": "guideline",
+        "content": {
+            "predicate": "the user asks for help",
+            "action": "provide updated assistance with additional resources",
+        },
+        "action": "update",
+        "updated_id": existing_guideline.id,
+        "coherence_check": True,
+        "connection_proposition": True,
+    }
+
+    response = client.post(
+        f"/agents/{agent_id}/index/evaluations",
+        json={"payloads": [update_payload]},
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    evaluation_id = response.json()["evaluation_id"]
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "completed"
+
+    assert len(content["invoices"]) == 1
+    invoice = content["invoices"][0]
+
+    assert invoice["approved"]
+    assert invoice["data"]["coherence_checks"] == []
+
+
+async def test_that_evaluation_task_with_update_of_existing_guideline_is_unapproved(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    _ = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user greets you",
+        action="respond with 'Hello'",
+    )
+
+    guideline_to_override = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user greets you",
+        action="respond with 'Goodbye'",
+    )
+
+    update_payload = {
+        "kind": "guideline",
+        "content": {
+            "predicate": "the user greets you",
+            "action": "ignore the user",
+        },
+        "action": "update",
+        "updated_id": guideline_to_override.id,
+        "coherence_check": True,
+        "connection_proposition": True,
+    }
+
+    response = client.post(
+        f"/agents/{agent_id}/index/evaluations",
+        json={"payloads": [update_payload]},
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    evaluation_id = response.json()["evaluation_id"]
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "completed"
+
+    assert len(content["invoices"]) == 1
+    invoice = content["invoices"][0]
+
+    assert not invoice["approved"]
+    assert len(invoice["data"]["coherence_checks"]) > 0
