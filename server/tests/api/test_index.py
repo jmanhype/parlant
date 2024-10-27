@@ -613,3 +613,43 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
     assert content["invoices"][2]["data"]
     assert content["invoices"][2]["data"]["coherence_checks"] == []
     assert content["invoices"][2]["data"]["connection_propositions"] is None
+
+
+async def test_that_evaluation_fails_when_updated_id_does_not_exist(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    non_existent_guideline_id = "non-existent-id"
+
+    evaluation_id = (
+        client.post(
+            f"/agents/{agent_id}/index/evaluations",
+            json={
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "action": "update",
+                        "updated_id": non_existent_guideline_id,
+                        "coherence_check": True,
+                        "connection_proposition": True,
+                    }
+                ],
+            },
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "failed"
+    assert (
+        content["error"]
+        == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} do not exist."
+    )

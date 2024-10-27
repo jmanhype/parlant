@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Iterable, Optional, OrderedDict, Sequence
+from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
 from emcie.server.core.agents import Agent, AgentStore
 from emcie.server.core.evaluations import (
@@ -15,7 +15,7 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore, GuidelineId
 from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
 )
@@ -48,25 +48,6 @@ class GuidelineEvaluator:
         self._guideline_store = guideline_store
         self._guideline_connection_proposer = guideline_connection_proposer
         self._coherence_checker = coherence_checker
-
-    async def _get_connection_propopostion_evaluation_sets(
-        self,
-        payloads: Sequence[Payload],
-        existing_guidelines: Sequence[Guideline],
-    ) -> tuple[list[GuidelineContent], list[tuple[GuidelineContent, bool]]]:
-        guidelines_to_evaluate = [p.content for p in payloads if p.connection_proposition]
-
-        guidelines_to_skip = [(p.content, False) for p in payloads if not p.connection_proposition]
-
-        updated_ids = {p.updated_id for p in payloads if p.action == "update"}
-
-        remaining_existing_guidelines = [
-            (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)
-            for g in existing_guidelines
-            if g.id not in updated_ids
-        ]
-
-        return guidelines_to_evaluate, guidelines_to_skip + remaining_existing_guidelines
 
     async def evaluate(
         self,
@@ -154,13 +135,20 @@ class GuidelineEvaluator:
 
         guidelines_to_skip = [(p.content, False) for p in payloads if not p.coherence_check]
 
-        updated_ids = {p.updated_id for p in payloads if p.action == "update"}
+        updated_ids = {cast(GuidelineId, p.updated_id) for p in payloads if p.action == "update"}
 
-        remaining_existing_guidelines = [
-            (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)
-            for g in existing_guidelines
-            if g.id not in updated_ids
-        ]
+        remaining_existing_guidelines = []
+
+        for g in existing_guidelines:
+            if g.id not in updated_ids:
+                remaining_existing_guidelines.append(
+                    (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)
+                )
+            else:
+                updated_ids.remove(g.id)
+
+        if len(updated_ids) > 0:
+            raise EvaluationError(f"Guideline ID(s): {', '.join(updated_ids)} do not exist.")
 
         comparison_guidelines = guidelines_to_skip + remaining_existing_guidelines
 
