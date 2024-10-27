@@ -165,37 +165,42 @@ class GuidelineEvaluator:
             return None
 
         coherence_checks_by_guideline_payload: OrderedDict[str, list[CoherenceCheck]] = OrderedDict(
-            {f"{g.predicate}{g.action}": [] for g in guidelines_to_evaluate}
+            {f"{p.content.predicate}{p.content.action}": [] for p in payloads}
         )
 
-        guideline_existence_map = {f"{g.predicate}{g.action}": b for g, b in comparison_guidelines}
+        guideline_payload_is_skipped_pairs = {
+            f"{p.content.predicate}{p.content.action}": p.coherence_check for p in payloads
+        }
 
         for c in incoherences:
-            coherence_checks_by_guideline_payload[
+            if (
                 f"{c.guideline_a.predicate}{c.guideline_a.action}"
-            ].append(
-                CoherenceCheck(
-                    kind="contradiction_with_another_evaluated_guideline"
-                    if f"{c.guideline_b.predicate}{c.guideline_b.action}"
-                    in coherence_checks_by_guideline_payload
-                    and (
-                        f"{c.guideline_b.predicate}{c.guideline_b.action}"
-                        not in guideline_existence_map
-                        or not guideline_existence_map[
-                            f"{c.guideline_b.predicate}{c.guideline_b.action}"
-                        ]
+                in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.guideline_a.predicate}{c.guideline_a.action}"
+                ]
+            ):
+                coherence_checks_by_guideline_payload[
+                    f"{c.guideline_a.predicate}{c.guideline_a.action}"
+                ].append(
+                    CoherenceCheck(
+                        kind="contradiction_with_another_evaluated_guideline"
+                        if f"{c.guideline_b.predicate}{c.guideline_b.action}"
+                        in coherence_checks_by_guideline_payload
+                        else "contradiction_with_existing_guideline",
+                        first=c.guideline_a,
+                        second=c.guideline_b,
+                        issue=c.actions_contradiction_rationale,
+                        severity=c.actions_contradiction_severity,
                     )
-                    else "contradiction_with_existing_guideline",
-                    first=c.guideline_a,
-                    second=c.guideline_b,
-                    issue=c.actions_contradiction_rationale,
-                    severity=c.actions_contradiction_severity,
                 )
-            )
 
             if (
                 f"{c.guideline_b.predicate}{c.guideline_b.action}"
                 in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.guideline_b.predicate}{c.guideline_b.action}"
+                ]
             ):
                 coherence_checks_by_guideline_payload[
                     f"{c.guideline_b.predicate}{c.guideline_b.action}"
@@ -246,22 +251,25 @@ class GuidelineEvaluator:
         if not connection_propositions:
             return None
 
-        connection_results: OrderedDict[str, list[ConnectionProposition]] = OrderedDict(
-            {f"{g.predicate}{g.action}": [] for g in proposed_guidelines}
+        connection_results_by_guideline_payload: OrderedDict[str, list[ConnectionProposition]] = (
+            OrderedDict({f"{p.content.predicate}{p.content.action}": [] for p in payloads})
         )
-
-        guideline_existence_map = {f"{g.predicate}{g.action}": b for g, b in comparison_guidelines}
+        guideline_payload_is_skipped_pairs = {
+            f"{p.content.predicate}{p.content.action}": p.connection_proposition for p in payloads
+        }
 
         for c in connection_propositions:
-            if f"{c.source.predicate}{c.source.action}" in connection_results:
-                connection_results[f"{c.source.predicate}{c.source.action}"].append(
+            if (
+                f"{c.source.predicate}{c.source.action}" in connection_results_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[f"{c.source.predicate}{c.source.action}"]
+            ):
+                connection_results_by_guideline_payload[
+                    f"{c.source.predicate}{c.source.action}"
+                ].append(
                     ConnectionProposition(
                         check_kind="connection_with_another_evaluated_guideline"
-                        if f"{c.target.predicate}{c.target.action}" in connection_results
-                        and (
-                            f"{c.target.predicate}{c.target.action}" not in guideline_existence_map
-                            or not guideline_existence_map[f"{c.target.predicate}{c.target.action}"]
-                        )
+                        if f"{c.target.predicate}{c.target.action}"
+                        in connection_results_by_guideline_payload
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
@@ -269,15 +277,17 @@ class GuidelineEvaluator:
                     )
                 )
 
-            if f"{c.target.predicate}{c.target.action}" in connection_results:
-                connection_results[f"{c.target.predicate}{c.target.action}"].append(
+            if (
+                f"{c.target.predicate}{c.target.action}" in connection_results_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[f"{c.target.predicate}{c.target.action}"]
+            ):
+                connection_results_by_guideline_payload[
+                    f"{c.target.predicate}{c.target.action}"
+                ].append(
                     ConnectionProposition(
                         check_kind="connection_with_another_evaluated_guideline"
-                        if f"{c.source.predicate}{c.source.action}" in connection_results
-                        and (
-                            f"{c.source.predicate}{c.source.action}" not in guideline_existence_map
-                            or not guideline_existence_map[f"{c.source.predicate}{c.source.action}"]
-                        )
+                        if f"{c.source.predicate}{c.source.action}"
+                        in connection_results_by_guideline_payload
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
@@ -285,7 +295,7 @@ class GuidelineEvaluator:
                     )
                 )
 
-        return connection_results.values()
+        return connection_results_by_guideline_payload.values()
 
 
 class BehavioralChangeEvaluator:

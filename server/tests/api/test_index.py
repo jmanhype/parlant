@@ -752,3 +752,124 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
 
     assert not invoice["approved"]
     assert len(invoice["data"]["coherence_checks"]) > 0
+
+
+async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_payload_with_the_coherence_check_disabled(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    payloads = [
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "the user greets you",
+                "action": "greet them back with 'Hello'",
+            },
+            "action": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "the user greeting you",
+                "action": "greet them back with 'Good bye'",
+            },
+            "action": "add",
+            "coherence_check": False,
+            "connection_proposition": True,
+        },
+    ]
+
+    response = client.post(
+        f"/agents/{agent_id}/index/evaluations",
+        json={"payloads": payloads},
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    evaluation_id = response.json()["evaluation_id"]
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "completed"
+
+    invoices = content["invoices"]
+    assert len(invoices) == 2
+
+    assert any(
+        i["payload"]["content"]["predicate"] == "the user greets you"
+        and i["payload"]["content"]["action"] == "greet them back with 'Hello'"
+        and not i["approved"]
+        for i in invoices
+    )
+
+    assert any(
+        i["payload"]["content"]["predicate"] == "the user greeting you"
+        and i["payload"]["content"]["action"] == "greet them back with 'Good bye'"
+        and i["approved"]
+        for i in invoices
+    )
+
+
+async def test_that_evaluation_task_with_connected_guidelines_only_includes_details_for_enabled_connection_proposition(
+    client: TestClient,
+    agent_id: AgentId,
+) -> None:
+    payloads = [
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "the user asks about the weather",
+                "action": "provide the current weather update",
+            },
+            "action": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "providing the weather update",
+                "action": "mention the best time to go for a walk",
+            },
+            "action": "add",
+            "coherence_check": True,
+            "connection_proposition": False,
+        },
+    ]
+
+    evaluation_id = (
+        client.post(
+            f"/agents/{agent_id}/index/evaluations",
+            json={"payloads": payloads},
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+
+    assert content["status"] == "completed"
+
+    invoices = content["invoices"]
+    assert len(invoices) == 2
+
+    assert any(
+        i["payload"]["content"]["predicate"] == "the user asks about the weather"
+        and i["payload"]["content"]["action"] == "provide the current weather update"
+        and i["approved"]
+        and len(i["data"]["connection_propositions"]) > 0
+        for i in invoices
+    )
+
+    assert any(
+        i["payload"]["content"]["predicate"] == "providing the weather update"
+        and i["payload"]["content"]["action"] == "mention the best time to go for a walk"
+        and i["approved"]
+        and i["data"]["connection_propositions"] is None
+        for i in invoices
+    )
