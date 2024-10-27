@@ -26,12 +26,15 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
             "payloads": [
                 {
                     "kind": "guideline",
-                    "predicate": "the user greets you",
-                    "action": "greet them back with 'Hello'",
+                    "content": {
+                        "predicate": "the user greets you",
+                        "action": "greet them back with 'Hello'",
+                    },
+                    "action": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 }
             ],
-            "coherence_check": True,
-            "connection_proposition": True,
         },
     )
 
@@ -65,17 +68,25 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "the user greeting you",
-                        "action": "greet them back with 'Hola'",
+                        "content": {
+                            "predicate": "the user greeting you",
+                            "action": "greet them back with 'Hola'",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
-                ],
-                "coherence_check": True,
-                "connection_proposition": True,
+                ]
             },
         )
         .raise_for_status()
@@ -100,12 +111,15 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     }
                 ],
-                "coherence_check": True,
-                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -136,17 +150,25 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "the user greeting you",
-                        "action": "greet them back with 'Good bye'",
+                        "content": {
+                            "predicate": "the user greeting you",
+                            "action": "greet them back with 'Good bye'",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
                 ],
-                "coherence_check": True,
-                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -187,12 +209,15 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "providing the weather update",
-                        "action": "mention the best time to go for a walk",
+                        "content": {
+                            "predicate": "providing the weather update",
+                            "action": "mention the best time to go for a walk",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     }
                 ],
-                "coherence_check": True,
-                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -233,17 +258,25 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user asks about nearby restaurants",
-                        "action": "provide a list of popular restaurants",
+                        "content": {
+                            "predicate": "the user asks about nearby restaurants",
+                            "action": "provide a list of popular restaurants",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "listing restaurants",
-                        "action": "highlight the one with the best reviews",
+                        "content": {
+                            "predicate": "listing restaurants",
+                            "action": "highlight the one with the best reviews",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
                 ],
-                "coherence_check": True,
-                "connection_proposition": True,
             },
         )
         .raise_for_status()
@@ -282,8 +315,13 @@ async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloa
 ) -> None:
     duplicate_payload = {
         "kind": "guideline",
-        "predicate": "the user greets you",
-        "action": "greet them back with 'Hello'",
+        "content": {
+            "predicate": "the user greets you",
+            "action": "greet them back with 'Hello'",
+        },
+        "action": "add",
+        "coherence_check": True,
+        "connection_proposition": True,
     }
 
     response = client.post(
@@ -293,8 +331,6 @@ async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloa
                 duplicate_payload,
                 duplicate_payload,
             ],
-            "coherence_check": True,
-            "connection_proposition": True,
         },
     )
 
@@ -320,8 +356,13 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
 
     duplicate_payload = {
         "kind": "guideline",
-        "predicate": "the user greets you",
-        "action": "greet them back with 'Hello'",
+        "content": {
+            "predicate": "the user greets you",
+            "action": "greet them back with 'Hello'",
+        },
+        "action": "add",
+        "coherence_check": True,
+        "connection_proposition": True,
     }
 
     response = client.post(
@@ -330,8 +371,6 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
             "payloads": [
                 duplicate_payload,
             ],
-            "coherence_check": True,
-            "connection_proposition": True,
         },
     )
 
@@ -365,17 +404,25 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
         "payloads": [
             {
                 "kind": "guideline",
-                "predicate": "the user greets you",
-                "action": "greet them back with 'Hello'",
+                "content": {
+                    "predicate": "the user greets you",
+                    "action": "greet them back with 'Hello'",
+                },
+                "action": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
             {
                 "kind": "guideline",
-                "predicate": "the user asks about the weather",
-                "action": "provide a weather update",
+                "content": {
+                    "predicate": "the user asks about the weather",
+                    "action": "provide a weather update",
+                },
+                "action": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
         ],
-        "coherence_check": True,
-        "connection_proposition": True,
     }
 
     first_evaluation_id = (
@@ -411,16 +458,25 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user greets you",
-                        "action": "ignore the user",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "ignore the user",
+                        },
+                        "action": "add",
+                        "coherence_check": False,
+                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
+                        "content": {
+                            "predicate": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "action": "add",
+                        "coherence_check": False,
+                        "connection_proposition": True,
                     },
                 ],
-                "coherence_check": False,
             },
         )
         .raise_for_status()
@@ -447,17 +503,26 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
         client.post(
             f"/agents/{agent_id}/index/evaluations",
             json={
-                "connection_proposition": False,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user asks for help",
-                        "action": "provide assistance",
+                        "content": {
+                            "predicate": "the user asks for help",
+                            "action": "provide assistance",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "provide assistance",
-                        "action": "offer support resources",
+                        "content": {
+                            "predicate": "provide assistance",
+                            "action": "offer support resources",
+                        },
+                        "action": "add",
+                        "coherence_check": True,
+                        "connection_proposition": False,
                     },
                 ],
             },
@@ -489,23 +554,36 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
         client.post(
             f"/agents/{agent_id}/index/evaluations",
             json={
-                "coherence_check": False,
-                "connection_proposition": False,
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": "the user says 'goodbye'",
-                        "action": "say 'farewell'",
+                        "content": {
+                            "predicate": "the user says 'goodbye'",
+                            "action": "say 'farewell'",
+                        },
+                        "action": "add",
+                        "coherence_check": False,
+                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "the user says 'goodbye'",
-                        "action": "ignore the user",
+                        "content": {
+                            "predicate": "the user says 'goodbye'",
+                            "action": "ignore the user",
+                        },
+                        "action": "add",
+                        "coherence_check": False,
+                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "predicate": "ignoring the user",
-                        "action": "say that your favorite pizza topping is pineapple.",
+                        "content": {
+                            "predicate": "ignoring the user",
+                            "action": "say that your favorite pizza topping is pineapple.",
+                        },
+                        "action": "add",
+                        "coherence_check": False,
+                        "connection_proposition": False,
                     },
                 ],
             },
