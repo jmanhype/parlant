@@ -40,8 +40,13 @@ async def test_that_a_guideline_can_be_created(
             {
                 "payload": {
                     "kind": "guideline",
-                    "predicate": "the user greets you",
-                    "action": "greet them back with 'Hello'",
+                    "content": {
+                        "predicate": "the user greets you",
+                        "action": "greet them back with 'Hello'",
+                    },
+                    "action": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
                 "checksum": "checksum_value",
                 "approved": True,
@@ -92,8 +97,13 @@ async def test_that_an_unapproved_invoice_is_rejected(
             {
                 "payload": {
                     "kind": "guideline",
-                    "predicate": "the user says goodbye",
-                    "action": "say 'Goodbye' back",
+                    "content": {
+                        "predicate": "the user says goodbye",
+                        "action": "say 'Goodbye' back",
+                    },
+                    "action": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
                 "checksum": "checksum_value",
                 "approved": False,
@@ -120,8 +130,13 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         {
             "payload": {
                 "kind": "guideline",
-                "predicate": "the user asks about nearby restaurants",
-                "action": "provide a list of restaurants",
+                "content": {
+                    "predicate": "the user asks about nearby restaurants",
+                    "action": "provide a list of restaurants",
+                },
+                "action": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
             "checksum": "checksum1",
             "approved": True,
@@ -147,8 +162,13 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         {
             "payload": {
                 "kind": "guideline",
-                "predicate": "highlight the best-reviewed restaurant",
-                "action": "recommend the top choice",
+                "content": {
+                    "predicate": "highlight the best-reviewed restaurant",
+                    "action": "recommend the top choice",
+                },
+                "action": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
             "checksum": "checksum2",
             "approved": True,
@@ -210,8 +230,13 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
     invoice = {
         "payload": {
             "kind": "guideline",
-            "predicate": "provide the current weather update",
-            "action": "include temperature and humidity",
+            "content": {
+                "predicate": "provide the current weather update",
+                "action": "include temperature and humidity",
+            },
+            "action": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
         },
         "checksum": "checksum_new",
         "approved": True,
