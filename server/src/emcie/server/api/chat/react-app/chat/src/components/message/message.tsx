@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { EventInterface } from '@/utils/interfaces';
 import { getTimeStr } from '@/utils/date';
+import styles from './message.module.scss';
 
 interface Props {
     event: EventInterface
@@ -10,7 +11,7 @@ interface Props {
 
 const statusIcon = {
     // pending: <Clock data-testid="pending" height={15} />,
-    pending: <video src='/mp4/loading.mp4' data-testid="pending" height={11} width={11} className='ms-[4px]'/>,
+    pending: <video src='/mp4/loading.mp4' autoPlay loop data-testid="pending" height={12.2} width={12.2} className={'clip- ms-[4px] rounded-full ' + styles.pendingVideo}/>,
     error: <img src='/icons/error.svg' data-testid="error" height={11} width={11} className='ms-[4px]'/>,
     accepted: <Check data-testid="accepted" height={15} />,
     // acknowledged: <CheckCheck data-testid="acknowledged" height={15} />,
@@ -19,7 +20,6 @@ const statusIcon = {
     processing: <img src='/icons/green-v.svg' data-testid="processing" height={11} width={11} className='ms-[4px]'/>,
     typing: <img src='/icons/green-v.svg' data-testid="typing" height={11} width={11} className='ms-[4px]'/>,
     ready: <img src='/icons/green-v.svg' data-testid="ready" height={11} width={11} className='ms-[4px]'/>,
-    // ready: <video src='/mp4/loading.mp4' autoPlay loop data-testid="pending" height={11} width={11} className='ms-[4px]'/>,
 };
 
 export default function Message({event}: Props): ReactElement {
