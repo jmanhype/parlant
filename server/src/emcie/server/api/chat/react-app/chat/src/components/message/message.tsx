@@ -2,6 +2,7 @@ import { ReactElement } from 'react';
 import { Check } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { EventInterface } from '@/utils/interfaces';
+import { getTimeStr } from '@/utils/date';
 
 interface Props {
     event: EventInterface
@@ -22,38 +23,32 @@ const statusIcon = {
     // ready: <CheckCheck data-testid="ready" className="text-green-300" height={15} />,
 };
 
-
-const formatDateTime = (targetDate: Date | string): string => {
-    const date = new Date(targetDate);
-
-    return date.toLocaleTimeString('en-US', {timeStyle: 'short', hour12: false});
-};
-
 export default function Message({event}: Props): ReactElement {
     const isClient = event.source === 'client';
     const serverStatus = event.serverStatus;
 
     return (
         <div className={(isClient ? 'self-end' : 'self-start') + ' flex my-4 mx-0 mb-1 gap-[14px]'}>
-            <div className='w-[206px]'></div>
-            <div className='flex-1 flex'>
+            <div className='w-[206px] hidden lg:block'></div>
+            <div className='flex-1 flex max-w-[1200px] justify-end items-end'>
                 {!isClient &&
                     <div className='flex items-end me-[14px]'>
-                        <img src="parlant-bubble.svg"
-                            alt=""/>
+                        <img src="parlant-bubble.svg" alt="Parlant"/>
                     </div>
                 }
                 <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + ' rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
                     <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[13px]">
                         <Markdown>{event?.data?.message}</Markdown>
                     </div>
-                    <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[14px] font-inter items-center whitespace-nowrap'>
-                        <div>{formatDateTime(event.creation_utc)}</div>
-                        {isClient && serverStatus && <div className="w-6">{statusIcon[serverStatus]}</div>}
+                    <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[14px] font-inter self-end items-end whitespace-nowrap'>
+                        <div className='flex items-center'>
+                            <div>{getTimeStr(event.creation_utc)}</div>
+                            {isClient && serverStatus && <div className="w-6">{statusIcon[serverStatus]}</div>}
+                        </div>
                     </div>
                 </div>
             </div>
-            <div className='w-[206px]'></div>
+            <div className='w-[206px] hidden lg:block'></div>
         </div>
     );
 }

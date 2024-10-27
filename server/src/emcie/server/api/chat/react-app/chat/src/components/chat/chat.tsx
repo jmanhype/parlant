@@ -9,6 +9,7 @@ import { useSession } from '../chatbot/chatbot';
 import { EventInterface, SessionInterface } from '@/utils/interfaces';
 import AgentsSelect from '../agents-select/agents-select';
 import { NEW_SESSION_ID } from '../sessions/sessions';
+import { getDateStr } from '@/utils/date';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -27,7 +28,7 @@ const DateHeader = ({date, isFirst}: {date: string | Date, isFirst: boolean}): R
         <div className={'text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0' + (isFirst ? ' pt-0 !mt-0' : '')}>
             <hr className='h-full -translate-y-[-50%] flex-1'/>
             <div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>
-                {new Date(date).toDateString()}
+                {getDateStr(date)}
             </div>
             <hr className='h-full -translate-y-[-50%] flex-1' />
         </div>
@@ -141,7 +142,7 @@ export default function Chat(): ReactElement {
                     <AgentsSelect value={agentId as (string | undefined)} />
                 </div>
             </div>
-            <div className="flex flex-col items-center h-full max-w-[1200px] mx-auto w-full flex-1 overflow-auto">
+            <div className="flex flex-col items-center h-full mx-auto w-full flex-1 overflow-auto">
                 <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                     {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
                         <React.Fragment key={i}>
@@ -155,7 +156,7 @@ export default function Chat(): ReactElement {
                     {showTyping && 
                     <div className='flex mb-1 gap-[14px]'>
                         <div className='w-[206px]'></div>
-                        <div className='flex items-center'>
+                        <div className='flex items-center max-w-[1200px]'>
                             <img src="parlant-bubble-muted.svg" alt="" height={36} width={36} className='me-[8px]'/>
                             <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>

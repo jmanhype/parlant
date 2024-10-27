@@ -9,6 +9,7 @@ import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { NEW_SESSION_ID } from '../sessions/sessions';
+import { getDateStr, getTimeStr } from '@/utils/date';
 
 interface Props {
     session: SessionInterface;
@@ -96,8 +97,10 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                 {!isEditingTitle &&
                     <div className="overflow-hidden overflow-ellipsis">
                         {session.title}
-                        <small className='block text-[12px] text-[#A9A9A9] font-light mt-[4px]'>
-                            {new Date(session.creation_utc).toLocaleString()}
+                        <small className='text-[12px] text-[#A9A9A9] font-light mt-[4px] flex gap-[6px]'>
+                            {getDateStr(session.creation_utc)}
+                            <img src="/icons/dot-saparetor.svg" alt="" />
+                            {getTimeStr(session.creation_utc)}
                         </small>
                     </div>
                 }
