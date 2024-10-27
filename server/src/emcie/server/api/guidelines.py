@@ -131,6 +131,7 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
         action=dto.payload.action,
         coherence_check=dto.payload.coherence_check,
         connection_proposition=dto.payload.connection_proposition,
+        updated_id=dto.payload.updated_id,
     )
 
     kind = PayloadKind.GUIDELINE

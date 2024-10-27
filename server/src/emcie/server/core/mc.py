@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Any, Iterable, Mapping, Optional, TypeAlias
+from typing import Any, Iterable, Mapping, Optional, TypeAlias, cast
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
@@ -180,7 +180,7 @@ class MC:
             event_emitter=event_emitter,
         )
 
-    async def create_guidelines(
+    async def upsert_guidelines(
         self,
         guideline_set: str,
         invoices: Sequence[Invoice],
@@ -254,5 +254,33 @@ class MC:
                             c,
                         )
                     connections.add(c)
+
+        for i in invoices:
+            if i.payload.action == "update":
+                guideline_id = cast(GuidelineId, i.payload.updated_id)
+
+                connections_to_delete = list(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        source=guideline_id,
+                    )
+                )
+                connections_to_delete.extend(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        target=guideline_id,
+                    )
+                )
+                await asyncio.gather(
+                    *(
+                        self._guideline_connection_store.delete_connection(c.id)
+                        for c in connections_to_delete
+                    )
+                )
+
+                await self._guideline_store.delete_guideline(
+                    guideline_set=guideline_set,
+                    guideline_id=guideline_id,
+                )
 
         return content_guidelines.values()

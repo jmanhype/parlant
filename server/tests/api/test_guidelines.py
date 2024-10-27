@@ -709,3 +709,49 @@ async def test_that_guideline_deletion_removes_tool_associations(
 
     associations_after = await association_store.list_associations()
     assert not any(assoc.guideline_id == guideline.id for assoc in associations_after)
+
+
+async def test_that_an_existing_guideline_can_be_updated(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    existing_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user says hello",
+        action="reply with 'Hi!'",
+    )
+
+    request_data = {
+        "invoices": [
+            {
+                "payload": {
+                    "kind": "guideline",
+                    "content": {
+                        "predicate": "the user says hello",
+                        "action": "reply with 'Howdy!'",
+                    },
+                    "action": "update",
+                    "coherence_check": True,
+                    "connection_proposition": True,
+                    "updated_id": existing_guideline.id,
+                },
+                "checksum": "checksum_new",
+                "approved": True,
+                "data": {
+                    "coherence_checks": [],
+                    "connection_propositions": None,
+                },
+                "error": None,
+            }
+        ]
+    }
+
+    response = client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    items = response.json()["items"]
+
+    assert len(items) == 1
+    assert items[0]["guideline"]["predicate"] == "the user says hello"
+    assert items[0]["guideline"]["action"] == "reply with 'Howdy!'"
