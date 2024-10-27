@@ -1,4 +1,4 @@
-import { ReactElement, useEffect } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import useFetch from '@/hooks/useFetch';
 import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
@@ -14,6 +14,7 @@ const newSessionObj: SessionInterface = {
 };
 
 export default function Sessions(): ReactElement {
+    const [editingTitle, setEditingTitle] = useState<string | null>(null);
     const {sessionId, setSessionId, setNewSession, setSessions, sessions, setAgentId} = useSession();
     const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
 
@@ -45,6 +46,8 @@ export default function Sessions(): ReactElement {
                 {loading && !sessions?.length && <div>loading...</div>}
                 {!error && sessions.map(session => (
                     <Session data-testid="session"
+                        editingTitle={editingTitle}
+                        setEditingTitle={setEditingTitle}
                         isSelected={session.id === sessionId}
                         refetch={refetch}
                         session={session}

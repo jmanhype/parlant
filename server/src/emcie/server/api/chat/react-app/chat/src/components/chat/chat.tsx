@@ -10,6 +10,7 @@ import { EventInterface, SessionInterface } from '@/utils/interfaces';
 import AgentsSelect from '../agents-select/agents-select';
 import { NEW_SESSION_ID } from '../sessions/sessions';
 import { getDateStr } from '@/utils/date';
+import { Spacer } from '../ui/custom/spacer';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -138,7 +139,7 @@ export default function Chat(): ReactElement {
     return (
         <div className='h-full w-full flex flex-col'>
             <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'>
-                <div className='lg:w-[308px] flex items-center justify-center self-start h-full'>
+                <div className='w-[308px] flex items-center justify-center self-start h-full'>
                     <AgentsSelect value={agentId as (string | undefined)} />
                 </div>
             </div>
@@ -155,16 +156,16 @@ export default function Chat(): ReactElement {
                     ))}
                     {showTyping && 
                     <div className='flex mb-1 justify-between mt-[44.33px]'>
-                        <div className='w-[206px]'></div>
+                        <Spacer/>
                         <div className='flex items-center max-w-[1200px] flex-1'>
                             <img src="parlant-bubble-muted.svg" alt="" height={36} width={36} className='me-[8px]'/>
                             <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>
-                        <div className='w-[206px]'></div>
+                        <Spacer/>
                     </div>}
                 </div>
                 <div className='w-full flex justify-between'>
-                    <div className='w-[206px]'></div>
+                    <Spacer/>
                     <div className="group border flex-1 border-muted border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-main">
                         <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
                         <Textarea role="textbox"
@@ -184,7 +185,7 @@ export default function Chat(): ReactElement {
                             <img src="/icons/send.svg" alt="Send" />
                         </Button>
                     </div>
-                    <div className='w-[206px]'></div>
+                    <Spacer/>
                 </div>
             </div>
         </div>

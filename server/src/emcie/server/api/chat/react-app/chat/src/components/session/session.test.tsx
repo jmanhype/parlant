@@ -7,7 +7,7 @@ import { deleteData } from '@/utils/api';
 import { SessionInterface } from '@/utils/interfaces';
 import userEvent from '@testing-library/user-event';
 
-const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '', agentId: '', creation_utc: new Date().toLocaleString()};
+const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '', agent_id: '', creation_utc: new Date().toLocaleString()};
 
 vi.mock('@/utils/api', () => ({
     deleteData: vi.fn(() => Promise.resolve()),
@@ -28,7 +28,7 @@ describe(Session, () => {
     let container: HTMLElement;
     
     beforeEach(() => {
-        const utils = render(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={true}/>);
+        const utils = render(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={true}/>);
         getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
         rerender = utils.rerender;
         container = utils.container;
@@ -60,7 +60,7 @@ describe(Session, () => {
     });
 
     it('inactive session should not be closed if deleted', async () => {
-        rerender(<Session session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
+        rerender(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const moreBtn = getByTestId('menu-button');
         await userEvent.click(moreBtn);
         const deleteBtn = getByTestId('delete');
@@ -68,24 +68,31 @@ describe(Session, () => {
         expect(setSessionFn).not.toBeCalled();
     });
 
-    it('text field opened when "edit" button is clicked', async () => {
-        const moreBtn = getByTestId('menu-button');
-        await userEvent.click(moreBtn);
-        const editBtn = getByTestId('rename');
-        fireEvent.click(editBtn);
+    it('text field opened when editing the current session', async () => {
+        rerender(<Session editingTitle={session.id} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const textfields = container.querySelector('input');
         expect(textfields).toBeInTheDocument();
     });
 
     it('text field closed when "cancel edit" button is clicked', async () => {
-        const moreBtn = getByTestId('menu-button');
-        await userEvent.click(moreBtn);
-        const editBtn = getByTestId('rename');
-        fireEvent.click(editBtn);
-        const textfields = container.querySelector('input');
-        expect(textfields).toBeInTheDocument();
+        const setEditingTitleFn = vi.fn();
+        rerender(<Session editingTitle={session.id} setEditingTitle={setEditingTitleFn} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const cancelBtn = getByTestId('cancel');
         fireEvent.click(cancelBtn);
-        expect(textfields).not.toBeInTheDocument();
+        expect(setEditingTitleFn).toBeCalledWith(null);
+    });
+
+    it('session should be enabled when not editing another session', async () => {
+        rerender(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
+        const currSession = getByTestId('session');
+        fireEvent.click(currSession);
+        expect(setSessionFn).toBeCalledWith(session.id);
+    });
+
+    it('session should be disabled when editing another session', async () => {
+        rerender(<Session editingTitle='session2' setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
+        const currSession = getByTestId('session');
+        fireEvent.click(currSession);
+        expect(setSessionFn).not.toBeCalled();
     });
 });

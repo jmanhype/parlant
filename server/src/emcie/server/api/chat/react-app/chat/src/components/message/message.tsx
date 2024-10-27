@@ -4,19 +4,17 @@ import Markdown from 'react-markdown';
 import { EventInterface } from '@/utils/interfaces';
 import { getTimeStr } from '@/utils/date';
 import styles from './message.module.scss';
+import { Spacer } from '../ui/custom/spacer';
 
 interface Props {
     event: EventInterface
 }
 
 const statusIcon = {
-    // pending: <Clock data-testid="pending" height={15} />,
     pending: <video src='/mp4/loading.mp4' autoPlay loop data-testid="pending" height={12.2} width={12.2} className={'clip- ms-[4px] rounded-full ' + styles.pendingVideo}/>,
     error: <img src='/icons/error.svg' data-testid="error" height={11} width={11} className='ms-[4px]'/>,
     accepted: <Check data-testid="accepted" height={15} />,
-    // acknowledged: <CheckCheck data-testid="acknowledged" height={15} />,
     acknowledged: <img src='/icons/v.svg' data-testid="acknowledged" height={11} width={11} className='ms-[4px]'/>,
-    // processing: <CheckCheck data-testid="processing" className="text-green-300" height={15} />,
     processing: <img src='/icons/green-v.svg' data-testid="processing" height={11} width={11} className='ms-[4px]'/>,
     typing: <img src='/icons/green-v.svg' data-testid="typing" height={11} width={11} className='ms-[4px]'/>,
     ready: <img src='/icons/green-v.svg' data-testid="ready" height={11} width={11} className='ms-[4px]'/>,
@@ -28,7 +26,7 @@ export default function Message({event}: Props): ReactElement {
 
     return (
         <div className='flex my-4 mx-0 mb-1 w-full justify-between'>
-            <div className='w-[206px] hidden lg:block'></div>
+            <Spacer/>
             <div className={(isClient ? 'justify-end' : 'justify-start') + ' flex-1 flex max-w-[1200px] items-end'}>
                 {!isClient &&
                     <div className='flex items-end me-[14px]'>
@@ -47,7 +45,7 @@ export default function Message({event}: Props): ReactElement {
                     </div>
                 </div>
             </div>
-            <div className='w-[206px] hidden lg:block'></div>
+            <Spacer/>
         </div>
     );
 }
