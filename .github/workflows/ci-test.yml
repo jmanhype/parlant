@@ -48,11 +48,9 @@ jobs:
     - name: Install packages
       run: python scripts/install_packages.py
 
-    - name: Test
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    - name: Determine test plan
+      id: test_plan
       run: |
-        cd server
         if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "develop" ]]; then
           PLAN="initial"
         elif [[ "${{ github.event_name }}" == "push" && "${{ github.base_ref }}" == "develop" ]]; then
@@ -65,10 +63,40 @@ jobs:
           echo "how did we get here?"
           PLAN="disabled"
         fi
+        echo plan=$PLAN >> $GITHUB_OUTPUT
+        echo "Using plan '$PLAN' for ${{ github.event_name }} to ${{ github.base_ref }}"
+
+    - name: Test server
+      if: always()
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        cd server
         mkdir logs
-        poetry run pytest -v --plan=$PLAN --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log ; EXIT1=${PIPESTATUS[0]}
-        echo $EXIT1
-        exit $EXIT1
+        poetry run pytest -v \
+          --plan=${{ steps.test_plan.outputs.plan }} \
+          --tap-combined \
+          --tap-outdir=logs \
+          --capture=tee-sys \
+          --junit-xml=logs/testresults.xml \
+          | tee logs/testresults.log
+        exit ${PIPESTATUS[0]}
+    
+    - name: Test sdk
+      if: always()
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        cd sdk
+        mkdir logs
+        poetry run pytest -v \
+          --plan=${{ steps.test_plan.outputs.plan }} \
+          --tap-combined \
+          --tap-outdir=logs \
+          --capture=tee-sys \
+          --junit-xml=logs/testresults.xml \
+          | tee logs/testresults.log
+        exit ${PIPESTATUS[0]}
     
     - name: test log artifacts
       if: always()
@@ -79,4 +107,7 @@ jobs:
           server/logs/testresults.tap
           server/logs/testresults.log
           server/logs/testresults.xml
+          sdk/logs/testresults.tap
+          sdk/logs/testresults.log
+          sdk/logs/testresults.xml
           
