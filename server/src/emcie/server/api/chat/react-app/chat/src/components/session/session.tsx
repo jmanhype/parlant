@@ -26,9 +26,9 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
         if (!isSelected) return;
         document.title = `Parlant | ${session.title}`;
 
-        if (session.id === NEW_SESSION_ID && !session.agentId) setAgentId(null);
-        else setAgentId('Mr0uvCuu6g');
-    }, [isSelected, setAgentId, session.id, session.agentId, session.title]);
+        if (session.id === NEW_SESSION_ID && !session.agent_id) setAgentId(null);
+        else setAgentId(session.agent_id);
+    }, [isSelected, setAgentId, session.id, session.agent_id, session.title]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -121,7 +121,7 @@ export default function Session({session, isSelected, refetch}: Props): ReactEle
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         {sessionActions.map(sessionAction => (
-                            <DropdownMenuItem onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
+                            <DropdownMenuItem key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
                                 <img data-testid={sessionAction.title} src={sessionAction.imgPath} height={16} width={18} className='me-[8px]' alt="" />
                                 {sessionAction.title}
                             </DropdownMenuItem>

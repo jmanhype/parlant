@@ -8,7 +8,7 @@ export const NEW_SESSION_ID = 'NEW_SESSION';
 const newSessionObj: SessionInterface = {
     end_user_id: '',
     title: 'New Conversation',
-    agentId: '',
+    agent_id: '',
     creation_utc: new Date().toLocaleString(),
     id: NEW_SESSION_ID
 };

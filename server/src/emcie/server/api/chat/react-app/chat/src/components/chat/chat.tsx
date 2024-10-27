@@ -154,16 +154,16 @@ export default function Chat(): ReactElement {
                         </React.Fragment>
                     ))}
                     {showTyping && 
-                    <div className='flex mb-1 gap-[14px]'>
+                    <div className='flex mb-1 justify-between mt-[44.33px]'>
                         <div className='w-[206px]'></div>
-                        <div className='flex items-center max-w-[1200px]'>
+                        <div className='flex items-center max-w-[1200px] flex-1'>
                             <img src="parlant-bubble-muted.svg" alt="" height={36} width={36} className='me-[8px]'/>
                             <p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>Typing...</p>
                         </div>
                         <div className='w-[206px]'></div>
                     </div>}
                 </div>
-                <div className='w-full flex'>
+                <div className='w-full flex justify-between'>
                     <div className='w-[206px]'></div>
                     <div className="group border flex-1 border-muted border-solid rounded-full flex flex-row justify-center items-center bg-white p-[0.9rem] ps-[24px] pe-0 h-[48.67px] max-w-[1200px] relative mb-[26px] hover:bg-main">
                         <img src="/icons/edit.svg" alt="" className="me-[8px] h-[14px] w-[14px]"/>
@@ -171,7 +171,7 @@ export default function Chat(): ReactElement {
                             ref={textareaRef}
                             placeholder="Message..."
                             value={message}
-                            onKeyUp={onKeyUp}
+                            onKeyDown={onKeyUp}
                             onChange={(e) => setMessage(e.target.value)}
                             rows={1}
                             className="box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>

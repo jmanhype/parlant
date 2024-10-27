@@ -19,7 +19,7 @@ export default function AgentsSelect({value}: {value?: string | undefined}): Rea
     const valueChanged = (val: string) => {
         setAgentId(val);
     };
-
+    
     return (
         <Select value={value} onValueChange={valueChanged}>
             {sessionId && <SelectTrigger ref={selectTriggerRef} disabled={sessionId !== NEW_SESSION_ID} className={'box-shadow-none w-full h-full border-none rounded-none text-[16px] text-[#151515] font-medium' + ` ${styles.selectTrigger}`}>

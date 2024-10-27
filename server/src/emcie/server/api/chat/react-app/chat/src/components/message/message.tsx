@@ -10,7 +10,7 @@ interface Props {
 
 const statusIcon = {
     // pending: <Clock data-testid="pending" height={15} />,
-    pending: <img src='/icons/pending.svg' data-testid="pending" height={11} width={11} className='ms-[4px]'/>,
+    pending: <video src='/mp4/loading.mp4' data-testid="pending" height={11} width={11} className='ms-[4px]'/>,
     error: <img src='/icons/error.svg' data-testid="error" height={11} width={11} className='ms-[4px]'/>,
     accepted: <Check data-testid="accepted" height={15} />,
     // acknowledged: <CheckCheck data-testid="acknowledged" height={15} />,
@@ -19,8 +19,7 @@ const statusIcon = {
     processing: <img src='/icons/green-v.svg' data-testid="processing" height={11} width={11} className='ms-[4px]'/>,
     typing: <img src='/icons/green-v.svg' data-testid="typing" height={11} width={11} className='ms-[4px]'/>,
     ready: <img src='/icons/green-v.svg' data-testid="ready" height={11} width={11} className='ms-[4px]'/>,
-    // typing: <CheckCheck data-testid="typing" className="text-green-300" height={15} />,
-    // ready: <CheckCheck data-testid="ready" className="text-green-300" height={15} />,
+    // ready: <video src='/mp4/loading.mp4' autoPlay loop data-testid="pending" height={11} width={11} className='ms-[4px]'/>,
 };
 
 export default function Message({event}: Props): ReactElement {
@@ -28,9 +27,9 @@ export default function Message({event}: Props): ReactElement {
     const serverStatus = event.serverStatus;
 
     return (
-        <div className={(isClient ? 'self-end' : 'self-start') + ' flex my-4 mx-0 mb-1 gap-[14px]'}>
+        <div className='flex my-4 mx-0 mb-1 w-full justify-between'>
             <div className='w-[206px] hidden lg:block'></div>
-            <div className='flex-1 flex max-w-[1200px] justify-end items-end'>
+            <div className={(isClient ? 'justify-end' : 'justify-start') + ' flex-1 flex max-w-[1200px] items-end'}>
                 {!isClient &&
                     <div className='flex items-end me-[14px]'>
                         <img src="parlant-bubble.svg" alt="Parlant"/>
