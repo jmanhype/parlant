@@ -231,7 +231,6 @@ async def test_that_reading_an_existing_openapi_service_returns_its_metadata_and
     assert len(tools) > 0
 
     for t in tools:
-        assert "id" in t
         assert "name" in t
         assert "description" in t
 
@@ -268,10 +267,12 @@ async def test_that_reading_an_existing_sdk_service_returns_its_metadata_and_too
         tools_list = service_data["tools"]
         assert len(tools_list) == 2
 
-        for tool_data in tools_list:
-            if tool_data["id"] == my_tool.tool.id:
-                assert tool_data["name"] == my_tool.tool.name
-                assert tool_data["description"] == my_tool.tool.description
-            elif tool_data["id"] == my_async_tool.tool.id:
-                assert tool_data["name"] == my_async_tool.tool.name
-                assert tool_data["description"] == my_async_tool.tool.description
+        assert any(
+            t["name"] == my_tool.tool.name and t["description"] == my_tool.tool.description
+            for t in tools_list
+        )
+        assert any(
+            t["name"] == my_async_tool.tool.name
+            and t["description"] == my_async_tool.tool.description
+            for t in tools_list
+        )

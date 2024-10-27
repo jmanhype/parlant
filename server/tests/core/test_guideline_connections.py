@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence
 from pytest import fixture, raises
 
 from emcie.server.core.guideline_connections import (
@@ -26,7 +26,7 @@ def store(
 
 def has_connection(
     guidelines: Sequence[GuidelineConnection],
-    connection: Tuple[str, str],
+    connection: tuple[str, str],
 ) -> bool:
     return any(g.source == connection[0] and g.target == connection[1] for g in guidelines)
 

@@ -100,7 +100,7 @@ Feature: Tools
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
         And a user message, "What is the balance of Larry David's account?"
-        And a tool event with data, [{ "tool_calls": { "tool_name": "get_account_balance", "parameters": { "account_name": "Larry David"}, "result": { "data": 451000000, "metadata": {} }}}]
+        And a tool event with data, [{ "tool_calls": { "tool_id": "local:get_account_balance", "parameters": { "account_name": "Larry David"}, "result": { "data": 451000000, "metadata": {} }}}]
         And an agent message, "Larry David currently has 451 million dollars."
         And a user message, "And what about now?"
         When processing is triggered
@@ -150,3 +150,16 @@ Feature: Tools
         When processing is triggered
         Then a single message event is emitted
         And the message contains that the balance of Scooby Doo is -$555
+
+    Scenario: The agent distinguishes between tools from different services
+        Given a guideline "system_check_scheduling" to schedule a system check if the error is critical when the user complains about an error
+        And a guideline "cs_meeting_scheduleing" to schedule a new customer success meeting when the user gives feedback regarding their use of the system
+        And the tool "schedule" from "first_service"
+        And the tool "schedule" from "second_service"
+        And an association between "system_check_scheduling" and "schedule" from "first_service"
+        And an association between "cs_meeting_scheduleing" and "schedule" from "second_service"
+        And a user message, "I’m really happy about the system"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "second_service:schedule

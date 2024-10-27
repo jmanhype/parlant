@@ -3,7 +3,6 @@ import json
 import traceback
 from typing import Mapping, Optional, Sequence
 
-from emcie.common.tools import Tool
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.agents import Agent
 from emcie.server.core.context_variables import ContextVariable, ContextVariableValue
@@ -17,6 +16,7 @@ from emcie.server.core.emissions import EmittedEvent, EventEmitter
 from emcie.server.core.sessions import Event
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.logging import Logger
+from emcie.server.core.tools import ToolId
 
 
 class Revision(DefaultBaseModel):
@@ -71,7 +71,7 @@ class MessageEventProducer:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[EmittedEvent]:
         assert len(agents) == 1
@@ -161,7 +161,7 @@ class MessageEventProducer:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> str:
         assert len(agents) == 1

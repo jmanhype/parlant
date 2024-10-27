@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence, TypedDict
 
-from emcie.common.tools import ToolId
 from emcie.server.core.common import Version, generate_id
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
 )
+from emcie.server.core.tools import ToolId
 
 GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)
 
@@ -43,7 +43,7 @@ class _GuidelineToolAssociationDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     guideline_id: GuidelineId
-    tool_id: ToolId
+    tool_id: str
 
 
 class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
@@ -63,7 +63,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             version=self.VERSION.to_string(),
             creation_utc=association.creation_utc.isoformat(),
             guideline_id=association.guideline_id,
-            tool_id=association.tool_id,
+            tool_id=association.tool_id.to_string(),
         )
 
     def _deserialize(
@@ -74,7 +74,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             id=GuidelineToolAssociationId(association_document["id"]),
             creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
             guideline_id=association_document["guideline_id"],
-            tool_id=association_document["tool_id"],
+            tool_id=ToolId.from_string(association_document["tool_id"]),
         )
 
     async def create_association(

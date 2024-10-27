@@ -1,6 +1,5 @@
 from pytest_bdd import given, parsers
 
-from emcie.common.tools import ToolId
 from emcie.server.core.agents import AgentId
 from emcie.server.core.context_variables import (
     ContextVariableStore,
@@ -31,7 +30,7 @@ def given_a_context_variable(
             variable_set=agent_id,
             name=variable_name,
             description="",
-            tool_id=ToolId(""),
+            tool_id=None,
             freshness_rules=None,
         )
     )

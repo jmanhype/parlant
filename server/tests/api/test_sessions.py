@@ -737,7 +737,7 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert iterations[0]["guideline_propositions"][0]["action"] == guideline.content.action
 
     assert len(iterations[0]["tool_calls"]) == 1
-    assert "get_cow_uttering" in iterations[0]["tool_calls"][0]["tool_name"]
+    assert "get_cow_uttering" in iterations[0]["tool_calls"][0]["tool_id"]
     assert iterations[0]["tool_calls"][0]["result"]["data"] == "moo"
 
     assert len(iterations[0]["terms"]) == 1

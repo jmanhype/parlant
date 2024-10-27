@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Sequence
 import httpx
 from urllib.parse import urljoin
 
-from emcie.common.tools import Tool, ToolId, ToolResult, ToolContext
+from emcie.common.tools import Tool, ToolResult, ToolContext
 from emcie.server.core.common import JSONSerializable
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.emissions import EventEmitterFactory
@@ -46,9 +46,8 @@ class PluginClient(ToolService):
         content = response.json()
         return [
             Tool(
-                id=t["id"],
-                creation_utc=dateutil.parser.parse(t["creation_utc"]),
                 name=t["name"],
+                creation_utc=dateutil.parser.parse(t["creation_utc"]),
                 description=t["description"],
                 parameters=t["parameters"],
                 required=t["required"],
@@ -57,14 +56,13 @@ class PluginClient(ToolService):
             for t in content["tools"]
         ]
 
-    async def read_tool(self, tool_id: ToolId) -> Tool:
-        response = await self._http_client.get(self._get_url(f"/tools/{tool_id}"))
+    async def read_tool(self, name: str) -> Tool:
+        response = await self._http_client.get(self._get_url(f"/tools/{name}"))
         content = response.json()
         tool = content["tool"]
         return Tool(
-            id=tool["id"],
-            creation_utc=dateutil.parser.parse(tool["creation_utc"]),
             name=tool["name"],
+            creation_utc=dateutil.parser.parse(tool["creation_utc"]),
             description=tool["description"],
             parameters=tool["parameters"],
             required=tool["required"],
@@ -73,21 +71,23 @@ class PluginClient(ToolService):
 
     async def call_tool(
         self,
-        tool_id: ToolId,
+        name: str,
         context: ToolContext,
         arguments: Mapping[str, JSONSerializable],
     ) -> ToolResult:
         try:
             async with self._http_client.stream(
                 method="post",
-                url=self._get_url(f"/tools/{tool_id}/calls"),
+                url=self._get_url(f"/tools/{name}/calls"),
                 json={
                     "session_id": context.session_id,
                     "arguments": arguments,
                 },
             ) as response:
                 if response.is_error:
-                    raise ToolExecutionError(tool_id)
+                    raise ToolExecutionError(
+                        tool_name=name, message=f"url='{self.url}', arguments='{arguments}'"
+                    )
 
                 event_emitter = self._event_emitter_factory.create_event_emitter(
                     session_id=SessionId(context.session_id),
@@ -115,13 +115,22 @@ class PluginClient(ToolService):
                             data={"message": chunk_dict["message"]},
                         )
                     elif "error" in chunk_dict:
-                        raise ToolExecutionError(tool_id, chunk_dict["error"])
+                        raise ToolExecutionError(
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}', error: {chunk_dict["error"]}",
+                        )
                     else:
-                        raise ToolExecutionError(tool_id, f"Unexpected chunk dict: {chunk_dict}")
+                        raise ToolExecutionError(
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}', Unexpected chunk dict: {chunk_dict}",
+                        )
         except Exception as exc:
-            raise ToolExecutionError(tool_id) from exc
+            raise ToolExecutionError(tool_name=name) from exc
 
-        raise ToolExecutionError(tool_id, "Unexpected response (no result chunk)")
+        raise ToolExecutionError(
+            tool_name=name,
+            message=f"url='{self.url}', Unexpected response (no result chunk)",
+        )
 
     def _get_url(self, path: str) -> str:
         return urljoin(f"{self.url}", path)

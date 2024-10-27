@@ -4,10 +4,10 @@ from fastapi import APIRouter
 from typing_extensions import Literal
 
 from emcie.server.core.common import DefaultBaseModel
-from emcie.common.tools import Tool, ToolParameter, ToolParameterType, ToolId
+from emcie.common.tools import Tool, ToolParameter, ToolParameterType
 from emcie.server.core.services.tools.openapi import OpenAPIClient
 from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.tools import ToolService
 
 
@@ -23,6 +23,8 @@ class CreateOpenAPIServiceRequest(DefaultBaseModel):
 
 
 CreateServiceRequest = Union[CreateSDKServiceRequest, CreateOpenAPIServiceRequest]
+
+ToolServiceKind = Literal["openapi", "sdk"]
 
 
 class CreateServiceResponse(DefaultBaseModel):
@@ -42,7 +44,6 @@ class ToolParameterDTO(DefaultBaseModel):
 
 
 class ToolDTO(DefaultBaseModel):
-    id: ToolId
     creation_utc: datetime
     name: str
     description: str
@@ -71,7 +72,6 @@ def _tool_parameters_to_dto(parameters: ToolParameter) -> ToolParameterDTO:
 
 def _tool_to_dto(tool: Tool) -> ToolDTO:
     return ToolDTO(
-        id=tool.id,
         creation_utc=tool.creation_utc,
         name=tool.name,
         description=tool.description,
@@ -126,6 +126,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
                     url=_get_service_url(service),
                 )
                 for name, service in await service_registry.list_tool_services()
+                if type(service) in [OpenAPIClient, PluginClient]
             ]
         )
 

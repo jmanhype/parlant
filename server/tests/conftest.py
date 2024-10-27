@@ -2,7 +2,7 @@ import asyncio
 from contextlib import AsyncExitStack
 from pathlib import Path
 import tempfile
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, cast
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import httpx
@@ -33,8 +33,8 @@ from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from emcie.server.adapters.db.chroma.database import ChromaDatabase
 from emcie.server.adapters.db.transient import TransientDocumentDatabase
 from emcie.server.core.services.tools.service_registry import (
-    ServiceRegistry,
     ServiceDocumentRegistry,
+    ServiceRegistry,
 )
 from emcie.server.core.sessions import (
     PollingSessionListener,
@@ -42,7 +42,6 @@ from emcie.server.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from emcie.server.core.tools import MultiplexedToolService, LocalToolService, ToolService
 from emcie.server.core.engines.alpha.engine import AlphaEngine
 from emcie.server.core.glossary import GlossaryStore
 from emcie.server.core.engines.alpha.guideline_proposer import (
@@ -78,6 +77,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
+from emcie.server.core.tools import LocalToolService
 
 from .test_utilities import SyncAwaiter
 
@@ -126,22 +126,15 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
     container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
     container[CoherenceChecker] = Singleton(CoherenceChecker)
-    container[LocalToolService] = Singleton(LocalToolService)
-    container[MultiplexedToolService] = MultiplexedToolService(
-        services={"local": container[LocalToolService]}
-    )
-    container[ToolService] = lambda c: c[MultiplexedToolService]
-    container[ToolEventProducer] = Singleton(ToolEventProducer)
+
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
-    container[MessageEventProducer] = Singleton(MessageEventProducer)
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
-    container[Engine] = AlphaEngine
 
     async with AsyncExitStack() as stack:
         chroma_temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
@@ -158,6 +151,17 @@ async def container() -> AsyncIterator[Container]:
                 moderation_services={"openai": OmniModeration(logger=container[Logger])},
             )
         )
+        container[LocalToolService] = cast(
+            LocalToolService,
+            await container[ServiceRegistry].update_tool_service(
+                name="local", kind="local", url=""
+            ),
+        )
+
+        container[MessageEventProducer] = Singleton(MessageEventProducer)
+        container[ToolEventProducer] = Singleton(ToolEventProducer)
+
+        container[Engine] = AlphaEngine
 
         container[MC] = await stack.enter_async_context(MC(container))
 

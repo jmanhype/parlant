@@ -5,7 +5,6 @@ from itertools import chain
 import traceback
 from typing import Mapping, Optional, Sequence, cast
 
-from emcie.common.tools import Tool
 from emcie.server.core.agents import Agent, AgentId, AgentStore
 from emcie.server.core.context_variables import (
     ContextVariable,
@@ -18,7 +17,7 @@ from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from emcie.server.core.glossary import Term, GlossaryStore
-from emcie.server.core.tools import ToolService
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.sessions import (
     ContextVariable as StoredContextVariable,
     Event,
@@ -40,6 +39,7 @@ from emcie.server.core.engines.types import Context, Engine
 from emcie.server.core.emissions import EventEmitter, EmittedEvent
 from emcie.server.core.contextual_correlator import ContextualCorrelator
 from emcie.server.core.logging import Logger
+from emcie.server.core.tools import ToolId
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class AlphaEngine(Engine):
         glossary_store: GlossaryStore,
         guideline_store: GuidelineStore,
         guideline_connection_store: GuidelineConnectionStore,
-        tool_service: ToolService,
+        service_registry: ServiceRegistry,
         guideline_tool_association_store: GuidelineToolAssociationStore,
         guideline_proposer: GuidelineProposer,
         tool_event_producer: ToolEventProducer,
@@ -74,7 +74,7 @@ class AlphaEngine(Engine):
         self._glossary_store = glossary_store
         self._guideline_store = guideline_store
         self._guideline_connection_store = guideline_connection_store
-        self._tool_service = tool_service
+        self._service_registry = service_registry
         self._guideline_tool_association_store = guideline_tool_association_store
         self._guideline_proposer = guideline_proposer
         self._tool_event_producer = tool_event_producer
@@ -332,7 +332,7 @@ class AlphaEngine(Engine):
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[Tool]]]:
+    ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[ToolId]]]:
         all_relevant_guidelines = await self._fetch_guideline_propositions(
             agents=agents,
             context_variables=context_variables,
@@ -468,7 +468,7 @@ class AlphaEngine(Engine):
     async def _find_tool_enabled_guidelines_propositions(
         self,
         guideline_propositions: Sequence[GuidelineProposition],
-    ) -> Mapping[GuidelineProposition, Sequence[Tool]]:
+    ) -> Mapping[GuidelineProposition, Sequence[ToolId]]:
         guideline_tool_associations = list(
             await self._guideline_tool_association_store.list_associations()
         )
@@ -478,12 +478,11 @@ class AlphaEngine(Engine):
             a for a in guideline_tool_associations if a.guideline_id in guideline_propositions_by_id
         ]
 
-        tools_for_guidelines: dict[GuidelineProposition, list[Tool]] = defaultdict(list)
+        tools_for_guidelines: dict[GuidelineProposition, list[ToolId]] = defaultdict(list)
 
         for association in relevant_associations:
-            tool = await self._tool_service.read_tool(association.tool_id)
             tools_for_guidelines[guideline_propositions_by_id[association.guideline_id]].append(
-                tool
+                association.tool_id
             )
 
         return dict(tools_for_guidelines)

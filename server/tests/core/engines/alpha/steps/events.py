@@ -1,7 +1,6 @@
 from typing import Optional, cast
 from pytest_bdd import given, then, parsers, when
 
-from emcie.common.tools import ToolId
 from emcie.server.core.engines.alpha.utils import emitted_tool_event_to_dict
 from emcie.server.core.emissions import EmittedEvent
 from emcie.server.core.nlp.moderation import ModerationTag
@@ -14,6 +13,7 @@ from emcie.server.core.sessions import (
     ToolEventData,
 )
 
+from emcie.server.core.tools import ToolId
 from tests import tool_utilities
 from tests.core.engines.alpha.utils import ContextOfTest, step
 from tests.test_utilities import nlp_test
@@ -338,9 +338,9 @@ def then_drinks_available_in_stock_tool_event_is_emitted(
     }
 
     assert {
-        "tool_name": tool_id,
+        "tool_name": tool_id.tool_name,
         "parameters": {},
-        "result": tool_event_functions[tool_id](),
+        "result": tool_event_functions[tool_id.tool_name](),
     } in results
 
 

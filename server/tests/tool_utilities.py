@@ -56,3 +56,7 @@ def transfer_money(from_account: str, to_account: str) -> ToolResult:
 
 def get_terrys_offering() -> ToolResult:
     return ToolResult("Terry offers leaf")
+
+
+def schedule() -> ToolResult:
+    return ToolResult("Meeting got scheduled!")

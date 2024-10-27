@@ -12,7 +12,7 @@ def test_that_an_agent_can_be_created_without_description(
 ) -> None:
     response = client.post(
         "/agents",
-        json={"agent_name": "test-agent"},
+        json={"name": "test-agent"},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -28,7 +28,7 @@ def test_that_an_agent_can_be_created_with_description(
 ) -> None:
     response = client.post(
         "/agents",
-        json={"agent_name": "test-agent", "agent_description": "You are a test agent"},
+        json={"name": "test-agent", "description": "You are a test agent"},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -44,7 +44,7 @@ def test_that_an_agent_can_be_created_without_max_engine_iterations(
 ) -> None:
     response = client.post(
         "/agents",
-        json={"agent_name": "test-agent"},
+        json={"name": "test-agent"},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -60,7 +60,7 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
 ) -> None:
     response = client.post(
         "/agents",
-        json={"agent_name": "test-agent", "max_engine_iterations": 1},
+        json={"name": "test-agent", "max_engine_iterations": 1},
     )
 
     assert response.status_code == status.HTTP_201_CREATED

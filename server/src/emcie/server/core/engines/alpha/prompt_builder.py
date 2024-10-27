@@ -16,6 +16,7 @@ from emcie.server.core.engines.alpha.utils import (
     emitted_tool_events_to_dicts,
 )
 from emcie.server.core.emissions import EmittedEvent
+from emcie.server.core.tools import ToolId
 
 
 class BuiltInSection(Enum):
@@ -221,7 +222,7 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
     def add_guideline_propositions(
         self,
         ordinary: Sequence[GuidelineProposition],
-        tool_enabled: Mapping[GuidelineProposition, Sequence[Tool]],
+        tool_enabled: Mapping[GuidelineProposition, Sequence[ToolId]],
         include_priority: bool = True,
         include_tool_associations: bool = False,
     ) -> PromptBuilder:
@@ -240,9 +241,10 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
 
                 if include_tool_associations:
                     if p in tool_enabled:
-                        tools = tool_enabled[p]
-                        tool_names = ", ".join([f"'{t.name}'" for t in tools])
-                        guideline += f"\n    [Associated Tools: {tool_names}]"
+                        service_tool_names = ", ".join(
+                            [f"{t_id.service_name}:{t_id.tool_name}" for t_id in tool_enabled[p]]
+                        )
+                        guideline += f"\n    [Associated Tools: {service_tool_names}]"
 
                 guidelines.append(guideline)
 
@@ -287,17 +289,17 @@ However, in this case, no special behavrioal guidelines were provided.
 
         return self
 
-    def add_tool_definitions(self, tools: Sequence[Tool]) -> PromptBuilder:
+    def add_tool_definitions(self, tools: Sequence[tuple[ToolId, Tool]]) -> PromptBuilder:
         assert tools
 
         tool_specs = [
             {
-                "name": tool.name,
+                "name": tool_id.to_string(),
                 "description": tool.description,
                 "parameters": tool.parameters,
                 "required_parameters": tool.required,
             }
-            for tool in tools
+            for tool_id, tool in tools
         ]
 
         self.add_section(

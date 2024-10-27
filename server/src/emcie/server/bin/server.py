@@ -14,7 +14,6 @@ from pathlib import Path
 import sys
 import uvicorn
 
-from emcie.common.tools import ToolId
 from emcie.server import VERSION
 from emcie.server.adapters.db.chroma.glossary import GlossaryChromaStore
 from emcie.server.adapters.nlp.openai import (
@@ -54,7 +53,6 @@ from emcie.server.core.sessions import (
     SessionStore,
 )
 from emcie.server.core.glossary import GlossaryStore
-from emcie.server.core.tools import ToolService, MultiplexedToolService
 from emcie.server.core.engines.alpha.engine import AlphaEngine
 from emcie.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -91,9 +89,6 @@ SERVER_ADDRESS = "https://localhost"
 
 EMCIE_HOME_DIR = Path(os.environ.get("EMCIE_HOME", "/var/lib/emcie"))
 EMCIE_HOME_DIR.mkdir(parents=True, exist_ok=True)
-
-MULTIPLEXED_TOOL_SERVICE = MultiplexedToolService()
-TOOL_NAME_TO_ID: dict[str, ToolId] = {}
 
 EXIT_STACK: AsyncExitStack
 
@@ -132,9 +127,6 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
 
 @asynccontextmanager
 async def setup_container() -> AsyncIterator[Container]:
-    TOOL_NAME_TO_ID.clear()
-    MULTIPLEXED_TOOL_SERVICE.services.clear()
-
     c = Container()
 
     c[ContextualCorrelator] = CORRELATOR
@@ -193,8 +185,6 @@ async def setup_container() -> AsyncIterator[Container]:
     c[EndUserStore] = EndUserDocumentStore(end_users_db)
     c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
 
-    c[ToolService] = MULTIPLEXED_TOOL_SERVICE
-
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
         guideline_tool_associations_db
     )
@@ -216,17 +206,6 @@ async def setup_container() -> AsyncIterator[Container]:
         c[Logger],
         c[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
         c[GlossaryStore],
-    )
-    c[ToolEventProducer] = ToolEventProducer(
-        c[Logger],
-        c[ContextualCorrelator],
-        c[ToolService],
-        c[SchematicGenerator[ToolCallInferenceSchema]],
-    )
-    c[MessageEventProducer] = MessageEventProducer(
-        c[Logger],
-        c[ContextualCorrelator],
-        c[SchematicGenerator[MessageEventSchema]],
     )
 
     c[CoherenceChecker] = CoherenceChecker(
@@ -254,6 +233,19 @@ async def setup_container() -> AsyncIterator[Container]:
             correlator=c[ContextualCorrelator],
             moderation_services={"openai": OmniModeration(logger=c[Logger])},
         )
+    )
+
+    c[MessageEventProducer] = MessageEventProducer(
+        c[Logger],
+        c[ContextualCorrelator],
+        c[SchematicGenerator[MessageEventSchema]],
+    )
+
+    c[ToolEventProducer] = ToolEventProducer(
+        c[Logger],
+        c[ContextualCorrelator],
+        c[ServiceRegistry],
+        c[SchematicGenerator[ToolCallInferenceSchema]],
     )
 
     c[Engine] = AlphaEngine

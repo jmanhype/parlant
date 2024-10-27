@@ -66,7 +66,7 @@ class ToolResult(TypedDict):
 
 
 class ToolCall(TypedDict):
-    tool_name: str
+    tool_id: str
     arguments: Mapping[str, JSONSerializable]
     result: ToolResult
 

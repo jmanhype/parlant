@@ -98,7 +98,7 @@ class ToolResultDTO(DefaultBaseModel):
 
 
 class ToolCallDTO(DefaultBaseModel):
-    tool_name: str
+    tool_id: str
     arguments: Mapping[str, Any]
     result: ToolResultDTO
 
@@ -392,7 +392,7 @@ def create_router(
                         data=cast(MessageEventData, e.data)["message"],
                         tool_calls=[
                             ToolCallDTO(
-                                tool_name=tc["tool_name"],
+                                tool_id=tc["tool_id"],
                                 arguments=tc["arguments"],
                                 result=ToolResultDTO(
                                     data=tc["result"]["data"],
@@ -451,7 +451,7 @@ def create_router(
                     ],
                     tool_calls=[
                         ToolCallDTO(
-                            tool_name=tool_call["tool_name"],
+                            tool_id=tool_call["tool_id"],
                             arguments=tool_call["arguments"],
                             result=ToolResultDTO(
                                 data=tool_call["result"]["data"],

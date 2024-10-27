@@ -15,7 +15,6 @@ from typing import Any, Awaitable, Callable, Mapping, NamedTuple, Optional, Sequ
 
 from emcie.common.tools import (
     Tool,
-    ToolId,
     ToolResult,
     ToolParameter,
     ToolParameterType,
@@ -63,7 +62,7 @@ class OpenAPIClient(ToolService):
     ) -> bool:
         return False
 
-    def _parse_tools(self, openapi_json: str) -> dict[ToolId, _ToolSpec]:
+    def _parse_tools(self, openapi_json: str) -> dict[str, _ToolSpec]:
         class ParameterSpecification(NamedTuple):
             query_parameters: dict[str, ToolParameter]
             body_parameters: dict[str, ToolParameter]
@@ -129,9 +128,8 @@ class OpenAPIClient(ToolService):
                 parameter_spec = parse_parameters(operation)
 
                 tool = Tool(
-                    id=ToolId(operation.operation_id),
-                    creation_utc=datetime.now(timezone.utc),
                     name=operation.operation_id,
+                    creation_utc=datetime.now(timezone.utc),
                     description=operation.description or "",
                     parameters={
                         **parameter_spec.query_parameters,
@@ -166,7 +164,7 @@ class OpenAPIClient(ToolService):
 
                     return ToolResult(data=data)
 
-                tools[tool.id] = _ToolSpec(
+                tools[tool.name] = _ToolSpec(
                     tool=tool,
                     func=partial(
                         tool_func,
@@ -181,14 +179,14 @@ class OpenAPIClient(ToolService):
     async def list_tools(self) -> Sequence[Tool]:
         return [t.tool for t in self._tools.values()]
 
-    async def read_tool(self, tool_id: ToolId) -> Tool:
-        return self._tools[tool_id].tool
+    async def read_tool(self, name: str) -> Tool:
+        return self._tools[name].tool
 
     async def call_tool(
         self,
-        tool_id: ToolId,
+        name: str,
         context: ToolContext,
         arguments: Mapping[str, JSONSerializable],
     ) -> ToolResult:
         _ = context
-        return await self._tools[tool_id].func(**arguments)
+        return await self._tools[name].func(**arguments)
