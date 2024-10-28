@@ -9,7 +9,7 @@ from emcie.server.api.glossary import TermDTO
 from emcie.server.core.async_utils import Timeout
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.context_variables import ContextVariableId
-from emcie.server.core.agents import AgentId
+from emcie.server.core.agents import AgentId, AgentStore
 from emcie.server.core.end_users import EndUserId
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.services.tools.service_registry import ServiceRegistry
@@ -154,6 +154,7 @@ class ReadInteractionResponse(DefaultBaseModel):
 
 def create_router(
     mc: MC,
+    agent_store: AgentStore,
     session_store: SessionStore,
     session_listener: SessionListener,
     service_registry: ServiceRegistry,
@@ -165,6 +166,8 @@ def create_router(
         request: CreateSessionRequest,
         allow_greeting: bool = Query(default=True),
     ) -> CreateSessionResponse:
+        _ = await agent_store.read_agent(agent_id=request.agent_id)
+
         session = await mc.create_end_user_session(
             end_user_id=request.end_user_id,
             agent_id=request.agent_id,
