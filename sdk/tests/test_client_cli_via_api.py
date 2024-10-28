@@ -1236,7 +1236,7 @@ async def test_that_a_guideline_can_be_removed(
         assert len(guidelines) == 0
 
 
-async def test_that__a_connection_can_be_removed(
+async def test_that_a_connection_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
