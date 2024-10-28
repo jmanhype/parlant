@@ -1,5 +1,4 @@
-import { createContext, Dispatch, ReactElement, SetStateAction, useContext, useState } from 'react';
-import Chat from '../chat/chat';
+import { createContext, Dispatch, lazy, ReactElement, SetStateAction, Suspense, useContext, useState } from 'react';
 import { SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
 
@@ -29,6 +28,7 @@ export const SessionProvider = createContext<SessionContext>({
 export const useSession = () => useContext(SessionProvider);
 
 export default function Chatbot(): ReactElement {
+    const Chat = lazy(() => import('../chat/chat'));
     const [sessionId, setSessionId] = useState<string | null | undefined>(null);
     const [sessions, setSessions] = useState<SessionInterface[]>([]);
     const [agentId, setAgentId] = useState<string | null>(null);
@@ -42,7 +42,11 @@ export default function Chatbot(): ReactElement {
                         <Sessions />
                     </div>
                     <div className='h-full w-full'>
-                        {sessionId ? <Chat /> : <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
+                        {sessionId ? 
+                        <Suspense fallback={<div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}>
+                             <Chat />
+                        </Suspense> :
+                        <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
                     </div>
                 </div>
             </div>

@@ -19,7 +19,10 @@ function objToUrlParams(obj: Record<string, unknown>) {
   return `?${params.join('&')}`;
 }
 
-export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false): useFetchResponse<T> {
+const ABORT_REQ_CODE = 20;
+const TIMEOUT_ERROR_MESSAGE = 'Error: Gateway Timeout';
+
+export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false, initiate = true): useFetchResponse<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | {message: string}>(null);
@@ -39,28 +42,26 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
   const refetch = () => setRefetchData(r => !r);
 
   useEffect(() => {
-    if (retry && error?.message) {
+    if (retry && error?.message === TIMEOUT_ERROR_MESSAGE) {
       setRefetchData(r => !r);
-        error.message = '';
+      error.message = '';
     }
   }, [retry, error]);
 
   const fetchData = useCallback(() => {
-    const controller = new AbortController(); // Create an AbortController
-    const { signal } = controller; // Get the abort signal
+    const controller = new AbortController();
+    const { signal } = controller;
     setLoading(true);
     setError(null);
 
     fetch(`http://localhost:8000/${url}${params}`, { signal })
       .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Error: ${response.statusText}`);
-        }
-        const result = await response.json(); // or response.text() / response.blob() based on your API
+        if (!response.ok) throw new Error(`Error: ${response.statusText}`);
+        const result = await response.json();
         setData(result);
       })
       .catch((err) => {
-        if (err.name === 'AbortError') {
+        if (err.code === ABORT_REQ_CODE) {
           console.log('Fetch aborted');
         } else {
           setError({message: err.message});
@@ -73,12 +74,13 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
   }, [url, refetchData, ...dependencies]);
 
   useEffect(() => {
+    if (!initiate) return;
     const abortFetch = fetchData();
 
     return () => {
       abortFetch();
     };
-  }, [fetchData]);
+  }, [fetchData, initiate]);
 
   return { data, loading, error, refetch, ErrorTemplate: error && ErrorTemplate };
 };

@@ -124,7 +124,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                 <DropdownMenu>
                     <DropdownMenuTrigger disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
                         <div role='button' className='rounded-full py-2 px-4' onClick={e => e.stopPropagation()}>
-                            <img src='/icons/more.svg' height={14} width={14}/>
+                            <img src='/icons/more.svg' alt='more' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>

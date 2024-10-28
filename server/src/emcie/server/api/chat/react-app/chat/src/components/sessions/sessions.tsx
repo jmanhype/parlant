@@ -37,7 +37,7 @@ export default function Sessions(): ReactElement {
             <div className='min-h-[70px] h-[70px] flex justify-center items-center w-[308px] border-b-[0.6px] border-b-solid border-muted'>
                 <div role='button' className='min-h-[50px] h-[50px] py-[10px] text-[16px] text-[#213547] font-medium cursor-pointer w-[288px] flex rounded-[6px] items-center justify-center hover:bg-gray-100'
                     onClick={createNewSession}>
-                    <img src="logo.svg" alt="chat bubble" className='pe-2'/>
+                    <img src="logo.svg" alt="chat bubble" className='pe-2' width={29} height={18}/>
                     New Session
                 </div>
             </div>

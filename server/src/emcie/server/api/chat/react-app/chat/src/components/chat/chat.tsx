@@ -11,6 +11,7 @@ import AgentsSelect from '../agents-select/agents-select';
 import { NEW_SESSION_ID } from '../sessions/sessions';
 import { getDateStr } from '@/utils/date';
 import { Spacer } from '../ui/custom/spacer';
+import { toast } from 'sonner';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -49,7 +50,7 @@ export default function Chat(): ReactElement {
     const [showTyping, setShowTyping] = useState(false);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
-    const {data: lastMessages, refetch} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID);
+    const {data: lastMessages, refetch, ErrorTemplate} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID, sessionId !== NEW_SESSION_ID);
 
     const resetChat = () => {
         setMessage('');
@@ -64,7 +65,7 @@ export default function Chat(): ReactElement {
     useEffect(() => {
         if (newSession && sessionId !== NEW_SESSION_ID) setNewSession(null);
         resetChat();
-        refetch();
+        if (sessionId !== NEW_SESSION_ID) refetch();
         textareaRef?.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
@@ -73,7 +74,7 @@ export default function Chat(): ReactElement {
         if (sessionId === NEW_SESSION_ID) return;
         const lastEvent = lastMessages?.events?.at(-1);
         if (!lastEvent) return;
-        if (pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
+        if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
@@ -87,9 +88,7 @@ export default function Chat(): ReactElement {
 
         const lastEventStatus = lastEvent?.data?.status;
 
-        if (lastEventStatus === 'typing') setShowTyping(true);
-        else setShowTyping(false);
-
+        setShowTyping(lastEventStatus === 'typing');
         refetch();
     
         if (lastEvent?.kind === 'status' && (lastEventStatus === 'ready' || lastEventStatus === 'error')) {
@@ -109,8 +108,10 @@ export default function Chat(): ReactElement {
                 }
                 setSessions(sessions => [res.session, ...sessions]);
                 return res;
-            }
-        );
+            }).catch(() => {
+                toast.error('Something went wrong');
+                return undefined;
+            });
      };
 
     const postMessage = async (content: string): Promise<void> => {
@@ -121,7 +122,7 @@ export default function Chat(): ReactElement {
         postData(`sessions/${eventSession}/events`, { kind: 'message', content }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
-        });
+        }).catch(() => toast.error('Something went wrong'));
     };
 
     const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -145,6 +146,7 @@ export default function Chat(): ReactElement {
             </div>
             <div className="flex flex-col items-center h-full mx-auto w-full flex-1 overflow-auto">
                 <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
+                    {ErrorTemplate && <ErrorTemplate />}
                     {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
                         <React.Fragment key={i}>
                             {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
