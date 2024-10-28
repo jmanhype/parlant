@@ -599,8 +599,52 @@ class Actions:
                 "tool_name": tool_name,
             },
         )
+
         response.raise_for_status()
+
         return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+
+    @staticmethod
+    def disable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> GuidelineToolAssociationDTO:
+        guideline_response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+        )
+
+        guideline_response.raise_for_status()
+
+        associations: list[GuidelineToolAssociationDTO] = guideline_response.json()[
+            "tool_associations"
+        ]
+
+        if association := next(
+            (
+                assoc
+                for assoc in associations
+                if assoc["tool_id"]["service_name"] == service_name
+                and assoc["tool_id"]["tool_name"] == tool_name
+            ),
+            None,
+        ):
+            response = requests.delete(
+                urljoin(
+                    ctx.obj.server_address,
+                    f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association["id"]}",
+                )
+            )
+
+            response.raise_for_status()
+
+            return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+
+        raise ValueError(
+            f"An association between {guideline_id} and the tool {tool_name} from {service_name} was not found"
+        )
 
     @staticmethod
     def list_variables(
@@ -1351,6 +1395,25 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def disable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        try:
+            _ = Actions.disable_tool_for_guideline(
+                ctx, agent_id, guideline_id, service_name, tool_name
+            )
+            Interface._write_success(
+                f"Disabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
+            )
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
         if freshness_rules is None:
             return ""
@@ -2067,6 +2130,37 @@ async def async_main() -> None:
         assert agent_id
 
         Interface.enable_tool_for_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+            service_name=service_name,
+            tool_name=tool_name,
+        )
+
+    @guideline.command("disable-tool", help="Disable a tool for a guideline")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("guideline_id", type=str)
+    @click.argument("service_name", type=str)
+    @click.argument("tool_name", type=str)
+    @click.pass_context
+    def guideline_disable_tool(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.disable_tool_for_guideline(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
