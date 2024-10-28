@@ -74,7 +74,7 @@ describe(Chat, () => {
         });
     
         it('clicking submit triggers the post event and clears the input', async () => {
-            const submitBtn = getByRole('button');
+            const submitBtn = getByTestId('submit-button');
             const textarea = getByRole('textbox');
             await act(async () => {
                 fireEvent.change(textarea, {target: {value: 'hello'}});

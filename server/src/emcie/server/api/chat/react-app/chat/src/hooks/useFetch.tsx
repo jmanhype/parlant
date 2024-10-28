@@ -61,11 +61,7 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
         setData(result);
       })
       .catch((err) => {
-        if (err.code === ABORT_REQ_CODE) {
-          console.log('Fetch aborted');
-        } else {
-          setError({message: err.message});
-        }
+        if (err.code !== ABORT_REQ_CODE) setError({message: err.message});
       })
       .finally(() => setLoading(false));
 

@@ -74,12 +74,12 @@ export default function Chat(): ReactElement {
         if (sessionId === NEW_SESSION_ID) return;
         const lastEvent = lastMessages?.events?.at(-1);
         if (!lastEvent) return;
-        if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
+        if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         setMessages(messages => {
             const last = messages.at(-1);
            if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
@@ -137,6 +137,8 @@ export default function Chat(): ReactElement {
         return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
     };
 
+    const visibleMessages = pendingMessage?.data?.message ? [...messages, pendingMessage] : [...messages];
+
     return (
         <div className='h-full w-full flex flex-col'>
             <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'>
@@ -147,7 +149,7 @@ export default function Chat(): ReactElement {
             <div className="flex flex-col items-center h-full mx-auto w-full flex-1 overflow-auto">
                 <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                     {ErrorTemplate && <ErrorTemplate />}
-                    {(pendingMessage?.data?.message ? [...messages, pendingMessage] : messages).map((event, i) => (
+                    {visibleMessages.map((event, i) => (
                         <React.Fragment key={i}>
                             {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
                             <DateHeader date={event.creation_utc} isFirst={!i}/>}
@@ -184,7 +186,7 @@ export default function Chat(): ReactElement {
                             ref={submitButtonRef}
                             disabled={isSubmitDisabled || !message?.trim() || !agentId}
                             onClick={() => postMessage(message)}>
-                            <img src="/icons/send.svg" alt="Send" />
+                            <img src="/icons/send.svg" alt="Send" height={19.64} width={21.52} className='h-10'/>
                         </Button>
                     </div>
                     <Spacer/>

@@ -6,6 +6,7 @@ export interface AgentInterface {
 export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
 
 export interface EventInterface {
+    id?: string;
     source: 'client' | 'server';
     kind: 'status' | 'message';
     correlation_id: string;

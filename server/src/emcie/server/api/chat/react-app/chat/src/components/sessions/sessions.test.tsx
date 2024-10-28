@@ -22,6 +22,10 @@ vi.mock('@/hooks/useFetch', () => ({
     })
 }));
 
+vi.mock('../virtual-scroll/virtual-scroll', () => ({
+    default: vi.fn(({children}) => <div>{children}</div>)
+}));
+
 vi.mock('react', async () => {
     const actualReact = await vi.importActual('react');
     return {

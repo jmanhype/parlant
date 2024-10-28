@@ -3,6 +3,7 @@ import useFetch from '@/hooks/useFetch';
 import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
+import VirtualScroll from '../virtual-scroll/virtual-scroll';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
 const newSessionObj: SessionInterface = {
@@ -16,7 +17,7 @@ const newSessionObj: SessionInterface = {
 export default function Sessions(): ReactElement {
     const [editingTitle, setEditingTitle] = useState<string | null>(null);
     const {sessionId, setSessionId, setNewSession, setSessions, sessions, setAgentId} = useSession();
-    const {data, error, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
+    const {data, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
 
     const createNewSession = () => {
         setAgentId(null);
@@ -42,9 +43,9 @@ export default function Sessions(): ReactElement {
                 </div>
             </div>
             <div data-testid="sessions" className="bg-white flex-1 justify-center w-full overflow-auto">
-                {ErrorTemplate && <ErrorTemplate />}
-                {loading && !sessions?.length && <div>loading...</div>}
-                {!error && sessions.map(session => (
+            {loading && !sessions?.length && <div>loading...</div>}
+            <VirtualScroll height='80px'>
+                {sessions.map(session => (
                     <Session data-testid="session"
                         editingTitle={editingTitle}
                         setEditingTitle={setEditingTitle}
@@ -53,6 +54,8 @@ export default function Sessions(): ReactElement {
                         session={session}
                         key={session.id}/>
                 ))}
+            </VirtualScroll>
+            {ErrorTemplate && <ErrorTemplate />}
             </div>
         </div>
     );

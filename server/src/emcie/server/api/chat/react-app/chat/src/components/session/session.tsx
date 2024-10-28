@@ -98,14 +98,14 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             tabIndex={0}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => !editingTitle && setSessionId(session.id)} key={session.id}
-            className={'bg-white duration-500 transition-none text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center gap-[10px] ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
+            className={'bg-white animate-fade-in text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center justify-between ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px]">
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis">
                         {session.title}
                         <small className='text-[12px] text-[#A9A9A9] font-light mt-[4px] flex gap-[6px]'>
                             {getDateStr(session.creation_utc)}
-                            <img src="/icons/dot-saparetor.svg" alt="" />
+                            <img src="/icons/dot-saparetor.svg" alt="" height={18} width={3}/>
                             {getTimeStr(session.creation_utc)}
                         </small>
                     </div>
@@ -122,14 +122,14 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             <div className='flex items-center gap-[4px]'>
                 {editingTitle !== session.id && 
                 <DropdownMenu>
-                    <DropdownMenuTrigger disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
-                        <div role='button' className='rounded-full py-2 px-4' onClick={e => e.stopPropagation()}>
+                    <DropdownMenuTrigger  disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
+                        <div tabIndex={0} role='button' className='rounded-full py-2 me-[24px]' onClick={e => e.stopPropagation()}>
                             <img src='/icons/more.svg' alt='more' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
+                    <DropdownMenuContent align='start'>
                         {sessionActions.map(sessionAction => (
-                            <DropdownMenuItem key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
+                            <DropdownMenuItem tabIndex={0} key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
                                 <img data-testid={sessionAction.title} src={sessionAction.imgPath} height={16} width={18} className='me-[8px]' alt="" />
                                 {sessionAction.title}
                             </DropdownMenuItem>
