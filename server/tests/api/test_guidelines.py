@@ -502,7 +502,7 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
         assert c["indirect"] is not is_direct
 
 
-async def test_that_a_tool_association_can_be_created(
+async def test_that_a_tool_association_can_be_added(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -510,7 +510,7 @@ async def test_that_a_tool_association_can_be_created(
     guideline_store = container[GuidelineStore]
     local_tool_service = container[LocalToolService]
 
-    _ = await local_tool_service.create_tool(
+    await local_tool_service.create_tool(
         name="fetch_event_data",
         module_path="some.module",
         description="",
@@ -528,21 +528,31 @@ async def test_that_a_tool_association_can_be_created(
     tool_name = "fetch_event_data"
 
     request_data = {
-        "service_name": service_name,
-        "tool_name": tool_name,
+        "tool_associations": {
+            "add": [
+                {
+                    "service_name": service_name,
+                    "tool_name": tool_name,
+                }
+            ]
+        }
     }
 
-    response = client.post(
-        f"/agents/{agent_id}/guidelines/{guideline.id}/guideline_tool_associations",
+    response = client.patch(
+        f"/agents/{agent_id}/guidelines/{guideline.id}",
         json=request_data,
     )
 
-    assert response.status_code == status.HTTP_201_CREATED
+    assert response.status_code == status.HTTP_200_OK
 
-    association_data = response.json()["guideline_tool_association"]
+    tool_associations = response.json()["tool_associations"]
 
-    assert association_data["guideline_id"] == guideline.id
-    assert association_data["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
+    assert any(
+        a["guideline_id"] == guideline.id
+        and a["tool_id"]["service_name"] == service_name
+        and a["tool_id"]["tool_name"] == tool_name
+        for a in tool_associations
+    )
 
     association_store = container[GuidelineToolAssociationStore]
     associations = await association_store.list_associations()
@@ -550,9 +560,7 @@ async def test_that_a_tool_association_can_be_created(
     matching_associations = [
         assoc
         for assoc in associations
-        if assoc.id == association_data["id"]
-        and assoc.guideline_id == guideline.id
-        and assoc.tool_id == (service_name, tool_name)
+        if assoc.guideline_id == guideline.id and assoc.tool_id == (service_name, tool_name)
     ]
 
     assert len(matching_associations) == 1
@@ -564,13 +572,14 @@ async def test_that_a_tool_association_can_be_created(
     )
 
     assert any(
-        assoc["guideline_id"] == guideline.id
-        and assoc["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
-        for assoc in tool_associations
+        a["guideline_id"] == guideline.id
+        and a["tool_id"]["service_name"] == service_name
+        and a["tool_id"]["tool_name"] == tool_name
+        for a in tool_associations
     )
 
 
-async def test_that_a_tool_association_can_be_deleted(
+async def test_that_a_tool_association_can_be_removed(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -596,28 +605,37 @@ async def test_that_a_tool_association_can_be_deleted(
     service_name = "local"
     tool_name = "fetch_event_data"
 
-    association = await association_store.create_association(
+    await association_store.create_association(
         guideline_id=guideline.id,
         tool_id=ToolId(service_name=service_name, tool_name=tool_name),
     )
 
-    response = client.delete(
-        f"/agents/{agent_id}/guidelines/{guideline.id}/guideline_tool_associations/{association.id}",
+    request_data = {
+        "tool_associations": {
+            "remove": [
+                {
+                    "service_name": service_name,
+                    "tool_name": tool_name,
+                }
+            ]
+        }
+    }
+
+    response = client.patch(
+        f"/agents/{agent_id}/guidelines/{guideline.id}",
+        json=request_data,
     )
 
     assert response.status_code == status.HTTP_200_OK
 
     response_data = response.json()
-    assert response_data["guideline_tool_association"]["id"] == association.id
-    assert response_data["guideline_tool_association"]["guideline_id"] == guideline.id
-    assert response_data["guideline_tool_association"]["tool_id"] == {
-        "service_name": service_name,
-        "tool_name": tool_name,
-    }
+
+    assert "tool_associations" in response_data
+    assert response_data["tool_associations"] == []
 
     associations_after = await association_store.list_associations()
     assert not any(
-        assoc.id == association.id and assoc.guideline_id == guideline.id
+        assoc.guideline_id == guideline.id and assoc.tool_id == (service_name, tool_name)
         for assoc in associations_after
     )
 

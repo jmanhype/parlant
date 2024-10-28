@@ -509,7 +509,7 @@ class Actions:
         return cast(list[GuidelineDTO], response.json()["guidelines"])
 
     @staticmethod
-    def create_connection(
+    def add_entailment(
         ctx: click.Context,
         agent_id: str,
         source_guideline_id: str,
@@ -583,36 +583,42 @@ class Actions:
         )
 
     @staticmethod
-    def enable_tool_for_guideline(
+    def add_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
         service_name: str,
         tool_name: str,
-    ) -> GuidelineToolAssociationDTO:
-        response = requests.post(
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
+        response = requests.patch(
             urljoin(
                 ctx.obj.server_address,
-                f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
             ),
             json={
-                "service_name": service_name,
-                "tool_name": tool_name,
+                "tool_associations": {
+                    "add": [
+                        {
+                            "service_name": service_name,
+                            "tool_name": tool_name,
+                        }
+                    ]
+                }
             },
         )
 
         response.raise_for_status()
 
-        return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
 
     @staticmethod
-    def disable_tool_for_guideline(
+    def remove_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
         service_name: str,
         tool_name: str,
-    ) -> GuidelineToolAssociationDTO:
+    ) -> str:
         guideline_response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
@@ -625,23 +631,30 @@ class Actions:
 
         if association := next(
             (
-                assoc
-                for assoc in associations
-                if assoc["tool_id"]["service_name"] == service_name
-                and assoc["tool_id"]["tool_name"] == tool_name
+                a
+                for a in associations
+                if a["tool_id"]["service_name"] == service_name
+                and a["tool_id"]["tool_name"] == tool_name
             ),
             None,
         ):
-            response = requests.delete(
-                urljoin(
-                    ctx.obj.server_address,
-                    f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association["id"]}",
-                )
+            association_response = requests.patch(
+                urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}"),
+                json={
+                    "tool_associations": {
+                        "remove": [
+                            {
+                                "service_name": service_name,
+                                "tool_name": tool_name,
+                            }
+                        ]
+                    }
+                },
             )
 
-            response.raise_for_status()
+            association_response.raise_for_status()
 
-            return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+            return association["id"]
 
         raise ValueError(
             f"An association between {guideline_id} and the tool {tool_name} from {service_name} was not found"
@@ -1343,7 +1356,7 @@ class Interface:
         kind: str,
     ) -> None:
         try:
-            connection = Actions.create_connection(
+            connection = Actions.add_entailment(
                 ctx,
                 agent_id,
                 source_guideline_id,
@@ -1392,7 +1405,7 @@ class Interface:
         Interface._print_table(association_items)
 
     @staticmethod
-    def enable_tool_for_guideline(
+    def add_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1400,21 +1413,21 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association = Actions.enable_tool_for_guideline(
+            association = Actions.add_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
             Interface._write_success(
                 f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
             )
-            Interface._render_guideline_tool_associations([association])
+            Interface._render_guideline_tool_associations(association["tool_associations"])
 
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
-    def disable_tool_for_guideline(
+    def remove_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1422,12 +1435,11 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            _ = Actions.disable_tool_for_guideline(
+            association_id = Actions.remove_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
-            Interface._write_success(
-                f"Disabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
-            )
+
+            Interface._write_success(f"Removed tool association (id={association_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -2148,7 +2160,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.enable_tool_for_guideline(
+        Interface.add_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2179,7 +2191,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.disable_tool_for_guideline(
+        Interface.remove_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,

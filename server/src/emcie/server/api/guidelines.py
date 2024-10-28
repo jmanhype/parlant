@@ -102,8 +102,14 @@ class GuidelineConnectionsPatchDTO(DefaultBaseModel):
     remove: Optional[Sequence[GuidelineId]] = None
 
 
+class GuidelineToolAssociationsPatchDTO(DefaultBaseModel):
+    add: Optional[Sequence[ToolIdDTO]] = None
+    remove: Optional[Sequence[ToolIdDTO]] = None
+
+
 class PatchGuidelineRequest(DefaultBaseModel):
     connections: Optional[GuidelineConnectionsPatchDTO] = None
+    tool_associations: Optional[GuidelineToolAssociationsPatchDTO] = None
 
 
 class GuidelineConnection(DefaultBaseModel):
@@ -430,6 +436,39 @@ def create_router(
                         detail="Only direct connections may be removed",
                     )
 
+        if request.tool_associations and request.tool_associations.add:
+            for tool_id_dto in request.tool_associations.add:
+                service_name = tool_id_dto.service_name
+                tool_name = tool_id_dto.tool_name
+
+                service = await service_registry.read_tool_service(service_name)
+                _ = await service.read_tool(tool_name)
+
+                await guideline_tool_association_store.create_association(
+                    guideline_id=guideline_id,
+                    tool_id=ToolId(service_name=service_name, tool_name=tool_name),
+                )
+
+        if request.tool_associations and request.tool_associations.remove:
+            associations = await guideline_tool_association_store.list_associations()
+
+            for tool_id_dto in request.tool_associations.remove:
+                if association := next(
+                    (
+                        assoc
+                        for assoc in associations
+                        if assoc.tool_id.service_name == tool_id_dto.service_name
+                        and assoc.tool_id.tool_name == tool_id_dto.tool_name
+                    ),
+                    None,
+                ):
+                    await guideline_tool_association_store.delete_association(association.id)
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Tool association not found for service '{tool_id_dto.service_name}' and tool '{tool_id_dto.tool_name}'",
+                    )
+
         return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
@@ -487,70 +526,5 @@ def create_router(
             await guideline_connection_store.delete_connection(c.id)
 
         return DeleteGuidelineResponse(guideline_id=guideline_id)
-
-    @router.post(
-        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
-        status_code=status.HTTP_201_CREATED,
-    )
-    async def create_guideline_tool_association(
-        agent_id: AgentId,
-        guideline_id: GuidelineId,
-        request: CreateGuidelineToolAssociationRequest,
-    ) -> CreateGuidelineToolAssociationResponse:
-        _ = await guideline_store.read_guideline(guideline_set=agent_id, guideline_id=guideline_id)
-
-        service = await service_registry.read_tool_service(request.service_name)
-        _ = await service.read_tool(request.tool_name)
-
-        association = await guideline_tool_association_store.create_association(
-            guideline_id=guideline_id,
-            tool_id=ToolId(
-                service_name=request.service_name,
-                tool_name=request.tool_name,
-            ),
-        )
-
-        return CreateGuidelineToolAssociationResponse(
-            guideline_tool_association=GuidelineToolAssociationDTO(
-                id=association.id,
-                guideline_id=association.guideline_id,
-                tool_id=ToolIdDTO(
-                    service_name=association.tool_id.service_name,
-                    tool_name=association.tool_id.tool_name,
-                ),
-            )
-        )
-
-    @router.delete(
-        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association_id}",
-        status_code=status.HTTP_200_OK,
-    )
-    async def delete_guideline_tool_association(
-        agent_id: AgentId,
-        guideline_id: GuidelineId,
-        association_id: GuidelineToolAssociationId,
-    ) -> DeleteGuidelineToolAssociationResponse:
-        _ = await guideline_store.read_guideline(guideline_set=agent_id, guideline_id=guideline_id)
-
-        association = await guideline_tool_association_store.read_association(association_id)
-
-        if association.guideline_id != guideline_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Association does not belong to the specified guideline",
-            )
-
-        association = await guideline_tool_association_store.delete_association(association_id)
-
-        return DeleteGuidelineToolAssociationResponse(
-            guideline_tool_association=GuidelineToolAssociationDTO(
-                id=association.id,
-                guideline_id=association.guideline_id,
-                tool_id=ToolIdDTO(
-                    service_name=association.tool_id.service_name,
-                    tool_name=association.tool_id.tool_name,
-                ),
-            )
-        )
 
     return router
