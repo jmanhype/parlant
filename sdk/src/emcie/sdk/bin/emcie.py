@@ -184,6 +184,12 @@ class ServiceDTO(TypedDict):
     tools: Optional[list[ToolDTO]]
 
 
+class GuidelineToolAssociationDTO(TypedDict):
+    id: str
+    guideline_id: str
+    tool_id: ToolIdDTO
+
+
 def format_datetime(datetime_str: str) -> str:
     return datetime.fromisoformat(datetime_str).strftime("%Y-%m-%d %I:%M:%S %p %Z")
 
@@ -574,6 +580,27 @@ class Actions:
         raise ValueError(
             f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
         )
+
+    @staticmethod
+    def enable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> GuidelineToolAssociationDTO:
+        response = requests.post(
+            urljoin(
+                ctx.obj.server_address,
+                f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+            ),
+            json={
+                "service_name": service_name,
+                "tool_name": tool_name,
+            },
+        )
+        response.raise_for_status()
+        return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
 
     @staticmethod
     def list_variables(
@@ -1295,6 +1322,35 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def enable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        try:
+            association = Actions.enable_tool_for_guideline(
+                ctx, agent_id, guideline_id, service_name, tool_name
+            )
+            Interface._write_success(
+                f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
+            )
+            Interface._print_table(
+                [
+                    {
+                        "Association ID": association["id"],
+                        "Guideline ID": association["guideline_id"],
+                        "Service Name": association["tool_id"]["service_name"],
+                        "Tool Name": association["tool_id"]["tool_name"],
+                    }
+                ]
+            )
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
         if freshness_rules is None:
             return ""
@@ -1985,6 +2041,37 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source_guideline_id,
             target_guideline_id=target_guideline_id,
+        )
+
+    @guideline.command("enable-tool", help="Enable a tool for a guideline")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("guideline_id", type=str)
+    @click.argument("service_name", type=str)
+    @click.argument("tool_name", type=str)
+    @click.pass_context
+    def guideline_enable_tool(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.enable_tool_for_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+            service_name=service_name,
+            tool_name=tool_name,
         )
 
     @cli.group(help="Manage an agent's context variables")

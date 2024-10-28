@@ -1324,7 +1324,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
             action="get meeting event information",
         )
 
-        service_name = "local_service"
+        service_name = "google_calendar"
         tool_name = "fetch_event_data"
         service_kind = "sdk"
 
@@ -1360,7 +1360,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
                 == os.EX_OK
             )
 
-            guideline = API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+            guideline = await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
 
             assert any(
                 assoc["tool_id"]["service_name"] == service_name
