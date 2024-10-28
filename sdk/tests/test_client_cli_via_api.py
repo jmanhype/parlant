@@ -1310,6 +1310,65 @@ async def test_that__a_connection_can_be_removed(
         assert len(guideline["connections"]) == 0
 
 
+async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id,
+            predicate="the user wants to get meeting details",
+            action="get meeting event information",
+        )
+
+        service_name = "local_service"
+        tool_name = "fetch_event_data"
+        service_kind = "sdk"
+
+        @tool
+        def fetch_event_data(context: ToolContext, event_id: str) -> ToolResult:
+            """Fetch event data based on event ID."""
+            return ToolResult({"event_id": event_id})
+
+        async with run_service_server([fetch_event_data]) as server:
+            assert (
+                await run_cli_and_get_exit_status(
+                    "service",
+                    "add",
+                    service_name,
+                    "-k",
+                    service_kind,
+                    "-u",
+                    server.url,
+                )
+                == os.EX_OK
+            )
+
+            assert (
+                await run_cli_and_get_exit_status(
+                    "guideline",
+                    "enable-tool",
+                    "-a",
+                    agent_id,
+                    guideline["id"],
+                    service_name,
+                    tool_name,
+                )
+                == os.EX_OK
+            )
+
+            guideline = API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+
+            assert any(
+                assoc["tool_id"]["service_name"] == service_name
+                and assoc["tool_id"]["tool_name"] == tool_name
+                for assoc in guideline["tool_associations"]
+            )
+
+
 async def test_that_a_variables_can_be_listed(
     context: ContextOfTest,
 ) -> None:

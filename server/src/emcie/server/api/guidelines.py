@@ -1,3 +1,4 @@
+from collections import defaultdict
 from itertools import chain
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
@@ -50,9 +51,16 @@ class GuidelineConnectionDTO(DefaultBaseModel):
     indirect: bool
 
 
-class GuidelineWithConnectionsDTO(DefaultBaseModel):
+class GuidelineToolAssociationDTO(DefaultBaseModel):
+    id: GuidelineToolAssociationId
+    guideline_id: GuidelineId
+    tool_id: ToolIdDTO
+
+
+class GuidelineWithConnectionsAndToolAssociationsDTO(DefaultBaseModel):
     guideline: GuidelineDTO
     connections: Sequence[GuidelineConnectionDTO]
+    tool_associations: Sequence[GuidelineToolAssociationDTO]
 
 
 class GuidelineInvoiceDTO(DefaultBaseModel):
@@ -68,7 +76,7 @@ class CreateGuidelineRequest(DefaultBaseModel):
 
 
 class CreateGuidelinesResponse(DefaultBaseModel):
-    items: list[GuidelineWithConnectionsDTO]
+    items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
 
 
 class DeleteGuidelineRequest(DefaultBaseModel):
@@ -108,12 +116,6 @@ class GuidelineConnection(DefaultBaseModel):
 class CreateGuidelineToolAssociationRequest(DefaultBaseModel):
     service_name: str
     tool_name: str
-
-
-class GuidelineToolAssociationDTO(DefaultBaseModel):
-    id: GuidelineToolAssociationId
-    guideline_id: GuidelineId
-    tool_id: ToolIdDTO
 
 
 class CreateGuidelineToolAssociationResponse(DefaultBaseModel):
@@ -243,9 +245,11 @@ def create_router(
                 detail=str(exc),
             )
 
-        guideline_ids = await mc.create_guidelines(
-            guideline_set=agent_id,
-            invoices=invoices,
+        guideline_ids = set(
+            await mc.create_guidelines(
+                guideline_set=agent_id,
+                invoices=invoices,
+            )
         )
 
         guidelines = [
@@ -253,9 +257,23 @@ def create_router(
             for id in guideline_ids
         ]
 
+        tool_associations = defaultdict(list)
+        for association in await guideline_tool_association_store.list_associations():
+            if association.guideline_id in guideline_ids:
+                tool_associations[association.guideline_id].append(
+                    GuidelineToolAssociationDTO(
+                        id=association.id,
+                        guideline_id=association.guideline_id,
+                        tool_id=ToolIdDTO(
+                            service_name=association.tool_id.service_name,
+                            tool_name=association.tool_id.tool_name,
+                        ),
+                    )
+                )
+
         return CreateGuidelinesResponse(
             items=[
-                GuidelineWithConnectionsDTO(
+                GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(
                         id=guideline.id,
                         predicate=guideline.content.predicate,
@@ -283,6 +301,7 @@ def create_router(
                             include_indirect=True,
                         )
                     ],
+                    tool_associations=tool_associations.get(guideline.id, []),
                 )
                 for guideline in guidelines
             ]
@@ -291,7 +310,7 @@ def create_router(
     @router.get("/{agent_id}/guidelines/{guideline_id}")
     async def read_guideline(
         agent_id: AgentId, guideline_id: GuidelineId
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id, guideline_id=guideline_id
         )
@@ -302,7 +321,7 @@ def create_router(
             include_indirect=True,
         )
 
-        return GuidelineWithConnectionsDTO(
+        return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
                 predicate=guideline.content.predicate,
@@ -326,6 +345,18 @@ def create_router(
                 )
                 for connection, indirect in connections
             ],
+            tool_associations=[
+                GuidelineToolAssociationDTO(
+                    id=a.id,
+                    guideline_id=a.guideline_id,
+                    tool_id=ToolIdDTO(
+                        service_name=a.tool_id.service_name,
+                        tool_name=a.tool_id.tool_name,
+                    ),
+                )
+                for a in await guideline_tool_association_store.list_associations()
+                if a.guideline_id == guideline_id
+            ],
         )
 
     @router.get("/{agent_id}/guidelines/")
@@ -346,7 +377,7 @@ def create_router(
     @router.patch("/{agent_id}/guidelines/{guideline_id}")
     async def patch_guideline(
         agent_id: AgentId, guideline_id: GuidelineId, request: PatchGuidelineRequest
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -399,7 +430,7 @@ def create_router(
                         detail="Only direct connections may be removed",
                     )
 
-        return GuidelineWithConnectionsDTO(
+        return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
                 predicate=guideline.content.predicate,
@@ -424,6 +455,18 @@ def create_router(
                 for connection, indirect in await get_guideline_connections(
                     agent_id, guideline_id, True
                 )
+            ],
+            tool_associations=[
+                GuidelineToolAssociationDTO(
+                    id=a.id,
+                    guideline_id=a.guideline_id,
+                    tool_id=ToolIdDTO(
+                        service_name=a.tool_id.service_name,
+                        tool_name=a.tool_id.tool_name,
+                    ),
+                )
+                for a in await guideline_tool_association_store.list_associations()
+                if a.guideline_id == guideline_id
             ],
         )
 

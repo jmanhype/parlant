@@ -545,12 +545,28 @@ async def test_that_a_tool_association_can_be_created(
     assert association_data["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
 
     association_store = container[GuidelineToolAssociationStore]
+    associations = await association_store.list_associations()
+
+    matching_associations = [
+        assoc
+        for assoc in associations
+        if assoc.id == association_data["id"]
+        and assoc.guideline_id == guideline.id
+        and assoc.tool_id == (service_name, tool_name)
+    ]
+
+    assert len(matching_associations) == 1
+
+    tool_associations = (
+        client.get(f"/agents/{agent_id}/guidelines/{guideline.id}")
+        .raise_for_status()
+        .json()["tool_associations"]
+    )
 
     assert any(
-        association_data["id"] == a.id
-        and a.guideline_id == guideline.id
-        and a.tool_id == (service_name, tool_name)
-        for a in await association_store.list_associations()
+        assoc["guideline_id"] == guideline.id
+        and assoc["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
+        for assoc in tool_associations
     )
 
 
@@ -604,3 +620,11 @@ async def test_that_a_tool_association_can_be_deleted(
         assoc.id == association.id and assoc.guideline_id == guideline.id
         for assoc in associations_after
     )
+
+    tool_associations = (
+        client.get(f"/agents/{agent_id}/guidelines/{guideline.id}")
+        .raise_for_status()
+        .json()["tool_associations"]
+    )
+
+    assert tool_associations == []
