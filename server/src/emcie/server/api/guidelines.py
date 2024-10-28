@@ -119,19 +119,6 @@ class GuidelineConnection(DefaultBaseModel):
     kind: ConnectionKind
 
 
-class CreateGuidelineToolAssociationRequest(DefaultBaseModel):
-    service_name: str
-    tool_name: str
-
-
-class CreateGuidelineToolAssociationResponse(DefaultBaseModel):
-    guideline_tool_association: GuidelineToolAssociationDTO
-
-
-class DeleteGuidelineToolAssociationResponse(DefaultBaseModel):
-    guideline_tool_association: GuidelineToolAssociationDTO
-
-
 def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
     if not dto.approved:
         raise ValueError("Unapproved invoice.")
