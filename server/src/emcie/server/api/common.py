@@ -22,7 +22,7 @@ class GuidelineContentDTO(TypedDict):
 class GuidelinePayloadDTO(DefaultBaseModel):
     kind: PayloadKindDTO
     content: GuidelineContentDTO
-    action: Literal["add", "update"]
+    operation: Literal["add", "update"]
     updated_id: Optional[GuidelineId] = None
     coherence_check: bool
     connection_proposition: bool

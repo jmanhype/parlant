@@ -256,7 +256,7 @@ class MC:
                     connections.add(c)
 
         for i in invoices:
-            if i.payload.action == "update":
+            if i.payload.operation == "update":
                 guideline_id = cast(GuidelineId, i.payload.updated_id)
 
                 connections_to_delete = list(

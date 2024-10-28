@@ -128,7 +128,7 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
             predicate=dto.payload.content["predicate"],
             action=dto.payload.content["action"],
         ),
-        action=dto.payload.action,
+        operation=dto.payload.operation,
         coherence_check=dto.payload.coherence_check,
         connection_proposition=dto.payload.connection_proposition,
         updated_id=dto.payload.updated_id,
@@ -243,7 +243,7 @@ def create_router(
             )
 
         guideline_ids = set(
-            await mc.create_guidelines(
+            await mc.upsert_guidelines(
                 guideline_set=agent_id,
                 invoices=invoices,
             )

@@ -507,7 +507,7 @@ async def test_evaluation_creation(
                     predicate="Test evaluation creation with invoice",
                     action="Ensure the evaluation with invoice is persisted in the JSON file",
                 ),
-                action="add",
+                operation="add",
                 coherence_check=True,
                 connection_proposition=True,
             )
@@ -542,7 +542,7 @@ async def test_evaluation_update(
                     predicate="Initial evaluation payload with invoice",
                     action="This content will be updated",
                 ),
-                action="add",
+                operation="add",
                 coherence_check=True,
                 connection_proposition=True,
             )

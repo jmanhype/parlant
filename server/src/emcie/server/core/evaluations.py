@@ -55,7 +55,7 @@ ConnectionPropositionKind = Literal[
 @dataclass(frozen=True)
 class GuidelinePayload:
     content: GuidelineContent
-    action: Literal["add", "update"]
+    operation: Literal["add", "update"]
     coherence_check: bool
     connection_proposition: bool
     updated_id: Optional[GuidelineId] = None
@@ -277,7 +277,7 @@ class EvaluationDocumentStore(EvaluationStore):
                         predicate=payload.content.predicate,
                         action=payload.content.action,
                     ),
-                    action=payload.action,
+                    action=payload.operation,
                     updated_id=payload.updated_id,
                     coherence_check=payload.coherence_check,
                     connection_proposition=payload.connection_proposition,
@@ -368,7 +368,7 @@ class EvaluationDocumentStore(EvaluationStore):
                         predicate=payload_doc["content"]["predicate"],
                         action=payload_doc["content"]["action"],
                     ),
-                    action=payload_doc["action"],
+                    operation=payload_doc["action"],
                     updated_id=payload_doc["updated_id"],
                     coherence_check=payload_doc["coherence_check"],
                     connection_proposition=payload_doc["connection_proposition"],

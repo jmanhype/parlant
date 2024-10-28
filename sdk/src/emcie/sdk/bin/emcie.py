@@ -328,7 +328,9 @@ class Actions:
         ctx: click.Context,
         session_id: str,
     ) -> list[EventDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events")
+        )
 
         response.raise_for_status()
 
@@ -387,7 +389,9 @@ class Actions:
         ctx: click.Context,
         agent_id: str,
     ) -> list[TermDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms")
+        )
 
         response.raise_for_status()
 
@@ -401,6 +405,8 @@ class Actions:
         action: str,
         check: bool,
         index: bool,
+        operation: str,
+        updated_id: Optional[str] = None,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
@@ -408,12 +414,16 @@ class Actions:
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": predicate,
-                        "action": action,
+                        "content": {
+                            "predicate": predicate,
+                            "action": action,
+                        },
+                        "operation": operation,
+                        "update_id": updated_id,
+                        "coherence_check": check,
+                        "connection_proposition": index,
                     }
                 ],
-                "coherence_check": check,
-                "connection_proposition": index,
             },
         )
 
@@ -483,7 +493,9 @@ class Actions:
         guideline_id: str,
     ) -> None:
         response = requests.delete(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+            urljoin(
+                ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}"
+            )
         )
 
         response.raise_for_status()
@@ -495,7 +507,9 @@ class Actions:
         guideline_id: str,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+            urljoin(
+                ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}"
+            )
         )
 
         response.raise_for_status()
@@ -507,7 +521,9 @@ class Actions:
         ctx: click.Context,
         agent_id: str,
     ) -> list[GuidelineDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines")
+        )
 
         response.raise_for_status()
 
@@ -559,7 +575,9 @@ class Actions:
 
         guideline_response.raise_for_status()
 
-        connections: list[GuidelineConnectionDTO] = guideline_response.json()["connections"]
+        connections: list[GuidelineConnectionDTO] = guideline_response.json()[
+            "connections"
+        ]
 
         if connection := next(
             (
@@ -625,7 +643,9 @@ class Actions:
         tool_name: str,
     ) -> str:
         guideline_response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+            urljoin(
+                ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}"
+            )
         )
 
         guideline_response.raise_for_status()
@@ -692,7 +712,9 @@ class Actions:
         if variable := next((v for v in variables if v["name"] == name), None):
             return cast(ContextVariableDTO, variable)
 
-        raise ValueError("A variable called '{name}' was not found under agent '{agent_id}'")
+        raise ValueError(
+            "A variable called '{name}' was not found under agent '{agent_id}'"
+        )
 
     @staticmethod
     def create_variable(
@@ -837,7 +859,9 @@ class Actions:
 
     @staticmethod
     def read_service(ctx: click.Context, service_name: str) -> ServiceDTO:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/services/{service_name}")
+        )
 
         response.raise_for_status()
 
@@ -1089,11 +1113,15 @@ class Interface:
 
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
-        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events")
+        )
 
         response.raise_for_status()
 
-        message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
+        message_events = [
+            e for e in response.json()["events"] if e["kind"] == "message"
+        ]
 
         max_number_of_history_events_to_show = 5
 
@@ -1213,13 +1241,21 @@ class Interface:
         include_indirect: bool,
     ) -> None:
         def to_direct_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
-            peer = conn["target"] if conn["source"]["id"] == guideline["id"] else conn["source"]
+            peer = (
+                conn["target"]
+                if conn["source"]["id"] == guideline["id"]
+                else conn["source"]
+            )
 
             return {
                 "Connection ID": conn["id"],
                 "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
-                "Role": "Source" if conn["source"]["id"] == guideline["id"] else "Target",
-                "Peer Role": "Target" if conn["source"]["id"] == guideline["id"] else "Source",
+                "Role": "Source"
+                if conn["source"]["id"] == guideline["id"]
+                else "Target",
+                "Peer Role": "Target"
+                if conn["source"]["id"] == guideline["id"]
+                else "Source",
                 "Peer ID": peer["id"],
                 "Peer Predicate": peer["predicate"],
                 "Peer Action": peer["action"],
@@ -1243,11 +1279,15 @@ class Interface:
 
             if direct:
                 rich.print("\nDirect Entailments:")
-                Interface._print_table(map(lambda c: to_direct_entailment_item(c), direct))
+                Interface._print_table(
+                    map(lambda c: to_direct_entailment_item(c), direct)
+                )
 
             if indirect and include_indirect:
                 rich.print("\nIndirect Entailments:")
-                Interface._print_table(map(lambda c: to_indirect_entailment_item(c), indirect))
+                Interface._print_table(
+                    map(lambda c: to_indirect_entailment_item(c), indirect)
+                )
 
         if tool_associations:
             rich.print("\nTool(s) Enabled:")
@@ -1270,6 +1310,7 @@ class Interface:
                 action,
                 check,
                 index,
+                operation="add",
             )
 
             guideline = guideline_with_connections_and_associations["guideline"]
@@ -1287,6 +1328,56 @@ class Interface:
             Interface._write_error("Failed to add guideline")
             rich.print("Detected potential incoherence with other guidelines:")
             Interface._print_table(contradictions)
+            rich.print(
+                Text(
+                    "\nTo force-add despite these errors, re-run with --no-check",
+                    style="bold",
+                )
+            )
+            set_exit_status(1)
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def update_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        guideline_id: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        try:
+            guideline_with_connections = Actions.create_guideline(
+                ctx,
+                agent_id,
+                predicate,
+                action,
+                check,
+                index,
+                operation="update",
+                updated_id=guideline_id,
+            )
+
+            guideline = guideline_with_connections["guideline"]
+            Interface._write_success(f"Updated guideline (id={guideline['id']})")
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                include_indirect=False,
+            )
+
+        except CoherenceCheckFailure as e:
+            contradictions = e.contradictions
+            Interface._write_error("Failed to add guideline")
+            rich.print("Detected incoherence with other guidelines:")
+            Interface._print_table(
+                contradictions,
+                maxcolwidths=[20, 20, 20, 40, 10],
+            )
             rich.print(
                 Text(
                     "\nTo force-add despite these errors, re-run with --no-check",
@@ -1322,7 +1413,9 @@ class Interface:
                 ctx, agent_id, guideline_id
             )
 
-            Interface._render_guidelines([guideline_with_connections_and_associations["guideline"]])
+            Interface._render_guidelines(
+                [guideline_with_connections_and_associations["guideline"]]
+            )
 
             Interface._render_guideline_entailments(
                 guideline_with_connections_and_associations["guideline"],
@@ -1368,7 +1461,9 @@ class Interface:
                 target_guideline_id,
                 kind,
             )
-            Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
+            Interface._write_success(
+                f"Added connection (id={connection["connections"][0]['id']})"
+            )
             Interface._print_table([connection])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1425,7 +1520,9 @@ class Interface:
             Interface._write_success(
                 f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
             )
-            Interface._render_guideline_tool_associations(association["tool_associations"])
+            Interface._render_guideline_tool_associations(
+                association["tool_associations"]
+            )
 
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1504,9 +1601,15 @@ class Interface:
                 "ID": variable["id"],
                 "Name": variable["name"],
                 "Description": variable["description"] or "",
-                "Service Name": variable["tool_id"]["service_name"] if variable["tool_id"] else "",
-                "Tool Name": variable["tool_id"]["tool_name"] if variable["tool_id"] else "",
-                "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
+                "Service Name": variable["tool_id"]["service_name"]
+                if variable["tool_id"]
+                else "",
+                "Tool Name": variable["tool_id"]["tool_name"]
+                if variable["tool_id"]
+                else "",
+                "Freshness Rules": Interface._render_freshness_rules(
+                    variable["freshness_rules"]
+                ),
             }
             for variable in variables
         ]
@@ -1690,7 +1793,9 @@ class Interface:
                     if tool["parameters"]:
                         rich.print(Text("    Parameters:", style="bold"))
                         for param_name, param_desc in tool["parameters"].items():
-                            rich.print(Text(f"      - {param_name}:", style="bold"), end=" ")
+                            rich.print(
+                                Text(f"      - {param_name}:", style="bold"), end=" "
+                            )
                             rich.print(param_desc)
 
                         rich.print("\n")
@@ -1723,7 +1828,9 @@ async def async_main() -> None:
             ctx.obj = Config(server_address=server)
 
     @cli.command(help="Generate shell completion code")
-    @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
+    @click.option(
+        "-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True
+    )
     def complete(shell: str) -> None:
         click.echo(click_completion.get_code(shell))
 
@@ -1733,7 +1840,9 @@ async def async_main() -> None:
 
     @agent.command("add", help="Add a new agent")
     @click.argument("name")
-    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option(
+        "-d", "--description", type=str, help="Agent description", required=False
+    )
     @click.option(
         "--max-engine-iterations",
         type=int,
@@ -1774,7 +1883,9 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option(
+        "-d", "--description", type=str, help="Agent description", required=False
+    )
     @click.option(
         "--max-engine-iterations",
         type=int,
@@ -1819,8 +1930,12 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
-    @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
+    @click.option(
+        "-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True
+    )
+    @click.option(
+        "-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False
+    )
     @click.pass_context
     def session_new(
         ctx: click.Context,
@@ -1866,7 +1981,9 @@ async def async_main() -> None:
     @click.argument("session_id")
     @click.argument("correlation_id")
     @click.pass_context
-    def session_inspect(ctx: click.Context, session_id: str, correlation_id: str) -> None:
+    def session_inspect(
+        ctx: click.Context, session_id: str, correlation_id: str
+    ) -> None:
         Interface.inspect_interaction(ctx, session_id, correlation_id)
 
     @session.command("post", help="Post user message to session")
@@ -2011,6 +2128,55 @@ async def async_main() -> None:
             agent_id=agent_id,
             predicate=predicate,
             action=action,
+            check=check,
+            index=index,
+        )
+
+    @guideline.command("update", help="Update an existing guideline")
+    @click.option(
+        "--check/--no-check",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Check for contradictions between existing guidelines",
+    )
+    @click.option(
+        "--index/--no-index",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Determine if guideline connections should be indexed",
+    )
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.argument("guideline_id", type=str)
+    @click.pass_context
+    def guideline_update(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        guideline_id: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.update_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            predicate=predicate,
+            action=action,
+            guideline_id=guideline_id,
             check=check,
             index=index,
         )
@@ -2249,7 +2415,9 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-d", "--description", type=str, help="Variable description", required=False)
+    @click.option(
+        "-d", "--description", type=str, help="Variable description", required=False
+    )
     @click.argument("name", type=str)
     @click.pass_context
     def variable_add(

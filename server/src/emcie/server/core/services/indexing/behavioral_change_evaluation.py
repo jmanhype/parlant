@@ -135,7 +135,7 @@ class GuidelineEvaluator:
 
         guidelines_to_skip = [(p.content, False) for p in payloads if not p.coherence_check]
 
-        updated_ids = {cast(GuidelineId, p.updated_id) for p in payloads if p.action == "update"}
+        updated_ids = {cast(GuidelineId, p.updated_id) for p in payloads if p.operation == "update"}
 
         remaining_existing_guidelines = []
 
@@ -227,7 +227,7 @@ class GuidelineEvaluator:
 
         guidelines_to_skip = [(p.content, False) for p in payloads if not p.connection_proposition]
 
-        updated_ids = {p.updated_id for p in payloads if p.action == "update"}
+        updated_ids = {p.updated_id for p in payloads if p.operation == "update"}
 
         remaining_existing_guidelines = [
             (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)

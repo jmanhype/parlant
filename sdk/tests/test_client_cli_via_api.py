@@ -308,6 +308,8 @@ class API:
         action: str,
         coherence_check: Optional[dict[str, Any]] = None,
         connection_propositions: Optional[dict[str, Any]] = None,
+        operation: str = "add",
+        updated_id: Optional[str] = None,
     ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
@@ -317,8 +319,14 @@ class API:
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate,
-                                "action": action,
+                                "content": {
+                                    "predicate": predicate,
+                                    "action": action,
+                                },
+                                "action": operation,
+                                "updated_id": updated_id,
+                                "coherence_checks": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True if coherence_check is None else False,
