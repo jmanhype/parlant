@@ -3958,7 +3958,7 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-stochastics"
-version = "0.2.3"
+version = "0.2.4"
 description = "pytest plugin that allows selectively running tests several times and accepting *some* failures."
 optional = false
 python-versions = "^3.12"
@@ -3969,12 +3969,13 @@ develop = false
 dataclasses-json = "^0.6.7"
 mypy = "^1.11.1"
 pytest = "^8.0.0"
+rich = "^13.9.3"
 
 [package.source]
 type = "git"
 url = "ssh://git@github.com/emcie-co/pytest-stochastics.git"
-reference = "v0.2.3"
-resolved_reference = "035646374f81a51c5ade6c7c167a6afb8739961a"
+reference = "v0.2.4"
+resolved_reference = "1b31d96f1b53724f5947cdeb6587628e8ace1cc1"
 
 [[package]]
 name = "pytest-tap"
@@ -4265,13 +4266,13 @@ six = "*"
 
 [[package]]
 name = "rich"
-version = "13.9.1"
+version = "13.9.3"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "rich-13.9.1-py3-none-any.whl", hash = "sha256:b340e739f30aa58921dc477b8adaa9ecdb7cecc217be01d93730ee1bc8aa83be"},
-    {file = "rich-13.9.1.tar.gz", hash = "sha256:097cffdf85db1babe30cc7deba5ab3a29e1b9885047dab24c57e9a7f8a9c1466"},
+    {file = "rich-13.9.3-py3-none-any.whl", hash = "sha256:9836f5096eb2172c9e77df411c1b009bace4193d6a481d534fea75ebba758283"},
+    {file = "rich-13.9.3.tar.gz", hash = "sha256:bc1e01b899537598cf02579d2b9f4a415104d3fc439313a7a2c165d76557a08e"},
 ]
 
 [package.dependencies]
@@ -5586,4 +5587,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "30fe35274ab3e0da779d6d2857af0197a3be7cad07907573e53c8c1dbdfe3daf"
+content-hash = "b2465caa6a5a4925e3f3676821ced16d49170a55239027ec3993725a4d9e9883"

@@ -12,8 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.12"]
-        poetry-version: ["1.8"]
+        python-version: ["3.12.6"]
+        poetry-version: ["1.8.3"]
 
     env:
       SSH_AUTH_SOCK: /tmp/ssh_agent.sock
@@ -56,12 +56,12 @@ jobs:
         elif [[ "${{ github.event_name }}" == "push" && "${{ github.base_ref }}" == "develop" ]]; then
           PLAN="initial"
         elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "main" ]]; then
-          PLAN="disabled"
+          PLAN="initial"
         elif [[ "${{ github.event_name }}" == "push" && "${{ github.base_ref }}" == "main" ]]; then
-          PLAN="disabled"
+          PLAN="initial"
         else
           echo "how did we get here?"
-          PLAN="disabled"
+          PLAN="initial"
         fi
         echo plan=$PLAN >> $GITHUB_OUTPUT
         echo "Using plan '$PLAN' for ${{ github.event_name }} to ${{ github.base_ref }}"

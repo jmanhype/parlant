@@ -1,10 +1,10 @@
 {
-    "plan_tests": [
+    "test_plan_list": [
         {
             "plan": "initial",
-            "threshold_tests": [
+            "policy_tests": [
                 {
-                    "threshold": "mostly",
+                    "policy": "mostly",
                     "tests": [
                         "tests/core/engines/alpha/test_baseline_scenarios.py::test_prioritizing_freezing_transactions_over_processing_refunds",
                         "tests/core/engines/alpha/test_baseline_scenarios.py::test_adherence_to_guidelines_without_fabricating_responses",
@@ -13,7 +13,7 @@
                     ]
                 },
                 {
-                    "threshold": "best_effort",
+                    "policy": "best_effort",
                     "tests": [
                         "tests/core/engines/alpha/test_baseline_scenarios.py::test_tool_called_again_by_context_after_user_response"
                     ]
@@ -21,27 +21,22 @@
             ]
         }
     ],
-    "thresholds": [
+    "policy_list": [
         {
-            "threshold": "disable",
+            "policy": "disable",
             "at_least": 0,
             "out_of": 0
         },
         {
-            "threshold": "best_effort",
+            "policy": "best_effort",
             "at_least": 0,
             "out_of": 3
         },
         {
-            "threshold": "mostly",
+            "policy": "mostly",
             "at_least": 2,
             "out_of": 3
         }
     ],
-    "plan_fallbacks": [
-        {
-            "plan": "initial",
-            "overrides": "disabled"
-        }
-    ]
+    "plan_fallback_list": []
 }
