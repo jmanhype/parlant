@@ -339,24 +339,30 @@ class API:
             return response.json()["items"][0]["guideline"]
 
     @staticmethod
-    async def create_guideline_tool_association(
+    async def add_association(
         agent_id: str,
         guideline_id: str,
         service_name: str,
         tool_name: str,
     ) -> Any:
         async with API.make_client() as client:
-            response = await client.post(
-                f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+            response = await client.patch(
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
                 json={
-                    "service_name": service_name,
-                    "tool_name": tool_name,
+                    "tool_associations": {
+                        "add": [
+                            {
+                                "service_name": service_name,
+                                "tool_name": tool_name,
+                            }
+                        ]
+                    }
                 },
             )
 
             response.raise_for_status()
 
-        return response.json()["guideline_tool_association"]
+        return response.json()["tool_associations"]
 
     @staticmethod
     async def create_context_variable(
@@ -1330,7 +1336,7 @@ async def test_that_a_connection_can_be_removed(
         assert len(guideline["connections"]) == 0
 
 
-async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
+async def test_that_a_tool_can_be_enabled_for_a_guideline(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1389,7 +1395,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
             )
 
 
-async def test_that_a_tool_can_be_disabled_for_a_guideline_via_cli(
+async def test_that_a_tool_can_be_disabled_for_a_guideline(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1426,9 +1432,7 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline_via_cli(
                 == os.EX_OK
             )
 
-            _ = await API.create_guideline_tool_association(
-                agent_id, guideline["id"], service_name, tool_name
-            )
+            _ = await API.add_association(agent_id, guideline["id"], service_name, tool_name)
 
             assert (
                 await run_cli_and_get_exit_status(
