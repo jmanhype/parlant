@@ -180,7 +180,7 @@ class MC:
             event_emitter=event_emitter,
         )
 
-    async def upsert_guidelines(
+    async def create_guidelines(
         self,
         guideline_set: str,
         invoices: Sequence[Invoice],
@@ -222,9 +222,40 @@ class MC:
                     predicate=i.payload.content.predicate,
                     action=i.payload.content.action,
                 )
+                if i.payload.operation == "add"
+                else await self._guideline_store.update_guideline(
+                    guideline_id=cast(GuidelineId, i.payload.updated_id),
+                    params={
+                        "predicate": i.payload.content.predicate,
+                        "action": i.payload.content.action,
+                    },
+                )
             ).id
             for i in invoices
         }
+
+        for i in invoices:
+            if i.payload.operation == "update":
+                guideline_id = cast(GuidelineId, i.payload.updated_id)
+
+                connections_to_delete = list(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        source=guideline_id,
+                    )
+                )
+                connections_to_delete.extend(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        target=guideline_id,
+                    )
+                )
+                await asyncio.gather(
+                    *(
+                        self._guideline_connection_store.delete_connection(c.id)
+                        for c in connections_to_delete
+                    )
+                )
 
         connections: set[ConnectionProposition] = set([])
 
@@ -254,33 +285,5 @@ class MC:
                             c,
                         )
                     connections.add(c)
-
-        for i in invoices:
-            if i.payload.operation == "update":
-                guideline_id = cast(GuidelineId, i.payload.updated_id)
-
-                connections_to_delete = list(
-                    await self._guideline_connection_store.list_connections(
-                        indirect=False,
-                        source=guideline_id,
-                    )
-                )
-                connections_to_delete.extend(
-                    await self._guideline_connection_store.list_connections(
-                        indirect=False,
-                        target=guideline_id,
-                    )
-                )
-                await asyncio.gather(
-                    *(
-                        self._guideline_connection_store.delete_connection(c.id)
-                        for c in connections_to_delete
-                    )
-                )
-
-                await self._guideline_store.delete_guideline(
-                    guideline_set=guideline_set,
-                    guideline_id=guideline_id,
-                )
 
         return content_guidelines.values()

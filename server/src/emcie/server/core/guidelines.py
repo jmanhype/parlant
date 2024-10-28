@@ -1,4 +1,4 @@
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, cast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -26,6 +26,12 @@ class Guideline:
 
     def __str__(self) -> str:
         return f"When {self.content.predicate}, then {self.content.action}"
+
+
+class GuidelineUpdateParams(TypedDict, total=False):
+    guideline_set: str
+    predicate: str
+    action: str
 
 
 class GuidelineStore(ABC):
@@ -56,6 +62,13 @@ class GuidelineStore(ABC):
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
+    ) -> Guideline: ...
+
+    @abstractmethod
+    async def update_guideline(
+        self,
+        guideline_id: GuidelineId,
+        params: GuidelineUpdateParams,
     ) -> Guideline: ...
 
     @abstractmethod
@@ -183,6 +196,20 @@ class GuidelineDocumentStore(GuidelineStore):
             )
 
         return self._deserialize(result.deleted_document)
+
+    async def update_guideline(
+        self,
+        guideline_id: GuidelineId,
+        params: GuidelineUpdateParams,
+    ) -> Guideline:
+        result = await self._collection.update_one(
+            filters={"id": {"$eq": guideline_id}},
+            params=cast(_GuidelineDocument, params),
+        )
+
+        assert result.updated_document
+
+        return self._deserialize(result.updated_document)
 
     async def search_guideline(
         self,

@@ -243,7 +243,7 @@ def create_router(
             )
 
         guideline_ids = set(
-            await mc.upsert_guidelines(
+            await mc.create_guidelines(
                 guideline_set=agent_id,
                 invoices=invoices,
             )

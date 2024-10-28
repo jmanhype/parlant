@@ -717,11 +717,32 @@ async def test_that_an_existing_guideline_can_be_updated(
     agent_id: AgentId,
 ) -> None:
     guideline_store = container[GuidelineStore]
+    connection_store = container[GuidelineConnectionStore]
+
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user says hello",
-        action="reply with 'Hi!'",
+        predicate="the user greets you",
+        action="reply with 'Hello'",
     )
+    connected_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="reply with 'Hello'",
+        action="finish with a smile",
+    )
+
+    connected_guideline_post_update = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="reply with 'Howdy!'",
+        action="finish with a smile",
+    )
+
+    await connection_store.create_connection(
+        source=existing_guideline.id,
+        target=connected_guideline.id,
+        kind=ConnectionKind.ENTAILS,
+    )
+
+    new_action = "reply with 'Howdy!'"
 
     request_data = {
         "invoices": [
@@ -729,8 +750,8 @@ async def test_that_an_existing_guideline_can_be_updated(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user says hello",
-                        "action": "reply with 'Howdy!'",
+                        "predicate": "the user greets you",
+                        "action": new_action,
                     },
                     "operation": "update",
                     "coherence_check": True,
@@ -741,17 +762,42 @@ async def test_that_an_existing_guideline_can_be_updated(
                 "approved": True,
                 "data": {
                     "coherence_checks": [],
-                    "connection_propositions": None,
+                    "connection_propositions": [
+                        {
+                            "check_kind": "connection_with_existing_guideline",
+                            "source": {
+                                "predicate": "the user greets you",
+                                "action": new_action,
+                            },
+                            "target": {
+                                "predicate": connected_guideline_post_update.content.predicate,
+                                "action": connected_guideline_post_update.content.action,
+                            },
+                            "connection_kind": "entails",
+                        }
+                    ],
                 },
                 "error": None,
             }
         ]
     }
 
-    response = client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
-    assert response.status_code == status.HTTP_201_CREATED
-    items = response.json()["items"]
+    items = (
+        client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
+        .raise_for_status()
+        .json()["items"]
+    )
 
     assert len(items) == 1
-    assert items[0]["guideline"]["predicate"] == "the user says hello"
-    assert items[0]["guideline"]["action"] == "reply with 'Howdy!'"
+    updated_guideline = items[0]["guideline"]
+    assert updated_guideline["id"] == existing_guideline.id
+    assert updated_guideline["predicate"] == "the user greets you"
+    assert updated_guideline["action"] == new_action
+
+    updated_connections = await connection_store.list_connections(
+        indirect=False, source=existing_guideline.id
+    )
+    assert len(updated_connections) == 1
+    assert updated_connections[0].source == existing_guideline.id
+    assert updated_connections[0].target == connected_guideline_post_update.id
+    assert updated_connections[0].kind == ConnectionKind.ENTAILS

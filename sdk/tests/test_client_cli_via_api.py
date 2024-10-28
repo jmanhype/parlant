@@ -744,6 +744,46 @@ async def test_that_a_guideline_can_be_added(
         assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
 
 
+async def test_that_a_guideline_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    predicate = "the user asks for help"
+    initial_action = "offer assistance"
+    updated_action = "provide detailed support information"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guidelines = await API.create_guideline(
+            agent_id=agent_id, predicate=predicate, action=initial_action
+        )
+
+        guideline = next((g for g in guidelines if g["predicate"] == predicate), None)
+        assert guideline is not None
+        assert guideline["action"] == initial_action
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "update",
+                "-a",
+                agent_id,
+                guideline["id"],
+                predicate,
+                updated_action,
+            )
+            == os.EX_OK
+        )
+
+        updated_guideline = await API.read_guideline(
+            agent_id=agent_id, guideline_id=guideline["id"]
+        )
+        assert updated_guideline["predicate"] == predicate
+        assert updated_guideline["action"] == updated_action
+
+
 async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     context: ContextOfTest,
 ) -> None:
