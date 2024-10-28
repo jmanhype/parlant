@@ -493,9 +493,12 @@ def create_router(
         status_code=status.HTTP_201_CREATED,
     )
     async def create_guideline_tool_association(
+        agent_id: AgentId,
         guideline_id: GuidelineId,
         request: CreateGuidelineToolAssociationRequest,
     ) -> CreateGuidelineToolAssociationResponse:
+        _ = await guideline_store.read_guideline(guideline_set=agent_id, guideline_id=guideline_id)
+
         service = await service_registry.read_tool_service(request.service_name)
         _ = await service.read_tool(request.tool_name)
 
@@ -523,9 +526,12 @@ def create_router(
         status_code=status.HTTP_200_OK,
     )
     async def delete_guideline_tool_association(
+        agent_id: AgentId,
         guideline_id: GuidelineId,
         association_id: GuidelineToolAssociationId,
     ) -> DeleteGuidelineToolAssociationResponse:
+        _ = await guideline_store.read_guideline(guideline_set=agent_id, guideline_id=guideline_id)
+
         association = await guideline_tool_association_store.read_association(association_id)
 
         if association.guideline_id != guideline_id:
