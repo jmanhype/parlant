@@ -1352,11 +1352,11 @@ class Interface:
         try:
             guideline_with_connections = Actions.create_guideline(
                 ctx,
-                agent_id,
-                predicate,
-                action,
-                check,
-                index,
+                agent_id=agent_id,
+                predicate=predicate,
+                action=action,
+                check=check,
+                index=index,
                 operation="update",
                 updated_id=guideline_id,
             )

@@ -325,7 +325,7 @@ class API:
                                 },
                                 "operation": operation,
                                 "updated_id": updated_id,
-                                "coherence_checks": True,
+                                "coherence_check": True,
                                 "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
@@ -756,13 +756,9 @@ async def test_that_a_guideline_can_be_updated(
 
         agent_id = await API.get_first_agent_id()
 
-        guidelines = await API.create_guideline(
+        guideline = await API.create_guideline(
             agent_id=agent_id, predicate=predicate, action=initial_action
         )
-
-        guideline = next((g for g in guidelines if g["predicate"] == predicate), None)
-        assert guideline is not None
-        assert guideline["action"] == initial_action
 
         assert (
             await run_cli_and_get_exit_status(
@@ -777,9 +773,10 @@ async def test_that_a_guideline_can_be_updated(
             == os.EX_OK
         )
 
-        updated_guideline = await API.read_guideline(
-            agent_id=agent_id, guideline_id=guideline["id"]
-        )
+        updated_guideline = (
+            await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+        )["guideline"]
+
         assert updated_guideline["predicate"] == predicate
         assert updated_guideline["action"] == updated_action
 
