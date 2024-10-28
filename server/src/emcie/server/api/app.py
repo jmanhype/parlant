@@ -16,6 +16,7 @@ from emcie.server.core.common import ItemNotFoundError, generate_id
 from emcie.server.core.evaluations import EvaluationStore
 from emcie.server.core.guideline_connections import GuidelineConnectionStore
 from emcie.server.core.guidelines import GuidelineStore
+from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.services.tools.service_registry import ServiceRegistry
 from emcie.server.core.sessions import SessionListener, SessionStore
 from emcie.server.core.glossary import GlossaryStore
@@ -37,6 +38,7 @@ async def create_app(container: Container) -> FastAPI:
     glossary_store = container[GlossaryStore]
     guideline_store = container[GuidelineStore]
     guideline_connection_store = container[GuidelineConnectionStore]
+    guideline_tool_association_store = container[GuidelineToolAssociationStore]
     context_variable_store = container[ContextVariableStore]
     service_registry = container[ServiceRegistry]
     mc = container[MC]
@@ -78,6 +80,8 @@ async def create_app(container: Container) -> FastAPI:
             mc=mc,
             guideline_store=guideline_store,
             guideline_connection_store=guideline_connection_store,
+            service_registry=service_registry,
+            guideline_tool_association_store=guideline_tool_association_store,
         )
     )
     agent_router.include_router(

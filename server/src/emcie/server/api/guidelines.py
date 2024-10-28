@@ -7,6 +7,7 @@ from emcie.server.api.common import (
     ConnectionKindDTO,
     GuidelinePayloadDTO,
     GuidelineInvoiceDataDTO,
+    ToolIdDTO,
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
@@ -26,7 +27,13 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
+from emcie.server.core.guideline_tool_associations import (
+    GuidelineToolAssociationId,
+    GuidelineToolAssociationStore,
+)
 from emcie.server.core.mc import MC
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
+from emcie.server.core.tools import ToolId
 
 
 class GuidelineDTO(DefaultBaseModel):
@@ -96,6 +103,21 @@ class GuidelineConnection(DefaultBaseModel):
     source: Guideline
     target: Guideline
     kind: ConnectionKind
+
+
+class CreateGuidelineToolAssociationRequest(DefaultBaseModel):
+    service_name: str
+    tool_name: str
+
+
+class GuidelineToolAssociationDTO(DefaultBaseModel):
+    id: GuidelineToolAssociationId
+    guideline_id: GuidelineId
+    tool_id: ToolIdDTO
+
+
+class CreateGuidelineToolAssociationResponse(DefaultBaseModel):
+    guideline_tool_association: GuidelineToolAssociationDTO
 
 
 def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
@@ -171,6 +193,8 @@ def create_router(
     mc: MC,
     guideline_store: GuidelineStore,
     guideline_connection_store: GuidelineConnectionStore,
+    service_registry: ServiceRegistry,
+    guideline_tool_association_store: GuidelineToolAssociationStore,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -416,5 +440,35 @@ def create_router(
             await guideline_connection_store.delete_connection(c.id)
 
         return DeleteGuidelineResponse(guideline_id=guideline_id)
+
+    @router.post(
+        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+        status_code=status.HTTP_201_CREATED,
+    )
+    async def create_guideline_tool_association(
+        guideline_id: GuidelineId,
+        request: CreateGuidelineToolAssociationRequest,
+    ) -> CreateGuidelineToolAssociationResponse:
+        service = await service_registry.read_tool_service(request.service_name)
+        _ = await service.read_tool(request.tool_name)
+
+        association = await guideline_tool_association_store.create_association(
+            guideline_id=guideline_id,
+            tool_id=ToolId(
+                service_name=request.service_name,
+                tool_name=request.tool_name,
+            ),
+        )
+
+        return CreateGuidelineToolAssociationResponse(
+            guideline_tool_association=GuidelineToolAssociationDTO(
+                id=association.id,
+                guideline_id=association.guideline_id,
+                tool_id=ToolIdDTO(
+                    service_name=association.tool_id.service_name,
+                    tool_name=association.tool_id.tool_name,
+                ),
+            )
+        )
 
     return router
