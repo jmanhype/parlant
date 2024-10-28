@@ -323,7 +323,7 @@ class API:
                                     "predicate": predicate,
                                     "action": action,
                                 },
-                                "action": operation,
+                                "operation": operation,
                                 "updated_id": updated_id,
                                 "coherence_checks": True,
                                 "connection_proposition": True,

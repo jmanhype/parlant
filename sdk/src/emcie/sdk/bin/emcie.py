@@ -419,7 +419,7 @@ class Actions:
                             "action": action,
                         },
                         "operation": operation,
-                        "update_id": updated_id,
+                        "updated_id": updated_id,
                         "coherence_check": check,
                         "connection_proposition": index,
                     }
