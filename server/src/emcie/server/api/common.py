@@ -61,3 +61,8 @@ def connection_kind_dto_to_connection_kind(dto: ConnectionKindDTO) -> Connection
         "entails": ConnectionKind.ENTAILS,
         "suggests": ConnectionKind.SUGGESTS,
     }[dto]
+
+
+class ToolIdDTO(DefaultBaseModel):
+    service_name: str
+    tool_name: str

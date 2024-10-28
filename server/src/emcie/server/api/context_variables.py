@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter
+from emcie.server.api.common import ToolIdDTO
 from emcie.server.core.agents import AgentId
 from emcie.server.core.common import DefaultBaseModel
 from emcie.server.core.context_variables import (
@@ -34,11 +35,6 @@ class FreshnessRulesDTO(DefaultBaseModel):
     hours: Optional[list[int]] = None
     minutes: Optional[list[int]] = None
     seconds: Optional[list[int]] = None
-
-
-class ToolIdDTO(DefaultBaseModel):
-    service_name: str
-    tool_name: str
 
 
 class ContextVariableDTO(DefaultBaseModel):

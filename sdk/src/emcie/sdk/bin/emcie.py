@@ -64,6 +64,11 @@ class GuidelineDTO(TypedDict):
     action: str
 
 
+class ToolIdDTO(TypedDict):
+    service_name: str
+    tool_name: str
+
+
 class GuidelineConnectionDTO(TypedDict):
     id: str
     source: GuidelineDTO
@@ -72,9 +77,16 @@ class GuidelineConnectionDTO(TypedDict):
     indirect: bool
 
 
-class GuidelineWithConnectionsDTO(TypedDict):
+class GuidelineToolAssociationDTO(TypedDict):
+    id: str
+    guideline_id: str
+    tool_id: ToolIdDTO
+
+
+class GuidelineWithConnectionsAndToolAssociationsDTO(TypedDict):
     guideline: GuidelineDTO
     connections: list[GuidelineConnectionDTO]
+    tool_associations: list[GuidelineToolAssociationDTO]
 
 
 class FreshnessRulesDTO(TypedDict):
@@ -96,11 +108,6 @@ class FreshnessRulesDTO(TypedDict):
     hours: NotRequired[list[int]]
     minutes: NotRequired[list[int]]
     seconds: NotRequired[list[int]]
-
-
-class ToolIdDTO(TypedDict):
-    service_name: str
-    tool_name: str
 
 
 class ContextVariableDTO(TypedDict):
@@ -389,7 +396,7 @@ class Actions:
         action: str,
         check: bool,
         index: bool,
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
             json={
@@ -452,7 +459,7 @@ class Actions:
                         guideline_response.raise_for_status()
 
                         return cast(
-                            GuidelineWithConnectionsDTO,
+                            GuidelineWithConnectionsAndToolAssociationsDTO,
                             guideline_response.json()["items"][0],
                         )
 
@@ -481,14 +488,14 @@ class Actions:
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
         )
 
         response.raise_for_status()
 
-        return cast(GuidelineWithConnectionsDTO, response.json())
+        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
 
     @staticmethod
     def list_guidelines(
@@ -508,7 +515,7 @@ class Actions:
         source_guideline_id: str,
         target_guideline_id: str,
         kind: str,
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.patch(
             urljoin(
                 ctx.obj.server_address,
@@ -529,7 +536,7 @@ class Actions:
 
         response.raise_for_status()
 
-        return cast(GuidelineWithConnectionsDTO, response.json())
+        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
 
     @staticmethod
     def remove_entailment(
@@ -573,6 +580,71 @@ class Actions:
 
         raise ValueError(
             f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
+        )
+
+    @staticmethod
+    def enable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> GuidelineToolAssociationDTO:
+        response = requests.post(
+            urljoin(
+                ctx.obj.server_address,
+                f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+            ),
+            json={
+                "service_name": service_name,
+                "tool_name": tool_name,
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+
+    @staticmethod
+    def disable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> GuidelineToolAssociationDTO:
+        guideline_response = requests.get(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
+        )
+
+        guideline_response.raise_for_status()
+
+        associations: list[GuidelineToolAssociationDTO] = guideline_response.json()[
+            "tool_associations"
+        ]
+
+        if association := next(
+            (
+                assoc
+                for assoc in associations
+                if assoc["tool_id"]["service_name"] == service_name
+                and assoc["tool_id"]["tool_name"] == tool_name
+            ),
+            None,
+        ):
+            response = requests.delete(
+                urljoin(
+                    ctx.obj.server_address,
+                    f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association["id"]}",
+                )
+            )
+
+            response.raise_for_status()
+
+            return cast(GuidelineToolAssociationDTO, response.json()["guideline_tool_association"])
+
+        raise ValueError(
+            f"An association between {guideline_id} and the tool {tool_name} from {service_name} was not found"
         )
 
     @staticmethod
@@ -1116,6 +1188,7 @@ class Interface:
     def _render_guideline_entailments(
         guideline: GuidelineDTO,
         connections: list[GuidelineConnectionDTO],
+        tool_associations: list[GuidelineToolAssociationDTO],
         include_indirect: bool,
     ) -> None:
         def to_direct_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
@@ -1155,6 +1228,10 @@ class Interface:
                 rich.print("\nIndirect Entailments:")
                 Interface._print_table(map(lambda c: to_indirect_entailment_item(c), indirect))
 
+        if tool_associations:
+            rich.print("\nTool(s) Enabled:")
+            Interface._render_guideline_tool_associations(tool_associations)
+
     @staticmethod
     def create_guideline(
         ctx: click.Context,
@@ -1165,7 +1242,7 @@ class Interface:
         index: bool,
     ) -> None:
         try:
-            guideline_with_connections = Actions.create_guideline(
+            guideline_with_connections_and_associations = Actions.create_guideline(
                 ctx,
                 agent_id,
                 predicate,
@@ -1174,12 +1251,13 @@ class Interface:
                 index,
             )
 
-            guideline = guideline_with_connections["guideline"]
+            guideline = guideline_with_connections_and_associations["guideline"]
             Interface._write_success(f"Added guideline (id={guideline['id']})")
 
             Interface._render_guideline_entailments(
-                guideline_with_connections["guideline"],
-                guideline_with_connections["connections"],
+                guideline_with_connections_and_associations["guideline"],
+                guideline_with_connections_and_associations["connections"],
+                guideline_with_connections_and_associations["tool_associations"],
                 include_indirect=False,
             )
 
@@ -1222,13 +1300,16 @@ class Interface:
         guideline_id: str,
     ) -> None:
         try:
-            guideline_with_connections = Actions.read_guideline(ctx, agent_id, guideline_id)
+            guideline_with_connections_and_associations = Actions.read_guideline(
+                ctx, agent_id, guideline_id
+            )
 
-            Interface._render_guidelines([guideline_with_connections["guideline"]])
+            Interface._render_guidelines([guideline_with_connections_and_associations["guideline"]])
 
             Interface._render_guideline_entailments(
-                guideline_with_connections["guideline"],
-                guideline_with_connections["connections"],
+                guideline_with_connections_and_associations["guideline"],
+                guideline_with_connections_and_associations["connections"],
+                guideline_with_connections_and_associations["tool_associations"],
                 include_indirect=True,
             )
         except Exception as e:
@@ -1290,6 +1371,63 @@ class Interface:
                 target_guideline_id,
             )
             Interface._write_success(f"Removed entailment (id={connection_id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def _render_guideline_tool_associations(
+        associations: list[GuidelineToolAssociationDTO],
+    ) -> None:
+        association_items = [
+            {
+                "Association ID": a["id"],
+                "Guideline ID": a["guideline_id"],
+                "Service Name": a["tool_id"]["service_name"],
+                "Tool Name": a["tool_id"]["tool_name"],
+            }
+            for a in associations
+        ]
+
+        Interface._print_table(association_items)
+
+    @staticmethod
+    def enable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        try:
+            association = Actions.enable_tool_for_guideline(
+                ctx, agent_id, guideline_id, service_name, tool_name
+            )
+
+            Interface._write_success(
+                f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
+            )
+            Interface._render_guideline_tool_associations([association])
+
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def disable_tool_for_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        try:
+            _ = Actions.disable_tool_for_guideline(
+                ctx, agent_id, guideline_id, service_name, tool_name
+            )
+            Interface._write_success(
+                f"Disabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
+            )
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1985,6 +2123,68 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source_guideline_id,
             target_guideline_id=target_guideline_id,
+        )
+
+    @guideline.command("enable-tool", help="Enable a tool for a guideline")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("guideline_id", type=str)
+    @click.argument("service_name", type=str)
+    @click.argument("tool_name", type=str)
+    @click.pass_context
+    def guideline_enable_tool(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.enable_tool_for_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+            service_name=service_name,
+            tool_name=tool_name,
+        )
+
+    @guideline.command("disable-tool", help="Disable a tool for a guideline")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("guideline_id", type=str)
+    @click.argument("service_name", type=str)
+    @click.argument("tool_name", type=str)
+    @click.pass_context
+    def guideline_disable_tool(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.disable_tool_for_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            guideline_id=guideline_id,
+            service_name=service_name,
+            tool_name=tool_name,
         )
 
     @cli.group(help="Manage an agent's context variables")

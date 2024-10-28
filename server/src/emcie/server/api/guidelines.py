@@ -1,3 +1,4 @@
+from collections import defaultdict
 from itertools import chain
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
@@ -7,6 +8,7 @@ from emcie.server.api.common import (
     ConnectionKindDTO,
     GuidelinePayloadDTO,
     GuidelineInvoiceDataDTO,
+    ToolIdDTO,
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
@@ -26,7 +28,13 @@ from emcie.server.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId, GuidelineStore
+from emcie.server.core.guideline_tool_associations import (
+    GuidelineToolAssociationId,
+    GuidelineToolAssociationStore,
+)
 from emcie.server.core.mc import MC
+from emcie.server.core.services.tools.service_registry import ServiceRegistry
+from emcie.server.core.tools import ToolId
 
 
 class GuidelineDTO(DefaultBaseModel):
@@ -43,9 +51,16 @@ class GuidelineConnectionDTO(DefaultBaseModel):
     indirect: bool
 
 
-class GuidelineWithConnectionsDTO(DefaultBaseModel):
+class GuidelineToolAssociationDTO(DefaultBaseModel):
+    id: GuidelineToolAssociationId
+    guideline_id: GuidelineId
+    tool_id: ToolIdDTO
+
+
+class GuidelineWithConnectionsAndToolAssociationsDTO(DefaultBaseModel):
     guideline: GuidelineDTO
     connections: Sequence[GuidelineConnectionDTO]
+    tool_associations: Sequence[GuidelineToolAssociationDTO]
 
 
 class GuidelineInvoiceDTO(DefaultBaseModel):
@@ -61,7 +76,7 @@ class CreateGuidelineRequest(DefaultBaseModel):
 
 
 class CreateGuidelinesResponse(DefaultBaseModel):
-    items: list[GuidelineWithConnectionsDTO]
+    items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
 
 
 class DeleteGuidelineRequest(DefaultBaseModel):
@@ -96,6 +111,19 @@ class GuidelineConnection(DefaultBaseModel):
     source: Guideline
     target: Guideline
     kind: ConnectionKind
+
+
+class CreateGuidelineToolAssociationRequest(DefaultBaseModel):
+    service_name: str
+    tool_name: str
+
+
+class CreateGuidelineToolAssociationResponse(DefaultBaseModel):
+    guideline_tool_association: GuidelineToolAssociationDTO
+
+
+class DeleteGuidelineToolAssociationResponse(DefaultBaseModel):
+    guideline_tool_association: GuidelineToolAssociationDTO
 
 
 def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
@@ -171,6 +199,8 @@ def create_router(
     mc: MC,
     guideline_store: GuidelineStore,
     guideline_connection_store: GuidelineConnectionStore,
+    service_registry: ServiceRegistry,
+    guideline_tool_association_store: GuidelineToolAssociationStore,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -215,9 +245,11 @@ def create_router(
                 detail=str(exc),
             )
 
-        guideline_ids = await mc.create_guidelines(
-            guideline_set=agent_id,
-            invoices=invoices,
+        guideline_ids = set(
+            await mc.create_guidelines(
+                guideline_set=agent_id,
+                invoices=invoices,
+            )
         )
 
         guidelines = [
@@ -225,9 +257,23 @@ def create_router(
             for id in guideline_ids
         ]
 
+        tool_associations = defaultdict(list)
+        for association in await guideline_tool_association_store.list_associations():
+            if association.guideline_id in guideline_ids:
+                tool_associations[association.guideline_id].append(
+                    GuidelineToolAssociationDTO(
+                        id=association.id,
+                        guideline_id=association.guideline_id,
+                        tool_id=ToolIdDTO(
+                            service_name=association.tool_id.service_name,
+                            tool_name=association.tool_id.tool_name,
+                        ),
+                    )
+                )
+
         return CreateGuidelinesResponse(
             items=[
-                GuidelineWithConnectionsDTO(
+                GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(
                         id=guideline.id,
                         predicate=guideline.content.predicate,
@@ -255,6 +301,7 @@ def create_router(
                             include_indirect=True,
                         )
                     ],
+                    tool_associations=tool_associations.get(guideline.id, []),
                 )
                 for guideline in guidelines
             ]
@@ -263,7 +310,7 @@ def create_router(
     @router.get("/{agent_id}/guidelines/{guideline_id}")
     async def read_guideline(
         agent_id: AgentId, guideline_id: GuidelineId
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id, guideline_id=guideline_id
         )
@@ -274,7 +321,7 @@ def create_router(
             include_indirect=True,
         )
 
-        return GuidelineWithConnectionsDTO(
+        return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
                 predicate=guideline.content.predicate,
@@ -298,6 +345,18 @@ def create_router(
                 )
                 for connection, indirect in connections
             ],
+            tool_associations=[
+                GuidelineToolAssociationDTO(
+                    id=a.id,
+                    guideline_id=a.guideline_id,
+                    tool_id=ToolIdDTO(
+                        service_name=a.tool_id.service_name,
+                        tool_name=a.tool_id.tool_name,
+                    ),
+                )
+                for a in await guideline_tool_association_store.list_associations()
+                if a.guideline_id == guideline_id
+            ],
         )
 
     @router.get("/{agent_id}/guidelines/")
@@ -318,7 +377,7 @@ def create_router(
     @router.patch("/{agent_id}/guidelines/{guideline_id}")
     async def patch_guideline(
         agent_id: AgentId, guideline_id: GuidelineId, request: PatchGuidelineRequest
-    ) -> GuidelineWithConnectionsDTO:
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -371,7 +430,7 @@ def create_router(
                         detail="Only direct connections may be removed",
                     )
 
-        return GuidelineWithConnectionsDTO(
+        return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
                 predicate=guideline.content.predicate,
@@ -397,6 +456,18 @@ def create_router(
                     agent_id, guideline_id, True
                 )
             ],
+            tool_associations=[
+                GuidelineToolAssociationDTO(
+                    id=a.id,
+                    guideline_id=a.guideline_id,
+                    tool_id=ToolIdDTO(
+                        service_name=a.tool_id.service_name,
+                        tool_name=a.tool_id.tool_name,
+                    ),
+                )
+                for a in await guideline_tool_association_store.list_associations()
+                if a.guideline_id == guideline_id
+            ],
         )
 
     @router.delete("/{agent_id}/guidelines/{guideline_id}")
@@ -416,5 +487,64 @@ def create_router(
             await guideline_connection_store.delete_connection(c.id)
 
         return DeleteGuidelineResponse(guideline_id=guideline_id)
+
+    @router.post(
+        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+        status_code=status.HTTP_201_CREATED,
+    )
+    async def create_guideline_tool_association(
+        guideline_id: GuidelineId,
+        request: CreateGuidelineToolAssociationRequest,
+    ) -> CreateGuidelineToolAssociationResponse:
+        service = await service_registry.read_tool_service(request.service_name)
+        _ = await service.read_tool(request.tool_name)
+
+        association = await guideline_tool_association_store.create_association(
+            guideline_id=guideline_id,
+            tool_id=ToolId(
+                service_name=request.service_name,
+                tool_name=request.tool_name,
+            ),
+        )
+
+        return CreateGuidelineToolAssociationResponse(
+            guideline_tool_association=GuidelineToolAssociationDTO(
+                id=association.id,
+                guideline_id=association.guideline_id,
+                tool_id=ToolIdDTO(
+                    service_name=association.tool_id.service_name,
+                    tool_name=association.tool_id.tool_name,
+                ),
+            )
+        )
+
+    @router.delete(
+        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association_id}",
+        status_code=status.HTTP_200_OK,
+    )
+    async def delete_guideline_tool_association(
+        guideline_id: GuidelineId,
+        association_id: GuidelineToolAssociationId,
+    ) -> DeleteGuidelineToolAssociationResponse:
+        association = await guideline_tool_association_store.read_association(association_id)
+
+        if association.guideline_id != guideline_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Association does not belong to the specified guideline",
+            )
+
+        association = await guideline_tool_association_store.delete_association(association_id)
+
+        return DeleteGuidelineToolAssociationResponse(
+            guideline_tool_association=GuidelineToolAssociationDTO(
+                id=association.id,
+                guideline_id=association.guideline_id,
+                tool_id=ToolIdDTO(
+                    service_name=association.tool_id.service_name,
+                    tool_name=association.tool_id.tool_name,
+                ),
+            )
+        )
 
     return router

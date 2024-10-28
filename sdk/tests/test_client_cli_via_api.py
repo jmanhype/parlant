@@ -339,6 +339,26 @@ class API:
             return response.json()["items"][0]["guideline"]
 
     @staticmethod
+    async def create_guideline_tool_association(
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> Any:
+        async with API.make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations",
+                json={
+                    "service_name": service_name,
+                    "tool_name": tool_name,
+                },
+            )
+
+            response.raise_for_status()
+
+        return response.json()["guideline_tool_association"]
+
+    @staticmethod
     async def create_context_variable(
         agent_id: str,
         name: str,
@@ -1216,7 +1236,7 @@ async def test_that_a_guideline_can_be_removed(
         assert len(guidelines) == 0
 
 
-async def test_that__a_connection_can_be_removed(
+async def test_that_a_connection_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1308,6 +1328,124 @@ async def test_that__a_connection_can_be_removed(
 
         guideline = await API.read_guideline(agent_id, first)
         assert len(guideline["connections"]) == 0
+
+
+async def test_that_a_tool_can_be_enabled_for_a_guideline_via_cli(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id,
+            predicate="the user wants to get meeting details",
+            action="get meeting event information",
+        )
+
+        service_name = "google_calendar"
+        tool_name = "fetch_event_data"
+        service_kind = "sdk"
+
+        @tool
+        def fetch_event_data(context: ToolContext, event_id: str) -> ToolResult:
+            """Fetch event data based on event ID."""
+            return ToolResult({"event_id": event_id})
+
+        async with run_service_server([fetch_event_data]) as server:
+            assert (
+                await run_cli_and_get_exit_status(
+                    "service",
+                    "add",
+                    service_name,
+                    "-k",
+                    service_kind,
+                    "-u",
+                    server.url,
+                )
+                == os.EX_OK
+            )
+
+            assert (
+                await run_cli_and_get_exit_status(
+                    "guideline",
+                    "enable-tool",
+                    "-a",
+                    agent_id,
+                    guideline["id"],
+                    service_name,
+                    tool_name,
+                )
+                == os.EX_OK
+            )
+
+            guideline = await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+
+            assert any(
+                assoc["tool_id"]["service_name"] == service_name
+                and assoc["tool_id"]["tool_name"] == tool_name
+                for assoc in guideline["tool_associations"]
+            )
+
+
+async def test_that_a_tool_can_be_disabled_for_a_guideline_via_cli(
+    context: ContextOfTest,
+) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id,
+            predicate="the user wants to get meeting details",
+            action="get meeting event information",
+        )
+
+        service_name = "local_service"
+        tool_name = "fetch_event_data"
+        service_kind = "sdk"
+
+        @tool
+        def fetch_event_data(context: ToolContext, event_id: str) -> ToolResult:
+            """Fetch event data based on event ID."""
+            return ToolResult({"event_id": event_id})
+
+        async with run_service_server([fetch_event_data]) as server:
+            assert (
+                await run_cli_and_get_exit_status(
+                    "service",
+                    "add",
+                    service_name,
+                    "-k",
+                    service_kind,
+                    "-u",
+                    server.url,
+                )
+                == os.EX_OK
+            )
+
+            _ = await API.create_guideline_tool_association(
+                agent_id, guideline["id"], service_name, tool_name
+            )
+
+            assert (
+                await run_cli_and_get_exit_status(
+                    "guideline",
+                    "disable-tool",
+                    "-a",
+                    agent_id,
+                    guideline["id"],
+                    service_name,
+                    tool_name,
+                )
+                == os.EX_OK
+            )
+
+            guideline = await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+
+            assert guideline["tool_associations"] == []
 
 
 async def test_that_a_variables_can_be_listed(

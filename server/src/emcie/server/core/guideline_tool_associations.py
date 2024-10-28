@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import NewType, Optional, Sequence, TypedDict
 
-from emcie.server.core.common import Version, generate_id
+from emcie.server.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from emcie.server.core.guidelines import GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
@@ -32,6 +32,18 @@ class GuidelineToolAssociationStore(ABC):
         guideline_id: GuidelineId,
         tool_id: ToolId,
         creation_utc: Optional[datetime] = None,
+    ) -> GuidelineToolAssociation: ...
+
+    @abstractmethod
+    async def read_association(
+        self,
+        association_id: GuidelineToolAssociationId,
+    ) -> GuidelineToolAssociation: ...
+
+    @abstractmethod
+    async def delete_association(
+        self,
+        association_id: GuidelineToolAssociationId,
     ) -> GuidelineToolAssociation: ...
 
     @abstractmethod
@@ -95,6 +107,29 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         await self._collection.insert_one(document=self._serialize(association))
 
         return association
+
+    async def read_association(
+        self,
+        association_id: GuidelineToolAssociationId,
+    ) -> GuidelineToolAssociation:
+        guideline_tool_association_document = await self._collection.find_one(
+            filters={"id": {"$eq": association_id}}
+        )
+
+        if not guideline_tool_association_document:
+            raise ItemNotFoundError(item_id=UniqueId(association_id))
+
+        return self._deserialize(guideline_tool_association_document)
+
+    async def delete_association(
+        self, association_id: GuidelineToolAssociationId
+    ) -> GuidelineToolAssociation:
+        result = await self._collection.delete_one(filters={"id": {"$eq": association_id}})
+
+        if not result.deleted_document:
+            raise ItemNotFoundError(item_id=UniqueId(association_id))
+
+        return self._deserialize(result.deleted_document)
 
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [self._deserialize(d) for d in await self._collection.find(filters={})]

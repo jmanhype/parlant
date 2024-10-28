@@ -4,7 +4,9 @@ from lagom import Container
 
 from emcie.server.core.agents import AgentId
 from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
 from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
+from emcie.server.core.tools import LocalToolService, ToolId
 
 
 async def create_and_connect(
@@ -498,3 +500,131 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
 
         is_direct = third_item["guideline"]["id"] in (c["source"]["id"], c["target"]["id"])
         assert c["indirect"] is not is_direct
+
+
+async def test_that_a_tool_association_can_be_created(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    local_tool_service = container[LocalToolService]
+
+    _ = await local_tool_service.create_tool(
+        name="fetch_event_data",
+        module_path="some.module",
+        description="",
+        parameters={},
+        required=[],
+    )
+
+    guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user wants to get meeting details",
+        action="get meeting event information",
+    )
+
+    service_name = "local"
+    tool_name = "fetch_event_data"
+
+    request_data = {
+        "service_name": service_name,
+        "tool_name": tool_name,
+    }
+
+    response = client.post(
+        f"/agents/{agent_id}/guidelines/{guideline.id}/guideline_tool_associations",
+        json=request_data,
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    association_data = response.json()["guideline_tool_association"]
+
+    assert association_data["guideline_id"] == guideline.id
+    assert association_data["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
+
+    association_store = container[GuidelineToolAssociationStore]
+    associations = await association_store.list_associations()
+
+    matching_associations = [
+        assoc
+        for assoc in associations
+        if assoc.id == association_data["id"]
+        and assoc.guideline_id == guideline.id
+        and assoc.tool_id == (service_name, tool_name)
+    ]
+
+    assert len(matching_associations) == 1
+
+    tool_associations = (
+        client.get(f"/agents/{agent_id}/guidelines/{guideline.id}")
+        .raise_for_status()
+        .json()["tool_associations"]
+    )
+
+    assert any(
+        assoc["guideline_id"] == guideline.id
+        and assoc["tool_id"] == {"service_name": service_name, "tool_name": tool_name}
+        for assoc in tool_associations
+    )
+
+
+async def test_that_a_tool_association_can_be_deleted(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    local_tool_service = container[LocalToolService]
+    association_store = container[GuidelineToolAssociationStore]
+
+    await local_tool_service.create_tool(
+        name="fetch_event_data",
+        module_path="some.module",
+        description="",
+        parameters={},
+        required=[],
+    )
+
+    guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user wants to get meeting details",
+        action="get meeting event information",
+    )
+
+    service_name = "local"
+    tool_name = "fetch_event_data"
+
+    association = await association_store.create_association(
+        guideline_id=guideline.id,
+        tool_id=ToolId(service_name=service_name, tool_name=tool_name),
+    )
+
+    response = client.delete(
+        f"/agents/{agent_id}/guidelines/{guideline.id}/guideline_tool_associations/{association.id}",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    response_data = response.json()
+    assert response_data["guideline_tool_association"]["id"] == association.id
+    assert response_data["guideline_tool_association"]["guideline_id"] == guideline.id
+    assert response_data["guideline_tool_association"]["tool_id"] == {
+        "service_name": service_name,
+        "tool_name": tool_name,
+    }
+
+    associations_after = await association_store.list_associations()
+    assert not any(
+        assoc.id == association.id and assoc.guideline_id == guideline.id
+        for assoc in associations_after
+    )
+
+    tool_associations = (
+        client.get(f"/agents/{agent_id}/guidelines/{guideline.id}")
+        .raise_for_status()
+        .json()["tool_associations"]
+    )
+
+    assert tool_associations == []
