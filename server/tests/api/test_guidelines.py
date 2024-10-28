@@ -646,3 +646,41 @@ async def test_that_a_tool_association_can_be_removed(
     )
 
     assert tool_associations == []
+
+
+async def test_that_guideline_deletion_removes_tool_associations(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    local_tool_service = container[LocalToolService]
+    association_store = container[GuidelineToolAssociationStore]
+
+    await local_tool_service.create_tool(
+        name="fetch_event_data",
+        module_path="some.module",
+        description="",
+        parameters={},
+        required=[],
+    )
+
+    guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user wants to get meeting details",
+        action="get meeting event information",
+    )
+
+    service_name = "local"
+    tool_name = "fetch_event_data"
+
+    await association_store.create_association(
+        guideline_id=guideline.id,
+        tool_id=ToolId(service_name=service_name, tool_name=tool_name),
+    )
+
+    response = client.delete(f"/agents/{agent_id}/guidelines/{guideline.id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    associations_after = await association_store.list_associations()
+    assert not any(assoc.guideline_id == guideline.id for assoc in associations_after)

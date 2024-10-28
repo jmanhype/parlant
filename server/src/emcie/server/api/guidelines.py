@@ -512,6 +512,10 @@ def create_router(
         ):
             await guideline_connection_store.delete_connection(c.id)
 
+        for associastion in await guideline_tool_association_store.list_associations():
+            if associastion.guideline_id == guideline_id:
+                await guideline_tool_association_store.delete_association(associastion.id)
+
         return DeleteGuidelineResponse(guideline_id=guideline_id)
 
     return router
