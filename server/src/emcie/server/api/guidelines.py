@@ -120,6 +120,10 @@ class CreateGuidelineToolAssociationResponse(DefaultBaseModel):
     guideline_tool_association: GuidelineToolAssociationDTO
 
 
+class DeleteGuidelineToolAssociationResponse(DefaultBaseModel):
+    guideline_tool_association: GuidelineToolAssociationDTO
+
+
 def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
     if not dto.approved:
         raise ValueError("Unapproved invoice.")
@@ -461,6 +465,35 @@ def create_router(
         )
 
         return CreateGuidelineToolAssociationResponse(
+            guideline_tool_association=GuidelineToolAssociationDTO(
+                id=association.id,
+                guideline_id=association.guideline_id,
+                tool_id=ToolIdDTO(
+                    service_name=association.tool_id.service_name,
+                    tool_name=association.tool_id.tool_name,
+                ),
+            )
+        )
+
+    @router.delete(
+        "/{agent_id}/guidelines/{guideline_id}/guideline_tool_associations/{association_id}",
+        status_code=status.HTTP_200_OK,
+    )
+    async def delete_guideline_tool_association(
+        guideline_id: GuidelineId,
+        association_id: GuidelineToolAssociationId,
+    ) -> DeleteGuidelineToolAssociationResponse:
+        association = await guideline_tool_association_store.read_association(association_id)
+
+        if association.guideline_id != guideline_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Association does not belong to the specified guideline",
+            )
+
+        association = await guideline_tool_association_store.delete_association(association_id)
+
+        return DeleteGuidelineToolAssociationResponse(
             guideline_tool_association=GuidelineToolAssociationDTO(
                 id=association.id,
                 guideline_id=association.guideline_id,
