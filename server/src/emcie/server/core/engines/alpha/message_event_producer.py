@@ -204,6 +204,8 @@ This document should detail how each guideline was adhered to,
 instances where one guideline was prioritized over another,
 situations where guidelines could not be followed due to lack of context or data,
 and the rationale for each decision made during the revision process.
+IMPORTANT: Unless there is some conflict between the guidelines provided,
+prefer to adhere to the provided guidelines over your own judgement.
 
 DO NOT PRODUCE MORE THAN 5 REVISIONS. IF YOU REACH the 5th REVISION, STOP THERE.
 
