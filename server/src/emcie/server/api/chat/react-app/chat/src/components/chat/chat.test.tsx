@@ -1,15 +1,35 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, Mock, vi } from 'vitest';
 import { act, fireEvent, MatcherOptions, render } from '@testing-library/react';
 import { Matcher } from 'vite';
 import Chat from './chat';
 import { postData } from '@/utils/api';
-import { SessionProvider } from '../chatbot/chatbot';
-import { ReactElement } from 'react';
+import { useContext } from 'react';
 
 
 vi.mock('@/utils/api', () => ({
     postData: vi.fn(() => Promise.resolve())
 }));
+
+vi.mock('@/hooks/useFetch', () => ({
+    default: vi.fn(() => {
+        return {
+            refetch: vi.fn(),
+            ErrorTemplate: null,
+            loading: false
+        };
+    })
+}));
+
+vi.mock('react', async () => {
+    const actualReact = await vi.importActual('react');
+    return {
+        ...actualReact,
+        useContext: vi.fn(() => ({
+            sessionId: null,
+            agentId: null
+        }))
+    };
+});
 
 describe(Chat, () => {
     describe('New Session', () => {
@@ -42,26 +62,20 @@ describe(Chat, () => {
     });
     
     describe('Existing Session', () => {
-        const MockSessionProvider = ({ children }: {children: ReactElement}) => (
-            <SessionProvider.Provider
-            value={{
-                sessionId: '213',
-                setSessionId: vi.fn(),
-                agentId: '123',
-                setAgentId: vi.fn(),
-                newSession: null,
-                setNewSession: vi.fn(),
-                sessions: [],
-                setSessions: vi.fn()
-            }}>{children}</SessionProvider.Provider>
-        );
         let getByRole: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
         let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+        beforeAll(() => {
+            (useContext as Mock).mockImplementation(() => ({
+                sessionId: '123',
+                agentId: '123'
+            }));
+        });
+
         beforeEach(async () => {
             vi.clearAllMocks();
             vi.resetModules();
             await act(() => {
-                const utils = render(<MockSessionProvider><Chat/></MockSessionProvider>);
+                const utils = render(<Chat/>);
                 getByRole = utils.getByRole as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
                 getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
             });

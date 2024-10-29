@@ -159,7 +159,7 @@ export default function Chat(): ReactElement {
                         </React.Fragment>
                     ))}
                     {showTyping && 
-                    <div className='flex mb-1 justify-between mt-[44.33px]'>
+                    <div className='animate-fade-in flex mb-1 justify-between mt-[44.33px]'>
                         <Spacer/>
                         <div className='flex items-center max-w-[1200px] flex-1'>
                             <img src="parlant-bubble-muted.svg" alt="" height={36} width={36} className='me-[8px]'/>

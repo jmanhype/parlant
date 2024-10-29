@@ -1,6 +1,7 @@
 import { createContext, Dispatch, lazy, ReactElement, SetStateAction, Suspense, useContext, useState } from 'react';
 import { SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
+import ErrorBoundary from '../error-boundary/error-boundary';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
@@ -35,21 +36,23 @@ export default function Chatbot(): ReactElement {
     const [newSession, setNewSession] = useState<SessionInterface | null>(null);
 
     return (
-        <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId, newSession, setNewSession, sessions, setSessions}}>
-            <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
-                <div className="flex justify-between flex-1 w-full overflow-auto flex-row">
-                    <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[308px]">
-                        <Sessions />
-                    </div>
-                    <div className='h-full w-full'>
-                        {sessionId ? 
-                        <Suspense fallback={<div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}>
-                             <Chat />
-                        </Suspense> :
-                        <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
+        <ErrorBoundary>
+            <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId, newSession, setNewSession, sessions, setSessions}}>
+                <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
+                    <div className="flex justify-between flex-1 w-full overflow-auto flex-row">
+                        <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[308px]">
+                            <Sessions />
+                        </div>
+                        <div className='h-full w-full'>
+                            {sessionId ? 
+                            <Suspense fallback={<div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}>
+                                <Chat />
+                            </Suspense> :
+                            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </SessionProvider.Provider>
+            </SessionProvider.Provider>
+        </ErrorBoundary>
     );
 }

@@ -11,10 +11,15 @@ module.exports = {
 			'fade-in': {
 				'0%': {opacity: 0},
 				'100%': {opacity: 1}
+			},
+			'scroll-down': {
+				'0%': {height: 0},
+				'100%': {height: '100%'}
 			}
 		},
 		animation: {
-			'fade-in': 'fade-in 300ms linear'
+			'fade-in': 'fade-in 300ms linear',
+			'scroll-down': 'scroll-down 300ms linear',
 		},
   		borderRadius: {
   			lg: 'var(--radius)',

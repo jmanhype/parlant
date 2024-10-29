@@ -34,10 +34,10 @@ export default function Message({event}: Props): ReactElement {
                     </div>
                 }
                 <div data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + ' rounded-[22px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
-                    <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[13px]">
+                    <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]">
                         <Markdown className={styles.markdown}>{event?.data?.message}</Markdown>
                     </div>
-                    <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[14px] font-inter self-end items-end whitespace-nowrap'>
+                    <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>
                         <div className='flex items-center'>
                             <div>{getTimeStr(event.creation_utc)}</div>
                             {isClient && serverStatus && <div className="w-6">{statusIcon[serverStatus]}</div>}

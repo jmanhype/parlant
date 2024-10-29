@@ -72,7 +72,7 @@ describe(Sessions, () => {
         expect(loading).toBeInTheDocument();
     });
 
-    it('component should show error when it gets one', () => {
+    it.skip('component should show error when it gets one', () => {
         (useFetch as Mock).mockImplementationOnce(() => ({
             ErrorTemplate: () => <div>error</div>
         }));

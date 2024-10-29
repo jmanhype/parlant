@@ -29,6 +29,9 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
   const [refetchData, setRefetchData] = useState(false);
   const params = body ? objToUrlParams(body) : '';
   
+  useEffect(() => {
+    if (error && error.message !== TIMEOUT_ERROR_MESSAGE) throw new Error(`Failed to fetch "${url}"`);
+}, [error, url]);
 
   const ErrorTemplate = () => {
     return (
