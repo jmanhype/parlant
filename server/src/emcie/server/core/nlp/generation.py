@@ -37,6 +37,7 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         *generators: SchematicGenerator[T],
         logger: Logger,
     ) -> None:
+        assert generators, "Fallback generator must be instantiated with at least 1 generator"
         self._generators = generators
         self._logger = logger
 
@@ -46,18 +47,15 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[T]:
         last_exception: Exception
-        total_generators = len(self._generators)
 
         for index, generator in enumerate(self._generators):
-            generator_name = type(generator).__name__
             try:
-                result = await generator.generate(prompt, hints)
+                result = await generator.generate(prompt=prompt, hints=hints)
                 return result
             except Exception as e:
                 self._logger.warning(
-                    f"Generator {index + 1}/{total_generators} failed: {generator_name} with error: {e}"
+                    f"Generator {index + 1}/{len(self._generators)} failed: {type(generator).__name__}: {e}"
                 )
                 last_exception = e
-                continue
 
         raise last_exception
