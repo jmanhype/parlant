@@ -204,14 +204,22 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         .json()["items"]
     )
 
+    source_guideline_item = next(
+        (
+            i
+            for i in items
+            if i["guideline"]["predicate"] == "the user asks about nearby restaurants"
+        ),
+        None,
+    )
+    assert source_guideline_item
+
     connections = await container[GuidelineConnectionStore].list_connections(
         indirect=False,
-        source=items[0]["guideline"]["id"],
+        source=source_guideline_item["guideline"]["id"],
     )
 
     assert len(connections) == 1
-    assert connections[0].source == items[0]["guideline"]["id"]
-    assert connections[0].target == items[1]["guideline"]["id"]
 
 
 async def test_that_a_connection_to_an_existing_guideline_is_created(

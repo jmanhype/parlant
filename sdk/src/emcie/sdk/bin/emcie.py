@@ -1367,6 +1367,7 @@ class Interface:
             Interface._render_guideline_entailments(
                 guideline_with_connections["guideline"],
                 guideline_with_connections["connections"],
+                guideline_with_connections["tool_associations"],
                 include_indirect=False,
             )
 
@@ -2087,6 +2088,16 @@ async def async_main() -> None:
         pass
 
     @guideline.command("add", help="Add a new guideline")
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option(
         "--check/--no-check",
         type=bool,
@@ -2101,16 +2112,6 @@ async def async_main() -> None:
         default=True,
         help="Determine if guideline connections should be indexed",
     )
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
-    @click.argument("predicate", type=str)
-    @click.argument("action", type=str)
     @click.pass_context
     def guideline_add(
         ctx: click.Context,
@@ -2133,6 +2134,17 @@ async def async_main() -> None:
         )
 
     @guideline.command("update", help="Update an existing guideline")
+    @click.argument("guideline_id", type=str)
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option(
         "--check/--no-check",
         type=bool,
@@ -2147,24 +2159,13 @@ async def async_main() -> None:
         default=True,
         help="Determine if guideline connections should be indexed",
     )
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
-    @click.argument("predicate", type=str)
-    @click.argument("action", type=str)
-    @click.argument("guideline_id", type=str)
     @click.pass_context
     def guideline_update(
         ctx: click.Context,
         agent_id: str,
+        guideline_id: str,
         predicate: str,
         action: str,
-        guideline_id: str,
         check: bool,
         index: bool,
     ) -> None:
