@@ -41,7 +41,7 @@ from emcie.server.core.guidelines import (
 from emcie.server.adapters.db.chroma.database import ChromaDatabase
 from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
 from emcie.server.core.nlp.embedding import EmbedderFactory
-from emcie.server.core.nlp.generation import SchematicGenerator
+from emcie.server.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
 from emcie.server.core.services.tools.service_registry import (
     ServiceRegistry,
     ServiceDocumentRegistry,
@@ -136,8 +136,10 @@ async def setup_container() -> AsyncIterator[Container]:
         logger=LOGGER
     )
     c[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](logger=LOGGER)
-    c[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema](
-        logger=LOGGER
+    c[SchematicGenerator[ToolCallInferenceSchema]] = FallbackSchematicGenerator(
+        GPT_4o_Mini[ToolCallInferenceSchema](logger=LOGGER),
+        GPT_4o[ToolCallInferenceSchema](logger=LOGGER),
+        logger=LOGGER,
     )
     c[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
         PredicatesEntailmentTestsSchema
