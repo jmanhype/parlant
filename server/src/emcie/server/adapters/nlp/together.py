@@ -38,7 +38,9 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
         raw_content = response.choices[0].message.content or "{}"
 
         try:
-            if json_start := max(0, raw_content.find("```json")):
+            json_start = max(0, raw_content.find("```json"))
+
+            if json_start != -1:
                 json_start = json_start + 7
 
             json_end = raw_content[json_start:].find("```")
