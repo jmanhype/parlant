@@ -945,8 +945,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate1,
-                                "action": action1,
+                                "content": {
+                                    "predicate": predicate1,
+                                    "action": action1,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -972,8 +977,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate2,
-                                "action": action2,
+                                "content": {
+                                    "predicate": predicate2,
+                                    "action": action2,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -1011,8 +1021,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate3,
-                                "action": action3,
+                                "content": {
+                                    "predicate": predicate3,
+                                    "action": action3,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -1306,8 +1321,13 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": "the user greets you",
-                                "action": "greet them back with 'Hello'",
+                                "content": {
+                                    "predicate": "the user greets you",
+                                    "action": "greet them back with 'Hello'",
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -1333,8 +1353,13 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": "greeting the user",
-                                "action": "ask for his health condition",
+                                "content": {
+                                    "predicate": "greeting the user",
+                                    "action": "ask for his health condition",
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
