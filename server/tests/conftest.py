@@ -24,7 +24,7 @@ from emcie.server.core.emissions import EventEmitterFactory
 from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
 from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
 from emcie.server.core.nlp.embedding import EmbedderFactory
-from emcie.server.core.nlp.generation import SchematicGenerator
+from emcie.server.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
 from emcie.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -106,8 +106,10 @@ async def container() -> AsyncIterator[Container]:
     container[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](
         logger=container[Logger]
     )
-    container[SchematicGenerator[ToolCallInferenceSchema]] = GPT_4o_Mini[ToolCallInferenceSchema](
-        logger=container[Logger]
+    container[SchematicGenerator[ToolCallInferenceSchema]] = FallbackSchematicGenerator(
+        GPT_4o_Mini[ToolCallInferenceSchema](logger=container[Logger]),
+        GPT_4o[ToolCallInferenceSchema](logger=container[Logger]),
+        logger=container[Logger],
     )
     container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
         PredicatesEntailmentTestsSchema
