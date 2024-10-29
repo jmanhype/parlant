@@ -3,9 +3,10 @@ import { useEffect, useRef, useState, ReactNode, ReactElement } from 'react';
 interface VirtualScrollContainerProps {
   children: ReactNode[];
   height?: string;
+  className?: string;
 }
 
-const VirtualScroll = ({ children, height }: VirtualScrollContainerProps): ReactElement => {
+const VirtualScroll = ({ children, height, className }: VirtualScrollContainerProps): ReactElement => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleItems, setVisibleItems] = useState<number[]>([]);
 
@@ -36,7 +37,7 @@ const VirtualScroll = ({ children, height }: VirtualScrollContainerProps): React
   }, [children]);
 
   return (
-    <div className="scroll-container" ref={containerRef}>
+    <div className={'scroll-container ' + className} ref={containerRef}>
       {children.map((child, index) => (
         <div
           key={index}

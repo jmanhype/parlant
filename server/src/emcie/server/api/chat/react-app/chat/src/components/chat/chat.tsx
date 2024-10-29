@@ -106,7 +106,7 @@ export default function Chat(): ReactElement {
                     setSessionId(res.session.id);
                     setNewSession(null);
                 }
-                setSessions(sessions => [res.session, ...sessions]);
+                setSessions(sessions => [...sessions, res.session]);
                 return res;
             }).catch(() => {
                 toast.error('Something went wrong');
@@ -125,7 +125,7 @@ export default function Chat(): ReactElement {
         }).catch(() => toast.error('Something went wrong'));
     };
 
-    const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             submitButtonRef?.current?.click();
@@ -137,7 +137,7 @@ export default function Chat(): ReactElement {
         return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
     };
 
-    const visibleMessages = pendingMessage?.data?.message ? [...messages, pendingMessage] : [...messages];
+    const visibleMessages = sessionId !== NEW_SESSION_ID && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
 
     return (
         <div className='h-full w-full flex flex-col'>
@@ -176,7 +176,7 @@ export default function Chat(): ReactElement {
                             ref={textareaRef}
                             placeholder="Message..."
                             value={message}
-                            onKeyDown={onKeyUp}
+                            onKeyDown={onKeyDown}
                             onChange={(e) => setMessage(e.target.value)}
                             rows={1}
                             className="box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>

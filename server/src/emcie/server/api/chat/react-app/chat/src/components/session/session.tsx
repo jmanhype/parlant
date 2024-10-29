@@ -17,9 +17,10 @@ interface Props {
     editingTitle: string | null;
     setEditingTitle: Dispatch<SetStateAction<string | null>>;
     refetch: () => void;
+    tabIndex: number;
 }
 
-export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle}: Props): ReactElement {
+export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const {setSessionId, setAgentId, setNewSession} = useSession();
 
@@ -95,10 +96,10 @@ export default function Session({session, isSelected, refetch, editingTitle, set
     return (
         <div data-testid="session"
             role="button"
-            tabIndex={0}
+            tabIndex={tabIndex}
             onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
             onClick={() => !editingTitle && setSessionId(session.id)} key={session.id}
-            className={'bg-white animate-fade-in text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center justify-between ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
+            className={'bg-white animate-fade-in text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px]">
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis">
@@ -117,13 +118,13 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                         onClick={e => e.stopPropagation()}
                         autoFocus
                         defaultValue={session.title}
-                        className="box-shadow-none w-[202px] border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[16px]"/>}
+                        className="box-shadow-none w-[194px] border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]"/>}
             </div>
             <div className='flex items-center gap-[4px]'>
                 {editingTitle !== session.id && 
                 <DropdownMenu>
                     <DropdownMenuTrigger  disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
-                        <div tabIndex={0} role='button' className='rounded-full py-2 me-[24px]' onClick={e => e.stopPropagation()}>
+                        <div tabIndex={tabIndex} role='button' className='rounded-full py-2 me-[24px]' onClick={e => e.stopPropagation()}>
                             <img src='/icons/more.svg' alt='more' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
