@@ -1017,7 +1017,7 @@ class Interface:
                 for proposition in iteration["guideline_propositions"]:
                     rich.print(f"{INDENT*2}Predicate: {proposition['predicate']}")
                     rich.print(f"{INDENT*2}Action: {proposition['action']}")
-                    rich.print(f"{INDENT*2}Score: {proposition['score']}")
+                    rich.print(f"{INDENT*2}Relevance Score: {proposition['score']}/10")
                     rich.print(f"{INDENT*2}Rationale: {proposition['rationale']}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
