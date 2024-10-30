@@ -1,8 +1,5 @@
-// services/api.js
-
 const BASE_URL = 'http://localhost:8000';
 
-// A helper function to handle fetch requests
 const request = async (url: string, options: RequestInit = {}) => {
   try {
     const response = await fetch(url, options);

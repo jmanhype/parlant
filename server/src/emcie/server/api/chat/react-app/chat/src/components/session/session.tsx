@@ -1,4 +1,4 @@
-import { Dispatch, ReactElement, SetStateAction, useEffect, useRef } from 'react';
+import { Dispatch, ReactElement, SetStateAction, useEffect, useRef, useState } from 'react';
 import { Input } from '../ui/input';
 import Tooltip from '../ui/custom/tooltip';
 import { Button } from '../ui/button';
@@ -7,9 +7,11 @@ import { toast } from 'sonner';
 import { useSession } from '../chatbot/chatbot';
 import { SessionInterface } from '@/utils/interfaces';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { NEW_SESSION_ID } from '../sessions/sessions';
 import { getDateStr, getTimeStr } from '@/utils/date';
 import styles from './session.module.scss';
+import AgentAvatar from '../agent-avatar/agent-avatar';
+import { NEW_SESSION_ID } from '../chat-header/chat-header';
+import { spaceClick } from '@/utils/methods';
 
 interface Props {
     session: SessionInterface;
@@ -22,7 +24,8 @@ interface Props {
 
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
-    const {setSessionId, setAgentId, setNewSession} = useSession();
+    const {setSessionId, setAgentId, setNewSession, agents} = useSession();
+    const [agentsMap, setAgentsMap] = useState(new Map());
 
     useEffect(() => {
         if (!isSelected) return;
@@ -31,6 +34,10 @@ export default function Session({session, isSelected, refetch, editingTitle, set
         if (session.id === NEW_SESSION_ID && !session.agent_id) setAgentId(null);
         else setAgentId(session.agent_id);
     }, [isSelected, setAgentId, session.id, session.agent_id, session.title]);
+
+    useEffect(() => {
+        if (agents) setAgentsMap(new Map(agents.map(agent => [agent.id, agent])));
+    }, [agents]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -92,23 +99,29 @@ export default function Session({session, isSelected, refetch, editingTitle, set
         {title: 'rename', onClick: editTitle, imgPath: 'icons/rename.svg'},
         {title: 'delete', onClick: deleteSession, imgPath: 'icons/delete.svg'},
     ];
+    const agent = agentsMap.get(session.agent_id);
 
     return (
         <div data-testid="session"
             role="button"
             tabIndex={tabIndex}
-            onKeyDown={e => e.key === ' ' && (e.target as HTMLElement).click()}
+            onKeyDown={spaceClick}
             onClick={() => !editingTitle && setSessionId(session.id)} key={session.id}
-            className={'bg-white animate-fade-in text-[14px] font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
-            <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px]">
+            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
+            <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]">
                 {editingTitle !== session.id &&
-                    <div className="overflow-hidden overflow-ellipsis">
-                        {session.title}
-                        <small className='text-[12px] text-[#A9A9A9] font-light mt-[4px] flex gap-[6px]'>
-                            {getDateStr(session.creation_utc)}
-                            <img src="/icons/dot-saparetor.svg" alt="" height={18} width={3}/>
-                            {getTimeStr(session.creation_utc)}
-                        </small>
+                    <div className="overflow-hidden overflow-ellipsis flex items-center">
+                        <div>
+                            {agent && <AgentAvatar agent={agent}/>}
+                        </div>
+                        <div>
+                            {session.title}
+                            <small className='text-[12px] text-[#A9A9A9] font-light flex gap-[6px]'>
+                                {getDateStr(session.creation_utc)}
+                                <img src="/icons/dot-saparetor.svg" alt="" height={18} width={3}/>
+                                {getTimeStr(session.creation_utc)}
+                            </small>
+                        </div>
                     </div>
                 }
                 {editingTitle === session.id && 
@@ -120,11 +133,11 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                         defaultValue={session.title}
                         className="box-shadow-none w-[194px] border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]"/>}
             </div>
-            <div className='flex items-center gap-[4px]'>
+            <div className='h-[39px]'>
                 {editingTitle !== session.id && 
                 <DropdownMenu>
                     <DropdownMenuTrigger  disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
-                        <div tabIndex={tabIndex} role='button' className='rounded-full py-2 me-[24px]' onClick={e => e.stopPropagation()}>
+                        <div tabIndex={tabIndex} role='button' className='rounded-full me-[24px]' onClick={e => e.stopPropagation()}>
                             <img src='/icons/more.svg' alt='more' height={14} width={14}/>
                         </div>
                     </DropdownMenuTrigger>
@@ -138,8 +151,11 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                     </DropdownMenuContent>
                 </DropdownMenu>}
                 
-                {editingTitle == session.id && <Tooltip value='Cancel'><Button data-testid="cancel" variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={cancel}><img src="/icons/cancel.svg" alt="cancel" /></Button></Tooltip>}
-                {editingTitle == session.id && <Tooltip value='Save'><Button variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={saveTitleChange}><img src="/icons/save.svg" alt="cancel" /></Button></Tooltip>}
+                {editingTitle == session.id &&
+                <div className='me-[18px]'>
+                    <Tooltip value='Cancel'><Button data-testid="cancel" variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={cancel}><img src="/icons/cancel.svg" alt="cancel" /></Button></Tooltip>
+                    <Tooltip value='Save'><Button variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={saveTitleChange}><img src="/icons/save.svg" alt="cancel" /></Button></Tooltip>
+                </div>}
             </div>
         </div>
     );

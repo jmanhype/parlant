@@ -1,7 +1,9 @@
 import { createContext, Dispatch, lazy, ReactElement, SetStateAction, Suspense, useContext, useState } from 'react';
-import { SessionInterface } from '@/utils/interfaces';
+import { AgentInterface, SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
 import ErrorBoundary from '../error-boundary/error-boundary';
+import ChatHeader from '../chat-header/chat-header';
+import AgentsList from '../agents-list/agents-list';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
@@ -12,6 +14,8 @@ interface SessionContext {
     newSession: SessionInterface | null;
     sessions: SessionInterface[],
     setSessions: Dispatch<SetStateAction<SessionInterface[]>>;
+    agents: AgentInterface[],
+    setAgents: Dispatch<SetStateAction<AgentInterface[]>>;
 };
 
 export const SessionProvider = createContext<SessionContext>({
@@ -22,7 +26,9 @@ export const SessionProvider = createContext<SessionContext>({
     newSession: null,
     setNewSession: () => null,
     sessions: [],
-    setSessions: () =>null
+    setSessions: () => null,
+    agents: [],
+    setAgents: () => null,
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -34,24 +40,40 @@ export default function Chatbot(): ReactElement {
     const [sessions, setSessions] = useState<SessionInterface[]>([]);
     const [agentId, setAgentId] = useState<string | null>(null);
     const [newSession, setNewSession] = useState<SessionInterface | null>(null);
+    const [agents, setAgents] = useState<AgentInterface[]>([]);
+
+    const provideObj = {
+        sessionId,
+        setSessionId,
+        agentId,
+        setAgentId,
+        newSession,
+        setNewSession,
+        sessions,
+        setSessions,
+        agents,
+        setAgents
+    };
 
     return (
         <ErrorBoundary>
-            <SessionProvider.Provider value={{sessionId, setSessionId, agentId, setAgentId, newSession, setNewSession, sessions, setSessions}}>
+            <SessionProvider.Provider value={provideObj}>
                 <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
+                    <ChatHeader/>
+                    {/* <AgentsList/> */}
                     <div className="flex justify-between flex-1 w-full overflow-auto flex-row">
-                        <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[308px]">
+                        <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[332px]">
                             <Sessions />
                         </div>
                         <div className='h-full w-full'>
-                            {sessionId ? 
-                            <Suspense fallback={<div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}>
+                            {sessionId && 
+                            <Suspense fallback={<div></div>}>
                                 <Chat />
-                            </Suspense> :
-                            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'></div>}
+                            </Suspense>}
                         </div>
                     </div>
                 </div>
+                <AgentsList />
             </SessionProvider.Provider>
         </ErrorBoundary>
     );

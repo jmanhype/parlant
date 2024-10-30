@@ -7,11 +7,10 @@ import { groupBy } from '@/utils/obj';
 import Message from '../message/message';
 import { useSession } from '../chatbot/chatbot';
 import { EventInterface, SessionInterface } from '@/utils/interfaces';
-import AgentsSelect from '../agents-select/agents-select';
-import { NEW_SESSION_ID } from '../sessions/sessions';
 import { getDateStr } from '@/utils/date';
 import { Spacer } from '../ui/custom/spacer';
 import { toast } from 'sonner';
+import { NEW_SESSION_ID } from '../chat-header/chat-header';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -46,23 +45,26 @@ export default function Chat(): ReactElement {
     const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage);
     const [lastOffset, setLastOffset] = useState(0);
     const [messages, setMessages] = useState<EventInterface[]>([]);
-    const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
     const [showTyping, setShowTyping] = useState(false);
+    const [isFirstScroll, setIsFirstScroll] = useState(true);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
-    const {data: lastMessages, refetch, ErrorTemplate} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID, sessionId !== NEW_SESSION_ID);
+    const {data: lastMessages, refetch, ErrorTemplate} = useFetch<{events: EventInterface[]}>(`sessions/${sessionId}/events`, {min_offset: lastOffset, wait: true}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID));
 
     const resetChat = () => {
         setMessage('');
         setLastOffset(0);
         setMessages([]);
-        setIsSubmitDisabled(false);
         setShowTyping(false);
     };
 
-    useEffect(() => lastMessageRef?.current?.scrollIntoView?.(), [messages, pendingMessage]);
+    useEffect(() => {
+        lastMessageRef?.current?.scrollIntoView?.({behavior: isFirstScroll ? 'instant' : 'smooth'});
+        if (lastMessageRef?.current && isFirstScroll) setIsFirstScroll(false);
+    }, [messages, pendingMessage, isFirstScroll]);
 
     useEffect(() => {
+        setIsFirstScroll(true);
         if (newSession && sessionId !== NEW_SESSION_ID) setNewSession(null);
         resetChat();
         if (sessionId !== NEW_SESSION_ID) refetch();
@@ -91,9 +93,6 @@ export default function Chat(): ReactElement {
         setShowTyping(lastEventStatus === 'typing');
         refetch();
     
-        if (lastEvent?.kind === 'status' && (lastEventStatus === 'ready' || lastEventStatus === 'error')) {
-            setIsSubmitDisabled(false);
-        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages]);
 
@@ -116,7 +115,6 @@ export default function Chat(): ReactElement {
 
     const postMessage = async (content: string): Promise<void> => {
         setPendingMessage(pendingMessage => ({...pendingMessage, data: {message: content}}));
-        setIsSubmitDisabled(true);
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
         postData(`sessions/${eventSession}/events`, { kind: 'message', content }).then(() => {
@@ -140,12 +138,8 @@ export default function Chat(): ReactElement {
     const visibleMessages = sessionId !== NEW_SESSION_ID && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
 
     return (
+        <>
         <div className='h-full w-full flex flex-col'>
-            <div className='bg-white h-[70px] flex border-b-[0.6px] border-b-solid border-muted w-full'>
-                <div className='w-[308px] flex items-center justify-center self-start h-full'>
-                    <AgentsSelect value={agentId as (string | undefined)} />
-                </div>
-            </div>
             <div className="flex flex-col items-center h-full mx-auto w-full flex-1 overflow-auto">
                 <div className="messages overflow-auto flex-1 flex flex-col w-full mb-4" aria-live="polite" role="log" aria-label="Chat messages">
                     {ErrorTemplate && <ErrorTemplate />}
@@ -154,7 +148,7 @@ export default function Chat(): ReactElement {
                             {!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) &&
                             <DateHeader date={event.creation_utc} isFirst={!i}/>}
                             <div ref={lastMessageRef} className="flex flex-col">
-                                <Message event={event}/>
+                                <Message event={event} isContinual={event.source === visibleMessages[i + 1]?.source}/>
                             </div>
                         </React.Fragment>
                     ))}
@@ -184,7 +178,7 @@ export default function Chat(): ReactElement {
                             data-testid="submit-button"
                             className="max-w-[60px] rounded-full hover:bg-white"
                             ref={submitButtonRef}
-                            disabled={isSubmitDisabled || !message?.trim() || !agentId}
+                            disabled={!message?.trim() || !agentId}
                             onClick={() => postMessage(message)}>
                             <img src="/icons/send.svg" alt="Send" height={19.64} width={21.52} className='h-10'/>
                         </Button>
@@ -193,5 +187,6 @@ export default function Chat(): ReactElement {
                 </div>
             </div>
         </div>
+        </>
     );
 }
