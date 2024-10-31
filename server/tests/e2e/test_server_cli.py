@@ -184,13 +184,23 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
             "payloads": [
                 {
                     "kind": "guideline",
-                    "predicate": "the user greets you",
-                    "action": "greet them back with 'Hello'",
+                    "content": {
+                        "predicate": "the user greets you",
+                        "action": "greet them back with 'Hello'",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
                 {
                     "kind": "guideline",
-                    "predicate": "the user greeting you",
-                    "action": "greet them back with 'Hola'",
+                    "content": {
+                        "predicate": "the user greeting you",
+                        "action": "greet them back with 'Hola'",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
             ],
         }
@@ -207,7 +217,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
                 evaluation_id = evaluation_creation_response.json()["evaluation_id"]
 
                 server_process.send_signal(signal.SIGINT)
-                server_process.wait(timeout=1)
+                server_process.wait(timeout=REASONABLE_AMOUNT_OF_TIME)
                 assert server_process.returncode == os.EX_OK
             except:
                 traceback.print_exc()

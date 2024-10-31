@@ -231,8 +231,13 @@ async def create_guideline(
                     {
                         "payload": {
                             "kind": "guideline",
-                            "predicate": predicate,
-                            "action": action,
+                            "content": {
+                                "predicate": predicate,
+                                "action": action,
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
                         "checksum": "checksum_value",
                         "approved": True if coherence_check is None else False,
