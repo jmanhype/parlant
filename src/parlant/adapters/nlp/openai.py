@@ -8,12 +8,23 @@ import jsonfinder  # type: ignore
 import os
 
 from pydantic import ValidationError
+import tiktoken
 
 from parlant.core.nlp.service import NLPService
 from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult, TokenEstimator
 from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
+
+
+class OpenAITokenEstimator(TokenEstimator):
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+        self.encoding = tiktoken.encoding_for_model(model_name)
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        tokens = self.encoding.encode(prompt)
+        return len(tokens)
 
 
 class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -94,11 +105,37 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 class GPT_4o(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="gpt-4o-2024-08-06", logger=logger)
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 128000
 
 
 class GPT_4o_Mini(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="gpt-4o-mini", logger=logger)
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 128000
 
 
 class OpenAIEmbedder(Embedder):
@@ -128,11 +165,37 @@ class OpenAIEmbedder(Embedder):
 class OpenAITextEmbedding3Large(OpenAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="text-embedding-3-large")
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 8192
 
 
 class OpenAITextEmbedding3Small(OpenAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="text-embedding-3-small")
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 8192
 
 
 class OpenAIModerationService(ModerationService):
