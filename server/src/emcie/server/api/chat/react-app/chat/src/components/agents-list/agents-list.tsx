@@ -26,26 +26,26 @@ const AgentsList = (): ReactNode => {
         setDialogOpen(false);
     };
 
-    const closeCliked = () => {
+    const closeClicked = (): void => {
         setDialogOpen(false);
         setSessionId(null);
     };
 
     return (
         <Dialog open={dialogOpen}>
-            <DialogContent  className={'min-w-[604px] h-[536px] font-ubuntu-sans ' + styles.select}>
+            <DialogContent data-testid="dialog-content" className={'min-w-[604px] h-[536px] font-ubuntu-sans ' + styles.select}>
                 <div className='bg-white rounded-[12px] flex flex-col h-[535px] '>
                     <DialogHeader>
                         <DialogTitle>
                             <div className='h-[68px] w-full flex justify-between items-center ps-[30px] pe-[20px]'>
                                 <DialogDescription className='text-[18px] font-semibold'>Select an Agent</DialogDescription>
-                                <img tabIndex={0} onKeyDown={spaceClick} onClick={closeCliked} className='cursor-pointer' src="icons/close.svg" alt="close" height={28} width={28}/>
+                                <img data-testid="closeBtn" role='button' tabIndex={0} onKeyDown={spaceClick} onClick={closeClicked} className='cursor-pointer' src="icons/close.svg" alt="close" height={28} width={28}/>
                             </div>
                         </DialogTitle>
                     </DialogHeader>
                     <div className='flex flex-col overflow-auto'>
                         {data?.agents?.map(agent => (
-                            <div tabIndex={0} onKeyDown={spaceClick} role='button' onClick={() => selectAgent(agent.id)} key={agent.id} className='cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]'>
+                            <div data-testid="agent" tabIndex={0} onKeyDown={spaceClick} role='button' onClick={() => selectAgent(agent.id)} key={agent.id} className='cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]'>
                                 <AgentAvatar agent={agent}/>
                                 <div>
                                     <div className='text-[16px] font-medium'>{agent.name}</div>

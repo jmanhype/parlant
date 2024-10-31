@@ -12,20 +12,24 @@ import styles from './session.module.scss';
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import { NEW_SESSION_ID } from '../chat-header/chat-header';
 import { spaceClick } from '@/utils/methods';
+import { useDialog } from '@/hooks/useDialog';
+import GradiantButton from '../gradiant-button/gradiant-button';
 
 interface Props {
     session: SessionInterface;
-    isSelected: boolean;
-    editingTitle: string | null;
-    setEditingTitle: Dispatch<SetStateAction<string | null>>;
-    refetch: () => void;
-    tabIndex: number;
+    disabled?: boolean;
+    isSelected?: boolean;
+    editingTitle?: string | null;
+    setEditingTitle?: Dispatch<SetStateAction<string | null>>;
+    refetch?: () => void;
+    tabIndex?: number;
 }
 
-export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex}: Props): ReactElement {
+export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
     const {setSessionId, setAgentId, setNewSession, agents} = useSession();
     const [agentsMap, setAgentsMap] = useState(new Map());
+    const {openDialog, DialogComponent, closeDialog} = useDialog();
 
     useEffect(() => {
         if (!isSelected) return;
@@ -41,27 +45,42 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (session.id === NEW_SESSION_ID) {
-            setNewSession(null);
-            setSessionId(null);
-            setAgentId(null);
-            return;
-        }
-        return deleteData(`sessions/${session.id}`).then(() => {
-            refetch();
-            if (isSelected) {
+        const deleteClicked = (e: React.MouseEvent) => {
+            closeDialog();
+            e.stopPropagation();
+            if (session.id === NEW_SESSION_ID) {
+                setNewSession(null);
                 setSessionId(null);
-                document.title = 'Parlant';
+                setAgentId(null);
+                return;
             }
-            toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
-        }).catch(() => {
-            toast.error('Something went wrong');
-        });
+            return deleteData(`sessions/${session.id}`).then(() => {
+                refetch?.();
+                if (isSelected) {
+                    setSessionId(null);
+                    document.title = 'Parlant';
+                }
+                toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
+            }).catch(() => {
+                toast.error('Something went wrong');
+            });
+        };
+
+        const dialogContent = (
+            <div>
+                <Session session={session} disabled/>
+                <div className='h-[80px] flex items-center justify-end pe-[18px]'>
+                    <Button data-testid="cancel-delete" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#EBE9F5] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
+                    <GradiantButton onClick={deleteClicked} buttonClassName='h-[46px] w-[161px] bg-[#213547] rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Delete Session</GradiantButton>
+                </div>
+            </div>
+        );
+        openDialog('Delete Session', dialogContent, '228px', '480px');
     };
 
     const editTitle = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        setEditingTitle(session.id);
+        setEditingTitle?.(session.id);
         setTimeout(() => sessionNameRef?.current?.select(), 0);
     };
 
@@ -70,15 +89,15 @@ export default function Session({session, isSelected, refetch, editingTitle, set
         const title = sessionNameRef?.current?.value;
         if (title) {
             if (session.id === NEW_SESSION_ID) {
-                setEditingTitle(null);
+                setEditingTitle?.(null);
                 setNewSession(session => session ? {...session, title} : session);
                 toast.success('title changed successfully', {closeButton: true});
                 return;
             }
             patchData(`sessions/${session.id}`, {title})
             .then(() => {
-                setEditingTitle(null);
-                refetch();
+                setEditingTitle?.(null);
+                refetch?.();
                 toast.success('title changed successfully', {closeButton: true});
             }).catch(() => {
                 toast.error('Something went wrong');
@@ -88,7 +107,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 
     const cancel = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setEditingTitle(null);
+        setEditingTitle?.(null);
     };
 
     const onInputKeyUp = (e: React.KeyboardEvent) =>{
@@ -106,8 +125,9 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             role="button"
             tabIndex={tabIndex}
             onKeyDown={spaceClick}
-            onClick={() => !editingTitle && setSessionId(session.id)} key={session.id}
-            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '')}>
+            onClick={() => !disabled && !editingTitle && setSessionId(session.id)}
+            key={session.id}
+            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') + (disabled ? ' pointer-events-none' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]">
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis flex items-center">
@@ -134,7 +154,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                         className="box-shadow-none w-[194px] border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]"/>}
             </div>
             <div className='h-[39px]'>
-                {editingTitle !== session.id && 
+                {!disabled && editingTitle !== session.id && 
                 <DropdownMenu>
                     <DropdownMenuTrigger  disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>
                         <div tabIndex={tabIndex} role='button' className='rounded-full me-[24px]' onClick={e => e.stopPropagation()}>
@@ -157,6 +177,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                     <Tooltip value='Save'><Button variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={saveTitleChange}><img src="/icons/save.svg" alt="cancel" /></Button></Tooltip>
                 </div>}
             </div>
+            <DialogComponent />
         </div>
     );
 }

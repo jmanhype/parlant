@@ -27,6 +27,22 @@ describe(Session, () => {
     let rerender: (ui: React.ReactNode) => void;
     let container: HTMLElement;
     
+    const openDeleteDialog = async (): Promise<{dialog: HTMLElement}> => {
+        const moreBtn = getByTestId('menu-button');
+        await userEvent.click(moreBtn);
+        const deleteBtn = getByTestId('delete');
+        fireEvent.click(deleteBtn);
+        const dialog = getByTestId('dialog');
+        return {dialog};
+    };
+
+    const deleteSession = async (): Promise<{dialog: HTMLElement}> => {
+        const {dialog} = await openDeleteDialog();
+        const dialogDeleteButton = getByTestId('gradiant-button');
+        fireEvent.click(dialogDeleteButton);
+        return {dialog};
+    };
+
     beforeEach(() => {
         const utils = render(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={true}/>);
         getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
@@ -43,28 +59,34 @@ describe(Session, () => {
         expect(div).toBeInTheDocument();
     });
 
-    it('delete button should work as expected', async () => {
-        const moreBtn = getByTestId('menu-button');
-        await userEvent.click(moreBtn);
-        const deleteBtn = getByTestId('delete');
-        await fireEvent.click(deleteBtn);
+    it('delete button should open a delete dialog', async () => {
+        const {dialog} = await openDeleteDialog();
+        expect(dialog).toBeInTheDocument();
+    });
+
+    it('dialog\'s delete button should fire a delete event', async () => {
+        const {dialog} = await deleteSession();
         expect(deleteData).toBeCalled();
+        expect(dialog).not.toBeInTheDocument();
+    });
+
+    it('dialog\'s cancel button should cancel deletion', async () => {
+        await openDeleteDialog();
+        const dialog = getByTestId('dialog');
+        const cancelDeleteBtn = getByTestId('cancel-delete');
+        fireEvent.click(cancelDeleteBtn);
+        expect(deleteData).not.toBeCalled();
+        expect(dialog).not.toBeInTheDocument();
     });
 
     it('active session should be closed if deleted', async () => {
-        const moreBtn = getByTestId('menu-button');
-        await userEvent.click(moreBtn);
-        const deleteBtn = getByTestId('delete');
-        await fireEvent.click(deleteBtn);
+        await deleteSession();
         expect(setSessionFn).toBeCalledWith(null);
     });
 
     it('inactive session should not be closed if deleted', async () => {
         rerender(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
-        const moreBtn = getByTestId('menu-button');
-        await userEvent.click(moreBtn);
-        const deleteBtn = getByTestId('delete');
-        await fireEvent.click(deleteBtn);
+        await deleteSession();
         expect(setSessionFn).not.toBeCalled();
     });
 
@@ -82,14 +104,14 @@ describe(Session, () => {
         expect(setEditingTitleFn).toBeCalledWith(null);
     });
 
-    it('session should be enabled when not editing another session', async () => {
+    it('session selection should be enabled when not editing another session', async () => {
         rerender(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const currSession = getByTestId('session');
         fireEvent.click(currSession);
         expect(setSessionFn).toBeCalledWith(session.id);
     });
 
-    it('session should be disabled when editing another session', async () => {
+    it('session selection should be disabled when editing another session', async () => {
         rerender(<Session editingTitle='session2' setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
         const currSession = getByTestId('session');
         fireEvent.click(currSession);
