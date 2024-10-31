@@ -308,6 +308,8 @@ class API:
         action: str,
         coherence_check: Optional[dict[str, Any]] = None,
         connection_propositions: Optional[dict[str, Any]] = None,
+        operation: str = "add",
+        updated_id: Optional[str] = None,
     ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
@@ -317,8 +319,14 @@ class API:
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate,
-                                "action": action,
+                                "content": {
+                                    "predicate": predicate,
+                                    "action": action,
+                                },
+                                "operation": operation,
+                                "updated_id": updated_id,
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True if coherence_check is None else False,
@@ -736,6 +744,43 @@ async def test_that_a_guideline_can_be_added(
         assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
 
 
+async def test_that_a_guideline_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    predicate = "the user asks for help"
+    initial_action = "offer assistance"
+    updated_action = "provide detailed support information"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        guideline = await API.create_guideline(
+            agent_id=agent_id, predicate=predicate, action=initial_action
+        )
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "guideline",
+                "update",
+                "-a",
+                agent_id,
+                guideline["id"],
+                predicate,
+                updated_action,
+            )
+            == os.EX_OK
+        )
+
+        updated_guideline = (
+            await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+        )["guideline"]
+
+        assert updated_guideline["predicate"] == predicate
+        assert updated_guideline["action"] == updated_action
+
+
 async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     context: ContextOfTest,
 ) -> None:
@@ -900,8 +945,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate1,
-                                "action": action1,
+                                "content": {
+                                    "predicate": predicate1,
+                                    "action": action1,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -927,8 +977,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate2,
-                                "action": action2,
+                                "content": {
+                                    "predicate": predicate2,
+                                    "action": action2,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -966,8 +1021,13 @@ async def test_that_view_a_guideline_with_connections_displays_indirect_and_dire
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": predicate3,
-                                "action": action3,
+                                "content": {
+                                    "predicate": predicate3,
+                                    "action": action3,
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -1261,8 +1321,13 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": "the user greets you",
-                                "action": "greet them back with 'Hello'",
+                                "content": {
+                                    "predicate": "the user greets you",
+                                    "action": "greet them back with 'Hello'",
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
@@ -1288,8 +1353,13 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "kind": "guideline",
-                                "predicate": "greeting the user",
-                                "action": "ask for his health condition",
+                                "content": {
+                                    "predicate": "greeting the user",
+                                    "action": "ask for his health condition",
+                                },
+                                "operation": "add",
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,

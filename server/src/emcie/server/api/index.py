@@ -6,6 +6,7 @@ from emcie.server.api.common import (
     CoherenceCheckDTO,
     ConnectionPropositionDTO,
     EvaluationStatusDTO,
+    GuidelineContentDTO,
     InvoiceDataDTO,
     GuidelineInvoiceDataDTO,
     PayloadDTO,
@@ -48,19 +49,29 @@ def _payload_from_dto(dto: PayloadDTO) -> Payload:
     return {
         "guideline": GuidelinePayload(
             content=GuidelineContent(
-                predicate=dto["predicate"],
-                action=dto["action"],
-            )
+                predicate=dto.content["predicate"],
+                action=dto.content["action"],
+            ),
+            operation=dto.operation,
+            updated_id=dto.updated_id,
+            coherence_check=dto.coherence_check,
+            connection_proposition=dto.connection_proposition,
         )
-    }[dto["kind"]]
+    }[dto.kind]
 
 
 def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     return {
         PayloadKind.GUIDELINE: PayloadDTO(
             kind="guideline",
-            predicate=descriptor.payload.content.predicate,
-            action=descriptor.payload.content.action,
+            content=GuidelineContentDTO(
+                predicate=descriptor.payload.content.predicate,
+                action=descriptor.payload.content.action,
+            ),
+            operation=descriptor.payload.operation,
+            updated_id=descriptor.payload.updated_id,
+            coherence_check=descriptor.payload.coherence_check,
+            connection_proposition=descriptor.payload.connection_proposition,
         )
     }[descriptor.kind]
 
@@ -115,8 +126,6 @@ class InvoiceDTO(DefaultBaseModel):
 
 class CreateEvaluationRequest(DefaultBaseModel):
     payloads: Sequence[PayloadDTO]
-    coherence_check: bool = True
-    connection_proposition: bool = True
 
 
 class CreateEvaluationResponse(DefaultBaseModel):
@@ -151,8 +160,6 @@ def create_router(
                     PayloadDescriptor(PayloadKind.GUIDELINE, p)
                     for p in [_payload_from_dto(p) for p in request.payloads]
                 ],
-                coherence_check=request.coherence_check,
-                connection_proposition=request.connection_proposition,
             )
 
         except EvaluationValidationError as exc:

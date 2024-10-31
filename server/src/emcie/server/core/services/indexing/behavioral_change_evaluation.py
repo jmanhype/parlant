@@ -15,7 +15,7 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
+from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore, GuidelineId
 from emcie.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
 )
@@ -53,12 +53,8 @@ class GuidelineEvaluator:
         self,
         agent: Agent,
         payloads: Sequence[Payload],
-        coherence_check: bool,
-        connection_proposition: bool,
         progress_report: ProgressReport,
     ) -> Sequence[InvoiceGuidelineData]:
-        guidelines_to_evaluate = [p.content for p in payloads]
-
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
         tasks: list[asyncio.Task[Any]] = []
@@ -70,27 +66,25 @@ class GuidelineEvaluator:
             asyncio.Task[Optional[Iterable[Sequence[ConnectionProposition]]]]
         ] = None
 
-        if coherence_check:
-            coherence_checks_task = asyncio.create_task(
-                self._check_payloads_coherence(
-                    agent,
-                    guidelines_to_evaluate,
-                    existing_guidelines,
-                    progress_report,
-                )
+        coherence_checks_task = asyncio.create_task(
+            self._check_payloads_coherence(
+                agent,
+                payloads,
+                existing_guidelines,
+                progress_report,
             )
-            tasks.append(coherence_checks_task)
+        )
+        tasks.append(coherence_checks_task)
 
-        if connection_proposition:
-            connection_propositions_task = asyncio.create_task(
-                self._propose_payloads_connections(
-                    agent,
-                    guidelines_to_evaluate,
-                    existing_guidelines,
-                    progress_report,
-                )
+        connection_propositions_task = asyncio.create_task(
+            self._propose_payloads_connections(
+                agent,
+                payloads,
+                existing_guidelines,
+                progress_report,
             )
-            tasks.append(connection_propositions_task)
+        )
+        tasks.append(connection_propositions_task)
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -133,17 +127,37 @@ class GuidelineEvaluator:
     async def _check_payloads_coherence(
         self,
         agent: Agent,
-        guidelines_to_evaluate: Sequence[GuidelineContent],
+        payloads: Sequence[Payload],
         existing_guidelines: Sequence[Guideline],
         progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[CoherenceCheck]]]:
+        guidelines_to_evaluate = [p.content for p in payloads if p.coherence_check]
+
+        guidelines_to_skip = [(p.content, False) for p in payloads if not p.coherence_check]
+
+        updated_ids = {cast(GuidelineId, p.updated_id) for p in payloads if p.operation == "update"}
+
+        remaining_existing_guidelines = []
+
+        for g in existing_guidelines:
+            if g.id not in updated_ids:
+                remaining_existing_guidelines.append(
+                    (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)
+                )
+            else:
+                updated_ids.remove(g.id)
+
+        if len(updated_ids) > 0:
+            raise EvaluationError(
+                f"Guideline ID(s): {', '.join(list(updated_ids))} in '{agent.id}' agent do not exist."
+            )
+
+        comparison_guidelines = guidelines_to_skip + remaining_existing_guidelines
+
         incoherences = await self._coherence_checker.propose_incoherencies(
             agent=agent,
             guidelines_to_evaluate=guidelines_to_evaluate,
-            comparison_guidelines=[
-                GuidelineContent(predicate=g.content.predicate, action=g.content.action)
-                for g in existing_guidelines
-            ],
+            comparison_guidelines=[g for g, _ in comparison_guidelines],
             progress_report=progress_report,
         )
 
@@ -151,28 +165,42 @@ class GuidelineEvaluator:
             return None
 
         coherence_checks_by_guideline_payload: OrderedDict[str, list[CoherenceCheck]] = OrderedDict(
-            {f"{g.predicate}{g.action}": [] for g in guidelines_to_evaluate}
+            {f"{p.content.predicate}{p.content.action}": [] for p in payloads}
         )
 
+        guideline_payload_is_skipped_pairs = {
+            f"{p.content.predicate}{p.content.action}": p.coherence_check for p in payloads
+        }
+
         for c in incoherences:
-            coherence_checks_by_guideline_payload[
+            if (
                 f"{c.guideline_a.predicate}{c.guideline_a.action}"
-            ].append(
-                CoherenceCheck(
-                    kind="contradiction_with_another_evaluated_guideline"
-                    if f"{c.guideline_b.predicate}{c.guideline_b.action}"
-                    in coherence_checks_by_guideline_payload
-                    else "contradiction_with_existing_guideline",
-                    first=c.guideline_a,
-                    second=c.guideline_b,
-                    issue=c.actions_contradiction_rationale,
-                    severity=c.actions_contradiction_severity,
+                in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.guideline_a.predicate}{c.guideline_a.action}"
+                ]
+            ):
+                coherence_checks_by_guideline_payload[
+                    f"{c.guideline_a.predicate}{c.guideline_a.action}"
+                ].append(
+                    CoherenceCheck(
+                        kind="contradiction_with_another_evaluated_guideline"
+                        if f"{c.guideline_b.predicate}{c.guideline_b.action}"
+                        in coherence_checks_by_guideline_payload
+                        else "contradiction_with_existing_guideline",
+                        first=c.guideline_a,
+                        second=c.guideline_b,
+                        issue=c.actions_contradiction_rationale,
+                        severity=c.actions_contradiction_severity,
+                    )
                 )
-            )
 
             if (
                 f"{c.guideline_b.predicate}{c.guideline_b.action}"
                 in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.guideline_b.predicate}{c.guideline_b.action}"
+                ]
             ):
                 coherence_checks_by_guideline_payload[
                     f"{c.guideline_b.predicate}{c.guideline_b.action}"
@@ -191,19 +219,30 @@ class GuidelineEvaluator:
     async def _propose_payloads_connections(
         self,
         agent: Agent,
-        proposed_guidelines: Sequence[GuidelineContent],
+        payloads: Sequence[Payload],
         existing_guidelines: Sequence[Guideline],
         progress_report: ProgressReport,
     ) -> Optional[Iterable[Sequence[ConnectionProposition]]]:
+        proposed_guidelines = [p.content for p in payloads if p.connection_proposition]
+
+        guidelines_to_skip = [(p.content, False) for p in payloads if not p.connection_proposition]
+
+        updated_ids = {p.updated_id for p in payloads if p.operation == "update"}
+
+        remaining_existing_guidelines = [
+            (GuidelineContent(predicate=g.content.predicate, action=g.content.action), True)
+            for g in existing_guidelines
+            if g.id not in updated_ids
+        ]
+
+        comparison_guidelines = guidelines_to_skip + remaining_existing_guidelines
+
         connection_propositions = [
             p
             for p in await self._guideline_connection_proposer.propose_connections(
                 agent,
                 introduced_guidelines=proposed_guidelines,
-                existing_guidelines=[
-                    GuidelineContent(predicate=g.content.predicate, action=g.content.action)
-                    for g in existing_guidelines
-                ],
+                existing_guidelines=[g for g, _ in comparison_guidelines],
                 progress_report=progress_report,
             )
             if p.score >= 6
@@ -212,16 +251,25 @@ class GuidelineEvaluator:
         if not connection_propositions:
             return None
 
-        connection_results: OrderedDict[str, list[ConnectionProposition]] = OrderedDict(
-            {f"{g.predicate}{g.action}": [] for g in proposed_guidelines}
+        connection_results_by_guideline_payload: OrderedDict[str, list[ConnectionProposition]] = (
+            OrderedDict({f"{p.content.predicate}{p.content.action}": [] for p in payloads})
         )
+        guideline_payload_is_skipped_pairs = {
+            f"{p.content.predicate}{p.content.action}": p.connection_proposition for p in payloads
+        }
 
         for c in connection_propositions:
-            if f"{c.source.predicate}{c.source.action}" in connection_results:
-                connection_results[f"{c.source.predicate}{c.source.action}"].append(
+            if (
+                f"{c.source.predicate}{c.source.action}" in connection_results_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[f"{c.source.predicate}{c.source.action}"]
+            ):
+                connection_results_by_guideline_payload[
+                    f"{c.source.predicate}{c.source.action}"
+                ].append(
                     ConnectionProposition(
                         check_kind="connection_with_another_evaluated_guideline"
-                        if f"{c.target.predicate}{c.target.action}" in connection_results
+                        if f"{c.target.predicate}{c.target.action}"
+                        in connection_results_by_guideline_payload
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
@@ -229,11 +277,17 @@ class GuidelineEvaluator:
                     )
                 )
 
-            if f"{c.target.predicate}{c.target.action}" in connection_results:
-                connection_results[f"{c.target.predicate}{c.target.action}"].append(
+            if (
+                f"{c.target.predicate}{c.target.action}" in connection_results_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[f"{c.target.predicate}{c.target.action}"]
+            ):
+                connection_results_by_guideline_payload[
+                    f"{c.target.predicate}{c.target.action}"
+                ].append(
                     ConnectionProposition(
                         check_kind="connection_with_another_evaluated_guideline"
-                        if f"{c.source.predicate}{c.source.action}" in connection_results
+                        if f"{c.source.predicate}{c.source.action}"
+                        in connection_results_by_guideline_payload
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
@@ -241,7 +295,7 @@ class GuidelineEvaluator:
                     )
                 )
 
-        return connection_results.values()
+        return connection_results_by_guideline_payload.values()
 
 
 class BehavioralChangeEvaluator:
@@ -302,18 +356,12 @@ class BehavioralChangeEvaluator:
         self,
         agent: Agent,
         payload_descriptors: Sequence[PayloadDescriptor],
-        coherence_check: bool,
-        connection_proposition: bool,
     ) -> EvaluationId:
         await self.validate_payloads(agent, payload_descriptors)
 
         evaluation = await self._evaluation_store.create_evaluation(
             agent.id,
             payload_descriptors,
-            extra={
-                "coherence_check": coherence_check,
-                "connection_proposition": connection_proposition,
-            },
         )
 
         asyncio.create_task(self.run_evaluation(evaluation))
@@ -359,12 +407,6 @@ class BehavioralChangeEvaluator:
                     for invoice in evaluation.invoices
                     if invoice.kind == PayloadKind.GUIDELINE
                 ],
-                coherence_check=cast(bool, evaluation.extra.get("coherence_check"))
-                if evaluation.extra
-                else True,
-                connection_proposition=cast(bool, evaluation.extra.get("connection_proposition"))
-                if evaluation.extra
-                else True,
                 progress_report=progress_report,
             )
 
@@ -402,6 +444,7 @@ class BehavioralChangeEvaluator:
             getattr(self._logger, logger_level)(
                 f"Evaluation task '{evaluation.id}' failed due to the following error: '{str(exc)}'"
             )
+
             await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
                 params={

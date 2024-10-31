@@ -24,7 +24,7 @@ from emcie.server.core.common import (
     generate_id,
 )
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineContent
+from emcie.server.core.guidelines import GuidelineContent, GuidelineId
 from emcie.server.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -55,6 +55,10 @@ ConnectionPropositionKind = Literal[
 @dataclass(frozen=True)
 class GuidelinePayload:
     content: GuidelineContent
+    operation: Literal["add", "update"]
+    coherence_check: bool
+    connection_proposition: bool
+    updated_id: Optional[GuidelineId] = None
 
     def __repr__(self) -> str:
         return f"predicate: {self.content.predicate}, action: {self.content.action}"
@@ -115,7 +119,6 @@ class Evaluation:
     error: Optional[str]
     invoices: Sequence[Invoice]
     progress: float
-    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationUpdateParams(TypedDict, total=False):
@@ -160,8 +163,11 @@ class _GuidelineContentDocument(TypedDict):
 
 
 class _GuidelinePayloadDocument(TypedDict):
-    predicate: str
-    action: str
+    content: _GuidelineContentDocument
+    action: Literal["add", "update"]
+    updated_id: Optional[GuidelineId]
+    coherence_check: bool
+    connection_proposition: bool
 
 
 _PayloadDocument = Union[_GuidelinePayloadDocument]
@@ -209,7 +215,6 @@ class _EvaluationDocument(TypedDict, total=False):
     error: Optional[str]
     invoices: Sequence[_InvoiceDocument]
     progress: float
-    extra: Optional[Mapping[str, JSONSerializable]]
 
 
 class EvaluationDocumentStore(EvaluationStore):
@@ -268,8 +273,14 @@ class EvaluationDocumentStore(EvaluationStore):
         def serialize_payload(payload: Payload) -> _PayloadDocument:
             if isinstance(payload, GuidelinePayload):
                 return _GuidelinePayloadDocument(
-                    predicate=payload.content.predicate,
-                    action=payload.content.action,
+                    content=_GuidelineContentDocument(
+                        predicate=payload.content.predicate,
+                        action=payload.content.action,
+                    ),
+                    action=payload.operation,
+                    updated_id=payload.updated_id,
+                    coherence_check=payload.coherence_check,
+                    connection_proposition=payload.connection_proposition,
                 )
             else:
                 raise TypeError(f"Unknown payload type: {type(payload)}")
@@ -298,7 +309,6 @@ class EvaluationDocumentStore(EvaluationStore):
             error=evaluation.error,
             invoices=[self._serialize_invoice(inv) for inv in evaluation.invoices],
             progress=evaluation.progress,
-            extra=evaluation.extra,
         )
 
     def _deserialize_evaluation(self, evaluation_document: _EvaluationDocument) -> Evaluation:
@@ -355,9 +365,13 @@ class EvaluationDocumentStore(EvaluationStore):
             if kind == PayloadKind.GUIDELINE:
                 return GuidelinePayload(
                     content=GuidelineContent(
-                        predicate=payload_doc["predicate"],
-                        action=payload_doc["action"],
-                    )
+                        predicate=payload_doc["content"]["predicate"],
+                        action=payload_doc["content"]["action"],
+                    ),
+                    operation=payload_doc["action"],
+                    updated_id=payload_doc["updated_id"],
+                    coherence_check=payload_doc["coherence_check"],
+                    connection_proposition=payload_doc["connection_proposition"],
                 )
             else:
                 raise ValueError(f"Unsupported payload kind: {kind}")
@@ -400,7 +414,6 @@ class EvaluationDocumentStore(EvaluationStore):
             error=evaluation_document.get("error"),
             invoices=invoices,
             progress=evaluation_document["progress"],
-            extra=evaluation_document.get("extra"),
         )
 
     async def create_evaluation(
@@ -435,7 +448,6 @@ class EvaluationDocumentStore(EvaluationStore):
             error=None,
             invoices=invoices,
             progress=0.0,
-            extra=extra,
         )
 
         await self._evaluation_collection.insert_one(

@@ -401,6 +401,7 @@ class Actions:
         action: str,
         check: bool,
         index: bool,
+        updated_id: Optional[str] = None,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
@@ -408,12 +409,16 @@ class Actions:
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "predicate": predicate,
-                        "action": action,
+                        "content": {
+                            "predicate": predicate,
+                            "action": action,
+                        },
+                        "operation": "add",
+                        "updated_id": updated_id,
+                        "coherence_check": check,
+                        "connection_proposition": index,
                     }
                 ],
-                "coherence_check": check,
-                "connection_proposition": index,
             },
         )
 
@@ -423,7 +428,95 @@ class Actions:
 
         with tqdm(
             total=100,
-            desc="Evaluating guideline impact",
+            desc="Evaluating added guideline impact",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
+        ) as progress_bar:
+            while True:
+                time.sleep(0.5)
+                response = requests.get(
+                    urljoin(
+                        ctx.obj.server_address,
+                        f"/agents/index/evaluations/{evaluation_id}",
+                    )
+                )
+
+                response.raise_for_status()
+
+                evaluation = response.json()
+
+                if evaluation["status"] in ["pending", "running"]:
+                    progress_bar.n = int(evaluation["progress"])
+                    progress_bar.refresh()
+
+                    continue
+
+                if evaluation["status"] == "completed":
+                    invoice = evaluation["invoices"][0]
+                    if invoice["approved"]:
+                        progress_bar.n = 100
+                        progress_bar.refresh()
+
+                        guideline_response = requests.post(
+                            urljoin(
+                                ctx.obj.server_address,
+                                f"/agents/{agent_id}/guidelines/",
+                            ),
+                            json={
+                                "invoices": [invoice],
+                            },
+                        )
+
+                        guideline_response.raise_for_status()
+
+                        return cast(
+                            GuidelineWithConnectionsAndToolAssociationsDTO,
+                            guideline_response.json()["items"][0],
+                        )
+
+                    else:
+                        raise CoherenceCheckFailure(
+                            contradictions=invoice["data"]["coherence_checks"]
+                        )
+
+                elif evaluation["status"] == "failed":
+                    raise ValueError(evaluation["error"])
+
+    @staticmethod
+    def update_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+        updated_id: Optional[str] = None,
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
+            json={
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "content": {
+                            "predicate": predicate,
+                            "action": action,
+                        },
+                        "operation": "update",
+                        "updated_id": updated_id,
+                        "coherence_check": check,
+                        "connection_proposition": index,
+                    }
+                ],
+            },
+        )
+
+        response.raise_for_status()
+
+        evaluation_id = response.json()["evaluation_id"]
+
+        with tqdm(
+            total=100,
+            desc="Evaluating updated guideline impact",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
         ) as progress_bar:
             while True:
@@ -1299,6 +1392,53 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def update_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        guideline_id: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        try:
+            guideline_with_connections = Actions.update_guideline(
+                ctx,
+                agent_id=agent_id,
+                predicate=predicate,
+                action=action,
+                check=check,
+                index=index,
+                updated_id=guideline_id,
+            )
+
+            guideline = guideline_with_connections["guideline"]
+            Interface._write_success(f"Updated guideline (id={guideline['id']})")
+
+            Interface._render_guideline_entailments(
+                guideline_with_connections["guideline"],
+                guideline_with_connections["connections"],
+                guideline_with_connections["tool_associations"],
+                include_indirect=False,
+            )
+
+        except CoherenceCheckFailure as e:
+            contradictions = e.contradictions
+            Interface._write_error("Failed to update guideline")
+            rich.print("Detected potential incoherence with other guidelines:")
+            Interface._print_table(contradictions)
+            rich.print(
+                Text(
+                    "\nTo force-add despite these errors, re-run with --no-check",
+                    style="bold",
+                )
+            )
+            set_exit_status(1)
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def remove_guideline(
         ctx: click.Context,
         agent_id: str,
@@ -1970,6 +2110,16 @@ async def async_main() -> None:
         pass
 
     @guideline.command("add", help="Add a new guideline")
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
     @click.option(
         "--check/--no-check",
         type=bool,
@@ -1984,16 +2134,6 @@ async def async_main() -> None:
         default=True,
         help="Determine if guideline connections should be indexed",
     )
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
-    @click.argument("predicate", type=str)
-    @click.argument("action", type=str)
     @click.pass_context
     def guideline_add(
         ctx: click.Context,
@@ -2011,6 +2151,55 @@ async def async_main() -> None:
             agent_id=agent_id,
             predicate=predicate,
             action=action,
+            check=check,
+            index=index,
+        )
+
+    @guideline.command("update", help="Update an existing guideline")
+    @click.argument("guideline_id", type=str)
+    @click.argument("predicate", type=str)
+    @click.argument("action", type=str)
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.option(
+        "--check/--no-check",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Check for contradictions between existing guidelines",
+    )
+    @click.option(
+        "--index/--no-index",
+        type=bool,
+        show_default=True,
+        default=True,
+        help="Determine if guideline connections should be indexed",
+    )
+    @click.pass_context
+    def guideline_update(
+        ctx: click.Context,
+        agent_id: str,
+        guideline_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.update_guideline(
+            ctx=ctx,
+            agent_id=agent_id,
+            predicate=predicate,
+            action=action,
+            guideline_id=guideline_id,
             check=check,
             index=index,
         )

@@ -5,7 +5,7 @@ from emcie.server.core.evaluations import (
     ConnectionPropositionKind,
 )
 from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineContent
+from emcie.server.core.guidelines import GuidelineContent, GuidelineId
 
 EvaluationStatusDTO = Literal["pending", "running", "completed", "failed"]
 
@@ -14,10 +14,18 @@ ConnectionKindDTO = Literal["entails", "suggests"]
 PayloadKindDTO = Literal["guideline"]
 
 
-class GuidelinePayloadDTO(TypedDict):
-    kind: PayloadKindDTO
+class GuidelineContentDTO(TypedDict):
     predicate: str
     action: str
+
+
+class GuidelinePayloadDTO(DefaultBaseModel):
+    kind: PayloadKindDTO
+    content: GuidelineContentDTO
+    operation: Literal["add", "update"]
+    updated_id: Optional[GuidelineId] = None
+    coherence_check: bool
+    connection_proposition: bool
 
 
 PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 import time
 import traceback
-from typing import Any, Iterable, Mapping, Optional, TypeAlias
+from typing import Any, Iterable, Mapping, Optional, TypeAlias, cast
 from lagom import Container
 
 from emcie.server.core.async_utils import Timeout
@@ -222,9 +222,40 @@ class MC:
                     predicate=i.payload.content.predicate,
                     action=i.payload.content.action,
                 )
+                if i.payload.operation == "add"
+                else await self._guideline_store.update_guideline(
+                    guideline_id=cast(GuidelineId, i.payload.updated_id),
+                    params={
+                        "predicate": i.payload.content.predicate,
+                        "action": i.payload.content.action,
+                    },
+                )
             ).id
             for i in invoices
         }
+
+        for i in invoices:
+            if i.payload.operation == "update" and i.payload.connection_proposition:
+                guideline_id = cast(GuidelineId, i.payload.updated_id)
+
+                connections_to_delete = list(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        source=guideline_id,
+                    )
+                )
+                connections_to_delete.extend(
+                    await self._guideline_connection_store.list_connections(
+                        indirect=False,
+                        target=guideline_id,
+                    )
+                )
+                await asyncio.gather(
+                    *(
+                        self._guideline_connection_store.delete_connection(c.id)
+                        for c in connections_to_delete
+                    )
+                )
 
         connections: set[ConnectionProposition] = set([])
 

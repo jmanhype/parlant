@@ -37,11 +37,12 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
                         predicate="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
-            )
+            ),
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id)
@@ -66,11 +67,12 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
                         predicate="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             )
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -112,11 +114,12 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
                         predicate="a customer needs assistance with understanding their billing statements",
                         action="guide them through the billing details and explain any charges",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             )
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -158,11 +161,12 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
                         predicate="any customer requests a feature not available in the current version",
                         action="inform them about the product roadmap and upcoming features",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             )
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -198,6 +202,9 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                         predicate="any customer requests a feature not available in the current version",
                         action="inform them about the product roadmap and upcoming features",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
             PayloadDescriptor(
@@ -207,11 +214,12 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                         predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
                         action="escalate the request to product management for special consideration",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -249,6 +257,9 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                         predicate="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
             PayloadDescriptor(
@@ -258,11 +269,12 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                         predicate="the user asks about the weather",
                         action="provide a weather update",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
@@ -297,6 +309,9 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                         predicate="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
             PayloadDescriptor(
@@ -306,11 +321,12 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                         predicate="the user greets you",
                         action="greet them back with 'Hola'",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     second_payloads = [
@@ -318,7 +334,10 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
             content=GuidelineContent(
                 predicate="the user asks about the weather",
                 action="provide a weather update",
-            )
+            ),
+            operation="add",
+            coherence_check=True,
+            connection_proposition=True,
         )
     ]
 
@@ -327,8 +346,6 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     second_evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
         payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in second_payloads],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -349,7 +366,10 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
         content=GuidelineContent(
             predicate="the user greets you",
             action="greet them back with 'Hello'",
-        )
+        ),
+        operation="add",
+        coherence_check=True,
+        connection_proposition=True,
     )
 
     with raises(EvaluationValidationError) as exc:
@@ -362,8 +382,6 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
                     duplicate_payload,
                 ]
             ],
-            coherence_check=True,
-            connection_proposition=True,
         )
         await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
@@ -394,11 +412,12 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                             predicate="the user greets you",
                             action="greet them back with 'Hello'",
                         ),
+                        operation="add",
+                        coherence_check=True,
+                        connection_proposition=True,
                     ),
                 )
             ],
-            coherence_check=True,
-            connection_proposition=True,
         )
         await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
@@ -432,11 +451,12 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
                         predicate="providing the weather update",
                         action="mention the best time to go for a walk",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             )
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
@@ -482,6 +502,9 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                         predicate="the user asks about the weather",
                         action="provide the current weather update",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
             PayloadDescriptor(
@@ -491,11 +514,12 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                         predicate="providing the weather update",
                         action="mention the best time to go for a walk",
                     ),
+                    operation="add",
+                    coherence_check=True,
+                    connection_proposition=True,
                 ),
             ),
         ],
-        coherence_check=True,
-        connection_proposition=True,
     )
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
