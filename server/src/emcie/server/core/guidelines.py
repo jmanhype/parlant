@@ -1,4 +1,4 @@
-from typing import NewType, Optional, Sequence, TypedDict, cast
+from typing import NewType, Optional, Sequence, TypedDict
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -202,9 +202,17 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_id: GuidelineId,
         params: GuidelineUpdateParams,
     ) -> Guideline:
+        guideline_document = _GuidelineDocument(
+            {
+                **({"guideline_set": params["guideline_set"]} if "guideline_set" in params else {}),
+                **({"predicate": params["predicate"]} if "predicate" in params else {}),
+                **({"action": params["action"]} if "action" in params else {}),
+            }
+        )
+
         result = await self._collection.update_one(
             filters={"id": {"$eq": guideline_id}},
-            params=cast(_GuidelineDocument, params),
+            params=guideline_document,
         )
 
         assert result.updated_document

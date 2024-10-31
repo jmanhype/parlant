@@ -149,7 +149,7 @@ class GuidelineEvaluator:
 
         if len(updated_ids) > 0:
             raise EvaluationError(
-                f"Guideline ID(s): {', '.join(list(updated_ids))} in {agent.name} agent do not exist."
+                f"Guideline ID(s): {', '.join(list(updated_ids))} in '{agent.id}' agent do not exist."
             )
 
         comparison_guidelines = guidelines_to_skip + remaining_existing_guidelines

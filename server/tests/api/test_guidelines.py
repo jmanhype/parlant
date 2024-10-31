@@ -811,6 +811,120 @@ async def test_that_an_existing_guideline_can_be_updated(
     assert updated_connections[0].kind == ConnectionKind.ENTAILS
 
 
+async def test_that_updated_guideline_is_entailing_added_guideline(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+    connection_store = container[GuidelineConnectionStore]
+
+    existing_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user greets you",
+        action="reply with 'Hello'",
+    )
+
+    new_aciton = "reply with 'Howdy!'"
+
+    request_data = {
+        "invoices": [
+            {
+                "payload": {
+                    "kind": "guideline",
+                    "content": {
+                        "predicate": "the user greets you",
+                        "action": new_aciton,
+                    },
+                    "operation": "update",
+                    "coherence_check": True,
+                    "connection_proposition": True,
+                    "updated_id": existing_guideline.id,
+                },
+                "checksum": "checksum_update",
+                "approved": True,
+                "data": {
+                    "coherence_checks": [],
+                    "connection_propositions": [
+                        {
+                            "check_kind": "connection_with_another_evaluated_guideline",
+                            "source": {
+                                "predicate": "the user greets you",
+                                "action": new_aciton,
+                            },
+                            "target": {
+                                "predicate": "replying to greeting message",
+                                "action": "ask how they are",
+                            },
+                            "connection_kind": "entails",
+                        }
+                    ],
+                },
+                "error": None,
+            },
+            {
+                "payload": {
+                    "kind": "guideline",
+                    "content": {
+                        "predicate": "replying to greeting message",
+                        "action": "ask how they are",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
+                },
+                "checksum": "checksum_new_guideline",
+                "approved": True,
+                "data": {
+                    "coherence_checks": [],
+                    "connection_propositions": [
+                        {
+                            "check_kind": "connection_with_another_evaluated_guideline",
+                            "source": {
+                                "predicate": "the user greets you",
+                                "action": new_aciton,
+                            },
+                            "target": {
+                                "predicate": "replying to greeting message",
+                                "action": "ask how they are",
+                            },
+                            "connection_kind": "entails",
+                        }
+                    ],
+                },
+                "error": None,
+            },
+        ]
+    }
+
+    items = (
+        client.post(f"/agents/{agent_id}/guidelines/", json=request_data)
+        .raise_for_status()
+        .json()["items"]
+    )
+
+    assert len(items) == 2
+
+    updated_guideline = await guideline_store.read_guideline(agent_id, existing_guideline.id)
+
+    added_guideline_id = (
+        items[1]["guideline"]["id"]
+        if items[0]["guideline"]["id"] == existing_guideline.id
+        else items[0]["guideline"]["id"]
+    )
+
+    added_guideline = await guideline_store.read_guideline(agent_id, added_guideline_id)
+
+    updated_connections = await connection_store.list_connections(
+        indirect=False, source=updated_guideline.id
+    )
+
+    assert len(updated_connections) == 1
+    assert updated_connections[0].source == updated_guideline.id
+    assert updated_connections[0].target == added_guideline.id
+    assert updated_connections[0].kind == ConnectionKind.ENTAILS
+
+
 async def test_that_guideline_update_retains_existing_connections_with_disabled_connection_proposition(
     client: TestClient,
     container: Container,

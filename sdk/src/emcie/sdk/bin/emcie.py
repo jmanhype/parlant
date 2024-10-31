@@ -405,7 +405,6 @@ class Actions:
         action: str,
         check: bool,
         index: bool,
-        operation: str,
         updated_id: Optional[str] = None,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
@@ -418,7 +417,7 @@ class Actions:
                             "predicate": predicate,
                             "action": action,
                         },
-                        "operation": operation,
+                        "operation": "add",
                         "updated_id": updated_id,
                         "coherence_check": check,
                         "connection_proposition": index,
@@ -433,7 +432,95 @@ class Actions:
 
         with tqdm(
             total=100,
-            desc="Evaluating guideline impact",
+            desc="Evaluating added guideline impact",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
+        ) as progress_bar:
+            while True:
+                time.sleep(0.5)
+                response = requests.get(
+                    urljoin(
+                        ctx.obj.server_address,
+                        f"/agents/index/evaluations/{evaluation_id}",
+                    )
+                )
+
+                response.raise_for_status()
+
+                evaluation = response.json()
+
+                if evaluation["status"] in ["pending", "running"]:
+                    progress_bar.n = int(evaluation["progress"])
+                    progress_bar.refresh()
+
+                    continue
+
+                if evaluation["status"] == "completed":
+                    invoice = evaluation["invoices"][0]
+                    if invoice["approved"]:
+                        progress_bar.n = 100
+                        progress_bar.refresh()
+
+                        guideline_response = requests.post(
+                            urljoin(
+                                ctx.obj.server_address,
+                                f"/agents/{agent_id}/guidelines/",
+                            ),
+                            json={
+                                "invoices": [invoice],
+                            },
+                        )
+
+                        guideline_response.raise_for_status()
+
+                        return cast(
+                            GuidelineWithConnectionsAndToolAssociationsDTO,
+                            guideline_response.json()["items"][0],
+                        )
+
+                    else:
+                        raise CoherenceCheckFailure(
+                            contradictions=invoice["data"]["coherence_checks"]
+                        )
+
+                elif evaluation["status"] == "failed":
+                    raise ValueError(evaluation["error"])
+
+    @staticmethod
+    def update_guideline(
+        ctx: click.Context,
+        agent_id: str,
+        predicate: str,
+        action: str,
+        check: bool,
+        index: bool,
+        updated_id: Optional[str] = None,
+    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
+        response = requests.post(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
+            json={
+                "payloads": [
+                    {
+                        "kind": "guideline",
+                        "content": {
+                            "predicate": predicate,
+                            "action": action,
+                        },
+                        "operation": "update",
+                        "updated_id": updated_id,
+                        "coherence_check": check,
+                        "connection_proposition": index,
+                    }
+                ],
+            },
+        )
+
+        response.raise_for_status()
+
+        evaluation_id = response.json()["evaluation_id"]
+
+        with tqdm(
+            total=100,
+            desc="Evaluating updated guideline impact",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
         ) as progress_bar:
             while True:
@@ -1310,7 +1397,6 @@ class Interface:
                 action,
                 check,
                 index,
-                operation="add",
             )
 
             guideline = guideline_with_connections_and_associations["guideline"]
@@ -1350,14 +1436,13 @@ class Interface:
         index: bool,
     ) -> None:
         try:
-            guideline_with_connections = Actions.create_guideline(
+            guideline_with_connections = Actions.update_guideline(
                 ctx,
                 agent_id=agent_id,
                 predicate=predicate,
                 action=action,
                 check=check,
                 index=index,
-                operation="update",
                 updated_id=guideline_id,
             )
 
@@ -1373,7 +1458,7 @@ class Interface:
 
         except CoherenceCheckFailure as e:
             contradictions = e.contradictions
-            Interface._write_error("Failed to add guideline")
+            Interface._write_error("Failed to update guideline")
             rich.print("Detected incoherence with other guidelines:")
             Interface._print_table(
                 contradictions,
@@ -1381,7 +1466,7 @@ class Interface:
             )
             rich.print(
                 Text(
-                    "\nTo force-add despite these errors, re-run with --no-check",
+                    "\nTo force-update despite these errors, re-run with --no-check",
                     style="bold",
                 )
             )

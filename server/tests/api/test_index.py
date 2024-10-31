@@ -873,3 +873,83 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
         and i["data"]["connection_propositions"] is None
         for i in invoices
     )
+
+
+async def test_that_the_updated_and_added_guidelines_conflict_with_each_other_ignoring_the_old_guideline(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    guideline_store = container[GuidelineStore]
+
+    existing_guideline = await guideline_store.create_guideline(
+        guideline_set=agent_id,
+        predicate="the user greets you",
+        action="reply with 'Hello'",
+    )
+
+    updated_guideline_content = {
+        "predicate": "the user greets you",
+        "action": "reply with 'Howdy!'",
+    }
+    added_guideline_content = {
+        "predicate": "the user greets you",
+        "action": "reply with 'Goodbye!'",
+    }
+
+    payloads = [
+        {
+            "kind": "guideline",
+            "content": updated_guideline_content,
+            "operation": "update",
+            "updated_id": existing_guideline.id,
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+        {
+            "kind": "guideline",
+            "content": added_guideline_content,
+            "operation": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+    ]
+
+    evaluation_id = (
+        client.post(
+            f"/agents/{agent_id}/index/evaluations",
+            json={"payloads": payloads},
+        )
+        .raise_for_status()
+        .json()["evaluation_id"]
+    )
+
+    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+
+    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    assert content["status"] == "completed"
+
+    invoices = content["invoices"]
+    assert len(invoices) == 2
+
+    updated_invoice = next((i for i in invoices if i["payload"]["operation"] == "update"), None)
+    new_invoice = next((i for i in invoices if i["payload"]["operation"] == "add"), None)
+
+    assert updated_invoice is not None
+    assert new_invoice is not None
+
+    assert len(updated_invoice["data"]["coherence_checks"]) == 1
+    conflict = updated_invoice["data"]["coherence_checks"][0]
+
+    assert conflict["kind"] == "contradiction_with_another_evaluated_guideline"
+
+    assert (
+        conflict["first"] == updated_invoice["payload"]["content"]
+        or new_invoice["payload"]["content"]
+    )
+    assert (
+        conflict["second"] == updated_invoice["payload"]["content"]
+        or new_invoice["payload"]["content"]
+    )
+
+    assert conflict["first"] != conflict["second"]
