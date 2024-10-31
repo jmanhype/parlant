@@ -875,7 +875,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
     )
 
 
-async def test_that_the_updated_and_added_guidelines_conflict_with_each_other_ignoring_the_old_guideline(
+async def test_that_evaluation_task_with_conflicting_updated_and_added_guidelines_is_unapproved(
     client: TestClient,
     container: Container,
     agent_id: AgentId,

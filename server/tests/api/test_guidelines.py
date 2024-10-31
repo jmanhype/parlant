@@ -811,7 +811,7 @@ async def test_that_an_existing_guideline_can_be_updated(
     assert updated_connections[0].kind == ConnectionKind.ENTAILS
 
 
-async def test_that_updated_guideline_is_entailing_added_guideline(
+async def test_that_an_updated_guideline_can_entail_an_added_guideline(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
