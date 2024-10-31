@@ -1,9 +1,9 @@
-import { createContext, Dispatch, lazy, ReactElement, SetStateAction, Suspense, useContext, useState } from 'react';
+import { createContext, Dispatch, lazy, ReactElement, ReactNode, SetStateAction, Suspense, useContext, useState } from 'react';
 import { AgentInterface, SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
 import ErrorBoundary from '../error-boundary/error-boundary';
 import ChatHeader from '../chat-header/chat-header';
-import AgentsList from '../agents-list/agents-list';
+import { useDialog } from '@/hooks/useDialog';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
@@ -16,6 +16,8 @@ interface SessionContext {
     setSessions: Dispatch<SetStateAction<SessionInterface[]>>;
     agents: AgentInterface[],
     setAgents: Dispatch<SetStateAction<AgentInterface[]>>;
+    openDialog: (title: string, content: ReactNode, height: string, width: string, dialogClosed?: (() =>void) | null) => void;
+    closeDialog: () => void;
 };
 
 export const SessionProvider = createContext<SessionContext>({
@@ -29,6 +31,8 @@ export const SessionProvider = createContext<SessionContext>({
     setSessions: () => null,
     agents: [],
     setAgents: () => null,
+    openDialog: () => null,
+    closeDialog: () =>null
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -41,6 +45,7 @@ export default function Chatbot(): ReactElement {
     const [agentId, setAgentId] = useState<string | null>(null);
     const [newSession, setNewSession] = useState<SessionInterface | null>(null);
     const [agents, setAgents] = useState<AgentInterface[]>([]);
+    const {openDialog, DialogComponent, closeDialog} = useDialog();
 
     const provideObj = {
         sessionId,
@@ -52,7 +57,9 @@ export default function Chatbot(): ReactElement {
         sessions,
         setSessions,
         agents,
-        setAgents
+        setAgents,
+        openDialog,
+        closeDialog
     };
 
     return (
@@ -69,7 +76,7 @@ export default function Chatbot(): ReactElement {
                         </div>
                     </div>
                 </div>
-                <AgentsList />
+                <DialogComponent />
             </SessionProvider.Provider>
         </ErrorBoundary>
     );

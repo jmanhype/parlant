@@ -1,62 +1,40 @@
-import useFetch from '@/hooks/useFetch';
-import { AgentInterface } from '@/utils/interfaces';
-import { ReactNode, useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { SessionInterface } from '@/utils/interfaces';
+import { ReactNode } from 'react';
 import { useSession } from '../chatbot/chatbot';
-import styles from './agents-list.module.scss';
 import AgentAvatar from '../agent-avatar/agent-avatar';
-import { NEW_SESSION_ID } from '../chat-header/chat-header';
 import { spaceClick } from '@/utils/methods';
 
+export const NEW_SESSION_ID = 'NEW_SESSION';
+const newSessionObj: SessionInterface = {
+    end_user_id: '',
+    title: 'New Conversation',
+    agent_id: '',
+    creation_utc: new Date().toLocaleString(),
+    id: NEW_SESSION_ID
+};
+
 const AgentsList = (): ReactNode => {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const {setAgentId, setSessionId, setAgents, sessionId} = useSession();
-    const {data} = useFetch<{agents: AgentInterface[]}>('agents');
-
-    useEffect(() => {
-       if (data?.agents) setAgents(data.agents);
-    }, [data?.agents, setAgents]);
-
-    useEffect(() => {
-        if (sessionId === NEW_SESSION_ID) setDialogOpen(true);
-    }, [sessionId]);
+    const {setAgentId, closeDialog, agents, setSessionId, setNewSession} = useSession();
 
     const selectAgent = (agentId: string): void => {
         setAgentId(agentId);
-        setDialogOpen(false);
-    };
-
-    const closeClicked = (): void => {
-        setDialogOpen(false);
-        setSessionId(null);
+        setNewSession(newSessionObj);
+        setSessionId(newSessionObj.id);
+        closeDialog();
     };
 
     return (
-        <Dialog open={dialogOpen}>
-            <DialogContent data-testid="dialog-content" className={'min-w-[604px] h-[536px] font-ubuntu-sans ' + styles.select}>
-                <div className='bg-white rounded-[12px] flex flex-col h-[535px] '>
-                    <DialogHeader>
-                        <DialogTitle>
-                            <div className='h-[68px] w-full flex justify-between items-center ps-[30px] pe-[20px]'>
-                                <DialogDescription className='text-[18px] font-semibold'>Select an Agent</DialogDescription>
-                                <img data-testid="closeBtn" role='button' tabIndex={0} onKeyDown={spaceClick} onClick={closeClicked} className='cursor-pointer rounded-full hover:bg-[#F5F6F8] p-[10px]' src="icons/close.svg" alt="close" height={30} width={30}/>
-                            </div>
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className='flex flex-col overflow-auto'>
-                        {data?.agents?.map(agent => (
-                            <div data-testid="agent" tabIndex={0} onKeyDown={spaceClick} role='button' onClick={() => selectAgent(agent.id)} key={agent.id} className='cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]'>
-                                <AgentAvatar agent={agent}/>
-                                <div>
-                                    <div className='text-[16px] font-medium'>{agent.name}</div>
-                                    <div className='text-[14px] font-light text-[#A9A9A9]'>(id={agent.id})</div>
-                                </div>
-                            </div>
-                        ))}
+        <div className='flex flex-col overflow-auto'>
+            {agents?.map(agent => (
+                <div data-testid="agent" tabIndex={0} onKeyDown={spaceClick} role='button' onClick={() => selectAgent(agent.id)} key={agent.id} className='cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]'>
+                    <AgentAvatar agent={agent}/>
+                    <div>
+                        <div className='text-[16px] font-medium'>{agent.name}</div>
+                        <div className='text-[14px] font-light text-[#A9A9A9]'>(id={agent.id})</div>
                     </div>
                 </div>
-            </DialogContent>
-        </Dialog>
+            ))}
+        </div>
     );
 };
 

@@ -8,18 +8,8 @@ import { AgentInterface } from '@/utils/interfaces';
 
 const agents: AgentInterface[] = [{id: 'john', name: 'John'}];
 
-vi.mock('@/hooks/useFetch', () => ({
-    default: vi.fn(() => {
-        return {
-            data: {agents},
-            refetch: vi.fn(),
-            ErrorTemplate: null,
-            loading: false
-        };
-    })
-}));
-
 const setAgentIdFn = vi.fn();
+const closeDialogFn = vi.fn();
 vi.mock('react', async () => {
     const actualReact = await vi.importActual('react');
     return {
@@ -28,26 +18,16 @@ vi.mock('react', async () => {
             sessionId: NEW_SESSION_ID,
             setSessionId: vi.fn(),
             setAgents: vi.fn(),
-            setAgentId: setAgentIdFn
+            setNewSession: vi.fn(),
+            setAgentId: setAgentIdFn,
+            closeDialog: closeDialogFn,
+            agents
         }))
     };
 });
 
 describe(AgentsList, () => {
     afterEach(() => cleanup());
-
-    it('dialog should be opened when creating a new session', async () => {
-        const {getByTestId} = render(<AgentsList />);
-        const dialogContent = getByTestId('dialog-content');
-        expect(dialogContent).toBeVisible();
-    });
-
-    it('close button should close dialog', async () => {
-        const {getByTestId} = render(<AgentsList />);
-        const closeBtn = getByTestId('closeBtn');
-        fireEvent.click(closeBtn);
-        expect(closeBtn).not.toBeInTheDocument();
-    });
     
     it('dialog should show agents list', async () => {
         const {getByTestId} = render(<AgentsList />);
@@ -66,7 +46,7 @@ describe(AgentsList, () => {
         const {getByTestId} = render(<AgentsList />);
         const agent = getByTestId('agent');
         fireEvent.click(agent);
-        expect(agent).not.toBeInTheDocument();
+        expect(closeDialogFn).toHaveBeenCalled();
     });
 
     it('dialog should be closed when creating a new session', async () => {

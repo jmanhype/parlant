@@ -79,7 +79,6 @@ export default function Chat(): ReactElement {
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
-        console.log(correlationsMap);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);

@@ -1,14 +1,15 @@
 import { describe, it, vi } from 'vitest';
-import ChatHeader, { NEW_SESSION_ID } from './chat-header';
+import ChatHeader from './chat-header';
 import { fireEvent, MatcherOptions, render } from '@testing-library/react';
 import { Matcher } from 'vite';
 
 const setSessionFn = vi.fn();
+const openDialogFn = vi.fn();
 vi.mock('react', async () => {
     const actualReact = await vi.importActual('react');
     return {
         ...actualReact,
-        useContext: vi.fn(() => ({setSessionId: setSessionFn, setAgentId: vi.fn(), setNewSession: vi.fn()}))
+        useContext: vi.fn(() => ({openDialog: openDialogFn, setSessionId: setSessionFn, setAgentId: vi.fn(), setNewSession: vi.fn()}))
     };
 });
 
@@ -22,9 +23,9 @@ describe(ChatHeader, () => {
         vi.clearAllMocks();
     });
 
-    it('clicking the "add session" button should create a new mocked session', async () => {
+    it('clicking the "add session" button should open the agent selection dialog', async () => {
         const addBtn = getAllByRole('button');
         fireEvent.click(addBtn[0]);
-        expect(setSessionFn).toHaveBeenCalledWith(NEW_SESSION_ID);
+        expect(openDialogFn).toHaveBeenCalled();
     });
 });

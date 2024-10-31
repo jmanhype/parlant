@@ -2,8 +2,7 @@ import { cleanup, fireEvent, MatcherOptions, render } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { Matcher } from 'vite';
-import Session from './session';
-import { deleteData } from '@/utils/api';
+import Session, { DeleteDialog } from './session';
 import { SessionInterface } from '@/utils/interfaces';
 import userEvent from '@testing-library/user-event';
 
@@ -14,11 +13,17 @@ vi.mock('@/utils/api', () => ({
 }));
 
 const setSessionFn = vi.fn();
+const openDialogFn = vi.fn();
 vi.mock('react', async () => {
     const actualReact = await vi.importActual('react');
     return {
         ...actualReact,
-        useContext: vi.fn(() => ({setSessionId: setSessionFn, setAgentId: vi.fn(), setSessions: vi.fn()}))
+        useContext: vi.fn(() => ({
+            setSessionId: setSessionFn,
+            setAgentId: vi.fn(),
+            setSessions: vi.fn(),
+            openDialog: openDialogFn
+        }))
     };
 });
 
@@ -27,17 +32,15 @@ describe(Session, () => {
     let rerender: (ui: React.ReactNode) => void;
     let container: HTMLElement;
     
-    const openDeleteDialog = async (): Promise<{dialog: HTMLElement}> => {
+    const openDeleteDialog = async (): Promise<void> => {
         const moreBtn = getByTestId('menu-button');
         await userEvent.click(moreBtn);
         const deleteBtn = getByTestId('delete');
-        fireEvent.click(deleteBtn);
-        const dialog = getByTestId('dialog');
-        return {dialog};
+        await fireEvent.click(deleteBtn);
     };
 
     const deleteSession = async (): Promise<{dialog: HTMLElement}> => {
-        const {dialog} = await openDeleteDialog();
+        const dialog = getByTestId('deleteDialogContent');
         const dialogDeleteButton = getByTestId('gradiant-button');
         fireEvent.click(dialogDeleteButton);
         return {dialog};
@@ -60,34 +63,15 @@ describe(Session, () => {
     });
 
     it('delete button should open a delete dialog', async () => {
-        const {dialog} = await openDeleteDialog();
-        expect(dialog).toBeInTheDocument();
+        await openDeleteDialog();
+        expect(openDialogFn).toHaveBeenCalled();
     });
 
     it('dialog\'s delete button should fire a delete event', async () => {
-        const {dialog} = await deleteSession();
-        expect(deleteData).toBeCalled();
-        expect(dialog).not.toBeInTheDocument();
-    });
-
-    it('dialog\'s cancel button should cancel deletion', async () => {
-        await openDeleteDialog();
-        const dialog = getByTestId('dialog');
-        const cancelDeleteBtn = getByTestId('cancel-delete');
-        fireEvent.click(cancelDeleteBtn);
-        expect(deleteData).not.toBeCalled();
-        expect(dialog).not.toBeInTheDocument();
-    });
-
-    it('active session should be closed if deleted', async () => {
+        const deleteClickedFn = vi.fn();
+        rerender(<DeleteDialog closeDialog={vi.fn()} deleteClicked={deleteClickedFn} session={session}/>);
         await deleteSession();
-        expect(setSessionFn).toBeCalledWith(null);
-    });
-
-    it('inactive session should not be closed if deleted', async () => {
-        rerender(<Session editingTitle={null} setEditingTitle={vi.fn()} session={session as SessionInterface} refetch={vi.fn()} isSelected={false}/>);
-        await deleteSession();
-        expect(setSessionFn).not.toBeCalled();
+        expect(deleteClickedFn).toBeCalled();
     });
 
     it('text field opened when editing the current session', async () => {

@@ -1,32 +1,17 @@
 import { ReactNode } from 'react';
 import Tooltip from '../ui/custom/tooltip';
 import { useSession } from '../chatbot/chatbot';
-import { SessionInterface } from '@/utils/interfaces';
 import { spaceClick } from '@/utils/methods';
+import AgentsList from '../agents-list/agents-list';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
-const newSessionObj: SessionInterface = {
-    end_user_id: '',
-    title: 'New Conversation',
-    agent_id: '',
-    creation_utc: new Date().toLocaleString(),
-    id: NEW_SESSION_ID
-};
 
 const ChatHeader = (): ReactNode => {
-    const {setSessionId, setNewSession, setAgentId, sessionId} = useSession();
+    const {setAgentId, openDialog} = useSession();
 
     const createNewSession = () => {
-        if (sessionId === NEW_SESSION_ID) {
-            setSessionId(null);
-            setTimeout(() => {
-                setSessionId(newSessionObj.id);
-            }, 0);
-            return;
-        }
         setAgentId(null);
-        setNewSession(newSessionObj);
-        setSessionId(newSessionObj.id);
+        openDialog('Select an Agent', <AgentsList/>, '536px', '604px');
      };
 
     return (

@@ -2,13 +2,19 @@ import { ReactElement, useEffect, useState } from 'react';
 import useFetch from '@/hooks/useFetch';
 import Session from '../session/session';
 import { useSession } from '../chatbot/chatbot';
-import { SessionInterface } from '@/utils/interfaces';
+import { AgentInterface, SessionInterface } from '@/utils/interfaces';
 import VirtualScroll from '../virtual-scroll/virtual-scroll';
 
 export default function Sessions(): ReactElement {
     const [editingTitle, setEditingTitle] = useState<string | null>(null);
-    const {sessionId, setSessions, sessions} = useSession();
+    const {sessionId, setSessions, sessions, setAgents} = useSession();
     const {data, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
+    const {data: agentsData} = useFetch<{agents: AgentInterface[]}>('agents');
+
+    useEffect(() => {
+       if (agentsData?.agents) setAgents(agentsData.agents);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [agentsData?.agents]);
 
 
     useEffect(() => {

@@ -21,7 +21,7 @@ describe(Message, () => {
     let rerender: (ui: React.ReactNode) => void;
     
     beforeEach(() => {
-        const utils = render(<Message event={event}/>);
+        const utils = render(<Message isContinual={false} event={event}/>);
         getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
         rerender = utils.rerender;
     });
@@ -33,7 +33,7 @@ describe(Message, () => {
 
     it('message has the valid icon', () => {
         for (const serverStatus of serverStatuses) {
-            rerender(<Message event={{...event, serverStatus}}/>);
+            rerender(<Message isContinual={false} event={{...event, serverStatus}}/>);
             const icon = getByTestId(serverStatus);
             expect(icon).toBeInTheDocument();
         }

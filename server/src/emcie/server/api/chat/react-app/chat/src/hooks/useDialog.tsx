@@ -13,17 +13,21 @@ export const useDialog = (): UseDialogReturn => {
   const [dialogTitle, setDialogTitle] = useState<ReactNode>(null);
   const [dialogContent, setDialogContent] = useState<ReactNode>(null);
   const [dialogSize, setDialogSize] = useState({height: '', width: ''});
+  const [onDialogClosed, setOnDialogClosed] = useState<(() => void) | null>(null);
 
-  const openDialog = (title: string, content: ReactNode, height: string, width: string) => {
+  const openDialog = (title: string, content: ReactNode, height: string, width: string, dialogClosed = null) => {
       setDialogTitle(title);
       setDialogContent(content);
       setDialogSize({height, width});
+      if (dialogClosed) setOnDialogClosed(dialogClosed);
   };
 
   const closeDialog = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setDialogContent(null);
     setDialogTitle(null);
+    onDialogClosed?.();
+    setOnDialogClosed(null);
   };
 
   const DialogComponent = () => (

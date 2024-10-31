@@ -12,7 +12,6 @@ import styles from './session.module.scss';
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import { NEW_SESSION_ID } from '../chat-header/chat-header';
 import { spaceClick } from '@/utils/methods';
-import { useDialog } from '@/hooks/useDialog';
 import GradiantButton from '../gradiant-button/gradiant-button';
 
 interface Props {
@@ -25,11 +24,20 @@ interface Props {
     tabIndex?: number;
 }
 
+export const DeleteDialog = ({session, closeDialog, deleteClicked}: {session: SessionInterface, closeDialog: () => void, deleteClicked: (e: React.MouseEvent) => Promise<void> | undefined}) => (
+    <div data-testid="deleteDialogContent">
+        <Session session={session} disabled/>
+        <div className='h-[80px] flex items-center justify-end pe-[18px]'>
+            <Button data-testid="cancel-delete" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#EBE9F5] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
+            <GradiantButton onClick={deleteClicked} buttonClassName='h-[46px] w-[161px] bg-[#213547] rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Delete Session</GradiantButton>
+        </div>
+    </div>
+);
+
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
-    const {setSessionId, setAgentId, setNewSession, agents, setSessions} = useSession();
+    const {setSessionId, setAgentId, setNewSession, agents, setSessions, openDialog, closeDialog} = useSession();
     const [agentsMap, setAgentsMap] = useState(new Map());
-    const {openDialog, DialogComponent, closeDialog} = useDialog();
 
     useEffect(() => {
         if (!isSelected) return;
@@ -66,16 +74,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             });
         };
 
-        const dialogContent = (
-            <div>
-                <Session session={session} disabled/>
-                <div className='h-[80px] flex items-center justify-end pe-[18px]'>
-                    <Button data-testid="cancel-delete" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#EBE9F5] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
-                    <GradiantButton onClick={deleteClicked} buttonClassName='h-[46px] w-[161px] bg-[#213547] rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Delete Session</GradiantButton>
-                </div>
-            </div>
-        );
-        openDialog('Delete Session', dialogContent, '228px', '480px');
+        openDialog('Delete Session', <DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session}/>, '228px', '480px');
     };
 
     const editTitle = async (e: React.MouseEvent) => {
@@ -181,7 +180,6 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                     <Tooltip value='Save'><Button variant='ghost' className="w-[28px] h-[28px] p-[8px] rounded-full" onClick={saveTitleChange}><img src="/icons/save.svg" alt="cancel" /></Button></Tooltip>
                 </div>}
             </div>
-            <DialogComponent />
         </div>
     );
 }
