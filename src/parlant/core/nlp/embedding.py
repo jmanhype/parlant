@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from lagom import Container
 from typing import Any, Sequence
 
+from emcie.server.core.nlp.generation import TokenEstimator
+
 
 @dataclass(frozen=True)
 class EmbeddingResult:
@@ -18,6 +20,18 @@ class Embedder(ABC):
         hints: Mapping[str, Any] = {},
     ) -> EmbeddingResult:
         pass
+
+    @abstractmethod
+    @property
+    def id(self) -> str: ...
+
+    @abstractmethod
+    @property
+    def token_estimator(self) -> TokenEstimator: ...
+
+    @abstractmethod
+    @property
+    def max_tokens(self) -> int: ...
 
 
 class EmbedderFactory:
