@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Type, cast
+from typing import Optional, Sequence, cast
 from typing_extensions import get_type_hints
 from parlant.core.persistence.document_database import (
     BaseDocument,
@@ -23,7 +23,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     def create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
         annotations = get_type_hints(schema)
         assert "id" in annotations and annotations["id"] == ObjectId
@@ -46,7 +46,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> _TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(_TransientDocumentCollection[TDocument], collection)
@@ -73,7 +73,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
     def __init__(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
         data: Optional[Sequence[TDocument]] = None,
     ) -> None:
         self._name = name
