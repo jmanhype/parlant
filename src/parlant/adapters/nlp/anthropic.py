@@ -69,3 +69,33 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
             model_name="claude-3-5-sonnet-20241022",
             logger=logger,
         )
+        self._token_estimator = AnthropicTokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"anthropic/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 200000
+
+
+class AnthropicService(NLPService):
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
+        return Claude_Sonnet_3_5[T](self._logger)
+
+    async def get_embedder(self) -> Embedder:
+        return SBertAllMiniLML6V2()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return NoModeration()
