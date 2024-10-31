@@ -1,4 +1,6 @@
+from __future__ import annotations
 from itertools import chain
+from logging import Logger
 from openai import AsyncClient
 from typing import Any, Mapping
 import json
@@ -7,10 +9,11 @@ import os
 
 from pydantic import ValidationError
 
-from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
-from parlant.core.logging import Logger
-from parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
+from parlant.core.nlp.service import NLPService
+from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
+from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
+
 
 
 class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -184,3 +187,20 @@ class OpenAIModerationService(ModerationService):
 class OmniModeration(OpenAIModerationService):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="omni-moderation-latest", logger=logger)
+
+
+class OpenAIService(NLPService):
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
+        return GPT_4o[T](self._logger)
+
+    async def get_embedder(self) -> Embedder:
+        return OpenAITextEmbedding3Large()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return OmniModeration(self._logger)
