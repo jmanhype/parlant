@@ -18,7 +18,7 @@ vi.mock('react', async () => {
     const actualReact = await vi.importActual('react');
     return {
         ...actualReact,
-        useContext: vi.fn(() => ({setSessionId: setSessionFn, setAgentId: vi.fn()}))
+        useContext: vi.fn(() => ({setSessionId: setSessionFn, setAgentId: vi.fn(), setSessions: vi.fn()}))
     };
 });
 

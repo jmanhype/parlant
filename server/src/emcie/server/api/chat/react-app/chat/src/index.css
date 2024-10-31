@@ -68,13 +68,15 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
   }
+  
   .scrollbar-on-hover {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
   .scrollbar-on-hover:hover {
+      padding-right: 0;
       scrollbar-width: auto;
-      -ms-overflow-style: auto !important
+      -ms-overflow-style: auto;
   }
   .box-shadow-none {
     box-shadow: none !important;

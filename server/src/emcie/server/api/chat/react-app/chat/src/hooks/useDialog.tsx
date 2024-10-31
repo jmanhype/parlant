@@ -28,13 +28,13 @@ export const useDialog = (): UseDialogReturn => {
 
   const DialogComponent = () => (
     <Dialog open={!!dialogContent}>
-        <DialogContent data-testid="dialog" style={{height: dialogSize.height, width: dialogSize.width}} className={'[&>button]:hidden p-0 min-w-[604px] h-[536px] font-ubuntu-sans'}>
+        <DialogContent data-testid="dialog" style={{height: dialogSize.height, width: dialogSize.width}} className={'[&>button]:hidden p-0 h-[536px] font-ubuntu-sans bg-white'}>
                 <div className='bg-white rounded-[12px] flex flex-col'>
                     <DialogHeader>
                         <DialogTitle>
                             <div className='h-[68px] w-full flex justify-between items-center ps-[30px] pe-[20px] border-b-[#EBECF0] border-b-[0.6px]'>
-                                <DialogDescription className='text-[18px] font-semibold'>{dialogTitle}</DialogDescription>
-                                <img tabIndex={0} onKeyDown={spaceClick} onClick={closeDialog} className='cursor-pointer' src="icons/close.svg" alt="close" height={28} width={28}/>
+                                <DialogDescription className='text-[16px] font-normal'>{dialogTitle}</DialogDescription>
+                                <img tabIndex={0} onKeyDown={spaceClick} onClick={closeDialog} className='cursor-pointer rounded-full hover:bg-[#F5F6F8] p-[10px]' src="icons/close.svg" alt="close" height={30} width={30}/>
                             </div>
                         </DialogTitle>
                     </DialogHeader>

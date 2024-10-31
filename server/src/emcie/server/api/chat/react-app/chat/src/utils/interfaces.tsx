@@ -4,10 +4,11 @@ export interface AgentInterface {
 };
 
 export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
+type eventSource = 'end_user' | 'end_user_ui' | 'human_agent' | 'human_agent_on_behalf_of_ai_agent' | 'ai_agent';
 
 export interface EventInterface {
     id?: string;
-    source: 'client' | 'server';
+    source: eventSource;
     kind: 'status' | 'message';
     correlation_id: string;
     serverStatus: ServerStatus;

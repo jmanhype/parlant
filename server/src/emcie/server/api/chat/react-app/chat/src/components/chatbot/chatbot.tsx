@@ -60,16 +60,12 @@ export default function Chatbot(): ReactElement {
             <SessionProvider.Provider value={provideObj}>
                 <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
                     <ChatHeader/>
-                    {/* <AgentsList/> */}
                     <div className="flex justify-between flex-1 w-full overflow-auto flex-row">
                         <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[332px]">
                             <Sessions />
                         </div>
                         <div className='h-full w-full'>
-                            {sessionId && 
-                            <Suspense fallback={<div></div>}>
-                                <Chat />
-                            </Suspense>}
+                            {sessionId && <Suspense><Chat /></Suspense>}
                         </div>
                     </div>
                 </div>

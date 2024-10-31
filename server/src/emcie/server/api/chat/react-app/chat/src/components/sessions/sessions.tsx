@@ -20,7 +20,7 @@ export default function Sessions(): ReactElement {
 
     return (
         <div className="flex flex-col items-center h-full">
-            <div tabIndex={0} data-testid="sessions" className="bg-white flex-1 justify-center w-[332px] overflow-auto scrollbar-on-hover">
+            <div tabIndex={0} data-testid="sessions" className="bg-white flex-1 justify-center w-[332px] overflow-auto">
             {loading && !sessions?.length && <div>loading...</div>}
             <VirtualScroll height='80px' className='flex flex-col-reverse'>
                 {sessions.map((session, i) => (

@@ -39,7 +39,7 @@ const AgentsList = (): ReactNode => {
                         <DialogTitle>
                             <div className='h-[68px] w-full flex justify-between items-center ps-[30px] pe-[20px]'>
                                 <DialogDescription className='text-[18px] font-semibold'>Select an Agent</DialogDescription>
-                                <img data-testid="closeBtn" role='button' tabIndex={0} onKeyDown={spaceClick} onClick={closeClicked} className='cursor-pointer' src="icons/close.svg" alt="close" height={28} width={28}/>
+                                <img data-testid="closeBtn" role='button' tabIndex={0} onKeyDown={spaceClick} onClick={closeClicked} className='cursor-pointer rounded-full hover:bg-[#F5F6F8] p-[10px]' src="icons/close.svg" alt="close" height={30} width={30}/>
                             </div>
                         </DialogTitle>
                     </DialogHeader>

@@ -22,7 +22,7 @@ const statusIcon = {
 };
 
 export default function Message({event, isContinual}: Props): ReactElement {
-    const isClient = event.source === 'client';
+    const isClient = event.source === 'end_user' || event.source === 'end_user_ui';
     const serverStatus = event.serverStatus;
 
     return (

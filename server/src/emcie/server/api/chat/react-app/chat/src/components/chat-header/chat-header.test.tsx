@@ -13,18 +13,18 @@ vi.mock('react', async () => {
 });
 
 describe(ChatHeader, () => {
-    let getByRole: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+    let getAllByRole: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement[];
 
     beforeEach(() => {
         const utils = render(<ChatHeader />);
-        getByRole = utils.getByRole as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+        getAllByRole = utils.getAllByRole as typeof getAllByRole;
 
         vi.clearAllMocks();
     });
 
     it('clicking the "add session" button should create a new mocked session', async () => {
-        const addBtn = getByRole('button');
-        fireEvent.click(addBtn);
+        const addBtn = getAllByRole('button');
+        fireEvent.click(addBtn[0]);
         expect(setSessionFn).toHaveBeenCalledWith(NEW_SESSION_ID);
     });
 });

@@ -36,9 +36,12 @@ const ChatHeader = (): ReactNode => {
                     <img src="parlant-bubble-app-logo.svg" alt="logo" height={17.9} width={20.89} className='ms-[24px] me-[6px]'/>
                     <p className='text-[19.4px] font-bold'>Parlant</p>
                 </div>
-                <div>
-                    <Tooltip value='New Session'>
-                        <img onKeyDown={spaceClick} onClick={createNewSession} tabIndex={1} role='button' src="icons/add.svg" alt="add session" height={28} width={28} className='me-[24px] cursor-pointer'/>
+                <div className='group'>
+                    <Tooltip value='New Session' side='right'>
+                        <div>
+                            <img onKeyDown={spaceClick} onClick={createNewSession} tabIndex={1} role='button' src="icons/add.svg" alt="add session" height={28} width={28} className='me-[6px] cursor-pointer group-hover:hidden'/>
+                            <img onKeyDown={spaceClick} onClick={createNewSession} tabIndex={1} role='button' src="icons/add-filled.svg" alt="add session" height={28} width={28} className='me-[6px] cursor-pointer hidden group-hover:block'/>
+                        </div>
                     </Tooltip>
                 </div>
             </div>

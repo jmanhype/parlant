@@ -27,7 +27,7 @@ interface Props {
 
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
-    const {setSessionId, setAgentId, setNewSession, agents} = useSession();
+    const {setSessionId, setAgentId, setNewSession, agents, setSessions} = useSession();
     const [agentsMap, setAgentsMap] = useState(new Map());
     const {openDialog, DialogComponent, closeDialog} = useDialog();
 
@@ -55,7 +55,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                 return;
             }
             return deleteData(`sessions/${session.id}`).then(() => {
-                refetch?.();
+                setSessions(sessions => sessions.filter(s => s.id !== session.id));
                 if (isSelected) {
                     setSessionId(null);
                     document.title = 'Parlant';
@@ -127,7 +127,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             onKeyDown={spaceClick}
             onClick={() => !disabled && !editingTitle && setSessionId(session.id)}
             key={session.id}
-            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] border-r ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') + (disabled ? ' pointer-events-none' : '')}>
+            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') + (disabled ? ' pointer-events-none' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]">
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis flex items-center">
@@ -145,15 +145,19 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                     </div>
                 }
                 {editingTitle === session.id && 
-                    <Input data-testid='sessionTitle'
-                        ref={sessionNameRef}
-                        onKeyUp={onInputKeyUp}
-                        onClick={e => e.stopPropagation()}
-                        autoFocus
-                        defaultValue={session.title}
-                        className="box-shadow-none w-[194px] border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]"/>}
+                    <div className='flex items-center ps-[6px]'>
+                        <div>{agent && <AgentAvatar agent={agent}/>}</div>
+                        <Input data-testid='sessionTitle'
+                            ref={sessionNameRef}
+                            onKeyUp={onInputKeyUp}
+                            onClick={e => e.stopPropagation()}
+                            autoFocus
+                            defaultValue={session.title}
+                            className="box-shadow-none border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]"/>
+                    </div>
+                }
             </div>
-            <div className='h-[39px]'>
+            <div className='h-[39px] flex items-center'>
                 {!disabled && editingTitle !== session.id && 
                 <DropdownMenu>
                     <DropdownMenuTrigger  disabled={!!editingTitle} data-testid="menu-button" tabIndex={-1} onClick={e => e.stopPropagation()}>

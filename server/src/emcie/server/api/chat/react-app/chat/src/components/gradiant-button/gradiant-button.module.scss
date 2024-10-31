@@ -4,7 +4,7 @@
       border-radius: 6px;
       border: none;
     }
-    &:hover {
+    &:hover, &:focus {
       background: linear-gradient(89.94deg, #FFB800, #B4E64A, #87DAC6, #FF68C3, #005CE7);
       background-size: 200% 200%;
       div {

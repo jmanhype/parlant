@@ -14,7 +14,7 @@ import { NEW_SESSION_ID } from '../chat-header/chat-header';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
-    source: 'client',
+    source: 'end_user',
     creation_utc: new Date(),
     serverStatus: 'pending',
     offset: 0,
@@ -79,12 +79,13 @@ export default function Chat(): ReactElement {
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
         const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
+        console.log(correlationsMap);
         const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         setMessages(messages => {
             const last = messages.at(-1);
-           if (last?.source === 'client' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
+           if (last?.source === 'end_user' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
            return [...messages, ...withStatusMessages] as EventInterface[];
         });
 

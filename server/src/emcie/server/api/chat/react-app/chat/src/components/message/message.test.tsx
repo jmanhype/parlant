@@ -13,7 +13,7 @@ const event: EventInterface = {
     kind: 'message',
     offset: 0,
     serverStatus: 'pending',
-    source: 'client'
+    source: 'end_user'
 };
 
 describe(Message, () => {

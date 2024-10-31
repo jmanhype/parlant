@@ -26,6 +26,7 @@ vi.mock('react', async () => {
         ...actualReact,
         useContext: vi.fn(() => ({
             sessionId: NEW_SESSION_ID,
+            setSessionId: vi.fn(),
             setAgents: vi.fn(),
             setAgentId: setAgentIdFn
         }))

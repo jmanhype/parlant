@@ -29,7 +29,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className='flex bg-main items-center justify-center h-screen flex-col'>
                 <img src="/parlant-bubble-app-logo.svg" alt="Logo" height={200} width={200} className='mb-[10px]' />
                 <h1 className='text-[20px]'>Oops! Something Went Wrong</h1>
-                <p className='text-center'>We apologize for the inconvenience. Please try again later.</p>
+                <p className='text-center'>We apologize for the inconvenience. Please try again later, Or <a href="/" className='underline'>try again now</a></p>
                 <div className={'flex justify-center max-h-[300px] mt-[40px] bg-[#f0eeee] rounded-[10px] p-[10px]  break-words border border-solid border-[#dedcdc]'}>
                     <code className='max-h-[300px] w-[600px] max-w-[80vw] overflow-auto'>
                         {this.state.errorStack}
