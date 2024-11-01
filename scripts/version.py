@@ -42,7 +42,7 @@ def set_package_version(version: str, package: Package) -> None:
 
         project_file_content = re.sub(
             f'\nparlant-(.+?) = "{current_version}"\n',
-            f'\parlant-\\1 = "{version}"\n',
+            f'\nparlant-\\1 = "{version}"\n',
             project_file_content,
         )
 
