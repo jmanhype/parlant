@@ -1,9 +1,9 @@
 from pytest_bdd import given, parsers
 
-from parlant.server.core.agents import AgentId
-from parlant.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
-from parlant.server.core.guidelines import Guideline, GuidelineStore
+from parlant.core.agents import AgentId
+from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
+from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.core.guidelines import Guideline, GuidelineStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 

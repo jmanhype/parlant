@@ -1,6 +1,6 @@
 from typing import Literal
 
-from parlant.server.core.tools import ToolResult
+from parlant.core.tools import ToolResult
 
 
 def get_available_drinks() -> ToolResult:

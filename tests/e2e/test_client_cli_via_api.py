@@ -17,8 +17,8 @@ from tests.e2e.test_utilities import (
     ContextOfTest,
     run_server,
 )
-from parlant.server.core.services.tools.plugins import tool, ToolEntry, PluginServer
-from parlant.server.core.tools import ToolResult, ToolContext
+from parlant.core.services.tools.plugins import tool, ToolEntry, PluginServer
+from parlant.core.tools import ToolResult, ToolContext
 
 REASONABLE_AMOUNT_OF_TIME = 5
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25

@@ -2,11 +2,11 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
 
-from parlant.server.core.agents import AgentId
-from parlant.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
-from parlant.server.core.guideline_tool_associations import GuidelineToolAssociationStore
-from parlant.server.core.guidelines import Guideline, GuidelineContent, GuidelineStore
-from parlant.server.core.tools import LocalToolService, ToolId
+from parlant.core.agents import AgentId
+from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
+from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore
+from parlant.core.tools import LocalToolService, ToolId
 
 
 async def create_and_connect(

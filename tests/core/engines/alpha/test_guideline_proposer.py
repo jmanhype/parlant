@@ -5,19 +5,19 @@ from more_itertools import unique
 from pytest import fixture, mark
 from datetime import datetime, timezone
 
-from parlant.server.core.agents import Agent, AgentId
-from parlant.server.core.common import generate_id, JSONSerializable
-from parlant.server.core.nlp.generation import SchematicGenerator
-from parlant.server.core.engines.alpha.guideline_proposer import (
+from parlant.core.agents import Agent, AgentId
+from parlant.core.common import generate_id, JSONSerializable
+from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from parlant.server.core.engines.alpha.guideline_proposition import (
+from parlant.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from parlant.server.core.logging import Logger
-from parlant.server.core.guidelines import Guideline, GuidelineContent, GuidelineId
-from parlant.server.core.sessions import Event, EventId, EventSource, MessageEventData
+from parlant.core.logging import Logger
+from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineId
+from parlant.core.sessions import Event, EventId, EventSource, MessageEventData
 
 from tests.test_utilities import SyncAwaiter
 

@@ -2,24 +2,24 @@ from typing import Callable, Optional, cast
 
 from lagom import Container
 
-from parlant.server.core.tools import ToolResult
-from parlant.server.core.common import JSONSerializable
-from parlant.server.core.agents import Agent, AgentId, AgentStore
-from parlant.server.core.async_utils import Timeout
-from parlant.server.core.context_variables import (
+from parlant.core.tools import ToolResult
+from parlant.core.common import JSONSerializable
+from parlant.core.agents import Agent, AgentId, AgentStore
+from parlant.core.async_utils import Timeout
+from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableId,
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.server.core.end_users import EndUser, EndUserId, EndUserStore
-from parlant.server.core.glossary import GlossaryStore, Term
-from parlant.server.core.guideline_tool_associations import GuidelineToolAssociationStore
-from parlant.server.core.guidelines import Guideline, GuidelineStore
-from parlant.server.core.mc import MC
-from parlant.server.core.services.tools.service_registry import ServiceRegistry
-from parlant.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
-from parlant.server.core.tools import LocalToolService, ToolId
+from parlant.core.end_users import EndUser, EndUserId, EndUserStore
+from parlant.core.glossary import GlossaryStore, Term
+from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
+from parlant.core.guidelines import Guideline, GuidelineStore
+from parlant.core.mc import MC
+from parlant.core.services.tools.service_registry import ServiceRegistry
+from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
+from parlant.core.tools import LocalToolService, ToolId
 
 
 async def create_agent(container: Container, name: str) -> Agent:

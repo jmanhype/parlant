@@ -7,12 +7,12 @@ import tempfile
 from lagom import Container
 from pytest import fixture, mark
 
-from parlant.server.core.agents import AgentDocumentStore, AgentId, AgentStore
-from parlant.server.core.context_variables import (
+from parlant.core.agents import AgentDocumentStore, AgentId, AgentStore
+from parlant.core.context_variables import (
     ContextVariableDocumentStore,
 )
-from parlant.server.core.end_users import EndUserDocumentStore, EndUserId
-from parlant.server.core.evaluations import (
+from parlant.core.end_users import EndUserDocumentStore, EndUserId
+from parlant.core.evaluations import (
     EvaluationDocumentStore,
     GuidelinePayload,
     Invoice,
@@ -21,18 +21,18 @@ from parlant.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from parlant.server.core.guidelines import (
+from parlant.core.guidelines import (
     GuidelineContent,
     GuidelineDocumentStore,
     GuidelineId,
 )
-from parlant.server.adapters.db.json_file import JSONFileDocumentDatabase
-from parlant.server.core.sessions import SessionDocumentStore
-from parlant.server.core.guideline_tool_associations import (
+from parlant.adapters.db.json_file import JSONFileDocumentDatabase
+from parlant.core.sessions import SessionDocumentStore
+from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
-from parlant.server.core.logging import Logger
-from parlant.server.core.tools import ToolId
+from parlant.core.logging import Logger
+from parlant.core.tools import ToolId
 from tests.test_utilities import SyncAwaiter
 
 

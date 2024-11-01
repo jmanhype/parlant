@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 import json
 from pytest_bdd import given, parsers
 
-from parlant.server.core.agents import Agent, AgentId
-from parlant.server.core.end_users import EndUser, EndUserId
-from parlant.server.core.sessions import Session, SessionId, SessionStore
+from parlant.core.agents import Agent, AgentId
+from parlant.core.end_users import EndUser, EndUserId
+from parlant.core.sessions import Session, SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
 

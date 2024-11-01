@@ -3,9 +3,9 @@ from contextlib import contextmanager
 import logging
 from typing import Any, Awaitable, Generator, Iterator, TypeVar
 
-from parlant.server.adapters.nlp.openai import GPT_4o
-from parlant.server.core.logging import Logger
-from parlant.server.core.common import DefaultBaseModel
+from parlant.adapters.nlp.openai import GPT_4o
+from parlant.core.logging import Logger
+from parlant.core.common import DefaultBaseModel
 
 T = TypeVar("T")
 

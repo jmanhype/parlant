@@ -1,6 +1,6 @@
 from pytest_bdd import given, parsers
 
-from parlant.server.core.agents import AgentId, AgentStore
+from parlant.core.agents import AgentId, AgentStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
