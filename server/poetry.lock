@@ -821,6 +821,21 @@ docs = ["ipython", "matplotlib", "numpydoc", "sphinx"]
 tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
+name = "dataclasses-json"
+version = "0.6.7"
+description = "Easily serialize dataclasses to and from JSON."
+optional = false
+python-versions = "<4.0,>=3.7"
+files = [
+    {file = "dataclasses_json-0.6.7-py3-none-any.whl", hash = "sha256:0dbf33f26c8d5305befd61b39d2b3414e8a407bedc2834dea9b8d642666fb40a"},
+    {file = "dataclasses_json-0.6.7.tar.gz", hash = "sha256:b6b3e528266ea45b9535223bc53ca645f5208833c29229e847b3f26a1cc55fc0"},
+]
+
+[package.dependencies]
+marshmallow = ">=3.18.0,<4.0.0"
+typing-inspect = ">=0.4.0,<1"
+
+[[package]]
 name = "decorator"
 version = "5.1.1"
 description = "Decorators for Humans"
@@ -2270,6 +2285,25 @@ files = [
     {file = "MarkupSafe-2.1.5-cp39-cp39-win_amd64.whl", hash = "sha256:fa173ec60341d6bb97a89f5ea19c85c5643c1e7dedebc22f5181eb73573142c5"},
     {file = "MarkupSafe-2.1.5.tar.gz", hash = "sha256:d283d37a890ba4c1ae73ffadf8046435c76e7bc2247bbb63c00bd1a709c6544b"},
 ]
+
+[[package]]
+name = "marshmallow"
+version = "3.23.0"
+description = "A lightweight library for converting complex datatypes to and from native Python datatypes."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "marshmallow-3.23.0-py3-none-any.whl", hash = "sha256:82f20a2397834fe6d9611b241f2f7e7b680ed89c49f84728a1ad937be6b4bdf4"},
+    {file = "marshmallow-3.23.0.tar.gz", hash = "sha256:98d8827a9f10c03d44ead298d2e99c6aea8197df18ccfad360dae7f89a50da2e"},
+]
+
+[package.dependencies]
+packaging = ">=17.0"
+
+[package.extras]
+dev = ["marshmallow[tests]", "pre-commit (>=3.5,<5.0)", "tox"]
+docs = ["alabaster (==1.0.0)", "autodocsumm (==0.2.13)", "sphinx (==8.1.3)", "sphinx-issues (==5.0.0)", "sphinx-version-warning (==1.1.2)"]
+tests = ["pytest", "simplejson"]
 
 [[package]]
 name = "matplotlib"
@@ -3923,6 +3957,42 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
+name = "pytest-stochastics"
+version = "0.2.4"
+description = "pytest plugin that allows selectively running tests several times and accepting *some* failures."
+optional = false
+python-versions = "^3.12"
+files = []
+develop = false
+
+[package.dependencies]
+dataclasses-json = "^0.6.7"
+mypy = "^1.11.1"
+pytest = "^8.0.0"
+rich = "^13.9.3"
+
+[package.source]
+type = "git"
+url = "ssh://git@github.com/emcie-co/pytest-stochastics.git"
+reference = "v0.2.4"
+resolved_reference = "1b31d96f1b53724f5947cdeb6587628e8ace1cc1"
+
+[[package]]
+name = "pytest-tap"
+version = "3.4"
+description = "Test Anything Protocol (TAP) reporting plugin for pytest"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytest-tap-3.4.tar.gz", hash = "sha256:a7c2a4a3e8b4bf18522e46d74208f8579a191dd972c59182104ad9a4967318fb"},
+    {file = "pytest_tap-3.4-py3-none-any.whl", hash = "sha256:d97a2115c94415086f6faec395d243b3c18ea846ce1c1653a4b2588082be35d8"},
+]
+
+[package.dependencies]
+pytest = ">=3.0"
+"tap.py" = ">=3.0,<4.0"
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -4196,13 +4266,13 @@ six = "*"
 
 [[package]]
 name = "rich"
-version = "13.9.1"
+version = "13.9.3"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "rich-13.9.1-py3-none-any.whl", hash = "sha256:b340e739f30aa58921dc477b8adaa9ecdb7cecc217be01d93730ee1bc8aa83be"},
-    {file = "rich-13.9.1.tar.gz", hash = "sha256:097cffdf85db1babe30cc7deba5ab3a29e1b9885047dab24c57e9a7f8a9c1466"},
+    {file = "rich-13.9.3-py3-none-any.whl", hash = "sha256:9836f5096eb2172c9e77df411c1b009bace4193d6a481d534fea75ebba758283"},
+    {file = "rich-13.9.3.tar.gz", hash = "sha256:bc1e01b899537598cf02579d2b9f4a415104d3fc439313a7a2c165d76557a08e"},
 ]
 
 [package.dependencies]
@@ -4624,6 +4694,20 @@ files = [
 widechars = ["wcwidth"]
 
 [[package]]
+name = "tap-py"
+version = "3.1"
+description = "Test Anything Protocol (TAP) tools"
+optional = false
+python-versions = "*"
+files = [
+    {file = "tap.py-3.1-py3-none-any.whl", hash = "sha256:928c852f3361707b796c93730cc5402c6378660b161114461066acf53d65bf5d"},
+    {file = "tap.py-3.1.tar.gz", hash = "sha256:3c0cd45212ad5a25b35445964e2517efa000a118a1bfc3437dae828892eaf1e1"},
+]
+
+[package.extras]
+yaml = ["PyYAML (>=5.1)", "more-itertools"]
+
+[[package]]
 name = "tenacity"
 version = "8.5.0"
 description = "Retry code until it succeeds"
@@ -4956,6 +5040,21 @@ files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
+
+[[package]]
+name = "typing-inspect"
+version = "0.9.0"
+description = "Runtime inspection utilities for typing module."
+optional = false
+python-versions = "*"
+files = [
+    {file = "typing_inspect-0.9.0-py3-none-any.whl", hash = "sha256:9ee6fc59062311ef8547596ab6b955e1b8aa46242d854bfc78f4f6b0eff35f9f"},
+    {file = "typing_inspect-0.9.0.tar.gz", hash = "sha256:b23fc42ff6f6ef6954e4852c1fb512cdd18dbea03134f91f856a95ccc9461f78"},
+]
+
+[package.dependencies]
+mypy-extensions = ">=0.3.0"
+typing-extensions = ">=3.7.4"
 
 [[package]]
 name = "tzdata"
@@ -5488,4 +5587,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "30fe35274ab3e0da779d6d2857af0197a3be7cad07907573e53c8c1dbdfe3daf"
+content-hash = "b2465caa6a5a4925e3f3676821ced16d49170a55239027ec3993725a4d9e9883"

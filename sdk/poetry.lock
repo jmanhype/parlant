@@ -183,6 +183,31 @@ files = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "0.37.1"
+description = "The official Python library for the anthropic API"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "anthropic-0.37.1-py3-none-any.whl", hash = "sha256:8f550f88906823752e2abf99fbe491fbc8d40bce4cb26b9663abdf7be990d721"},
+    {file = "anthropic-0.37.1.tar.gz", hash = "sha256:99f688265795daa7ba9256ee68eaf2f05d53cd99d7417f4a0c2dc292c106d00a"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+jiter = ">=0.4.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+tokenizers = ">=0.13.0"
+typing-extensions = ">=4.7,<5"
+
+[package.extras]
+bedrock = ["boto3 (>=1.28.57)", "botocore (>=1.31.57)"]
+vertex = ["google-auth (>=2,<3)"]
+
+[[package]]
 name = "anyio"
 version = "4.4.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
@@ -694,6 +719,21 @@ docs = ["ipython", "matplotlib", "numpydoc", "sphinx"]
 tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
+name = "dataclasses-json"
+version = "0.6.7"
+description = "Easily serialize dataclasses to and from JSON."
+optional = false
+python-versions = "<4.0,>=3.7"
+files = [
+    {file = "dataclasses_json-0.6.7-py3-none-any.whl", hash = "sha256:0dbf33f26c8d5305befd61b39d2b3414e8a407bedc2834dea9b8d642666fb40a"},
+    {file = "dataclasses_json-0.6.7.tar.gz", hash = "sha256:b6b3e528266ea45b9535223bc53ca645f5208833c29229e847b3f26a1cc55fc0"},
+]
+
+[package.dependencies]
+marshmallow = ">=3.18.0,<4.0.0"
+typing-inspect = ">=0.4.0,<1"
+
+[[package]]
 name = "deprecated"
 version = "1.2.14"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
@@ -796,6 +836,7 @@ develop = true
 [package.dependencies]
 aiofiles = "^24.1.0"
 aiopenapi3 = "^0.6.0"
+anthropic = "^0.37.1"
 chromadb = "^0.5.4"
 click = "^8.1.7"
 click-completion = "^0.5.2"
@@ -803,6 +844,7 @@ coloredlogs = "^15.0.1"
 contextvars = "^2.4"
 emcie-common = "0.4.1-alpha.1"
 fastapi = "^0.112.0"
+google-generativeai = "^0.8.3"
 httpx = "^0.27.0"
 jsonfinder = "^0.4.2"
 jsonschema = "^4.23.0"
@@ -816,6 +858,7 @@ python-dateutil = "^2.8.2"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
 rich = "^13.7.1"
+semver = "^3.0.2"
 tabulate = "^0.9.0"
 tenacity = "^8.4.2"
 tiktoken = "^0.7.0"
@@ -824,7 +867,6 @@ tokenizers = "^0.19.1"
 types-aiofiles = "^24.1.0.20240626"
 types-jsonschema = "^4.22.0.20240610"
 types-tqdm = "^4.66.0.20240417"
-uvicorn = "^0.30.5"
 
 [package.source]
 type = "directory"
@@ -1088,6 +1130,70 @@ test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "cloudpickle", "dask", "d
 tqdm = ["tqdm"]
 
 [[package]]
+name = "google-ai-generativelanguage"
+version = "0.6.10"
+description = "Google Ai Generativelanguage API client library"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "google_ai_generativelanguage-0.6.10-py3-none-any.whl", hash = "sha256:854a2bf833d18be05ad5ef13c755567b66a4f4a870f099b62c61fe11bddabcf4"},
+    {file = "google_ai_generativelanguage-0.6.10.tar.gz", hash = "sha256:6fa642c964d8728006fe7e8771026fc0b599ae0ebeaf83caf550941e8e693455"},
+]
+
+[package.dependencies]
+google-api-core = {version = ">=1.34.1,<2.0.dev0 || >=2.11.dev0,<3.0.0dev", extras = ["grpc"]}
+google-auth = ">=2.14.1,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0dev"
+proto-plus = ">=1.22.3,<2.0.0dev"
+protobuf = ">=3.20.2,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<6.0.0dev"
+
+[[package]]
+name = "google-api-core"
+version = "2.22.0"
+description = "Google API client core library"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "google_api_core-2.22.0-py3-none-any.whl", hash = "sha256:a6652b6bd51303902494998626653671703c420f6f4c88cfd3f50ed723e9d021"},
+    {file = "google_api_core-2.22.0.tar.gz", hash = "sha256:26f8d76b96477db42b55fd02a33aae4a42ec8b86b98b94969b7333a2c828bf35"},
+]
+
+[package.dependencies]
+google-auth = ">=2.14.1,<3.0.dev0"
+googleapis-common-protos = ">=1.56.2,<2.0.dev0"
+grpcio = {version = ">=1.49.1,<2.0dev", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""}
+grpcio-status = {version = ">=1.49.1,<2.0.dev0", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""}
+proto-plus = [
+    {version = ">=1.25.0,<2.0.0dev", markers = "python_version >= \"3.13\""},
+    {version = ">=1.22.3,<2.0.0dev", markers = "python_version < \"3.13\""},
+]
+protobuf = ">=3.19.5,<3.20.0 || >3.20.0,<3.20.1 || >3.20.1,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<6.0.0.dev0"
+requests = ">=2.18.0,<3.0.0.dev0"
+
+[package.extras]
+async-rest = ["google-auth[aiohttp] (>=2.35.0,<3.0.dev0)"]
+grpc = ["grpcio (>=1.33.2,<2.0dev)", "grpcio (>=1.49.1,<2.0dev)", "grpcio-status (>=1.33.2,<2.0.dev0)", "grpcio-status (>=1.49.1,<2.0.dev0)"]
+grpcgcp = ["grpcio-gcp (>=0.2.2,<1.0.dev0)"]
+grpcio-gcp = ["grpcio-gcp (>=0.2.2,<1.0.dev0)"]
+
+[[package]]
+name = "google-api-python-client"
+version = "2.151.0"
+description = "Google API Client Library for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "google_api_python_client-2.151.0-py2.py3-none-any.whl", hash = "sha256:4427b2f47cd88b0355d540c2c52215f68c337f3bc9d6aae1ceeae4525977504c"},
+    {file = "google_api_python_client-2.151.0.tar.gz", hash = "sha256:a9d26d630810ed4631aea21d1de3e42072f98240aaf184a8a1a874a371115034"},
+]
+
+[package.dependencies]
+google-api-core = ">=1.31.5,<2.0.dev0 || >2.3.0,<3.0.0.dev0"
+google-auth = ">=1.32.0,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0.dev0"
+google-auth-httplib2 = ">=0.2.0,<1.0.0"
+httplib2 = ">=0.19.0,<1.dev0"
+uritemplate = ">=3.0.1,<5"
+
+[[package]]
 name = "google-auth"
 version = "2.35.0"
 description = "Google Authentication Library"
@@ -1109,6 +1215,44 @@ enterprise-cert = ["cryptography", "pyopenssl"]
 pyopenssl = ["cryptography (>=38.0.3)", "pyopenssl (>=20.0.0)"]
 reauth = ["pyu2f (>=0.1.5)"]
 requests = ["requests (>=2.20.0,<3.0.0.dev0)"]
+
+[[package]]
+name = "google-auth-httplib2"
+version = "0.2.0"
+description = "Google Authentication Library: httplib2 transport"
+optional = false
+python-versions = "*"
+files = [
+    {file = "google-auth-httplib2-0.2.0.tar.gz", hash = "sha256:38aa7badf48f974f1eb9861794e9c0cb2a0511a4ec0679b1f886d108f5640e05"},
+    {file = "google_auth_httplib2-0.2.0-py2.py3-none-any.whl", hash = "sha256:b65a0a2123300dd71281a7bf6e64d65a0759287df52729bdd1ae2e47dc311a3d"},
+]
+
+[package.dependencies]
+google-auth = "*"
+httplib2 = ">=0.19.0"
+
+[[package]]
+name = "google-generativeai"
+version = "0.8.3"
+description = "Google Generative AI High level API client library and tools."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "google_generativeai-0.8.3-py3-none-any.whl", hash = "sha256:1108ff89d5b8e59f51e63d1a8bf84701cd84656e17ca28d73aeed745e736d9b7"},
+]
+
+[package.dependencies]
+google-ai-generativelanguage = "0.6.10"
+google-api-core = "*"
+google-api-python-client = "*"
+google-auth = ">=2.15.0"
+protobuf = "*"
+pydantic = "*"
+tqdm = "*"
+typing-extensions = "*"
+
+[package.extras]
+dev = ["Pillow", "absl-py", "black", "ipython", "nose2", "pandas", "pytype", "pyyaml"]
 
 [[package]]
 name = "googleapis-common-protos"
@@ -1195,6 +1339,22 @@ files = [
 protobuf = ["grpcio-tools (>=1.66.2)"]
 
 [[package]]
+name = "grpcio-status"
+version = "1.62.3"
+description = "Status proto mapping for gRPC"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "grpcio-status-1.62.3.tar.gz", hash = "sha256:289bdd7b2459794a12cf95dc0cb727bd4a1742c37bd823f760236c937e53a485"},
+    {file = "grpcio_status-1.62.3-py3-none-any.whl", hash = "sha256:f9049b762ba8de6b1086789d8315846e094edac2c50beaf462338b301a8fd4b8"},
+]
+
+[package.dependencies]
+googleapis-common-protos = ">=1.5.5"
+grpcio = ">=1.62.3"
+protobuf = ">=4.21.6"
+
+[[package]]
 name = "h11"
 version = "0.14.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -1225,6 +1385,20 @@ asyncio = ["anyio (>=4.0,<5.0)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 trio = ["trio (>=0.22.0,<1.0)"]
+
+[[package]]
+name = "httplib2"
+version = "0.22.0"
+description = "A comprehensive HTTP client library."
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = [
+    {file = "httplib2-0.22.0-py3-none-any.whl", hash = "sha256:14ae0a53c1ba8f3d37e9e27cf37eabb0fb9980f435ba405d546948b009dd64dc"},
+    {file = "httplib2-0.22.0.tar.gz", hash = "sha256:d7a10bc5ef5ab08322488bde8c726eeee5c8618723fdb399597ec58f3d82df81"},
+]
+
+[package.dependencies]
+pyparsing = {version = ">=2.4.2,<3.0.0 || >3.0.0,<3.0.1 || >3.0.1,<3.0.2 || >3.0.2,<3.0.3 || >3.0.3,<4", markers = "python_version > \"3.0\""}
 
 [[package]]
 name = "httptools"
@@ -1942,6 +2116,25 @@ files = [
     {file = "MarkupSafe-2.1.5-cp39-cp39-win_amd64.whl", hash = "sha256:fa173ec60341d6bb97a89f5ea19c85c5643c1e7dedebc22f5181eb73573142c5"},
     {file = "MarkupSafe-2.1.5.tar.gz", hash = "sha256:d283d37a890ba4c1ae73ffadf8046435c76e7bc2247bbb63c00bd1a709c6544b"},
 ]
+
+[[package]]
+name = "marshmallow"
+version = "3.23.0"
+description = "A lightweight library for converting complex datatypes to and from native Python datatypes."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "marshmallow-3.23.0-py3-none-any.whl", hash = "sha256:82f20a2397834fe6d9611b241f2f7e7b680ed89c49f84728a1ad937be6b4bdf4"},
+    {file = "marshmallow-3.23.0.tar.gz", hash = "sha256:98d8827a9f10c03d44ead298d2e99c6aea8197df18ccfad360dae7f89a50da2e"},
+]
+
+[package.dependencies]
+packaging = ">=17.0"
+
+[package.extras]
+dev = ["marshmallow[tests]", "pre-commit (>=3.5,<5.0)", "tox"]
+docs = ["alabaster (==1.0.0)", "autodocsumm (==0.2.13)", "sphinx (==8.1.3)", "sphinx-issues (==5.0.0)", "sphinx-version-warning (==1.1.2)"]
+tests = ["pytest", "simplejson"]
 
 [[package]]
 name = "matplotlib"
@@ -3066,6 +3259,23 @@ osv = ["openapi-spec-validator (>=0.5.1,<0.6.0)"]
 ssv = ["swagger-spec-validator (>=2.4,<3.0)"]
 
 [[package]]
+name = "proto-plus"
+version = "1.25.0"
+description = "Beautiful, Pythonic protocol buffers."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "proto_plus-1.25.0-py3-none-any.whl", hash = "sha256:c91fc4a65074ade8e458e95ef8bac34d4008daa7cce4a12d6707066fca648961"},
+    {file = "proto_plus-1.25.0.tar.gz", hash = "sha256:fbb17f57f7bd05a68b7707e745e26528b0b3c34e378db91eef93912c54982d91"},
+]
+
+[package.dependencies]
+protobuf = ">=3.19.0,<6.0.0dev"
+
+[package.extras]
+testing = ["google-api-core (>=1.31.5)"]
+
+[[package]]
 name = "protobuf"
 version = "4.25.5"
 description = ""
@@ -3387,6 +3597,42 @@ docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
 testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
+name = "pytest-stochastics"
+version = "0.2.4"
+description = "pytest plugin that allows selectively running tests several times and accepting *some* failures."
+optional = false
+python-versions = "^3.12"
+files = []
+develop = false
+
+[package.dependencies]
+dataclasses-json = "^0.6.7"
+mypy = "^1.11.1"
+pytest = "^8.0.0"
+rich = "^13.9.3"
+
+[package.source]
+type = "git"
+url = "ssh://git@github.com/emcie-co/pytest-stochastics.git"
+reference = "v0.2.4"
+resolved_reference = "1b31d96f1b53724f5947cdeb6587628e8ace1cc1"
+
+[[package]]
+name = "pytest-tap"
+version = "3.4"
+description = "Test Anything Protocol (TAP) reporting plugin for pytest"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytest-tap-3.4.tar.gz", hash = "sha256:a7c2a4a3e8b4bf18522e46d74208f8579a191dd972c59182104ad9a4967318fb"},
+    {file = "pytest_tap-3.4-py3-none-any.whl", hash = "sha256:d97a2115c94415086f6faec395d243b3c18ea846ce1c1653a4b2588082be35d8"},
+]
+
+[package.dependencies]
+pytest = ">=3.0"
+"tap.py" = ">=3.0,<4.0"
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -3660,13 +3906,13 @@ six = "*"
 
 [[package]]
 name = "rich"
-version = "13.9.2"
+version = "13.9.3"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "rich-13.9.2-py3-none-any.whl", hash = "sha256:8c82a3d3f8dcfe9e734771313e606b39d8247bb6b826e196f4914b333b743cf1"},
-    {file = "rich-13.9.2.tar.gz", hash = "sha256:51a2c62057461aaf7152b4d611168f93a9fc73068f8ded2790f29fe2b5366d0c"},
+    {file = "rich-13.9.3-py3-none-any.whl", hash = "sha256:9836f5096eb2172c9e77df411c1b009bace4193d6a481d534fea75ebba758283"},
+    {file = "rich-13.9.3.tar.gz", hash = "sha256:bc1e01b899537598cf02579d2b9f4a415104d3fc439313a7a2c165d76557a08e"},
 ]
 
 [package.dependencies]
@@ -3957,6 +4203,17 @@ doc = ["jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.13.1)", "jupytext"
 test = ["Cython", "array-api-strict (>=2.0)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
 
 [[package]]
+name = "semver"
+version = "3.0.2"
+description = "Python helper for Semantic Versioning (https://semver.org)"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "semver-3.0.2-py3-none-any.whl", hash = "sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4"},
+    {file = "semver-3.0.2.tar.gz", hash = "sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc"},
+]
+
+[[package]]
 name = "setuptools"
 version = "75.1.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -4056,6 +4313,20 @@ files = [
 
 [package.extras]
 widechars = ["wcwidth"]
+
+[[package]]
+name = "tap-py"
+version = "3.1"
+description = "Test Anything Protocol (TAP) tools"
+optional = false
+python-versions = "*"
+files = [
+    {file = "tap.py-3.1-py3-none-any.whl", hash = "sha256:928c852f3361707b796c93730cc5402c6378660b161114461066acf53d65bf5d"},
+    {file = "tap.py-3.1.tar.gz", hash = "sha256:3c0cd45212ad5a25b35445964e2517efa000a118a1bfc3437dae828892eaf1e1"},
+]
+
+[package.extras]
+yaml = ["PyYAML (>=5.1)", "more-itertools"]
 
 [[package]]
 name = "tenacity"
@@ -4352,6 +4623,21 @@ files = [
 ]
 
 [[package]]
+name = "typing-inspect"
+version = "0.9.0"
+description = "Runtime inspection utilities for typing module."
+optional = false
+python-versions = "*"
+files = [
+    {file = "typing_inspect-0.9.0-py3-none-any.whl", hash = "sha256:9ee6fc59062311ef8547596ab6b955e1b8aa46242d854bfc78f4f6b0eff35f9f"},
+    {file = "typing_inspect-0.9.0.tar.gz", hash = "sha256:b23fc42ff6f6ef6954e4852c1fb512cdd18dbea03134f91f856a95ccc9461f78"},
+]
+
+[package.dependencies]
+mypy-extensions = ">=0.3.0"
+typing-extensions = ">=3.7.4"
+
+[[package]]
 name = "tzdata"
 version = "2024.2"
 description = "Provider of IANA time zone data"
@@ -4360,6 +4646,17 @@ python-versions = ">=2"
 files = [
     {file = "tzdata-2024.2-py2.py3-none-any.whl", hash = "sha256:a48093786cdcde33cad18c2555e8532f34422074448fbc874186f0abd79565cd"},
     {file = "tzdata-2024.2.tar.gz", hash = "sha256:7d85cc416e9382e69095b7bdf4afd9e3880418a2413feec7069d533d6b4e31cc"},
+]
+
+[[package]]
+name = "uritemplate"
+version = "4.1.1"
+description = "Implementation of RFC 6570 URI Templates"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "uritemplate-4.1.1-py2.py3-none-any.whl", hash = "sha256:830c08b8d99bdd312ea4ead05994a38e8936266f84b9a7878232db50b044e02e"},
+    {file = "uritemplate-4.1.1.tar.gz", hash = "sha256:4346edfc5c3b79f694bccd6d6099a322bbeb628dbf2cd86eea55a456ce5124f0"},
 ]
 
 [[package]]
@@ -4860,4 +5157,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "8a7b45fb5fad20242cc8cb20a1e535f47b76c911c4d81696db6a07cdfad95953"
+content-hash = "e26dec1516a3c308bbed2703e500f9057e6fa76b16c6a4ad87a06ebfbc858348"

@@ -28,7 +28,8 @@
         "alexkrechik.cucumberautocomplete",
         "matangover.mypy",
         "charliermarsh.ruff",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions"
       ]
     }
   },
