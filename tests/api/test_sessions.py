@@ -440,7 +440,11 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
     response = client.post(
         f"/sessions/{session_id}/events",
         params={"moderation": "auto"},
-        json={"content": "Fuck all those guys"},
+        json={
+            "kind": "message",
+            "source": "end_user",
+            "content": "Fuck all those guys",
+        },
     )
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -555,7 +559,11 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     posted_event = (
         client.post(
             f"/sessions/{session_id}/events",
-            json={"content": "Hello there!"},
+            json={
+                "kind": "message",
+                "source": "end_user",
+                "content": "Hello there!",
+            },
         )
         .raise_for_status()
         .json()
