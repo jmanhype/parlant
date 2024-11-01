@@ -283,7 +283,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                     )
                 deleted_document = docs[0]
 
-                self._chroma_collection.delete(where=cast(chromadb.Where, filters))
+                self._chroma_collection.delete(where=cast(chromadb.Where, filters) or None)
 
                 return DeleteResult(
                     deleted_count=1,
