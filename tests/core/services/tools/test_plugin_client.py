@@ -2,18 +2,18 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
-from emcie.server.core.tools import ToolContext, ToolResult
-from emcie.server.core.services.tools.plugins import PluginServer, ToolEntry, tool
+from parlant.server.core.tools import ToolContext, ToolResult
+from parlant.server.core.services.tools.plugins import PluginServer, ToolEntry, tool
 from lagom import Container
 from pytest import fixture
 import pytest
-from emcie.server.core.agents import Agent, AgentId, AgentStore
-from emcie.server.core.contextual_correlator import ContextualCorrelator
-from emcie.server.core.emission.event_buffer import EventBuffer, EventBufferFactory
-from emcie.server.core.emissions import EventEmitter, EventEmitterFactory
-from emcie.server.core.services.tools.plugins import PluginClient
-from emcie.server.core.sessions import SessionId
-from emcie.server.core.tools import ToolExecutionError
+from parlant.server.core.agents import Agent, AgentId, AgentStore
+from parlant.server.core.contextual_correlator import ContextualCorrelator
+from parlant.server.core.emission.event_buffer import EventBuffer, EventBufferFactory
+from parlant.server.core.emissions import EventEmitter, EventEmitterFactory
+from parlant.server.core.services.tools.plugins import PluginClient
+from parlant.server.core.sessions import SessionId
+from parlant.server.core.tools import ToolExecutionError
 
 
 class SessionBuffers(EventEmitterFactory):

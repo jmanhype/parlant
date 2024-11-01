@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock
 
 from pytest import raises
 
-from emcie.server.core.common import DefaultBaseModel
-from emcie.server.core.logging import Logger
-from emcie.server.core.nlp.generation import (
+from parlant.server.core.common import DefaultBaseModel
+from parlant.server.core.logging import Logger
+from parlant.server.core.nlp.generation import (
     FallbackSchematicGenerator,
     SchematicGenerationResult,
     SchematicGenerator,

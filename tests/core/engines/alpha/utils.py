@@ -6,11 +6,11 @@ from typing import Any, Callable
 from lagom import Container
 from pytest_bdd import parsers
 
-from emcie.server.core.tools import Tool
-from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.core.guidelines import Guideline
+from parlant.server.core.tools import Tool
+from parlant.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from parlant.server.core.guidelines import Guideline
 
-from emcie.server.core.sessions import Event
+from parlant.server.core.sessions import Event
 from tests.test_utilities import SyncAwaiter
 
 

@@ -1,13 +1,13 @@
 from typing import Optional, cast
 from pytest_bdd import given, then, parsers, when
 
-from emcie.server.core.agents import Agent
-from emcie.server.core.common import JSONSerializable
-from emcie.server.core.end_users import EndUser
-from emcie.server.core.engines.alpha.utils import emitted_tool_event_to_dict
-from emcie.server.core.emissions import EmittedEvent
-from emcie.server.core.nlp.moderation import ModerationTag
-from emcie.server.core.sessions import (
+from parlant.server.core.agents import Agent
+from parlant.server.core.common import JSONSerializable
+from parlant.server.core.end_users import EndUser
+from parlant.server.core.engines.alpha.utils import emitted_tool_event_to_dict
+from parlant.server.core.emissions import EmittedEvent
+from parlant.server.core.nlp.moderation import ModerationTag
+from parlant.server.core.sessions import (
     MessageEventData,
     SessionId,
     SessionStatus,
@@ -16,7 +16,7 @@ from emcie.server.core.sessions import (
     ToolEventData,
 )
 
-from emcie.server.core.tools import ToolId
+from parlant.server.core.tools import ToolId
 from tests import tool_utilities
 from tests.core.engines.alpha.utils import ContextOfTest, step
 from tests.test_utilities import nlp_test

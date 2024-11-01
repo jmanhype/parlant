@@ -3,12 +3,12 @@ from fastapi.testclient import TestClient
 from lagom import Container
 from pytest import fixture
 
-from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import (
+from parlant.server.core.agents import AgentId
+from parlant.server.core.context_variables import (
     ContextVariableStore,
     FreshnessRules,
 )
-from emcie.server.core.tools import LocalToolService, ToolId
+from parlant.server.core.tools import LocalToolService, ToolId
 
 
 @fixture

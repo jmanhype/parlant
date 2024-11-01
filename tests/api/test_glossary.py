@@ -1,7 +1,7 @@
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from emcie.server.core.agents import AgentId
+from parlant.server.core.agents import AgentId
 
 
 def test_create_term(

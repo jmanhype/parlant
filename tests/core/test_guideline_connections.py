@@ -1,15 +1,15 @@
 from typing import Sequence
 from pytest import fixture, raises
 
-from emcie.server.core.guideline_connections import (
+from parlant.server.core.guideline_connections import (
     ConnectionKind,
     GuidelineConnection,
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
 )
-from emcie.server.core.guidelines import GuidelineId
-from emcie.server.core.persistence.document_database import DocumentDatabase
-from emcie.server.adapters.db.transient import TransientDocumentDatabase
+from parlant.server.core.guidelines import GuidelineId
+from parlant.server.core.persistence.document_database import DocumentDatabase
+from parlant.server.adapters.db.transient import TransientDocumentDatabase
 
 
 @fixture

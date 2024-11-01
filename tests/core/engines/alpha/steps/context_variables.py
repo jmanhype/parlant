@@ -1,11 +1,11 @@
 from pytest_bdd import given, parsers
 
-from emcie.server.core.agents import AgentId
-from emcie.server.core.context_variables import (
+from parlant.server.core.agents import AgentId
+from parlant.server.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from emcie.server.core.sessions import SessionId, SessionStore
+from parlant.server.core.sessions import SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
 

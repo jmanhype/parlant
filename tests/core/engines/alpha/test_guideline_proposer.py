@@ -5,19 +5,19 @@ from more_itertools import unique
 from pytest import fixture, mark
 from datetime import datetime, timezone
 
-from emcie.server.core.agents import Agent, AgentId
-from emcie.server.core.common import generate_id, JSONSerializable
-from emcie.server.core.nlp.generation import SchematicGenerator
-from emcie.server.core.engines.alpha.guideline_proposer import (
+from parlant.server.core.agents import Agent, AgentId
+from parlant.server.core.common import generate_id, JSONSerializable
+from parlant.server.core.nlp.generation import SchematicGenerator
+from parlant.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from emcie.server.core.engines.alpha.guideline_proposition import (
+from parlant.server.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from emcie.server.core.logging import Logger
-from emcie.server.core.guidelines import Guideline, GuidelineContent, GuidelineId
-from emcie.server.core.sessions import Event, EventId, EventSource, MessageEventData
+from parlant.server.core.logging import Logger
+from parlant.server.core.guidelines import Guideline, GuidelineContent, GuidelineId
+from parlant.server.core.sessions import Event, EventId, EventSource, MessageEventData
 
 from tests.test_utilities import SyncAwaiter
 
@@ -54,7 +54,7 @@ def propose_guidelines(
             id=AgentId("123"),
             creation_utc=datetime.now(timezone.utc),
             name="Test Agent",
-            description="You are an agent that works for Emcie",
+            description="You are an agent that works for Parlant",
             max_engine_iterations=3,
         )
     ]

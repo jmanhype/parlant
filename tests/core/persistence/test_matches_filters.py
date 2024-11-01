@@ -1,5 +1,5 @@
 import typing
-from emcie.server.core.persistence.document_database import Where, matches_filters
+from parlant.server.core.persistence.document_database import Where, matches_filters
 
 
 def test_equal_to() -> None:

@@ -8,7 +8,7 @@ from utils import die, for_each_package, Package, get_packages
 
 
 def get_server_version() -> str:
-    server_package = next(p for p in get_packages() if p.name == "emcie")
+    server_package = next(p for p in get_packages() if p.name == "parlant")
     project_file = server_package.path / "pyproject.toml"
     pyproject = toml.load(project_file)
     version = str(pyproject["tool"]["poetry"]["version"])

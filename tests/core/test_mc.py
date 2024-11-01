@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture
 
-from emcie.server.core.async_utils import Timeout
-from emcie.server.core.mc import MC
-from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.end_users import EndUserId, EndUserStore
-from emcie.server.core.guidelines import GuidelineStore
-from emcie.server.core.sessions import Session, SessionStore
+from parlant.server.core.async_utils import Timeout
+from parlant.server.core.mc import MC
+from parlant.server.core.agents import AgentId, AgentStore
+from parlant.server.core.end_users import EndUserId, EndUserStore
+from parlant.server.core.guidelines import GuidelineStore
+from parlant.server.core.sessions import Session, SessionStore
 from tests.test_utilities import nlp_test
 
 REASONABLE_AMOUNT_OF_TIME = 10

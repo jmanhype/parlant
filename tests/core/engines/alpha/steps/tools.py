@@ -1,16 +1,16 @@
 from typing import Any, cast
 from pytest_bdd import given, parsers
 
-from emcie.server.core.tools import Tool
-from emcie.server.core.agents import AgentId, AgentStore
-from emcie.server.core.guideline_tool_associations import (
+from parlant.server.core.tools import Tool
+from parlant.server.core.agents import AgentId, AgentStore
+from parlant.server.core.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
-from emcie.server.core.guidelines import GuidelineStore
+from parlant.server.core.guidelines import GuidelineStore
 
-from emcie.server.core.services.tools.service_registry import ServiceRegistry
-from emcie.server.core.tools import LocalToolService, ToolId
+from parlant.server.core.services.tools.service_registry import ServiceRegistry
+from parlant.server.core.tools import LocalToolService, ToolId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 

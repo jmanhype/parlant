@@ -41,7 +41,7 @@ def get_packages() -> list[Package]:
             publish=False,
         ),
         Package(
-            name="emcie",
+            name="parlant",
             path=root / ".",
             cmd_prefix="poetry run",
             uses_poetry=True,

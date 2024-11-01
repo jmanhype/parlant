@@ -2,14 +2,14 @@ import asyncio
 from pytest_bdd import given, when
 from unittest.mock import AsyncMock
 
-from emcie.server.core.agents import Agent, AgentId, AgentStore
-from emcie.server.core.engines.alpha.engine import AlphaEngine
+from parlant.server.core.agents import Agent, AgentId, AgentStore
+from parlant.server.core.engines.alpha.engine import AlphaEngine
 
-from emcie.server.core.engines.alpha.message_event_producer import MessageEventProducer
-from emcie.server.core.emissions import EmittedEvent
-from emcie.server.core.engines.types import Context
-from emcie.server.core.emission.event_buffer import EventBuffer
-from emcie.server.core.sessions import SessionId
+from parlant.server.core.engines.alpha.message_event_producer import MessageEventProducer
+from parlant.server.core.emissions import EmittedEvent
+from parlant.server.core.engines.types import Context
+from parlant.server.core.emission.event_buffer import EventBuffer
+from parlant.server.core.sessions import SessionId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
