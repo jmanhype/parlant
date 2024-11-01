@@ -1,12 +1,15 @@
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
+from transformers import AutoTokenizer  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
 
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult, TokenEstimator
 from parlant.core.logging import Logger
+from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.service import NLPService
 
 
 class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -72,6 +75,19 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             logger=logger,
         )
+        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 128000
 
 
 class Llama3_1_70B(TogetherAISchematicGenerator[T]):
@@ -80,6 +96,20 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             logger=logger,
         )
+
+        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 128000
 
 
 class TogetherAIEmbedder(Embedder):
@@ -106,3 +136,34 @@ class TogetherAIEmbedder(Embedder):
 class M2Bert32K(TogetherAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="togethercomputer/m2-bert-80M-32k-retrieval")
+
+        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
+    @property
+    def max_tokens(self) -> int:
+        return 32768
+
+
+class TogetherService(NLPService):
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
+        return Llama3_1_70B[T](self._logger)
+
+    async def get_embedder(self) -> Embedder:
+        return M2Bert32K()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return NoModeration()
