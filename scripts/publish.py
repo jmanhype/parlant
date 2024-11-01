@@ -66,9 +66,9 @@ def publish_docker() -> None:
                 "--platform",
                 ",".join(platforms),
                 "-t",
-                f"ghcr.io/emcie-co/emcie-server:{version}",
+                f"ghcr.io/emcie-co/parlant:{version}",
                 "-f",
-                "Dockerfile.server",
+                "Dockerfile",
                 "--push",
                 ".",
             ]
