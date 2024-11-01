@@ -18,7 +18,18 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> None:
         self.model_name = model_name
         self._logger = logger
+
         self._client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        self._token_estimator = AnthropicTokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"anthropic/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
 
     async def generate(
         self,
@@ -69,15 +80,6 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
             model_name="claude-3-5-sonnet-20241022",
             logger=logger,
         )
-        self._token_estimator = AnthropicTokenEstimator(model_name=self.model_name)
-
-    @property
-    def id(self) -> str:
-        return f"anthropic/{self.model_name}"
-
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
 
     @property
     def max_tokens(self) -> int:

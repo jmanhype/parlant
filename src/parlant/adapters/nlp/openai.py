@@ -41,6 +41,16 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 
         self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
 
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
+
     async def generate(
         self,
         prompt: str,
@@ -105,15 +115,6 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 class GPT_4o(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="gpt-4o-2024-08-06", logger=logger)
-        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
-
-    @property
-    def id(self) -> str:
-        return f"openai/{self.model_name}"
-
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
 
     @property
     def max_tokens(self) -> int:
@@ -126,14 +127,6 @@ class GPT_4o_Mini(OpenAISchematicGenerator[T]):
         self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
 
     @property
-    def id(self) -> str:
-        return f"openai/{self.model_name}"
-
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
-
-    @property
     def max_tokens(self) -> int:
         return 128000
 
@@ -144,6 +137,15 @@ class OpenAIEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
+        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"openai/{self.model_name}"
+
+    @property
+    def token_estimator(self) -> TokenEstimator:
+        return self._token_estimator
 
     async def embed(
         self,
@@ -165,15 +167,6 @@ class OpenAIEmbedder(Embedder):
 class OpenAITextEmbedding3Large(OpenAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="text-embedding-3-large")
-        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
-
-    @property
-    def id(self) -> str:
-        return f"openai/{self.model_name}"
-
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
 
     @property
     def max_tokens(self) -> int:
@@ -183,15 +176,6 @@ class OpenAITextEmbedding3Large(OpenAIEmbedder):
 class OpenAITextEmbedding3Small(OpenAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="text-embedding-3-small")
-        self._token_estimator = OpenAITokenEstimator(model_name=self.model_name)
-
-    @property
-    def id(self) -> str:
-        return f"openai/{self.model_name}"
-
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
 
     @property
     def max_tokens(self) -> int:
