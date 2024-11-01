@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture
 
-from parlant.server.core.async_utils import Timeout
-from parlant.server.core.mc import MC
-from parlant.server.core.agents import AgentId, AgentStore
-from parlant.server.core.end_users import EndUserId, EndUserStore
-from parlant.server.core.guidelines import GuidelineStore
-from parlant.server.core.sessions import Session, SessionStore
+from parlant.core.async_utils import Timeout
+from parlant.core.mc import MC
+from parlant.core.agents import AgentId, AgentStore
+from parlant.core.end_users import EndUserId, EndUserStore
+from parlant.core.guidelines import GuidelineStore
+from parlant.core.sessions import Session, SessionStore
 from tests.test_utilities import nlp_test
 
 REASONABLE_AMOUNT_OF_TIME = 10

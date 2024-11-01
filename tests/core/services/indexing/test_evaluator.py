@@ -2,16 +2,16 @@ import asyncio
 from lagom import Container
 from pytest import raises
 
-from parlant.server.core.agents import Agent
-from parlant.server.core.evaluations import (
+from parlant.core.agents import Agent
+from parlant.core.evaluations import (
     EvaluationStatus,
     GuidelinePayload,
     EvaluationStore,
     PayloadDescriptor,
     PayloadKind,
 )
-from parlant.server.core.guidelines import GuidelineContent, GuidelineStore
-from parlant.server.core.services.indexing.behavioral_change_evaluation import (
+from parlant.core.guidelines import GuidelineContent, GuidelineStore
+from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )

@@ -6,11 +6,11 @@ from typing import Any, Callable
 from lagom import Container
 from pytest_bdd import parsers
 
-from parlant.server.core.tools import Tool
-from parlant.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.server.core.guidelines import Guideline
+from parlant.core.tools import Tool
+from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
+from parlant.core.guidelines import Guideline
 
-from parlant.server.core.sessions import Event
+from parlant.core.sessions import Event
 from tests.test_utilities import SyncAwaiter
 
 

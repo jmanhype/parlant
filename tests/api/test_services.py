@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 import httpx
 from lagom import Container
 
-from parlant.server.core.services.tools.plugins import tool
-from parlant.server.core.tools import ToolResult, ToolContext
-from parlant.server.core.services.tools.service_registry import ServiceRegistry
+from parlant.core.services.tools.plugins import tool
+from parlant.core.tools import ToolResult, ToolContext
+from parlant.core.services.tools.service_registry import ServiceRegistry
 
 from tests.core.services.tools.test_openapi import (
     OPENAPI_SERVER_URL,

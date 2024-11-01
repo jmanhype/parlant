@@ -2,18 +2,18 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
-from parlant.server.core.tools import ToolContext, ToolResult
-from parlant.server.core.services.tools.plugins import PluginServer, ToolEntry, tool
+from parlant.core.tools import ToolContext, ToolResult
+from parlant.core.services.tools.plugins import PluginServer, ToolEntry, tool
 from lagom import Container
 from pytest import fixture
 import pytest
-from parlant.server.core.agents import Agent, AgentId, AgentStore
-from parlant.server.core.contextual_correlator import ContextualCorrelator
-from parlant.server.core.emission.event_buffer import EventBuffer, EventBufferFactory
-from parlant.server.core.emissions import EventEmitter, EventEmitterFactory
-from parlant.server.core.services.tools.plugins import PluginClient
-from parlant.server.core.sessions import SessionId
-from parlant.server.core.tools import ToolExecutionError
+from parlant.core.agents import Agent, AgentId, AgentStore
+from parlant.core.contextual_correlator import ContextualCorrelator
+from parlant.core.emission.event_buffer import EventBuffer, EventBufferFactory
+from parlant.core.emissions import EventEmitter, EventEmitterFactory
+from parlant.core.services.tools.plugins import PluginClient
+from parlant.core.sessions import SessionId
+from parlant.core.tools import ToolExecutionError
 
 
 class SessionBuffers(EventEmitterFactory):

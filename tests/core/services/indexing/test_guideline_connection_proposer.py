@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
-from parlant.server.core.agents import Agent, AgentId
-from parlant.server.core.guideline_connections import ConnectionKind
-from parlant.server.core.guidelines import GuidelineContent
-from parlant.server.core.services.indexing.guideline_connection_proposer import (
+from parlant.core.agents import Agent, AgentId
+from parlant.core.guideline_connections import ConnectionKind
+from parlant.core.guidelines import GuidelineContent
+from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
-from parlant.server.core.glossary import GlossaryStore
+from parlant.core.glossary import GlossaryStore
 from tests.test_utilities import SyncAwaiter
 
 

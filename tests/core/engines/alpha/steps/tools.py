@@ -1,16 +1,16 @@
 from typing import Any, cast
 from pytest_bdd import given, parsers
 
-from parlant.server.core.tools import Tool
-from parlant.server.core.agents import AgentId, AgentStore
-from parlant.server.core.guideline_tool_associations import (
+from parlant.core.tools import Tool
+from parlant.core.agents import AgentId, AgentStore
+from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociation,
     GuidelineToolAssociationStore,
 )
-from parlant.server.core.guidelines import GuidelineStore
+from parlant.core.guidelines import GuidelineStore
 
-from parlant.server.core.services.tools.service_registry import ServiceRegistry
-from parlant.server.core.tools import LocalToolService, ToolId
+from parlant.core.services.tools.service_registry import ServiceRegistry
+from parlant.core.tools import LocalToolService, ToolId
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 

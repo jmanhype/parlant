@@ -1,11 +1,11 @@
 from pytest_bdd import given, parsers
 
-from parlant.server.core.agents import AgentId
-from parlant.server.core.context_variables import (
+from parlant.core.agents import AgentId
+from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.server.core.sessions import SessionId, SessionStore
+from parlant.core.sessions import SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
 

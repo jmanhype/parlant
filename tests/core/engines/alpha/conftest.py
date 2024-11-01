@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from lagom import Container
 from pytest import fixture
 
-from parlant.server.core.agents import Agent, AgentId, AgentStore
+from parlant.core.agents import Agent, AgentId, AgentStore
 
-from parlant.server.core.end_users import EndUser, EndUserId, EndUserStore
-from parlant.server.core.sessions import Session, SessionStore
+from parlant.core.end_users import EndUser, EndUserId, EndUserStore
+from parlant.core.sessions import Session, SessionStore
 from tests.core.engines.alpha.utils import ContextOfTest
 from tests.test_utilities import SyncAwaiter
 

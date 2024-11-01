@@ -7,8 +7,8 @@ readme = "README.md"
 packages = [{ include = "parlant", from = "src" }]
 
 [tool.poetry.scripts]
-parlant-server = "parlant.server.bin.server:main"
-parlant = "parlant.server.bin.client:main"
+parlant-server = "parlant.bin.server:main"
+parlant = "parlant.bin.client:main"
 
 [tool.poetry.dependencies]
 aiofiles = "^24.1.0"
