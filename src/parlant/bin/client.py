@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 import sys
 import time
-from typing import Any, Iterable, Literal, NotRequired, Optional, TypedDict, Union, cast
+from typing import Any, Literal, NotRequired, Optional, TypedDict, Union, cast
 from urllib.parse import urljoin
 import click
 import click.shell_completion
@@ -951,10 +951,10 @@ class Interface:
         rich.print(Text(message, style="bold red"), file=sys.stderr)
 
     @staticmethod
-    def _print_table(data: Iterable[Any]) -> None:
+    def _print_table(data: list[Any]) -> None:
         table = Table(box=box.ROUNDED, border_style="bright_green")
 
-        headers = list(list(data)[0].keys())
+        headers = list(data[0].keys())
 
         for header in headers:
             table.add_column(header, header_style="bright_green")
@@ -1344,11 +1344,13 @@ class Interface:
 
             if direct:
                 rich.print("\nDirect Entailments:")
-                Interface._print_table(map(lambda c: to_direct_entailment_item(c), direct))
+                Interface._print_table(list(map(lambda c: to_direct_entailment_item(c), direct)))
 
             if indirect and include_indirect:
                 rich.print("\nIndirect Entailments:")
-                Interface._print_table(map(lambda c: to_indirect_entailment_item(c), indirect))
+                Interface._print_table(
+                    list(map(lambda c: to_indirect_entailment_item(c), indirect))
+                )
 
         if tool_associations:
             rich.print("\nTool(s) Enabled:")
