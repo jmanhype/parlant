@@ -1,6 +1,7 @@
 from __future__ import annotations
 from itertools import chain
 from logging import Logger
+import time
 from openai import AsyncClient
 from typing import Any, Mapping
 import json
@@ -67,12 +68,14 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
         openai_api_arguments = {k: v for k, v in hints.items() if k in self.supported_openai_params}
 
         if hints.get("strict", False):
+            t_start = time.time()
             response = await self._client.beta.chat.completions.parse(
                 messages=[{"role": "user", "content": prompt}],
                 model=self.model_name,
                 response_format=self.schema,
                 **openai_api_arguments,
             )
+            t_end = time.time()
 
             if response.usage:
                 self._logger.debug(response.usage.model_dump_json(indent=2))
@@ -80,15 +83,19 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
             parsed_object = response.choices[0].message.parsed
             assert parsed_object
 
-            return SchematicGenerationResult[T](content=parsed_object)
+            return SchematicGenerationResult[T](
+                content=parsed_object, model_id=self.id, duration=t_end - t_start
+            )
 
         else:
+            t_start = time.time()
             response = await self._client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model=self.model_name,
                 response_format={"type": "json_object"},
                 **openai_api_arguments,
             )
+            t_end = time.time()
 
             if response.usage:
                 self._logger.debug(response.usage.model_dump_json(indent=2))
@@ -104,7 +111,9 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 
             try:
                 content = self.schema.model_validate(json_content)
-                return SchematicGenerationResult(content=content)
+                return SchematicGenerationResult(
+                    content=content, model_id=self.id, duration=round(t_end - t_start, 3)
+                )
             except ValidationError:
                 self._logger.error(
                     f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"

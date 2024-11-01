@@ -1,4 +1,5 @@
 import os
+import time
 import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
@@ -54,11 +55,13 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         gemini_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._model.generate_content_async(
             contents=prompt,
             generation_config={"temperature": gemini_api_arguments.pop("temperature")},
             **gemini_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.text
 
@@ -86,7 +89,9 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+            return SchematicGenerationResult(
+                content=model_content, model_id=self.id, duration=(t_end - t_start)
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"

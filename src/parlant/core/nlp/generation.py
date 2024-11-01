@@ -17,7 +17,8 @@ class TokenEstimator(ABC):
 @dataclass(frozen=True)
 class SchematicGenerationResult(Generic[T]):
     content: T
-    # duration
+    duration: float
+    model_id: str
 
 
 class SchematicGenerator(ABC, Generic[T]):

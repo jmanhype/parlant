@@ -1,3 +1,4 @@
+import time
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
 from transformers import AutoTokenizer  # type: ignore
@@ -31,12 +32,14 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         together_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model=self.model_name,
             response_format={"type": "json_object"},
             **together_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.choices[0].message.content or "{}"
 
@@ -61,7 +64,9 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+            return SchematicGenerationResult(
+                content=model_content, model_id=self.id, duration=(t_end - t_start)
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"

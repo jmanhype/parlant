@@ -1,3 +1,4 @@
+import time
 from pydantic import ValidationError
 from anthropic import AsyncAnthropic  # type: ignore
 from typing import Any, Mapping
@@ -38,12 +39,14 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         anthropic_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._client.messages.create(
             messages=[{"role": "user", "content": prompt}],
             model=self.model_name,
             max_tokens=2048,
             **anthropic_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.content[0].text
 
@@ -66,7 +69,9 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+            return SchematicGenerationResult(
+                content=model_content, model_id=self.id, duration=(t_end - t_start)
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
