@@ -172,7 +172,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Sequence[TDocument]:
-        if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+        if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
             "metadatas"
         ]:
             return [cast(TDocument, m) for m in metadatas]
@@ -183,7 +183,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Optional[TDocument]:
-        if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+        if metadatas := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
             "metadatas"
         ]:
             return cast(TDocument, {k: v for k, v in metadatas[0].items()})
@@ -215,7 +215,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         async with self._lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
                 "metadatas"
             ]:
                 doc = docs[0]
@@ -274,7 +274,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         filters: Where,
     ) -> DeleteResult[TDocument]:
         async with self._lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters))[
+            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
                 "metadatas"
             ]:
                 if len(docs) > 1:
@@ -306,7 +306,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         query_embeddings = list((await self._embedder.embed([query])).vectors)
 
         docs = self._chroma_collection.query(
-            where=cast(chromadb.Where, filters),
+            where=cast(chromadb.Where, filters) or None,
             query_embeddings=query_embeddings,
             n_results=k,
         )
