@@ -4,10 +4,10 @@ import signal
 import traceback
 import httpx
 
-from emcie.server.core.tools import ToolContext, ToolResult
-from emcie.server.core.services.tools.plugins import tool
-from emcie.server.core.async_utils import Timeout
-from emcie.server.core.agents import Agent
+from parlant.server.core.tools import ToolContext, ToolResult
+from parlant.server.core.services.tools.plugins import tool
+from parlant.server.core.async_utils import Timeout
+from parlant.server.core.agents import Agent
 
 from tests.e2e.test_utilities import (
     SERVER_ADDRESS,

@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 from typing import Sequence
 from lagom import Container
 from pytest import fixture, mark
-from emcie.server.core.agents import Agent, AgentId
-from emcie.server.core.guideline_connections import ConnectionKind
-from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.services.indexing.guideline_connection_proposer import (
+from parlant.server.core.agents import Agent, AgentId
+from parlant.server.core.guideline_connections import ConnectionKind
+from parlant.server.core.guidelines import GuidelineContent
+from parlant.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
-from emcie.server.core.glossary import GlossaryStore
+from parlant.server.core.glossary import GlossaryStore
 from tests.test_utilities import SyncAwaiter
 
 

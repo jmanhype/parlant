@@ -9,75 +9,75 @@ import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
 
-from emcie.server.adapters.db.chroma.glossary import GlossaryChromaStore
-from emcie.server.adapters.nlp.openai import (
+from parlant.server.adapters.db.chroma.glossary import GlossaryChromaStore
+from parlant.server.adapters.nlp.openai import (
     GPT_4o,
     GPT_4o_Mini,
     OmniModeration,
     OpenAITextEmbedding3Large,
 )
-from emcie.server.api.app import create_app
-from emcie.server.core.contextual_correlator import ContextualCorrelator
-from emcie.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
-from emcie.server.core.emission.event_publisher import EventPublisherFactory
-from emcie.server.core.emissions import EventEmitterFactory
-from emcie.server.core.end_users import EndUserDocumentStore, EndUserStore
-from emcie.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
-from emcie.server.core.nlp.embedding import EmbedderFactory
-from emcie.server.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
-from emcie.server.core.guideline_connections import (
+from parlant.server.api.app import create_app
+from parlant.server.core.contextual_correlator import ContextualCorrelator
+from parlant.server.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from parlant.server.core.emission.event_publisher import EventPublisherFactory
+from parlant.server.core.emissions import EventEmitterFactory
+from parlant.server.core.end_users import EndUserDocumentStore, EndUserStore
+from parlant.server.core.evaluations import EvaluationDocumentStore, EvaluationStore
+from parlant.server.core.nlp.embedding import EmbedderFactory
+from parlant.server.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
+from parlant.server.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
 )
-from emcie.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
-from emcie.server.adapters.db.chroma.database import ChromaDatabase
-from emcie.server.adapters.db.transient import TransientDocumentDatabase
-from emcie.server.core.services.tools.service_registry import (
+from parlant.server.core.guidelines import GuidelineDocumentStore, GuidelineStore
+from parlant.server.adapters.db.chroma.database import ChromaDatabase
+from parlant.server.adapters.db.transient import TransientDocumentDatabase
+from parlant.server.core.services.tools.service_registry import (
     ServiceDocumentRegistry,
     ServiceRegistry,
 )
-from emcie.server.core.sessions import (
+from parlant.server.core.sessions import (
     PollingSessionListener,
     SessionDocumentStore,
     SessionListener,
     SessionStore,
 )
-from emcie.server.core.engines.alpha.engine import AlphaEngine
-from emcie.server.core.glossary import GlossaryStore
-from emcie.server.core.engines.alpha.guideline_proposer import (
+from parlant.server.core.engines.alpha.engine import AlphaEngine
+from parlant.server.core.glossary import GlossaryStore
+from parlant.server.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from emcie.server.core.engines.alpha.message_event_producer import (
+from parlant.server.core.engines.alpha.message_event_producer import (
     MessageEventProducer,
     MessageEventSchema,
 )
-from emcie.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema
-from emcie.server.core.engines.alpha.tool_event_producer import ToolEventProducer
-from emcie.server.core.engines.types import Engine
-from emcie.server.core.services.indexing.behavioral_change_evaluation import (
+from parlant.server.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.server.core.engines.alpha.tool_event_producer import ToolEventProducer
+from parlant.server.core.engines.types import Engine
+from parlant.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
-from emcie.server.core.services.indexing.coherence_checker import (
+from parlant.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     PredicatesEntailmentTestsSchema,
     ActionsContradictionTestsSchema,
 )
-from emcie.server.core.services.indexing.guideline_connection_proposer import (
+from parlant.server.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from emcie.server.core.logging import Logger, StdoutLogger
-from emcie.server.core.mc import MC
-from emcie.server.core.agents import AgentDocumentStore, AgentStore
-from emcie.server.core.persistence.document_database import (
+from parlant.server.core.logging import Logger, StdoutLogger
+from parlant.server.core.mc import MC
+from parlant.server.core.agents import AgentDocumentStore, AgentStore
+from parlant.server.core.persistence.document_database import (
     DocumentDatabase,
 )
-from emcie.server.core.guideline_tool_associations import (
+from parlant.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
-from emcie.server.core.tools import LocalToolService
+from parlant.server.core.tools import LocalToolService
 
 from .test_utilities import SyncAwaiter
 

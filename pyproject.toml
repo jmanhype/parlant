@@ -1,14 +1,14 @@
 [tool.poetry]
-name = "emcie"
+name = "parlant"
 version = "0.4.1-alpha.1"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
-packages = [{ include = "emcie", from = "src" }]
+packages = [{ include = "parlant", from = "src" }]
 
 [tool.poetry.scripts]
-emcie-server = "emcie.server.bin.server:main"
-emcie = "emcie.server.bin.client:main"
+parlant-server = "parlant.server.bin.server:main"
+parlant = "parlant.server.bin.client:main"
 
 [tool.poetry.dependencies]
 aiofiles = "^24.1.0"
@@ -20,7 +20,6 @@ click = "^8.1.7"
 click-completion = "^0.5.2"
 coloredlogs = "^15.0.1"
 contextvars = "^2.4"
-emcie-common = "0.4.1-alpha.1"
 fastapi = "^0.112.0"
 google-generativeai = "^0.8.3"
 httpx = "^0.27.0"

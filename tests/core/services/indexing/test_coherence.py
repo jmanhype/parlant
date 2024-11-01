@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from lagom import Container
 from pytest import fixture, mark
 
-from emcie.server.core.agents import Agent, AgentId, AgentStore
+from parlant.server.core.agents import Agent, AgentId, AgentStore
 
-from emcie.server.core.guidelines import GuidelineContent
-from emcie.server.core.glossary import GlossaryStore
+from parlant.server.core.guidelines import GuidelineContent
+from parlant.server.core.glossary import GlossaryStore
 
-from emcie.server.core.services.indexing.coherence_checker import (
+from parlant.server.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     IncoherenceKind,
     IncoherenceTest,

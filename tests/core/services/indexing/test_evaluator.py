@@ -2,16 +2,16 @@ import asyncio
 from lagom import Container
 from pytest import raises
 
-from emcie.server.core.agents import Agent
-from emcie.server.core.evaluations import (
+from parlant.server.core.agents import Agent
+from parlant.server.core.evaluations import (
     EvaluationStatus,
     GuidelinePayload,
     EvaluationStore,
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guidelines import GuidelineContent, GuidelineStore
-from emcie.server.core.services.indexing.behavioral_change_evaluation import (
+from parlant.server.core.guidelines import GuidelineContent, GuidelineStore
+from parlant.server.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )

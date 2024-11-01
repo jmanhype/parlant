@@ -5,15 +5,15 @@ from typing import AsyncIterator, Iterator, TypedDict
 from lagom import Container
 from pytest import fixture
 
-from emcie.server.adapters.nlp.openai import OpenAITextEmbedding3Large
-from emcie.server.core.common import Version
-from emcie.server.core.nlp.embedding import EmbedderFactory
-from emcie.server.adapters.db.chroma.database import (
+from parlant.server.adapters.nlp.openai import OpenAITextEmbedding3Large
+from parlant.server.core.common import Version
+from parlant.server.core.nlp.embedding import EmbedderFactory
+from parlant.server.adapters.db.chroma.database import (
     ChromaCollection,
     ChromaDatabase,
 )
-from emcie.server.core.logging import Logger
-from emcie.server.core.persistence.document_database import ObjectId
+from parlant.server.core.logging import Logger
+from parlant.server.core.persistence.document_database import ObjectId
 
 
 class _TestDocument(TypedDict, total=False):

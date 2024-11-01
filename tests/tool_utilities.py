@@ -1,6 +1,6 @@
 from typing import Literal
 
-from emcie.server.core.tools import ToolResult
+from parlant.server.core.tools import ToolResult
 
 
 def get_available_drinks() -> ToolResult:

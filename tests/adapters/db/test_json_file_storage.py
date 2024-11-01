@@ -7,12 +7,12 @@ import tempfile
 from lagom import Container
 from pytest import fixture, mark
 
-from emcie.server.core.agents import AgentDocumentStore, AgentId, AgentStore
-from emcie.server.core.context_variables import (
+from parlant.server.core.agents import AgentDocumentStore, AgentId, AgentStore
+from parlant.server.core.context_variables import (
     ContextVariableDocumentStore,
 )
-from emcie.server.core.end_users import EndUserDocumentStore, EndUserId
-from emcie.server.core.evaluations import (
+from parlant.server.core.end_users import EndUserDocumentStore, EndUserId
+from parlant.server.core.evaluations import (
     EvaluationDocumentStore,
     GuidelinePayload,
     Invoice,
@@ -21,18 +21,18 @@ from emcie.server.core.evaluations import (
     PayloadDescriptor,
     PayloadKind,
 )
-from emcie.server.core.guidelines import (
+from parlant.server.core.guidelines import (
     GuidelineContent,
     GuidelineDocumentStore,
     GuidelineId,
 )
-from emcie.server.adapters.db.json_file import JSONFileDocumentDatabase
-from emcie.server.core.sessions import SessionDocumentStore
-from emcie.server.core.guideline_tool_associations import (
+from parlant.server.adapters.db.json_file import JSONFileDocumentDatabase
+from parlant.server.core.sessions import SessionDocumentStore
+from parlant.server.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
-from emcie.server.core.logging import Logger
-from emcie.server.core.tools import ToolId
+from parlant.server.core.logging import Logger
+from parlant.server.core.tools import ToolId
 from tests.test_utilities import SyncAwaiter
 
 

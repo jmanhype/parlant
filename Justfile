@@ -1,23 +1,23 @@
 set dotenv-load
 set positional-arguments
 
-EMCIE_HOME := "./cache"
+PARLANT_HOME := "./cache"
 SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8000")
 
 setup-cache:
-  mkdir -p {{EMCIE_HOME}}
+  mkdir -p {{PARLANT_HOME}}
 
 @server *args: setup-cache
-  EMCIE_HOME={{EMCIE_HOME}} poetry run emcie-server run {{args}}
+  PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server run {{args}}
 
 @client *args='':
-  poetry run emcie -s {{SERVER_ADDRESS}} "$@"
+  poetry run parlant -s {{SERVER_ADDRESS}} "$@"
 
 @chat *args='':
-  poetry run emcie -s {{SERVER_ADDRESS}} agent chat "$@"
+  poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
 @validate *args: setup-cache
-  EMCIE_HOME={{EMCIE_HOME}} poetry run emcie-server check {{args}}
+  PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server check {{args}}
 
 test-ci-initial-server:
   mkdir -p logs

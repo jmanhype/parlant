@@ -1,6 +1,6 @@
 from lagom import Container
 from pytest import fixture
-from emcie.server.core.agents import Agent, AgentStore
+from parlant.server.core.agents import Agent, AgentStore
 from tests.test_utilities import SyncAwaiter
 
 

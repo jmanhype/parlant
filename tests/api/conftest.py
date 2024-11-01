@@ -1,9 +1,9 @@
 from lagom import Container
 from pytest import fixture
 
-from emcie.server.core.agents import AgentId
-from emcie.server.core.end_users import EndUserId
-from emcie.server.core.sessions import SessionId
+from parlant.server.core.agents import AgentId
+from parlant.server.core.end_users import EndUserId
+from parlant.server.core.sessions import SessionId
 
 from tests.api.utils import create_agent, create_end_user, create_session
 

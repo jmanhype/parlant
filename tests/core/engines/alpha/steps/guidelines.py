@@ -1,9 +1,9 @@
 from pytest_bdd import given, parsers
 
-from emcie.server.core.agents import AgentId
-from emcie.server.core.engines.alpha.guideline_proposition import GuidelineProposition
-from emcie.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
-from emcie.server.core.guidelines import Guideline, GuidelineStore
+from parlant.server.core.agents import AgentId
+from parlant.server.core.engines.alpha.guideline_proposition import GuidelineProposition
+from parlant.server.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.server.core.guidelines import Guideline, GuidelineStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 

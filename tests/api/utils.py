@@ -2,24 +2,24 @@ from typing import Callable, Optional, cast
 
 from lagom import Container
 
-from emcie.server.core.tools import ToolResult
-from emcie.server.core.common import JSONSerializable
-from emcie.server.core.agents import Agent, AgentId, AgentStore
-from emcie.server.core.async_utils import Timeout
-from emcie.server.core.context_variables import (
+from parlant.server.core.tools import ToolResult
+from parlant.server.core.common import JSONSerializable
+from parlant.server.core.agents import Agent, AgentId, AgentStore
+from parlant.server.core.async_utils import Timeout
+from parlant.server.core.context_variables import (
     ContextVariable,
     ContextVariableId,
     ContextVariableStore,
     ContextVariableValue,
 )
-from emcie.server.core.end_users import EndUser, EndUserId, EndUserStore
-from emcie.server.core.glossary import GlossaryStore, Term
-from emcie.server.core.guideline_tool_associations import GuidelineToolAssociationStore
-from emcie.server.core.guidelines import Guideline, GuidelineStore
-from emcie.server.core.mc import MC
-from emcie.server.core.services.tools.service_registry import ServiceRegistry
-from emcie.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
-from emcie.server.core.tools import LocalToolService, ToolId
+from parlant.server.core.end_users import EndUser, EndUserId, EndUserStore
+from parlant.server.core.glossary import GlossaryStore, Term
+from parlant.server.core.guideline_tool_associations import GuidelineToolAssociationStore
+from parlant.server.core.guidelines import Guideline, GuidelineStore
+from parlant.server.core.mc import MC
+from parlant.server.core.services.tools.service_registry import ServiceRegistry
+from parlant.server.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
+from parlant.server.core.tools import LocalToolService, ToolId
 
 
 async def create_agent(container: Container, name: str) -> Agent:

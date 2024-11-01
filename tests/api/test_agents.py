@@ -4,7 +4,7 @@ from fastapi import status
 from lagom import Container
 from pytest import mark
 
-from emcie.server.core.agents import AgentStore
+from parlant.server.core.agents import AgentStore
 
 
 def test_that_an_agent_can_be_created_without_description(
