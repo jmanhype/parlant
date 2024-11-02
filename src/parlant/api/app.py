@@ -24,10 +24,10 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
 from parlant.core.logging import Logger
-from parlant.core.mc import MC
+from parlant.core.application import Application
 
 
-async def create_app(container: Container) -> FastAPI:
+async def create_api_app(container: Container) -> FastAPI:
     logger = container[Logger]
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
@@ -41,13 +41,13 @@ async def create_app(container: Container) -> FastAPI:
     guideline_tool_association_store = container[GuidelineToolAssociationStore]
     context_variable_store = container[ContextVariableStore]
     service_registry = container[ServiceRegistry]
-    mc = container[MC]
+    application = container[Application]
 
-    app = FastAPI()
+    api_app = FastAPI()
 
-    app.add_middleware(CORSMiddleware, allow_origins=["*"])
+    api_app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
-    @app.middleware("http")
+    @api_app.middleware("http")
     async def add_correlation_id(
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
@@ -56,7 +56,7 @@ async def create_app(container: Container) -> FastAPI:
             logger.info(f"{request.method} {request.url.path}")
             return await call_next(request)
 
-    @app.exception_handler(ItemNotFoundError)
+    @api_app.exception_handler(ItemNotFoundError)
     async def item_not_found_error_handler(
         request: Request, exc: ItemNotFoundError
     ) -> HTTPException:
@@ -77,7 +77,7 @@ async def create_app(container: Container) -> FastAPI:
 
     agent_router.include_router(
         guidelines.create_router(
-            mc=mc,
+            application=application,
             guideline_store=guideline_store,
             guideline_connection_store=guideline_connection_store,
             service_registry=service_registry,
@@ -103,15 +103,15 @@ async def create_app(container: Container) -> FastAPI:
         )
     )
 
-    app.include_router(
+    api_app.include_router(
         prefix="/agents",
         router=agent_router,
     )
 
-    app.include_router(
+    api_app.include_router(
         prefix="/sessions",
         router=sessions.create_router(
-            mc=mc,
+            application=application,
             agent_store=agent_store,
             session_store=session_store,
             session_listener=session_listener,
@@ -119,11 +119,11 @@ async def create_app(container: Container) -> FastAPI:
         ),
     )
 
-    app.include_router(
+    api_app.include_router(
         prefix="/services",
         router=services.create_router(
             service_registry=service_registry,
         ),
     )
 
-    return app
+    return api_app

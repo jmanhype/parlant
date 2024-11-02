@@ -16,7 +16,7 @@ from parlant.adapters.nlp.openai import (
     OmniModeration,
     OpenAITextEmbedding3Large,
 )
-from parlant.api.app import create_app
+from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from parlant.core.emission.event_publisher import EventPublisherFactory
@@ -68,7 +68,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionPropositionsSchema,
 )
 from parlant.core.logging import Logger, StdoutLogger
-from parlant.core.mc import MC
+from parlant.core.application import Application
 from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.persistence.document_database import (
     DocumentDatabase,
@@ -165,14 +165,14 @@ async def container() -> AsyncIterator[Container]:
 
         container[Engine] = AlphaEngine
 
-        container[MC] = await stack.enter_async_context(MC(container))
+        container[Application] = await stack.enter_async_context(Application(container))
 
         yield container
 
 
 @fixture
 async def api_app(container: Container) -> FastAPI:
-    return await create_app(container)
+    return await create_api_app(container)
 
 
 @fixture

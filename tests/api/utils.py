@@ -16,7 +16,7 @@ from parlant.core.end_users import EndUser, EndUserId, EndUserStore
 from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
-from parlant.core.mc import MC
+from parlant.core.application import Application
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 from parlant.core.tools import LocalToolService, ToolId
@@ -165,14 +165,14 @@ async def post_message(
         },
     }
 
-    event = await container[MC].post_event(
+    event = await container[Application].post_event(
         session_id=session_id,
         kind="message",
         data=data,
     )
 
     if response_timeout:
-        await container[MC].wait_for_update(
+        await container[Application].wait_for_update(
             session_id=session_id,
             min_offset=event.offset + 1,
             kinds=["message"],

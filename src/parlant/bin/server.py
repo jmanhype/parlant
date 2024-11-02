@@ -22,7 +22,7 @@ from parlant.adapters.nlp.openai import (
     OmniModeration,
     OpenAITextEmbedding3Large,
 )
-from parlant.api.app import create_app
+from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -86,7 +86,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionPropositionsSchema,
 )
 from parlant.core.logging import FileLogger, Logger
-from parlant.core.mc import MC
+from parlant.core.application import Application
 
 DEFAULT_PORT = 8000
 SERVER_ADDRESS = "https://localhost"
@@ -256,7 +256,7 @@ async def setup_container() -> AsyncIterator[Container]:
 
     c[Engine] = AlphaEngine
 
-    c[MC] = await EXIT_STACK.enter_async_context(MC(c))
+    c[Application] = await EXIT_STACK.enter_async_context(Application(c))
     yield c
 
 
@@ -283,7 +283,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
         await create_agent_if_absent(container[AgentStore])
 
-        yield await create_app(container)
+        yield await create_api_app(container)
 
 
 async def serve_app(

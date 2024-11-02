@@ -4,7 +4,7 @@ from lagom import Container
 from pytest import fixture
 
 from parlant.core.async_utils import Timeout
-from parlant.core.mc import MC
+from parlant.core.application import Application
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.end_users import EndUserId, EndUserStore
 from parlant.core.guidelines import GuidelineStore
@@ -17,7 +17,7 @@ REASONABLE_AMOUNT_OF_TIME = 10
 @dataclass
 class ContextOfTest:
     container: Container
-    mc: MC
+    app: Application
     end_user_id: EndUserId
 
 
@@ -28,7 +28,7 @@ async def context(
 ) -> ContextOfTest:
     return ContextOfTest(
         container=container,
-        mc=container[MC],
+        app=container[Application],
         end_user_id=end_user_id,
     )
 
@@ -79,7 +79,7 @@ async def test_that_a_new_end_user_session_can_be_created(
     context: ContextOfTest,
     agent_id: AgentId,
 ) -> None:
-    created_session = await context.mc.create_end_user_session(
+    created_session = await context.app.create_end_user_session(
         end_user_id=context.end_user_id,
         agent_id=agent_id,
     )
@@ -95,13 +95,13 @@ async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message
     context: ContextOfTest,
     proactive_agent_id: AgentId,
 ) -> None:
-    session = await context.mc.create_end_user_session(
+    session = await context.app.create_end_user_session(
         end_user_id=context.end_user_id,
         agent_id=proactive_agent_id,
         allow_greeting=True,
     )
 
-    assert await context.mc.wait_for_update(
+    assert await context.app.wait_for_update(
         session_id=session.id,
         min_offset=0,
         kinds=["message"],
@@ -117,13 +117,13 @@ async def test_that_when_a_client_event_is_posted_then_new_server_events_are_emi
     context: ContextOfTest,
     session: Session,
 ) -> None:
-    event = await context.mc.post_event(
+    event = await context.app.post_event(
         session_id=session.id,
         kind="message",
         data={"message": "Hey there"},
     )
 
-    await context.mc.wait_for_update(
+    await context.app.wait_for_update(
         session_id=session.id,
         min_offset=1 + event.offset,
         kinds=[],
@@ -139,13 +139,13 @@ async def test_that_a_session_update_is_detected_as_soon_as_a_client_event_is_po
     context: ContextOfTest,
     session: Session,
 ) -> None:
-    event = await context.mc.post_event(
+    event = await context.app.post_event(
         session_id=session.id,
         kind="message",
         data={"message": "Hey there"},
     )
 
-    assert await context.mc.wait_for_update(
+    assert await context.app.wait_for_update(
         session_id=session.id,
         min_offset=event.offset,
         kinds=[],
@@ -164,7 +164,7 @@ async def test_that_when_a_user_quickly_posts_more_than_one_message_then_only_on
     ]
 
     for m in messages:
-        await context.mc.post_event(
+        await context.app.post_event(
             session_id=session.id,
             kind="message",
             data={

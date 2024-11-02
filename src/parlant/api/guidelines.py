@@ -32,7 +32,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationId,
     GuidelineToolAssociationStore,
 )
-from parlant.core.mc import MC
+from parlant.core.application import Application
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import ToolId
 
@@ -193,7 +193,7 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
 
 
 def create_router(
-    mc: MC,
+    application: Application,
     guideline_store: GuidelineStore,
     guideline_connection_store: GuidelineConnectionStore,
     service_registry: ServiceRegistry,
@@ -243,7 +243,7 @@ def create_router(
             )
 
         guideline_ids = set(
-            await mc.create_guidelines(
+            await application.create_guidelines(
                 guideline_set=agent_id,
                 invoices=invoices,
             )

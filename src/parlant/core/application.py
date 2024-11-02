@@ -33,7 +33,7 @@ from parlant.core.logging import Logger
 TaskQueue: TypeAlias = list[asyncio.Task[None]]
 
 
-class MC:
+class Application:
     def __init__(self, container: Container) -> None:
         self._logger = container[Logger]
         self._correlator = container[ContextualCorrelator]
@@ -49,7 +49,7 @@ class MC:
         self._last_garbage_collection = 0.0
         self._garbage_collection_interval = 5.0
 
-    async def __aenter__(self) -> MC:
+    async def __aenter__(self) -> Application:
         return self
 
     async def __aexit__(

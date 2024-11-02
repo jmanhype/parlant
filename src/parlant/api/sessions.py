@@ -25,7 +25,7 @@ from parlant.core.sessions import (
     ToolEventData,
 )
 
-from parlant.core.mc import MC
+from parlant.core.application import Application
 
 
 class ConsumptionOffsetsDTO(DefaultBaseModel):
@@ -154,7 +154,7 @@ class ReadInteractionResponse(DefaultBaseModel):
 
 
 def create_router(
-    mc: MC,
+    application: Application,
     agent_store: AgentStore,
     session_store: SessionStore,
     session_listener: SessionListener,
@@ -169,7 +169,7 @@ def create_router(
     ) -> CreateSessionResponse:
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
-        session = await mc.create_end_user_session(
+        session = await application.create_end_user_session(
             end_user_id=request.end_user_id,
             agent_id=request.agent_id,
             title=request.title,
@@ -311,7 +311,7 @@ def create_router(
             "tags": list(tags),
         }
 
-        event = await mc.post_event(
+        event = await application.post_event(
             session_id=session_id,
             kind=request.kind,
             data=message_data,
@@ -346,7 +346,7 @@ def create_router(
             },
         }
 
-        event = await mc.post_event(
+        event = await application.post_event(
             session_id=session_id,
             kind=request.kind,
             data=message_data,
@@ -422,7 +422,7 @@ def create_router(
         wait: bool = False,
     ) -> ListInteractionsResponse:
         if wait:
-            await mc.wait_for_update(
+            await application.wait_for_update(
                 session_id=session_id,
                 min_offset=min_event_offset,
                 kinds=["message"],
