@@ -13,7 +13,7 @@ import tiktoken
 
 from parlant.core.nlp.service import NLPService
 from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult, TokenEstimator
+from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
 from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
@@ -84,7 +84,10 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
             assert parsed_object
 
             return SchematicGenerationResult[T](
-                content=parsed_object, model_id=self.id, duration=t_end - t_start
+                content=parsed_object,
+                info=GenerationInfo(
+                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                ),
             )
 
         else:
@@ -112,7 +115,10 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
             try:
                 content = self.schema.model_validate(json_content)
                 return SchematicGenerationResult(
-                    content=content, model_id=self.id, duration=round(t_end - t_start, 3)
+                    content=content,
+                    info=GenerationInfo(
+                        schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                    ),
                 )
             except ValidationError:
                 self._logger.error(

@@ -15,10 +15,24 @@ class TokenEstimator(ABC):
 
 
 @dataclass(frozen=True)
+class UsageInfo:
+    input_tokens: int
+    output_tokens: int
+    extra: Mapping[str, int] = {}
+
+
+@dataclass(frozen=True)
+class GenerationInfo:
+    schema_name: str
+    model: str
+    duration: float
+    usage_info = UsageInfo
+
+
+@dataclass(frozen=True)
 class SchematicGenerationResult(Generic[T]):
     content: T
-    duration: float
-    model_id: str
+    info: GenerationInfo
 
 
 class SchematicGenerator(ABC, Generic[T]):

@@ -10,7 +10,7 @@ from vertexai.preview import tokenization  # type: ignore
 
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult, TokenEstimator
+from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
 
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -90,7 +90,10 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
         try:
             model_content = self.schema.model_validate(json_object)
             return SchematicGenerationResult(
-                content=model_content, model_id=self.id, duration=(t_end - t_start)
+                content=model_content,
+                info=GenerationInfo(
+                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                ),
             )
         except ValidationError:
             self._logger.error(
