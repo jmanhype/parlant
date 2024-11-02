@@ -11,9 +11,10 @@ import os
 from pydantic import ValidationError
 import tiktoken
 
+from parlant.core.nlp.common import Tokenizer
 from parlant.core.nlp.service import NLPService
 from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
+from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, UsageInfo
 from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
@@ -85,10 +86,23 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
             parsed_object = response.choices[0].message.parsed
             assert parsed_object
 
+            assert response.usage
+            assert response.usage.prompt_tokens_details
+
             return SchematicGenerationResult[T](
                 content=parsed_object,
                 info=GenerationInfo(
-                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage_info=UsageInfo(
+                        input_tokens=response.usage.prompt_tokens,
+                        output_tokens=response.usage.completion_tokens,
+                        extra={
+                            "cached_input_tokens": response.usage.prompt_tokens_details.cached_tokens
+                            or 0
+                        },
+                    ),
                 ),
             )
 
@@ -116,10 +130,24 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 
             try:
                 content = self.schema.model_validate(json_content)
+
+                assert response.usage
+                assert response.usage.prompt_tokens_details
+
                 return SchematicGenerationResult(
                     content=content,
                     info=GenerationInfo(
-                        schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                        schema_name=self.schema.__name__,
+                        model=self.id,
+                        duration=(t_end - t_start),
+                        usage_info=UsageInfo(
+                            input_tokens=response.usage.prompt_tokens,
+                            output_tokens=response.usage.completion_tokens,
+                            extra={
+                                "cached_input_tokens": response.usage.prompt_tokens_details.cached_tokens
+                                or 0
+                            },
+                        ),
                     ),
                 )
             except ValidationError:

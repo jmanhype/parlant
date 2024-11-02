@@ -7,7 +7,7 @@ import os
 
 from parlant.adapters.nlp.sbert import SBertAllMiniLML6V2
 from parlant.core.nlp.embedding import Embedder
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
+from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator, UsageInfo
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -75,7 +75,13 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
             return SchematicGenerationResult(
                 content=model_content,
                 info=GenerationInfo(
-                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage_info=UsageInfo(
+                        input_tokens=response.usage.input_tokens,
+                        output_tokens=response.usage.output_tokens,
+                    ),
                 ),
             )
         except ValidationError:

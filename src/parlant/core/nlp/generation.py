@@ -21,7 +21,7 @@ class GenerationInfo:
     schema_name: str
     model: str
     duration: float
-    usage_info = UsageInfo
+    usage_info: UsageInfo
 
 
 @dataclass(frozen=True)

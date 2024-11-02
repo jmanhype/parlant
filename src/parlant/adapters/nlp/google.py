@@ -4,13 +4,14 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
+from parlant.core.nlp.common import Tokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
 from vertexai.preview import tokenization  # type: ignore
 
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
+from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, UsageInfo
 
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -94,7 +95,16 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
             return SchematicGenerationResult(
                 content=model_content,
                 info=GenerationInfo(
-                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage_info=UsageInfo(
+                        input_tokens=response.usage_metadata.prompt_token_count,
+                        output_tokens=response.usage_metadata.candidates_token_count,
+                        extra={
+                            "cached_input_tokens": response.usage_metadata.cached_content_token_count
+                        },
+                    ),
                 ),
             )
         except ValidationError:

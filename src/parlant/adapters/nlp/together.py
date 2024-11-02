@@ -6,7 +6,7 @@ import jsonfinder  # type: ignore
 import os
 
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator
+from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator, UsageInfo
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -63,10 +63,18 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
+
             return SchematicGenerationResult(
                 content=model_content,
                 info=GenerationInfo(
-                    schema_name=self.schema.__name__, model=self.id, duration=(t_end - t_start)
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage_info=UsageInfo(
+                        input_tokens=response.usage.prompt_tokens,
+                        output_tokens=response.usage.completion_tokens,
+                        extra={},
+                    ),
                 ),
             )
         except ValidationError:
