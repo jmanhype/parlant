@@ -26,15 +26,14 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
 
         self._client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-        self._token_estimator = AnthropicTokenEstimator(model_name=self.model_name)
+        self._estimating_tokenizer = AnthropicEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"anthropic/{self.model_name}"
 
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
+    def get_tokenizer(self) -> AnthropicEstimatingTokenizer:
+        return self._estimating_tokenizer
 
     async def generate(
         self,

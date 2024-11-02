@@ -9,11 +9,6 @@ from parlant.core.logging import Logger
 T = TypeVar("T", bound=DefaultBaseModel)
 
 
-class TokenEstimator(ABC):
-    @abstractmethod
-    async def estimate_token_count(self, prompt: str) -> int: ...
-
-
 @dataclass(frozen=True)
 class UsageInfo:
     input_tokens: int
@@ -49,11 +44,10 @@ class SchematicGenerator(ABC, Generic[T]):
 
     @abstractmethod
     @property
-    def token_estimator(self) -> TokenEstimator: ...
+    def max_tokens(self) -> int: ...
 
     @abstractmethod
-    @property
-    def max_tokens(self) -> int: ...
+    def get_tokenizer(self) -> Tokenizer: ...
 
 
 class BaseSchematicGenerator(SchematicGenerator[T]):
@@ -99,9 +93,8 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         return self._generators[0].id
 
     @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._generators[0].token_estimator
-
-    @property
     def max_tokens(self) -> int:
         return self._generators[0].max_tokens
+
+    def get_tokenizer(self) -> Tokenizer:
+        return self._generators[0].get_tokenizer()

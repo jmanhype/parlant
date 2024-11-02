@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from lagom import Container
 from typing import Any, Sequence
 
-from emcie.server.core.nlp.generation import TokenEstimator
+from emcie.server.core.nlp.common import Tokenizer
 
 
 @dataclass(frozen=True)
@@ -27,11 +27,10 @@ class Embedder(ABC):
 
     @abstractmethod
     @property
-    def token_estimator(self) -> TokenEstimator: ...
+    def max_tokens(self) -> int: ...
 
     @abstractmethod
-    @property
-    def max_tokens(self) -> int: ...
+    def get_tokenizer(self) -> Tokenizer: ...
 
 
 class EmbedderFactory:

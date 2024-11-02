@@ -1,7 +1,6 @@
 import time
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
-from transformers import AutoTokenizer  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
@@ -83,15 +82,14 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             logger=logger,
         )
-        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return self.model_name
 
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
+    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
+        return self._estimating_tokenizer
 
     @property
     def max_tokens(self) -> int:
@@ -105,15 +103,14 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
             logger=logger,
         )
 
-        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return self.model_name
 
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
+    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
+        return self._estimating_tokenizer
 
     @property
     def max_tokens(self) -> int:
@@ -145,19 +142,18 @@ class M2Bert32K(TogetherAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="togethercomputer/m2-bert-80M-32k-retrieval")
 
-        self._token_estimator = AutoTokenizerTokenEstimator(model_name=self.model_name)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return self.model_name
 
     @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
-
-    @property
     def max_tokens(self) -> int:
         return 32768
+
+    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
+        return self._estimating_tokenizer
 
 
 class TogetherService(NLPService):

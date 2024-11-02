@@ -16,9 +16,12 @@ from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInf
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 
-class GoogleTokenEstimator(TokenEstimator):
+class GoogleTokenizer(Tokenizer):
     def __init__(self, model_name: str) -> None:
         self._tokenizer = tokenization.get_tokenizer_for_model(model_name)
+
+    async def tokenize(self, prompt: str) -> list[int]:
+        return list(map(lambda i: i.token_ids, self._tokenizer.compute_tokens(prompt).tokens_info))
 
     async def estimate_token_count(self, prompt: str) -> int:
         result = self._tokenizer.count_tokens(prompt)
@@ -38,15 +41,14 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
 
         self._model = genai.GenerativeModel(model_name)
 
-        self._token_estimator = GoogleTokenEstimator(model_name=self.model_name)
+        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
+    def get_tokenizer(self) -> Tokenizer:
+        return self._tokenizer
 
     async def generate(
         self,
@@ -131,15 +133,14 @@ class GeminiEmbedder(Embedder):
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self._token_estimator = GoogleTokenEstimator(model_name=self.model_name)
+        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    @property
-    def token_estimator(self) -> TokenEstimator:
-        return self._token_estimator
+    def get_tokenizer(self) -> GoogleTokenizer:
+        return self._tokenizer
 
     async def embed(
         self,

@@ -1,15 +1,18 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 from sentence_transformers import SentenceTransformer
 
+from emcie.server.core.nlp.common import EstimatingTokenizer
 from emcie.server.core.nlp.embedding import Embedder, EmbeddingResult
-from emcie.server.core.nlp.generation import TokenEstimator
 
 
-class SBertTokenEstimator(TokenEstimator):
+class SBertEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self._model = SentenceTransformer(model_name)
+
+    async def tokenize(self, prompt: str) -> list[int]:
+        return cast(list[int], self._model.tokenizer.encode(prompt, add_special_tokens=False))
 
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self._model.tokenizer.encode(prompt, add_special_tokens=False)
@@ -35,14 +38,15 @@ class SBertAllMiniLML6V2(SBertEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="all-MiniLM-L6-v2")
 
+        self._estimating_tokenizer = SBertEstimatingTokenizer(self.model_name)
+
     @property
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
     @property
-    def token_estimator(self) -> TokenEstimator:
-        return SBertTokenEstimator(self.model_name)
-
-    @property
     def max_tokens(self) -> int:
         return 128000
+
+    def get_tokenizer(self) -> SBertEstimatingTokenizer:
+        return self._estimating_tokenizer
