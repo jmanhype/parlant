@@ -147,8 +147,8 @@ class ContextVariable(TypedDict):
 class PreparationIteration:
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
-    terms: list[Term]
-    context_variables: list[ContextVariable]
+    terms: Sequence[Term]
+    context_variables: Sequence[ContextVariable]
 
 
 @dataclass(frozen=True)
@@ -290,8 +290,8 @@ class _EventDocument(TypedDict, total=False):
 class _PreparationIterationDocument(TypedDict):
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
-    terms: list[Term]
-    context_variables: list[ContextVariable]
+    terms: Sequence[Term]
+    context_variables: Sequence[ContextVariable]
 
 
 class _MessageInspectionDocument(TypedDict, total=False):
