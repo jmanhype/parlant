@@ -167,7 +167,12 @@ async def test_that_when_a_user_quickly_posts_more_than_one_message_then_only_on
         await context.mc.post_event(
             session_id=session.id,
             kind="message",
-            data={"message": m},
+            data={
+                "message": m,
+                "participant": {
+                    "display_name": "Johnny Boy",
+                },
+            },
         )
 
         await asyncio.sleep(1)
