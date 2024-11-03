@@ -4,6 +4,7 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -192,6 +193,8 @@ class GoogleService(NLPService):
         self._logger = logger
 
     async def get_schematic_generator(self, t: type[T]) -> GeminiSchematicGenerator[T]:
+        if t == ToolCallInferenceSchema:
+            return Gemini_1_5_Flash[T](self._logger)
         return Gemini_1_5_Pro[T](self._logger)
 
     async def get_embedder(self) -> Embedder:
