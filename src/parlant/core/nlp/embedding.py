@@ -21,12 +21,12 @@ class Embedder(ABC):
     ) -> EmbeddingResult:
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def id(self) -> str: ...
 
-    @abstractmethod
     @property
+    @abstractmethod
     def max_tokens(self) -> int: ...
 
     @abstractmethod

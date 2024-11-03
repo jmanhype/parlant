@@ -16,12 +16,7 @@ import uvicorn
 
 from parlant import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
-from parlant.adapters.nlp.openai import (
-    GPT_4o,
-    GPT_4o_Mini,
-    OmniModeration,
-    OpenAITextEmbedding3Large,
-)
+from parlant.adapters.nlp.openai import OpenAIService
 from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentDocumentStore, AgentStore
@@ -45,7 +40,8 @@ from parlant.core.guidelines import (
 from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
+from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
     ServiceRegistry,
     ServiceDocumentRegistry,
@@ -136,24 +132,26 @@ async def setup_container() -> AsyncIterator[Container]:
     c[ContextualCorrelator] = CORRELATOR
     c[Logger] = LOGGER
 
-    c[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[GuidelinePropositionsSchema](
-        logger=LOGGER
+    c[NLPService] = Singleton(OpenAIService)
+
+    c[SchematicGenerator[GuidelinePropositionsSchema]] = await c[
+        NLPService
+    ].get_schematic_generator(GuidelinePropositionsSchema)
+    c[SchematicGenerator[MessageEventSchema]] = await c[NLPService].get_schematic_generator(
+        MessageEventSchema
     )
-    c[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](logger=LOGGER)
-    c[SchematicGenerator[ToolCallInferenceSchema]] = FallbackSchematicGenerator(
-        GPT_4o_Mini[ToolCallInferenceSchema](logger=LOGGER),
-        GPT_4o[ToolCallInferenceSchema](logger=LOGGER),
-        logger=LOGGER,
-    )
-    c[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
-        PredicatesEntailmentTestsSchema
-    ](logger=LOGGER)
-    c[SchematicGenerator[ActionsContradictionTestsSchema]] = GPT_4o[
-        ActionsContradictionTestsSchema
-    ](logger=LOGGER)
-    c[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
-        GuidelineConnectionPropositionsSchema
-    ](logger=LOGGER)
+    c[SchematicGenerator[ToolCallInferenceSchema]] = await c[
+        NLPService
+    ].get_fallback_schematic_generator(ToolCallInferenceSchema)
+    c[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await c[
+        NLPService
+    ].get_schematic_generator(PredicatesEntailmentTestsSchema)
+    c[SchematicGenerator[ActionsContradictionTestsSchema]] = await c[
+        NLPService
+    ].get_schematic_generator(ActionsContradictionTestsSchema)
+    c[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await c[
+        NLPService
+    ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
@@ -199,7 +197,7 @@ async def setup_container() -> AsyncIterator[Container]:
     c[SessionListener] = PollingSessionListener
     c[GlossaryStore] = GlossaryChromaStore(
         ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
-        embedder_type=OpenAITextEmbedding3Large,
+        embedder_type=type(await c[NLPService].get_embedder()),
     )
 
     c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
@@ -237,7 +235,7 @@ async def setup_container() -> AsyncIterator[Container]:
             database=services_db,
             event_emitter_factory=c[EventEmitterFactory],
             correlator=c[ContextualCorrelator],
-            moderation_services={"openai": OmniModeration(logger=c[Logger])},
+            moderation_services={"openai": await c[NLPService].get_moderation_service()},
         )
     )
 

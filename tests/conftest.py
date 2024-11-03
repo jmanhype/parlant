@@ -10,12 +10,7 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
-from parlant.adapters.nlp.openai import (
-    GPT_4o,
-    GPT_4o_Mini,
-    OmniModeration,
-    OpenAITextEmbedding3Large,
-)
+from parlant.adapters.nlp.openai import OpenAIService
 from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -24,7 +19,7 @@ from parlant.core.emissions import EventEmitterFactory
 from parlant.core.end_users import EndUserDocumentStore, EndUserStore
 from parlant.core.evaluations import EvaluationDocumentStore, EvaluationStore
 from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
+from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -32,6 +27,7 @@ from parlant.core.guideline_connections import (
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.transient import TransientDocumentDatabase
+from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
     ServiceDocumentRegistry,
     ServiceRegistry,
@@ -99,27 +95,26 @@ async def container() -> AsyncIterator[Container]:
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
-    container[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[
-        GuidelinePropositionsSchema
-    ](logger=container[Logger])
+    container[NLPService] = Singleton(OpenAIService)
 
-    container[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](
-        logger=container[Logger]
-    )
-    container[SchematicGenerator[ToolCallInferenceSchema]] = FallbackSchematicGenerator(
-        GPT_4o_Mini[ToolCallInferenceSchema](logger=container[Logger]),
-        GPT_4o[ToolCallInferenceSchema](logger=container[Logger]),
-        logger=container[Logger],
-    )
-    container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
-        PredicatesEntailmentTestsSchema
-    ](logger=container[Logger])
-    container[SchematicGenerator[ActionsContradictionTestsSchema]] = GPT_4o[
-        ActionsContradictionTestsSchema
-    ](logger=container[Logger])
-    container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
-        GuidelineConnectionPropositionsSchema
-    ](logger=container[Logger])
+    container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
+        NLPService
+    ].get_schematic_generator(GuidelinePropositionsSchema)
+    container[SchematicGenerator[MessageEventSchema]] = await container[
+        NLPService
+    ].get_schematic_generator(MessageEventSchema)
+    container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
+        NLPService
+    ].get_fallback_schematic_generator(ToolCallInferenceSchema)
+    container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
+        NLPService
+    ].get_schematic_generator(PredicatesEntailmentTestsSchema)
+    container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
+        NLPService
+    ].get_schematic_generator(ActionsContradictionTestsSchema)
+    container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
+        NLPService
+    ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
@@ -142,7 +137,7 @@ async def container() -> AsyncIterator[Container]:
         chroma_temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
         container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(chroma_temp_dir), EmbedderFactory(container)),
-            embedder_type=OpenAITextEmbedding3Large,
+            embedder_type=type(await container[NLPService].get_embedder()),
         )
 
         container[ServiceRegistry] = await stack.enter_async_context(
@@ -150,7 +145,9 @@ async def container() -> AsyncIterator[Container]:
                 database=container[DocumentDatabase],
                 event_emitter_factory=container[EventEmitterFactory],
                 correlator=container[ContextualCorrelator],
-                moderation_services={"openai": OmniModeration(logger=container[Logger])},
+                moderation_services={
+                    "openai": await container[NLPService].get_moderation_service()
+                },
             )
         )
         container[LocalToolService] = cast(

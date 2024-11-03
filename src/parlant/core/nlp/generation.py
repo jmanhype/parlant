@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Generic, Mapping, TypeVar, cast, get_args
+from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
@@ -14,7 +14,7 @@ T = TypeVar("T", bound=DefaultBaseModel)
 class UsageInfo:
     input_tokens: int
     output_tokens: int
-    extra: Mapping[str, int] = {}
+    extra: Optional[Mapping[str, int]] = None
 
 
 @dataclass(frozen=True)
@@ -39,12 +39,12 @@ class SchematicGenerator(ABC, Generic[T]):
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[T]: ...
 
-    @abstractmethod
     @property
+    @abstractmethod
     def id(self) -> str: ...
 
-    @abstractmethod
     @property
+    @abstractmethod
     def max_tokens(self) -> int: ...
 
     @abstractmethod

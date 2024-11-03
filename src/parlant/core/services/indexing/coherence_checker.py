@@ -15,7 +15,7 @@ from parlant.core.guidelines import GuidelineContent
 from parlant.core.logging import Logger
 from parlant.core.glossary import GlossaryStore
 from parlant.core.agents import Agent
-from parlant.core.services.indexing.behavioral_change_evaluation import ProgressReport
+from parlant.core.services.indexing.common import ProgressReport
 
 LLM_RETRY_WAIT_TIME_SECONDS = 5.0
 LLM_MAX_RETRIES = 100

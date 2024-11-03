@@ -13,7 +13,7 @@ from parlant.core.logging import Logger
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.glossary import GlossaryStore
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
-from parlant.core.services.indexing.behavioral_change_evaluation import ProgressReport
+from parlant.core.services.indexing.common import ProgressReport
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):

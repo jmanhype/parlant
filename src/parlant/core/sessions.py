@@ -310,14 +310,14 @@ class _EventDocument(TypedDict, total=False):
 class _UsageInfoDocument(TypedDict):
     input_tokens: int
     output_tokens: int
-    extra: Mapping[str, int]
+    extra: Optional[Mapping[str, int]]
 
 
 class _GenerationInfoDocument(TypedDict):
     schema_name: str
     model: str
     duration: float
-    usage_info: _UsageInfoDocument
+    usage: _UsageInfoDocument
 
 
 class _MessageGenerationInspectionDocument(TypedDict):
