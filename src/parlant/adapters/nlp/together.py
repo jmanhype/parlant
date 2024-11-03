@@ -5,8 +5,15 @@ from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
 
+from parlant.core.nlp.common import AutoTokenizerEstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator, UsageInfo
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -90,7 +97,7 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             logger=logger,
         )
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)  # noqa: F821
 
     @property
     def id(self) -> str:

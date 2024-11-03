@@ -5,12 +5,34 @@ from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
 
+import tiktoken
+
 from parlant.adapters.nlp.sbert import SBertAllMiniLML6V2
+from parlant.core.nlp.common import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, TokenEstimator, UsageInfo
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
+
+
+class AnthropicEstimatingTokenizer(EstimatingTokenizer):
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+        self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+
+    async def tokenize(self, prompt: str) -> list[int]:
+        return self.encoding.encode(prompt)
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        tokens = self.encoding.encode(prompt)
+        return len(tokens)
 
 
 class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):

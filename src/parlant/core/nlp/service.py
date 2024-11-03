@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from emcie.server.core.nlp.embedding import Embedder
-from emcie.server.core.nlp.generation import T, SchematicGenerator
-from emcie.server.core.nlp.moderation import ModerationService
+from parlant.core.nlp.embedding import Embedder
+from parlant.core.nlp.generation import T, SchematicGenerator
+from parlant.core.nlp.moderation import ModerationService
 
 
 class NLPService(ABC):

@@ -14,9 +14,14 @@ import tiktoken
 from parlant.core.nlp.common import Tokenizer
 from parlant.core.nlp.service import NLPService
 from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from src.parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, UsageInfo
+from src.parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
-
 
 
 class OpenAITokenizer(Tokenizer):

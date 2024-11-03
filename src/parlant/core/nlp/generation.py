@@ -5,6 +5,7 @@ from typing import Any, Generic, Mapping, TypeVar, cast, get_args
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
+from parlant.core.nlp.common import Tokenizer
 
 T = TypeVar("T", bound=DefaultBaseModel)
 

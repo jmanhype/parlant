@@ -11,7 +11,13 @@ from vertexai.preview import tokenization  # type: ignore
 
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, GenerationInfo, SchematicGenerationResult, UsageInfo
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
