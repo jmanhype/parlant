@@ -63,11 +63,11 @@ from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from parlant.core.engines.alpha.message_event_producer import (
-    MessageEventProducer,
+from parlant.core.engines.alpha.message_event_generator import (
+    MessageEventGenerator,
     MessageEventSchema,
 )
-from parlant.core.engines.alpha.tool_event_producer import ToolEventProducer
+from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
@@ -239,13 +239,13 @@ async def setup_container() -> AsyncIterator[Container]:
         )
     )
 
-    c[MessageEventProducer] = MessageEventProducer(
+    c[MessageEventGenerator] = MessageEventGenerator(
         c[Logger],
         c[ContextualCorrelator],
         c[SchematicGenerator[MessageEventSchema]],
     )
 
-    c[ToolEventProducer] = ToolEventProducer(
+    c[ToolEventGenerator] = ToolEventGenerator(
         c[Logger],
         c[ContextualCorrelator],
         c[ServiceRegistry],

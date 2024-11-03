@@ -432,7 +432,7 @@ class SessionDocumentStore(SessionStore):
                 schema_name=generation.schema_name,
                 model=generation.model,
                 duration=generation.duration,
-                usage_info=_UsageInfoDocument(
+                usage=_UsageInfoDocument(
                     input_tokens=generation.usage_info.input_tokens,
                     output_tokens=generation.usage_info.output_tokens,
                     extra=generation.usage_info.extra,
@@ -476,9 +476,9 @@ class SessionDocumentStore(SessionStore):
                 model=generation_document["model"],
                 duration=generation_document["duration"],
                 usage_info=UsageInfo(
-                    input_tokens=generation_document["usage_info"]["input_tokens"],
-                    output_tokens=generation_document["usage_info"]["output_tokens"],
-                    extra=generation_document["usage_info"]["extra"],
+                    input_tokens=generation_document["usage"]["input_tokens"],
+                    output_tokens=generation_document["usage"]["output_tokens"],
+                    extra=generation_document["usage"]["extra"],
                 ),
             )
 

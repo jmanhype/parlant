@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 
-from parlant.core.engines.alpha.message_event_producer import MessageEventProducer
+from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
 from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.types import Context
 from parlant.core.emission.event_buffer import EventBuffer
@@ -25,8 +25,8 @@ def given_the_alpha_engine(
 def given_a_faulty_message_production_mechanism(
     context: ContextOfTest,
 ) -> None:
-    producer = context.container[MessageEventProducer]
-    producer.produce_events = AsyncMock(side_effect=Exception())  # type: ignore
+    generator = context.container[MessageEventGenerator]
+    generator.generate_events = AsyncMock(side_effect=Exception())  # type: ignore
 
 
 @step(when, "processing is triggered", target_fixture="emitted_events")
@@ -98,10 +98,10 @@ def when_messages_are_emitted(
         )
     )
 
-    message_event_producer = context.container[MessageEventProducer]
+    message_event_generator = context.container[MessageEventGenerator]
 
-    message_event_producer_results = context.sync_await(
-        message_event_producer.produce_events(
+    message_event_generator_results = context.sync_await(
+        message_event_generator.generate_events(
             event_emitter=event_buffer,
             agents=[agent],
             context_variables=[],
@@ -113,7 +113,7 @@ def when_messages_are_emitted(
         )
     )
 
-    assert len(message_event_producer_results) > 0
-    assert all(e is not None for e in message_event_producer_results[0].events)
+    assert len(message_event_generator_results) > 0
+    assert all(e is not None for e in message_event_generator_results[0].events)
 
-    return list(cast(list[EmittedEvent], message_event_producer_results[0].events))
+    return list(cast(list[EmittedEvent], message_event_generator_results[0].events))

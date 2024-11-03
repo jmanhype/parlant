@@ -34,8 +34,8 @@ from parlant.core.engines.alpha.guideline_proposer import GuidelineProposer
 from parlant.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from parlant.core.engines.alpha.message_event_producer import MessageEventProducer
-from parlant.core.engines.alpha.tool_event_producer import ToolEventProducer
+from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
+from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.alpha.utils import context_variables_to_json
 from parlant.core.engines.types import Context, Engine
 from parlant.core.emissions import EventEmitter, EmittedEvent
@@ -64,8 +64,8 @@ class AlphaEngine(Engine):
         service_registry: ServiceRegistry,
         guideline_tool_association_store: GuidelineToolAssociationStore,
         guideline_proposer: GuidelineProposer,
-        tool_event_producer: ToolEventProducer,
-        message_event_producer: MessageEventProducer,
+        tool_event_generator: ToolEventGenerator,
+        message_event_generator: MessageEventGenerator,
     ) -> None:
         self._logger = logger
         self._correlator = correlator
@@ -79,8 +79,8 @@ class AlphaEngine(Engine):
         self._service_registry = service_registry
         self._guideline_tool_association_store = guideline_tool_association_store
         self._guideline_proposer = guideline_proposer
-        self._tool_event_producer = tool_event_producer
-        self._message_event_producer = message_event_producer
+        self._tool_event_generator = tool_event_generator
+        self._message_event_generator = message_event_generator
 
     async def process(
         self,
@@ -192,7 +192,7 @@ class AlphaEngine(Engine):
                     )
                 )
 
-                tool_event_generation_results = await self._tool_event_producer.produce_events(
+                tool_event_generation_results = await self._tool_event_generator.generate_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -298,7 +298,7 @@ class AlphaEngine(Engine):
 
             message_generation_inspection = []
 
-            for r in await self._message_event_producer.produce_events(
+            for r in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
                 agents=[agent],
                 context_variables=context_variables,

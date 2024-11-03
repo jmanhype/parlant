@@ -54,7 +54,7 @@ class MessageEventSchema(DefaultBaseModel):
     evaluations_for_each_of_the_provided_guidelines: Optional[list[GuidelineEvaluation]] = None
 
 
-class MessageEventProducer:
+class MessageEventGenerator:
     def __init__(
         self,
         logger: Logger,
@@ -65,7 +65,7 @@ class MessageEventProducer:
         self._correlator = correlator
         self._schematic_generator = schematic_generator
 
-    async def produce_events(
+    async def generate_events(
         self,
         event_emitter: EventEmitter,
         agents: Sequence[Agent],
@@ -520,12 +520,12 @@ Produce a valid JSON object in the following format: ###
 
         if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
             self._logger.debug(
-                "MessageEventProducer guideline evaluations: "
+                "MessageEventGenerator guideline evaluations: "
                 f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
             )
 
         self._logger.debug(
-            "MessageEventProducer revisions: "
+            "MessageEventGenerator revisions: "
             f"{json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
         )
 

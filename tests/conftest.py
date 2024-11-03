@@ -44,12 +44,12 @@ from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from parlant.core.engines.alpha.message_event_producer import (
-    MessageEventProducer,
+from parlant.core.engines.alpha.message_event_generator import (
+    MessageEventGenerator,
     MessageEventSchema,
 )
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
-from parlant.core.engines.alpha.tool_event_producer import ToolEventProducer
+from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
@@ -157,8 +157,8 @@ async def container() -> AsyncIterator[Container]:
             ),
         )
 
-        container[MessageEventProducer] = Singleton(MessageEventProducer)
-        container[ToolEventProducer] = Singleton(ToolEventProducer)
+        container[MessageEventGenerator] = Singleton(MessageEventGenerator)
+        container[ToolEventGenerator] = Singleton(ToolEventGenerator)
 
         container[Engine] = AlphaEngine
 

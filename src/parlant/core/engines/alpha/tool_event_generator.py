@@ -16,7 +16,7 @@ from parlant.core.emissions import EmittedEvent, EventEmitter
 from parlant.core.tools import ToolId
 
 
-class ToolEventProducer:
+class ToolEventGenerator:
     def __init__(
         self,
         logger: Logger,
@@ -30,7 +30,7 @@ class ToolEventProducer:
 
         self._tool_caller = ToolCaller(logger, service_registry, schematic_generator)
 
-    async def produce_events(
+    async def generate_events(
         self,
         event_emitter: EventEmitter,
         session_id: SessionId,
