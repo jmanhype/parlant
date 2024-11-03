@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
+import hashlib
+from typing import Any, Awaitable, Callable, Iterable, Optional, OrderedDict, Sequence, cast
 
 from parlant.core.agents import Agent, AgentStore
 from parlant.core.evaluations import (
@@ -23,7 +24,37 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from parlant.core.logging import Logger
-from parlant.core.common import ProgressReport, md5_checksum
+
+
+def md5_checksum(input: str) -> str:
+    md5_hash = hashlib.md5()
+    md5_hash.update(input.encode("utf-8"))
+
+    return md5_hash.hexdigest()
+
+
+class ProgressReport:
+    def __init__(self, progress_callback: Callable[[float], Awaitable[None]]) -> None:
+        self._total = 0
+        self._current = 0
+        self._lock = asyncio.Lock()
+        self._progress_callback = progress_callback
+
+    @property
+    def percentage(self) -> float:
+        if self._total == 0:
+            return 0.0
+        return self._current / self._total * 100
+
+    async def stretch(self, amount: int) -> None:
+        async with self._lock:
+            self._total += amount
+            await self._progress_callback(self.percentage)
+
+    async def increment(self, amount: int = 1) -> None:
+        async with self._lock:
+            self._current += amount
+            await self._progress_callback(self.percentage)
 
 
 class EvaluationError(Exception):
