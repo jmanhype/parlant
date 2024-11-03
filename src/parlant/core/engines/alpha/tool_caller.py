@@ -9,7 +9,7 @@ from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, ToolResult
 from parlant.core.glossary import Term
@@ -74,7 +74,7 @@ class ToolCaller:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[ToolCall]:
+    ) -> tuple[GenerationInfo, Sequence[ToolCall]]:
         async def _get_id_tool_pairs(tool_ids: Sequence[ToolId]) -> Sequence[tuple[ToolId, Tool]]:
             services: dict[str, ToolService] = {}
             tools = []
@@ -100,13 +100,13 @@ class ToolCaller:
         )
 
         with self._logger.operation("Tool classification"):
-            inference_output = await self._run_inference(inference_prompt)
+            generation_info, inference_output = await self._run_inference(inference_prompt)
 
         tool_calls_that_need_to_run = [
             c for c in inference_output if not c.same_call_is_already_staged
         ]
 
-        return [
+        return generation_info, [
             ToolCall(
                 id=ToolCallId(generate_id()),
                 tool_id=ToolId.from_string(tc.name),
@@ -316,7 +316,7 @@ There are no staged tool calls at this moment.
     async def _run_inference(
         self,
         prompt: str,
-    ) -> Sequence[ToolCallEvaluation]:
+    ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
         self._logger.debug(f"Tool call inference prompt: {prompt}")
 
         inference = await self._schematic_generator.generate(
@@ -327,7 +327,7 @@ There are no staged tool calls at this moment.
         self._logger.debug(
             f"Tool call request results: {json.dumps([t.model_dump(mode="json") for t in inference.content.tool_call_evaluations], indent=2),}"
         )
-        return inference.content.tool_call_evaluations
+        return inference.info, inference.content.tool_call_evaluations
 
     async def _run_tool(
         self,

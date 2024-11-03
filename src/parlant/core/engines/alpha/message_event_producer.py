@@ -6,7 +6,8 @@ from typing import Mapping, Optional, Sequence
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.engines.alpha.event_generation import EventGenerationResult
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import (
     PromptBuilder,
@@ -74,7 +75,7 @@ class MessageEventProducer:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EmittedEvent]:
+    ) -> Sequence[EventGenerationResult]:
         assert len(agents) == 1
 
         with self._logger.operation("Message production"):
@@ -132,10 +133,12 @@ class MessageEventProducer:
 
             for generation_attempt in range(3):
                 try:
-                    if response_message := await self._generate_response_message(
+                    generation_info, response_message = await self._generate_response_message(
                         prompt,
                         temperature=generation_attempt_temperatures[generation_attempt],
-                    ):
+                    )
+
+                    if response_message is not None:
                         self._logger.debug(f'Message production result: "{response_message}"')
 
                         event = await event_emitter.emit_message_event(
@@ -143,10 +146,10 @@ class MessageEventProducer:
                             data=response_message,
                         )
 
-                        return [event]
+                        return [EventGenerationResult(generation_info, [event])]
                     else:
-                        self._logger.info("Skipping response; no response deemed necessary")
-                        return []
+                        self._logger.debug("Skipping response; no response deemed necessary")
+                        return [EventGenerationResult(generation_info, [])]
                 except Exception as exc:
                     self._logger.warning(
                         f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
@@ -505,7 +508,7 @@ Produce a valid JSON object in the following format: ###
         self,
         prompt: str,
         temperature: float,
-    ) -> Optional[str]:
+    ) -> tuple[GenerationInfo, Optional[str]]:
         message_event_response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": temperature},
@@ -555,4 +558,4 @@ Produce a valid JSON object in the following format: ###
                 f"PROBLEMATIC MESSAGE EVENT PRODUCER RESPONSE: {final_revision.content}"
             )
 
-        return str(final_revision.content)
+        return message_event_response.info, str(final_revision.content)

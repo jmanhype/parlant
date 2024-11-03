@@ -23,6 +23,7 @@ from parlant.core.sessions import (
     ContextVariable as StoredContextVariable,
     Event,
     GuidelineProposition as StoredGuidelineProposition,
+    MessageGenerationInspection,
     PreparationIteration,
     SessionId,
     SessionStore,
@@ -191,7 +192,7 @@ class AlphaEngine(Engine):
                     )
                 )
 
-                tool_events = await self._tool_event_producer.produce_events(
+                tool_event_generation_results = await self._tool_event_producer.produce_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -202,6 +203,11 @@ class AlphaEngine(Engine):
                     tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                     staged_events=all_tool_events,
                 )
+
+                tool_events = []
+
+                for res in tool_event_generation_results:
+                    tool_events += [e for e in res.events if e and e.kind == "tool"]
 
                 all_tool_events += tool_events
 
@@ -253,6 +259,10 @@ class AlphaEngine(Engine):
                             )
                             for variable, value in context_variables
                         ],
+                        generations={
+                            r.generation_info.schema_name: r.generation_info
+                            for r in tool_event_generation_results
+                        },
                     )
                 )
 
@@ -265,34 +275,30 @@ class AlphaEngine(Engine):
                     )
                     prepared_to_respond = True
 
-            if tool_call_control_outputs := [
-                tool_call["result"]["control"]
-                for tool_event in all_tool_events
-                for tool_call in cast(ToolEventData, tool_event.data)["tool_calls"]
-            ]:
-                current_session_mode = session.mode
-                new_session_mode = current_session_mode
+                if tool_call_control_outputs := [
+                    tool_call["result"]["control"]
+                    for tool_event in all_tool_events
+                    for tool_call in cast(ToolEventData, tool_event.data)["tool_calls"]
+                ]:
+                    current_session_mode = session.mode
+                    new_session_mode = current_session_mode
 
-                for control_output in tool_call_control_outputs:
-                    new_session_mode = control_output.get("mode") or current_session_mode
+                    for control_output in tool_call_control_outputs:
+                        new_session_mode = control_output.get("mode") or current_session_mode
 
-                if new_session_mode != current_session_mode:
-                    self._logger.info(f"Changing session {session.id} mode to '{new_session_mode}'")
+                    if new_session_mode != current_session_mode:
+                        self._logger.info(f"Changing session {session.id} mode to '{new_session_mode}'")
 
-                    await self._session_store.update_session(
-                        session_id=session.id,
-                        params={
-                            "mode": new_session_mode,
-                        },
-                    )
+                        await self._session_store.update_session(
+                            session_id=session.id,
+                            params={
+                                "mode": new_session_mode,
+                            },
+                        )
 
-            await self._session_store.create_inspection(
-                session_id=context.session_id,
-                correlation_id=self._correlator.correlation_id,
-                preparation_iterations=preparation_iterations,
-            )
+            message_generation_inspection = []
 
-            await self._message_event_producer.produce_events(
+            for r in await self._message_event_producer.produce_events(
                 event_emitter=event_emitter,
                 agents=[agent],
                 context_variables=context_variables,
@@ -301,7 +307,26 @@ class AlphaEngine(Engine):
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                 staged_events=all_tool_events,
+            ):
+                message_generation_inspection.append(
+                    MessageGenerationInspection(
+                        generation=r.generation_info,
+                        messages=[
+                            e.data["message"]
+                            if e and e.kind == "message" and isinstance(e.data, dict)
+                            else None
+                            for e in r.events
+                        ],
+                    )
+                )
+
+            await self._session_store.create_inspection(
+                session_id=context.session_id,
+                correlation_id=self._correlator.correlation_id,
+                preparation_iterations=preparation_iterations,
+                messages=message_generation_inspection,
             )
+
         except asyncio.CancelledError:
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,

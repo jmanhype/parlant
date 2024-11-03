@@ -1,5 +1,6 @@
 from typing import Mapping, Sequence
 
+from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.tools import ToolContext
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.nlp.generation import SchematicGenerator
@@ -40,27 +41,26 @@ class ToolEventProducer:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EmittedEvent]:
+    ) -> Sequence[EventGenerationResult]:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
             self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return []
 
-        tool_calls = list(
-            await self._tool_caller.infer_tool_calls(
-                agents,
-                context_variables,
-                interaction_history,
-                terms,
-                ordinary_guideline_propositions,
-                tool_enabled_guideline_propositions,
-                staged_events,
-            )
+        generation_info, tool_calls = await self._tool_caller.infer_tool_calls(
+            agents,
+            context_variables,
+            interaction_history,
+            terms,
+            ordinary_guideline_propositions,
+            tool_enabled_guideline_propositions,
+            staged_events,
         )
 
         if not tool_calls:
             return []
+
         tool_results = await self._tool_caller.execute_tool_calls(
             ToolContext(agent_id=agents[0].id, session_id=session_id),
             tool_calls,
@@ -85,4 +85,4 @@ class ToolEventProducer:
             data=event_data,
         )
 
-        return [event]
+        return [EventGenerationResult(generation_info, [event])]

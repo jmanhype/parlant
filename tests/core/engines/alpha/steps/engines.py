@@ -1,4 +1,5 @@
 import asyncio
+from typing import cast
 from pytest_bdd import given, when
 from unittest.mock import AsyncMock
 
@@ -99,7 +100,7 @@ def when_messages_are_emitted(
 
     message_event_producer = context.container[MessageEventProducer]
 
-    message_events = context.sync_await(
+    message_event_producer_results = context.sync_await(
         message_event_producer.produce_events(
             event_emitter=event_buffer,
             agents=[agent],
@@ -112,4 +113,7 @@ def when_messages_are_emitted(
         )
     )
 
-    return list(message_events)
+    assert len(message_event_producer_results) > 0
+    assert all(e is not None for e in message_event_producer_results[0].events)
+
+    return list(cast(list[EmittedEvent], message_event_producer_results[0].events))
