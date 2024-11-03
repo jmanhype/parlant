@@ -1,6 +1,5 @@
 from __future__ import annotations
 from itertools import chain
-from logging import Logger
 import time
 from openai import AsyncClient
 from typing import Any, Mapping
@@ -12,17 +11,18 @@ from pydantic import ValidationError
 import tiktoken
 
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.logging import Logger
 from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.service import NLPService
-from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from src.parlant.core.nlp.generation import (
+from parlant.core.nlp.embedding import Embedder, EmbeddingResult
+from parlant.core.nlp.generation import (
     T,
     BaseSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
     UsageInfo,
 )
-from src.parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
+from parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
 class OpenAITokenizer(Tokenizer):

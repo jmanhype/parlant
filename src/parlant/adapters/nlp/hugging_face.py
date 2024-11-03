@@ -9,14 +9,14 @@ from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 class HuggingFaceEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self.model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+        self._model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
 
     async def embed(
         self,
         texts: list[str],
         hints: Mapping[str, Any] = {},
     ) -> EmbeddingResult:
-        embeddings = self._client.encode(texts)
+        embeddings = self._model.encode(texts)
 
         return EmbeddingResult(vectors=list(embeddings))
 

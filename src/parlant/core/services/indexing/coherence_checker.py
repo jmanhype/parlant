@@ -8,13 +8,14 @@ from more_itertools import chunked
 from tenacity import retry, stop_after_attempt, wait_fixed
 from dataclasses import dataclass
 
-from parlant.core.common import DefaultBaseModel, ProgressReport
+from parlant.core.common import DefaultBaseModel
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.logging import Logger
 from parlant.core.glossary import GlossaryStore
 from parlant.core.agents import Agent
+from parlant.core.services.indexing.behavioral_change_evaluation import ProgressReport
 
 LLM_RETRY_WAIT_TIME_SECONDS = 5.0
 LLM_MAX_RETRIES = 100
