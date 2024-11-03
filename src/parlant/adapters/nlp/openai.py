@@ -11,7 +11,7 @@ import os
 from pydantic import ValidationError
 import tiktoken
 
-from parlant.core.nlp.common import Tokenizer
+from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.service import NLPService
 from src.parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from src.parlant.core.nlp.generation import (

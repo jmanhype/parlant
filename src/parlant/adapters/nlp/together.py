@@ -5,7 +5,7 @@ from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
 
-from parlant.core.nlp.common import AutoTokenizerEstimatingTokenizer
+from parlant.adapters.nlp.hugging_face import AutoTokenizerEstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,

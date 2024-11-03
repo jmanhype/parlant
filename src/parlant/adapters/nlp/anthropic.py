@@ -7,8 +7,7 @@ import os
 
 import tiktoken
 
-from parlant.adapters.nlp.sbert import SBertAllMiniLML6V2
-from parlant.core.nlp.common import EstimatingTokenizer
+from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
 from parlant.core.nlp.embedding import Embedder
 from parlant.core.nlp.generation import (
     T,
@@ -20,6 +19,7 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
+from parlant.core.nlp.tokenizer import EstimatingTokenizer
 
 
 class AnthropicEstimatingTokenizer(EstimatingTokenizer):
@@ -136,7 +136,7 @@ class AnthropicService(NLPService):
         return Claude_Sonnet_3_5[T](self._logger)
 
     async def get_embedder(self) -> Embedder:
-        return SBertAllMiniLML6V2()
+        return JinaAIEmbedder()
 
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from lagom import Container
 from typing import Any, Sequence
 
-from parlant.core.nlp.common import Tokenizer
+from parlant.core.nlp.tokenizer import Tokenizer
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
-from parlant.core.nlp.common import Tokenizer
+from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
 from vertexai.preview import tokenization  # type: ignore
