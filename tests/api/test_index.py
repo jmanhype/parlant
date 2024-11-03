@@ -646,13 +646,12 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    agent_name = content = client.get(f"/agents/{agent_id}").raise_for_status().json()["name"]
     content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "failed"
     assert (
         content["error"]
-        == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} in {agent_name} agent do not exist."
+        == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} in '{agent_id}' agent do not exist."
     )
 
 
