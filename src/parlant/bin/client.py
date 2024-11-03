@@ -342,7 +342,11 @@ class Actions:
     ) -> EventDTO:
         response = requests.post(
             urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
-            json={"content": message},
+            json={
+                "kind": "message",
+                "source": "end_user",
+                "content": message,
+            },
         )
 
         response.raise_for_status()
@@ -1213,7 +1217,11 @@ class Interface:
                         ctx.obj.server_address,
                         f"/sessions/{session_id}/events",
                     ),
-                    json={"content": new_message},
+                    json={
+                        "kind": "message",
+                        "source": "end_user",
+                        "content": new_message,
+                    },
                 )
 
                 response.raise_for_status()
