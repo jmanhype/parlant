@@ -27,7 +27,7 @@ const AgentsList = (): ReactNode => {
         <div className='flex flex-col overflow-auto'>
             {agents?.map(agent => (
                 <div data-testid="agent" tabIndex={0} onKeyDown={spaceClick} role='button' onClick={() => selectAgent(agent.id)} key={agent.id} className='cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]'>
-                    <AgentAvatar agent={agent}/>
+                    <AgentAvatar agent={agent} tooltip={false}/>
                     <div>
                         <div className='text-[16px] font-medium'>{agent.name}</div>
                         <div className='text-[14px] font-light text-[#A9A9A9]'>(id={agent.id})</div>

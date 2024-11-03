@@ -3,7 +3,7 @@ import { AgentInterface, SessionInterface } from '@/utils/interfaces';
 import Sessions from '../sessions/sessions';
 import ErrorBoundary from '../error-boundary/error-boundary';
 import ChatHeader from '../chat-header/chat-header';
-import { useDialog } from '@/hooks/useDialog';
+import { Dimensions, useDialog } from '@/hooks/useDialog';
 
 interface SessionContext {
     setSessionId: Dispatch<SetStateAction<string | null | undefined>>;
@@ -16,7 +16,7 @@ interface SessionContext {
     setSessions: Dispatch<SetStateAction<SessionInterface[]>>;
     agents: AgentInterface[],
     setAgents: Dispatch<SetStateAction<AgentInterface[]>>;
-    openDialog: (title: string, content: ReactNode, height: string, width: string, dialogClosed?: (() =>void) | null) => void;
+    openDialog: (title: string, content: ReactNode, dimensions: Dimensions, dialogClosed?: (() =>void) | null) => void;
     closeDialog: () => void;
 };
 
@@ -68,7 +68,7 @@ export default function Chatbot(): ReactElement {
                 <div data-testid="chatbot" className="main bg-main h-screen flex flex-col">
                     <ChatHeader/>
                     <div className="flex justify-between flex-1 w-full overflow-auto flex-row">
-                        <div className="bg-white h-full pb-4 border-b border-b-gray-900 border-solid border-b-[transparent] w-[332px]">
+                        <div className="bg-white h-full pb-4 border-solid w-[332px] max-[750px]:hidden">
                             <Sessions />
                         </div>
                         <div className='h-full w-full'>

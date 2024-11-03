@@ -34,7 +34,7 @@ export default function Message({event, isContinual}: Props): ReactElement {
                         {!isContinual ? <img src="parlant-bubble-muted.svg" alt="Parlant" height={36} width={36}/> : <div className='h-[36px] w-[36px]'/>}
                     </div>
                 }
-                <div tabIndex={0} data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none rounded-tr-[22px]' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none rounded-tl-[22px]') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + (isContinual ? ' rounded-br-[26px] rounded-bl-[26px] rounded-tl-[26px] rounded-tr-[26px]' : '') + ' rounded-[26px] w-fit max-w-[564px] flex gap-1 items-center relative'}>
+                <div tabIndex={0} data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none rounded-tr-[22px]' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none rounded-tl-[22px]') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + (isContinual ? ' !rounded-br-[26px] rounded-bl-[26px] rounded-tl-[26px] rounded-tr-[26px]' : '') + ' rounded-[26px] w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative'}>
                     <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]">
                         <Markdown className={styles.markdown}>{event?.data?.message}</Markdown>
                     </div>

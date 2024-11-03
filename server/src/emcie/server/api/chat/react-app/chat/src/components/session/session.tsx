@@ -74,7 +74,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             });
         };
 
-        openDialog('Delete Session', <DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session}/>, '228px', '480px');
+        openDialog('Delete Session', <DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session}/>, {height: '228px', width: '480px'});
     };
 
     const editTitle = async (e: React.MouseEvent) => {
@@ -126,7 +126,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
             onKeyDown={spaceClick}
             onClick={() => !disabled && !editingTitle && setSessionId(session.id)}
             key={session.id}
-            className={'bg-white animate-fade-in text-[14px] justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') + (disabled ? ' pointer-events-none' : '')}>
+            className={'bg-white animate-fade-in text-[14px] font-ubuntu-sans justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' + (editingTitle === session.id ? (styles.editSession + ' !p-[4px_2px] ') : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') + (isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') + (disabled ? ' pointer-events-none' : '')}>
             <div className="flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]">
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis flex items-center">

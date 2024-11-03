@@ -8,7 +8,7 @@ const TestComponent = () => {
     
     return (
       <div>
-        <button onClick={() => openDialog('title', <div>Mocked-Dialog</div>, '0px', '0px')}>Open Dialog</button>
+        <button onClick={() => openDialog('title', <div>Mocked-Dialog</div>, {height: '0px', width: '0px'})}>Open Dialog</button>
         <button onClick={() => closeDialog()}>Close Dialog</button>
         <DialogComponent />
       </div>
