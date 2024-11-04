@@ -87,8 +87,8 @@ def get_package_path() -> Path:
     return package_path
 
 
-CLI_CLIENT_PATH = get_package_path() / "src/parlant/server/bin/client.py"
-CLI_SERVER_PATH = get_package_path() / "src/parlant/server/bin/server.py"
+CLI_CLIENT_PATH = get_package_path() / "src/parlant/bin/client.py"
+CLI_SERVER_PATH = get_package_path() / "src/parlant/bin/server.py"
 
 
 @dataclass(frozen=True)

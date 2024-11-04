@@ -83,6 +83,8 @@ async def get_agent_replies(
             user_message_response = await client.post(
                 f"{SERVER_ADDRESS}/sessions/{session_id}/events",
                 json={
+                    "kind": "message",
+                    "source": "end_user",
                     "content": message,
                 },
             )
