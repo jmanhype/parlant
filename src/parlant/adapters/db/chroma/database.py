@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from dataclasses import dataclass
 import importlib
 import json
 import operator
@@ -28,6 +29,15 @@ class BaseDocument(TypedDict, total=False):
 
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
+
+
+@dataclass(frozen=True)
+class SimilarDocumentResult(Generic[TDocument]):
+    document: TDocument
+    distance: float
+
+    def __hash__(self) -> int:
+        return hash(self.document.__str__())
 
 
 class ChromaDatabase:
@@ -302,7 +312,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         filters: Where,
         query: str,
         k: int,
-    ) -> Sequence[TDocument]:
+    ) -> Sequence[SimilarDocumentResult[TDocument]]:
         query_embeddings = list((await self._embedder.embed([query])).vectors)
 
         docs = self._chroma_collection.query(
@@ -311,9 +321,11 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
             n_results=k,
         )
 
-        if metadatas := docs["metadatas"]:
-            self._logger.debug(f"Similar documents found: {json.dumps(metadatas[0], indent=2)}")
+        if not docs["metadatas"] or not docs["distances"]:
+            return []
 
-            return [cast(TDocument, m) for m in metadatas[0]]
-
-        return []
+        self._logger.debug(f"Similar documents found: {json.dumps(docs["metadatas"][0], indent=2)}")
+        return [
+            SimilarDocumentResult(document=cast(TDocument, m), distance=d)
+            for m, d in zip(docs["metadatas"][0], docs["distances"][0])
+        ]

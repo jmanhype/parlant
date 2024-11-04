@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from itertools import chain
 from typing import Optional, Sequence, TypedDict
 
 from parlant.adapters.db.chroma.database import ChromaDatabase
@@ -201,9 +202,12 @@ class GlossaryChromaStore(GlossaryStore):
             for q in queries
         ]
 
-        all_results = await asyncio.gather(*tasks)
+        all_results = sorted(
+            list(set(chain.from_iterable(await asyncio.gather(*tasks)))),
+            key=lambda doc_result: doc_result.distance,
+        )
 
-        return list({self._deserialize(d) for result in all_results for d in result})
+        return [self._deserialize(r.document) for r in all_results[: self._n_results]]
 
     def _assemble_term_content(
         self,

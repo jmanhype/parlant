@@ -270,7 +270,7 @@ async def test_find_similar_documents(
     query = "apple banana cherry"
     k = 3
 
-    result = await chroma_collection.find_similar_documents({}, query, k)
+    result = [s.document for s in await chroma_collection.find_similar_documents({}, query, k)]
 
     assert len(result) == 3
     assert apple_document in result
@@ -317,7 +317,7 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
         glossary_chroma_store = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
             embedder_type=type(await container[NLPService].get_embedder()),
-            n_results=1,
+            n_results=3,
         )
 
         bazoo = await glossary_chroma_store.create_term(
