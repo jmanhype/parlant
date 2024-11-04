@@ -194,9 +194,6 @@ class OpenAIEmbedder(Embedder):
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
-    def get_tokenizer(self) -> OpenAITokenizer:
-        return self._tokenizer
-
     async def embed(
         self,
         texts: list[str],

@@ -150,14 +150,10 @@ class GeminiEmbedder(Embedder):
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"google/{self.model_name}"
-
-    def get_tokenizer(self) -> GoogleTokenizer:
-        return self._tokenizer
 
     async def embed(
         self,

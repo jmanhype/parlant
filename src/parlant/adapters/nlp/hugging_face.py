@@ -47,6 +47,3 @@ class JinaAIEmbedder(HuggingFaceEmbedder):
     @property
     def max_tokens(self) -> int:
         return 128000
-
-    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
-        return self._estimating_tokenizer

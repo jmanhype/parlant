@@ -16,7 +16,10 @@ import uvicorn
 
 from parlant import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
+from parlant.adapters.nlp.anthropic import AnthropicService
+from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
+from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentDocumentStore, AgentStore
@@ -41,7 +44,6 @@ from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.nlp.generation import SchematicGenerator
-from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
     ServiceRegistry,
     ServiceDocumentRegistry,
@@ -87,6 +89,8 @@ from parlant.core.application import Application
 DEFAULT_PORT = 8000
 SERVER_ADDRESS = "https://localhost"
 
+DEFAULT_NLP_SERVICE = "openai"
+
 PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", "/var/lib/parlant"))
 PARLANT_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -112,6 +116,7 @@ class StartupError(Exception):
 @dataclass
 class CLIParams:
     port: int
+    nlp_service: str
 
 
 class ShutdownReason(Enum):
@@ -126,32 +131,11 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
 
 
 @asynccontextmanager
-async def setup_container() -> AsyncIterator[Container]:
+async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c = Container()
 
     c[ContextualCorrelator] = CORRELATOR
     c[Logger] = LOGGER
-
-    c[NLPService] = Singleton(OpenAIService)
-
-    c[SchematicGenerator[GuidelinePropositionsSchema]] = await c[
-        NLPService
-    ].get_schematic_generator(GuidelinePropositionsSchema)
-    c[SchematicGenerator[MessageEventSchema]] = await c[NLPService].get_schematic_generator(
-        MessageEventSchema
-    )
-    c[SchematicGenerator[ToolCallInferenceSchema]] = await c[
-        NLPService
-    ].get_fallback_schematic_generator(ToolCallInferenceSchema)
-    c[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await c[
-        NLPService
-    ].get_schematic_generator(PredicatesEntailmentTestsSchema)
-    c[SchematicGenerator[ActionsContradictionTestsSchema]] = await c[
-        NLPService
-    ].get_schematic_generator(ActionsContradictionTestsSchema)
-    c[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await c[
-        NLPService
-    ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
@@ -195,12 +179,50 @@ async def setup_container() -> AsyncIterator[Container]:
     c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
     c[SessionStore] = SessionDocumentStore(sessions_db)
     c[SessionListener] = PollingSessionListener
-    c[GlossaryStore] = GlossaryChromaStore(
-        ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
-        embedder_type=type(await c[NLPService].get_embedder()),
-    )
 
     c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
+
+    c[EventEmitterFactory] = Singleton(EventPublisherFactory)
+
+    c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
+        ServiceDocumentRegistry(
+            database=services_db,
+            event_emitter_factory=c[EventEmitterFactory],
+            correlator=c[ContextualCorrelator],
+            nlp_services={
+                "openai": OpenAIService(LOGGER),
+                "google": GoogleService(LOGGER),
+                "anthropic": AnthropicService(LOGGER),
+                "together": TogetherService(LOGGER),
+            },
+        )
+    )
+
+    nlp_service = await c[ServiceRegistry].read_nlp_service(nlp_service_name)
+
+    c[GlossaryStore] = GlossaryChromaStore(
+        ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
+        embedder_type=type(await nlp_service.get_embedder()),
+    )
+
+    c[SchematicGenerator[GuidelinePropositionsSchema]] = await nlp_service.get_schematic_generator(
+        GuidelinePropositionsSchema
+    )
+    c[SchematicGenerator[MessageEventSchema]] = await nlp_service.get_schematic_generator(
+        MessageEventSchema
+    )
+    c[
+        SchematicGenerator[ToolCallInferenceSchema]
+    ] = await nlp_service.get_fallback_schematic_generator(ToolCallInferenceSchema)
+    c[
+        SchematicGenerator[PredicatesEntailmentTestsSchema]
+    ] = await nlp_service.get_schematic_generator(PredicatesEntailmentTestsSchema)
+    c[
+        SchematicGenerator[ActionsContradictionTestsSchema]
+    ] = await nlp_service.get_schematic_generator(ActionsContradictionTestsSchema)
+    c[
+        SchematicGenerator[GuidelineConnectionPropositionsSchema]
+    ] = await nlp_service.get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],
@@ -226,17 +248,6 @@ async def setup_container() -> AsyncIterator[Container]:
         c[GuidelineStore],
         c[GuidelineConnectionProposer],
         c[CoherenceChecker],
-    )
-
-    c[EventEmitterFactory] = Singleton(EventPublisherFactory)
-
-    c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
-        ServiceDocumentRegistry(
-            database=services_db,
-            event_emitter_factory=c[EventEmitterFactory],
-            correlator=c[ContextualCorrelator],
-            moderation_services={"openai": await c[NLPService].get_moderation_service()},
-        )
     )
 
     c[MessageEventGenerator] = MessageEventGenerator(
@@ -273,7 +284,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
     EXIT_STACK = AsyncExitStack()
 
-    async with setup_container() as container, EXIT_STACK:
+    async with setup_container(params.nlp_service) as container, EXIT_STACK:
         await recover_server_tasks(
             evaluation_store=container[EvaluationStore],
             evaluator=container[BehavioralChangeEvaluator],
@@ -339,6 +350,7 @@ def main() -> None:
         if not ctx.obj:
             ctx.obj = CLIParams(
                 port=DEFAULT_PORT,
+                nlp_service=DEFAULT_NLP_SERVICE,
             )
 
     @cli.command(help="Run the Parlant server")
@@ -349,9 +361,16 @@ def main() -> None:
         default=DEFAULT_PORT,
         help="Server port",
     )
+    @click.option(
+        "--nlp-service",
+        type=click.Choice(["openai", "google", "anthropic", "together"]),
+        default=DEFAULT_NLP_SERVICE,
+        help="NLP Provider",
+    )
     @click.pass_context
-    def run(ctx: click.Context, port: int) -> None:
+    def run(ctx: click.Context, port: int, nlp_service: str) -> None:
         ctx.obj.port = port
+        ctx.obj.nlp_service = nlp_service
         asyncio.run(start_server(ctx.obj))
 
     try:

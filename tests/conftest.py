@@ -95,61 +95,61 @@ async def container() -> AsyncIterator[Container]:
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
-    container[NLPService] = Singleton(OpenAIService)
-
-    container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
-        NLPService
-    ].get_schematic_generator(GuidelinePropositionsSchema)
-    container[SchematicGenerator[MessageEventSchema]] = await container[
-        NLPService
-    ].get_schematic_generator(MessageEventSchema)
-    container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
-        NLPService
-    ].get_fallback_schematic_generator(ToolCallInferenceSchema)
-    container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
-        NLPService
-    ].get_schematic_generator(PredicatesEntailmentTestsSchema)
-    container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
-        NLPService
-    ].get_schematic_generator(ActionsContradictionTestsSchema)
-    container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
-        NLPService
-    ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
-
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)
-    container[GuidelineProposer] = Singleton(GuidelineProposer)
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
-    container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
-    container[CoherenceChecker] = Singleton(CoherenceChecker)
-
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
+
     container[SessionListener] = PollingSessionListener
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
     async with AsyncExitStack() as stack:
+        container[ServiceRegistry] = await stack.enter_async_context(
+            ServiceDocumentRegistry(
+                database=container[DocumentDatabase],
+                event_emitter_factory=container[EventEmitterFactory],
+                correlator=container[ContextualCorrelator],
+                nlp_services={"openai": OpenAIService(container[Logger])},
+            )
+        )
+
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("openai")
+
         chroma_temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
         container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(chroma_temp_dir), EmbedderFactory(container)),
             embedder_type=type(await container[NLPService].get_embedder()),
         )
 
-        container[ServiceRegistry] = await stack.enter_async_context(
-            ServiceDocumentRegistry(
-                database=container[DocumentDatabase],
-                event_emitter_factory=container[EventEmitterFactory],
-                correlator=container[ContextualCorrelator],
-                moderation_services={
-                    "openai": await container[NLPService].get_moderation_service()
-                },
-            )
-        )
+        container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(GuidelinePropositionsSchema)
+        container[SchematicGenerator[MessageEventSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(MessageEventSchema)
+        container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
+            NLPService
+        ].get_fallback_schematic_generator(ToolCallInferenceSchema)
+        container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(PredicatesEntailmentTestsSchema)
+        container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(ActionsContradictionTestsSchema)
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
+
+        container[GuidelineProposer] = Singleton(GuidelineProposer)
+        container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
+        container[CoherenceChecker] = Singleton(CoherenceChecker)
+
         container[LocalToolService] = cast(
             LocalToolService,
             await container[ServiceRegistry].update_tool_service(

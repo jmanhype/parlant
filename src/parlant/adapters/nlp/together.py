@@ -168,9 +168,6 @@ class M2Bert32K(TogetherAIEmbedder):
     def max_tokens(self) -> int:
         return 32768
 
-    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
-        return self._estimating_tokenizer
-
 
 class TogetherService(NLPService):
     def __init__(
