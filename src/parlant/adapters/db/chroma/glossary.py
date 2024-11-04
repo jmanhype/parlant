@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Sequence, TypedDict
 
@@ -27,13 +28,19 @@ class _TermDocument(TypedDict, total=False):
 class GlossaryChromaStore(GlossaryStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, chroma_db: ChromaDatabase, embedder_type: type[Embedder]):
+    def __init__(
+        self,
+        chroma_db: ChromaDatabase,
+        embedder_type: type[Embedder],
+        n_results: int = 20,
+    ):
         self._collection = chroma_db.get_or_create_collection(
             name="glossary",
             schema=_TermDocument,
             embedder_type=embedder_type,
         )
-        self._n_results = 20
+        self._n_results = n_results
+        self._embedder = embedder_type()
 
     def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
         return _TermDocument(
@@ -165,19 +172,38 @@ class GlossaryChromaStore(GlossaryStore):
 
         return TermId(term_document["id"])
 
+    async def _chunk_query(self, query: str) -> list[str]:
+        max_length = self._embedder.max_tokens // 10
+
+        list_of_lines = []
+
+        while len(query) > max_length:
+            line_length = query[:max_length].rfind(" ")
+            list_of_lines.append(query[: line_length if line_length != -1 else max_length])
+            query = query[line_length + 1 :]
+
+        list_of_lines.append(query)
+        return list_of_lines
+
     async def find_relevant_terms(
         self,
         term_set: str,
         query: str,
     ) -> Sequence[Term]:
-        return [
-            self._deserialize(d)
-            for d in await self._collection.find_similar_documents(
+        queries = await self._chunk_query(query)
+
+        tasks = [
+            self._collection.find_similar_documents(
                 filters={"term_set": {"$eq": term_set}},
-                query=query,
+                query=q,
                 k=self._n_results,
             )
+            for q in queries
         ]
+
+        all_results = await asyncio.gather(*tasks)
+
+        return list({self._deserialize(d) for result in all_results for d in result})
 
     def _assemble_term_content(
         self,

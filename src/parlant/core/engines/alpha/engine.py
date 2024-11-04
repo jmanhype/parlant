@@ -287,7 +287,9 @@ class AlphaEngine(Engine):
                         new_session_mode = control_output.get("mode") or current_session_mode
 
                     if new_session_mode != current_session_mode:
-                        self._logger.info(f"Changing session {session.id} mode to '{new_session_mode}'")
+                        self._logger.info(
+                            f"Changing session {session.id} mode to '{new_session_mode}'"
+                        )
 
                         await self._session_store.update_session(
                             session_id=session.id,

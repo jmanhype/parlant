@@ -5,7 +5,9 @@ from typing import AsyncIterator, Iterator, TypedDict
 from lagom import Container
 from pytest import fixture
 
+from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.openai import OpenAITextEmbedding3Large
+from parlant.core.agents import AgentStore, AgentId
 from parlant.core.common import Version
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.adapters.db.chroma.database import (
@@ -13,7 +15,9 @@ from parlant.adapters.db.chroma.database import (
     ChromaDatabase,
 )
 from parlant.core.logging import Logger
+from parlant.core.nlp.service import NLPService
 from parlant.core.persistence.document_database import ObjectId
+from tests.test_utilities import SyncAwaiter
 
 
 class _TestDocument(TypedDict, total=False):
@@ -27,6 +31,16 @@ class _TestDocument(TypedDict, total=False):
 class _TestContext:
     home_dir: Path
     container: Container
+
+
+@fixture
+def agent_id(
+    container: Container,
+    sync_await: SyncAwaiter,
+) -> AgentId:
+    store = container[AgentStore]
+    agent = sync_await(store.create_agent(name="test-agent"))
+    return agent.id
 
 
 @fixture
@@ -294,3 +308,53 @@ async def test_loading_collections(
 
     assert len(result) == 1
     assert result[0] == document
+
+
+async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_large_query_input(
+    container: Container, agent_id: AgentId
+) -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        glossary_chroma_store = GlossaryChromaStore(
+            ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
+            embedder_type=type(await container[NLPService].get_embedder()),
+            n_results=1,
+        )
+
+        bazoo = await glossary_chroma_store.create_term(
+            term_set=agent_id,
+            name="Bazoo",
+            description="a type of cow",
+        )
+
+        shazoo = await glossary_chroma_store.create_term(
+            term_set=agent_id,
+            name="Shazoo",
+            description="a type of zebra",
+        )
+
+        kazoo = await glossary_chroma_store.create_term(
+            term_set=agent_id,
+            name="Kazoo",
+            description="a type of horse",
+        )
+
+        _ = await glossary_chroma_store.create_term(
+            term_set=agent_id,
+            name="Tazoo",
+            description="a type of camel",
+        )
+
+        terms = await glossary_chroma_store.find_relevant_terms(
+            agent_id,
+            ("walla " * 5000)
+            + "Kazoo"
+            + ("balla " * 5000)
+            + "Shazoo"
+            + ("kalla " * 5000)
+            + "Bazoo",
+        )
+
+        assert len(terms) == 3
+        assert any(t == kazoo for t in terms)
+        assert any(t == shazoo for t in terms)
+        assert any(t == bazoo for t in terms)
