@@ -1,4 +1,4 @@
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
 from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.tools import ToolContext
@@ -41,12 +41,12 @@ class ToolEventGenerator:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EventGenerationResult]:
+    ) -> Optional[EventGenerationResult]:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
             self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
-            return []
+            return None
 
         generation_info, tool_calls = await self._tool_caller.infer_tool_calls(
             agents,
@@ -59,7 +59,7 @@ class ToolEventGenerator:
         )
 
         if not tool_calls:
-            return []
+            return EventGenerationResult(generation_info, [])
 
         tool_results = await self._tool_caller.execute_tool_calls(
             ToolContext(agent_id=agents[0].id, session_id=session_id),
@@ -67,7 +67,7 @@ class ToolEventGenerator:
         )
 
         if not tool_results:
-            return []
+            return EventGenerationResult(generation_info, [])
 
         event_data: ToolEventData = {
             "tool_calls": [
@@ -85,4 +85,4 @@ class ToolEventGenerator:
             data=event_data,
         )
 
-        return [EventGenerationResult(generation_info, [event])]
+        return EventGenerationResult(generation_info, [event])

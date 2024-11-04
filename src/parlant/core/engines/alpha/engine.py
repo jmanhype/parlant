@@ -192,7 +192,7 @@ class AlphaEngine(Engine):
                     )
                 )
 
-                tool_event_generation_results = await self._tool_event_generator.generate_events(
+                tool_event_generation_result = await self._tool_event_generator.generate_events(
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
@@ -204,10 +204,11 @@ class AlphaEngine(Engine):
                     staged_events=all_tool_events,
                 )
 
-                tool_events = []
-
-                for res in tool_event_generation_results:
-                    tool_events += [e for e in res.events if e and e.kind == "tool"]
+                tool_events = (
+                    [e for e in tool_event_generation_result.events if e]
+                    if tool_event_generation_result
+                    else []
+                )
 
                 all_tool_events += tool_events
 
@@ -260,9 +261,10 @@ class AlphaEngine(Engine):
                             for variable, value in context_variables
                         ],
                         generations={
-                            r.generation_info.schema_name: r.generation_info
-                            for r in tool_event_generation_results
-                        },
+                            tool_event_generation_result.generation_info.schema_name: tool_event_generation_result.generation_info
+                        }
+                        if tool_event_generation_result
+                        else {},
                     )
                 )
 
