@@ -14,6 +14,7 @@ from parlant.core.context_variables import ContextVariableStore
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentStore
 from parlant.core.common import ItemNotFoundError, generate_id
+from parlant.core.end_users import EndUserStore
 from parlant.core.evaluations import EvaluationStore
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import GuidelineStore
@@ -34,6 +35,7 @@ async def create_api_app(container: Container) -> FastAPI:
     logger = container[Logger]
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
+    end_user_store = container[EndUserStore]
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
@@ -123,6 +125,7 @@ async def create_api_app(container: Container) -> FastAPI:
         router=sessions.create_router(
             application=application,
             agent_store=agent_store,
+            end_user_store=end_user_store,
             session_store=session_store,
             session_listener=session_listener,
             service_registry=service_registry,

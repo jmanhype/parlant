@@ -11,7 +11,7 @@ from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import ContextVariableId
 from parlant.core.agents import AgentId, AgentStore
-from parlant.core.end_users import EndUserId
+from parlant.core.end_users import EndUserId, EndUserStore
 from parlant.core.guidelines import GuidelineId
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import (
@@ -171,6 +171,7 @@ class ReadInteractionResponse(DefaultBaseModel):
 def create_router(
     application: Application,
     agent_store: AgentStore,
+    end_user_store: EndUserStore,
     session_store: SessionStore,
     session_listener: SessionListener,
     service_registry: ServiceRegistry,
@@ -340,11 +341,17 @@ def create_router(
 
         session = await session_store.read_session(session_id)
 
+        try:
+            end_user = await end_user_store.read_end_user(session.end_user_id)
+            end_user_display_name = end_user.name
+        except Exception:
+            end_user_display_name = session.end_user_id
+
         message_data: MessageEventData = {
             "message": request.content,
             "participant": {
                 "id": session.end_user_id,
-                "display_name": session.end_user_id,
+                "display_name": end_user_display_name,
             },
             "flagged": flagged,
             "tags": list(tags),
