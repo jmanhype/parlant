@@ -17,7 +17,7 @@ import uvicorn
 from parlant import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.anthropic import AnthropicService
-from parlant.adapters.nlp.google import GoogleService
+from parlant.adapters.nlp.google import GeminiService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app
@@ -191,7 +191,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
             correlator=c[ContextualCorrelator],
             nlp_services={
                 "openai": OpenAIService(LOGGER),
-                "google": GoogleService(LOGGER),
+                "gemini": GeminiService(LOGGER),
                 "anthropic": AnthropicService(LOGGER),
                 "together": TogetherService(LOGGER),
             },
@@ -363,7 +363,7 @@ def main() -> None:
     )
     @click.option(
         "--nlp-service",
-        type=click.Choice(["openai", "google", "anthropic", "together"]),
+        type=click.Choice(["openai", "gemini", "anthropic", "together"]),
         default=DEFAULT_NLP_SERVICE,
         help="NLP Provider",
     )

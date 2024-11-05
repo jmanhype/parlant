@@ -181,7 +181,7 @@ class GeminiTextEmbedding_004(GeminiEmbedder):
         return 2000000
 
 
-class GoogleService(NLPService):
+class GeminiService(NLPService):
     def __init__(
         self,
         logger: Logger,
