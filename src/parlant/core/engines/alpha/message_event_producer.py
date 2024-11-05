@@ -186,7 +186,9 @@ Always do the following:
 3. DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the user requests information you're unsure about, state that this information is not available to you. 
 """
         )
-        if not staged_events or any([event.kind == "message" for event in staged_events]):
+        if not interaction_history or all(
+            [event.kind != "message" for event in interaction_history]
+        ):
             builder.add_section(
                 """
 The interaction with the user has just began, and no messages were sent by either party.
@@ -204,8 +206,9 @@ Otherwise, follow the rest of this prompt to choose the content of your response
 
         else:
             builder.add_section("""
-Since the interaction with the user is already ongoing, always produce a reply to the user's last message. The only exception where you may not produce a reply is if the user explicitly asked you not to respond to their message.
-In all other cases, even if the user is indicating that the conversation is over, produce a reply.
+Since the interaction with the user is already ongoing, always produce a reply to the user's last message. 
+The only exception where you may not produce a reply is if the user explicitly asked you not to respond to their message.
+In all other cases, even if the user is indicating that the conversation is over, you must produce a reply.
                 """)
 
         builder.add_section(
