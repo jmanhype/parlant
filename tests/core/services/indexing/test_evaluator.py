@@ -1,12 +1,11 @@
 import asyncio
-from lagom import Container
-from pytest import raises
 
+from lagom import Container
 from parlant.core.agents import Agent
 from parlant.core.evaluations import (
     EvaluationStatus,
-    GuidelinePayload,
     EvaluationStore,
+    GuidelinePayload,
     PayloadDescriptor,
     PayloadKind,
 )
@@ -15,8 +14,12 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
+from pytest import raises
+
+from tests.test_utilities import get_when_async_done_or_timeout
 
 TIME_TO_WAIT_PER_PAYLOAD = 10
+TEST_WAIT_TIMEOUT = 30
 AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
 
 
@@ -75,9 +78,12 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -122,9 +128,12 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -147,8 +156,8 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
-        action="escalate the request to product management for special consideration",
+        predicate="A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+        action="Escalate the request to product management for special consideration",
     )
 
     evaluation_id = await evaluation_service.create_evaluation_task(
@@ -158,8 +167,8 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="any customer requests a feature not available in the current version",
-                        action="inform them about the product roadmap and upcoming features",
+                        predicate="Any customer requests a feature not available in the current version",
+                        action="Inform them that upcoming features are added only according to the roadmap",
                     ),
                     operation="add",
                     coherence_check=True,
@@ -169,9 +178,12 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -200,7 +212,7 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                 GuidelinePayload(
                     content=GuidelineContent(
                         predicate="any customer requests a feature not available in the current version",
-                        action="inform them about the product roadmap and upcoming features",
+                        action="Inform them that upcoming features are added only according to the roadmap",
                     ),
                     operation="add",
                     coherence_check=True,
@@ -222,9 +234,12 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -277,9 +292,12 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
     assert len(evaluation.invoices) == 2
@@ -459,9 +477,12 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -522,9 +543,12 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
         ],
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    evaluation = await evaluation_store.read_evaluation(evaluation_id)
+    evaluation = await get_when_async_done_or_timeout(
+        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
+        done_predicate=lambda evaluation: evaluation.status
+        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 

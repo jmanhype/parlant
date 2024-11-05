@@ -1,14 +1,15 @@
 import asyncio
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+from time import sleep
 from typing import Any, Awaitable, Callable, Generator, Iterator, Optional, TypeVar, cast
 
 from lagom import Container
-
 from parlant.adapters.nlp.openai import GPT_4o
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
+from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableId,
@@ -20,9 +21,8 @@ from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.logging import Logger
-from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.services.tools.service_registry import ServiceRegistry
-from parlant.core.sessions import Event, MessageEventData, Session, SessionStore, SessionId
+from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
 
 T = TypeVar("T")
@@ -263,3 +263,31 @@ async def post_message(
         )
 
     return event
+
+
+async def get_when_async_done_or_timeout(
+    result_getter: Callable[[], Awaitable[T]],
+    done_predicate: Callable[[T], bool],
+    timeout: int,
+) -> T:
+    for _ in range(timeout):
+        result = await result_getter()
+        if done_predicate(result):
+            return result
+        await asyncio.sleep(1)
+
+    raise TimeoutError()
+
+
+def get_when_done_or_timeout(
+    result_getter: Callable[[], T],
+    done_predicate: Callable[[T], bool],
+    timeout: int,
+) -> T:
+    for _ in range(timeout):
+        result = result_getter()
+        if done_predicate(result):
+            return result
+        sleep(1)
+
+    raise TimeoutError()

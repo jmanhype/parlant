@@ -960,7 +960,7 @@ class Interface:
             table.add_column(header, header_style="bright_green", overflow="fold")
 
         for row in data:
-            table.add_row(*list(map(str, row.values())), overflow="fold")
+            table.add_row(*list(map(str, row.values())))
 
         rich.print(table)
 

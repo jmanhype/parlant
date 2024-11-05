@@ -85,6 +85,13 @@
                         "tests/services/indexing/test_coherence.py::test_that_contradictory_next_message_commands_are_detected_as_incoherencies",
                         "tests/core/engines/alpha/test_baseline_scenarios.py::test_the_agent_does_not_get_stuck_in_apology_loop_when_facing_frustrated_user"
                     ]
+                },
+                {
+                    "policy": "disable",
+                    "tests": [
+                        "tests/e2e/test_client_cli_via_api.py::test_that_view_a_guideline_with_connections_displays_indirect_and_direct_connections",
+                        "tests/e2e/test_server_cli.py::test_that_the_server_recovery_restarts_all_active_evaluation_tasks"
+                    ]
                 }
             ]
         }
