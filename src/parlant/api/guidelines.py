@@ -71,7 +71,7 @@ class GuidelineInvoiceDTO(DefaultBaseModel):
     error: Optional[str]
 
 
-class CreateGuidelineRequest(DefaultBaseModel):
+class CreateGuidelinesRequest(DefaultBaseModel):
     invoices: Sequence[GuidelineInvoiceDTO]
 
 
@@ -236,7 +236,7 @@ def create_router(
     )
     async def create_guidelines(
         agent_id: AgentId,
-        request: CreateGuidelineRequest,
+        request: CreateGuidelinesRequest,
     ) -> CreateGuidelinesResponse:
         try:
             invoices = [_invoice_dto_to_invoice(i) for i in request.invoices]
