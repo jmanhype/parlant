@@ -7,6 +7,3 @@ class Tokenizer(ABC):
 
     @abstractmethod
     async def estimate_token_count(self, prompt: str) -> int: ...
-
-
-class EstimatingTokenizer(Tokenizer): ...

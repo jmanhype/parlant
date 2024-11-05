@@ -4,8 +4,8 @@ from together import AsyncTogether  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
+import tiktoken
 
-from parlant.adapters.nlp.hugging_face import AutoTokenizerEstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
@@ -18,6 +18,19 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
+from parlant.core.nlp.tokenizer import Tokenizer
+
+
+class LlamaEstimatingTokenizer(Tokenizer):
+    def __init__(self) -> None:
+        self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+
+    async def tokenize(self, prompt: str) -> list[int]:
+        return self.encoding.encode(prompt)
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        tokens = self.encoding.encode(prompt)
+        return len(tokens)
 
 
 class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -98,18 +111,18 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             logger=logger,
         )
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)  # noqa: F821
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
 
     @property
     def id(self) -> str:
         return self.model_name
 
-    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
-        return self._estimating_tokenizer
-
     @property
     def max_tokens(self) -> int:
         return 128000
+
+    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
+        return self._estimating_tokenizer
 
 
 class Llama3_1_70B(TogetherAISchematicGenerator[T]):
@@ -119,13 +132,13 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
             logger=logger,
         )
 
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
 
     @property
     def id(self) -> str:
         return self.model_name
 
-    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
+    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
     @property
@@ -154,11 +167,22 @@ class TogetherAIEmbedder(Embedder):
         return EmbeddingResult(vectors=vectors)
 
 
+class M2Bert32KEstimatingTokenizer(Tokenizer):
+    def __init__(self) -> None:
+        self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+
+    async def tokenize(self, prompt: str) -> list[int]:
+        return self.encoding.encode(prompt)
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        tokens = self.encoding.encode(prompt)
+        return len(tokens)
+
+
 class M2Bert32K(TogetherAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="togethercomputer/m2-bert-80M-32k-retrieval")
-
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(model_name=self.model_name)
+        self._estimating_tokenizer = M2Bert32KEstimatingTokenizer()
 
     @property
     def id(self) -> str:
@@ -167,6 +191,9 @@ class M2Bert32K(TogetherAIEmbedder):
     @property
     def max_tokens(self) -> int:
         return 32768
+
+    def get_tokenizer(self) -> M2Bert32KEstimatingTokenizer:
+        return self._estimating_tokenizer
 
 
 class TogetherService(NLPService):

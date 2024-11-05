@@ -10,7 +10,10 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
+from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
+from parlant.adapters.nlp.anthropic import AnthropicService
+from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -110,20 +113,26 @@ async def container() -> AsyncIterator[Container]:
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
     async with AsyncExitStack() as stack:
+        temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
+
         container[ServiceRegistry] = await stack.enter_async_context(
             ServiceDocumentRegistry(
                 database=container[DocumentDatabase],
                 event_emitter_factory=container[EventEmitterFactory],
                 correlator=container[ContextualCorrelator],
-                nlp_services={"openai": OpenAIService(container[Logger])},
+                nlp_services={
+                    "openai": OpenAIService(container[Logger]),
+                    "gemini": GoogleService(container[Logger]),
+                    "anthropic": AnthropicService(container[Logger], Path(temp_dir)),
+                    "together": TogetherService(container[Logger]),
+                },
             )
         )
 
-        container[NLPService] = await container[ServiceRegistry].read_nlp_service("openai")
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("together")
 
-        chroma_temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
         container[GlossaryStore] = GlossaryChromaStore(
-            ChromaDatabase(container[Logger], Path(chroma_temp_dir), EmbedderFactory(container)),
+            ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
             embedder_type=type(await container[NLPService].get_embedder()),
         )
 

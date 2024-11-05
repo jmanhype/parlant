@@ -17,7 +17,7 @@ import uvicorn
 from parlant import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.anthropic import AnthropicService
-from parlant.adapters.nlp.google import GeminiService
+from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app
@@ -191,8 +191,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
             correlator=c[ContextualCorrelator],
             nlp_services={
                 "openai": OpenAIService(LOGGER),
-                "gemini": GeminiService(LOGGER),
-                "anthropic": AnthropicService(LOGGER),
+                "gemini": GoogleService(LOGGER),
+                "anthropic": AnthropicService(LOGGER, PARLANT_HOME_DIR),
                 "together": TogetherService(LOGGER),
             },
         )
@@ -275,6 +275,7 @@ async def recover_server_tasks(
 ) -> None:
     for evaluation in await evaluation_store.list_evaluations():
         if evaluation.status in [EvaluationStatus.PENDING, EvaluationStatus.RUNNING]:
+            LOGGER.info(f"Recovering evaluation task: '{evaluation.id}'")
             await evaluator.run_evaluation(evaluation)
 
 

@@ -1,15 +1,17 @@
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any, cast
 from transformers import AutoModel, AutoTokenizer  # type: ignore
 
-from parlant.core.nlp.tokenizer import EstimatingTokenizer
+from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
 
 class HuggingFaceEmbedder(Embedder):
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, dir_path: Path) -> None:
         self.model_name = model_name
-        self._model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+        self._model = AutoModel.from_pretrained(model_name)
+        self._model.save_pretrained(dir_path)
 
     async def embed(
         self,
@@ -21,8 +23,8 @@ class HuggingFaceEmbedder(Embedder):
         return EmbeddingResult(vectors=list(embeddings))
 
 
-class AutoTokenizerEstimatingTokenizer(EstimatingTokenizer):
-    def __init__(self, model_name: str) -> None:
+class AutoTokenizerEstimatingTokenizer(Tokenizer):
+    def __init__(self, model_name: str, dir_path: Path) -> None:
         self.model_name = model_name
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -35,10 +37,10 @@ class AutoTokenizerEstimatingTokenizer(EstimatingTokenizer):
 
 
 class JinaAIEmbedder(HuggingFaceEmbedder):
-    def __init__(self) -> None:
-        super().__init__(model_name="jinaai/jina-embeddings-v2-base-en")
+    def __init__(self, dir_path: Path) -> None:
+        super().__init__(model_name="jinaai/jina-embeddings-v2-base-en", dir_path=dir_path)
 
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(self.model_name)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(self.model_name, dir_path)
 
     @property
     def id(self) -> str:
@@ -47,3 +49,6 @@ class JinaAIEmbedder(HuggingFaceEmbedder):
     @property
     def max_tokens(self) -> int:
         return 128000
+
+    def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
+        return self._estimating_tokenizer

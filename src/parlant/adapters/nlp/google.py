@@ -145,15 +145,19 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
         return 2000000
 
 
-class GeminiEmbedder(Embedder):
+class GoogleEmbedder(Embedder):
     supported_hints = ["title", "task_type"]
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
+        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"google/{self.model_name}"
+
+    def get_tokenizer(self) -> GoogleTokenizer:
+        return self._tokenizer
 
     async def embed(
         self,
@@ -172,7 +176,7 @@ class GeminiEmbedder(Embedder):
         return EmbeddingResult(vectors=vectors)
 
 
-class GeminiTextEmbedding_004(GeminiEmbedder):
+class GeminiTextEmbedding_004(GoogleEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="models/text-embedding-004")
 
@@ -181,7 +185,7 @@ class GeminiTextEmbedding_004(GeminiEmbedder):
         return 2000000
 
 
-class GeminiService(NLPService):
+class GoogleService(NLPService):
     def __init__(
         self,
         logger: Logger,

@@ -1,10 +1,10 @@
+from pathlib import Path
 import time
 from pydantic import ValidationError
 from anthropic import AsyncAnthropic  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
-
 import tiktoken
 
 from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
@@ -20,12 +20,11 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
-from parlant.core.nlp.tokenizer import EstimatingTokenizer
+from parlant.core.nlp.tokenizer import Tokenizer
 
 
-class AnthropicEstimatingTokenizer(EstimatingTokenizer):
-    def __init__(self, model_name: str) -> None:
-        self.model_name = model_name
+class AnthropicEstimatingTokenizer(Tokenizer):
+    def __init__(self) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
 
     async def tokenize(self, prompt: str) -> list[int]:
@@ -49,7 +48,7 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
 
         self._client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-        self._estimating_tokenizer = AnthropicEstimatingTokenizer(model_name=self.model_name)
+        self._estimating_tokenizer = AnthropicEstimatingTokenizer()
 
     @property
     def id(self) -> str:
@@ -127,11 +126,9 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
 
 
 class AnthropicService(NLPService):
-    def __init__(
-        self,
-        logger: Logger,
-    ) -> None:
+    def __init__(self, logger: Logger, dir_path: Path) -> None:
         self._logger = logger
+        self._dir_path = dir_path
 
     async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
         return Claude_Sonnet_3_5[t](self._logger)  # type: ignore
@@ -140,7 +137,7 @@ class AnthropicService(NLPService):
         return FallbackSchematicGenerator(Claude_Sonnet_3_5[t](self._logger), logger=self._logger)  # type: ignore
 
     async def get_embedder(self) -> Embedder:
-        return JinaAIEmbedder()
+        return JinaAIEmbedder(self._dir_path)
 
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

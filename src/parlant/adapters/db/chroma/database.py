@@ -37,7 +37,12 @@ class SimilarDocumentResult(Generic[TDocument]):
     distance: float
 
     def __hash__(self) -> int:
-        return hash(self.document.__str__())
+        return hash(str(self.document))
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, SimilarDocumentResult):
+            return bool(self.document == value.document)
+        return False
 
 
 class ChromaDatabase:

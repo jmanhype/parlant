@@ -174,17 +174,25 @@ class GlossaryChromaStore(GlossaryStore):
         return TermId(term_document["id"])
 
     async def _chunk_query(self, query: str) -> list[str]:
-        max_length = self._embedder.max_tokens // 10
+        max_length = self._embedder.max_tokens // 5
+        tokenizer = self._embedder.get_tokenizer()
 
-        list_of_lines = []
+        total_token_count = await tokenizer.estimate_token_count(query)
 
-        while len(query) > max_length:
-            line_length = query[:max_length].rfind(" ")
-            list_of_lines.append(query[: line_length if line_length != -1 else max_length])
-            query = query[line_length + 1 :]
+        words = query.split()
+        total_word_count = len(words)
 
-        list_of_lines.append(query)
-        return list_of_lines
+        tokens_per_word = total_token_count / total_word_count
+
+        words_per_chunk = max(int(max_length / tokens_per_word), 1)
+
+        chunks = []
+        for i in range(0, total_word_count, words_per_chunk):
+            chunk_words = words[i : i + words_per_chunk]
+            chunk = " ".join(chunk_words)
+            chunks.append(chunk)
+
+        return [text if await tokenizer.estimate_token_count(text) else "" for text in chunks]
 
     async def find_relevant_terms(
         self,
