@@ -516,7 +516,7 @@ Produce a valid JSON object in the following format: ###
 
         if not message_event_response.content.produced_reply:
             self._logger.debug(f"MessageEventProducer produced no reply: {message_event_response}")
-            return None
+            return message_event_response.info, None
 
         if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
             self._logger.debug(
