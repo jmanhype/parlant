@@ -1,30 +1,39 @@
 from collections.abc import Mapping
-from pathlib import Path
+import os
 from typing import Any, cast
+import torch
 from transformers import AutoModel, AutoTokenizer  # type: ignore
-
 from parlant.core.nlp.tokenizer import Tokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
 
 class HuggingFaceEmbedder(Embedder):
-    def __init__(self, model_name: str, dir_path: Path) -> None:
+    def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self._model = AutoModel.from_pretrained(model_name)
-        self._model.save_pretrained(dir_path)
+        self._model.save_pretrained(os.environ.get("PARLANT_HOME", "/tmp"))
+        self._model.eval()
+
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self._tokenizer.save_pretrained(os.environ.get("PARLANT_HOME", "/tmp"))
 
     async def embed(
         self,
         texts: list[str],
         hints: Mapping[str, Any] = {},
     ) -> EmbeddingResult:
-        embeddings = self._model.encode(texts)
+        tokenized_texts = self._tokenizer.batch_encode_plus(
+            texts, padding=True, truncation=True, return_tensors="pt"
+        )
 
-        return EmbeddingResult(vectors=list(embeddings))
+        with torch.no_grad():
+            embeddings = self._model(**tokenized_texts).last_hidden_state[:, 0, :]
+
+        return EmbeddingResult(vectors=embeddings.tolist())
 
 
 class AutoTokenizerEstimatingTokenizer(Tokenizer):
-    def __init__(self, model_name: str, dir_path: Path) -> None:
+    def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -37,10 +46,10 @@ class AutoTokenizerEstimatingTokenizer(Tokenizer):
 
 
 class JinaAIEmbedder(HuggingFaceEmbedder):
-    def __init__(self, dir_path: Path) -> None:
-        super().__init__(model_name="jinaai/jina-embeddings-v2-base-en", dir_path=dir_path)
+    def __init__(self) -> None:
+        super().__init__(model_name="jinaai/jina-embeddings-v2-base-en")
 
-        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(self.model_name, dir_path)
+        self._estimating_tokenizer = AutoTokenizerEstimatingTokenizer(self.model_name)
 
     @property
     def id(self) -> str:

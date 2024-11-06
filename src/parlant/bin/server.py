@@ -192,7 +192,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
             nlp_services={
                 "openai": OpenAIService(LOGGER),
                 "gemini": GoogleService(LOGGER),
-                "anthropic": AnthropicService(LOGGER, PARLANT_HOME_DIR),
+                "anthropic": AnthropicService(LOGGER),
                 "together": TogetherService(LOGGER),
             },
         )

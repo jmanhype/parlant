@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import AsyncExitStack
+import os
 from pathlib import Path
 import tempfile
 from typing import Any, AsyncIterator, cast
@@ -114,6 +115,7 @@ async def container() -> AsyncIterator[Container]:
 
     async with AsyncExitStack() as stack:
         temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
+        os.environ["PARLANT_HOME"] = temp_dir
 
         container[ServiceRegistry] = await stack.enter_async_context(
             ServiceDocumentRegistry(
@@ -123,13 +125,13 @@ async def container() -> AsyncIterator[Container]:
                 nlp_services={
                     "openai": OpenAIService(container[Logger]),
                     "gemini": GoogleService(container[Logger]),
-                    "anthropic": AnthropicService(container[Logger], Path(temp_dir)),
+                    "anthropic": AnthropicService(container[Logger]),
                     "together": TogetherService(container[Logger]),
                 },
             )
         )
 
-        container[NLPService] = await container[ServiceRegistry].read_nlp_service("together")
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("anthropic")
 
         container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),

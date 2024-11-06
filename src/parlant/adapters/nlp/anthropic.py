@@ -1,4 +1,3 @@
-from pathlib import Path
 import time
 from pydantic import ValidationError
 from anthropic import AsyncAnthropic  # type: ignore
@@ -126,9 +125,8 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
 
 
 class AnthropicService(NLPService):
-    def __init__(self, logger: Logger, dir_path: Path) -> None:
+    def __init__(self, logger: Logger) -> None:
         self._logger = logger
-        self._dir_path = dir_path
 
     async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
         return Claude_Sonnet_3_5[t](self._logger)  # type: ignore
@@ -137,7 +135,7 @@ class AnthropicService(NLPService):
         return FallbackSchematicGenerator(Claude_Sonnet_3_5[t](self._logger), logger=self._logger)  # type: ignore
 
     async def get_embedder(self) -> Embedder:
-        return JinaAIEmbedder(self._dir_path)
+        return JinaAIEmbedder()
 
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

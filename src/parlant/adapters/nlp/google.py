@@ -26,7 +26,7 @@ genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 class GoogleTokenizer(Tokenizer):
     def __init__(self, model_name: str) -> None:
-        self._tokenizer = tokenization.get_tokenizer_for_model(model_name)
+        self._tokenizer = tokenization.get_tokenizer_for_model("gemini-1.5-pro")
 
     async def tokenize(self, prompt: str) -> list[int]:
         return list(map(lambda i: i.token_ids, self._tokenizer.compute_tokens(prompt).tokens_info))
@@ -68,8 +68,7 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
         t_start = time.time()
         response = await self._model.generate_content_async(
             contents=prompt,
-            generation_config={"temperature": gemini_api_arguments.pop("temperature")},
-            **gemini_api_arguments,
+            generation_config=gemini_api_arguments,
         )
         t_end = time.time()
 
@@ -182,7 +181,7 @@ class GeminiTextEmbedding_004(GoogleEmbedder):
 
     @property
     def max_tokens(self) -> int:
-        return 2000000
+        return 8000
 
 
 class GoogleService(NLPService):
