@@ -131,7 +131,7 @@ async def container() -> AsyncIterator[Container]:
             )
         )
 
-        container[NLPService] = await container[ServiceRegistry].read_nlp_service("anthropic")
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("together")
 
         container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),

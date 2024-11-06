@@ -23,15 +23,15 @@ from parlant.core.nlp.tokenizer import Tokenizer
 
 
 class AnthropicEstimatingTokenizer(Tokenizer):
-    def __init__(self) -> None:
+    def __init__(self, client: AsyncAnthropic) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+        self._client = client
 
     async def tokenize(self, prompt: str) -> list[int]:
         return self.encoding.encode(prompt)
 
     async def estimate_token_count(self, prompt: str) -> int:
-        tokens = self.encoding.encode(prompt)
-        return len(tokens)
+        return await self._client.count_tokens(prompt)
 
 
 class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -47,7 +47,7 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
 
         self._client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-        self._estimating_tokenizer = AnthropicEstimatingTokenizer()
+        self._estimating_tokenizer = AnthropicEstimatingTokenizer(self._client)
 
     @property
     def id(self) -> str:

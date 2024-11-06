@@ -6,6 +6,7 @@ import jsonfinder  # type: ignore
 import os
 import tiktoken
 
+from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
@@ -30,7 +31,7 @@ class LlamaEstimatingTokenizer(Tokenizer):
 
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self.encoding.encode(prompt)
-        return len(tokens)
+        return len(tokens) + 36
 
 
 class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -146,6 +147,27 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
         return 128000
 
 
+class Llama3_1_405B(TogetherAISchematicGenerator[T]):
+    def __init__(self, logger: Logger) -> None:
+        super().__init__(
+            model_name="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            logger=logger,
+        )
+
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
+        return self._estimating_tokenizer
+
+    @property
+    def max_tokens(self) -> int:
+        return 128000
+
+
 class TogetherAIEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
@@ -204,6 +226,8 @@ class TogetherService(NLPService):
         self._logger = logger
 
     async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
+        if t == MessageEventSchema:
+            return Llama3_1_405B[t](self._logger)  # type: ignore
         return Llama3_1_70B[t](self._logger)  # type: ignore
 
     async def get_fallback_schematic_generator(self, t: type[T]) -> FallbackSchematicGenerator[T]:
