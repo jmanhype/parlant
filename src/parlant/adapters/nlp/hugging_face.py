@@ -10,7 +10,7 @@ from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 class HuggingFaceEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self._model = AutoModel.from_pretrained(model_name)
+        self._model = AutoModel.from_pretrained(model_name, attn_implementation="eager")
         self._model.save_pretrained(os.environ.get("PARLANT_HOME", "/tmp"))
         self._model.eval()
 
@@ -57,7 +57,7 @@ class JinaAIEmbedder(HuggingFaceEmbedder):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 8192
 
     def get_tokenizer(self) -> AutoTokenizerEstimatingTokenizer:
         return self._estimating_tokenizer

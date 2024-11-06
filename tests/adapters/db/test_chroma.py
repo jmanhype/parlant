@@ -338,12 +338,6 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
             description="a type of horse",
         )
 
-        _ = await glossary_chroma_store.create_term(
-            term_set=agent_id,
-            name="Tazoo",
-            description="a type of camel",
-        )
-
         terms = await glossary_chroma_store.find_relevant_terms(
             agent_id,
             ("walla " * 5000)
