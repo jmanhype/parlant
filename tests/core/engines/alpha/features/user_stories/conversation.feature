@@ -17,3 +17,17 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains a farewell
+
+    Scenario: The agent follows a guideline without necessarily adhering to it literally every time
+        Given an agent
+        And an empty session
+        And a guideline to be empathetic and inquire about the user's problem when a user is frustrated with the service
+        And a guideline to offer 20% off all products on their next purchase when a user is frustrated with the service
+        And a user message, "I'm really unhappy with the service I've been getting!"
+        And an agent message, "Hi there, I'm sorry to have caused you any frustration. First, as a token of our appreciation for your business, I'd like to offer you a 20% off all of our products on your next purchase."
+        And a user message, "I am extremely frustrated that I didn't get my item yet!"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no direct offer of a 20% discount
+
+
