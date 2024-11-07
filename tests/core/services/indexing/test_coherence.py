@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
 from dataclasses import dataclass
+from datetime import datetime, timezone
+
 from lagom import Container
 from pytest import fixture
 

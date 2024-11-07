@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from itertools import chain
 from typing import Sequence, cast
+
 from lagom import Container
 from more_itertools import unique
 from pytest import fixture
-from datetime import datetime, timezone
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.common import generate_id
@@ -16,9 +17,9 @@ from parlant.core.engines.alpha.guideline_proposer import (
 from parlant.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
-from parlant.core.logging import Logger
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineId
 from parlant.core.sessions import EventSource
+from parlant.core.logging import Logger
 
 from tests.core.engines.alpha.utils import create_event_message
 from tests.test_utilities import SyncAwaiter
