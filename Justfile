@@ -16,6 +16,9 @@ setup-cache:
 @chat *args='':
   poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
+@kill-server:
+  netstat -tulpn | grep :8000 | awk '{print $7}' | cut -d'/' -f1 | xargs kill
+
 @test *tests='':
   mkdir -p logs
   poetry run pytest -v {{tests}} --plan=initial --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log

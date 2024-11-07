@@ -1,13 +1,11 @@
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from lagom import Container
-from pytest import fixture, mark
+from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId, AgentStore
-
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.glossary import GlossaryStore
-
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     IncoherenceKind,

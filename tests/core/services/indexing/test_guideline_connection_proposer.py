@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence
 from lagom import Container
-from pytest import fixture, mark
+from pytest import fixture
+
 from parlant.core.agents import Agent, AgentId
 from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent
@@ -10,6 +11,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from parlant.core.glossary import GlossaryStore
+
 from tests.test_utilities import SyncAwaiter
 
 

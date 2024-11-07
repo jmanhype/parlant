@@ -3,7 +3,7 @@ from itertools import chain
 from typing import Sequence, cast
 from lagom import Container
 from more_itertools import unique
-from pytest import fixture, mark
+from pytest import fixture
 from datetime import datetime, timezone
 
 from parlant.core.agents import Agent, AgentId

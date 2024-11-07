@@ -4,26 +4,41 @@ Feature: Glossary
         And an agent
         And an empty session
 
-    Scenario: The agent explains an ambiguous term of token
+    Scenario: The agent explains an ambiguous term token
         Given the term "token" defined as a digital token
         And a user message, "What is a token?"
         When processing is triggered
         Then a single message event is emitted
         And the message contains an explanation of token as a digital token
+            
 
-    Scenario Outline: The agent explains an ambiguous term
-        Given the term "<TERM_NAME>" defined as <TERM_DESCRIPTION>
-        And a user message, "<USER_MESSAGE>"
+    Scenario: The agent explains an ambiguous term wallet
+        Given the term "wallet" defined as a digital wallet
+        And a user message, "What is a wallet?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains an explanation of <TERM_NAME> as <TERM_DESCRIPTION>
-        Examples:
-            | TERM_NAME   | USER_MESSAGE           | TERM_DESCRIPTION                |
-            | token       | What is a token?       | a digital token                 |
-            | wallet      | What is a wallet?      | a digital wallet                |
-            | mining      | What is mining?        | cryptocurrency mining           |
-            | private key | What is a private key? | a private key in cryptocurrency |
-            | gas         | What is gas?           | a type of fee in Ethereum       |
+        And the message contains an explanation of wallet as a digital wallet
+
+    Scenario: The agent explains an ambiguous term mining
+        Given the term "mining" defined as cryptocurrency mining
+        And a user message, "What is mining?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an explanation of mining as cryptocurrency mining
+
+    Scenario: The agent explains an ambiguous term private key
+        Given the term "private key" defined as a private key in cryptocurrency
+        And a user message, "What is a private key?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an explanation of private key as a private key in cryptocurrency
+
+    Scenario: The agent explains an ambiguous term gas
+        Given the term "gas" defined as a type of fee in Ethereum
+        And a user message, "What is gas?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an explanation of gas as a type of fee in Ethereum
 
     Scenario: The agent follows a guideline that mentions a term by name
         Given the term "walnut" defined as the name of an altcoin
