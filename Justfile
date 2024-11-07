@@ -16,18 +16,18 @@ setup-cache:
 @chat *args='':
   poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
-test: 
+@test *tests='':
   mkdir -p logs
-  poetry run pytest -v --plan=initial --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
+  poetry run pytest -v {{tests}} --plan=initial --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log
 
-test-ns: 
+@test-ns *tests='':
   mkdir -p logs
-  poetry run pytest -v --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
+  poetry run pytest -v {{tests}} --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log
 
-test-co:
+@test-co *tests='':
   mkdir -p logs
-  poetry run pytest --co -v --plan=initial --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml| tee logs/testresults.log
+  poetry run pytest -v {{tests}} --co  --plan=initial --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml| tee logs/testresults.log
 
-test-ns-co:
+@test-ns-co *tests='':
   mkdir -p logs
-  poetry run pytest --co -v --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
+  poetry run pytest -v {{tests}} --co  --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log

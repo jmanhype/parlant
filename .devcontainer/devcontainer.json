@@ -16,20 +16,21 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-azuretools.vscode-docker",
-        "ms-python.python",
-        "njpwerner.autodocstring",
-        "github.remotehub",
-        "GitHub.vscode-pull-request-github",
-        "ms-python.vscode-pylance",
-        "ms-python.debugpy",
-        "zeshuaro.vscode-python-poetry",
-        "hbenl.vscode-test-explorer",
         "alexkrechik.cucumberautocomplete",
-        "matangover.mypy",
         "charliermarsh.ruff",
+        "github.remotehub",
+        "github.vscode-github-actions",
+        "GitHub.vscode-pull-request-github",
+        "hbenl.vscode-test-explorer",
+        "matangover.mypy",
+        "ms-azuretools.vscode-docker",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "mutantdino.resourcemonitor",
+        "njpwerner.autodocstring",
         "tamasfe.even-better-toml",
-        "github.vscode-github-actions"
+        "zeshuaro.vscode-python-poetry"
       ]
     }
   },
