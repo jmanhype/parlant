@@ -19,10 +19,10 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 
 
-class AnthropicEstimatingTokenizer(Tokenizer):
+class AnthropicEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, client: AsyncAnthropic) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
         self._client = client
@@ -99,7 +99,7 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
                     schema_name=self.schema.__name__,
                     model=self.id,
                     duration=(t_end - t_start),
-                    usage_info=UsageInfo(
+                    usage=UsageInfo(
                         input_tokens=response.usage.input_tokens,
                         output_tokens=response.usage.output_tokens,
                     ),
@@ -121,7 +121,7 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 200000
+        return 200_000
 
 
 class AnthropicService(NLPService):

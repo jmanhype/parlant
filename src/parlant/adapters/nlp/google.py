@@ -4,7 +4,7 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
 from vertexai.preview import tokenization  # type: ignore
@@ -24,7 +24,7 @@ from parlant.core.nlp.generation import (
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 
-class GoogleTokenizer(Tokenizer):
+class GoogleTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self._tokenizer = tokenization.get_tokenizer_for_model("gemini-1.5-pro")
 
@@ -55,7 +55,7 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    def get_tokenizer(self) -> Tokenizer:
+    def get_tokenizer(self) -> EstimatingTokenizer:
         return self._tokenizer
 
     async def generate(
@@ -104,7 +104,7 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
                     schema_name=self.schema.__name__,
                     model=self.id,
                     duration=(t_end - t_start),
-                    usage_info=UsageInfo(
+                    usage=UsageInfo(
                         input_tokens=response.usage_metadata.prompt_token_count,
                         output_tokens=response.usage_metadata.candidates_token_count,
                         extra={
@@ -129,7 +129,7 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 1000000
+        return 1_000_000
 
 
 class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
@@ -141,7 +141,7 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 2000000
+        return 2_000_000
 
 
 class GoogleEmbedder(Embedder):

@@ -876,15 +876,15 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
 
     assert "Woof Woof" in cast(MessageEventData, reply_event.data)["message"]
 
-    inspected_messages = inspection_data["messages"]
-    assert len(inspected_messages) >= 1
+    message_generation_inspections = inspection_data["message_generations"]
+    assert len(message_generation_inspections) >= 1
 
-    assert inspected_messages[0]["generation"]["schema_name"] == "MessageEventSchema"
+    assert message_generation_inspections[0]["generation"]["schema_name"] == "MessageEventSchema"
 
     schematic_generator = await nlp_service.get_schematic_generator(MessageEventSchema)
-    assert inspected_messages[0]["generation"]["model"] == schematic_generator.id
+    assert message_generation_inspections[0]["generation"]["model"] == schematic_generator.id
 
-    assert inspected_messages[0]["generation"]["usage"]["input_tokens"] > 0
+    assert message_generation_inspections[0]["generation"]["usage"]["input_tokens"] > 0
 
-    assert "Woof Woof" in inspected_messages[0]["messages"][0]
-    assert inspected_messages[0]["generation"]["usage"]["output_tokens"] >= 2
+    assert "Woof Woof" in message_generation_inspections[0]["messages"][0]
+    assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2

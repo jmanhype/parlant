@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from lagom import Container
 from typing import Any, Sequence
 
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ class Embedder(ABC):
     def max_tokens(self) -> int: ...
 
     @abstractmethod
-    def get_tokenizer(self) -> Tokenizer: ...
+    def get_tokenizer(self) -> EstimatingTokenizer: ...
 
 
 class EmbedderFactory:

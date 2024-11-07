@@ -185,7 +185,7 @@ class PreparationIterationDTO(DefaultBaseModel):
 class ReadInteractionResponse(DefaultBaseModel):
     session_id: SessionId
     correlation_id: str
-    messages: list[MessageGenerationInspectionDTO]
+    message_generations: list[MessageGenerationInspectionDTO]
     preparation_iterations: list[PreparationIterationDTO]
 
 
@@ -198,9 +198,9 @@ def message_generation_inspection_to_dto(
             model=m.generation.model,
             duration=m.generation.duration,
             usage=UsageInfoDTO(
-                input_tokens=m.generation.usage_info.input_tokens,
-                output_tokens=m.generation.usage_info.output_tokens,
-                extra=m.generation.usage_info.extra,
+                input_tokens=m.generation.usage.input_tokens,
+                output_tokens=m.generation.usage.output_tokens,
+                extra=m.generation.usage.extra,
             ),
         ),
         messages=list(m.messages),
@@ -649,7 +649,9 @@ def create_router(
         return ReadInteractionResponse(
             session_id=session_id,
             correlation_id=correlation_id,
-            messages=[message_generation_inspection_to_dto(m) for m in inspection.messages],
+            message_generations=[
+                message_generation_inspection_to_dto(m) for m in inspection.message_generations
+            ],
             preparation_iterations=[
                 preparation_iteration_to_dto(iteration)
                 for iteration in inspection.preparation_iterations

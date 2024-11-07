@@ -11,7 +11,7 @@ from pydantic import ValidationError
 import tiktoken
 
 from parlant.core.logging import Logger
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
@@ -25,7 +25,7 @@ from parlant.core.nlp.generation import (
 from parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
-class OpenAITokenizer(Tokenizer):
+class OpenAITokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.encoding = tiktoken.encoding_for_model(model_name)
@@ -101,7 +101,7 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
                     schema_name=self.schema.__name__,
                     model=self.id,
                     duration=(t_end - t_start),
-                    usage_info=UsageInfo(
+                    usage=UsageInfo(
                         input_tokens=response.usage.prompt_tokens,
                         output_tokens=response.usage.completion_tokens,
                         extra={
@@ -146,7 +146,7 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
                         schema_name=self.schema.__name__,
                         model=self.id,
                         duration=(t_end - t_start),
-                        usage_info=UsageInfo(
+                        usage=UsageInfo(
                             input_tokens=response.usage.prompt_tokens,
                             output_tokens=response.usage.completion_tokens,
                             extra={
@@ -169,7 +169,7 @@ class GPT_4o(OpenAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 128_000
 
 
 class GPT_4o_Mini(OpenAISchematicGenerator[T]):
@@ -179,7 +179,7 @@ class GPT_4o_Mini(OpenAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 128_000
 
 
 class OpenAIEmbedder(Embedder):

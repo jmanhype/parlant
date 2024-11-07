@@ -173,7 +173,7 @@ class GlossaryChromaStore(GlossaryStore):
 
         return TermId(term_document["id"])
 
-    async def _chunk_query(self, query: str) -> list[str]:
+    async def _query_chunks(self, query: str) -> list[str]:
         max_length = self._embedder.max_tokens // 5
         tokenizer = self._embedder.get_tokenizer()
 
@@ -199,7 +199,7 @@ class GlossaryChromaStore(GlossaryStore):
         term_set: str,
         query: str,
     ) -> Sequence[Term]:
-        queries = await self._chunk_query(query)
+        queries = await self._query_chunks(query)
 
         tasks = [
             self._collection.find_similar_documents(

@@ -20,10 +20,10 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 
 
-class LlamaEstimatingTokenizer(Tokenizer):
+class LlamaEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
 
@@ -93,7 +93,7 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
                     schema_name=self.schema.__name__,
                     model=self.id,
                     duration=(t_end - t_start),
-                    usage_info=UsageInfo(
+                    usage=UsageInfo(
                         input_tokens=response.usage.prompt_tokens,
                         output_tokens=response.usage.completion_tokens,
                         extra={},
@@ -121,7 +121,7 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 128_000
 
     def get_tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
@@ -145,7 +145,7 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 128_000
 
 
 class Llama3_1_405B(TogetherAISchematicGenerator[T]):
@@ -166,7 +166,7 @@ class Llama3_1_405B(TogetherAISchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128000
+        return 128_000
 
 
 class TogetherAIEmbedder(Embedder):

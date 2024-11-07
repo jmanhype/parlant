@@ -3,11 +3,11 @@ import os
 from typing import Any, cast
 import torch
 from transformers import AutoModel, AutoTokenizer  # type: ignore
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
 
-class HuggingFaceTokenizer(Tokenizer):
+class HuggingFaceTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
 

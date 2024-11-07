@@ -330,6 +330,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
             return []
 
         self._logger.debug(f"Similar documents found: {json.dumps(docs["metadatas"][0], indent=2)}")
+
         return [
             SimilarDocumentResult(document=cast(TDocument, m), distance=d)
             for m, d in zip(docs["metadatas"][0], docs["distances"][0])

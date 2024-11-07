@@ -328,7 +328,7 @@ class AlphaEngine(Engine):
                 session_id=context.session_id,
                 correlation_id=self._correlator.correlation_id,
                 preparation_iterations=preparation_iterations,
-                messages=message_generation_inspection,
+                message_generations=message_generation_inspection,
             )
 
         except asyncio.CancelledError:

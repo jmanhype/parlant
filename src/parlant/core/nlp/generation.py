@@ -5,7 +5,7 @@ from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
-from parlant.core.nlp.tokenizer import Tokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 
 T = TypeVar("T", bound=DefaultBaseModel)
 
@@ -22,7 +22,7 @@ class GenerationInfo:
     schema_name: str
     model: str
     duration: float
-    usage_info: UsageInfo
+    usage: UsageInfo
 
 
 @dataclass(frozen=True)
@@ -48,7 +48,7 @@ class SchematicGenerator(ABC, Generic[T]):
     def max_tokens(self) -> int: ...
 
     @abstractmethod
-    def get_tokenizer(self) -> Tokenizer: ...
+    def get_tokenizer(self) -> EstimatingTokenizer: ...
 
 
 class BaseSchematicGenerator(SchematicGenerator[T]):
@@ -97,5 +97,5 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
     def max_tokens(self) -> int:
         return self._generators[0].max_tokens
 
-    def get_tokenizer(self) -> Tokenizer:
+    def get_tokenizer(self) -> EstimatingTokenizer:
         return self._generators[0].get_tokenizer()

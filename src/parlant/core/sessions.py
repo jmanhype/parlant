@@ -166,7 +166,7 @@ class PreparationIteration:
 
 @dataclass(frozen=True)
 class Inspection:
-    messages: Sequence[MessageGenerationInspection]
+    message_generations: Sequence[MessageGenerationInspection]
     preparation_iterations: Sequence[PreparationIteration]
 
 
@@ -271,7 +271,7 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         correlation_id: str,
-        messages: Sequence[MessageGenerationInspection],
+        message_generations: Sequence[MessageGenerationInspection],
         preparation_iterations: Sequence[PreparationIteration],
     ) -> Inspection: ...
 
@@ -338,7 +338,7 @@ class _InspectionDocument(TypedDict, total=False):
     version: Version.String
     session_id: SessionId
     correlation_id: str
-    messages: Sequence[_MessageGenerationInspectionDocument]
+    message_generations: Sequence[_MessageGenerationInspectionDocument]
     preparation_iterations: Sequence[_PreparationIterationDocument]
 
 
@@ -433,9 +433,9 @@ class SessionDocumentStore(SessionStore):
                 model=generation.model,
                 duration=generation.duration,
                 usage=_UsageInfoDocument(
-                    input_tokens=generation.usage_info.input_tokens,
-                    output_tokens=generation.usage_info.output_tokens,
-                    extra=generation.usage_info.extra,
+                    input_tokens=generation.usage.input_tokens,
+                    output_tokens=generation.usage.output_tokens,
+                    extra=generation.usage.extra,
                 ),
             )
 
@@ -444,11 +444,11 @@ class SessionDocumentStore(SessionStore):
             version=self.VERSION.to_string(),
             session_id=session_id,
             correlation_id=correlation_id,
-            messages=[
+            message_generations=[
                 _MessageGenerationInspectionDocument(
                     generation=serialize_generation_info(m.generation), messages=m.messages
                 )
-                for m in inspection.messages
+                for m in inspection.message_generations
             ],
             preparation_iterations=[
                 {
@@ -475,7 +475,7 @@ class SessionDocumentStore(SessionStore):
                 schema_name=generation_document["schema_name"],
                 model=generation_document["model"],
                 duration=generation_document["duration"],
-                usage_info=UsageInfo(
+                usage=UsageInfo(
                     input_tokens=generation_document["usage"]["input_tokens"],
                     output_tokens=generation_document["usage"]["output_tokens"],
                     extra=generation_document["usage"]["extra"],
@@ -483,11 +483,11 @@ class SessionDocumentStore(SessionStore):
             )
 
         return Inspection(
-            messages=[
+            message_generations=[
                 MessageGenerationInspection(
                     generation=deserialize_generation_info(m["generation"]), messages=m["messages"]
                 )
-                for m in inspection_document["messages"]
+                for m in inspection_document["message_generations"]
             ],
             preparation_iterations=[
                 PreparationIteration(
@@ -680,14 +680,14 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
         correlation_id: str,
-        messages: Sequence[MessageGenerationInspection],
+        message_generations: Sequence[MessageGenerationInspection],
         preparation_iterations: Sequence[PreparationIteration],
     ) -> Inspection:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
 
         inspection = Inspection(
-            messages=messages,
+            message_generations=message_generations,
             preparation_iterations=preparation_iterations,
         )
 

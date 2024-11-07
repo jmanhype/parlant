@@ -28,7 +28,7 @@ async def test_that_fallback_generation_uses_the_first_working_generator(
             schema_name="DummySchema",
             model="not-real-model",
             duration=1,
-            usage_info=UsageInfo(
+            usage=UsageInfo(
                 input_tokens=1,
                 output_tokens=1,
             ),
@@ -66,7 +66,7 @@ async def test_that_fallback_generation_falls_back_to_the_next_generator_when_en
             schema_name="DummySchema",
             model="not-real-model",
             duration=1,
-            usage_info=UsageInfo(
+            usage=UsageInfo(
                 input_tokens=1,
                 output_tokens=1,
             ),
