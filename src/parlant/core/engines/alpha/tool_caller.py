@@ -165,7 +165,7 @@ class ToolCaller:
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
 
-        builder.add_section(
+        builder.add_section(  # TODO Add openning paragraph
             """
 Before generating your next response, you are highly encouraged to use tools that are provided to you,
 in order to generate a high-quality, well-informed response.
