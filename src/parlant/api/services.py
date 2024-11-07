@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Union, cast
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from typing_extensions import Literal
 
 from parlant.core.common import DefaultBaseModel
@@ -104,6 +104,14 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="upsert_service",
     )
     async def create_service(name: str, request: CreateServiceRequest) -> CreateServiceResponse:
+        if request.kind == "sdk" and not (
+            request.url.startswith("http://") or request.url.startswith("https://")
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str("Request URL is missing an 'http://' or 'https://'"),
+            )
+
         service = await service_registry.update_tool_service(
             name=name,
             kind=request.kind,
