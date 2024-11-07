@@ -957,7 +957,7 @@ class Interface:
         headers = list(data[0].keys())
 
         for header in headers:
-            table.add_column(header, header_style="bright_green")
+            table.add_column(header, header_style="bright_green", overflow="fold")
 
         for row in data:
             table.add_row(*list(map(str, row.values())))

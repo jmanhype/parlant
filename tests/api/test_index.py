@@ -1,16 +1,18 @@
 import asyncio
-from fastapi.testclient import TestClient
-from fastapi import status
-from lagom import Container
 
+from fastapi import status
+from fastapi.testclient import TestClient
+from lagom import Container
 from parlant.core.agents import AgentId
 from parlant.core.evaluations import EvaluationStore
 from parlant.core.guidelines import GuidelineStore
 
 from tests.core.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
+    TEST_WAIT_TIMEOUT,
     TIME_TO_WAIT_PER_PAYLOAD,
 )
+from tests.test_utilities import get_when_done_or_timeout
 
 
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(
@@ -175,12 +177,15 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
-
     assert len(content["invoices"]) == 2
     first_invoice = content["invoices"][0]
 
@@ -224,9 +229,15 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 1
     invoice = content["invoices"][0]
@@ -283,9 +294,13 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
 
@@ -483,11 +498,16 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
+
     assert len(content["invoices"]) == 2
 
     for invoice in content["invoices"]:
@@ -531,9 +551,14 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
     assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 2
@@ -592,9 +617,14 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
     assert content["status"] == "completed"
 
     assert len(content["invoices"]) == 3
@@ -644,15 +674,19 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    agent_name = content = client.get(f"/agents/{agent_id}").raise_for_status().json()["name"]
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "failed"
+
     assert (
         content["error"]
-        == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} in {agent_name} agent do not exist."
+        == f"Guideline ID(s): {', '.join([non_existent_guideline_id])} in '{agent_id}' agent do not exist."
     )
 
 
@@ -689,9 +723,13 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
 
@@ -741,9 +779,13 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
 
@@ -789,9 +831,13 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
 
@@ -849,9 +895,13 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
-
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
     assert content["status"] == "completed"
 
@@ -924,9 +974,14 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
         .json()["evaluation_id"]
     )
 
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD * 2)
+    content = get_when_done_or_timeout(
+        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        .raise_for_status()
+        .json(),
+        done_predicate=lambda content: content["status"] in ["completed", "failed"],
+        timeout=TEST_WAIT_TIMEOUT,
+    )
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
     assert content["status"] == "completed"
 
     invoices = content["invoices"]

@@ -111,7 +111,7 @@ The following is a description of your identity: ###
                     data = {
                         "participant": message_data["participant"]["display_name"],
                         "message": "<N/A>",
-                        "censured": True,
+                        "censored": True,
                         "reasons": message_data["tags"],
                     }
                 else:

@@ -66,34 +66,16 @@ jobs:
         echo plan=$PLAN >> $GITHUB_OUTPUT
         echo "Using plan '$PLAN' for ${{ github.event_name }} to ${{ github.base_ref }}"
 
-    - name: Test server
+    - name: Test Parlant
       if: always()
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        cd server
         mkdir logs
         poetry run pytest -v \
           --plan=${{ steps.test_plan.outputs.plan }} \
           --tap-combined \
           --tap-outdir=logs \
-          --capture=tee-sys \
-          --junit-xml=logs/testresults.xml \
-          | tee logs/testresults.log
-        exit ${PIPESTATUS[0]}
-    
-    - name: Test sdk
-      if: always()
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      run: |
-        cd sdk
-        mkdir logs
-        poetry run pytest -v \
-          --plan=${{ steps.test_plan.outputs.plan }} \
-          --tap-combined \
-          --tap-outdir=logs \
-          --capture=tee-sys \
           --junit-xml=logs/testresults.xml \
           | tee logs/testresults.log
         exit ${PIPESTATUS[0]}
@@ -102,12 +84,9 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: server_testresults
+        name: testresults
         path: |
-          server/logs/testresults.tap
-          server/logs/testresults.log
-          server/logs/testresults.xml
-          sdk/logs/testresults.tap
-          sdk/logs/testresults.log
-          sdk/logs/testresults.xml
+          logs/testresults.tap
+          logs/testresults.log
+          logs/testresults.xml
           

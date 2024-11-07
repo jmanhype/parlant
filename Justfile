@@ -19,10 +19,18 @@ setup-cache:
 @validate *args: setup-cache
   PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server check {{args}}
 
-test-ci-initial-server:
+test: 
   mkdir -p logs
   poetry run pytest -v --plan=initial --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
-  EXIT1=${PIPESTATUS[0]}
-  echo $EXIT1
 
-test: test-ci-initial-server
+test-ns: 
+  mkdir -p logs
+  poetry run pytest -v --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
+
+test-co:
+  mkdir -p logs
+  poetry run pytest --co -v --plan=initial --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml| tee logs/testresults.log
+
+test-ns-co:
+  mkdir -p logs
+  poetry run pytest --co -v --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log

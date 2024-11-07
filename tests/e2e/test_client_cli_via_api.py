@@ -268,11 +268,11 @@ class API:
     @staticmethod
     async def read_term(
         agent_id: str,
-        term_name: str,
+        term_id: str,
     ) -> Any:
         async with API.make_client() as client:
             response = await client.get(
-                f"/agents/{agent_id}/terms/{term_name}",
+                f"/agents/{agent_id}/terms/{term_id}",
             )
             response.raise_for_status()
 
@@ -632,10 +632,10 @@ async def test_that_a_term_can_be_created_without_synonyms(
             description,
         ) == os.EX_OK
 
-        term = await API.read_term(agent_id, term_name)
-        assert term["name"] == term_name
-        assert term["description"] == description
-        assert term["synonyms"] == []
+        terms = await API.list_terms(agent_id)
+        assert any(t["name"] == term_name for t in terms)
+        assert any(t["description"] == description for t in terms)
+        assert any(t["synonyms"] == [] for t in terms)
 
 
 async def test_that_terms_can_be_listed(
@@ -678,7 +678,7 @@ async def test_that_a_term_can_be_deleted(
 
         agent_id = await API.get_first_agent_id()
 
-        _ = await API.create_term(agent_id, name, description, synonyms)
+        term = await API.create_term(agent_id, name, description, synonyms)
 
         assert (
             await run_cli_and_get_exit_status(
@@ -686,7 +686,7 @@ async def test_that_a_term_can_be_deleted(
                 "remove",
                 "--agent-id",
                 agent_id,
-                name,
+                term["id"],
             )
             == os.EX_OK
         )
@@ -706,14 +706,14 @@ async def test_that_terms_are_loaded_on_server_startup(
 
         agent_id = await API.get_first_agent_id()
 
-        _ = await API.create_term(agent_id, name, description)
+        term = await API.create_term(agent_id, name, description)
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         agent_id = await API.get_first_agent_id()
 
-        term = await API.read_term(agent_id, name)
+        term = await API.read_term(agent_id, term["id"])
         assert term["name"] == name
         assert term["description"] == description
         assert term["synonyms"] == []
