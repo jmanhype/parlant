@@ -375,6 +375,26 @@ class Actions:
         return cast(TermDTO, response.json()["term"])
 
     @staticmethod
+    def patch_term(
+        ctx: click.Context,
+        agent_id: str,
+        term_id: str,
+        description: str,
+        synonyms: Optional[str],
+    ) -> TermDTO:
+        response = requests.patch(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{term_id}"),
+            json={
+                "description": description,
+                **({"synonyms": synonyms.split(",")} if synonyms else {}),
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(TermDTO, response.json()["term"])
+
+    @staticmethod
     def remove_term(
         ctx: click.Context,
         agent_id: str,
@@ -1020,7 +1040,7 @@ class Interface:
         return str(agents[0]["id"])
 
     @staticmethod
-    def patch_agent(
+    def update_agent(
         ctx: click.Context,
         agent_id: str,
         description: Optional[str],
@@ -1269,6 +1289,18 @@ class Interface:
     ) -> None:
         term = Actions.create_term(ctx, agent_id, name, description, synonyms)
         Interface._write_success(f"Added term (id={term['id']})")
+        Interface._print_table([term])
+
+    @staticmethod
+    def update_term(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: Optional[str],
+    ) -> None:
+        term = Actions.patch_term(ctx, agent_id, name, description, synonyms)
+        Interface._write_success(f"Updated term (id={term['id']})")
         Interface._print_table([term])
 
     @staticmethod
@@ -1941,7 +1973,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.patch_agent(ctx, agent_id, description, max_engine_iterations)
+        Interface.update_agent(ctx, agent_id, description, max_engine_iterations)
 
     @agent.command(
         "chat",
@@ -1954,6 +1986,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
+
         Interface.chat(ctx, session["id"])
 
     @cli.group(help="Manage sessions")
@@ -2075,7 +2108,45 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.create_term(ctx, agent_id, name, description, synonyms)
+
+    @glossary.command("update", help="Update an existing term")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("name", type=str)
+    @click.option(
+        "-d",
+        "--description",
+        type=str,
+        help="Term description",
+        required=False,
+    )
+    @click.option(
+        "-s",
+        "--synonyms",
+        type=str,
+        help="Comma-separated list of synonyms",
+        required=False,
+    )
+    @click.pass_context
+    def glossary_update(
+        ctx: click.Context,
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.update_term(ctx, agent_id, name, description, synonyms)
 
     @glossary.command("remove", help="Remove a term from the glossary")
     @click.option(
@@ -2095,6 +2166,7 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.remove_term(ctx, agent_id, term_id)
 
     @glossary.command("list", help="List all terms in the glossary")
@@ -2113,6 +2185,7 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.list_terms(ctx, agent_id)
 
     @cli.group(help="Manage an agent's guidelines")
