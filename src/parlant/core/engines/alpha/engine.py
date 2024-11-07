@@ -90,7 +90,8 @@ class AlphaEngine(Engine):
 
         try:
             with self._correlator.correlation_scope(generate_id()):
-                await self._do_process(context, interaction_state, event_emitter)
+                with self._logger.operation(f"Processing context for session {context.session_id}"):
+                    await self._do_process(context, interaction_state, event_emitter)
             return True
         except asyncio.CancelledError:
             return False

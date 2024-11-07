@@ -85,7 +85,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from parlant.core.logging import FileLogger, Logger
+from parlant.core.logging import FileLogger, LogLevel, Logger
 from parlant.core.application import Application
 
 DEFAULT_PORT = 8000
@@ -102,7 +102,7 @@ sys.path.append(PARLANT_HOME_DIR.as_posix())
 
 
 CORRELATOR = ContextualCorrelator()
-LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR)
+LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
 
 LOGGER.info(f"Parlant server version {VERSION}")
 LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")

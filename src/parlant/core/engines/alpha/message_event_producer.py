@@ -85,7 +85,7 @@ class MessageEventProducer:
             ):
                 # No interaction and no guidelines that could trigger
                 # a proactive start of the interaction
-                self._logger.debug(
+                self._logger.info(
                     "Skipping response; interaction is empty and there are no guidelines"
                 )
                 return []
@@ -145,7 +145,7 @@ class MessageEventProducer:
 
                         return [event]
                     else:
-                        self._logger.debug("Skipping response; no response deemed necessary")
+                        self._logger.info("Skipping response; no response deemed necessary")
                         return []
                 except Exception as exc:
                     self._logger.warning(
@@ -551,6 +551,8 @@ Produce a valid JSON object in the following format: ###
             and not final_revision.guidelines_broken_only_due_to_prioritization
             and not final_revision.is_repeat_message
         ):
-            self._logger.warning(f"PROBLEMATIC RESPONSE: {final_revision.content}")
+            self._logger.warning(
+                f"PROBLEMATIC MESSAGE EVENT PRODUCER RESPONSE: {final_revision.content}"
+            )
 
         return str(final_revision.content)
