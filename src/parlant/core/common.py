@@ -1,10 +1,25 @@
 from __future__ import annotations
 import asyncio
-from typing import Awaitable, Callable, Mapping, NewType, Optional, Sequence, TypeAlias, Union
+from typing import Any, Awaitable, Callable, Mapping, NewType, Optional, Sequence, TypeAlias, Union
 import hashlib
 import nanoid  # type: ignore
 from pydantic import BaseModel, ConfigDict
 import semver  # type: ignore
+
+
+def _without_dto_suffix(obj: Any, *args: Any) -> str:
+    if isinstance(obj, str):
+        name = obj
+        if name.endswith("DTO"):
+            return name[:-3]
+        return name
+    if isinstance(obj, type):
+        name = obj.__name__
+        if name.endswith("DTO"):
+            return name[:-3]
+        return name
+    else:
+        raise Exception("Invalid input to _without_dto_suffix()")
 
 
 class DefaultBaseModel(BaseModel):
@@ -15,6 +30,7 @@ class DefaultBaseModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         validate_default=True,
+        model_title_generator=_without_dto_suffix,
     )
 
 
