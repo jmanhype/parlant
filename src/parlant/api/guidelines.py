@@ -125,8 +125,8 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
 
     payload = GuidelinePayload(
         content=GuidelineContent(
-            predicate=dto.payload.content["predicate"],
-            action=dto.payload.content["action"],
+            predicate=dto.payload.content.predicate,
+            action=dto.payload.content.action,
         ),
         operation=dto.payload.operation,
         coherence_check=dto.payload.coherence_check,

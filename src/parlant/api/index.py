@@ -50,8 +50,8 @@ def _payload_from_dto(dto: PayloadDTO) -> Payload:
     return {
         PayloadKindDTO.GUIDELINE: GuidelinePayload(
             content=GuidelineContent(
-                predicate=dto.content["predicate"],
-                action=dto.content["action"],
+                predicate=dto.content.predicate,
+                action=dto.content.action,
             ),
             operation=dto.operation,
             updated_id=dto.updated_id,

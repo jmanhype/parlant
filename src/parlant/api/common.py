@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal, Optional, TypeAlias, TypedDict, Union, cast
+from typing import Literal, Optional, TypeAlias, Union, cast
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.evaluations import (
@@ -26,7 +26,7 @@ class PayloadKindDTO(Enum):
     GUIDELINE = "guideline"
 
 
-class GuidelineContentDTO(TypedDict):
+class GuidelineContentDTO(DefaultBaseModel):
     predicate: str
     action: str
 
