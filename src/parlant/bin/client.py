@@ -210,9 +210,7 @@ def set_exit_status(status: int) -> None:
 
 class Actions:
     @staticmethod
-    def raise_for_status_with_detail(
-        response: requests.Response,
-    ) -> requests.HTTPError:
+    def raise_for_status_with_detail(response: requests.Response) -> Optional[requests.HTTPError]:
         """Raises :class:`HTTPError`, if one occurred, with detail if exists"""
 
         http_error_msg = ""
@@ -234,8 +232,10 @@ class Actions:
                 f"{response.status_code} Server Error: {reason} for url: {response.url}"
                 + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
             )
+        if http_error_msg:
+            raise requests.HTTPError(http_error_msg, response=response)
 
-        raise requests.HTTPError(http_error_msg, response=response)
+        return None
 
     @staticmethod
     def create_agent(
@@ -960,6 +960,8 @@ class Actions:
             urljoin(ctx.obj.server_address, f"/services/{name}"),
             json=payload,
         )
+
+        response.raise_for_status()
 
         Actions.raise_for_status_with_detail(response)
 
