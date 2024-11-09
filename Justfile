@@ -16,9 +16,6 @@ setup-cache:
 @chat *args='':
   poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
-@validate *args: setup-cache
-  PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server check {{args}}
-
 test: 
   mkdir -p logs
   poetry run pytest -v --plan=initial --tap-combined --tap-outdir=logs --capture=tee-sys --junit-xml=logs/testresults.xml | tee logs/testresults.log
