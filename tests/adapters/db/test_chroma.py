@@ -317,7 +317,6 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
         glossary_chroma_store = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
             embedder_type=type(await container[NLPService].get_embedder()),
-            n_results=3,
         )
 
         bazoo = await glossary_chroma_store.create_term(
@@ -346,6 +345,7 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
             + "Shazoo"
             + ("kalla " * 5000)
             + "Bazoo",
+            max_terms=3,
         )
 
         assert len(terms) == 3

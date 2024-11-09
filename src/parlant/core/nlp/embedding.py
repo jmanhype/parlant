@@ -29,8 +29,9 @@ class Embedder(ABC):
     @abstractmethod
     def max_tokens(self) -> int: ...
 
+    @property
     @abstractmethod
-    def get_tokenizer(self) -> EstimatingTokenizer: ...
+    def tokenizer(self) -> EstimatingTokenizer: ...
 
 
 class EmbedderFactory:

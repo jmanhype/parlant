@@ -50,7 +50,8 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     def id(self) -> str:
         return f"anthropic/{self.model_name}"
 
-    def get_tokenizer(self) -> AnthropicEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> AnthropicEstimatingTokenizer:
         return self._estimating_tokenizer
 
     async def generate(

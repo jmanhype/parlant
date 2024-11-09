@@ -4,6 +4,7 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
+
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -52,7 +53,8 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    def get_tokenizer(self) -> EstimatingTokenizer:
+    @property
+    def tokenizer(self) -> EstimatingTokenizer:
         return self._tokenizer
 
     async def generate(
@@ -152,7 +154,8 @@ class GoogleEmbedder(Embedder):
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    def get_tokenizer(self) -> GoogleEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> GoogleEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(

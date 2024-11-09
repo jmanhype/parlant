@@ -120,7 +120,8 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
     def max_tokens(self) -> int:
         return 128_000
 
-    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
 
@@ -137,7 +138,8 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
     def id(self) -> str:
         return self.model_name
 
-    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
     @property
@@ -158,7 +160,8 @@ class Llama3_1_405B(TogetherAISchematicGenerator[T]):
     def id(self) -> str:
         return self.model_name
 
-    def get_tokenizer(self) -> LlamaEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
     @property
@@ -200,7 +203,8 @@ class M2Bert32K(TogetherAIEmbedder):
     def max_tokens(self) -> int:
         return 32768
 
-    def get_tokenizer(self) -> HuggingFaceEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._estimating_tokenizer
 
 

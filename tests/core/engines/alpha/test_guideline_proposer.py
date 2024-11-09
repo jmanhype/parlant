@@ -68,7 +68,7 @@ def propose_guidelines(
         for i, (source, message) in enumerate(conversation_context)
     ]
 
-    guideline_propositions = context.sync_await(
+    _, guideline_propositions = context.sync_await(
         guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=context.guidelines,

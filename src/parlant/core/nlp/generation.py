@@ -47,8 +47,9 @@ class SchematicGenerator(ABC, Generic[T]):
     @abstractmethod
     def max_tokens(self) -> int: ...
 
+    @property
     @abstractmethod
-    def get_tokenizer(self) -> EstimatingTokenizer: ...
+    def tokenizer(self) -> EstimatingTokenizer: ...
 
 
 class BaseSchematicGenerator(SchematicGenerator[T]):
@@ -94,8 +95,9 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         return self._generators[0].id
 
     @property
+    def tokenizer(self) -> EstimatingTokenizer:
+        return self._generators[0].tokenizer
+
+    @property
     def max_tokens(self) -> int:
         return self._generators[0].max_tokens
-
-    def get_tokenizer(self) -> EstimatingTokenizer:
-        return self._generators[0].get_tokenizer()

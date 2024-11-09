@@ -18,6 +18,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from parlant.core.glossary import Term, GlossaryStore
+from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import (
     ContextVariable as StoredContextVariable,
@@ -170,6 +171,7 @@ class AlphaEngine(Engine):
 
             while not prepared_to_respond:
                 (
+                    guideline_proposition_generations,
                     ordinary_guideline_propositions,
                     tool_enabled_guideline_propositions,
                 ) = await self._load_guideline_propositions(
@@ -261,7 +263,8 @@ class AlphaEngine(Engine):
                             for variable, value in context_variables
                         ],
                         generations={
-                            tool_event_generation_result.generation_info.schema_name: tool_event_generation_result.generation_info
+                            **({g.schema_name: g for g in guideline_proposition_generations}),
+                            tool_event_generation_result.generation_info.schema_name: tool_event_generation_result.generation_info,
                         }
                         if tool_event_generation_result
                         else {},
@@ -300,9 +303,9 @@ class AlphaEngine(Engine):
                             },
                         )
 
-            message_generation_inspection = []
+            message_generation_inspections = []
 
-            for r in await self._message_event_generator.generate_events(
+            for event_generation_result in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
                 agents=[agent],
                 context_variables=context_variables,
@@ -312,14 +315,14 @@ class AlphaEngine(Engine):
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                 staged_events=all_tool_events,
             ):
-                message_generation_inspection.append(
+                message_generation_inspections.append(
                     MessageGenerationInspection(
-                        generation=r.generation_info,
+                        generation=event_generation_result.generation_info,
                         messages=[
                             e.data["message"]
                             if e and e.kind == "message" and isinstance(e.data, dict)
                             else None
-                            for e in r.events
+                            for e in event_generation_result.events
                         ],
                     )
                 )
@@ -328,7 +331,7 @@ class AlphaEngine(Engine):
                 session_id=context.session_id,
                 correlation_id=self._correlator.correlation_id,
                 preparation_iterations=preparation_iterations,
-                message_generations=message_generation_inspection,
+                message_generations=message_generation_inspections,
             )
 
         except asyncio.CancelledError:
@@ -384,8 +387,12 @@ class AlphaEngine(Engine):
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> tuple[Sequence[GuidelineProposition], Mapping[GuidelineProposition, Sequence[ToolId]]]:
-        all_relevant_guidelines = await self._fetch_guideline_propositions(
+    ) -> tuple[
+        Sequence[GenerationInfo],
+        Sequence[GuidelineProposition],
+        Mapping[GuidelineProposition, Sequence[ToolId]],
+    ]:
+        generations, all_relevant_guidelines = await self._fetch_guideline_propositions(
             agents=agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -401,7 +408,7 @@ class AlphaEngine(Engine):
             set(all_relevant_guidelines).difference(tool_enabled_guidelines),
         )
 
-        return ordinary_guidelines, tool_enabled_guidelines
+        return generations, ordinary_guidelines, tool_enabled_guidelines
 
     async def _fetch_guideline_propositions(
         self,
@@ -410,14 +417,14 @@ class AlphaEngine(Engine):
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[GuidelineProposition]:
+    ) -> tuple[Sequence[GenerationInfo], Sequence[GuidelineProposition]]:
         assert len(agents) == 1
 
         all_possible_guidelines = await self._guideline_store.list_guidelines(
             guideline_set=agents[0].id,
         )
 
-        direct_propositions = await self._guideline_proposer.propose_guidelines(
+        generations, direct_propositions = await self._guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=list(all_possible_guidelines),
             context_variables=context_variables,
@@ -431,7 +438,7 @@ class AlphaEngine(Engine):
             propositions=direct_propositions,
         )
 
-        return [*direct_propositions, *inferred_propositions]
+        return generations, [*direct_propositions, *inferred_propositions]
 
     async def _propose_connected_guidelines(
         self,

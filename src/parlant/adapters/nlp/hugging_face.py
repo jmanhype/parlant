@@ -3,6 +3,7 @@ import os
 from typing import Any
 import torch
 from transformers import AutoModel, AutoTokenizer  # type: ignore
+
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
@@ -59,7 +60,8 @@ class HuggingFaceEmbedder(Embedder):
     def max_tokens(self) -> int:
         return 8192
 
-    def get_tokenizer(self) -> HuggingFaceEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(

@@ -1,13 +1,13 @@
 import asyncio
 from dataclasses import dataclass
-from itertools import groupby
+from itertools import chain, groupby
 import json
 import math
 from typing import Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
 from parlant.core.glossary import Term
@@ -55,9 +55,9 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[GuidelineProposition]:
+    ) -> tuple[Sequence[GenerationInfo], Sequence[GuidelineProposition]]:
         if not guidelines:
-            return []
+            return [], []
 
         guidelines_grouped_by_predicate = {
             predicate: list(guidelines)
@@ -89,7 +89,8 @@ class GuidelineProposer:
                 for batch in batches
             ]
 
-            predicate_evaluations = sum(await asyncio.gather(*batch_tasks), [])
+            generations, predicate_evaluations_lists = zip(*(await asyncio.gather(*batch_tasks)))
+            predicate_evaluations = list(chain.from_iterable(predicate_evaluations_lists))
 
             guideline_propositions = []
 
@@ -101,7 +102,7 @@ class GuidelineProposer:
                     for g in guidelines_grouped_by_predicate[evaluation.predicate]
                 ]
 
-            return guideline_propositions
+            return list(generations), guideline_propositions
 
     def _get_optimal_batch_size(self, predicates: list[str]) -> int:
         predicate_count = len(predicates)
@@ -139,7 +140,7 @@ class GuidelineProposer:
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
         batch: Sequence[str],
-    ) -> list[PredicateApplicabilityEvaluation]:
+    ) -> tuple[GenerationInfo, list[PredicateApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
             context_variables=context_variables,
@@ -150,14 +151,14 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(f"Predicate evaluation batch ({len(batch)} predicates)"):
-            propositions_json = await self._schematic_generator.generate(
+            propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
             )
 
         propositions = []
 
-        for proposition in propositions_json.content.checks:
+        for proposition in propositions_generation_response.content.checks:
             predicate = batch[int(proposition.predicate_number) - 1]
 
             self._logger.debug(
@@ -177,7 +178,7 @@ class GuidelineProposer:
                     )
                 )
 
-        return propositions
+        return propositions_generation_response.info, propositions
 
     def _format_prompt(
         self,

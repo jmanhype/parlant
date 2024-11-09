@@ -55,7 +55,8 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
-    def get_tokenizer(self) -> OpenAIEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
     async def generate(
@@ -191,7 +192,8 @@ class OpenAIEmbedder(Embedder):
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
-    def get_tokenizer(self) -> OpenAIEstimatingTokenizer:
+    @property
+    def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(
