@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import enum
 import inspect
 import json
 import dateutil.parser
@@ -97,7 +98,8 @@ class _ToolDecoratorParams(TypedDict, total=False):
     consequential: bool
 
 
-_ToolParameterType = Union[str, int, float, bool]
+_ToolParameterType = Union[str, int, float, bool, enum.Enum]
+_EnumParameterType = Union[str, int, float, bool]
 
 
 class _ResolvedToolParameterTyped(NamedTuple):
@@ -143,9 +145,17 @@ def _tool_decorator_impl(
         for param in parameters[1:]:
             param_type = _resolve_param_type(param)
 
-            assert (
-                param_type.t in get_args(_ToolParameterType)
-            ), f"{param.name}: {param_type.t.__name__}: parameter type must be in {[t.__name__ for t in get_args(_ToolParameterType)]}"
+            if param_type.t not in get_args(_ToolParameterType) and not issubclass(
+                param_type.t, enum.Enum
+            ):
+                raise AssertionError(
+                    f"{param.name}: {param_type.t.__name__}: parameter type must be in {[t.__name__ for t in get_args(_ToolParameterType)]} or be a valid Enum type"
+                )
+
+            if issubclass(param_type.t, enum.Enum):
+                assert all(
+                    type(e.value) in get_args(_EnumParameterType) for e in param_type.t
+                ), f"{param.name}: {param_type.t.__name__}: Enum values must be in {[t.__name__ for t in get_args(_EnumParameterType)]}"
 
     def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameter]:
         type_to_param_type: dict[type[_ToolParameterType], ToolParameterType] = {
@@ -157,7 +167,23 @@ def _tool_decorator_impl(
 
         parameters = list(inspect.signature(func).parameters.values())
         parameters = parameters[1:]  # Skip tool context parameter
-        return {p.name: {"type": type_to_param_type[_resolve_param_type(p).t]} for p in parameters}
+
+        param_descriptions = {}
+
+        for p in parameters:
+            param_type_info = _resolve_param_type(p)
+            param_type = param_type_info.t
+
+            if param_type in type_to_param_type:
+                tool_param = ToolParameter(type=type_to_param_type[param_type])
+            elif issubclass(param_type, enum.Enum):
+                tool_param = ToolParameter(type="string", enum=[e.value for e in param_type])
+            else:
+                raise ValueError(f"Unsupported parameter type: {param_type}")
+
+            param_descriptions[p.name] = tool_param
+
+        return param_descriptions
 
     def _find_required_params(func: ToolFunction) -> list[str]:
         parameters = list(inspect.signature(func).parameters.values())
@@ -369,7 +395,14 @@ class PluginServer:
                 emit_status=emit_status,
             )
 
-            result = self.tools[name].function(context, **request.arguments)  # type: ignore
+            func = self.tools[name].function
+            func_params = inspect.signature(func).parameters
+            converted_arguments = {
+                param_name: func_params[param_name].annotation(arg_value)
+                for param_name, arg_value in request.arguments.items()
+            }
+
+            result = self.tools[name].function(context, **converted_arguments)  # type: ignore
 
             result_future: asyncio.Future[ToolResult]
 

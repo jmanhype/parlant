@@ -1,3 +1,4 @@
+import enum
 from typing import Literal
 
 from parlant.core.tools import ToolResult
@@ -68,3 +69,17 @@ def check_fruit_price(fruit: str) -> ToolResult:
 
 def check_vegetable_price(vegetable: str) -> ToolResult:
     return ToolResult(f"1 kg of {vegetable} costs 3$")
+
+
+class ProductCategory(enum.Enum):
+    LAPTOPS = "laptops"
+    PERIPHERALS = "peripherals"
+
+
+def available_products_by_category(category: ProductCategory) -> ToolResult:
+    products_by_category = {
+        ProductCategory.LAPTOPS: ["amd", "nvidia"],
+        ProductCategory.PERIPHERALS: ["razer", "logitech"],
+    }
+
+    return ToolResult(products_by_category[category])

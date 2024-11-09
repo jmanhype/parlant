@@ -25,6 +25,7 @@ ToolParameterType = Literal[
     "number",
     "integer",
     "boolean",
+    "enum",
 ]
 
 
@@ -232,12 +233,17 @@ class LocalToolService(ToolService):
         try:
             local_tool = self._local_tools_by_name[name]
             module = importlib.import_module(local_tool.module_path)
-            func = getattr(module, local_tool.name)
+            func = getattr(module, local_tool.name) 
         except Exception as e:
             raise ToolImportError(name) from e
 
         try:
-            result: ToolResult = func(**arguments)
+            func_params = inspect.signature(func).parameters
+            converted_arguments = {
+                param_name: func_params[param_name].annotation(arg_value)
+                for param_name, arg_value in arguments.items()
+            }
+            result: ToolResult = func(**converted_arguments)
 
             if inspect.isawaitable(result):
                 result = await result
