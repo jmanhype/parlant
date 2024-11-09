@@ -156,12 +156,18 @@ class MessageGenerationInspection:
 
 
 @dataclass(frozen=True)
+class PreparationIterationGenerations:
+    guideline_proposition: Sequence[GenerationInfo]
+    tool_calls: Sequence[GenerationInfo]
+
+
+@dataclass(frozen=True)
 class PreparationIteration:
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
     terms: Sequence[Term]
     context_variables: Sequence[ContextVariable]
-    generations: Mapping[str, GenerationInfo]
+    generations: PreparationIterationGenerations
 
 
 @dataclass(frozen=True)
@@ -320,6 +326,11 @@ class _GenerationInfoDocument(TypedDict):
     usage: _UsageInfoDocument
 
 
+class _PreparationIterationGenerationsDocument(TypedDict):
+    guideline_proposition: Sequence[_GenerationInfoDocument]
+    tool_calls: Sequence[_GenerationInfoDocument]
+
+
 class _MessageGenerationInspectionDocument(TypedDict):
     generation: _GenerationInfoDocument
     messages: Sequence[Optional[str]]
@@ -330,7 +341,7 @@ class _PreparationIterationDocument(TypedDict):
     tool_calls: Sequence[ToolCall]
     terms: Sequence[Term]
     context_variables: Sequence[ContextVariable]
-    generations: Mapping[str, _GenerationInfoDocument]
+    generations: _PreparationIterationGenerationsDocument
 
 
 class _InspectionDocument(TypedDict, total=False):
@@ -456,9 +467,13 @@ class SessionDocumentStore(SessionStore):
                     "tool_calls": i.tool_calls,
                     "terms": i.terms,
                     "context_variables": i.context_variables,
-                    "generations": {
-                        k: serialize_generation_info(g) for k, g in i.generations.items()
-                    },
+                    "generations": _PreparationIterationGenerationsDocument(
+                        guideline_proposition=[
+                            serialize_generation_info(g)
+                            for g in i.generations.guideline_proposition
+                        ],
+                        tool_calls=[serialize_generation_info(g) for g in i.generations.tool_calls],
+                    ),
                 }
                 for i in inspection.preparation_iterations
             ],
@@ -495,9 +510,15 @@ class SessionDocumentStore(SessionStore):
                     tool_calls=i["tool_calls"],
                     terms=i["terms"],
                     context_variables=i["context_variables"],
-                    generations={
-                        k: deserialize_generation_info(g) for k, g in i["generations"].items()
-                    },
+                    generations=PreparationIterationGenerations(
+                        guideline_proposition=[
+                            deserialize_generation_info(g)
+                            for g in i["generations"]["guideline_proposition"]
+                        ],
+                        tool_calls=[
+                            deserialize_generation_info(g) for g in i["generations"]["tool_calls"]
+                        ],
+                    ),
                 )
                 for i in inspection_document["preparation_iterations"]
             ],

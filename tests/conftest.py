@@ -146,7 +146,7 @@ async def container() -> AsyncIterator[Container]:
         ].get_schematic_generator(MessageEventSchema)
         container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
             NLPService
-        ].get_fallback_schematic_generator(ToolCallInferenceSchema)
+        ].get_schematic_generator(ToolCallInferenceSchema)
         container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
             NLPService
         ].get_schematic_generator(PredicatesEntailmentTestsSchema)

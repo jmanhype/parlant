@@ -8,6 +8,7 @@ import tiktoken
 
 from parlant.adapters.nlp.hugging_face import HuggingFaceEstimatingTokenizer
 from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
@@ -218,14 +219,13 @@ class TogetherService(NLPService):
     async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
         if t == MessageEventSchema:
             return Llama3_1_405B[t](self._logger)  # type: ignore
+        elif t == ToolCallInferenceSchema:
+            return FallbackSchematicGenerator(
+                Llama3_1_8B[t](self._logger),  # type: ignore
+                Llama3_1_70B[t](self._logger),  # type: ignore
+                logger=self._logger,
+            )
         return Llama3_1_70B[t](self._logger)  # type: ignore
-
-    async def get_fallback_schematic_generator(self, t: type[T]) -> FallbackSchematicGenerator[T]:
-        return FallbackSchematicGenerator(
-            Llama3_1_8B[t](self._logger),  # type: ignore
-            Llama3_1_70B[t](self._logger),  # type: ignore
-            logger=self._logger,
-        )
 
     async def get_embedder(self) -> Embedder:
         return M2Bert32K()

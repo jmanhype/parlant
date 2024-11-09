@@ -211,9 +211,9 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[SchematicGenerator[MessageEventSchema]] = await nlp_service.get_schematic_generator(
         MessageEventSchema
     )
-    c[
-        SchematicGenerator[ToolCallInferenceSchema]
-    ] = await nlp_service.get_fallback_schematic_generator(ToolCallInferenceSchema)
+    c[SchematicGenerator[ToolCallInferenceSchema]] = await nlp_service.get_schematic_generator(
+        ToolCallInferenceSchema
+    )
     c[
         SchematicGenerator[PredicatesEntailmentTestsSchema]
     ] = await nlp_service.get_schematic_generator(PredicatesEntailmentTestsSchema)

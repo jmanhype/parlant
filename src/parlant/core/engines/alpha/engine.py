@@ -26,6 +26,7 @@ from parlant.core.sessions import (
     GuidelineProposition as StoredGuidelineProposition,
     MessageGenerationInspection,
     PreparationIteration,
+    PreparationIterationGenerations,
     SessionId,
     SessionStore,
     Term as StoredTerm,
@@ -262,12 +263,12 @@ class AlphaEngine(Engine):
                             )
                             for variable, value in context_variables
                         ],
-                        generations={
-                            **({g.schema_name: g for g in guideline_proposition_generations}),
-                            tool_event_generation_result.generation_info.schema_name: tool_event_generation_result.generation_info,
-                        }
-                        if tool_event_generation_result
-                        else {},
+                        generations=PreparationIterationGenerations(
+                            guideline_proposition=guideline_proposition_generations,
+                            tool_calls=[tool_event_generation_result.generation_info]
+                            if tool_event_generation_result
+                            else [],
+                        ),
                     )
                 )
 

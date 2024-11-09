@@ -11,7 +11,6 @@ from parlant.core.nlp.embedding import Embedder
 from parlant.core.nlp.generation import (
     T,
     BaseSchematicGenerator,
-    FallbackSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
     UsageInfo,
@@ -128,9 +127,6 @@ class AnthropicService(NLPService):
 
     async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
         return Claude_Sonnet_3_5[t](self._logger)  # type: ignore
-
-    async def get_fallback_schematic_generator(self, t: type[T]) -> FallbackSchematicGenerator[T]:
-        return FallbackSchematicGenerator(Claude_Sonnet_3_5[t](self._logger), logger=self._logger)  # type: ignore
 
     async def get_embedder(self) -> Embedder:
         return JinaAIEmbedder()

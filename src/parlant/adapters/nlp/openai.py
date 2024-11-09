@@ -10,6 +10,7 @@ import os
 from pydantic import ValidationError
 import tiktoken
 
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.logging import Logger
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.service import NLPService
@@ -293,14 +294,13 @@ class OpenAIService(NLPService):
         self._logger = logger
 
     async def get_schematic_generator(self, t: Type[T]) -> OpenAISchematicGenerator[T]:
+        if t == ToolCallInferenceSchema:
+            return FallbackSchematicGenerator(
+                GPT_4o_Mini[t](self._logger),  # type: ignore
+                GPT_4o[t](self._logger),  # type: ignore
+                logger=self._logger,
+            )
         return GPT_4o[t](self._logger)  # type: ignore
-
-    async def get_fallback_schematic_generator(self, t: type[T]) -> FallbackSchematicGenerator[T]:
-        return FallbackSchematicGenerator(
-            GPT_4o_Mini[t](self._logger),  # type: ignore
-            GPT_4o[t](self._logger),  # type: ignore
-            logger=self._logger,
-        )
 
     async def get_embedder(self) -> Embedder:
         return OpenAITextEmbedding3Large()
