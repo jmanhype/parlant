@@ -36,6 +36,7 @@ from parlant.core.tools import (
     ToolParameterType,
     ToolResult,
     ToolContext,
+    EnumValueType,
 )
 from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -99,7 +100,6 @@ class _ToolDecoratorParams(TypedDict, total=False):
 
 
 _ToolParameterType = Union[str, int, float, bool, enum.Enum]
-_EnumParameterType = Union[str, int, float, bool]
 
 
 class _ResolvedToolParameterTyped(NamedTuple):
@@ -154,8 +154,8 @@ def _tool_decorator_impl(
 
             if issubclass(param_type.t, enum.Enum):
                 assert all(
-                    type(e.value) in get_args(_EnumParameterType) for e in param_type.t
-                ), f"{param.name}: {param_type.t.__name__}: Enum values must be in {[t.__name__ for t in get_args(_EnumParameterType)]}"
+                    type(e.value) in get_args(EnumValueType) for e in param_type.t
+                ), f"{param.name}: {param_type.t.__name__}: Enum values must be in {[t.__name__ for t in get_args(EnumValueType)]}"
 
     def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameter]:
         type_to_param_type: dict[type[_ToolParameterType], ToolParameterType] = {

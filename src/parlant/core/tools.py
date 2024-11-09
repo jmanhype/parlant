@@ -28,11 +28,13 @@ ToolParameterType = Literal[
     "enum",
 ]
 
+EnumValueType = Union[str, int, float, bool]
+
 
 class ToolParameter(TypedDict):
     type: ToolParameterType
     description: NotRequired[str]
-    enum: NotRequired[list[Union[str, int, float, bool]]]
+    enum: NotRequired[list[EnumValueType]]
 
 
 # These two aliases are redefined here to avoid a circular reference.
@@ -233,7 +235,7 @@ class LocalToolService(ToolService):
         try:
             local_tool = self._local_tools_by_name[name]
             module = importlib.import_module(local_tool.module_path)
-            func = getattr(module, local_tool.name) 
+            func = getattr(module, local_tool.name)
         except Exception as e:
             raise ToolImportError(name) from e
 

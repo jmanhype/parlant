@@ -259,6 +259,7 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
                 "participant": {"id": agent.id, "display_name": agent.name},
             }
 
+
 async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
     context: ToolContext,
     container: Container,
