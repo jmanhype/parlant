@@ -1,13 +1,13 @@
 from collections.abc import Mapping
 import os
-from typing import Any, cast
+from typing import Any
 import torch
 from transformers import AutoModel, AutoTokenizer  # type: ignore
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
 
-class HuggingFaceTokenizer(EstimatingTokenizer):
+class HuggingFaceEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
 
@@ -23,9 +23,6 @@ class HuggingFaceTokenizer(EstimatingTokenizer):
 
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._tokenizer.save_pretrained(save_dir)
-
-    async def tokenize(self, prompt: str) -> list[int]:
-        return cast(list[int], self._tokenizer.encode(prompt, add_special_tokens=True))
 
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self._tokenizer.tokenize(prompt)
@@ -52,7 +49,7 @@ class HuggingFaceEmbedder(Embedder):
         self._model.save_pretrained(save_dir)
         self._model.eval()
 
-        self._tokenizer = HuggingFaceTokenizer(model_name=model_name)
+        self._tokenizer = HuggingFaceEstimatingTokenizer(model_name=model_name)
 
     @property
     def id(self) -> str:
@@ -62,7 +59,7 @@ class HuggingFaceEmbedder(Embedder):
     def max_tokens(self) -> int:
         return 8192
 
-    def get_tokenizer(self) -> HuggingFaceTokenizer:
+    def get_tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(

@@ -6,7 +6,7 @@ import jsonfinder  # type: ignore
 import os
 import tiktoken
 
-from parlant.adapters.nlp.hugging_face import HuggingFaceTokenizer
+from parlant.adapters.nlp.hugging_face import HuggingFaceEstimatingTokenizer
 from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
@@ -26,9 +26,6 @@ from parlant.core.nlp.tokenization import EstimatingTokenizer
 class LlamaEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
-
-    async def tokenize(self, prompt: str) -> list[int]:
-        return self.encoding.encode(prompt)
 
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self.encoding.encode(prompt)
@@ -193,7 +190,7 @@ class TogetherAIEmbedder(Embedder):
 class M2Bert32K(TogetherAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="togethercomputer/m2-bert-80M-32k-retrieval")
-        self._estimating_tokenizer = HuggingFaceTokenizer(self.model_name)
+        self._estimating_tokenizer = HuggingFaceEstimatingTokenizer(self.model_name)
 
     @property
     def id(self) -> str:
@@ -203,7 +200,7 @@ class M2Bert32K(TogetherAIEmbedder):
     def max_tokens(self) -> int:
         return 32768
 
-    def get_tokenizer(self) -> HuggingFaceTokenizer:
+    def get_tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._estimating_tokenizer
 
 

@@ -24,12 +24,9 @@ from parlant.core.nlp.generation import (
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 
-class GoogleTokenizer(EstimatingTokenizer):
+class GoogleEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self._tokenizer = tokenization.get_tokenizer_for_model("gemini-1.5-pro")
-
-    async def tokenize(self, prompt: str) -> list[int]:
-        return list(map(lambda i: i.token_ids, self._tokenizer.compute_tokens(prompt).tokens_info))
 
     async def estimate_token_count(self, prompt: str) -> int:
         result = self._tokenizer.count_tokens(prompt)
@@ -49,7 +46,7 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
 
         self._model = genai.GenerativeModel(model_name)
 
-        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
+        self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
@@ -149,13 +146,13 @@ class GoogleEmbedder(Embedder):
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-        self._tokenizer = GoogleTokenizer(model_name=self.model_name)
+        self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"google/{self.model_name}"
 
-    def get_tokenizer(self) -> GoogleTokenizer:
+    def get_tokenizer(self) -> GoogleEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(

@@ -27,9 +27,6 @@ class AnthropicEstimatingTokenizer(EstimatingTokenizer):
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
         self._client = client
 
-    async def tokenize(self, prompt: str) -> list[int]:
-        return self.encoding.encode(prompt)
-
     async def estimate_token_count(self, prompt: str) -> int:
         return await self._client.count_tokens(prompt)
 

@@ -25,13 +25,10 @@ from parlant.core.nlp.generation import (
 from parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
-class OpenAITokenizer(EstimatingTokenizer):
+class OpenAIEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.encoding = tiktoken.encoding_for_model(model_name)
-
-    async def tokenize(self, prompt: str) -> list[int]:
-        return self.encoding.encode(prompt)
 
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self.encoding.encode(prompt)
@@ -52,13 +49,13 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 
         self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
 
-        self._tokenizer = OpenAITokenizer(model_name=self.model_name)
+        self._tokenizer = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
-    def get_tokenizer(self) -> OpenAITokenizer:
+    def get_tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
     async def generate(
@@ -175,7 +172,7 @@ class GPT_4o(OpenAISchematicGenerator[T]):
 class GPT_4o_Mini(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="gpt-4o-mini", logger=logger)
-        self._token_estimator = OpenAITokenizer(model_name=self.model_name)
+        self._token_estimator = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def max_tokens(self) -> int:
@@ -188,13 +185,13 @@ class OpenAIEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
-        self._tokenizer = OpenAITokenizer(model_name=self.model_name)
+        self._tokenizer = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
-    def get_tokenizer(self) -> OpenAITokenizer:
+    def get_tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
     async def embed(
