@@ -189,67 +189,8 @@ class ReadInteractionResponse(DefaultBaseModel):
     preparation_iterations: list[PreparationIterationDTO]
 
 
-def message_generation_inspection_to_dto(
-    m: MessageGenerationInspection,
-) -> MessageGenerationInspectionDTO:
-    return MessageGenerationInspectionDTO(
-        generation=GenerationInfoDTO(
-            schema_name=m.generation.schema_name,
-            model=m.generation.model,
-            duration=m.generation.duration,
-            usage=UsageInfoDTO(
-                input_tokens=m.generation.usage.input_tokens,
-                output_tokens=m.generation.usage.output_tokens,
-                extra=m.generation.usage.extra,
-            ),
-        ),
-        messages=list(m.messages),
-    )
-
-
-def preparation_iteration_to_dto(iteration: PreparationIteration) -> PreparationIterationDTO:
-    return PreparationIterationDTO(
-        guideline_propositions=[
-            GuidelinePropositionDTO(
-                guideline_id=proposition["guideline_id"],
-                predicate=proposition["predicate"],
-                action=proposition["action"],
-                score=proposition["score"],
-                rationale=proposition["rationale"],
-            )
-            for proposition in iteration.guideline_propositions
-        ],
-        tool_calls=[
-            ToolCallDTO(
-                tool_id=tool_call["tool_id"],
-                arguments=tool_call["arguments"],
-                result=ToolResultDTO(
-                    data=tool_call["result"]["data"],
-                    metadata=tool_call["result"]["metadata"],
-                ),
-            )
-            for tool_call in iteration.tool_calls
-        ],
-        terms=[
-            TermDTO(
-                id=term["id"],
-                name=term["name"],
-                description=term["description"],
-                synonyms=term["synonyms"],
-            )
-            for term in iteration.terms
-        ],
-        context_variables=[
-            ContextVariableAndValueDTO(
-                id=cv["id"],
-                name=cv["name"],
-                description=cv["description"] or "",
-                key=cv["key"],
-                value=cv["value"],
-            )
-            for cv in iteration.context_variables
-        ],
-    )
+class CreateInteractionsResponse(DefaultBaseModel):
+    event: EventDTO
 
 
 def create_router(
@@ -406,9 +347,15 @@ def create_router(
         moderation: Literal["none", "auto"] = "none",
     ) -> CreateEventResponse:
         if request.source == EventSourceDTO.END_USER:
-            return await _add_end_user_message(session_id, request, moderation)
+            return CreateEventResponse(
+                event=await _add_end_user_message(
+                    session_id, request.kind, request.content, moderation
+                )
+            )
         elif request.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
-            return await _add_agent_message(session_id, request)
+            return CreateEventResponse(
+                event=await _add_agent_message(session_id, request.kind, request.content)
+            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -417,15 +364,16 @@ def create_router(
 
     async def _add_end_user_message(
         session_id: SessionId,
-        request: CreateEventRequest,
+        kind: EventKindDTO,
+        content: str,
         moderation: Literal["none", "auto"] = "none",
-    ) -> CreateEventResponse:
+    ) -> EventDTO:
         flagged = False
         tags = set()
 
         if moderation == "auto":
             for _, moderation_service in await service_registry.list_moderation_services():
-                check = await moderation_service.check(request.content)
+                check = await moderation_service.check(content)
                 flagged |= check.flagged
                 tags.update(check.tags)
 
@@ -438,7 +386,7 @@ def create_router(
             end_user_display_name = session.end_user_id
 
         message_data: MessageEventData = {
-            "message": request.content,
+            "message": content,
             "participant": {
                 "id": session.end_user_id,
                 "display_name": end_user_display_name,
@@ -449,33 +397,32 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=request.kind.value,
+            kind=kind.value,
             data=message_data,
             source="end_user",
             trigger_processing=True,
         )
 
-        return CreateEventResponse(
-            event=EventDTO(
-                id=event.id,
-                source=EventSourceDTO(event.source),
-                kind=event.kind,
-                offset=event.offset,
-                creation_utc=event.creation_utc,
-                correlation_id=event.correlation_id,
-                data=event.data,
-            )
+        return EventDTO(
+            id=event.id,
+            source=EventSourceDTO(event.source),
+            kind=event.kind,
+            offset=event.offset,
+            creation_utc=event.creation_utc,
+            correlation_id=event.correlation_id,
+            data=event.data,
         )
 
     async def _add_agent_message(
         session_id: SessionId,
-        request: CreateEventRequest,
-    ) -> CreateEventResponse:
+        kind: EventKindDTO,
+        content: str,
+    ) -> EventDTO:
         session = await session_store.read_session(session_id)
         agent = await agent_store.read_agent(session.agent_id)
 
         message_data: MessageEventData = {
-            "message": request.content,
+            "message": content,
             "participant": {
                 "id": agent.id,
                 "display_name": agent.name,
@@ -484,22 +431,20 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=request.kind.value,
+            kind=kind.value,
             data=message_data,
             source="human_agent_on_behalf_of_ai_agent",
             trigger_processing=False,
         )
 
-        return CreateEventResponse(
-            event=EventDTO(
-                id=event.id,
-                source=EventSourceDTO(event.source),
-                kind=event.kind,
-                offset=event.offset,
-                creation_utc=event.creation_utc,
-                correlation_id=event.correlation_id,
-                data=event.data,
-            )
+        return EventDTO(
+            id=event.id,
+            source=EventSourceDTO(event.source),
+            kind=event.kind,
+            offset=event.offset,
+            creation_utc=event.creation_utc,
+            correlation_id=event.correlation_id,
+            data=event.data,
         )
 
     @router.get(
@@ -632,6 +577,40 @@ def create_router(
         deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
 
         return DeleteEventsResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+
+    @router.post(
+        "/{session_id}/interactions",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="create_interactions",
+    )
+    async def create_interactions(
+        session_id: SessionId,
+        moderation: Literal["none", "auto"] = "none",
+    ) -> CreateInteractionsResponse:
+        _ = await session_store.read_session(session_id)
+
+        last_event = (await session_store.list_events(session_id=session_id, kinds=["message"]))[-1]
+        _ = await session_store.delete_event(last_event.id)
+
+        new_event = await application.post_event(
+            session_id=session_id,
+            kind=last_event.kind,
+            data=cast(Mapping[str, Any], last_event.data),
+            source=last_event.source,
+            trigger_processing=True,
+        )
+
+        return CreateInteractionsResponse(
+            event=EventDTO(
+                id=new_event.id,
+                source=EventSourceDTO(new_event.source),
+                kind=new_event.kind,
+                offset=new_event.offset,
+                creation_utc=new_event.creation_utc,
+                correlation_id=new_event.correlation_id,
+                data=new_event.data,
+            )
+        )
 
     @router.get(
         "/{session_id}/interactions/{correlation_id}",

@@ -829,62 +829,48 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert iterations[0]["context_variables"][0]["value"] == end_user.name
 
 
-async def test_that_a_message_is_generated_using_the_active_nlp_service(
+async def test_that_a_message_interaction_can_be_regenerated(
     client: TestClient,
     container: Container,
-    agent_id: AgentId,
+    session_id: SessionId,
 ) -> None:
-    nlp_service = container[NLPService]
+    session_events = [
+        make_event_params("end_user", data={"content": "Hello"}),
+        make_event_params("ai_agent", data={"content": "Hi, how can I assist you?"}),
+        make_event_params("end_user", data={"content": "What's the weather today?"}),
+        make_event_params("ai_agent", data={"content": "It's sunny and warm."}),
+        make_event_params("end_user", data={"content": "Thank you!"}),
+    ]
 
-    end_user = await create_end_user(
-        container=container,
-        name="John Smith",
-    )
+    await populate_session_id(container, session_id, session_events)
 
-    session = await create_session(
-        container=container,
-        agent_id=agent_id,
-        end_user_id=end_user.id,
-    )
-
-    _ = await create_guideline(
-        container=container,
-        agent_id=agent_id,
-        predicate="a user asks what the cow says",
-        action="answer 'Woof Woof'",
-        tool_function=get_cow_uttering,
-    )
-
-    user_event = await post_message(
-        container=container,
-        session_id=session.id,
-        message="What does the cow say?!",
-        response_timeout=Timeout(60),
-    )
-
-    reply_event = await read_reply(
-        container=container,
-        session_id=session.id,
-        user_event_offset=user_event.offset,
-    )
-
-    inspection_data = (
-        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+    min_offset_to_delete = 3
+    _ = (
+        client.delete(f"/sessions/{session_id}/events?min_offset={min_offset_to_delete}")
         .raise_for_status()
-        .json()
+        .json()["event_ids"]
     )
 
-    assert "Woof Woof" in cast(MessageEventData, reply_event.data)["message"]
+    event_offset = (
+        client.post(f"/sessions/{session_id}/interactions")
+        .raise_for_status()
+        .json()["event"]["offset"]
+    )
 
-    message_generation_inspections = inspection_data["message_generations"]
-    assert len(message_generation_inspections) >= 1
+    new_events = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={
+                "min_offset": event_offset + 1,
+                "kinds": "message",
+                "wait": True,
+            },
+        )
+        .raise_for_status()
+        .json()["events"]
+    )
 
-    assert message_generation_inspections[0]["generation"]["schema_name"] == "MessageEventSchema"
-
-    schematic_generator = await nlp_service.get_schematic_generator(MessageEventSchema)
-    assert message_generation_inspections[0]["generation"]["model"] == schematic_generator.id
-
-    assert message_generation_inspections[0]["generation"]["usage"]["input_tokens"] > 0
-
-    assert "Woof Woof" in message_generation_inspections[0]["messages"][0]
-    assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2
+    assert len(new_events) == 1
+    assert new_events[0]["source"] == "ai_agent"
+    assert new_events[0]["kind"] == "message"
+    assert new_events[0]["data"]["content"]
