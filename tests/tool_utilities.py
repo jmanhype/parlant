@@ -78,7 +78,7 @@ class ProductCategory(enum.Enum):
 
 def available_products_by_category(category: ProductCategory) -> ToolResult:
     products_by_category = {
-        ProductCategory.LAPTOPS: ["amd", "nvidia"],
+        ProductCategory.LAPTOPS: ["Lenovo", "Mac"],
         ProductCategory.PERIPHERALS: ["razer", "logitech"],
     }
 

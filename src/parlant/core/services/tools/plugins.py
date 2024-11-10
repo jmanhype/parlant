@@ -99,7 +99,7 @@ class _ToolDecoratorParams(TypedDict, total=False):
     consequential: bool
 
 
-_ToolParameterType = Union[str, int, float, bool, enum.Enum]
+_ToolParameterType = Union[str, int, float, bool]
 
 
 class _ResolvedToolParameterTyped(NamedTuple):

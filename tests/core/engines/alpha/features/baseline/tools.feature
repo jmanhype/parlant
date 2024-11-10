@@ -224,4 +224,4 @@ Feature: Tools
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
-        And the message contains that the available keyboards are "razer" and "logitech"
+        And the tool calls event contains a call to "available_products_by_category" with category "peripherals"
