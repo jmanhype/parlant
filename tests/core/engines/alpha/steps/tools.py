@@ -250,6 +250,13 @@ def given_a_tool(
             },
             "required": ["from_account", "to_account"],
         },
+        "get_products_type_with_error": {
+            "name": "get_products_type_with_error",
+            "description": "Verify if product type exist in database",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

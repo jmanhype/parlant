@@ -357,6 +357,10 @@ def given_the_guideline_called(
             "predicate": "asked for information about an account",
             "action": "answer by retrieving the information from the database",
         },
+        "verify_type_in_stock_error": {
+            "predicate": "user is looking for a product ",
+            "action": "verify that the product type exists",
+        },
     }
 
     guideline = context.sync_await(create_guideline(**guidelines[guideline_id]))

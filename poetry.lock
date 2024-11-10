@@ -1370,6 +1370,21 @@ protobuf = ">=3.20.2,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4
 grpc = ["grpcio (>=1.44.0,<2.0.0.dev0)"]
 
 [[package]]
+name = "gotrue"
+version = "2.10.0"
+description = "Python Client Library for Supabase Auth"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "gotrue-2.10.0-py3-none-any.whl", hash = "sha256:768e58207488e5184ffbdc4351b7280d913daf97962f4e9f2cca05c80004b042"},
+    {file = "gotrue-2.10.0.tar.gz", hash = "sha256:4edf4c251da3535f2b044e23deba221e848ca1210c17d0c7a9b19f79a1e3f3c0"},
+]
+
+[package.dependencies]
+httpx = {version = ">=0.26,<0.28", extras = ["http2"]}
+pydantic = ">=1.10,<3"
+
+[[package]]
 name = "grpcio"
 version = "1.67.1"
 description = "HTTP/2-based RPC framework"
@@ -4793,6 +4808,54 @@ anyio = ">=3.4.0,<5"
 
 [package.extras]
 full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7)", "pyyaml"]
+
+[[package]]
+name = "storage3"
+version = "0.9.0"
+description = "Supabase Storage client for Python."
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "storage3-0.9.0-py3-none-any.whl", hash = "sha256:8b2fb91f0c61583a2f4eac74a8bae67e00d41ff38095c8a6cd3f2ce5e0ab76e7"},
+    {file = "storage3-0.9.0.tar.gz", hash = "sha256:e16697f60894c94e1d9df0d2e4af783c1b3f7dd08c9013d61978825c624188c4"},
+]
+
+[package.dependencies]
+httpx = {version = ">=0.26,<0.28", extras = ["http2"]}
+python-dateutil = ">=2.8.2,<3.0.0"
+
+[[package]]
+name = "supabase"
+version = "2.10.0"
+description = "Supabase client for Python."
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "supabase-2.10.0-py3-none-any.whl", hash = "sha256:183fb23c04528593f8f81c24ceb8178f3a56bff40fec7ed873b6c55ebc2e420a"},
+    {file = "supabase-2.10.0.tar.gz", hash = "sha256:9ac095f8947bf60780e67c0edcbab53e2db3f6f3f022329397b093500bf2607c"},
+]
+
+[package.dependencies]
+gotrue = ">=2.10.0,<3.0.0"
+httpx = ">=0.26,<0.28"
+postgrest = ">=0.18,<0.19"
+realtime = ">=2.0.0,<3.0.0"
+storage3 = ">=0.9.0,<0.10.0"
+supafunc = ">=0.7.0,<0.8.0"
+
+[[package]]
+name = "supafunc"
+version = "0.7.0"
+description = "Library for Supabase Functions"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "supafunc-0.7.0-py3-none-any.whl", hash = "sha256:4160260dc02bdd906be1e2ffd7cb3ae8b74ae437c892bb475352b6a99d9ff8eb"},
+    {file = "supafunc-0.7.0.tar.gz", hash = "sha256:5b1c415fba1395740b2b4eedd1d786384bd58b98f6333a11ba7889820a48b6a7"},
+]
+
+[package.dependencies]
+httpx = {version = ">=0.26,<0.28", extras = ["http2"]}
 
 [[package]]
 name = "sympy"

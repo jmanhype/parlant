@@ -1,6 +1,11 @@
 from typing import Literal
-
+from supabase import create_client
 from parlant.core.tools import ToolResult
+import os
+
+supabase_url=os.environ["SUPABASE_URL"]
+supabase_anon=os.environ["SUPABASE_ANON_KEY"]
+supabase = create_client(supabase_url, supabase_anon)
 
 
 def get_available_drinks() -> ToolResult:
@@ -60,3 +65,13 @@ def get_terrys_offering() -> ToolResult:
 
 def schedule() -> ToolResult:
     return ToolResult("Meeting got scheduled!")
+
+def get_products_type_with_error() -> ToolResult:
+    all_db = (supabase.table('products')
+                .select('type')
+                .execute()
+                )
+    unique_types = {tag for db in all_db.data for tag in db["tags"]}
+    unique_types_list = list(unique_types)
+
+    return ToolResult(unique_types_list)
