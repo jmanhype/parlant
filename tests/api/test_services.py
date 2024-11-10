@@ -52,7 +52,7 @@ async def test_that_sdk_service_fails_to_create_due_to_url_not_starting_with_htt
     )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    assert response.json()["detail"] == "Request URL is missing an 'http://' or 'https://'"
+    assert response.json()["detail"] == "Service URL is missing schema (http:// or https://)"
 
 
 async def test_that_openapi_service_is_created_with_url_source(

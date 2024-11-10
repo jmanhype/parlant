@@ -109,7 +109,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         ):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=str("Request URL is missing an 'http://' or 'https://'"),
+                detail=str("Service URL is missing schema (http:// or https://)"),
             )
 
         service = await service_registry.update_tool_service(

@@ -210,10 +210,12 @@ def set_exit_status(status: int) -> None:
 
 class Actions:
     @staticmethod
-    def raise_for_status_with_detail(response: requests.Response) -> Optional[requests.HTTPError]:
-        """Raises :class:`HTTPError`, if one occurred, with detail if exists"""
+    def raise_for_status_with_detail(response: requests.Response) -> None:
+        """Raises :class:`HTTPError`, if one occurred, with detail if exists
 
+        Adapted from requests.Response.raise_for_status"""
         http_error_msg = ""
+
         if isinstance(response.reason, bytes):
             try:
                 reason = response.reason.decode("utf-8")
@@ -226,16 +228,14 @@ class Actions:
             http_error_msg = (
                 f"{response.status_code} Client Error: {reason} for url: {response.url}"
             ) + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
-
         elif 500 <= response.status_code < 600:
             http_error_msg = (
                 f"{response.status_code} Server Error: {reason} for url: {response.url}"
                 + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
             )
+
         if http_error_msg:
             raise requests.HTTPError(http_error_msg, response=response)
-
-        return None
 
     @staticmethod
     def create_agent(
@@ -252,7 +252,6 @@ class Actions:
                 "max_engine_iterations": max_engine_iterations,
             },
         )
-
         Actions.raise_for_status_with_detail(response)
 
         return cast(AgentDTO, response.json()["agent"])
