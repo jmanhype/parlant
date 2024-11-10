@@ -28,7 +28,7 @@ ToolParameterType = Literal[
     "enum",
 ]
 
-EnumValueType = Union[str, int, float, bool]
+EnumValueType = Union[str, int]
 
 
 class ToolParameter(TypedDict):
