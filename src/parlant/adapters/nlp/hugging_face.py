@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 import os
 from typing import Any
-import torch
+import torch  # type: ignore
 from transformers import AutoModel, AutoTokenizer  # type: ignore
 
 from parlant.core.nlp.tokenization import EstimatingTokenizer
