@@ -118,7 +118,7 @@ class GlossaryChromaStore(GlossaryStore):
         )
 
         update_result = await self._collection.update_one(
-            filters={"$and": [{"term_set": {"$eq": term_set}}, {"name": {"$eq": name}}]},
+            filters={"$and": [{"term_set": {"$eq": term_set}}, {"id": {"$eq": term_id}}]},
             params={
                 "content": content,
                 "name": name,

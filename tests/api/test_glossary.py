@@ -171,12 +171,14 @@ def test_update_term(
         .json()["term"]
     )
 
+    updated_name = "updated guideline"
     updated_description = "Updated guideline description"
-    updated_synonyms = ["rule", "updated"]
+    updated_synonyms = ["instruction"]
 
     update_response = client.patch(
         f"/agents/{agent_id}/terms/{term["id"]}",
         json={
+            "name": updated_name,
             "description": updated_description,
             "synonyms": updated_synonyms,
         },
@@ -185,7 +187,7 @@ def test_update_term(
     assert update_response.status_code == status.HTTP_200_OK
 
     data = update_response.json()
-    assert data["name"] == name
+    assert data["name"] == updated_name
     assert data["description"] == updated_description
     assert data["synonyms"] == updated_synonyms
 
