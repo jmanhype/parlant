@@ -851,26 +851,28 @@ async def test_that_a_message_interaction_can_be_regenerated(
         .json()["event_ids"]
     )
 
-    event_offset = (
+    correlation_id = (
         client.post(f"/sessions/{session_id}/interactions")
         .raise_for_status()
-        .json()["event"]["offset"]
+        .json()["correlation_id"]
     )
 
-    new_events = (
+    interactions = (
         client.get(
-            f"/sessions/{session_id}/events",
+            f"/sessions/{session_id}/interactions",
             params={
-                "min_offset": event_offset + 1,
-                "kinds": "message",
+                "min_event_offset": min_offset_to_delete,
+                "source": "ai_agent",
                 "wait": True,
             },
         )
         .raise_for_status()
-        .json()["events"]
-    )
+        .json()
+    )["interactions"]
 
-    assert len(new_events) == 1
-    assert new_events[0]["source"] == "ai_agent"
-    assert new_events[0]["kind"] == "message"
-    assert new_events[0]["data"]["content"]
+    assert len(interactions) == 1
+    assert interactions[0]["correlation_id"] == correlation_id
+    assert interactions[0]["source"] == "ai_agent"
+    assert interactions[0]["kind"] == "message"
+    assert isinstance(interactions[0]["data"], str)
+    assert len(interactions[0]["data"]) > 0

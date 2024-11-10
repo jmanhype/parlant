@@ -6,7 +6,6 @@ import traceback
 from typing import Mapping, Optional, Sequence, cast
 
 from parlant.core.agents import Agent, AgentId, AgentStore
-from parlant.core.common import generate_id
 from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
@@ -95,9 +94,8 @@ class AlphaEngine(Engine):
         interaction_state = await self._load_interaction_state(context)
 
         try:
-            with self._correlator.correlation_scope(generate_id()):
-                with self._logger.operation(f"Processing context for session {context.session_id}"):
-                    await self._do_process(context, interaction_state, event_emitter)
+            with self._logger.operation(f"Processing context for session {context.session_id}"):
+                await self._do_process(context, interaction_state, event_emitter)
             return True
         except asyncio.CancelledError:
             return False

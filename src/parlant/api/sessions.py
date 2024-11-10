@@ -190,7 +190,7 @@ class ReadInteractionResponse(DefaultBaseModel):
 
 
 class CreateInteractionsResponse(DefaultBaseModel):
-    event: EventDTO
+    correlation_id: str
 
 
 def create_router(
@@ -585,33 +585,24 @@ def create_router(
     )
     async def create_interactions(
         session_id: SessionId,
-        moderation: Literal["none", "auto"] = "none",
     ) -> CreateInteractionsResponse:
-        _ = await session_store.read_session(session_id)
+        session = await session_store.read_session(session_id)
 
-        last_event = (await session_store.list_events(session_id=session_id, kinds=["message"]))[-1]
-        _ = await session_store.delete_event(last_event.id)
+        correlation_id = await application.dispatch_processing_task(session)
 
-        new_event = await application.post_event(
-            session_id=session_id,
-            kind=last_event.kind,
-            data=cast(Mapping[str, Any], last_event.data),
-            source=last_event.source,
-            trigger_processing=True,
-        )
+        return CreateInteractionsResponse(correlation_id=correlation_id)
 
-        return CreateInteractionsResponse(
-            event=EventDTO(
-                id=new_event.id,
-                source=EventSourceDTO(new_event.source),
-                kind=new_event.kind,
-                offset=new_event.offset,
-                creation_utc=new_event.creation_utc,
-                correlation_id=new_event.correlation_id,
-                data=new_event.data,
-            )
-        )
-
+    # TODO: We are currently only returning the interaction ID when creating an interaction.
+    # The idea is that consumers can then query this ID using this endpoint.
+    # However, as of today, it is impossible to differentiate between an interaction
+    # that is currently being worked on and whose generation hasn't completed yet,
+    # and a completely nonexistent interaction. We aim to solve this by adding a
+    # "status" attribute to the response here. The idea is that if an interaction
+    # really doesn't exist, then we return a 404 here; otherwise, we return a response
+    # with status "pending" until it is completed, at which point we return status "completed".
+    # In order to add this we need to add some backend infra support to keep track of
+    # correlation IDs that are in the works... but, for now, as this is not a pressing matter,
+    # we simply don't support this type of usage yet.
     @router.get(
         "/{session_id}/interactions/{correlation_id}",
         operation_id="read_interaction",

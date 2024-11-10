@@ -8,6 +8,7 @@ from typing import Any, Iterable, Mapping, Optional, TypeAlias, cast
 from lagom import Container
 
 from parlant.core.async_utils import Timeout
+from parlant.core.common import generate_id
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentId
 from parlant.core.emissions import EventEmitterFactory
@@ -128,7 +129,7 @@ class Application:
         )
 
         if allow_greeting:
-            await self._dispatch_processing_task(session)
+            await self.dispatch_processing_task(session)
 
         return session
 
@@ -152,21 +153,23 @@ class Application:
 
         if trigger_processing:
             session = await self._session_store.read_session(session_id)
-            await self._dispatch_processing_task(session)
+            await self.dispatch_processing_task(session)
 
         return event
 
-    async def _dispatch_processing_task(self, session: Session) -> None:
+    async def dispatch_processing_task(self, session: Session) -> str:
         async with self._lock:
             if session.id not in self._tasks_by_session:
                 self._tasks_by_session[session.id] = TaskQueue()
 
             for task in self._tasks_by_session[session.id]:
                 task.cancel()
+            with self._correlator.correlation_scope(generate_id()):
+                self._tasks_by_session[session.id].append(
+                    asyncio.create_task(self._process_session(session))
+                )
 
-            self._tasks_by_session[session.id].append(
-                asyncio.create_task(self._process_session(session))
-            )
+                return self._correlator.correlation_id
 
     async def _process_session(self, session: Session) -> None:
         event_emitter = await self._event_emitter_factory.create_event_emitter(
