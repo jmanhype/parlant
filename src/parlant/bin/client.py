@@ -379,13 +379,15 @@ class Actions:
         ctx: click.Context,
         agent_id: str,
         term_id: str,
-        description: str,
+        name: Optional[str],
+        description: Optional[str],
         synonyms: Optional[str],
     ) -> TermDTO:
         response = requests.patch(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{term_id}"),
             json={
-                "description": description,
+                **({"name": name} if name else {}),
+                **({"description": description} if description else {}),
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
@@ -1296,10 +1298,17 @@ class Interface:
         ctx: click.Context,
         agent_id: str,
         term_id: str,
-        description: str,
+        name: Optional[str],
+        description: Optional[str],
         synonyms: Optional[str],
     ) -> None:
-        term = Actions.patch_term(ctx, agent_id, term_id, description, synonyms)
+        if not name and not description and not synonyms:
+            Interface._write_error(
+                "Error: No updates provided. Please provide at least one of the following: name, description, or synonyms to update the term."
+            )
+            return
+
+        term = Actions.patch_term(ctx, agent_id, term_id, name, description, synonyms)
         Interface._write_success(f"Updated term (id={term['id']})")
         Interface._print_table([term])
 
@@ -2122,6 +2131,13 @@ async def async_main() -> None:
     )
     @click.argument("term_id", type=str)
     @click.option(
+        "-n",
+        "--name",
+        type=str,
+        help="Term name",
+        required=False,
+    )
+    @click.option(
         "-d",
         "--description",
         type=str,
@@ -2140,13 +2156,14 @@ async def async_main() -> None:
         ctx: click.Context,
         agent_id: str,
         term_id: str,
-        description: str,
+        name: Optional[str],
+        description: Optional[str],
         synonyms: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.update_term(ctx, agent_id, term_id, description, synonyms)
+        Interface.update_term(ctx, agent_id, term_id, name, description, synonyms)
 
     @glossary.command("remove", help="Remove a term from the glossary")
     @click.option(
