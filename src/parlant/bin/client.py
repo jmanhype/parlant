@@ -230,7 +230,7 @@ class Actions:
         return cast(AgentDTO, response.json()["agent"])
 
     @staticmethod
-    def read_agent(ctx: click.Context, agent_id: str) -> AgentDTO:
+    def view_agent(ctx: click.Context, agent_id: str) -> AgentDTO:
         response = requests.get(
             urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
         )
@@ -248,7 +248,7 @@ class Actions:
         return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
 
     @staticmethod
-    def patch_agent(
+    def update_agent(
         ctx: click.Context,
         agent_id: str,
         description: Optional[str] = None,
@@ -366,6 +366,28 @@ class Actions:
             json={
                 "name": name,
                 "description": description,
+                **({"synonyms": synonyms.split(",")} if synonyms else {}),
+            },
+        )
+
+        response.raise_for_status()
+
+        return cast(TermDTO, response.json()["term"])
+
+    @staticmethod
+    def update_term(
+        ctx: click.Context,
+        agent_id: str,
+        term_id: str,
+        name: Optional[str],
+        description: Optional[str],
+        synonyms: Optional[str],
+    ) -> TermDTO:
+        response = requests.patch(
+            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{term_id}"),
+            json={
+                **({"name": name} if name else {}),
+                **({"description": description} if description else {}),
                 **({"synonyms": synonyms.split(",")} if synonyms else {}),
             },
         )
@@ -586,7 +608,7 @@ class Actions:
         response.raise_for_status()
 
     @staticmethod
-    def read_guideline(
+    def view_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -611,7 +633,7 @@ class Actions:
         return cast(list[GuidelineDTO], response.json()["guidelines"])
 
     @staticmethod
-    def add_entailment(
+    def create_entailment(
         ctx: click.Context,
         agent_id: str,
         source_guideline_id: str,
@@ -779,7 +801,7 @@ class Actions:
         return cast(list[ContextVariableDTO], response.json()["context_variables"])
 
     @staticmethod
-    def read_variable_by_name(
+    def view_variable(
         ctx: click.Context,
         agent_id: str,
         name: str,
@@ -933,7 +955,7 @@ class Actions:
         return cast(list[ServiceDTO], response.json()["services"])
 
     @staticmethod
-    def read_service(ctx: click.Context, service_name: str) -> ServiceDTO:
+    def view_service(ctx: click.Context, service_name: str) -> ServiceDTO:
         response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
 
         response.raise_for_status()
@@ -988,6 +1010,7 @@ class Interface:
     ) -> None:
         try:
             agent = Actions.create_agent(ctx, name, description, max_engine_iterations)
+
             Interface._write_success(f"Added agent (id={agent['id']})")
             Interface._render_agents([agent])
         except Exception as e:
@@ -997,7 +1020,8 @@ class Interface:
     @staticmethod
     def view_agent(ctx: click.Context, agent_id: str) -> None:
         try:
-            agent = Actions.read_agent(ctx, agent_id)
+            agent = Actions.view_agent(ctx, agent_id)
+
             Interface._render_agents([agent])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1020,14 +1044,14 @@ class Interface:
         return str(agents[0]["id"])
 
     @staticmethod
-    def patch_agent(
+    def update_agent(
         ctx: click.Context,
         agent_id: str,
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
         try:
-            Actions.patch_agent(ctx, agent_id, description, max_engine_iterations)
+            Actions.update_agent(ctx, agent_id, description, max_engine_iterations)
             Interface._write_success(f"Updated agent (id={agent_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1163,6 +1187,7 @@ class Interface:
         message: str,
     ) -> None:
         event = Actions.create_event(ctx, session_id, message)
+
         Interface._write_success(f"Added event (id={event['id']})")
 
     @staticmethod
@@ -1268,7 +1293,27 @@ class Interface:
         synonyms: Optional[str],
     ) -> None:
         term = Actions.create_term(ctx, agent_id, name, description, synonyms)
+
         Interface._write_success(f"Added term (id={term['id']})")
+        Interface._print_table([term])
+
+    @staticmethod
+    def update_term(
+        ctx: click.Context,
+        agent_id: str,
+        term_id: str,
+        name: Optional[str],
+        description: Optional[str],
+        synonyms: Optional[str],
+    ) -> None:
+        if not name and not description and not synonyms:
+            Interface._write_error(
+                "Error: No updates provided. Please provide at least one of the following: name, description, or synonyms to update the term."
+            )
+            return
+
+        term = Actions.update_term(ctx, agent_id, term_id, name, description, synonyms)
+        Interface._write_success(f"Updated term (id={term['id']})")
         Interface._print_table([term])
 
     @staticmethod
@@ -1278,6 +1323,7 @@ class Interface:
         term_id: str,
     ) -> None:
         Actions.remove_term(ctx, agent_id, term_id)
+
         Interface._write_success(f"Removed term '{term_id}'")
 
     @staticmethod
@@ -1377,7 +1423,6 @@ class Interface:
 
             guideline = guideline_with_connections_and_associations["guideline"]
             Interface._write_success(f"Added guideline (id={guideline['id']})")
-
             Interface._render_guideline_entailments(
                 guideline_with_connections_and_associations["guideline"],
                 guideline_with_connections_and_associations["connections"],
@@ -1424,7 +1469,6 @@ class Interface:
 
             guideline = guideline_with_connections["guideline"]
             Interface._write_success(f"Updated guideline (id={guideline['id']})")
-
             Interface._render_guideline_entailments(
                 guideline_with_connections["guideline"],
                 guideline_with_connections["connections"],
@@ -1456,6 +1500,7 @@ class Interface:
     ) -> None:
         try:
             Actions.remove_guideline(ctx, agent_id, guideline_id)
+
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1468,12 +1513,11 @@ class Interface:
         guideline_id: str,
     ) -> None:
         try:
-            guideline_with_connections_and_associations = Actions.read_guideline(
+            guideline_with_connections_and_associations = Actions.view_guideline(
                 ctx, agent_id, guideline_id
             )
 
             Interface._render_guidelines([guideline_with_connections_and_associations["guideline"]])
-
             Interface._render_guideline_entailments(
                 guideline_with_connections_and_associations["guideline"],
                 guideline_with_connections_and_associations["connections"],
@@ -1511,13 +1555,14 @@ class Interface:
         kind: str,
     ) -> None:
         try:
-            connection = Actions.add_entailment(
+            connection = Actions.create_entailment(
                 ctx,
                 agent_id,
                 source_guideline_id,
                 target_guideline_id,
                 kind,
             )
+
             Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
             Interface._print_table([connection])
         except Exception as e:
@@ -1538,6 +1583,7 @@ class Interface:
                 source_guideline_id,
                 target_guideline_id,
             )
+
             Interface._write_success(f"Removed entailment (id={connection_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1671,14 +1717,16 @@ class Interface:
         description: str,
     ) -> None:
         variable = Actions.create_variable(ctx, agent_id, name, description)
+
         Interface._write_success(f"Added variable (id={variable['id']})")
         Interface._render_variable(variable)
 
     @staticmethod
     def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
         try:
-            variable = Actions.read_variable_by_name(ctx, agent_id, name)
+            variable = Actions.view_variable(ctx, agent_id, name)
             Actions.remove_variable(ctx, agent_id, variable["id"])
+
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1709,8 +1757,7 @@ class Interface:
         value: str,
     ) -> None:
         try:
-            variable = Actions.read_variable_by_name(ctx, agent_id, variable_name)
-
+            variable = Actions.view_variable(ctx, agent_id, variable_name)
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
@@ -1732,7 +1779,7 @@ class Interface:
         name: str,
     ) -> None:
         try:
-            variable = Actions.read_variable_by_name(ctx, agent_id, name)
+            variable = Actions.view_variable(ctx, agent_id, name)
 
             read_variable_response = Actions.read_variable(
                 ctx,
@@ -1762,8 +1809,9 @@ class Interface:
         key: str,
     ) -> None:
         try:
-            variable = Actions.read_variable_by_name(ctx, agent_id, variable_name)
+            variable = Actions.view_variable(ctx, agent_id, variable_name)
             value = Actions.read_variable_value(ctx, agent_id, variable["id"], key)
+
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1779,6 +1827,7 @@ class Interface:
     ) -> None:
         try:
             result = Actions.add_service(ctx, name, kind, url, source)
+
             Interface._write_success(f"Added service '{name}'")
             Interface._print_table([result])
         except Exception as e:
@@ -1792,6 +1841,7 @@ class Interface:
     ) -> None:
         try:
             Actions.remove_service(ctx, name)
+
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1822,7 +1872,7 @@ class Interface:
         service_name: str,
     ) -> None:
         try:
-            service = Actions.read_service(ctx, service_name)
+            service = Actions.view_service(ctx, service_name)
             rich.print(Text("Name:", style="bold"), service["name"])
             rich.print(Text("Kind:", style="bold"), service["kind"])
             rich.print(Text("Source:", style="bold"), service["url"])
@@ -1941,7 +1991,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.patch_agent(ctx, agent_id, description, max_engine_iterations)
+        Interface.update_agent(ctx, agent_id, description, max_engine_iterations)
 
     @agent.command(
         "chat",
@@ -1954,6 +2004,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
+
         Interface.chat(ctx, session["id"])
 
     @cli.group(help="Manage sessions")
@@ -2075,7 +2126,53 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.create_term(ctx, agent_id, name, description, synonyms)
+
+    @glossary.command("update", help="Update an existing term")
+    @click.option(
+        "-a",
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.argument("term_id", type=str)
+    @click.option(
+        "-n",
+        "--name",
+        type=str,
+        help="Term name",
+        required=False,
+    )
+    @click.option(
+        "-d",
+        "--description",
+        type=str,
+        help="Term description",
+        required=False,
+    )
+    @click.option(
+        "-s",
+        "--synonyms",
+        type=str,
+        help="Comma-separated list of synonyms",
+        required=False,
+    )
+    @click.pass_context
+    def glossary_update(
+        ctx: click.Context,
+        agent_id: str,
+        term_id: str,
+        name: Optional[str],
+        description: Optional[str],
+        synonyms: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.update_term(ctx, agent_id, term_id, name, description, synonyms)
 
     @glossary.command("remove", help="Remove a term from the glossary")
     @click.option(
@@ -2095,6 +2192,7 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.remove_term(ctx, agent_id, term_id)
 
     @glossary.command("list", help="List all terms in the glossary")
@@ -2113,6 +2211,7 @@ async def async_main() -> None:
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
+
         Interface.list_terms(ctx, agent_id)
 
     @cli.group(help="Manage an agent's guidelines")

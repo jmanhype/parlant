@@ -638,6 +638,45 @@ async def test_that_a_term_can_be_created_without_synonyms(
         assert any(t["synonyms"] == [] for t in terms)
 
 
+async def test_that_a_term_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    name = "guideline"
+    description = "when and then statements"
+    synonyms = "rule, principle"
+
+    new_name = "updated guideline"
+    new_description = "then and when statements "
+    new_synonyms = "instructions"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+
+        term_to_update = await API.create_term(agent_id, name, description, synonyms)
+
+        await run_cli_and_get_exit_status(
+            "glossary",
+            "update",
+            "--agent-id",
+            agent_id,
+            term_to_update["id"],
+            "--name",
+            new_name,
+            "--description",
+            new_description,
+            "--synonyms",
+            new_synonyms,
+        ) == os.EX_OK
+
+        updated_term = await API.read_term(agent_id=agent_id, term_id=term_to_update["id"])
+
+        assert updated_term["name"] == new_name
+        assert updated_term["description"] == new_description
+        assert updated_term["synonyms"] == [new_synonyms]
+
+
 async def test_that_terms_can_be_listed(
     context: ContextOfTest,
 ) -> None:

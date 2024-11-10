@@ -4,6 +4,13 @@ Feature: Glossary
         And an agent
         And an empty session
 
+    Scenario: The agent explains an ambiguous term of token
+        Given the term "token" defined as a digital token
+        And a user message, "What is a token?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an explanation of token as a digital token
+
     Scenario Outline: The agent explains an ambiguous term
         Given the term "<TERM_NAME>" defined as <TERM_DESCRIPTION>
         And a user message, "<USER_MESSAGE>"
