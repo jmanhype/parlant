@@ -40,6 +40,21 @@ async def test_that_sdk_service_is_created(
     assert content["url"] == "https://example.com/sdk"
 
 
+async def test_that_sdk_service_fails_to_create_due_to_url_not_starting_with_http_or_https(
+    client: TestClient,
+) -> None:
+    response = client.put(
+        "/services/my_sdk_service",
+        json={
+            "kind": "sdk",
+            "url": "example.com/sdk",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"] == "Service URL is missing schema (http:// or https://)"
+
+
 async def test_that_openapi_service_is_created_with_url_source(
     async_client: httpx.AsyncClient,
 ) -> None:
