@@ -1295,11 +1295,11 @@ class Interface:
     def update_term(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        term_id: str,
         description: str,
         synonyms: Optional[str],
     ) -> None:
-        term = Actions.patch_term(ctx, agent_id, name, description, synonyms)
+        term = Actions.patch_term(ctx, agent_id, term_id, description, synonyms)
         Interface._write_success(f"Updated term (id={term['id']})")
         Interface._print_table([term])
 
@@ -2120,7 +2120,7 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("term_id", type=str)
     @click.option(
         "-d",
         "--description",
@@ -2139,14 +2139,14 @@ async def async_main() -> None:
     def glossary_update(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        term_id: str,
         description: str,
         synonyms: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.update_term(ctx, agent_id, name, description, synonyms)
+        Interface.update_term(ctx, agent_id, term_id, description, synonyms)
 
     @glossary.command("remove", help="Remove a term from the glossary")
     @click.option(
