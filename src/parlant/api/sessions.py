@@ -189,6 +189,69 @@ class ReadInteractionResponse(DefaultBaseModel):
     preparation_iterations: list[PreparationIterationDTO]
 
 
+def message_generation_inspection_to_dto(
+    m: MessageGenerationInspection,
+) -> MessageGenerationInspectionDTO:
+    return MessageGenerationInspectionDTO(
+        generation=GenerationInfoDTO(
+            schema_name=m.generation.schema_name,
+            model=m.generation.model,
+            duration=m.generation.duration,
+            usage=UsageInfoDTO(
+                input_tokens=m.generation.usage.input_tokens,
+                output_tokens=m.generation.usage.output_tokens,
+                extra=m.generation.usage.extra,
+            ),
+        ),
+        messages=list(m.messages),
+    )
+
+
+def preparation_iteration_to_dto(iteration: PreparationIteration) -> PreparationIterationDTO:
+    return PreparationIterationDTO(
+        guideline_propositions=[
+            GuidelinePropositionDTO(
+                guideline_id=proposition["guideline_id"],
+                predicate=proposition["predicate"],
+                action=proposition["action"],
+                score=proposition["score"],
+                rationale=proposition["rationale"],
+            )
+            for proposition in iteration.guideline_propositions
+        ],
+        tool_calls=[
+            ToolCallDTO(
+                tool_id=tool_call["tool_id"],
+                arguments=tool_call["arguments"],
+                result=ToolResultDTO(
+                    data=tool_call["result"]["data"],
+                    metadata=tool_call["result"]["metadata"],
+                ),
+            )
+            for tool_call in iteration.tool_calls
+        ],
+        terms=[
+            TermDTO(
+                id=term["id"],
+                name=term["name"],
+                description=term["description"],
+                synonyms=term["synonyms"],
+            )
+            for term in iteration.terms
+        ],
+        context_variables=[
+            ContextVariableAndValueDTO(
+                id=cv["id"],
+                name=cv["name"],
+                description=cv["description"] or "",
+                key=cv["key"],
+                value=cv["value"],
+            )
+            for cv in iteration.context_variables
+        ],
+    )
+
+
 class CreateInteractionsResponse(DefaultBaseModel):
     correlation_id: str
 
@@ -585,6 +648,7 @@ def create_router(
     )
     async def create_interactions(
         session_id: SessionId,
+        moderation: Literal["none", "auto"] = "none",
     ) -> CreateInteractionsResponse:
         session = await session_store.read_session(session_id)
 
@@ -592,17 +656,6 @@ def create_router(
 
         return CreateInteractionsResponse(correlation_id=correlation_id)
 
-    # TODO: We are currently only returning the interaction ID when creating an interaction.
-    # The idea is that consumers can then query this ID using this endpoint.
-    # However, as of today, it is impossible to differentiate between an interaction
-    # that is currently being worked on and whose generation hasn't completed yet,
-    # and a completely nonexistent interaction. We aim to solve this by adding a
-    # "status" attribute to the response here. The idea is that if an interaction
-    # really doesn't exist, then we return a 404 here; otherwise, we return a response
-    # with status "pending" until it is completed, at which point we return status "completed".
-    # In order to add this we need to add some backend infra support to keep track of
-    # correlation IDs that are in the works... but, for now, as this is not a pressing matter,
-    # we simply don't support this type of usage yet.
     @router.get(
         "/{session_id}/interactions/{correlation_id}",
         operation_id="read_interaction",

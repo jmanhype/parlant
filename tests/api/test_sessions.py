@@ -14,7 +14,13 @@ from parlant.core.tools import ToolResult
 from parlant.core.agents import AgentId
 from parlant.core.async_utils import Timeout
 from parlant.core.end_users import EndUserId
-from parlant.core.sessions import EventSource, MessageEventData, SessionId, SessionStore
+from parlant.core.sessions import (
+    EventSource,
+    MessageEventData,
+    SessionId,
+    SessionListener,
+    SessionStore,
+)
 
 from tests.test_utilities import (
     create_agent,
@@ -829,10 +835,72 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert iterations[0]["context_variables"][0]["value"] == end_user.name
 
 
+async def test_that_a_message_is_generated_using_the_active_nlp_service(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    nlp_service = container[NLPService]
+
+    end_user = await create_end_user(
+        container=container,
+        name="John Smith",
+    )
+
+    session = await create_session(
+        container=container,
+        agent_id=agent_id,
+        end_user_id=end_user.id,
+    )
+
+    _ = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user asks what the cow says",
+        action="answer 'Woof Woof'",
+        tool_function=get_cow_uttering,
+    )
+
+    user_event = await post_message(
+        container=container,
+        session_id=session.id,
+        message="What does the cow say?!",
+        response_timeout=Timeout(60),
+    )
+
+    reply_event = await read_reply(
+        container=container,
+        session_id=session.id,
+        user_event_offset=user_event.offset,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+        .raise_for_status()
+        .json()
+    )
+
+    assert "Woof Woof" in cast(MessageEventData, reply_event.data)["message"]
+
+    message_generation_inspections = inspection_data["message_generations"]
+    assert len(message_generation_inspections) >= 1
+
+    assert message_generation_inspections[0]["generation"]["schema_name"] == "MessageEventSchema"
+
+    schematic_generator = await nlp_service.get_schematic_generator(MessageEventSchema)
+    assert message_generation_inspections[0]["generation"]["model"] == schematic_generator.id
+
+    assert message_generation_inspections[0]["generation"]["usage"]["input_tokens"] > 0
+
+    assert "Woof Woof" in message_generation_inspections[0]["messages"][0]
+    assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2
+
+
 async def test_that_a_message_interaction_can_be_regenerated(
     client: TestClient,
     container: Container,
     session_id: SessionId,
+    agent_id: AgentId,
 ) -> None:
     session_events = [
         make_event_params("end_user", data={"content": "Hello"}),
@@ -851,28 +919,31 @@ async def test_that_a_message_interaction_can_be_regenerated(
         .json()["event_ids"]
     )
 
+    _ = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user ask what is the weather today",
+        action="answer that it's cold",
+        tool_function=get_cow_uttering,
+    )
+
     correlation_id = (
         client.post(f"/sessions/{session_id}/interactions")
         .raise_for_status()
         .json()["correlation_id"]
     )
 
-    interactions = (
-        client.get(
-            f"/sessions/{session_id}/interactions",
-            params={
-                "min_event_offset": min_offset_to_delete,
-                "source": "ai_agent",
-                "wait": True,
-            },
-        )
+    await container[SessionListener].wait_for_events(
+        session_id=session_id,
+        kinds=["message"],
+        correlation_id=correlation_id,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session_id}/interactions/{correlation_id}")
         .raise_for_status()
         .json()
-    )["interactions"]
+    )
 
-    assert len(interactions) == 1
-    assert interactions[0]["correlation_id"] == correlation_id
-    assert interactions[0]["source"] == "ai_agent"
-    assert interactions[0]["kind"] == "message"
-    assert isinstance(interactions[0]["data"], str)
-    assert len(interactions[0]["data"]) > 0
+    message_generation_inspections = inspection_data["message_generations"]
+    assert "cold" in message_generation_inspections[0]["messages"][0].lower()

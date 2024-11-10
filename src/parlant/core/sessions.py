@@ -774,9 +774,10 @@ class SessionListener(ABC):
     async def wait_for_events(
         self,
         session_id: SessionId,
-        min_offset: int,
         kinds: Sequence[EventKind],
+        min_offset: Optional[int] = None,
         source: Optional[EventSource] = None,
+        correlation_id: Optional[str] = None,
         timeout: Timeout = Timeout.infinite(),
     ) -> bool: ...
 
@@ -788,9 +789,10 @@ class PollingSessionListener(SessionListener):
     async def wait_for_events(
         self,
         session_id: SessionId,
-        min_offset: int,
         kinds: Sequence[EventKind],
+        min_offset: Optional[int] = None,
         source: Optional[EventSource] = None,
+        correlation_id: Optional[str] = None,
         timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         while True:
@@ -799,6 +801,7 @@ class PollingSessionListener(SessionListener):
                 min_offset=min_offset,
                 source=source,
                 kinds=kinds,
+                correlation_id=correlation_id,
             )
 
             if events:
@@ -807,3 +810,21 @@ class PollingSessionListener(SessionListener):
                 return False
             else:
                 await timeout.wait_up_to(1)
+
+    async def wait_for_interaction(
+        self,
+        session_id: SessionId,
+        correlation_id: str,
+        timeout: Timeout = Timeout.infinite(),
+    ) -> bool:
+        while True:
+            try:
+                await self._session_store.read_inspection(
+                    session_id=session_id, correlation_id=correlation_id
+                )
+                return True
+            except ItemNotFoundError:
+                if timeout.expired():
+                    return False
+                else:
+                    await timeout.wait_up_to(1)
