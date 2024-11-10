@@ -1,11 +1,33 @@
+import time
 from pydantic import ValidationError
 from anthropic import AsyncAnthropic  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
+import tiktoken
 
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
+from parlant.core.nlp.embedding import Embedder
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 from parlant.core.logging import Logger
+from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.service import NLPService
+from parlant.core.nlp.tokenization import EstimatingTokenizer
+
+
+class AnthropicEstimatingTokenizer(EstimatingTokenizer):
+    def __init__(self, client: AsyncAnthropic) -> None:
+        self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+        self._client = client
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        return await self._client.count_tokens(prompt)
 
 
 class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -18,7 +40,18 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> None:
         self.model_name = model_name
         self._logger = logger
+
         self._client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        self._estimating_tokenizer = AnthropicEstimatingTokenizer(self._client)
+
+    @property
+    def id(self) -> str:
+        return f"anthropic/{self.model_name}"
+
+    @property
+    def tokenizer(self) -> AnthropicEstimatingTokenizer:
+        return self._estimating_tokenizer
 
     async def generate(
         self,
@@ -27,12 +60,14 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         anthropic_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._client.messages.create(
             messages=[{"role": "user", "content": prompt}],
             model=self.model_name,
             max_tokens=2048,
             **anthropic_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.content[0].text
 
@@ -55,7 +90,18 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+            return SchematicGenerationResult(
+                content=model_content,
+                info=GenerationInfo(
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage=UsageInfo(
+                        input_tokens=response.usage.input_tokens,
+                        output_tokens=response.usage.output_tokens,
+                    ),
+                ),
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
@@ -69,3 +115,21 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
             model_name="claude-3-5-sonnet-20241022",
             logger=logger,
         )
+
+    @property
+    def max_tokens(self) -> int:
+        return 200_000
+
+
+class AnthropicService(NLPService):
+    def __init__(self, logger: Logger) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
+        return Claude_Sonnet_3_5[t](self._logger)  # type: ignore
+
+    async def get_embedder(self) -> Embedder:
+        return JinaAIEmbedder()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return NoModeration()

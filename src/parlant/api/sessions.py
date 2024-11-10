@@ -18,6 +18,8 @@ from parlant.core.sessions import (
     EventId,
     EventKind,
     MessageEventData,
+    MessageGenerationInspection,
+    PreparationIteration,
     SessionId,
     SessionListener,
     SessionStore,
@@ -155,6 +157,24 @@ class ContextVariableAndValueDTO(DefaultBaseModel):
     value: Any
 
 
+class UsageInfoDTO(DefaultBaseModel):
+    input_tokens: int
+    output_tokens: int
+    extra: Optional[Mapping[str, int]]
+
+
+class GenerationInfoDTO(DefaultBaseModel):
+    schema_name: str
+    model: str
+    duration: float
+    usage: UsageInfoDTO
+
+
+class MessageGenerationInspectionDTO(DefaultBaseModel):
+    generation: GenerationInfoDTO
+    messages: list[Optional[str]]
+
+
 class PreparationIterationDTO(DefaultBaseModel):
     guideline_propositions: list[GuidelinePropositionDTO]
     tool_calls: list[ToolCallDTO]
@@ -165,7 +185,71 @@ class PreparationIterationDTO(DefaultBaseModel):
 class ReadInteractionResponse(DefaultBaseModel):
     session_id: SessionId
     correlation_id: str
+    message_generations: list[MessageGenerationInspectionDTO]
     preparation_iterations: list[PreparationIterationDTO]
+
+
+def message_generation_inspection_to_dto(
+    m: MessageGenerationInspection,
+) -> MessageGenerationInspectionDTO:
+    return MessageGenerationInspectionDTO(
+        generation=GenerationInfoDTO(
+            schema_name=m.generation.schema_name,
+            model=m.generation.model,
+            duration=m.generation.duration,
+            usage=UsageInfoDTO(
+                input_tokens=m.generation.usage.input_tokens,
+                output_tokens=m.generation.usage.output_tokens,
+                extra=m.generation.usage.extra,
+            ),
+        ),
+        messages=list(m.messages),
+    )
+
+
+def preparation_iteration_to_dto(iteration: PreparationIteration) -> PreparationIterationDTO:
+    return PreparationIterationDTO(
+        guideline_propositions=[
+            GuidelinePropositionDTO(
+                guideline_id=proposition["guideline_id"],
+                predicate=proposition["predicate"],
+                action=proposition["action"],
+                score=proposition["score"],
+                rationale=proposition["rationale"],
+            )
+            for proposition in iteration.guideline_propositions
+        ],
+        tool_calls=[
+            ToolCallDTO(
+                tool_id=tool_call["tool_id"],
+                arguments=tool_call["arguments"],
+                result=ToolResultDTO(
+                    data=tool_call["result"]["data"],
+                    metadata=tool_call["result"]["metadata"],
+                ),
+            )
+            for tool_call in iteration.tool_calls
+        ],
+        terms=[
+            TermDTO(
+                id=term["id"],
+                name=term["name"],
+                description=term["description"],
+                synonyms=term["synonyms"],
+            )
+            for term in iteration.terms
+        ],
+        context_variables=[
+            ContextVariableAndValueDTO(
+                id=cv["id"],
+                name=cv["name"],
+                description=cv["description"] or "",
+                key=cv["key"],
+                value=cv["value"],
+            )
+            for cv in iteration.context_variables
+        ],
+    )
 
 
 def create_router(
@@ -565,49 +649,11 @@ def create_router(
         return ReadInteractionResponse(
             session_id=session_id,
             correlation_id=correlation_id,
+            message_generations=[
+                message_generation_inspection_to_dto(m) for m in inspection.message_generations
+            ],
             preparation_iterations=[
-                PreparationIterationDTO(
-                    guideline_propositions=[
-                        GuidelinePropositionDTO(
-                            guideline_id=proposition["guideline_id"],
-                            predicate=proposition["predicate"],
-                            action=proposition["action"],
-                            score=proposition["score"],
-                            rationale=proposition["rationale"],
-                        )
-                        for proposition in iteration.guideline_propositions
-                    ],
-                    tool_calls=[
-                        ToolCallDTO(
-                            tool_id=tool_call["tool_id"],
-                            arguments=tool_call["arguments"],
-                            result=ToolResultDTO(
-                                data=tool_call["result"]["data"],
-                                metadata=tool_call["result"]["metadata"],
-                            ),
-                        )
-                        for tool_call in iteration.tool_calls
-                    ],
-                    terms=[
-                        TermDTO(
-                            id=term["id"],
-                            name=term["name"],
-                            description=term["description"],
-                            synonyms=term["synonyms"],
-                        )
-                        for term in iteration.terms
-                    ],
-                    context_variables=[
-                        ContextVariableAndValueDTO(
-                            id=cv["id"],
-                            name=cv["name"],
-                            description=cv["description"] or "",
-                            key=cv["key"],
-                            value=cv["value"],
-                        )
-                        for cv in iteration.context_variables
-                    ],
-                )
+                preparation_iteration_to_dto(iteration)
                 for iteration in inspection.preparation_iterations
             ],
         )

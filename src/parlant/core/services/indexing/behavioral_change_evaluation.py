@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
 from parlant.core.agents import Agent, AgentStore
@@ -19,11 +20,11 @@ from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore,
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
 )
+from parlant.core.services.indexing.common import ProgressReport
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from parlant.core.logging import Logger
-from parlant.core.common import ProgressReport, md5_checksum
 
 
 class EvaluationError(Exception):
@@ -34,6 +35,13 @@ class EvaluationError(Exception):
 class EvaluationValidationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+def md5_checksum(input: str) -> str:
+    md5_hash = hashlib.md5()
+    md5_hash.update(input.encode("utf-8"))
+
+    return md5_hash.hexdigest()
 
 
 class GuidelineEvaluator:

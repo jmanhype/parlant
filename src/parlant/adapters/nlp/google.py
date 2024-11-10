@@ -1,15 +1,37 @@
 import os
+import time
 import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
+from vertexai.preview import tokenization  # type: ignore
 
-from parlant.core.logging import Logger
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.nlp.tokenization import EstimatingTokenizer
+from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    FallbackSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
+from parlant.core.logging import Logger
 
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+
+class GoogleEstimatingTokenizer(EstimatingTokenizer):
+    def __init__(self, model_name: str) -> None:
+        self._tokenizer = tokenization.get_tokenizer_for_model("gemini-1.5-pro")
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        result = self._tokenizer.count_tokens(prompt)
+        return int(result.total_tokens)
 
 
 class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
@@ -22,7 +44,18 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     ) -> None:
         self.model_name = model_name
         self._logger = logger
+
         self._model = genai.GenerativeModel(model_name)
+
+        self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"google/{self.model_name}"
+
+    @property
+    def tokenizer(self) -> EstimatingTokenizer:
+        return self._tokenizer
 
     async def generate(
         self,
@@ -31,11 +64,12 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         gemini_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._model.generate_content_async(
             contents=prompt,
-            generation_config={"temperature": gemini_api_arguments.pop("temperature")},
-            **gemini_api_arguments,
+            generation_config=gemini_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.text
 
@@ -63,7 +97,21 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+            return SchematicGenerationResult(
+                content=model_content,
+                info=GenerationInfo(
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage=UsageInfo(
+                        input_tokens=response.usage_metadata.prompt_token_count,
+                        output_tokens=response.usage_metadata.candidates_token_count,
+                        extra={
+                            "cached_input_tokens": response.usage_metadata.cached_content_token_count
+                        },
+                    ),
+                ),
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
@@ -78,6 +126,10 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
             logger=logger,
         )
 
+    @property
+    def max_tokens(self) -> int:
+        return 1_000_000
+
 
 class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
@@ -86,12 +138,25 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
             logger=logger,
         )
 
+    @property
+    def max_tokens(self) -> int:
+        return 2_000_000
 
-class GeminiEmbedder(Embedder):
+
+class GoogleEmbedder(Embedder):
     supported_hints = ["title", "task_type"]
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
+        self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
+
+    @property
+    def id(self) -> str:
+        return f"google/{self.model_name}"
+
+    @property
+    def tokenizer(self) -> GoogleEstimatingTokenizer:
+        return self._tokenizer
 
     async def embed(
         self,
@@ -110,6 +175,33 @@ class GeminiEmbedder(Embedder):
         return EmbeddingResult(vectors=vectors)
 
 
-class GeminiTextEmbedding_004(GeminiEmbedder):
+class GeminiTextEmbedding_004(GoogleEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="models/text-embedding-004")
+
+    @property
+    def max_tokens(self) -> int:
+        return 8000
+
+
+class GoogleService(NLPService):
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> GeminiSchematicGenerator[T]:
+        if t == ToolCallInferenceSchema:
+            return FallbackSchematicGenerator(
+                Gemini_1_5_Flash[t](self._logger),  # type: ignore
+                Gemini_1_5_Pro[t](self._logger),  # type: ignore
+                logger=self._logger,
+            )
+        return Gemini_1_5_Pro[t](self._logger)  # type: ignore
+
+    async def get_embedder(self) -> Embedder:
+        return GeminiTextEmbedding_004()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return NoModeration()

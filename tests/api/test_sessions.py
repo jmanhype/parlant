@@ -8,6 +8,8 @@ from lagom import Container
 from pytest import fixture, mark
 from datetime import datetime, timezone
 
+from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
+from parlant.core.nlp.service import NLPService
 from parlant.core.tools import ToolResult
 from parlant.core.agents import AgentId
 from parlant.core.async_utils import Timeout
@@ -825,3 +827,64 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     assert iterations[0]["context_variables"][0]["name"] == context_variable.name
     assert iterations[0]["context_variables"][0]["key"] == end_user.id
     assert iterations[0]["context_variables"][0]["value"] == end_user.name
+
+
+async def test_that_a_message_is_generated_using_the_active_nlp_service(
+    client: TestClient,
+    container: Container,
+    agent_id: AgentId,
+) -> None:
+    nlp_service = container[NLPService]
+
+    end_user = await create_end_user(
+        container=container,
+        name="John Smith",
+    )
+
+    session = await create_session(
+        container=container,
+        agent_id=agent_id,
+        end_user_id=end_user.id,
+    )
+
+    _ = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user asks what the cow says",
+        action="answer 'Woof Woof'",
+        tool_function=get_cow_uttering,
+    )
+
+    user_event = await post_message(
+        container=container,
+        session_id=session.id,
+        message="What does the cow say?!",
+        response_timeout=Timeout(60),
+    )
+
+    reply_event = await read_reply(
+        container=container,
+        session_id=session.id,
+        user_event_offset=user_event.offset,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+        .raise_for_status()
+        .json()
+    )
+
+    assert "Woof Woof" in cast(MessageEventData, reply_event.data)["message"]
+
+    message_generation_inspections = inspection_data["message_generations"]
+    assert len(message_generation_inspections) >= 1
+
+    assert message_generation_inspections[0]["generation"]["schema_name"] == "MessageEventSchema"
+
+    schematic_generator = await nlp_service.get_schematic_generator(MessageEventSchema)
+    assert message_generation_inspections[0]["generation"]["model"] == schematic_generator.id
+
+    assert message_generation_inspections[0]["generation"]["usage"]["input_tokens"] > 0
+
+    assert "Woof Woof" in message_generation_inspections[0]["messages"][0]
+    assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2

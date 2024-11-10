@@ -6,13 +6,14 @@ from typing import Optional, Sequence
 from more_itertools import chunked
 
 from parlant.core.agents import Agent
-from parlant.core.common import DefaultBaseModel, ProgressReport
+from parlant.core.common import DefaultBaseModel
 from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.logging import Logger
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.glossary import GlossaryStore
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
+from parlant.core.services.indexing.common import ProgressReport
 
 
 class GuidelineConnectionPropositionSchema(DefaultBaseModel):

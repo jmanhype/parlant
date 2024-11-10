@@ -7,8 +7,10 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.nlp.generation import (
     FallbackSchematicGenerator,
+    GenerationInfo,
     SchematicGenerationResult,
     SchematicGenerator,
+    UsageInfo,
 )
 
 
@@ -21,7 +23,16 @@ async def test_that_fallback_generation_uses_the_first_working_generator(
 ) -> None:
     mock_first_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
     mock_first_generator.generate.return_value = SchematicGenerationResult(
-        content=DummySchema(result="Success")
+        content=DummySchema(result="Success"),
+        info=GenerationInfo(
+            schema_name="DummySchema",
+            model="not-real-model",
+            duration=1,
+            usage=UsageInfo(
+                input_tokens=1,
+                output_tokens=1,
+            ),
+        ),
     )
 
     mock_second_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
@@ -50,7 +61,16 @@ async def test_that_fallback_generation_falls_back_to_the_next_generator_when_en
 
     mock_second_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
     mock_second_generator.generate.return_value = SchematicGenerationResult(
-        content=DummySchema(result="Success")
+        content=DummySchema(result="Success"),
+        info=GenerationInfo(
+            schema_name="DummySchema",
+            model="not-real-model",
+            duration=1,
+            usage=UsageInfo(
+                input_tokens=1,
+                output_tokens=1,
+            ),
+        ),
     )
 
     fallback_generator = FallbackSchematicGenerator[DummySchema](

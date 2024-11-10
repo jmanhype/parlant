@@ -28,6 +28,7 @@ from parlant.core.agents import AgentId
 from parlant.core.context_variables import ContextVariableId
 from parlant.core.end_users import EndUserId
 from parlant.core.guidelines import GuidelineId
+from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.document_database import (
     DocumentDatabase,
     ObjectId,
@@ -149,15 +150,35 @@ class ContextVariable(TypedDict):
 
 
 @dataclass(frozen=True)
+class MessageGenerationInspection:
+    generation: GenerationInfo
+    messages: Sequence[Optional[str]]
+
+
+@dataclass(frozen=True)
+class GuidelinePropositionInspection:
+    total_duration: float
+    batches: Sequence[GenerationInfo]
+
+
+@dataclass(frozen=True)
+class PreparationIterationGenerations:
+    guideline_proposition: GuidelinePropositionInspection
+    tool_calls: Sequence[GenerationInfo]
+
+
+@dataclass(frozen=True)
 class PreparationIteration:
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
     terms: Sequence[Term]
     context_variables: Sequence[ContextVariable]
+    generations: PreparationIterationGenerations
 
 
 @dataclass(frozen=True)
 class Inspection:
+    message_generations: Sequence[MessageGenerationInspection]
     preparation_iterations: Sequence[PreparationIteration]
 
 
@@ -262,6 +283,7 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         correlation_id: str,
+        message_generations: Sequence[MessageGenerationInspection],
         preparation_iterations: Sequence[PreparationIteration],
     ) -> Inspection: ...
 
@@ -297,18 +319,48 @@ class _EventDocument(TypedDict, total=False):
     deleted: bool
 
 
+class _UsageInfoDocument(TypedDict):
+    input_tokens: int
+    output_tokens: int
+    extra: Optional[Mapping[str, int]]
+
+
+class _GenerationInfoDocument(TypedDict):
+    schema_name: str
+    model: str
+    duration: float
+    usage: _UsageInfoDocument
+
+
+class _GuidelinePropositionInspectionDocument(TypedDict):
+    total_duration: float
+    batches: Sequence[_GenerationInfoDocument]
+
+
+class _PreparationIterationGenerationsDocument(TypedDict):
+    guideline_proposition: _GuidelinePropositionInspectionDocument
+    tool_calls: Sequence[_GenerationInfoDocument]
+
+
+class _MessageGenerationInspectionDocument(TypedDict):
+    generation: _GenerationInfoDocument
+    messages: Sequence[Optional[str]]
+
+
 class _PreparationIterationDocument(TypedDict):
     guideline_propositions: Sequence[GuidelineProposition]
     tool_calls: Sequence[ToolCall]
     terms: Sequence[Term]
     context_variables: Sequence[ContextVariable]
+    generations: _PreparationIterationGenerationsDocument
 
 
-class _MessageInspectionDocument(TypedDict, total=False):
+class _InspectionDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     session_id: SessionId
     correlation_id: str
+    message_generations: Sequence[_MessageGenerationInspectionDocument]
     preparation_iterations: Sequence[_PreparationIterationDocument]
 
 
@@ -324,9 +376,9 @@ class SessionDocumentStore(SessionStore):
             name="events",
             schema=_EventDocument,
         )
-        self._message_inspection_collection = database.get_or_create_collection(
-            name="message_inspections",
-            schema=_MessageInspectionDocument,
+        self._inspection_collection = database.get_or_create_collection(
+            name="inspections",
+            schema=_InspectionDocument,
         )
 
     def _serialize_session(
@@ -391,41 +443,103 @@ class SessionDocumentStore(SessionStore):
             deleted=event_document["deleted"],
         )
 
-    def _serialize_message_inspection(
+    def _serialize_inspection(
         self,
-        message_inspection: Inspection,
+        inspection: Inspection,
         session_id: SessionId,
         correlation_id: str,
-    ) -> _MessageInspectionDocument:
-        return _MessageInspectionDocument(
+    ) -> _InspectionDocument:
+        def serialize_generation_info(generation: GenerationInfo) -> _GenerationInfoDocument:
+            return _GenerationInfoDocument(
+                schema_name=generation.schema_name,
+                model=generation.model,
+                duration=generation.duration,
+                usage=_UsageInfoDocument(
+                    input_tokens=generation.usage.input_tokens,
+                    output_tokens=generation.usage.output_tokens,
+                    extra=generation.usage.extra,
+                ),
+            )
+
+        return _InspectionDocument(
             id=ObjectId(generate_id()),
             version=self.VERSION.to_string(),
             session_id=session_id,
             correlation_id=correlation_id,
+            message_generations=[
+                _MessageGenerationInspectionDocument(
+                    generation=serialize_generation_info(m.generation), messages=m.messages
+                )
+                for m in inspection.message_generations
+            ],
             preparation_iterations=[
                 {
                     "guideline_propositions": i.guideline_propositions,
                     "tool_calls": i.tool_calls,
                     "terms": i.terms,
                     "context_variables": i.context_variables,
+                    "generations": _PreparationIterationGenerationsDocument(
+                        guideline_proposition=_GuidelinePropositionInspectionDocument(
+                            total_duration=i.generations.guideline_proposition.total_duration,
+                            batches=[
+                                serialize_generation_info(g)
+                                for g in i.generations.guideline_proposition.batches
+                            ],
+                        ),
+                        tool_calls=[serialize_generation_info(g) for g in i.generations.tool_calls],
+                    ),
                 }
-                for i in message_inspection.preparation_iterations
+                for i in inspection.preparation_iterations
             ],
         )
 
     def _deserialize_message_inspection(
         self,
-        message_inspection_document: _MessageInspectionDocument,
+        inspection_document: _InspectionDocument,
     ) -> Inspection:
+        def deserialize_generation_info(
+            generation_document: _GenerationInfoDocument,
+        ) -> GenerationInfo:
+            return GenerationInfo(
+                schema_name=generation_document["schema_name"],
+                model=generation_document["model"],
+                duration=generation_document["duration"],
+                usage=UsageInfo(
+                    input_tokens=generation_document["usage"]["input_tokens"],
+                    output_tokens=generation_document["usage"]["output_tokens"],
+                    extra=generation_document["usage"]["extra"],
+                ),
+            )
+
         return Inspection(
+            message_generations=[
+                MessageGenerationInspection(
+                    generation=deserialize_generation_info(m["generation"]), messages=m["messages"]
+                )
+                for m in inspection_document["message_generations"]
+            ],
             preparation_iterations=[
                 PreparationIteration(
                     guideline_propositions=i["guideline_propositions"],
                     tool_calls=i["tool_calls"],
                     terms=i["terms"],
                     context_variables=i["context_variables"],
+                    generations=PreparationIterationGenerations(
+                        guideline_proposition=GuidelinePropositionInspection(
+                            total_duration=i["generations"]["guideline_proposition"][
+                                "total_duration"
+                            ],
+                            batches=[
+                                deserialize_generation_info(g)
+                                for g in i["generations"]["guideline_proposition"]["batches"]
+                            ],
+                        ),
+                        tool_calls=[
+                            deserialize_generation_info(g) for g in i["generations"]["tool_calls"]
+                        ],
+                    ),
                 )
-                for i in message_inspection_document["preparation_iterations"]
+                for i in inspection_document["preparation_iterations"]
             ],
         )
 
@@ -606,24 +720,26 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
         correlation_id: str,
+        message_generations: Sequence[MessageGenerationInspection],
         preparation_iterations: Sequence[PreparationIteration],
     ) -> Inspection:
         if not await self._session_collection.find_one(filters={"id": {"$eq": session_id}}):
             raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
 
-        message_inspection = Inspection(
+        inspection = Inspection(
+            message_generations=message_generations,
             preparation_iterations=preparation_iterations,
         )
 
-        await self._message_inspection_collection.insert_one(
-            document=self._serialize_message_inspection(
-                message_inspection,
+        await self._inspection_collection.insert_one(
+            document=self._serialize_inspection(
+                inspection,
                 session_id,
                 correlation_id,
             )
         )
 
-        return message_inspection
+        return inspection
 
     async def read_inspection(
         self,
@@ -643,10 +759,10 @@ class SessionDocumentStore(SessionStore):
                 item_id=UniqueId(correlation_id), message="Message event not found"
             )
 
-        if message_inspection_document := await self._message_inspection_collection.find_one(
+        if inspection_document := await self._inspection_collection.find_one(
             filters={"correlation_id": {"$eq": correlation_id}}
         ):
-            return self._deserialize_message_inspection(message_inspection_document)
+            return self._deserialize_message_inspection(inspection_document)
 
         raise ItemNotFoundError(
             item_id=UniqueId(correlation_id), message="Message inspection not found"

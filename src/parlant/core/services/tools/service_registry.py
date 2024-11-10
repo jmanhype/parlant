@@ -9,6 +9,7 @@ from typing_extensions import Literal
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.nlp.moderation import ModerationService
+from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import LocalToolService, ToolService
@@ -55,6 +56,17 @@ class ServiceRegistry(ABC):
     ) -> Sequence[tuple[str, ModerationService]]: ...
 
     @abstractmethod
+    async def read_nlp_service(
+        self,
+        name: str,
+    ) -> NLPService: ...
+
+    @abstractmethod
+    async def list_nlp_services(
+        self,
+    ) -> Sequence[tuple[str, NLPService]]: ...
+
+    @abstractmethod
     async def delete_service(
         self,
         name: str,
@@ -78,12 +90,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
         database: DocumentDatabase,
         event_emitter_factory: EventEmitterFactory,
         correlator: ContextualCorrelator,
-        moderation_services: Mapping[str, ModerationService],
+        nlp_services: Mapping[str, NLPService],
     ):
         self._event_emitter_factory = event_emitter_factory
         self._correlator = correlator
-        self._moderation_services = moderation_services
+        self._nlp_services = nlp_services
 
+        self._moderation_services: Mapping[str, ModerationService]
         self._exit_stack: AsyncExitStack
         self._running_services: dict[str, ToolService] = {}
         self._service_sources: dict[str, str] = {}
@@ -103,6 +116,11 @@ class ServiceDocumentRegistry(ServiceRegistry):
             return cast(PluginClient, service)
 
     async def __aenter__(self) -> Self:
+        self._moderation_services = {
+            name: await nlp_service.get_moderation_service()
+            for name, nlp_service in self._nlp_services.items()
+        }
+
         self._exit_stack = AsyncExitStack()
         await self._exit_stack.__aenter__()
 
@@ -242,6 +260,19 @@ class ServiceDocumentRegistry(ServiceRegistry):
         self,
     ) -> Sequence[tuple[str, ModerationService]]:
         return list(self._moderation_services.items())
+
+    async def read_nlp_service(
+        self,
+        name: str,
+    ) -> NLPService:
+        if name not in self._nlp_services:
+            raise ItemNotFoundError(item_id=UniqueId(name))
+        return self._nlp_services[name]
+
+    async def list_nlp_services(
+        self,
+    ) -> Sequence[tuple[str, NLPService]]:
+        return list(self._nlp_services.items())
 
     async def delete_service(self, name: str) -> None:
         if name in self._running_services:

@@ -1,17 +1,34 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Generic, Mapping, TypeVar, cast, get_args
+from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
+from parlant.core.nlp.tokenization import EstimatingTokenizer
 
 T = TypeVar("T", bound=DefaultBaseModel)
 
 
 @dataclass(frozen=True)
+class UsageInfo:
+    input_tokens: int
+    output_tokens: int
+    extra: Optional[Mapping[str, int]] = None
+
+
+@dataclass(frozen=True)
+class GenerationInfo:
+    schema_name: str
+    model: str
+    duration: float
+    usage: UsageInfo
+
+
+@dataclass(frozen=True)
 class SchematicGenerationResult(Generic[T]):
     content: T
+    info: GenerationInfo
 
 
 class SchematicGenerator(ABC, Generic[T]):
@@ -21,6 +38,18 @@ class SchematicGenerator(ABC, Generic[T]):
         prompt: str,
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[T]: ...
+
+    @property
+    @abstractmethod
+    def id(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def max_tokens(self) -> int: ...
+
+    @property
+    @abstractmethod
+    def tokenizer(self) -> EstimatingTokenizer: ...
 
 
 class BaseSchematicGenerator(SchematicGenerator[T]):
@@ -38,6 +67,7 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         logger: Logger,
     ) -> None:
         assert generators, "Fallback generator must be instantiated with at least 1 generator"
+
         self._generators = generators
         self._logger = logger
 
@@ -59,3 +89,15 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
                 last_exception = e
 
         raise last_exception
+
+    @property
+    def id(self) -> str:
+        return self._generators[0].id
+
+    @property
+    def tokenizer(self) -> EstimatingTokenizer:
+        return self._generators[0].tokenizer
+
+    @property
+    def max_tokens(self) -> int:
+        return self._generators[0].max_tokens

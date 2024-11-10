@@ -6,7 +6,8 @@ from typing import Mapping, Optional, Sequence
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.engines.alpha.event_generation import EventGenerationResult
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import (
     PromptBuilder,
@@ -53,7 +54,7 @@ class MessageEventSchema(DefaultBaseModel):
     evaluations_for_each_of_the_provided_guidelines: Optional[list[GuidelineEvaluation]] = None
 
 
-class MessageEventProducer:
+class MessageEventGenerator:
     def __init__(
         self,
         logger: Logger,
@@ -64,7 +65,7 @@ class MessageEventProducer:
         self._correlator = correlator
         self._schematic_generator = schematic_generator
 
-    async def produce_events(
+    async def generate_events(
         self,
         event_emitter: EventEmitter,
         agents: Sequence[Agent],
@@ -74,7 +75,7 @@ class MessageEventProducer:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EmittedEvent]:
+    ) -> Sequence[EventGenerationResult]:
         assert len(agents) == 1
 
         with self._logger.operation("Message production"):
@@ -132,10 +133,12 @@ class MessageEventProducer:
 
             for generation_attempt in range(3):
                 try:
-                    if response_message := await self._generate_response_message(
+                    generation_info, response_message = await self._generate_response_message(
                         prompt,
                         temperature=generation_attempt_temperatures[generation_attempt],
-                    ):
+                    )
+
+                    if response_message is not None:
                         self._logger.debug(f'Message production result: "{response_message}"')
 
                         event = await event_emitter.emit_message_event(
@@ -143,10 +146,10 @@ class MessageEventProducer:
                             data=response_message,
                         )
 
-                        return [event]
+                        return [EventGenerationResult(generation_info, [event])]
                     else:
-                        self._logger.info("Skipping response; no response deemed necessary")
-                        return []
+                        self._logger.debug("Skipping response; no response deemed necessary")
+                        return [EventGenerationResult(generation_info, [])]
                 except Exception as exc:
                     self._logger.warning(
                         f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
@@ -505,7 +508,7 @@ Produce a valid JSON object in the following format: ###
         self,
         prompt: str,
         temperature: float,
-    ) -> Optional[str]:
+    ) -> tuple[GenerationInfo, Optional[str]]:
         message_event_response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": temperature},
@@ -513,16 +516,16 @@ Produce a valid JSON object in the following format: ###
 
         if not message_event_response.content.produced_reply:
             self._logger.debug(f"MessageEventProducer produced no reply: {message_event_response}")
-            return None
+            return message_event_response.info, None
 
         if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
             self._logger.debug(
-                "MessageEventProducer guideline evaluations: "
+                "MessageEventGenerator guideline evaluations: "
                 f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
             )
 
         self._logger.debug(
-            "MessageEventProducer revisions: "
+            "MessageEventGenerator revisions: "
             f"{json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
         )
 
@@ -555,4 +558,4 @@ Produce a valid JSON object in the following format: ###
                 f"PROBLEMATIC MESSAGE EVENT PRODUCER RESPONSE: {final_revision.content}"
             )
 
-        return str(final_revision.content)
+        return message_event_response.info, str(final_revision.content)

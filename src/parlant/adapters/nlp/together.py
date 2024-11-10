@@ -1,12 +1,36 @@
+import time
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 import os
+import tiktoken
 
+from parlant.adapters.nlp.hugging_face import HuggingFaceEstimatingTokenizer
+from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
-from parlant.core.nlp.generation import T, BaseSchematicGenerator, SchematicGenerationResult
+from parlant.core.nlp.generation import (
+    T,
+    BaseSchematicGenerator,
+    FallbackSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    UsageInfo,
+)
 from parlant.core.logging import Logger
+from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.service import NLPService
+from parlant.core.nlp.tokenization import EstimatingTokenizer
+
+
+class LlamaEstimatingTokenizer(EstimatingTokenizer):
+    def __init__(self) -> None:
+        self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
+
+    async def estimate_token_count(self, prompt: str) -> int:
+        tokens = self.encoding.encode(prompt)
+        return len(tokens) + 36
 
 
 class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
@@ -28,12 +52,14 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
     ) -> SchematicGenerationResult[T]:
         together_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
+        t_start = time.time()
         response = await self._client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model=self.model_name,
             response_format={"type": "json_object"},
             **together_api_arguments,
         )
+        t_end = time.time()
 
         raw_content = response.choices[0].message.content or "{}"
 
@@ -58,7 +84,20 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
 
         try:
             model_content = self.schema.model_validate(json_object)
-            return SchematicGenerationResult(content=model_content)
+
+            return SchematicGenerationResult(
+                content=model_content,
+                info=GenerationInfo(
+                    schema_name=self.schema.__name__,
+                    model=self.id,
+                    duration=(t_end - t_start),
+                    usage=UsageInfo(
+                        input_tokens=response.usage.prompt_tokens,
+                        output_tokens=response.usage.completion_tokens,
+                        extra={},
+                    ),
+                ),
+            )
         except ValidationError:
             self._logger.error(
                 f"JSON content returned by {self.model_name} does not match expected schema:\n{raw_content}"
@@ -72,6 +111,19 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             logger=logger,
         )
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def max_tokens(self) -> int:
+        return 128_000
+
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
+        return self._estimating_tokenizer
 
 
 class Llama3_1_70B(TogetherAISchematicGenerator[T]):
@@ -80,6 +132,42 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
             model_name="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
             logger=logger,
         )
+
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
+        return self._estimating_tokenizer
+
+    @property
+    def max_tokens(self) -> int:
+        return 128_000
+
+
+class Llama3_1_405B(TogetherAISchematicGenerator[T]):
+    def __init__(self, logger: Logger) -> None:
+        super().__init__(
+            model_name="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            logger=logger,
+        )
+
+        self._estimating_tokenizer = LlamaEstimatingTokenizer()
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def tokenizer(self) -> LlamaEstimatingTokenizer:
+        return self._estimating_tokenizer
+
+    @property
+    def max_tokens(self) -> int:
+        return 128_000
 
 
 class TogetherAIEmbedder(Embedder):
@@ -106,3 +194,41 @@ class TogetherAIEmbedder(Embedder):
 class M2Bert32K(TogetherAIEmbedder):
     def __init__(self) -> None:
         super().__init__(model_name="togethercomputer/m2-bert-80M-32k-retrieval")
+        self._estimating_tokenizer = HuggingFaceEstimatingTokenizer(self.model_name)
+
+    @property
+    def id(self) -> str:
+        return self.model_name
+
+    @property
+    def max_tokens(self) -> int:
+        return 32768
+
+    @property
+    def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
+        return self._estimating_tokenizer
+
+
+class TogetherService(NLPService):
+    def __init__(
+        self,
+        logger: Logger,
+    ) -> None:
+        self._logger = logger
+
+    async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
+        if t == MessageEventSchema:
+            return Llama3_1_405B[t](self._logger)  # type: ignore
+        elif t == ToolCallInferenceSchema:
+            return FallbackSchematicGenerator(
+                Llama3_1_8B[t](self._logger),  # type: ignore
+                Llama3_1_70B[t](self._logger),  # type: ignore
+                logger=self._logger,
+            )
+        return Llama3_1_70B[t](self._logger)  # type: ignore
+
+    async def get_embedder(self) -> Embedder:
+        return M2Bert32K()
+
+    async def get_moderation_service(self) -> ModerationService:
+        return NoModeration()

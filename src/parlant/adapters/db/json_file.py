@@ -4,7 +4,7 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, Type, cast
+from typing import Any, Mapping, Optional, Sequence, cast
 import aiofiles
 
 from parlant.core.persistence.document_database import (
@@ -68,7 +68,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
     ) -> bool:
@@ -111,7 +111,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     def create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> JSONFileDocumentCollection[TDocument]:
         self._logger.debug(f'Create collection "{name}"')
 
@@ -134,7 +134,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     def get_or_create_collection(
         self,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
@@ -167,7 +167,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         database: JSONFileDocumentDatabase,
         name: str,
-        schema: Type[TDocument],
+        schema: type[TDocument],
         data: Optional[Sequence[Mapping[str, Any]]] = None,
     ) -> None:
         self._database = database

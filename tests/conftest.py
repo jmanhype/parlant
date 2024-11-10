@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import AsyncExitStack
+import os
 from pathlib import Path
 import tempfile
 from typing import Any, AsyncIterator, cast
@@ -10,12 +11,10 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
-from parlant.adapters.nlp.openai import (
-    GPT_4o,
-    GPT_4o_Mini,
-    OmniModeration,
-    OpenAITextEmbedding3Large,
-)
+from parlant.adapters.nlp.google import GoogleService
+from parlant.adapters.nlp.openai import OpenAIService
+from parlant.adapters.nlp.anthropic import AnthropicService
+from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -24,7 +23,7 @@ from parlant.core.emissions import EventEmitterFactory
 from parlant.core.end_users import EndUserDocumentStore, EndUserStore
 from parlant.core.evaluations import EvaluationDocumentStore, EvaluationStore
 from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.core.nlp.generation import FallbackSchematicGenerator, SchematicGenerator
+from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -32,6 +31,7 @@ from parlant.core.guideline_connections import (
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.transient import TransientDocumentDatabase
+from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
     ServiceDocumentRegistry,
     ServiceRegistry,
@@ -48,12 +48,12 @@ from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
 )
-from parlant.core.engines.alpha.message_event_producer import (
-    MessageEventProducer,
+from parlant.core.engines.alpha.message_event_generator import (
+    MessageEventGenerator,
     MessageEventSchema,
 )
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
-from parlant.core.engines.alpha.tool_event_producer import ToolEventProducer
+from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
@@ -99,60 +99,68 @@ async def container() -> AsyncIterator[Container]:
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
-    container[SchematicGenerator[GuidelinePropositionsSchema]] = GPT_4o[
-        GuidelinePropositionsSchema
-    ](logger=container[Logger])
-
-    container[SchematicGenerator[MessageEventSchema]] = GPT_4o[MessageEventSchema](
-        logger=container[Logger]
-    )
-    container[SchematicGenerator[ToolCallInferenceSchema]] = FallbackSchematicGenerator(
-        GPT_4o_Mini[ToolCallInferenceSchema](logger=container[Logger]),
-        GPT_4o[ToolCallInferenceSchema](logger=container[Logger]),
-        logger=container[Logger],
-    )
-    container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = GPT_4o[
-        PredicatesEntailmentTestsSchema
-    ](logger=container[Logger])
-    container[SchematicGenerator[ActionsContradictionTestsSchema]] = GPT_4o[
-        ActionsContradictionTestsSchema
-    ](logger=container[Logger])
-    container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = GPT_4o[
-        GuidelineConnectionPropositionsSchema
-    ](logger=container[Logger])
-
     container[DocumentDatabase] = TransientDocumentDatabase
     container[AgentStore] = Singleton(AgentDocumentStore)
     container[GuidelineStore] = Singleton(GuidelineDocumentStore)
-    container[GuidelineProposer] = Singleton(GuidelineProposer)
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
-    container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
-    container[CoherenceChecker] = Singleton(CoherenceChecker)
-
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
+
     container[SessionListener] = PollingSessionListener
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
     async with AsyncExitStack() as stack:
-        chroma_temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
-        container[GlossaryStore] = GlossaryChromaStore(
-            ChromaDatabase(container[Logger], Path(chroma_temp_dir), EmbedderFactory(container)),
-            embedder_type=OpenAITextEmbedding3Large,
-        )
+        temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
+        os.environ["PARLANT_HOME"] = temp_dir
 
         container[ServiceRegistry] = await stack.enter_async_context(
             ServiceDocumentRegistry(
                 database=container[DocumentDatabase],
                 event_emitter_factory=container[EventEmitterFactory],
                 correlator=container[ContextualCorrelator],
-                moderation_services={"openai": OmniModeration(logger=container[Logger])},
+                nlp_services={
+                    "openai": OpenAIService(container[Logger]),
+                    "gemini": GoogleService(container[Logger]),
+                    "anthropic": AnthropicService(container[Logger]),
+                    "together": TogetherService(container[Logger]),
+                },
             )
         )
+
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("openai")
+
+        container[GlossaryStore] = GlossaryChromaStore(
+            ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
+            embedder_type=type(await container[NLPService].get_embedder()),
+        )
+
+        container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(GuidelinePropositionsSchema)
+        container[SchematicGenerator[MessageEventSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(MessageEventSchema)
+        container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(ToolCallInferenceSchema)
+        container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(PredicatesEntailmentTestsSchema)
+        container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(ActionsContradictionTestsSchema)
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
+            NLPService
+        ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
+
+        container[GuidelineProposer] = Singleton(GuidelineProposer)
+        container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
+        container[CoherenceChecker] = Singleton(CoherenceChecker)
+
         container[LocalToolService] = cast(
             LocalToolService,
             await container[ServiceRegistry].update_tool_service(
@@ -160,8 +168,8 @@ async def container() -> AsyncIterator[Container]:
             ),
         )
 
-        container[MessageEventProducer] = Singleton(MessageEventProducer)
-        container[ToolEventProducer] = Singleton(ToolEventProducer)
+        container[MessageEventGenerator] = Singleton(MessageEventGenerator)
+        container[ToolEventGenerator] = Singleton(ToolEventGenerator)
 
         container[Engine] = AlphaEngine
 

@@ -22,4 +22,15 @@ class ModerationCheck:
 
 class ModerationService(ABC):
     @abstractmethod
-    async def check(self, content: str) -> ModerationCheck: ...
+    async def check(
+        self,
+        content: str,
+    ) -> ModerationCheck: ...
+
+
+class NoModeration(ModerationService):
+    async def check(
+        self,
+        content: str,
+    ) -> ModerationCheck:
+        return ModerationCheck(flagged=False, tags=[])

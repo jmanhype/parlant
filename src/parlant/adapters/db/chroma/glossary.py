@@ -1,4 +1,6 @@
+import asyncio
 from datetime import datetime, timezone
+from itertools import chain
 from typing import Optional, Sequence, TypedDict
 
 from parlant.adapters.db.chroma.database import ChromaDatabase
@@ -27,13 +29,17 @@ class _TermDocument(TypedDict, total=False):
 class GlossaryChromaStore(GlossaryStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, chroma_db: ChromaDatabase, embedder_type: type[Embedder]):
+    def __init__(
+        self,
+        chroma_db: ChromaDatabase,
+        embedder_type: type[Embedder],
+    ):
         self._collection = chroma_db.get_or_create_collection(
             name="glossary",
             schema=_TermDocument,
             embedder_type=embedder_type,
         )
-        self._n_results = 20
+        self._embedder = embedder_type()
 
     def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
         return _TermDocument(
@@ -165,19 +171,50 @@ class GlossaryChromaStore(GlossaryStore):
 
         return TermId(term_document["id"])
 
+    async def _query_chunks(self, query: str) -> list[str]:
+        max_length = self._embedder.max_tokens // 5
+        total_token_count = await self._embedder.tokenizer.estimate_token_count(query)
+
+        words = query.split()
+        total_word_count = len(words)
+
+        tokens_per_word = total_token_count / total_word_count
+
+        words_per_chunk = max(int(max_length / tokens_per_word), 1)
+
+        chunks = []
+        for i in range(0, total_word_count, words_per_chunk):
+            chunk_words = words[i : i + words_per_chunk]
+            chunk = " ".join(chunk_words)
+            chunks.append(chunk)
+
+        return [
+            text if await self._embedder.tokenizer.estimate_token_count(text) else ""
+            for text in chunks
+        ]
+
     async def find_relevant_terms(
         self,
         term_set: str,
         query: str,
+        max_terms: int = 20,
     ) -> Sequence[Term]:
-        return [
-            self._deserialize(d)
-            for d in await self._collection.find_similar_documents(
+        queries = await self._query_chunks(query)
+
+        tasks = [
+            self._collection.find_similar_documents(
                 filters={"term_set": {"$eq": term_set}},
-                query=query,
-                k=self._n_results,
+                query=q,
+                k=max_terms,
             )
+            for q in queries
         ]
+
+        all_results = chain.from_iterable(await asyncio.gather(*tasks))
+        unique_results = list(set(all_results))
+        top_results = sorted(unique_results, key=lambda r: r.distance)[:max_terms]
+
+        return [self._deserialize(r.document) for r in top_results]
 
     def _assemble_term_content(
         self,

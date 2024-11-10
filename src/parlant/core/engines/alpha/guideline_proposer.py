@@ -1,13 +1,15 @@
 import asyncio
 from dataclasses import dataclass
-from itertools import groupby
+from functools import cached_property
+from itertools import chain, groupby
 import json
 import math
+import time
 from typing import Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
 from parlant.core.glossary import Term
@@ -38,6 +40,18 @@ class PredicateApplicabilityEvaluation:
     rationale: str
 
 
+@dataclass(frozen=True)
+class GuidelinePropositionResult:
+    total_duration: float
+    batch_count: int
+    batch_generations: Sequence[GenerationInfo]
+    batches: Sequence[Sequence[GuidelineProposition]]
+
+    @cached_property
+    def propositions(self) -> Sequence[GuidelineProposition]:
+        return list(chain.from_iterable(self.batches))
+
+
 class GuidelineProposer:
     def __init__(
         self,
@@ -55,9 +69,13 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[GuidelineProposition]:
+    ) -> GuidelinePropositionResult:
         if not guidelines:
-            return []
+            return GuidelinePropositionResult(
+                total_duration=0.0, batch_count=0, batch_generations=[], batches=[]
+            )
+
+        t_start = time.time()
 
         guidelines_grouped_by_predicate = {
             predicate: list(guidelines)
@@ -89,19 +107,31 @@ class GuidelineProposer:
                 for batch in batches
             ]
 
-            predicate_evaluations = sum(await asyncio.gather(*batch_tasks), [])
+            batch_generations, predicate_evaluations_batches = zip(
+                *(await asyncio.gather(*batch_tasks))
+            )
 
-            guideline_propositions = []
+            propositions_batches: list[list[GuidelineProposition]] = []
 
-            for evaluation in predicate_evaluations:
-                guideline_propositions += [
-                    GuidelineProposition(
-                        guideline=g, score=evaluation.score, rationale=evaluation.rationale
-                    )
-                    for g in guidelines_grouped_by_predicate[evaluation.predicate]
-                ]
+            for batch in predicate_evaluations_batches:
+                guideline_propositions = []
+                for evaluation in batch:
+                    guideline_propositions += [
+                        GuidelineProposition(
+                            guideline=g, score=evaluation.score, rationale=evaluation.rationale
+                        )
+                        for g in guidelines_grouped_by_predicate[evaluation.predicate]
+                    ]
+                propositions_batches.append(guideline_propositions)
 
-            return guideline_propositions
+            t_end = time.time()
+
+            return GuidelinePropositionResult(
+                total_duration=t_end - t_start,
+                batch_count=len(batches),
+                batch_generations=batch_generations,
+                batches=propositions_batches,
+            )
 
     def _get_optimal_batch_size(self, predicates: list[str]) -> int:
         predicate_count = len(predicates)
@@ -139,7 +169,7 @@ class GuidelineProposer:
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
         batch: Sequence[str],
-    ) -> list[PredicateApplicabilityEvaluation]:
+    ) -> tuple[GenerationInfo, list[PredicateApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
             context_variables=context_variables,
@@ -150,14 +180,14 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(f"Predicate evaluation batch ({len(batch)} predicates)"):
-            propositions_json = await self._schematic_generator.generate(
+            propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
             )
 
         propositions = []
 
-        for proposition in propositions_json.content.checks:
+        for proposition in propositions_generation_response.content.checks:
             predicate = batch[int(proposition.predicate_number) - 1]
 
             self._logger.debug(
@@ -177,7 +207,7 @@ class GuidelineProposer:
                     )
                 )
 
-        return propositions
+        return propositions_generation_response.info, propositions
 
     def _format_prompt(
         self,
