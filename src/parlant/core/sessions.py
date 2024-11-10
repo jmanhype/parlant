@@ -156,8 +156,14 @@ class MessageGenerationInspection:
 
 
 @dataclass(frozen=True)
+class GuidelinePropositionInspection:
+    total_duration: float
+    batches: Sequence[GenerationInfo]
+
+
+@dataclass(frozen=True)
 class PreparationIterationGenerations:
-    guideline_proposition: Sequence[GenerationInfo]
+    guideline_proposition: GuidelinePropositionInspection
     tool_calls: Sequence[GenerationInfo]
 
 
@@ -326,8 +332,13 @@ class _GenerationInfoDocument(TypedDict):
     usage: _UsageInfoDocument
 
 
+class _GuidelinePropositionInspectionDocument(TypedDict):
+    total_duration: float
+    batches: Sequence[_GenerationInfoDocument]
+
+
 class _PreparationIterationGenerationsDocument(TypedDict):
-    guideline_proposition: Sequence[_GenerationInfoDocument]
+    guideline_proposition: _GuidelinePropositionInspectionDocument
     tool_calls: Sequence[_GenerationInfoDocument]
 
 
@@ -468,10 +479,13 @@ class SessionDocumentStore(SessionStore):
                     "terms": i.terms,
                     "context_variables": i.context_variables,
                     "generations": _PreparationIterationGenerationsDocument(
-                        guideline_proposition=[
-                            serialize_generation_info(g)
-                            for g in i.generations.guideline_proposition
-                        ],
+                        guideline_proposition=_GuidelinePropositionInspectionDocument(
+                            total_duration=i.generations.guideline_proposition.total_duration,
+                            batches=[
+                                serialize_generation_info(g)
+                                for g in i.generations.guideline_proposition.batches
+                            ],
+                        ),
                         tool_calls=[serialize_generation_info(g) for g in i.generations.tool_calls],
                     ),
                 }
@@ -511,10 +525,15 @@ class SessionDocumentStore(SessionStore):
                     terms=i["terms"],
                     context_variables=i["context_variables"],
                     generations=PreparationIterationGenerations(
-                        guideline_proposition=[
-                            deserialize_generation_info(g)
-                            for g in i["generations"]["guideline_proposition"]
-                        ],
+                        guideline_proposition=GuidelinePropositionInspection(
+                            total_duration=i["generations"]["guideline_proposition"][
+                                "total_duration"
+                            ],
+                            batches=[
+                                deserialize_generation_info(g)
+                                for g in i["generations"]["guideline_proposition"]["batches"]
+                            ],
+                        ),
                         tool_calls=[
                             deserialize_generation_info(g) for g in i["generations"]["tool_calls"]
                         ],

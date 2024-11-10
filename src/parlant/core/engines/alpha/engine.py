@@ -18,12 +18,12 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from parlant.core.glossary import Term, GlossaryStore
-from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import (
     ContextVariable as StoredContextVariable,
     Event,
     GuidelineProposition as StoredGuidelineProposition,
+    GuidelinePropositionInspection,
     MessageGenerationInspection,
     PreparationIteration,
     PreparationIterationGenerations,
@@ -32,7 +32,10 @@ from parlant.core.sessions import (
     Term as StoredTerm,
     ToolEventData,
 )
-from parlant.core.engines.alpha.guideline_proposer import GuidelineProposer
+from parlant.core.engines.alpha.guideline_proposer import (
+    GuidelineProposer,
+    GuidelinePropositionResult,
+)
 from parlant.core.engines.alpha.guideline_proposition import (
     GuidelineProposition,
 )
@@ -171,16 +174,25 @@ class AlphaEngine(Engine):
             prepared_to_respond = False
 
             while not prepared_to_respond:
-                (
-                    guideline_proposition_generations,
-                    ordinary_guideline_propositions,
-                    tool_enabled_guideline_propositions,
-                ) = await self._load_guideline_propositions(
+                all_possible_guidelines = await self._guideline_store.list_guidelines(
+                    guideline_set=agent.id,
+                )
+
+                guideline_proposition_result = await self._guideline_proposer.propose_guidelines(
                     agents=[agent],
+                    guidelines=list(all_possible_guidelines),
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                     terms=list(terms),
                     staged_events=all_tool_events,
+                )
+
+                (
+                    ordinary_guideline_propositions,
+                    tool_enabled_guideline_propositions,
+                ) = await self._load_guideline_propositions(
+                    agents=[agent],
+                    guideline_proposition_result=guideline_proposition_result,
                 )
 
                 terms.update(
@@ -264,7 +276,10 @@ class AlphaEngine(Engine):
                             for variable, value in context_variables
                         ],
                         generations=PreparationIterationGenerations(
-                            guideline_proposition=guideline_proposition_generations,
+                            guideline_proposition=GuidelinePropositionInspection(
+                                total_duration=guideline_proposition_result.total_duration,
+                                batches=guideline_proposition_result.batch_generations,
+                            ),
                             tool_calls=[tool_event_generation_result.generation_info]
                             if tool_event_generation_result
                             else [],
@@ -384,22 +399,20 @@ class AlphaEngine(Engine):
     async def _load_guideline_propositions(
         self,
         agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        terms: Sequence[Term],
-        staged_events: Sequence[EmittedEvent],
+        guideline_proposition_result: GuidelinePropositionResult,
     ) -> tuple[
-        Sequence[GenerationInfo],
         Sequence[GuidelineProposition],
         Mapping[GuidelineProposition, Sequence[ToolId]],
     ]:
-        generations, all_relevant_guidelines = await self._fetch_guideline_propositions(
-            agents=agents,
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            staged_events=staged_events,
-            terms=terms,
+        inferred_propositions = await self._propose_connected_guidelines(
+            guideline_set=agents[0].id,
+            propositions=guideline_proposition_result.propositions,
         )
+
+        all_relevant_guidelines = [
+            *guideline_proposition_result.propositions,
+            *inferred_propositions,
+        ]
 
         tool_enabled_guidelines = await self._find_tool_enabled_guidelines_propositions(
             guideline_propositions=all_relevant_guidelines,
@@ -409,37 +422,7 @@ class AlphaEngine(Engine):
             set(all_relevant_guidelines).difference(tool_enabled_guidelines),
         )
 
-        return generations, ordinary_guidelines, tool_enabled_guidelines
-
-    async def _fetch_guideline_propositions(
-        self,
-        agents: Sequence[Agent],
-        context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
-        interaction_history: Sequence[Event],
-        terms: Sequence[Term],
-        staged_events: Sequence[EmittedEvent],
-    ) -> tuple[Sequence[GenerationInfo], Sequence[GuidelineProposition]]:
-        assert len(agents) == 1
-
-        all_possible_guidelines = await self._guideline_store.list_guidelines(
-            guideline_set=agents[0].id,
-        )
-
-        generations, direct_propositions = await self._guideline_proposer.propose_guidelines(
-            agents=agents,
-            guidelines=list(all_possible_guidelines),
-            context_variables=context_variables,
-            interaction_history=interaction_history,
-            terms=terms,
-            staged_events=staged_events,
-        )
-
-        inferred_propositions = await self._propose_connected_guidelines(
-            guideline_set=agents[0].id,
-            propositions=direct_propositions,
-        )
-
-        return generations, [*direct_propositions, *inferred_propositions]
+        return ordinary_guidelines, tool_enabled_guidelines
 
     async def _propose_connected_guidelines(
         self,

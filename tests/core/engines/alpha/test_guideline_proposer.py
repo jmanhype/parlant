@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import chain
 from typing import Sequence, cast
 from lagom import Container
 from more_itertools import unique
@@ -68,7 +69,7 @@ def propose_guidelines(
         for i, (source, message) in enumerate(conversation_context)
     ]
 
-    _, guideline_propositions = context.sync_await(
+    guideline_proposition_result = context.sync_await(
         guideline_proposer.propose_guidelines(
             agents=agents,
             guidelines=context.guidelines,
@@ -79,7 +80,7 @@ def propose_guidelines(
         )
     )
 
-    return guideline_propositions
+    return list(chain.from_iterable(guideline_proposition_result.batches))
 
 
 def create_event_message(

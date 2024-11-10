@@ -1,8 +1,10 @@
 import asyncio
 from dataclasses import dataclass
+from functools import cached_property
 from itertools import chain, groupby
 import json
 import math
+import time
 from typing import Sequence
 
 from parlant.core.agents import Agent
@@ -38,6 +40,18 @@ class PredicateApplicabilityEvaluation:
     rationale: str
 
 
+@dataclass(frozen=True)
+class GuidelinePropositionResult:
+    total_duration: float
+    batch_count: int
+    batch_generations: Sequence[GenerationInfo]
+    batches: Sequence[Sequence[GuidelineProposition]]
+
+    @cached_property
+    def propositions(self) -> Sequence[GuidelineProposition]:
+        return list(chain.from_iterable(self.batches))
+
+
 class GuidelineProposer:
     def __init__(
         self,
@@ -55,9 +69,13 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         staged_events: Sequence[EmittedEvent],
-    ) -> tuple[Sequence[GenerationInfo], Sequence[GuidelineProposition]]:
+    ) -> GuidelinePropositionResult:
         if not guidelines:
-            return [], []
+            return GuidelinePropositionResult(
+                total_duration=0.0, batch_count=0, batch_generations=[], batches=[]
+            )
+
+        t_start = time.time()
 
         guidelines_grouped_by_predicate = {
             predicate: list(guidelines)
@@ -89,20 +107,31 @@ class GuidelineProposer:
                 for batch in batches
             ]
 
-            generations, predicate_evaluations_lists = zip(*(await asyncio.gather(*batch_tasks)))
-            predicate_evaluations = list(chain.from_iterable(predicate_evaluations_lists))
+            batch_generations, predicate_evaluations_batches = zip(
+                *(await asyncio.gather(*batch_tasks))
+            )
 
-            guideline_propositions = []
+            propositions_batches: list[list[GuidelineProposition]] = []
 
-            for evaluation in predicate_evaluations:
-                guideline_propositions += [
-                    GuidelineProposition(
-                        guideline=g, score=evaluation.score, rationale=evaluation.rationale
-                    )
-                    for g in guidelines_grouped_by_predicate[evaluation.predicate]
-                ]
+            for batch in predicate_evaluations_batches:
+                guideline_propositions = []
+                for evaluation in batch:
+                    guideline_propositions += [
+                        GuidelineProposition(
+                            guideline=g, score=evaluation.score, rationale=evaluation.rationale
+                        )
+                        for g in guidelines_grouped_by_predicate[evaluation.predicate]
+                    ]
+                propositions_batches.append(guideline_propositions)
 
-            return list(generations), guideline_propositions
+            t_end = time.time()
+
+            return GuidelinePropositionResult(
+                total_duration=t_end - t_start,
+                batch_count=len(batches),
+                batch_generations=batch_generations,
+                batches=propositions_batches,
+            )
 
     def _get_optimal_batch_size(self, predicates: list[str]) -> int:
         predicate_count = len(predicates)

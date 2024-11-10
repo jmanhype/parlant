@@ -4,14 +4,12 @@ import google.generativeai as genai  # type: ignore
 from typing import Any, Mapping
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
+from vertexai.preview import tokenization  # type: ignore
 
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
-from vertexai.preview import tokenization  # type: ignore
-
-from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
@@ -21,6 +19,7 @@ from parlant.core.nlp.generation import (
     SchematicGenerationResult,
     UsageInfo,
 )
+from parlant.core.logging import Logger
 
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
