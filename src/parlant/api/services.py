@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Union, cast
+from typing import Optional, TypeAlias, Union, cast
 from fastapi import APIRouter, HTTPException, status
 from typing_extensions import Literal
 
@@ -41,10 +41,13 @@ class DeleteServiceResponse(DefaultBaseModel):
     name: str
 
 
+EnumValueTypeDTO: TypeAlias = Union[str, int]
+
+
 class ToolParameterDTO(DefaultBaseModel):
     type: ToolParameterType
     description: Optional[str]
-    enum: Optional[list[Union[str, int, float, bool]]]
+    enum: Optional[list[EnumValueTypeDTO]]
 
 
 class ToolDTO(DefaultBaseModel):
