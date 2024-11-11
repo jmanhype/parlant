@@ -7,7 +7,7 @@ from enum import Enum, auto
 import os
 from fastapi import FastAPI
 from lagom import Container, Singleton
-from typing import Any, AsyncIterator, cast
+from typing import AsyncIterator
 import click
 import click_completion
 from pathlib import Path
@@ -322,7 +322,6 @@ async def serve_app(
     except (KeyboardInterrupt, asyncio.CancelledError):
         return ShutdownReason.SHUTDOWN_REQUEST
     except BaseException as e:
-        LOGGER.info("WE HERE")
         LOGGER.critical(e.__class__.__name__ + ": " + str(e))
         sys.exit(1)
 
@@ -338,14 +337,6 @@ async def start_server(params: CLIParams) -> None:
             )
 
             if shutdown_reason == ShutdownReason.SHUTDOWN_REQUEST:
-                all_tasks = asyncio.all_tasks()
-                LOGGER.info("Initiating safe cancellation of tasks before server shutdown.")
-                all_tasks.remove(cast(asyncio.Task[Any], asyncio.current_task()))
-                for task in all_tasks:
-                    was_canceled = task.cancel()
-                    if not was_canceled:
-                        LOGGER.info("canceled failed!")
-
                 return
             elif shutdown_reason == ShutdownReason.HOT_RELOAD:
                 LOGGER.info("***** HOT RELOAD *****")
