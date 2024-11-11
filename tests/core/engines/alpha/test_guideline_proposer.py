@@ -7,7 +7,7 @@ from pytest import fixture, mark
 from datetime import datetime, timezone
 
 from parlant.core.agents import Agent, AgentId
-from parlant.core.common import generate_id, JSONSerializable
+from parlant.core.common import generate_id
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
@@ -18,8 +18,9 @@ from parlant.core.engines.alpha.guideline_proposition import (
 )
 from parlant.core.logging import Logger
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineId
-from parlant.core.sessions import Event, EventId, EventSource, MessageEventData
+from parlant.core.sessions import EventSource
 
+from tests.core.engines.alpha.utils import create_event_message
 from tests.test_utilities import SyncAwaiter
 
 
@@ -81,32 +82,6 @@ def propose_guidelines(
     )
 
     return list(chain.from_iterable(guideline_proposition_result.batches))
-
-
-def create_event_message(
-    offset: int,
-    source: EventSource,
-    message: str,
-) -> Event:
-    message_data: MessageEventData = {
-        "message": message,
-        "participant": {
-            "display_name": source,
-        },
-    }
-
-    event = Event(
-        id=EventId(generate_id()),
-        source=source,
-        kind="message",
-        offset=offset,
-        correlation_id="test_correlation_id",
-        data=cast(JSONSerializable, message_data),
-        creation_utc=datetime.now(timezone.utc),
-        deleted=False,
-    )
-
-    return event
 
 
 def create_guideline(context: ContextOfTest, predicate: str, action: str) -> Guideline:
