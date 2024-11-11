@@ -410,15 +410,9 @@ def create_router(
         moderation: Literal["none", "auto"] = "none",
     ) -> CreateEventResponse:
         if request.source == EventSourceDTO.END_USER:
-            return CreateEventResponse(
-                event=await _add_end_user_message(
-                    session_id, request.kind, request.content, moderation
-                )
-            )
+            return await _add_end_user_message(session_id, request, moderation)
         elif request.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
-            return CreateEventResponse(
-                event=await _add_agent_message(session_id, request.kind, request.content)
-            )
+            return await _add_agent_message(session_id, request)
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -427,16 +421,15 @@ def create_router(
 
     async def _add_end_user_message(
         session_id: SessionId,
-        kind: EventKindDTO,
-        content: str,
+        request: CreateEventRequest,
         moderation: Literal["none", "auto"] = "none",
-    ) -> EventDTO:
+    ) -> CreateEventResponse:
         flagged = False
         tags = set()
 
         if moderation == "auto":
             for _, moderation_service in await service_registry.list_moderation_services():
-                check = await moderation_service.check(content)
+                check = await moderation_service.check(request.content)
                 flagged |= check.flagged
                 tags.update(check.tags)
 
@@ -449,7 +442,7 @@ def create_router(
             end_user_display_name = session.end_user_id
 
         message_data: MessageEventData = {
-            "message": content,
+            "message": request.content,
             "participant": {
                 "id": session.end_user_id,
                 "display_name": end_user_display_name,
@@ -460,32 +453,33 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=kind.value,
+            kind=request.kind.value,
             data=message_data,
             source="end_user",
             trigger_processing=True,
         )
 
-        return EventDTO(
-            id=event.id,
-            source=EventSourceDTO(event.source),
-            kind=event.kind,
-            offset=event.offset,
-            creation_utc=event.creation_utc,
-            correlation_id=event.correlation_id,
-            data=event.data,
+        return CreateEventResponse(
+            event=EventDTO(
+                id=event.id,
+                source=EventSourceDTO(event.source),
+                kind=event.kind,
+                offset=event.offset,
+                creation_utc=event.creation_utc,
+                correlation_id=event.correlation_id,
+                data=event.data,
+            )
         )
 
     async def _add_agent_message(
         session_id: SessionId,
-        kind: EventKindDTO,
-        content: str,
-    ) -> EventDTO:
+        request: CreateEventRequest,
+    ) -> CreateEventResponse:
         session = await session_store.read_session(session_id)
         agent = await agent_store.read_agent(session.agent_id)
 
         message_data: MessageEventData = {
-            "message": content,
+            "message": request.content,
             "participant": {
                 "id": agent.id,
                 "display_name": agent.name,
@@ -494,20 +488,22 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=kind.value,
+            kind=request.kind.value,
             data=message_data,
             source="human_agent_on_behalf_of_ai_agent",
             trigger_processing=False,
         )
 
-        return EventDTO(
-            id=event.id,
-            source=EventSourceDTO(event.source),
-            kind=event.kind,
-            offset=event.offset,
-            creation_utc=event.creation_utc,
-            correlation_id=event.correlation_id,
-            data=event.data,
+        return CreateEventResponse(
+            event=EventDTO(
+                id=event.id,
+                source=EventSourceDTO(event.source),
+                kind=event.kind,
+                offset=event.offset,
+                creation_utc=event.creation_utc,
+                correlation_id=event.correlation_id,
+                data=event.data,
+            )
         )
 
     @router.get(
