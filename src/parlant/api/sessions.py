@@ -252,6 +252,10 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
     )
 
 
+class CreateInteractionsResponse(DefaultBaseModel):
+    correlation_id: str
+
+
 def create_router(
     application: Application,
     agent_store: AgentStore,
@@ -632,6 +636,21 @@ def create_router(
         deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
 
         return DeleteEventsResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+
+    @router.post(
+        "/{session_id}/interactions",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="create_interactions",
+    )
+    async def create_interactions(
+        session_id: SessionId,
+        moderation: Literal["none", "auto"] = "none",
+    ) -> CreateInteractionsResponse:
+        session = await session_store.read_session(session_id)
+
+        correlation_id = await application.dispatch_processing_task(session)
+
+        return CreateInteractionsResponse(correlation_id=correlation_id)
 
     @router.get(
         "/{session_id}/interactions/{correlation_id}",

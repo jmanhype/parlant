@@ -14,7 +14,13 @@ from parlant.core.tools import ToolResult
 from parlant.core.agents import AgentId
 from parlant.core.async_utils import Timeout
 from parlant.core.end_users import EndUserId
-from parlant.core.sessions import EventSource, MessageEventData, SessionId, SessionStore
+from parlant.core.sessions import (
+    EventSource,
+    MessageEventData,
+    SessionId,
+    SessionListener,
+    SessionStore,
+)
 
 from tests.test_utilities import (
     create_agent,
@@ -888,3 +894,56 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
 
     assert "Woof Woof" in message_generation_inspections[0]["messages"][0]
     assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2
+
+
+async def test_that_a_message_interaction_can_be_regenerated(
+    client: TestClient,
+    container: Container,
+    session_id: SessionId,
+    agent_id: AgentId,
+) -> None:
+    session_events = [
+        make_event_params("end_user", data={"content": "Hello"}),
+        make_event_params("ai_agent", data={"content": "Hi, how can I assist you?"}),
+        make_event_params("end_user", data={"content": "What's the weather today?"}),
+        make_event_params("ai_agent", data={"content": "It's sunny and warm."}),
+        make_event_params("end_user", data={"content": "Thank you!"}),
+    ]
+
+    await populate_session_id(container, session_id, session_events)
+
+    min_offset_to_delete = 3
+    _ = (
+        client.delete(f"/sessions/{session_id}/events?min_offset={min_offset_to_delete}")
+        .raise_for_status()
+        .json()["event_ids"]
+    )
+
+    _ = await create_guideline(
+        container=container,
+        agent_id=agent_id,
+        predicate="a user ask what is the weather today",
+        action="answer that it's cold",
+        tool_function=get_cow_uttering,
+    )
+
+    correlation_id = (
+        client.post(f"/sessions/{session_id}/interactions")
+        .raise_for_status()
+        .json()["correlation_id"]
+    )
+
+    await container[SessionListener].wait_for_events(
+        session_id=session_id,
+        kinds=["message"],
+        correlation_id=correlation_id,
+    )
+
+    inspection_data = (
+        client.get(f"/sessions/{session_id}/interactions/{correlation_id}")
+        .raise_for_status()
+        .json()
+    )
+
+    message_generation_inspections = inspection_data["message_generations"]
+    assert "cold" in message_generation_inspections[0]["messages"][0].lower()
