@@ -102,15 +102,14 @@ async def safe_gather(  # type: ignore[misc]
     | asyncio.Task[_TResult0]
     | Coroutine[Any, Any, _TResult0],
 ) -> Iterable[_TResult0]:
-    coros_or_futures_list = list(coros_or_futures)
+    futures = [asyncio.ensure_future(x) for x in coros_or_futures]
 
     try:
         return await asyncio.gather(
-            *coros_or_futures_list,
+            *futures,
             return_exceptions=False,
         )
     except asyncio.CancelledError:
-        for coro_or_future in coros_or_futures_list:
-            if asyncio.isfuture(coro_or_future):
-                coro_or_future.cancel()
+        for future in futures:
+            future.cancel()
         raise
