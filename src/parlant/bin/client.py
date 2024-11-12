@@ -1944,7 +1944,7 @@ async def async_main() -> None:
         type=str,
         help="Server address",
         metavar="ADDRESS[:PORT]",
-        required=True,
+        default="http://localhost:8000",
     )
     @click.pass_context
     def cli(ctx: click.Context, server: str) -> None:
