@@ -3683,6 +3683,25 @@ test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.9.2)"]
 
 [[package]]
+name = "parlant-client"
+version = "0.1.0"
+description = "Parlant Client SDK over FastAPI"
+optional = false
+python-versions = "^3.12"
+files = []
+develop = false
+
+[package.dependencies]
+httpx = "^0.27.0"
+pydantic = "^2.9.2"
+
+[package.source]
+type = "git"
+url = "ssh://git@github.com/emcie-co/parlant-client-py"
+reference = "HEAD"
+resolved_reference = "0b10afce87320cbd0fec437edc2d0cd71eba5975"
+
+[[package]]
 name = "parse"
 version = "1.20.2"
 description = "parse() is the opposite of format()"
@@ -6496,4 +6515,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "2a502c0d53c649b1b1cc35ad4b464afb711a2f9c95e20231f62081367e3a3881"
+content-hash = "18492cf4078e9a0af2889da4624b57b41d9a8df226e6d6d9c612d3de0387e592"

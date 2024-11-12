@@ -132,27 +132,6 @@ async def test_that_the_server_starts_and_shuts_down_cleanly_on_interrupt(
         assert server_process.returncode == os.EX_OK
 
 
-async def test_that_the_server_starts_when_there_are_no_state_changes_and_told_not_to_(
-    context: ContextOfTest,
-) -> None:
-    with run_server(context):
-        await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
-
-        agent = await get_first_agent()
-
-        agent_replies = await get_agent_replies(
-            context,
-            message="Hello",
-            agent=agent,
-            number_of_replies_to_expect=1,
-        )
-
-        assert await nlp_test(
-            agent_replies[0],
-            "It greeting the user",
-        )
-
-
 async def test_that_the_server_starts_and_gernerate_a_message(
     context: ContextOfTest,
 ) -> None:
@@ -170,7 +149,7 @@ async def test_that_the_server_starts_and_gernerate_a_message(
 
         assert await nlp_test(
             agent_replies[0],
-            "It greeting the user",
+            "It greets the user",
         )
 
 
@@ -182,38 +161,37 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
 
         agent = await get_first_agent()
 
-        payloads = {
-            "payloads": [
-                {
-                    "kind": "guideline",
-                    "content": {
-                        "predicate": "the user greets you",
-                        "action": "greet them back with 'Hello'",
-                    },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
+        payloads = [
+            {
+                "kind": "guideline",
+                "content": {
+                    "predicate": "the user greets you",
+                    "action": "greet them back with 'Hello'",
                 },
-                {
-                    "kind": "guideline",
-                    "content": {
-                        "predicate": "the user greeting you",
-                        "action": "greet them back with 'Hola'",
-                    },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
+            },
+            {
+                "kind": "guideline",
+                "content": {
+                    "predicate": "the user greeting you",
+                    "action": "greet them back with 'Hola'",
                 },
-            ],
-        }
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
+            },
+        ]
+
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=httpx.Timeout(30),
         ) as client:
             try:
                 evaluation_creation_response = await client.post(
-                    f"{SERVER_ADDRESS}/agents/{agent.id}/index/evaluations",
-                    json=payloads,
+                    f"{SERVER_ADDRESS}/index/evaluations",
+                    json={"agent_id": agent.id, "payloads": payloads},
                 )
                 evaluation_creation_response.raise_for_status()
                 evaluation_id = evaluation_creation_response.json()["evaluation_id"]
@@ -235,7 +213,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
         ) as client:
             try:
                 evaluation_response = await client.get(
-                    f"{SERVER_ADDRESS}/agents/index/evaluations/{evaluation_id}",
+                    f"{SERVER_ADDRESS}/index/evaluations/{evaluation_id}",
                 )
                 evaluation_response.raise_for_status()
                 assert evaluation_response.json()["status"] == "completed"

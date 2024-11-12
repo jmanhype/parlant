@@ -489,7 +489,7 @@ class Actions:
                 response = requests.get(
                     urljoin(
                         ctx.obj.server_address,
-                        f"/agents/index/evaluations/{evaluation_id}",
+                        f"/index/evaluations/{evaluation_id}",
                     )
                 )
 
@@ -577,7 +577,7 @@ class Actions:
                 response = requests.get(
                     urljoin(
                         ctx.obj.server_address,
-                        f"/agents/index/evaluations/{evaluation_id}",
+                        f"/index/evaluations/{evaluation_id}",
                     )
                 )
 

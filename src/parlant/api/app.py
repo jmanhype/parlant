@@ -141,13 +141,6 @@ async def create_api_app(container: Container) -> ASGIApplication:
         )
     )
     agent_router.include_router(
-        index.create_router(
-            evaluation_service=evaluation_service,
-            evaluation_store=evaluation_store,
-            agent_store=agent_store,
-        )
-    )
-    agent_router.include_router(
         glossary.create_router(
             glossary_store=glossary_store,
         )
@@ -173,6 +166,15 @@ async def create_api_app(container: Container) -> ASGIApplication:
             session_store=session_store,
             session_listener=session_listener,
             service_registry=service_registry,
+        ),
+    )
+
+    api_app.include_router(
+        prefix="/index",
+        router=index.create_router(
+            evaluation_service=evaluation_service,
+            evaluation_store=evaluation_store,
+            agent_store=agent_store,
         ),
     )
 
