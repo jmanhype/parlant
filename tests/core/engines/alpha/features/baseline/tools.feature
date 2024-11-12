@@ -19,7 +19,7 @@ Feature: Tools
             | check_toppings_in_stock | get_available_toppings | Mushrooms and Olives as available toppings |
 
     Scenario: Single tool is being called multiple times
-        Given a guideline "sell_pizza", to sell pizza when interacting with users
+        Given a guideline "sell_pizza", to sell pizza when interacting with users;
         And a guideline "check_stock", to check if toppings or drinks are available in stock when a client asks for toppings or drinks
         And the tool "get_available_product_by_type"
         And an association between "check_stock" and "get_available_product_by_type"
@@ -163,3 +163,30 @@ Feature: Tools
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains a call with tool_id of "second_service:schedule
+
+    Scenario: The agent correctly calls tools from an entailed guideline
+        Given a guideline "suggest_toppings" to suggest olives when the user asks for topping recommendations
+        And a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
+        And the tool "get_available_toppings"
+        And an association between "check_stock" and "get_available_toppings"
+        And a guideline connection whereby "suggest_toppings" entails "check_stock"
+        And a user message, "What pizza topping should I take?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "get_available_toppings"
+        And a single message event is emitted
+        And the message contains a recommendation for a topping which is not for olives
+
+    Scenario: The agent correctly check stock with tool
+        Given a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
+        And the tool "check_inventory"
+        And an association between "check_stock" and "check_inventory"
+        And a user message, "What product should I buy?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "check_inventory"
+        And a single message event is emitted
+        And the message contains a recommendation for either tables or chairs
+
