@@ -250,6 +250,18 @@ def given_a_tool(
             },
             "required": ["from_account", "to_account"],
         },
+        "check_inventory": {
+            "name": "check_inventory",
+            "description": "Checks if a given product is available in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "product": {
+                    "type": "string",
+                    "description": "Name of the product to check inventory for. Should contain the name of a single product.",
+                },
+            },
+            "required": ["product"],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

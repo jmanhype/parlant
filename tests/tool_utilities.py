@@ -60,3 +60,9 @@ def get_terrys_offering() -> ToolResult:
 
 def schedule() -> ToolResult:
     return ToolResult("Meeting got scheduled!")
+
+
+def check_inventory(product: str) -> ToolResult:
+    if product in ["chairs", "tables"]:
+        return ToolResult(f"{product} are in stock")
+    return ToolResult(f"product: {product} is not in stock")
