@@ -49,7 +49,6 @@ uvicorn = "^0.30.5"
 google-cloud-aiplatform = {extras = ["tokenization"], version = "^1.71.1"}
 transformers = "^4.46.2"
 torch = "^2.5.1"
-parlant-client = {git = "ssh://git@github.com/emcie-co/parlant-client-py"}
 
 
 [tool.poetry.group.dev.dependencies]
