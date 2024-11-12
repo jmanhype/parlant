@@ -117,6 +117,7 @@ class StartupError(Exception):
 class CLIParams:
     port: int
     nlp_service: str
+    log_level: str
 
 
 async def create_agent_if_absent(agent_store: AgentStore) -> None:
@@ -319,6 +320,19 @@ async def serve_app(
 
 
 async def start_server(params: CLIParams) -> None:
+    global LOGGER
+    LOGGER = FileLogger(
+        PARLANT_HOME_DIR / "parlant.log",
+        CORRELATOR,
+        {
+            "info": LogLevel.INFO,
+            "debug": LogLevel.DEBUG,
+            "warning": LogLevel.WARNING,
+            "error": LogLevel.ERROR,
+            "critical": LogLevel.CRITICAL,
+        }[params.log_level],
+    )
+
     async with load_app(params) as app:
         await serve_app(
             app,
@@ -336,6 +350,7 @@ def main() -> None:
             ctx.obj = CLIParams(
                 port=DEFAULT_PORT,
                 nlp_service=DEFAULT_NLP_SERVICE,
+                log_level=LogLevel.INFO,
             )
 
     @cli.command(help="Run the Parlant server")
@@ -350,12 +365,19 @@ def main() -> None:
         "--nlp-service",
         type=click.Choice(["openai", "gemini", "anthropic", "together"]),
         default=DEFAULT_NLP_SERVICE,
-        help="NLP Provider",
+        help="NLP provider",
+    )
+    @click.option(
+        "--log-level",
+        type=click.Choice(["debug", "info", "warning", "error", "critical"]),
+        default="info",
+        help="Log level",
     )
     @click.pass_context
-    def run(ctx: click.Context, port: int, nlp_service: str) -> None:
+    def run(ctx: click.Context, port: int, nlp_service: str, log_level: str) -> None:
         ctx.obj.port = port
         ctx.obj.nlp_service = nlp_service
+        ctx.obj.log_level = log_level
         asyncio.run(start_server(ctx.obj))
 
     try:
