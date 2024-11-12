@@ -343,15 +343,36 @@ async def start_server(params: CLIParams) -> None:
 def main() -> None:
     click_completion.init()
 
-    @click.group
+    @click.group(invoke_without_command=True)
+    @click.option(
+        "-p",
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help="Server port",
+    )
+    @click.option(
+        "--nlp-service",
+        type=click.Choice(["openai", "gemini", "anthropic", "together"]),
+        default=DEFAULT_NLP_SERVICE,
+        help="NLP provider",
+    )
+    @click.option(
+        "--log-level",
+        type=click.Choice(["debug", "info", "warning", "error", "critical"]),
+        default="info",
+        help="Log level",
+    )
     @click.pass_context
-    def cli(ctx: click.Context) -> None:
+    def cli(ctx: click.Context, port: int, nlp_service: str, log_level: str) -> None:
         if not ctx.obj:
             ctx.obj = CLIParams(
                 port=DEFAULT_PORT,
                 nlp_service=DEFAULT_NLP_SERVICE,
-                log_level=LogLevel.INFO,
+                log_level=log_level,
             )
+        if ctx.invoked_subcommand is None:
+            ctx.invoke(run, port=port, nlp_service=nlp_service, log_level=log_level)
 
     @cli.command(help="Run the Parlant server")
     @click.option(
