@@ -128,7 +128,7 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
             predicate=dto.payload.content.predicate,
             action=dto.payload.content.action,
         ),
-        operation=dto.payload.operation,
+        operation=dto.payload.operation.value,
         coherence_check=dto.payload.coherence_check,
         connection_proposition=dto.payload.connection_proposition,
         updated_id=dto.payload.updated_id,
@@ -156,7 +156,7 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
     try:
         coherence_checks = [
             CoherenceCheck(
-                kind=check.kind,
+                kind=check.kind.value,
                 first=GuidelineContent(predicate=check.first.predicate, action=check.first.action),
                 second=GuidelineContent(
                     predicate=check.second.predicate, action=check.second.action
@@ -170,7 +170,7 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
         if dto.connection_propositions:
             connection_propositions = [
                 ConnectionProposition(
-                    check_kind=prop.check_kind,
+                    check_kind=prop.check_kind.value,
                     source=GuidelineContent(
                         predicate=prop.source.predicate, action=prop.source.action
                     ),

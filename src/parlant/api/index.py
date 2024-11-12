@@ -4,9 +4,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from parlant.api.common import (
     CoherenceCheckDTO,
+    CoherenceCheckKindDTO,
     ConnectionPropositionDTO,
+    ConnectionPropositionKindDTO,
     EvaluationStatusDTO,
     GuidelineContentDTO,
+    GuidelinePayloadOperationDTO,
     InvoiceDataDTO,
     GuidelineInvoiceDataDTO,
     PayloadDTO,
@@ -53,7 +56,7 @@ def _payload_from_dto(dto: PayloadDTO) -> Payload:
                 predicate=dto.content.predicate,
                 action=dto.content.action,
             ),
-            operation=dto.operation,
+            operation=dto.operation.value,
             updated_id=dto.updated_id,
             coherence_check=dto.coherence_check,
             connection_proposition=dto.connection_proposition,
@@ -69,7 +72,7 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
                 predicate=descriptor.payload.content.predicate,
                 action=descriptor.payload.content.action,
             ),
-            operation=descriptor.payload.operation,
+            operation=GuidelinePayloadOperationDTO(descriptor.payload.operation),
             updated_id=descriptor.payload.updated_id,
             coherence_check=descriptor.payload.coherence_check,
             connection_proposition=descriptor.payload.connection_proposition,
@@ -82,12 +85,12 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
         PayloadKind.GUIDELINE: GuidelineInvoiceDataDTO(
             coherence_checks=[
                 CoherenceCheckDTO(
-                    kind=c.kind,
-                    first=GuidelineContent(
+                    kind=CoherenceCheckKindDTO(c.kind),
+                    first=GuidelineContentDTO(
                         predicate=c.first.predicate,
                         action=c.first.action,
                     ),
-                    second=GuidelineContent(
+                    second=GuidelineContentDTO(
                         predicate=c.second.predicate,
                         action=c.second.action,
                     ),
@@ -98,12 +101,12 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
             ],
             connection_propositions=[
                 ConnectionPropositionDTO(
-                    check_kind=c.check_kind,
-                    source=GuidelineContent(
+                    check_kind=ConnectionPropositionKindDTO(c.check_kind),
+                    source=GuidelineContentDTO(
                         predicate=c.source.predicate,
                         action=c.source.action,
                     ),
-                    target=GuidelineContent(
+                    target=GuidelineContentDTO(
                         predicate=c.target.predicate,
                         action=c.target.action,
                     ),
