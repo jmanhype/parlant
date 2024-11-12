@@ -13,7 +13,7 @@ from pathlib import Path
 import sys
 import uvicorn
 
-from parlant import VERSION
+from parlant.version import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.anthropic import AnthropicService
 from parlant.adapters.nlp.google import GoogleService
