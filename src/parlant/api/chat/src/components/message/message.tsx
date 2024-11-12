@@ -4,10 +4,13 @@ import { EventInterface } from '@/utils/interfaces';
 import { getTimeStr } from '@/utils/date';
 import styles from './message.module.scss';
 import { Spacer } from '../ui/custom/spacer';
+import { useSession } from '../chatbot/chatbot';
+import Tooltip from '../ui/custom/tooltip';
 
 interface Props {
     event: EventInterface;
     isContinual: boolean;
+    regenerateMessageFn?: (sessionId: string, offset: number) => void;
 }
 
 const statusIcon = {
@@ -21,7 +24,8 @@ const statusIcon = {
     cancelled: <img src='icons/green-v.svg' title='canceled' data-testid="cancelled" height={11} width={11} className='ms-[4px]' alt='read'/>,
 };
 
-export default function Message({event, isContinual}: Props): ReactElement {
+export default function Message({event, isContinual, regenerateMessageFn}: Props): ReactElement {
+    const {sessionId} = useSession();
     const isClient = event.source === 'end_user' || event.source === 'end_user_ui';
     const serverStatus = event.serverStatus;
 
@@ -34,7 +38,7 @@ export default function Message({event, isContinual}: Props): ReactElement {
                         {!isContinual ? <img src="parlant-bubble-muted.svg" alt="Parlant" height={36} width={36}/> : <div className='h-[36px] w-[36px]'/>}
                     </div>
                 }
-                <div tabIndex={0} data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none rounded-tr-[22px]' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none rounded-tl-[22px]') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + (isContinual ? ' !rounded-br-[26px] rounded-bl-[26px] rounded-tl-[26px] rounded-tr-[26px]' : '') + ' rounded-[26px] w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative'}>
+                <div tabIndex={0} data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none rounded-tr-[22px]' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none rounded-tl-[22px]') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + (isContinual ? ' !rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]' : '') + ' rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative'}>
                     <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]">
                         <Markdown className={styles.markdown}>{event?.data?.message}</Markdown>
                     </div>
@@ -45,6 +49,15 @@ export default function Message({event, isContinual}: Props): ReactElement {
                         </div>
                     </div>
                 </div>
+                {!isClient &&
+                <div className='self-stretch items-center ps-[16px] flex invisible peer-hover:visible hover:visible'>
+                    <Tooltip value='Regenerate' side='right'>
+                        <div data-testid='regenerate-button'role='button' onClick={() => regenerateMessageFn?.(sessionId as string, event.offset)} className='group cursor-pointer'>
+                            <img src="icons/regenerate.svg" alt="regenerate" className='block group-hover:hidden'/>
+                            <img src="icons/regenerate-filled.svg" alt="regenerate" className='hidden group-hover:block'/>
+                        </div>
+                    </Tooltip>
+                </div>}
             </div>
             <Spacer/>
         </div>

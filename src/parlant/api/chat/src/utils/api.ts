@@ -18,7 +18,7 @@ export const getData = async (endpoint:string) => {
   return request(`${BASE_URL}/${endpoint}`);
 };
 
-export const postData = async (endpoint:string, data: object) => {
+export const postData = async (endpoint:string, data?: object) => {
   return request(`${BASE_URL}/${endpoint}`, {
     method: 'POST',
     headers: {

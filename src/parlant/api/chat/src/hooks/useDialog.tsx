@@ -47,7 +47,7 @@ export const useDialog = (): UseDialogReturn => {
                             </div>
                         </DialogTitle>
                     </DialogHeader>
-                    <div className='overflow-auto'>
+                    <div className='overflow-auto flex-1'>
                       {dialogContent}
                     </div>
                 </div>

@@ -83,7 +83,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 
     const saveTitleChange = (e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
-        const title = sessionNameRef?.current?.value;
+        const title = sessionNameRef?.current?.value?.trim();
         if (title) {
             if (session.id === NEW_SESSION_ID) {
                 setEditingTitle?.(null);
