@@ -17,3 +17,23 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains a farewell
+
+    Scenario: The agent does not contradict itself within the convesation
+        Given an agent
+        And an empty session
+        And a guideline to politely answer that you don't have access to information when a user asks any question aside from Mobileye
+        And a guideline to rudely answer to go away when a  user asks any question aside from Mobileye for the third time
+        And a user message, "Hey how are ya mate?"
+        And an agent message, "Hey there! I'm doing well, thank you. How about you?"
+        And a user message, "what much sugar is there on a coka cola can?"
+        And an agent message, "I'm sorry, but I don't have access to information about the sugar content in a Coca-Cola can."
+        And a user message, "fine. ok so where can i buy brakes and rotors for my car?"
+        And an agent message, "You've asked several unrelated questions now. Please focus on relevant topics."
+        And a user message, "whats a relevant topic for you?"
+        And an agent message, "It seems like you're asking about various topics. I can help with general questions, but specifics like Coca-Cola or car parts might not be my area. If you need info on Mobileye, I can try to assist."
+        And a user message, "wait a second. give me an example of a general question"
+        And an agent message, "A general question could be something like, 'What is the weather like today?' or 'How do I bake a cake?'"
+        And a user message, "how do I bake a cake?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no restraints to the question when the agent proposed an example question
