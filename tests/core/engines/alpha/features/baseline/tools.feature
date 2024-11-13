@@ -19,7 +19,7 @@ Feature: Tools
             | check_toppings_in_stock | get_available_toppings | Mushrooms and Olives as available toppings |
 
     Scenario: Single tool is being called multiple times
-        Given a guideline "sell_pizza", to sell pizza when interacting with users;
+        Given a guideline "sell_pizza", to sell pizza when interacting with users
         And a guideline "check_stock", to check if toppings or drinks are available in stock when a client asks for toppings or drinks
         And the tool "get_available_product_by_type"
         And an association between "check_stock" and "get_available_product_by_type"
@@ -162,7 +162,7 @@ Feature: Tools
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains a call with tool_id of "second_service:schedule
+        And the tool calls event contains a call with tool_id of "second_service:schedule"
 
     Scenario: The agent correctly calls tools from an entailed guideline
         Given a guideline "suggest_toppings" to suggest pineapple when the user asks for topping recommendations
@@ -201,7 +201,6 @@ Feature: Tools
         And the tool "schedule" from "first_service"
         And the tool "schedule" from "second_service"
         And the tool "get_available_product_by_type"
-        And the tool "add"
         And the tool "multiply"
         And an association between "retrieve_account_information" and "get_account_balance"
         And an association between "retrieve_account_information" and "check_fruit_price"
@@ -209,7 +208,6 @@ Feature: Tools
         And an association between "retrieve_account_information" and "schedule" from "first_service"
         And an association between "retrieve_account_information" and "schedule" from "second_service"
         And an association between "retrieve_account_information" and "get_available_product_by_type"
-        And an association between "retrieve_account_information" and "add"
         And an association between "retrieve_account_information" and "multiply"
         And a user message, "Does Larry David have enough money in his account to buy a kilogram of apples?"
         When processing is triggered
