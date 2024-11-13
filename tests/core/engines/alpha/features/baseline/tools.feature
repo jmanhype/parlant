@@ -165,7 +165,7 @@ Feature: Tools
         And the tool calls event contains a call with tool_id of "second_service:schedule
 
     Scenario: The agent correctly calls tools from an entailed guideline
-        Given a guideline "suggest_toppings" to suggest olives when the user asks for topping recommendations
+        Given a guideline "suggest_toppings" to suggest pineapple when the user asks for topping recommendations
         And a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
         And the tool "get_available_toppings"
         And an association between "check_stock" and "get_available_toppings"
@@ -176,7 +176,7 @@ Feature: Tools
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains a call with tool_id of "get_available_toppings"
         And a single message event is emitted
-        And the message contains a recommendation for a topping which is not for olives
+        And the message contains a recommendation for toppings which do not include pineapple
 
     Scenario: The agent correctly check stock with tool
         Given a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
