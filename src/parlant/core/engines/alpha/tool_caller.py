@@ -99,7 +99,7 @@ class ToolCaller:
             staged_events,
         )
 
-        inference_output = []
+        inference_output: Sequence[ToolCallEvaluation] = []
         with self._logger.operation("Tool classification"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
