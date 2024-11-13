@@ -178,7 +178,7 @@ Feature: Tools
         And a single message event is emitted
         And the message contains a recommendation for toppings which do not include pineapple
 
-    Scenario: The agent uses tools are used based on the agents description
+    Scenario: The agent uses tools based on the agents description
         Given an agent whose job is to sell groceries, while remembering that our business considers carrots to be fruit
         And a guideline "check_prices" to reply with the price of the item when a user asks about an items price 
         And the tool "check_fruit_price"
@@ -193,7 +193,7 @@ Feature: Tools
         And a single message event is emitted
         And the message contains that the price of 1 kg of carrots is 10 dollars
 
-    Scenario: The agent uses tool correctly when many are available
+    Scenario: The agent uses tools correctly when many are available
         Given a guideline "retrieve_account_information" to retrieve account information when users inquire about account-related information
         And the tool "get_account_balance"
         And the tool "check_fruit_price"

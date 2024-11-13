@@ -112,8 +112,8 @@ class ToolCaller:
                 tool_id=ToolId.from_string(tc.name),
                 arguments=tc.arguments,
             )
-            for tc in tool_calls_that_need_to_run
-            if tc.should_run and tc.applicability_score >= 7
+            for tc in inference_output
+            if tc.should_run and tc.applicability_score >= 6
         ]
 
     async def execute_tool_calls(
@@ -366,10 +366,7 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
         """
         )
 
-        prompt = builder.build()  # TODO delete
-        with open("tool_call_inference_prompt.txt", "w") as f:
-            f.write(prompt)
-        return prompt
+        return builder.build()
 
     def _get_output_format(self, id_tool_pairs: Sequence[tuple[ToolId, Tool]]) -> str:
         tool_call_evaluation_format = "\n".join(
@@ -468,10 +465,6 @@ Guidelines:
             hints={"temperature": 0.3},
         )
 
-        with open("tool inference result.txt", "w") as f:
-            f.write(
-                f"{json.dumps([t.model_dump(mode="json") for t in inference.content.tool_call_evaluations], indent=2),}"
-            )
         self._logger.debug(
             f"Tool call request results: {json.dumps([t.model_dump(mode="json") for t in inference.content.tool_call_evaluations], indent=2),}"
         )
