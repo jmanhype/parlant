@@ -21,6 +21,8 @@ Feature: Conversation
     Scenario: The agent strictly follows guideline rule
         Given an agent
         And an empty session
+        And a guideline to politely answer that you don't have access to information when a user asks any question aside from Mobileye
+        And a guideline to rudely answer to go away when a user asks any question aside from Mobileye for the third time
         And a user message, "Hey how are ya mate?"
         And an agent message, "Hey there! I'm doing well, thank you. How about you?"
         And a user message, "what much sugar is there on a coka cola can?"
