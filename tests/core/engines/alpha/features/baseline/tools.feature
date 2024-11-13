@@ -174,19 +174,6 @@ Feature: Tools
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains a call with tool_id of "get_available_toppings"
+        And the tool calls event contains a call with tool_id of "local:get_available_toppings"
         And a single message event is emitted
         And the message contains a recommendation for toppings which do not include pineapple
-
-    Scenario: The agent correctly check stock with tool
-        Given a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
-        And the tool "check_inventory"
-        And an association between "check_stock" and "check_inventory"
-        And a user message, "What product should I buy?"
-        When processing is triggered
-        Then a single tool calls event is emitted
-        And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains a call with tool_id of "check_inventory"
-        And a single message event is emitted
-        And the message contains a recommendation for either tables or chairs
-

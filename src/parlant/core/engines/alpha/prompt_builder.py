@@ -309,7 +309,7 @@ However, in this case, no special behavioral guidelines were provided.
         self.add_section(
             name=BuiltInSection.TOOLS,
             content=f"""
-The following are the tool function definitions: ###
+The following are the tool function definitions. Generate one reply for each tool: ###
 {tool_specs}
 ###
 """,
