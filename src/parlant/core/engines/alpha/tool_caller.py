@@ -244,14 +244,14 @@ Context - the id of the user is 12345, and check_balance(12345) is the only stag
                 "user_id": "12345",
             }},
             "same_call_is_already_staged": true,
-            "should_run": false
+            "should_run": false,
         }},
         {{
             "name": "ping_supervisor",
             "rationale": "There is no reason to notify the supervisor of anything",
             "applicability_score": 1,
             "same_call_is_already_staged": false,
-            "should_run": false
+            "should_run": false,
         }},
         {{
             "name": "check_ride_price",
@@ -262,14 +262,14 @@ Context - the id of the user is 12345, and check_balance(12345) is the only stag
                 "Destination": "Newark",
             }},
             "same_call_is_already_staged": false,
-            "should_run": true
+            "should_run": true,
         }},
         {{
             "name": "order_taxi",
             "rationale": "The client hasn't asked for a taxi to be ordered yet",
             "applicability_score": 2,
             "same_call_is_already_staged": false,
-            "should_run": false
+            "should_run": false,
         }},
     ]
 }}
@@ -292,7 +292,7 @@ check_stock(): returns all menu items that are currently in stock
                 "product_name": "margherita",
             }},
             "same_call_is_already_staged": false,
-            "should_run": true
+            "should_run": true,
         }},
         {{
             "name": "check_calories",
@@ -302,7 +302,7 @@ check_stock(): returns all menu items that are currently in stock
                 "product_name": "deep dish",
             }},
             "same_call_is_already_staged": false,
-            "should_run": true
+            "should_run": true,
         }},
         {{
             "name": "check_stock",
@@ -311,7 +311,7 @@ check_stock(): returns all menu items that are currently in stock
             "arguments": {{
             }},
             "same_call_is_already_staged": false,
-            "should_run": true
+            "should_run": true,
         }},
     ]
 }}
@@ -379,7 +379,7 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
             "name": "{tool_id.service_name}:{tool_id.tool_name}",
             "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
-            "arguments": <ARGUMENTS FOR THE TOOL. CAN BE DROPPED IF THE TOOL SHOULD NOT EXECUTE>,
+            "arguments": <ARGUMENTS FOR THE TOOL. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
             "should_run": <BOOL>,
         }},                                                
