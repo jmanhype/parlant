@@ -250,6 +250,30 @@ def given_a_tool(
             },
             "required": ["from_account", "to_account"],
         },
+        "check_fruit_price": {
+            "name": "check_fruit_price",
+            "description": "Reports the price of 1 kg of a certain fruit",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "fruit": {
+                    "type": "string",
+                    "description": "Fruit to check for",
+                },
+            },
+            "required": ["fruit"],
+        },
+        "check_vegetable_price": {
+            "name": "check_vegetable_price",
+            "description": "Reports the price of 1 kg of a certain vegetable",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "vegetable": {
+                    "type": "string",
+                    "description": "Vegetable to check for",
+                },
+            },
+            "required": ["vegetable"],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

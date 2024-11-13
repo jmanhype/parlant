@@ -60,3 +60,11 @@ def get_terrys_offering() -> ToolResult:
 
 def schedule() -> ToolResult:
     return ToolResult("Meeting got scheduled!")
+
+
+def check_fruit_price(fruit: str) -> ToolResult:
+    return ToolResult(f"1 kg of {fruit} costs 10$")
+
+
+def check_vegetable_price(vegetable: str) -> ToolResult:
+    return ToolResult(f"1 kg of {vegetable} costs 3$")
