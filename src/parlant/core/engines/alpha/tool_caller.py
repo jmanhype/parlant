@@ -99,6 +99,7 @@ class ToolCaller:
             staged_events,
         )
 
+        inference_output = []
         with self._logger.operation("Tool classification"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
