@@ -110,9 +110,9 @@ class ToolCaller:
             ToolCall(
                 id=ToolCallId(generate_id()),
                 tool_id=ToolId.from_string(tc.name),
-                arguments=tc.arguments,
+                arguments=cast(Mapping[str, JSONSerializable], tc.arguments),
             )
-            for tc in cast(Sequence[ToolCallEvaluation], inference_output)
+            for tc in inference_output
             if tc.should_run and tc.applicability_score >= 6
         ]
 
