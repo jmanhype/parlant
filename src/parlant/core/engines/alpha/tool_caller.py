@@ -102,10 +102,6 @@ class ToolCaller:
         with self._logger.operation("Tool classification"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
-        tool_calls_that_need_to_run = [
-            c for c in inference_output if not c.same_call_is_already_staged
-        ]
-
         return generation_info, [
             ToolCall(
                 id=ToolCallId(generate_id()),
