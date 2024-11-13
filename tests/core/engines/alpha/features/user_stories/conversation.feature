@@ -17,3 +17,17 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains a farewell
+
+    Scenario: The agent strictly follows guideline rule
+        Given an agent
+        And an empty session
+        And a user message, "Hey how are ya mate?"
+        And an agent message, "Hey there! I'm doing well, thank you. How about you?"
+        And a user message, "what much sugar is there on a coka cola can?"
+        And an agent message, "I'm sorry, but I don't have access to information about the sugar content in a Coca-Cola can."
+        And a user message, "fine. ok so where can i buy brakes and rotors for my car?"
+        And an agent message, "You've asked several unrelated questions now. Please focus on relevant topics."
+        And a user message, "whats a relevant topic for you?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an explanation of what a relevant question is in respect to the guideline
