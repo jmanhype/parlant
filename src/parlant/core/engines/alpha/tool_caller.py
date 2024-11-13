@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 from itertools import chain
 import json
 import traceback
-from typing import Any, Mapping, NewType, Optional, Sequence
+from typing import Any, Mapping, NewType, Optional, Sequence, cast
 
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
@@ -99,7 +99,6 @@ class ToolCaller:
             staged_events,
         )
 
-        inference_output: Sequence[ToolCallEvaluation] = []
         with self._logger.operation("Tool classification"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
@@ -113,7 +112,7 @@ class ToolCaller:
                 tool_id=ToolId.from_string(tc.name),
                 arguments=tc.arguments,
             )
-            for tc in inference_output
+            for tc in cast(Sequence[ToolCallEvaluation], inference_output)
             if tc.should_run and tc.applicability_score >= 6
         ]
 
