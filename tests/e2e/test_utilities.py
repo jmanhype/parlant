@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
@@ -96,11 +97,31 @@ class ContextOfTest:
     home_dir: Path
 
 
+def is_server_running(port: int) -> bool:
+    process = subprocess.Popen(
+        args=["lsof", f"-i:{port}"],
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    process.wait()
+
+    stdout_view, stderr_view = process.communicate()
+    _output_view = stdout_view.decode() + stderr_view.decode()
+    if _output_view:
+        print(_output_view)
+        return True
+    else:
+        return False
+
+
 @contextmanager
 def run_server(
     context: ContextOfTest,
     extra_args: list[str] = [],
 ) -> Iterator[subprocess.Popen[str]]:
+    if is_server_running(int(SERVER_PORT)):
+        raise Exception(f"Server already running on chosen port {SERVER_PORT}")
+
     exec_args = [
         "poetry",
         "run",
@@ -132,14 +153,14 @@ def run_server(
 
             process.send_signal(signal.SIGINT)
 
-            for i in range(5):
+            for _ in range(5):
                 if process.poll() is not None:
                     return
                 time.sleep(0.5)
 
             process.terminate()
 
-            for i in range(5):
+            for _ in range(5):
                 if process.poll() is not None:
                     return
                 time.sleep(0.5)

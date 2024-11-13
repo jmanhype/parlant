@@ -2,22 +2,53 @@
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
 import os
 import sys
 import time
-from typing import Any, Literal, NotRequired, Optional, TypedDict, Union, cast
+from datetime import datetime
+from textwrap import wrap
+from typing import Any, Optional, cast
 from urllib.parse import urljoin
+
 import click
 import click.shell_completion
-import click_completion
+import click_completion  # type: ignore
 import requests
 import rich
 from rich import box
 from rich.table import Table
 from rich.text import Text
-from textwrap import wrap
 from tqdm import tqdm
+
+from parlant.client import ParlantClient
+from parlant.client.types import (
+    Agent,
+    ContextVariable,
+    ContextVariableValue,
+    CreateAgentRequest,
+    Event,
+    FreshnessRules,
+    Guideline,
+    GuidelineConnection,
+    GuidelineConnectionAddition,
+    GuidelineConnectionsPatch,
+    GuidelineContent,
+    GuidelineInvoice,
+    GuidelineInvoiceData,
+    GuidelinePayload,
+    GuidelineToolAssociation,
+    GuidelineToolAssociationsPatch,
+    GuidelineWithConnectionsAndToolAssociations,
+    ReadContextVariableResponse,
+    ReadInteractionResponse,
+    Request,
+    Request_Openapi,
+    Request_Sdk,
+    Service,
+    Session,
+    Term,
+    ToolId,
+)
 
 INDENT = "  "
 
@@ -27,173 +58,12 @@ class CoherenceCheckFailure(Exception):
         self.contradictions = contradictions
 
 
-class AgentDTO(TypedDict):
-    id: str
-    name: str
-    description: Optional[str]
-    creation_utc: str
-    max_engine_iterations: int
-
-
-class SessionDTO(TypedDict):
-    id: str
-    end_user_id: str
-    title: Optional[str]
-    creation_utc: str
-
-
-class EventDTO(TypedDict):
-    id: str
-    creation_utc: str
-    source: Literal["client", "server"]
-    kind: str
-    offset: int
-    correlation_id: str
-    data: Any
-
-
-class TermDTO(TypedDict):
-    id: str
-    name: str
-    description: str
-    synonyms: list[str]
-
-
-class GuidelineDTO(TypedDict):
-    id: str
-    condition: str
-    action: str
-
-
-class ToolIdDTO(TypedDict):
-    service_name: str
-    tool_name: str
-
-
-class GuidelineConnectionDTO(TypedDict):
-    id: str
-    source: GuidelineDTO
-    target: GuidelineDTO
-    kind: Literal["entails", "suggests"]
-    indirect: bool
-
-
-class GuidelineToolAssociationDTO(TypedDict):
-    id: str
-    guideline_id: str
-    tool_id: ToolIdDTO
-
-
-class GuidelineWithConnectionsAndToolAssociationsDTO(TypedDict):
-    guideline: GuidelineDTO
-    connections: list[GuidelineConnectionDTO]
-    tool_associations: list[GuidelineToolAssociationDTO]
-
-
-class FreshnessRulesDTO(TypedDict):
-    months: NotRequired[list[int]]
-    days_of_month: NotRequired[list[int]]
-    days_of_week: NotRequired[
-        list[
-            Literal[
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-            ]
-        ]
-    ]
-    hours: NotRequired[list[int]]
-    minutes: NotRequired[list[int]]
-    seconds: NotRequired[list[int]]
-
-
-class ContextVariableDTO(TypedDict):
-    id: str
-    name: str
-    description: NotRequired[str]
-    tool_id: NotRequired[ToolIdDTO]
-    freshness_rules: NotRequired[FreshnessRulesDTO]
-
-
-class ContextVariableValueDTO(TypedDict):
-    id: str
-    last_modified: str
-    data: Any
-
-
-class GuidelinePropositionDTO(TypedDict):
-    guideline_id: str
-    condition: str
-    action: str
-    score: int
-    rationale: str
-
-
-class ToolResultDTO(TypedDict):
-    data: Any
-    metadata: dict[str, Any]
-
-
-class ToolCallDTO(TypedDict):
-    tool_name: str
-    arguments: dict[str, Any]
-    result: ToolResultDTO
-
-
-class InspectedContextVariableDTO(TypedDict):
-    id: str
-    name: str
-    description: str
-    key: str
-    value: str
-
-
-class ReadContextVariableResponse(TypedDict):
-    context_variable: ContextVariableDTO
-    key_value_pairs: dict[str, ContextVariableValueDTO]
-
-
-class PreparationIterationDTO(TypedDict):
-    guideline_propositions: list[GuidelinePropositionDTO]
-    tool_calls: list[ToolCallDTO]
-    terms: list[TermDTO]
-    context_variables: list[InspectedContextVariableDTO]
-
-
-class ReadInteractionResponse(TypedDict):
-    session_id: str
-    correlation_id: str
-    preparation_iterations: list[PreparationIterationDTO]
-
-
-class ToolParameterDTO(TypedDict):
-    type: str
-    description: NotRequired[str]
-    enum: NotRequired[list[Union[str, int, float, bool]]]
-
-
-class ToolDTO(TypedDict):
-    creation_utc: datetime
-    name: str
-    description: str
-    parameters: dict[str, ToolParameterDTO]
-    required: list[str]
-    consequential: bool
-
-
-class ServiceDTO(TypedDict):
-    name: str
-    kind: str
-    url: str
-    tools: Optional[list[ToolDTO]]
-
-
 def format_datetime(datetime_str: str) -> str:
     return datetime.fromisoformat(datetime_str).strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
+
+def reformat_datetime(datetime: datetime) -> str:
+    return datetime.strftime("%Y-%m-%d %I:%M:%S %p %Z")
 
 
 _EXIT_STATUS = 0
@@ -205,74 +75,43 @@ def get_exit_status() -> int:
 
 def set_exit_status(status: int) -> None:
     global _EXIT_STATUS
-    _EXIT_STATUS = status
+    _EXIT_STATUS = status  # type: ignore
 
 
 class Actions:
-    @staticmethod
-    def raise_for_status_with_detail(response: requests.Response) -> None:
-        """Raises :class:`HTTPError`, if one occurred, with detail if exists
-
-        Adapted from requests.Response.raise_for_status"""
-        http_error_msg = ""
-
-        if isinstance(response.reason, bytes):
-            try:
-                reason = response.reason.decode("utf-8")
-            except UnicodeDecodeError:
-                reason = response.reason.decode("iso-8859-1")
-        else:
-            reason = response.reason
-
-        if 400 <= response.status_code < 500:
-            http_error_msg = (
-                f"{response.status_code} Client Error: {reason} for url: {response.url}"
-            ) + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
-        elif 500 <= response.status_code < 600:
-            http_error_msg = (
-                f"{response.status_code} Server Error: {reason} for url: {response.url}"
-                + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
-            )
-
-        if http_error_msg:
-            raise requests.HTTPError(http_error_msg, response=response)
-
     @staticmethod
     def create_agent(
         ctx: click.Context,
         name: str,
         description: Optional[str],
         max_engine_iterations: Optional[int],
-    ) -> AgentDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, "/agents"),
-            json={
-                "name": name,
-                "description": description,
-                "max_engine_iterations": max_engine_iterations,
-            },
-        )
-        Actions.raise_for_status_with_detail(response)
+    ) -> Agent:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        return cast(AgentDTO, response.json()["agent"])
+        response = client.create_agent(
+            request=CreateAgentRequest(
+                name=name,
+                description=description,
+                max_engine_iterations=max_engine_iterations,
+            )
+        )
+        return response.agent
 
     @staticmethod
-    def view_agent(ctx: click.Context, agent_id: str) -> AgentDTO:
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
-        )
+    def view_agent(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> Agent:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(AgentDTO, response.json())
+        return client.read_agent(agent_id)
 
     @staticmethod
-    def list_agents(ctx: click.Context) -> list[AgentDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, "agents"))
+    def list_agents(ctx: click.Context) -> list[Agent]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[AgentDTO], response.json()["agents"])  # type: ignore
+        response = client.list_agents()
+        return response.agents
 
     @staticmethod
     def update_agent(
@@ -281,18 +120,13 @@ class Actions:
         description: Optional[str] = None,
         max_engine_iterations: Optional[int] = None,
     ) -> None:
-        patch_data: dict[str, Any] = {}
-        if description is not None:
-            patch_data["description"] = description
-        if max_engine_iterations is not None:
-            patch_data["max_engine_iterations"] = max_engine_iterations
+        client = cast(ParlantClient, ctx.obj.client)
 
-        response = requests.patch(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}"),
-            json=patch_data,
+        client.patch_agent(
+            agent_id,
+            description=description,
+            max_engine_iterations=max_engine_iterations,
         )
-
-        Actions.raise_for_status_with_detail(response)
 
     @staticmethod
     def create_session(
@@ -300,38 +134,30 @@ class Actions:
         agent_id: str,
         end_user_id: str,
         title: Optional[str] = None,
-    ) -> SessionDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, "/sessions"),
-            params={"allow_greeting": False},
-            json={
-                "agent_id": agent_id,
-                "end_user_id": end_user_id,
-                "title": title,
-            },
+    ) -> Session:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_session(
+            end_user_id=end_user_id,
+            agent_id=agent_id,
+            allow_greeting=False,
+            title=title,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(SessionDTO, response.json()["session"])
+        return response.session
 
     @staticmethod
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
         end_user_id: Optional[str],
-    ) -> list[SessionDTO]:
-        response = requests.get(
-            urljoin(ctx.obj.server_address, "/sessions"),
-            params={
-                "agent_id": agent_id,
-                "end_user_id": end_user_id,
-            },
+    ) -> list[Session]:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.list_sessions(
+            agent_id=agent_id,
+            end_user_id=end_user_id,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[SessionDTO], response.json()["sessions"])
+        return response.sessions
 
     @staticmethod
     def inspect_interaction(
@@ -339,46 +165,38 @@ class Actions:
         session_id: str,
         correlation_id: str,
     ) -> ReadInteractionResponse:
-        response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/sessions/{session_id}/interactions/{correlation_id}",
-            )
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.read_interaction(
+            session_id=session_id,
+            correlation_id=correlation_id,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ReadInteractionResponse, response.json())
 
     @staticmethod
     def list_events(
         ctx: click.Context,
         session_id: str,
-    ) -> list[EventDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+    ) -> list[Event]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[EventDTO], response.json()["events"])
+        response = client.list_events(session_id=session_id)
+        return response.events
 
     @staticmethod
     def create_event(
         ctx: click.Context,
         session_id: str,
         message: str,
-    ) -> EventDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
-            json={
-                "kind": "message",
-                "source": "end_user",
-                "content": message,
-            },
+    ) -> Event:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_event(
+            session_id,
+            kind="message",
+            source="end_user",
+            content=message,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(EventDTO, response.json()["event"])
+        return response.event
 
     @staticmethod
     def create_term(
@@ -386,20 +204,17 @@ class Actions:
         agent_id: str,
         name: str,
         description: str,
-        synonyms: Optional[str],
-    ) -> TermDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"),
-            json={
-                "name": name,
-                "description": description,
-                **({"synonyms": synonyms.split(",")} if synonyms else {}),
-            },
+        synonyms: list[str],
+    ) -> Term:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_term(
+            agent_id,
+            name=name,
+            description=description,
+            synonyms=synonyms,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(TermDTO, response.json()["term"])
+        return response.term
 
     @staticmethod
     def update_term(
@@ -408,20 +223,17 @@ class Actions:
         term_id: str,
         name: Optional[str],
         description: Optional[str],
-        synonyms: Optional[str],
-    ) -> TermDTO:
-        response = requests.patch(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{term_id}"),
-            json={
-                **({"name": name} if name else {}),
-                **({"description": description} if description else {}),
-                **({"synonyms": synonyms.split(",")} if synonyms else {}),
-            },
+        synonyms: list[str],
+    ) -> Term:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.patch_term(
+            agent_id,
+            term_id,
+            name=name,
+            description=description,
+            synonyms=synonyms,
         )
-
-        response.raise_for_status()
-
-        return cast(TermDTO, response.json()["term"])
 
     @staticmethod
     def remove_term(
@@ -429,22 +241,19 @@ class Actions:
         agent_id: str,
         term_id: str,
     ) -> None:
-        response = requests.delete(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms/{term_id}")
-        )
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
+        client.delete_term(agent_id, term_id)
 
     @staticmethod
     def list_terms(
         ctx: click.Context,
         agent_id: str,
-    ) -> list[TermDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/agents/{agent_id}/terms"))
+    ) -> list[Term]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[TermDTO], response.json()["terms"])
+        response = client.list_terms(agent_id)
+        return response.terms
 
     @staticmethod
     def create_guideline(
@@ -455,30 +264,26 @@ class Actions:
         check: bool,
         index: bool,
         updated_id: Optional[str] = None,
-    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, "/index/evaluations"),
-            json={
-                "agent_id": agent_id,
-                "payloads": [
-                    {
-                        "kind": "guideline",
-                        "content": {
-                            "condition": condition,
-                            "action": action,
-                        },
-                        "operation": "add",
-                        "updated_id": updated_id,
-                        "coherence_check": check,
-                        "connection_proposition": index,
-                    }
-                ],
-            },
+    ) -> GuidelineWithConnectionsAndToolAssociations:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_evaluation(
+            agent_id,
+            payloads=[
+                GuidelinePayload(
+                    kind="guideline",
+                    content=GuidelineContent(
+                        predicate=predicate,
+                        action=action,
+                    ),
+                    operation="add",
+                    updated_id=updated_id,
+                    coherence_check=check,
+                    connection_proposition=index,
+                ),
+            ],
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        evaluation_id = response.json()["evaluation_id"]
+        evaluation_id = response.evaluation_id
 
         with tqdm(
             total=100,
@@ -487,53 +292,45 @@ class Actions:
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                response = requests.get(
-                    urljoin(
-                        ctx.obj.server_address,
-                        f"/index/evaluations/{evaluation_id}",
-                    )
-                )
+                evaluation_response = client.read_evaluation(evaluation_id)
 
-                Actions.raise_for_status_with_detail(response)
-
-                evaluation = response.json()
-
-                if evaluation["status"] in ["pending", "running"]:
-                    progress_bar.n = int(evaluation["progress"])
+                if evaluation_response.status in ["pending", "running"]:
+                    progress_bar.n = int(evaluation_response.progress)
                     progress_bar.refresh()
 
                     continue
 
-                if evaluation["status"] == "completed":
-                    invoice = evaluation["invoices"][0]
-                    if invoice["approved"]:
+                if evaluation_response.status == "completed":
+                    invoice = evaluation_response.invoices[0]
+                    if invoice.approved:
                         progress_bar.n = 100
                         progress_bar.refresh()
 
-                        guideline_response = requests.post(
-                            urljoin(
-                                ctx.obj.server_address,
-                                f"/agents/{agent_id}/guidelines/",
-                            ),
-                            json={
-                                "invoices": [invoice],
-                            },
-                        )
+                        assert invoice.data
 
-                        Actions.raise_for_status_with_detail(guideline_response)
-
-                        return cast(
-                            GuidelineWithConnectionsAndToolAssociationsDTO,
-                            guideline_response.json()["items"][0],
+                        guideline_response = client.create_guidelines(
+                            agent_id,
+                            invoices=[
+                                GuidelineInvoice(
+                                    payload=invoice.payload,
+                                    checksum=invoice.checksum,
+                                    approved=invoice.approved,
+                                    data=invoice.data,
+                                    error=invoice.error,
+                                ),
+                            ],
                         )
+                        return guideline_response.items[0]
 
                     else:
-                        raise CoherenceCheckFailure(
-                            contradictions=invoice["data"]["coherence_checks"]
+                        assert isinstance(invoice.data, GuidelineInvoiceData)
+                        contradictions = list(
+                            map(lambda x: x.__dict__, invoice.data.coherence_checks)
                         )
+                        raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation["status"] == "failed":
-                    raise ValueError(evaluation["error"])
+                elif evaluation_response.status == "failed":
+                    raise ValueError(evaluation_response.error)
 
     @staticmethod
     def update_guideline(
@@ -544,85 +341,73 @@ class Actions:
         check: bool,
         index: bool,
         updated_id: Optional[str] = None,
-    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, "/index/evaluations"),
-            json={
-                "agent_id": agent_id,
-                "payloads": [
-                    {
-                        "kind": "guideline",
-                        "content": {
-                            "condition": condition,
-                            "action": action,
-                        },
-                        "operation": "update",
-                        "updated_id": updated_id,
-                        "coherence_check": check,
-                        "connection_proposition": index,
-                    }
-                ],
-            },
+    ) -> GuidelineWithConnectionsAndToolAssociations:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_evaluation(
+            agent_id,
+            payloads=[
+                GuidelinePayload(
+                    kind="guideline",
+                    content=GuidelineContent(
+                        predicate=predicate,
+                        action=action,
+                    ),
+                    operation="update",
+                    updated_id=updated_id,
+                    coherence_check=check,
+                    connection_proposition=index,
+                ),
+            ],
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        evaluation_id = response.json()["evaluation_id"]
+        evaluation_id = response.evaluation_id
 
         with tqdm(
             total=100,
-            desc="Evaluating updated guideline impact",
+            desc="Evaluating added guideline impact",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                response = requests.get(
-                    urljoin(
-                        ctx.obj.server_address,
-                        f"/index/evaluations/{evaluation_id}",
-                    )
-                )
+                evaluation_response = client.read_evaluation(evaluation_id)
 
-                Actions.raise_for_status_with_detail(response)
-
-                evaluation = response.json()
-
-                if evaluation["status"] in ["pending", "running"]:
-                    progress_bar.n = int(evaluation["progress"])
+                if evaluation_response.status in ["pending", "running"]:
+                    progress_bar.n = int(evaluation_response.progress)
                     progress_bar.refresh()
 
                     continue
 
-                if evaluation["status"] == "completed":
-                    invoice = evaluation["invoices"][0]
-                    if invoice["approved"]:
+                if evaluation_response.status == "completed":
+                    invoice = evaluation_response.invoices[0]
+                    if invoice.approved:
                         progress_bar.n = 100
                         progress_bar.refresh()
 
-                        guideline_response = requests.post(
-                            urljoin(
-                                ctx.obj.server_address,
-                                f"/agents/{agent_id}/guidelines/",
-                            ),
-                            json={
-                                "invoices": [invoice],
-                            },
-                        )
+                        assert invoice.data
 
-                        Actions.raise_for_status_with_detail(guideline_response)
-
-                        return cast(
-                            GuidelineWithConnectionsAndToolAssociationsDTO,
-                            guideline_response.json()["items"][0],
+                        guideline_response = client.create_guidelines(
+                            agent_id,
+                            invoices=[
+                                GuidelineInvoice(
+                                    payload=invoice.payload,
+                                    checksum=invoice.checksum,
+                                    approved=invoice.approved,
+                                    data=invoice.data,
+                                    error=invoice.error,
+                                ),
+                            ],
                         )
+                        return guideline_response.items[0]
 
                     else:
-                        raise CoherenceCheckFailure(
-                            contradictions=invoice["data"]["coherence_checks"]
+                        assert isinstance(invoice.data, GuidelineInvoiceData)
+                        contradictions = list(
+                            map(lambda x: x.__dict__, invoice.data.coherence_checks)
                         )
+                        raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation["status"] == "failed":
-                    raise ValueError(evaluation["error"])
+                elif evaluation_response.status == "failed":
+                    raise ValueError(evaluation_response.error)
 
     @staticmethod
     def remove_guideline(
@@ -630,36 +415,29 @@ class Actions:
         agent_id: str,
         guideline_id: str,
     ) -> None:
-        response = requests.delete(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
-        )
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
+        client.delete_guideline(agent_id, guideline_id)
 
     @staticmethod
     def view_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
-    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
-        )
+    ) -> GuidelineWithConnectionsAndToolAssociations:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
+        return client.read_guideline(agent_id, guideline_id)
 
     @staticmethod
     def list_guidelines(
         ctx: click.Context,
         agent_id: str,
-    ) -> list[GuidelineDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, f"agents/{agent_id}/guidelines"))
+    ) -> list[Guideline]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[GuidelineDTO], response.json()["guidelines"])
+        response = client.list_guidelines(agent_id)
+        return response.guidelines
 
     @staticmethod
     def create_entailment(
@@ -668,28 +446,22 @@ class Actions:
         source_guideline_id: str,
         target_guideline_id: str,
         kind: str,
-    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
-        response = requests.patch(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/guidelines/{source_guideline_id}",
+    ) -> GuidelineWithConnectionsAndToolAssociations:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.patch_guideline(
+            agent_id,
+            source_guideline_id,
+            connections=GuidelineConnectionsPatch(
+                add=[
+                    GuidelineConnectionAddition(
+                        source=source_guideline_id,
+                        target=target_guideline_id,
+                        kind=kind,
+                    ),
+                ]
             ),
-            json={
-                "connections": {
-                    "add": [
-                        {
-                            "source": source_guideline_id,
-                            "target": target_guideline_id,
-                            "kind": kind,
-                        }
-                    ],
-                },
-            },
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
 
     @staticmethod
     def remove_entailment(
@@ -698,38 +470,22 @@ class Actions:
         source_guideline_id: str,
         target_guideline_id: str,
     ) -> str:
-        guideline_response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/guidelines/{source_guideline_id}",
-            )
-        )
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(guideline_response)
-
-        connections: list[GuidelineConnectionDTO] = guideline_response.json()["connections"]
+        guideline_response = client.read_guideline(agent_id, source_guideline_id)
+        connections = guideline_response.connections
 
         if connection := next(
-            (
-                c
-                for c in connections
-                if target_guideline_id in [c["source"]["id"], c["target"]["id"]]
-            ),
+            (c for c in connections if target_guideline_id in [c.source.id, c.target.id]),
             None,
         ):
-            connection_response = requests.patch(
-                urljoin(
-                    ctx.obj.server_address,
-                    f"/agents/{agent_id}/guidelines/{source_guideline_id}",
-                ),
-                json={
-                    "connections": {"remove": [target_guideline_id]},
-                },
+            client.patch_guideline(
+                agent_id,
+                source_guideline_id,
+                connections=GuidelineConnectionsPatch(remove=[target_guideline_id]),
             )
 
-            Actions.raise_for_status_with_detail(connection_response)
-
-            return connection["id"]
+            return connection.id
 
         raise ValueError(
             f"An entailment between {source_guideline_id} and {target_guideline_id} was not found"
@@ -742,27 +498,21 @@ class Actions:
         guideline_id: str,
         service_name: str,
         tool_name: str,
-    ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
-        response = requests.patch(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/guidelines/{guideline_id}",
+    ) -> GuidelineWithConnectionsAndToolAssociations:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.patch_guideline(
+            agent_id,
+            guideline_id,
+            tool_associations=GuidelineToolAssociationsPatch(
+                add=[
+                    ToolId(
+                        service_name=service_name,
+                        tool_name=tool_name,
+                    ),
+                ]
             ),
-            json={
-                "tool_associations": {
-                    "add": [
-                        {
-                            "service_name": service_name,
-                            "tool_name": tool_name,
-                        }
-                    ]
-                }
-            },
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(GuidelineWithConnectionsAndToolAssociationsDTO, response.json())
 
     @staticmethod
     def remove_association(
@@ -772,45 +522,33 @@ class Actions:
         service_name: str,
         tool_name: str,
     ) -> str:
-        guideline_response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/guidelines/{guideline_id}")
-        )
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(guideline_response)
-
-        associations: list[GuidelineToolAssociationDTO] = guideline_response.json()[
-            "tool_associations"
-        ]
+        guideline_response = client.read_guideline(agent_id, guideline_id)
+        associations = guideline_response.tool_associations
 
         if association := next(
             (
                 a
                 for a in associations
-                if a["tool_id"]["service_name"] == service_name
-                and a["tool_id"]["tool_name"] == tool_name
+                if a.tool_id.service_name == service_name and a.tool_id.tool_name == tool_name
             ),
             None,
         ):
-            association_response = requests.patch(
-                urljoin(
-                    ctx.obj.server_address,
-                    f"/agents/{agent_id}/guidelines/{guideline_id}",
+            client.patch_guideline(
+                agent_id,
+                guideline_id,
+                tool_associations=GuidelineToolAssociationsPatch(
+                    remove=[
+                        ToolId(
+                            service_name=service_name,
+                            tool_name=tool_name,
+                        ),
+                    ]
                 ),
-                json={
-                    "tool_associations": {
-                        "remove": [
-                            {
-                                "service_name": service_name,
-                                "tool_name": tool_name,
-                            }
-                        ]
-                    }
-                },
             )
 
-            Actions.raise_for_status_with_detail(association_response)
-
-            return association["id"]
+            return association.id
 
         raise ValueError(
             f"An association between {guideline_id} and the tool {tool_name} from {service_name} was not found"
@@ -820,25 +558,25 @@ class Actions:
     def list_variables(
         ctx: click.Context,
         agent_id: str,
-    ) -> list[ContextVariableDTO]:
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/context-variables/")
-        )
+    ) -> list[ContextVariable]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[ContextVariableDTO], response.json()["context_variables"])
+        response = client.list_variables(agent_id)
+        return response.context_variables
 
     @staticmethod
     def view_variable(
         ctx: click.Context,
         agent_id: str,
         name: str,
-    ) -> ContextVariableDTO:
-        variables = Actions.list_variables(ctx, agent_id)
+    ) -> ContextVariable:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        if variable := next((v for v in variables if v["name"] == name), None):
-            return cast(ContextVariableDTO, variable)
+        response = client.list_variables(agent_id)
+        variables = response.context_variables
+
+        if variable := next((v for v in variables if v.name == name), None):
+            return variable
 
         raise ValueError("A variable called '{name}' was not found under agent '{agent_id}'")
 
@@ -848,18 +586,15 @@ class Actions:
         agent_id: str,
         name: str,
         description: str,
-    ) -> ContextVariableDTO:
-        response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/context-variables"),
-            json={
-                "name": name,
-                "description": description,
-            },
+    ) -> ContextVariable:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.create_variable(
+            agent_id,
+            name=name,
+            description=description,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ContextVariableDTO, response.json()["context_variable"])
+        return response.context_variable
 
     @staticmethod
     def remove_variable(
@@ -867,14 +602,9 @@ class Actions:
         agent_id: str,
         variable_id: str,
     ) -> None:
-        response = requests.delete(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/context-variables/{variable_id}",
-            )
-        )
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
+        client.delete_variable(agent_id, variable_id)
 
     @staticmethod
     def set_variable_value(
@@ -883,20 +613,16 @@ class Actions:
         variable_id: str,
         key: str,
         value: str,
-    ) -> ContextVariableValueDTO:
-        response = requests.put(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
-            ),
-            json={
-                "data": value,
-            },
+    ) -> ContextVariableValue:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        response = client.update_variable_value(
+            agent_id,
+            variable_id,
+            key,
+            data=value,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ContextVariableValueDTO, response.json()["context_variable_value"])
+        return response.context_variable_value
 
     @staticmethod
     def read_variable(
@@ -905,17 +631,13 @@ class Actions:
         variable_id: str,
         include_values: bool,
     ) -> ReadContextVariableResponse:
-        response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/context-variables/{variable_id}",
-            ),
-            params={"include_values": include_values},
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.read_variable(
+            agent_id,
+            variable_id,
+            include_values=include_values,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ReadContextVariableResponse, response.json())
 
     @staticmethod
     def read_variable_value(
@@ -923,17 +645,14 @@ class Actions:
         agent_id: str,
         variable_id: str,
         key: str,
-    ) -> ContextVariableValueDTO:
-        response = requests.get(
-            urljoin(
-                ctx.obj.server_address,
-                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
-            )
+    ) -> ContextVariableValue:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.read_variable_value(
+            agent_id,
+            variable_id,
+            key,
         )
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ContextVariableValueDTO, response.json())
 
     @staticmethod
     def add_service(
@@ -942,56 +661,84 @@ class Actions:
         kind: str,
         url: str,
         source: str,
-    ) -> ServiceDTO:
+    ) -> Service:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        request: Request
         if kind == "sdk":
-            payload = {
-                "kind": "sdk",
-                "url": url,
-            }
+            request = Request_Sdk(url=url)
+
         elif kind == "openapi":
-            payload = {
-                "kind": "openapi",
-                "url": url,
-                "source": source,
-            }
+            request = Request_Openapi(
+                url=url,
+                source=source,
+            )
+
         else:
             raise ValueError(f"Unsupported kind: {kind}")
 
-        response = requests.put(
-            urljoin(ctx.obj.server_address, f"/services/{name}"),
-            json=payload,
+        response = client.upsert_service(
+            name,
+            request=request,
         )
-
-        response.raise_for_status()
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(ServiceDTO, response.json())
+        return Service(
+            name=response.name,
+            kind=response.kind,
+            url=response.url,
+        )
 
     @staticmethod
     def remove_service(
         ctx: click.Context,
         name: str,
     ) -> None:
-        response = requests.delete(urljoin(ctx.obj.server_address, f"/services/{name}"))
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
-
-    @staticmethod
-    def list_services(ctx: click.Context) -> list[ServiceDTO]:
-        response = requests.get(urljoin(ctx.obj.server_address, "services"))
-
-        Actions.raise_for_status_with_detail(response)
-
-        return cast(list[ServiceDTO], response.json()["services"])
+        client.delete_service(name)
 
     @staticmethod
-    def view_service(ctx: click.Context, service_name: str) -> ServiceDTO:
-        response = requests.get(urljoin(ctx.obj.server_address, f"/services/{service_name}"))
+    def list_services(ctx: click.Context) -> list[Service]:
+        client = cast(ParlantClient, ctx.obj.client)
 
-        Actions.raise_for_status_with_detail(response)
+        response = client.list_services()
+        return response.services
 
-        return cast(ServiceDTO, response.json())
+    @staticmethod
+    def view_service(
+        ctx: click.Context,
+        service_name: str,
+    ) -> Service:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.read_service(service_name)
+
+
+def raise_for_status_with_detail(response: requests.Response) -> None:
+    """Raises :class:`HTTPError`, if one occurred, with detail if exists
+
+    Adapted from requests.Response.raise_for_status"""
+    http_error_msg = ""
+
+    if isinstance(response.reason, bytes):
+        try:
+            reason = response.reason.decode("utf-8")
+        except UnicodeDecodeError:
+            reason = response.reason.decode("iso-8859-1")
+    else:
+        reason = response.reason
+
+    if 400 <= response.status_code < 500:
+        http_error_msg = (
+            f"{response.status_code} Client Error: {reason} for url: {response.url}"
+        ) + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
+    elif 500 <= response.status_code < 600:
+        http_error_msg = (
+            f"{response.status_code} Server Error: {reason} for url: {response.url}"
+            + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
+        )
+
+    if http_error_msg:
+        raise requests.HTTPError(http_error_msg, response=response)
 
 
 class Interface:
@@ -1004,7 +751,7 @@ class Interface:
         rich.print(Text(message, style="bold red"), file=sys.stderr)
 
     @staticmethod
-    def _print_table(data: list[Any]) -> None:
+    def _print_table(data: list[dict[str, Any]]) -> None:
         table = Table(box=box.ROUNDED, border_style="bright_green")
 
         headers = list(data[0].keys())
@@ -1018,14 +765,14 @@ class Interface:
         rich.print(table)
 
     @staticmethod
-    def _render_agents(agents: list[AgentDTO]) -> None:
-        agent_items = [
+    def _render_agents(agents: list[Agent]) -> None:
+        agent_items: list[dict[str, Any]] = [
             {
-                "ID": a["id"],
-                "Name": a["name"],
-                "Creation Date": format_datetime(a["creation_utc"]),
-                "Description": a["description"] or "",
-                "Max Engine Iterations": a["max_engine_iterations"],
+                "ID": a.id,
+                "Name": a.name,
+                "Creation Date": reformat_datetime(a.creation_utc),
+                "Description": a.description or "",
+                "Max Engine Iterations": a.max_engine_iterations,
             }
             for a in agents
         ]
@@ -1042,7 +789,7 @@ class Interface:
         try:
             agent = Actions.create_agent(ctx, name, description, max_engine_iterations)
 
-            Interface._write_success(f"Added agent (id={agent['id']})")
+            Interface._write_success(f"Added agent (id={agent.id})")
             Interface._render_agents([agent])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1072,7 +819,7 @@ class Interface:
     def get_default_agent(ctx: click.Context) -> str:
         agents = Actions.list_agents(ctx)
         assert agents
-        return str(agents[0]["id"])
+        return str(agents[0].id)
 
     @staticmethod
     def update_agent(
@@ -1089,13 +836,13 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_sessions(sessions: list[SessionDTO]) -> None:
+    def _render_sessions(sessions: list[Session]) -> None:
         session_items = [
             {
-                "ID": s["id"],
-                "Title": s["title"] or "",
-                "Creation Date": format_datetime(s["creation_utc"]),
-                "End User ID": s["end_user_id"],
+                "ID": s.id,
+                "Title": s.title or "",
+                "Creation Date": reformat_datetime(s.creation_utc),
+                "End User ID": s.end_user_id,
             }
             for s in sessions
         ]
@@ -1103,16 +850,16 @@ class Interface:
         Interface._print_table(session_items)
 
     @staticmethod
-    def _render_events(events: list[EventDTO]) -> None:
-        event_items = [
+    def _render_events(events: list[Event]) -> None:
+        event_items: list[dict[str, Any]] = [
             {
-                "Event ID": e["id"],
-                "Creation Date": format_datetime(e["creation_utc"]),
-                "Correlation ID": e["correlation_id"],
-                "Source": e["source"],
-                "Offset": e["offset"],
-                "Kind": e["kind"],
-                "Data": e["data"],
+                "Event ID": e.id,
+                "Creation Date": reformat_datetime(e.creation_utc),
+                "Correlation ID": e.correlation_id,
+                "Source": e.source,
+                "Offset": e.offset,
+                "Kind": e.kind,
+                "Data": e.data,
             }
             for e in events
         ]
@@ -1154,7 +901,7 @@ class Interface:
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, end_user_id, title)
-        Interface._write_success(f"Added session (id={session['id']})")
+        Interface._write_success(f"Added session (id={session.id})")
         Interface._render_sessions([session])
 
     @staticmethod
@@ -1168,46 +915,46 @@ class Interface:
         rich.print(f"Session ID: '{session_id}'")
         rich.print(f"Correlation ID: '{correlation_id}'\n")
 
-        for i, iteration in enumerate(interaction["preparation_iterations"]):
+        for i, iteration in enumerate(interaction.preparation_iterations):
             rich.print(Text(f"Iteration #{i}:", style="bold yellow"))
 
             rich.print(Text(f"{INDENT}Guideline Propositions:", style="bold"))
 
-            if iteration["guideline_propositions"]:
-                for proposition in iteration["guideline_propositions"]:
-                    rich.print(f"{INDENT*2}Condition: {proposition['condition']}")
-                    rich.print(f"{INDENT*2}Action: {proposition['action']}")
-                    rich.print(f"{INDENT*2}Relevance Score: {proposition['score']}/10")
-                    rich.print(f"{INDENT*2}Rationale: {proposition['rationale']}\n")
+            if iteration.guideline_propositions:
+                for proposition in iteration.guideline_propositions:
+                    rich.print(f"{INDENT*2}Predicate: {proposition.predicate}")
+                    rich.print(f"{INDENT*2}Action: {proposition.action}")
+                    rich.print(f"{INDENT*2}Relevance Score: {proposition.score}/10")
+                    rich.print(f"{INDENT*2}Rationale: {proposition.rationale}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
 
             rich.print(Text(f"{INDENT}Tool Calls:", style="bold"))
 
-            if iteration["tool_calls"]:
-                for tool_call in iteration["tool_calls"]:
-                    rich.print(f"{INDENT*2}Tool Name: {tool_call['tool_name']}")
-                    rich.print(f"{INDENT*2}Arguments: {tool_call['arguments']}")
-                    rich.print(f"{INDENT*2}Result: {tool_call['result']}\n")
+            if iteration.tool_calls:
+                for tool_call in iteration.tool_calls:
+                    rich.print(f"{INDENT*2}Tool Id: {tool_call.tool_id}")
+                    rich.print(f"{INDENT*2}Arguments: {tool_call.arguments}")
+                    rich.print(f"{INDENT*2}Result: {tool_call.result}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
 
             rich.print(Text(f"{INDENT}Context Variables:", style="bold"))
 
-            if iteration["context_variables"]:
-                for variable in iteration["context_variables"]:
-                    rich.print(f"{INDENT*2}Name: {variable['name']}")
-                    rich.print(f"{INDENT*2}Key: {variable['key']}")
-                    rich.print(f"{INDENT*2}Value: {variable['value']}\n")
+            if iteration.context_variables:
+                for variable in iteration.context_variables:
+                    rich.print(f"{INDENT*2}Name: {variable.name}")
+                    rich.print(f"{INDENT*2}Key: {variable.key}")
+                    rich.print(f"{INDENT*2}Value: {variable.value}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
 
             rich.print(Text(f"{INDENT}Glossary Terms:", style="bold"))
 
-            if iteration["terms"]:
-                for term in iteration["terms"]:
-                    rich.print(f"{INDENT*2}Name: {term['name']}")
-                    rich.print(f"{INDENT*2}Description: {term['description']}\n")
+            if iteration.terms:
+                for term in iteration.terms:
+                    rich.print(f"{INDENT*2}Name: {term.name}")
+                    rich.print(f"{INDENT*2}Description: {term.description}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
 
@@ -1219,7 +966,7 @@ class Interface:
     ) -> None:
         event = Actions.create_event(ctx, session_id, message)
 
-        Interface._write_success(f"Added event (id={event['id']})")
+        Interface._write_success(f"Added event (id={event.id})")
 
     @staticmethod
     def chat(
@@ -1244,7 +991,7 @@ class Interface:
 
         response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
 
-        Actions.raise_for_status_with_detail(response)
+        raise_for_status_with_detail(response)
 
         message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
 
@@ -1280,7 +1027,7 @@ class Interface:
                     },
                 )
 
-                Actions.raise_for_status_with_detail(response)
+                raise_for_status_with_detail(response)
 
                 new_event = response.json()["event"]
 
@@ -1321,12 +1068,18 @@ class Interface:
         agent_id: str,
         name: str,
         description: str,
-        synonyms: Optional[str],
+        synonyms: list[str],
     ) -> None:
-        term = Actions.create_term(ctx, agent_id, name, description, synonyms)
+        term = Actions.create_term(
+            ctx,
+            agent_id,
+            name,
+            description,
+            synonyms,
+        )
 
-        Interface._write_success(f"Added term (id={term['id']})")
-        Interface._print_table([term])
+        Interface._write_success(f"Added term (id={term.id})")
+        Interface._print_table([term.__dict__])
 
     @staticmethod
     def update_term(
@@ -1335,7 +1088,7 @@ class Interface:
         term_id: str,
         name: Optional[str],
         description: Optional[str],
-        synonyms: Optional[str],
+        synonyms: list[str],
     ) -> None:
         if not name and not description and not synonyms:
             Interface._write_error(
@@ -1343,9 +1096,16 @@ class Interface:
             )
             return
 
-        term = Actions.update_term(ctx, agent_id, term_id, name, description, synonyms)
-        Interface._write_success(f"Updated term (id={term['id']})")
-        Interface._print_table([term])
+        term = Actions.update_term(
+            ctx,
+            agent_id,
+            term_id,
+            name,
+            description,
+            synonyms,
+        )
+        Interface._write_success(f"Updated term (id={term.id})")
+        Interface._print_table([term.__dict__])
 
     @staticmethod
     def remove_term(
@@ -1368,15 +1128,15 @@ class Interface:
             rich.print("No data available")
             return
 
-        Interface._print_table(terms)
+        Interface._print_table(list(map(lambda t: t.__dict__, terms)))
 
     @staticmethod
-    def _render_guidelines(guidelines: list[GuidelineDTO]) -> None:
-        guideline_items = [
+    def _render_guidelines(guidelines: list[Guideline]) -> None:
+        guideline_items: list[dict[str, Any]] = [
             {
-                "ID": guideline["id"],
-                "Condition": guideline["condition"],
-                "Action": guideline["action"],
+                "ID": guideline.id,
+                "Predicate": guideline.predicate,
+                "Action": guideline.action,
             }
             for guideline in guidelines
         ]
@@ -1385,39 +1145,39 @@ class Interface:
 
     @staticmethod
     def _render_guideline_entailments(
-        guideline: GuidelineDTO,
-        connections: list[GuidelineConnectionDTO],
-        tool_associations: list[GuidelineToolAssociationDTO],
+        guideline: Guideline,
+        connections: list[GuidelineConnection],
+        tool_associations: list[GuidelineToolAssociation],
         include_indirect: bool,
     ) -> None:
-        def to_direct_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
-            peer = conn["target"] if conn["source"]["id"] == guideline["id"] else conn["source"]
+        def to_direct_entailment_item(conn: GuidelineConnection) -> dict[str, str]:
+            peer = conn.target if conn.source.id == guideline.id else conn.source
 
             return {
-                "Connection ID": conn["id"],
-                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
-                "Role": "Source" if conn["source"]["id"] == guideline["id"] else "Target",
-                "Peer Role": "Target" if conn["source"]["id"] == guideline["id"] else "Source",
-                "Peer ID": peer["id"],
-                "Peer Condition": peer["condition"],
-                "Peer Action": peer["action"],
+                "Connection ID": conn.id,
+                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
+                "Role": "Source" if conn.source.id == guideline.id else "Target",
+                "Peer Role": "Target" if conn.source.id == guideline.id else "Source",
+                "Peer ID": peer.id,
+                "Peer Predicate": peer.predicate,
+                "Peer Action": peer.action,
             }
 
-        def to_indirect_entailment_item(conn: GuidelineConnectionDTO) -> dict[str, str]:
+        def to_indirect_entailment_item(conn: GuidelineConnection) -> dict[str, str]:
             return {
-                "Connection ID": conn["id"],
-                "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
-                "Source ID": conn["source"]["id"],
-                "Source Condition": conn["source"]["condition"],
-                "Source Action": conn["source"]["action"],
-                "Target ID": conn["target"]["id"],
-                "Target Condition": conn["target"]["condition"],
-                "Target Action": conn["target"]["action"],
+                "Connection ID": conn.id,
+                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
+                "Source ID": conn.source.id,
+                "Source Predicate": conn.source.predicate,
+                "Source Action": conn.source.action,
+                "Target ID": conn.target.id,
+                "Target Predicate": conn.target.predicate,
+                "Target Action": conn.target.action,
             }
 
         if connections:
-            direct = [c for c in connections if not c["indirect"]]
-            indirect = [c for c in connections if c["indirect"]]
+            direct = [c for c in connections if not c.indirect]
+            indirect = [c for c in connections if c.indirect]
 
             if direct:
                 rich.print("\nDirect Entailments:")
@@ -1452,12 +1212,12 @@ class Interface:
                 index,
             )
 
-            guideline = guideline_with_connections_and_associations["guideline"]
-            Interface._write_success(f"Added guideline (id={guideline['id']})")
+            guideline = guideline_with_connections_and_associations.guideline
+            Interface._write_success(f"Added guideline (id={guideline.id})")
             Interface._render_guideline_entailments(
-                guideline_with_connections_and_associations["guideline"],
-                guideline_with_connections_and_associations["connections"],
-                guideline_with_connections_and_associations["tool_associations"],
+                guideline_with_connections_and_associations.guideline,
+                guideline_with_connections_and_associations.connections,
+                guideline_with_connections_and_associations.tool_associations,
                 include_indirect=False,
             )
 
@@ -1498,12 +1258,12 @@ class Interface:
                 updated_id=guideline_id,
             )
 
-            guideline = guideline_with_connections["guideline"]
-            Interface._write_success(f"Updated guideline (id={guideline['id']})")
+            guideline = guideline_with_connections.guideline
+            Interface._write_success(f"Updated guideline (id={guideline.id})")
             Interface._render_guideline_entailments(
-                guideline_with_connections["guideline"],
-                guideline_with_connections["connections"],
-                guideline_with_connections["tool_associations"],
+                guideline_with_connections.guideline,
+                guideline_with_connections.connections,
+                guideline_with_connections.tool_associations,
                 include_indirect=False,
             )
 
@@ -1548,11 +1308,11 @@ class Interface:
                 ctx, agent_id, guideline_id
             )
 
-            Interface._render_guidelines([guideline_with_connections_and_associations["guideline"]])
+            Interface._render_guidelines([guideline_with_connections_and_associations.guideline])
             Interface._render_guideline_entailments(
-                guideline_with_connections_and_associations["guideline"],
-                guideline_with_connections_and_associations["connections"],
-                guideline_with_connections_and_associations["tool_associations"],
+                guideline_with_connections_and_associations.guideline,
+                guideline_with_connections_and_associations.connections,
+                guideline_with_connections_and_associations.tool_associations,
                 include_indirect=True,
             )
         except Exception as e:
@@ -1594,8 +1354,8 @@ class Interface:
                 kind,
             )
 
-            Interface._write_success(f"Added connection (id={connection["connections"][0]['id']})")
-            Interface._print_table([connection])
+            Interface._write_success(f"Added connection (id={connection.connections[0].id})")
+            Interface._print_table([connection.dict()])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1622,14 +1382,14 @@ class Interface:
 
     @staticmethod
     def _render_guideline_tool_associations(
-        associations: list[GuidelineToolAssociationDTO],
+        associations: list[GuidelineToolAssociation],
     ) -> None:
         association_items = [
             {
-                "Association ID": a["id"],
-                "Guideline ID": a["guideline_id"],
-                "Service Name": a["tool_id"]["service_name"],
-                "Tool Name": a["tool_id"]["tool_name"],
+                "Association ID": a.id,
+                "Guideline ID": a.guideline_id,
+                "Service Name": a.tool_id.service_name,
+                "Tool Name": a.tool_id.tool_name,
             }
             for a in associations
         ]
@@ -1652,7 +1412,7 @@ class Interface:
             Interface._write_success(
                 f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
             )
-            Interface._render_guideline_tool_associations(association["tool_associations"])
+            Interface._render_guideline_tool_associations(association.tool_associations)
 
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1677,40 +1437,40 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_freshness_rules(freshness_rules: FreshnessRulesDTO) -> str:
+    def _render_freshness_rules(freshness_rules: FreshnessRules | None) -> str:
         if freshness_rules is None:
             return ""
-        parts = []
-        if freshness_rules.get("months"):
-            months = ", ".join(str(m) for m in freshness_rules["months"])
+        parts: list[str] = []
+        if freshness_rules.months:
+            months = ", ".join(str(m) for m in freshness_rules.months)
             parts.append(f"Months: {months}")
-        if freshness_rules.get("days_of_month"):
-            days_of_month = ", ".join(str(d) for d in freshness_rules["days_of_month"])
+        if freshness_rules.days_of_month:
+            days_of_month = ", ".join(str(d) for d in freshness_rules.days_of_month)
             parts.append(f"Days of Month: {days_of_month}")
-        if freshness_rules.get("days_of_week"):
-            days_of_week = ", ".join(freshness_rules["days_of_week"])
+        if freshness_rules.days_of_week:
+            days_of_week = ", ".join(freshness_rules.days_of_week)
             parts.append(f"Days of Week: {days_of_week}")
-        if freshness_rules.get("hours"):
-            hours = ", ".join(str(h) for h in freshness_rules["hours"])
+        if freshness_rules.hours:
+            hours = ", ".join(str(h) for h in freshness_rules.hours)
             parts.append(f"Hours: {hours}")
-        if freshness_rules.get("minutes"):
-            minutes = ", ".join(str(m) for m in freshness_rules["minutes"])
+        if freshness_rules.minutes:
+            minutes = ", ".join(str(m) for m in freshness_rules.minutes)
             parts.append(f"Minutes: {minutes}")
-        if freshness_rules.get("seconds"):
-            seconds = ", ".join(str(s) for s in freshness_rules["seconds"])
+        if freshness_rules.seconds:
+            seconds = ", ".join(str(s) for s in freshness_rules.seconds)
             parts.append(f"Seconds: {seconds}")
         if not parts:
             return "None"
         return "; ".join(parts)
 
     @staticmethod
-    def _render_variable(variable: ContextVariableDTO) -> None:
+    def _render_variable(variable: ContextVariable) -> None:
         Interface._print_table(
             [
                 {
-                    "ID": variable["id"],
-                    "Name": variable["name"],
-                    "Description": variable["description"] or "",
+                    "ID": variable.id,
+                    "Name": variable.name,
+                    "Description": variable.description or "",
                 }
             ],
         )
@@ -1728,12 +1488,12 @@ class Interface:
 
         variable_items = [
             {
-                "ID": variable["id"],
-                "Name": variable["name"],
-                "Description": variable["description"] or "",
-                "Service Name": variable["tool_id"]["service_name"] if variable["tool_id"] else "",
-                "Tool Name": variable["tool_id"]["tool_name"] if variable["tool_id"] else "",
-                "Freshness Rules": Interface._render_freshness_rules(variable["freshness_rules"]),
+                "ID": variable.id,
+                "Name": variable.name,
+                "Description": variable.description or "",
+                "Service Name": variable.tool_id.service_name if variable.tool_id else "",
+                "Tool Name": variable.tool_id.tool_name if variable.tool_id else "",
+                "Freshness Rules": Interface._render_freshness_rules(variable.freshness_rules),
             }
             for variable in variables
         ]
@@ -1749,14 +1509,14 @@ class Interface:
     ) -> None:
         variable = Actions.create_variable(ctx, agent_id, name, description)
 
-        Interface._write_success(f"Added variable (id={variable['id']})")
+        Interface._write_success(f"Added variable (id={variable.id})")
         Interface._render_variable(variable)
 
     @staticmethod
     def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
         try:
             variable = Actions.view_variable(ctx, agent_id, name)
-            Actions.remove_variable(ctx, agent_id, variable["id"])
+            Actions.remove_variable(ctx, agent_id, variable.id)
 
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
@@ -1765,14 +1525,14 @@ class Interface:
 
     @staticmethod
     def _render_variable_key_value_pairs(
-        pairs: dict[str, ContextVariableValueDTO],
+        pairs: dict[str, ContextVariableValue],
     ) -> None:
-        values_items = [
+        values_items: list[dict[str, Any]] = [
             {
-                "ID": value["id"],
+                "ID": value.id,
                 "Key": key,
-                "Value": value["data"],
-                "Last Modified": format_datetime(value["last_modified"]),
+                "Value": value.data,
+                "Last Modified": reformat_datetime(value.last_modified),
             }
             for key, value in pairs.items()
         ]
@@ -1792,12 +1552,12 @@ class Interface:
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_id=variable["id"],
+                variable_id=variable.id,
                 key=key,
                 value=value,
             )
 
-            Interface._write_success(f"Added value (id={cv_value['id']})")
+            Interface._write_success(f"Added value (id={cv_value.id})")
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -1815,19 +1575,23 @@ class Interface:
             read_variable_response = Actions.read_variable(
                 ctx,
                 agent_id,
-                variable["id"],
+                variable.id,
                 include_values=True,
             )
 
-            Interface._render_variable(read_variable_response["context_variable"])
+            Interface._render_variable(read_variable_response.context_variable)
 
-            if not read_variable_response["key_value_pairs"]:
+            if not read_variable_response.key_value_pairs:
                 rich.print("No values are available")
                 return
 
-            Interface._render_variable_key_value_pairs(
-                read_variable_response["key_value_pairs"],
-            )
+            pairs: dict[str, ContextVariableValue] = {}
+            for k, v in read_variable_response.key_value_pairs.items():
+                if v:
+                    pairs[k] = v
+
+            Interface._render_variable_key_value_pairs(pairs)
+
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1841,7 +1605,7 @@ class Interface:
     ) -> None:
         try:
             variable = Actions.view_variable(ctx, agent_id, variable_name)
-            value = Actions.read_variable_value(ctx, agent_id, variable["id"], key)
+            value = Actions.read_variable_value(ctx, agent_id, variable.id, key)
 
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
@@ -1860,7 +1624,7 @@ class Interface:
             result = Actions.add_service(ctx, name, kind, url, source)
 
             Interface._write_success(f"Added service '{name}'")
-            Interface._print_table([result])
+            Interface._print_table([result.dict()])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1886,11 +1650,11 @@ class Interface:
             rich.print("No services available")
             return
 
-        service_items = [
+        service_items: list[dict[str, Any]] = [
             {
-                "Name": service["name"],
-                "Type": service["kind"],
-                "Source": service["url"],
+                "Name": service.name,
+                "Type": service.kind,
+                "Source": service.url,
             }
             for service in services
         ]
@@ -1904,23 +1668,23 @@ class Interface:
     ) -> None:
         try:
             service = Actions.view_service(ctx, service_name)
-            rich.print(Text("Name:", style="bold"), service["name"])
-            rich.print(Text("Kind:", style="bold"), service["kind"])
-            rich.print(Text("Source:", style="bold"), service["url"])
+            rich.print(Text("Name:", style="bold"), service.name)
+            rich.print(Text("Kind:", style="bold"), service.kind)
+            rich.print(Text("Source:", style="bold"), service.url)
 
-            if service["tools"]:
+            if service.tools:
                 rich.print(Text("Tools:", style="bold"))
-                for tool in service["tools"]:
-                    rich.print(Text("    Name:", style="bold"), tool["name"])
-                    if tool["description"]:
+                for tool in service.tools:
+                    rich.print(Text("    Name:", style="bold"), tool.name)
+                    if tool.description:
                         rich.print(
                             Text("    Description:\n       ", style="bold"),
-                            tool["description"],
+                            tool.description,
                         )
 
-                    if tool["parameters"]:
+                    if tool.parameters:
                         rich.print(Text("    Parameters:", style="bold"))
-                        for param_name, param_desc in tool["parameters"].items():
+                        for param_name, param_desc in tool.parameters.items():
                             rich.print(Text(f"      - {param_name}:", style="bold"), end=" ")
                             rich.print(param_desc)
 
@@ -1933,11 +1697,12 @@ class Interface:
 
 
 async def async_main() -> None:
-    click_completion.init()
+    click_completion.init()  # type: ignore
 
     @dataclass(frozen=True)
     class Config:
         server_address: str
+        client: ParlantClient
 
     @click.group
     @click.option(
@@ -1951,12 +1716,12 @@ async def async_main() -> None:
     @click.pass_context
     def cli(ctx: click.Context, server: str) -> None:
         if not ctx.obj:
-            ctx.obj = Config(server_address=server)
+            ctx.obj = Config(server_address=server, client=ParlantClient(base_url=server))
 
     @cli.command(help="Generate shell completion code")
     @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
     def complete(shell: str) -> None:
-        click.echo(click_completion.get_code(shell))
+        click.echo(click_completion.get_code(shell))  # type: ignore
 
     @cli.group(help="Manage agents")
     def agent() -> None:
@@ -2036,7 +1801,7 @@ async def async_main() -> None:
         assert agent_id
         session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
 
-        Interface.chat(ctx, session["id"])
+        Interface.chat(ctx, session.id)
 
     @cli.group(help="Manage sessions")
     def session() -> None:
@@ -2158,7 +1923,13 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.create_term(ctx, agent_id, name, description, synonyms)
+        Interface.create_term(
+            ctx,
+            agent_id,
+            name,
+            description,
+            (synonyms or "").split(","),
+        )
 
     @glossary.command("update", help="Update an existing term")
     @click.option(
@@ -2203,7 +1974,14 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.update_term(ctx, agent_id, term_id, name, description, synonyms)
+        Interface.update_term(
+            ctx,
+            agent_id,
+            term_id,
+            name,
+            description,
+            (synonyms or "").split(","),
+        )
 
     @glossary.command("remove", help="Remove a term from the glossary")
     @click.option(

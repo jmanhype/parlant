@@ -32,6 +32,7 @@ networkx = { extras = ["default"], version = "^3.3" }
 openai = "^1.45.0"
 openapi3-parser = "^1.1.17"
 opentelemetry-exporter-otlp-proto-grpc = "1.27.0"
+parlant-client = {git = "ssh://git@github.com/emcie-co/parlant-client-python"}
 python = "^3.12"
 python-dateutil = "^2.8.2"
 python-dotenv = "^1.0.1"
@@ -50,8 +51,8 @@ types-jsonschema = "^4.22.0.20240610"
 types-tqdm = "^4.66.0.20240417"
 uvicorn = "^0.30.5"
 
+
 [tool.poetry.group.dev.dependencies]
-httpx = "^0.27.0"
 ipython = "^8.26.0"
 mypy = "^1.11.1"
 pep8-naming = "^0.13.3"
