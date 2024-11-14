@@ -112,8 +112,6 @@
                 {
                     "policy": "disable",
                     "tests": [
-                        "tests/e2e/test_client_cli_via_api.py::test_that_view_a_guideline_with_connections_displays_indirect_and_direct_connections",
-                        "tests/e2e/test_server_cli.py::test_that_the_server_recovery_restarts_all_active_evaluation_tasks"
                     ]
                 }
             ]
