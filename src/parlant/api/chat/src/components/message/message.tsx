@@ -50,7 +50,7 @@ export default function Message({event, isContinual, regenerateMessageFn}: Props
                     </div>
                 </div>
                 {!isClient &&
-                <div className='self-stretch items-center ps-[16px] flex invisible peer-hover:visible hover:visible'>
+                <div className='self-stretch items-center px-[16px] flex invisible peer-hover:visible hover:visible'>
                     <Tooltip value='Regenerate' side='right'>
                         <div data-testid='regenerate-button'role='button' onClick={() => regenerateMessageFn?.(sessionId as string, event.offset)} className='group cursor-pointer'>
                             <img src="icons/regenerate.svg" alt="regenerate" className='block group-hover:hidden'/>

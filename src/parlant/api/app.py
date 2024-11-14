@@ -50,7 +50,13 @@ async def create_api_app(container: Container) -> FastAPI:
 
     api_app = FastAPI()
 
-    api_app.add_middleware(CORSMiddleware, allow_origins=["*"])
+    api_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @api_app.middleware("http")
     async def add_correlation_id(

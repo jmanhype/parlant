@@ -11,9 +11,7 @@ import { getDateStr } from '@/utils/date';
 import { Spacer } from '../ui/custom/spacer';
 import { toast } from 'sonner';
 import { NEW_SESSION_ID } from '../chat-header/chat-header';
-import GradientButton from '../gradient-button/gradient-button';
-// import { Filter, FilterX } from 'lucide-react';
-// import Tooltip from '../ui/custom/tooltip';
+import { useQuestionDialog } from '@/hooks/useQuestionDialog';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
@@ -51,8 +49,8 @@ export default function Chat(): ReactElement {
     const [showTyping, setShowTyping] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isFirstScroll, setIsFirstScroll] = useState(true);
-    const {openDialog, closeDialog} = useSession();
-    // const [useContentFiltering, setUseContentFiltering] = useState(true);
+    const {openQuestionDialog, closeQuestionDialog} = useQuestionDialog();
+    const [useContentFiltering] = useState(true);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
     const {data: lastMessages, refetch, ErrorTemplate} = useFetch<{events: EventInterface[]}>(
@@ -75,19 +73,12 @@ export default function Chat(): ReactElement {
         if (isLastMessage) return regenerateMessage(index, sessionId, offset);
 
         const onApproved = () => {
-            closeDialog();
+            closeQuestionDialog();
             regenerateMessage(index, sessionId, offset);
         };
     
-        const Content = () => 
-            <div className='h-full flex flex-col justify-between ms-[20px] me-[30px]'>
-                <p className='mt-[10px]'>Regenerating this message would cause all of the following messages in the session to disappear.</p>
-                <div className='h-[80px] flex items-center justify-end'>
-                    <Button data-testid="cancel" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#EBE9F5] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
-                    <GradientButton onClick={onApproved} buttonClassName='h-[46px] w-[200px] bg-[#213547] rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Regenerate Anyway</GradientButton>
-                </div>
-            </div>;
-        openDialog('Are you sure?', <Content />, {height: '230px', width: '480px'});
+        const question = 'Regenerating this message would cause all of the following messages in the session to disappear.';
+        openQuestionDialog('Are you sure?', question, [{text: 'Regenerate Anyway', onClick: onApproved, isMainAction: true}]);
     };
 
     const regenerateMessage = async (index: number, sessionId: string, offset: number) => {
@@ -141,8 +132,14 @@ export default function Chat(): ReactElement {
         });
 
         const lastEventStatus = lastEvent?.data?.status;
-
+        
         setShowTyping(lastEventStatus === 'typing');
+        if (lastEventStatus === 'error') {
+            if (isRegenerating) {
+                setIsRegenerating(false);
+                toast.error('Something went wrong');
+            }
+        }
         refetch();
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,8 +166,7 @@ export default function Chat(): ReactElement {
         setPendingMessage(pendingMessage => ({...pendingMessage, data: {message: content}}));
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
-        // const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
-        const useContentFilteringStatus = 'none';
+        const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
         postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', content, source: 'end_user' }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
@@ -229,14 +225,6 @@ export default function Chat(): ReactElement {
                             onChange={(e) => setMessage(e.target.value)}
                             rows={1}
                             className="box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main"/>
-                        {/* <Tooltip value={useContentFiltering ? 'Remove content filtering' : 'Use content filtering'}>
-                            <Button variant='ghost'
-                                data-testid="check-button"
-                                className="max-w-[60px] rounded-full hover:bg-white"
-                                onClick={() => setUseContentFiltering(val => !val)}>
-                                {useContentFiltering ? <Filter/> : <FilterX/>}
-                            </Button>
-                        </Tooltip> */}
                         <Button variant='ghost'
                             data-testid="submit-button"
                             className="max-w-[60px] rounded-full hover:bg-white"

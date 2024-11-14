@@ -12,7 +12,6 @@ import styles from './session.module.scss';
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import { NEW_SESSION_ID } from '../chat-header/chat-header';
 import { spaceClick } from '@/utils/methods';
-import GradientButton from '../gradient-button/gradient-button';
 
 interface Props {
     session: SessionInterface;
@@ -28,8 +27,8 @@ export const DeleteDialog = ({session, closeDialog, deleteClicked}: {session: Se
     <div data-testid="deleteDialogContent">
         <Session session={session} disabled/>
         <div className='h-[80px] flex items-center justify-end pe-[18px]'>
-            <Button data-testid="cancel-delete" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#EBE9F5] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
-            <GradientButton onClick={deleteClicked} buttonClassName='h-[46px] w-[161px] bg-[#213547] rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Delete Session</GradientButton>
+            <Button data-testid="cancel-delete" onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#F2F0FC] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>Cancel</Button>
+            <Button data-testid="gradient-button" onClick={deleteClicked} className='h-[46px] w-[161px] bg-[#213547] hover:bg-black rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>Delete Session</Button>
         </div>
     </div>
 );
