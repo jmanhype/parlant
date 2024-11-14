@@ -88,7 +88,13 @@ async def create_api_app(container: Container) -> ASGIApplication:
         except asyncio.CancelledError:
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    api_app.add_middleware(CORSMiddleware, allow_origins=["*"])
+    api_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @api_app.middleware("http")
     async def add_correlation_id(

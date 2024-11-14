@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { MatcherOptions, render } from '@testing-library/react';
-import { Matcher } from 'vite';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { EventInterface, ServerStatus } from '@/utils/interfaces';
 import Message from './message';
@@ -18,12 +17,14 @@ const event: EventInterface = {
 };
 
 describe(Message, () => {
-    let getByTestId: (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+    let getByTestId: typeof screen.getByTestId;
+    let queryByTestId: typeof screen.queryByTestId;
     let rerender: (ui: React.ReactNode) => void;
     
     beforeEach(() => {
         const utils = render(<Message isContinual={false} event={event}/>);
-        getByTestId = utils.getByTestId as (id: Matcher, options?: MatcherOptions | undefined) => HTMLElement;
+        getByTestId = utils.getByTestId as typeof getByTestId;
+        queryByTestId = utils.queryByTestId as typeof queryByTestId;;
         rerender = utils.rerender;
     });
 
@@ -38,5 +39,25 @@ describe(Message, () => {
             const icon = getByTestId(serverStatus);
             expect(icon).toBeInTheDocument();
         }
+    });
+
+    it('client messages should not have a regenerate button', () => {
+        rerender(<Message isContinual={false} event={event}/>);
+        const button = queryByTestId('regenerate-button');
+        expect(button).toBeNull();
+    });
+
+    it('server messages have a regenerate button', () => {
+        rerender(<Message isContinual={false} event={{...event, source: 'ai_agent'}}/>);
+        const button = queryByTestId('regenerate-button');
+        expect(button).toBeInTheDocument();
+    });
+
+    it('clicking regenrate should call the regenrate message function', () => {
+        const regenerateMessageFn = vi.fn();
+        rerender(<Message isContinual={false} event={{...event, source: 'ai_agent'}} regenerateMessageFn={regenerateMessageFn}/>);
+        const button = getByTestId('regenerate-button');
+        fireEvent.click(button);
+        expect(regenerateMessageFn).toHaveBeenCalled();
     });
 });
