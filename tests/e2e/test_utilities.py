@@ -106,7 +106,6 @@ def run_server(
         "run",
         "python",
         CLI_SERVER_PATH.as_posix(),
-        "run",
         "-p",
         str(SERVER_PORT),
     ]

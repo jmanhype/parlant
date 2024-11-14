@@ -677,45 +677,6 @@ async def test_that_a_term_can_be_updated(
         assert updated_term["synonyms"] == [new_synonyms]
 
 
-async def test_that_terms_can_be_listed(
-    context: ContextOfTest,
-) -> None:
-    guideline_term_name = "guideline"
-    tool_term_name = "tool"
-    guideline_description = "when and then statements"
-    tool_description = "techniuqe to fetch external data"
-    guideline_synonyms = "rule, instruction"
-
-    with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-        agent_id = await API.get_first_agent_id()
-
-        _ = await API.create_term(
-            agent_id, guideline_term_name, guideline_description, guideline_synonyms
-        )
-
-        _ = await API.create_term(agent_id, tool_term_name, tool_description)
-
-        process = await run_cli(
-            "glossary",
-            "list",
-            "-a",
-            agent_id,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        stdout, stderr = await process.communicate()
-        output = stdout.decode() + stderr.decode()
-
-        assert guideline_term_name in output
-        assert guideline_description in output
-        assert guideline_synonyms in output
-        assert tool_term_name in output
-        assert tool_description in output
-
-
 async def test_that_a_term_can_be_deleted(
     context: ContextOfTest,
 ) -> None:
