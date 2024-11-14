@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 from itertools import chain
 import json
 import traceback
-from typing import Any, Mapping, NewType, Optional, Sequence, cast
+from typing import Any, Mapping, NewType, Optional, Sequence
 
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
@@ -106,7 +106,7 @@ class ToolCaller:
             ToolCall(
                 id=ToolCallId(generate_id()),
                 tool_id=ToolId.from_string(tc.name),
-                arguments=cast(Mapping[str, JSONSerializable], tc.arguments),
+                arguments=tc.arguments or {},
             )
             for tc in inference_output
             if tc.should_run and tc.applicability_score >= 6
