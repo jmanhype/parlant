@@ -1,13 +1,11 @@
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from lagom import Container
-from pytest import fixture, mark
+from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId, AgentStore
-
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.glossary import GlossaryStore
-
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     IncoherenceKind,
@@ -113,35 +111,7 @@ The following is a glossary that applies to this agent:
     return await nlp_test(context, predicate)
 
 
-@mark.parametrize(
-    (
-        "guideline_a_definition",
-        "guideline_b_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
-                "action": "Escalate the request to product management for special consideration",
-            },
-            {
-                "predicate": "Any customer requests a feature not available in the current version",
-                "action": "Inform them that upcoming features are added only according to the roadmap",
-            },
-        ),
-        (
-            {
-                "predicate": "Any customer reports a technical issue",
-                "action": "Queue the issue for resolution according to standard support protocols",
-            },
-            {
-                "predicate": "An issue which affects a critical operational feature for multiple clients is reported",  # noqa
-                "action": "Escalate immediately to the highest priority for resolution",
-            },
-        ),
-    ],
-)
-def test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+def base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -180,35 +150,41 @@ def test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
     )
 
 
-@mark.parametrize(
-    (
-        "guideline_a_definition",
-        "guideline_b_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "A customer exceeds their data storage limit",
-                "action": "Prompt them to upgrade their subscription plan",
-            },
-            {
-                "predicate": "Promoting customer retention and satisfaction",
-                "action": "Offer a temporary data limit extension without requiring an upgrade",
-            },
-        ),
-        (
-            {
-                "predicate": "A user expresses dissatisfaction with our new design",
-                "action": "encourage users to adopt and adapt to the change as part of ongoing product",
-            },
-            {
-                "predicate": "A user requests a feature that is no longer available",
-                "action": "Roll back or offer the option to revert to previous settings",
-            },
-        ),
-    ],
-)
-def test_that_contingent_incoherencies_are_detected(
+def test_that_contradicting_actions_with_hierarchical_predicates_are_detected_parametrized_1(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
+        "action": "Escalate the request to product management for special consideration",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "Any customer requests a feature not available in the current version",
+        "action": "Inform them that upcoming features are added only according to the roadmap",
+    }
+    base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def test_that_contradicting_actions_with_hierarchical_predicates_are_detected_parametrized_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "Any customer reports a technical issue",
+        "action": "Queue the issue for resolution according to standard support protocols",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "An issue which affects a critical operational feature for multiple clients is reported",  # noqa
+        "action": "Escalate immediately to the highest priority for resolution",
+    }
+    base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def base_test_that_contingent_incoherencies_are_detected(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -248,35 +224,43 @@ def test_that_contingent_incoherencies_are_detected(
     )
 
 
-@mark.parametrize(
-    (
-        "guideline_a_definition",
-        "guideline_b_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "A new software update is scheduled for release during the latter half of the year",
-                "action": "Roll it out to all users to ensure everyone has the latest version",
-            },
-            {
-                "predicate": "A software update is about to release and the month is November",
-                "action": "Delay software updates to avoid disrupting their operations",
-            },
-        ),
-        (
-            {
-                "predicate": "The financial quarter ends",
-                "action": "Finalize all pending transactions and close the books",
-            },
-            {
-                "predicate": "A new financial regulation is implemented at the end of the quarter",
-                "action": "re-evaluate all transactions from that quarter before closing the books",  # noqa
-            },
-        ),
-    ],
-)
-def test_that_temporal_contradictions_are_detected_as_incoherencies(
+def test_that_contingent_incoherencies_are_detected_parametrized_1(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A customer exceeds their data storage limit",
+        "action": "Prompt them to upgrade their subscription plan",
+    }
+
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "Promoting customer retention and satisfaction",
+        "action": "Offer a temporary data limit extension without requiring an upgrade",
+    }
+    base_test_that_contingent_incoherencies_are_detected(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def test_that_contingent_incoherencies_are_detected_parametrized_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A user expresses dissatisfaction with our new design",
+        "action": "encourage users to adopt and adapt to the change as part of ongoing product",
+    }
+
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "A user requests a feature that is no longer available",
+        "action": "Roll back or offer the option to revert to previous settings",
+    }
+    base_test_that_contingent_incoherencies_are_detected(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def base_test_that_temporal_contradictions_are_detected_as_incoherencies(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -315,35 +299,41 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies(
     )
 
 
-@mark.parametrize(
-    (
-        "guideline_a_definition",
-        "guideline_b_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "A customer is located in a region with strict data sovereignty laws",
-                "action": "Store and process all customer data locally as required by law",
-            },
-            {
-                "predicate": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
-                "action": "Consolidate data handling to enhance efficiency",
-            },
-        ),
-        (
-            {
-                "predicate": "A customer's contract is up for renewal during a market downturn",
-                "action": "Offer discounts and incentives to ensure renewal",
-            },
-            {
-                "predicate": "The company’s financial performance targets require maximizing revenue",
-                "action": "avoid discounts and push for higher-priced contracts",
-            },
-        ),
-    ],
-)
-def test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
+def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized_1(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A new software update is scheduled for release during the latter half of the year",
+        "action": "Roll it out to all users to ensure everyone has the latest version",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "A software update is about to release and the month is November",
+        "action": "Delay software updates to avoid disrupting their operations",
+    }
+    base_test_that_temporal_contradictions_are_detected_as_incoherencies(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "The financial quarter ends",
+        "action": "Finalize all pending transactions and close the books",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "A new financial regulation is implemented at the end of the quarter",
+        "action": "re-evaluate all transactions from that quarter before closing the books",  # noqa
+    }
+    base_test_that_temporal_contradictions_are_detected_as_incoherencies(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -382,35 +372,42 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
     )
 
 
-@mark.parametrize(
-    (
-        "guideline_a_definition",
-        "guideline_b_definition",
-    ),
-    [
-        (
-            {
-                "predicate": "A customer asks about the security of their data",
-                "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
-            },
-            {
-                "predicate": "A customer inquires about compliance with specific regulations",
-                "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
-            },
-        ),
-        (
-            {
-                "predicate": "A customer requests faster support response times",
-                "action": "Explain the standard response times and efforts to improve them",
-            },
-            {
-                "predicate": "A customer compliments the service on social media",
-                "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
-            },
-        ),
-    ],
-)
-def test_that_non_contradicting_guidelines_arent_false_positives(
+def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_parametrized_1(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A customer is located in a region with strict data sovereignty laws",
+        "action": "Store and process all customer data locally as required by law",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
+        "action": "Consolidate data handling to enhance efficiency",
+    }
+    base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_parametrized_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A customer's contract is up for renewal during a market downturn",
+        "action": "Offer discounts and incentives to ensure renewal",
+    }
+
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "The company’s financial performance targets require maximizing revenue",
+        "action": "avoid discounts and push for higher-priced contracts",
+    }
+    base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def base_test_that_non_contradicting_guidelines_arent_false_positives(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -435,6 +432,40 @@ def test_that_non_contradicting_guidelines_arent_false_positives(
     )
 
     assert len(incoherence_results) == 0
+
+
+def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_1(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A customer asks about the security of their data",
+        "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "A customer inquires about compliance with specific regulations",
+        "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
+    }
+    base_test_that_non_contradicting_guidelines_arent_false_positives(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
+
+
+def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    guideline_a_definition: dict[str, str] = {
+        "predicate": "A customer requests faster support response times",
+        "action": "Explain the standard response times and efforts to improve them",
+    }
+    guideline_b_definition: dict[str, str] = {
+        "predicate": "A customer compliments the service on social media",
+        "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
+    }
+    base_test_that_non_contradicting_guidelines_arent_false_positives(
+        context, agent, guideline_a_definition, guideline_b_definition
+    )
 
 
 def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(

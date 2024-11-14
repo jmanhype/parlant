@@ -20,6 +20,7 @@ click-completion = "^0.5.2"
 coloredlogs = "^15.0.1"
 contextvars = "^2.4"
 fastapi = "^0.112.0"
+google-cloud-aiplatform = {extras = ["tokenization"], version = "^1.71.1"}
 google-generativeai = "^0.8.3"
 httpx = "^0.27.0"
 jsonfinder = "^0.4.2"
@@ -42,14 +43,12 @@ tenacity = "^8.4.2"
 tiktoken = "^0.7.0"
 together = "^1.2.12"
 tokenizers = "^0.20"
+torch = "^2.5.1"
+transformers = "^4.46.2"
 types-aiofiles = "^24.1.0.20240626"
 types-jsonschema = "^4.22.0.20240610"
 types-tqdm = "^4.66.0.20240417"
 uvicorn = "^0.30.5"
-google-cloud-aiplatform = {extras = ["tokenization"], version = "^1.71.1"}
-transformers = "^4.46.2"
-torch = "^2.5.1"
-
 
 [tool.poetry.group.dev.dependencies]
 httpx = "^0.27.0"

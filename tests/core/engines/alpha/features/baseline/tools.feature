@@ -4,20 +4,26 @@ Feature: Tools
         And an agent
         And an empty session
 
-    Scenario Outline: Single tool is being called once
-        Given the guideline called "<GUIDELINE>"
-        And the tool "<TOOL>"
-        And an association between "<GUIDELINE>" and "<TOOL>"
+    Scenario: Single tool get_available_drinks is being called once
+        Given the guideline called "check_drinks_in_stock"
+        And the tool "get_available_drinks"
+        And an association between "check_drinks_in_stock" and "get_available_drinks"
         And a user message, "Hey, can I order a large pepperoni pizza with Sprite?"
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains <EXPECTED_CONTENT>
-        Examples:
-            | GUIDELINE               | TOOL                   | EXPECTED_CONTENT                           |
-            | check_drinks_in_stock   | get_available_drinks   | Sprite and Coca Cola as available drinks   |
-            | check_toppings_in_stock | get_available_toppings | Mushrooms and Olives as available toppings |
-
+        And the tool calls event contains Sprite and Coca Cola as available drinks
+        
+    Scenario: Single tool get_available_toppings is being called once
+        Given the guideline called "check_toppings_in_stock"
+        And the tool "get_available_toppings"
+        And an association between "check_toppings_in_stock" and "get_available_toppings"
+        And a user message, "Hey, can I order a large pepperoni pizza with Sprite?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains Mushrooms and Olives as available toppings
+        
     Scenario: Single tool is being called multiple times
         Given a guideline "sell_pizza", to sell pizza when interacting with users
         And a guideline "check_stock", to check if toppings or drinks are available in stock when a client asks for toppings or drinks
