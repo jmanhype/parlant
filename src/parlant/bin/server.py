@@ -4,7 +4,6 @@ import asyncio
 from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
 import os
-from fastapi import FastAPI
 from lagom import Container, Singleton
 from typing import AsyncIterator
 import click
@@ -19,7 +18,7 @@ from parlant.adapters.nlp.anthropic import AnthropicService
 from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.together import TogetherService
-from parlant.api.app import create_api_app
+from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentDocumentStore, AgentStore
@@ -280,7 +279,7 @@ async def recover_server_tasks(
 
 
 @asynccontextmanager
-async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
+async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
     global EXIT_STACK
 
     EXIT_STACK = AsyncExitStack()
@@ -297,10 +296,16 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
 
 async def serve_app(
-    app: FastAPI,
+    app: ASGIApplication,
     port: int,
 ) -> None:
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        timeout_graceful_shutdown=1,
+    )
     server = uvicorn.Server(config)
 
     try:

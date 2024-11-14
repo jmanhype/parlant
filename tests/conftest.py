@@ -15,7 +15,7 @@ from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.anthropic import AnthropicService
 from parlant.adapters.nlp.together import TogetherService
-from parlant.api.app import create_api_app
+from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -184,7 +184,7 @@ async def container() -> AsyncIterator[Container]:
 
 
 @fixture
-async def api_app(container: Container) -> FastAPI:
+async def api_app(container: Container) -> ASGIApplication:
     return await create_api_app(container)
 
 
