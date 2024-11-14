@@ -6,6 +6,7 @@ import jsonfinder  # type: ignore
 from pydantic import ValidationError
 from vertexai.preview import tokenization  # type: ignore
 
+from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
@@ -74,20 +75,8 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
         raw_content = response.text
 
         try:
-            json_start = max(0, raw_content.find("```json"))
-
-            if json_start != -1:
-                json_start = json_start + 7
-
-            json_end = raw_content[json_start:].find("```")
-
-            if json_end == -1:
-                json_end = len(raw_content[json_start:])
-
-            json_content = raw_content[json_start : json_start + json_end]
-
+            json_content = normalize_json_output(raw_content)
             json_content = json_content.replace("“", '"').replace("”", '"')
-
             json_object = jsonfinder.only_json(json_content)[2]
         except Exception:
             self._logger.error(

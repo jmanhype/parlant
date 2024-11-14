@@ -6,6 +6,7 @@ import jsonfinder  # type: ignore
 import os
 import tiktoken
 
+from parlant.adapters.nlp.common import normalize_json_output
 from parlant.adapters.nlp.hugging_face import HuggingFaceEstimatingTokenizer
 from parlant.core.engines.alpha.message_event_generator import MessageEventSchema
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
@@ -64,17 +65,7 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
         raw_content = response.choices[0].message.content or "{}"
 
         try:
-            json_start = max(0, raw_content.find("```json"))
-
-            if json_start != -1:
-                json_start = json_start + 7
-
-            json_end = raw_content[json_start:].find("```")
-
-            if json_end == -1:
-                json_end = len(raw_content[json_start:])
-
-            json_content = raw_content[json_start : json_start + json_end]
+            json_content = normalize_json_output(raw_content)
             json_object = jsonfinder.only_json(json_content)[2]
         except Exception:
             self._logger.error(
