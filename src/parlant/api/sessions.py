@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from itertools import chain, groupby
-from typing import Any, Literal, Mapping, Optional, cast
+from typing import Any, Mapping, Optional, cast
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
@@ -43,6 +43,11 @@ class EventSourceDTO(Enum):
     HUMAN_AGENT = "human_agent"
     HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
     AI_AGENT = "ai_agent"
+
+
+class Moderation(Enum):
+    AUTO = "auto"
+    NONE = "none"
 
 
 class ConsumptionOffsetsDTO(DefaultBaseModel):
@@ -121,8 +126,12 @@ class ToolCallDTO(DefaultBaseModel):
     result: ToolResultDTO
 
 
+class InteractionKindDTO(Enum):
+    MESSAGE = "message"
+
+
 class InteractionDTO(DefaultBaseModel):
-    kind: Literal["message"]
+    kind: InteractionKindDTO
     source: EventSourceDTO
     correlation_id: str
     data: Any = Field(
@@ -407,7 +416,7 @@ def create_router(
     async def create_event(
         session_id: SessionId,
         request: CreateEventRequest,
-        moderation: Literal["none", "auto"] = "none",
+        moderation: Moderation = Moderation.NONE,
     ) -> CreateEventResponse:
         if request.source == EventSourceDTO.END_USER:
             return await _add_end_user_message(session_id, request, moderation)
@@ -422,12 +431,12 @@ def create_router(
     async def _add_end_user_message(
         session_id: SessionId,
         request: CreateEventRequest,
-        moderation: Literal["none", "auto"] = "none",
+        moderation: Moderation = Moderation.NONE,
     ) -> CreateEventResponse:
         flagged = False
         tags = set()
 
-        if moderation == "auto":
+        if moderation == Moderation.AUTO:
             for _, moderation_service in await service_registry.list_moderation_services():
                 check = await moderation_service.check(request.content)
                 flagged |= check.flagged
@@ -596,7 +605,7 @@ def create_router(
             for e in message_events:
                 interactions.append(
                     InteractionDTO(
-                        kind="message",
+                        kind=InteractionKindDTO.MESSAGE,
                         source=EventSourceDTO(e.source),
                         correlation_id=correlation_id,
                         data=cast(MessageEventData, e.data)["message"],
@@ -644,7 +653,7 @@ def create_router(
     )
     async def create_interactions(
         session_id: SessionId,
-        moderation: Literal["none", "auto"] = "none",
+        moderation: Moderation = Moderation.NONE,
     ) -> CreateInteractionsResponse:
         session = await session_store.read_session(session_id)
 

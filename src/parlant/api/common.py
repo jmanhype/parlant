@@ -1,13 +1,9 @@
 from enum import Enum
-from typing import Literal, Optional, TypeAlias, Union, cast
+from typing import Optional, TypeAlias, Union, cast
 
 from parlant.core.common import DefaultBaseModel
-from parlant.core.evaluations import (
-    CoherenceCheckKind,
-    ConnectionPropositionKind,
-)
 from parlant.core.guideline_connections import ConnectionKind
-from parlant.core.guidelines import GuidelineContent, GuidelineId
+from parlant.core.guidelines import GuidelineId
 
 
 class EvaluationStatusDTO(Enum):
@@ -31,10 +27,27 @@ class GuidelineContentDTO(DefaultBaseModel):
     action: str
 
 
+class GuidelinePayloadOperationDTO(Enum):
+    ADD = "add"
+    UPDATE = "update"
+
+
+class CoherenceCheckKindDTO(Enum):
+    CONTRADICTION_WITH_EXISTING_GUIDELINE = "contradiction_with_existing_guideline"
+    CONTRADICTION_WITH_ANOTHER_EVALUATED_GUIDELINE = (
+        "contradiction_with_another_evaluated_guideline"
+    )
+
+
+class ConnectionPropositionKindDTO(Enum):
+    CONNECTION_WITH_EXISTING_GUIDELINE = "connection_with_existing_guideline"
+    CONNECTION_WITH_ANOTHER_EVALUATED_GUIDELINE = "connection_with_another_evaluated_guideline"
+
+
 class GuidelinePayloadDTO(DefaultBaseModel):
     kind: PayloadKindDTO
     content: GuidelineContentDTO
-    operation: Literal["add", "update"]
+    operation: GuidelinePayloadOperationDTO
     updated_id: Optional[GuidelineId] = None
     coherence_check: bool
     connection_proposition: bool
@@ -44,17 +57,17 @@ PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]
 
 
 class CoherenceCheckDTO(DefaultBaseModel):
-    kind: CoherenceCheckKind
-    first: GuidelineContent
-    second: GuidelineContent
+    kind: CoherenceCheckKindDTO
+    first: GuidelineContentDTO
+    second: GuidelineContentDTO
     issue: str
     severity: int
 
 
 class ConnectionPropositionDTO(DefaultBaseModel):
-    check_kind: ConnectionPropositionKind
-    source: GuidelineContent
-    target: GuidelineContent
+    check_kind: ConnectionPropositionKindDTO
+    source: GuidelineContentDTO
+    target: GuidelineContentDTO
     connection_kind: ConnectionKindDTO
 
 
