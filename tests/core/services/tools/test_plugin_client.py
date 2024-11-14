@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+import enum
 from typing import AsyncIterator, Optional
 
 from parlant.core.tools import ToolContext, ToolResult
@@ -257,3 +258,30 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
                 "message": "How are you?",
                 "participant": {"id": agent.id, "display_name": agent.name},
             }
+
+
+async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
+    context: ToolContext,
+    container: Container,
+    agent: Agent,
+) -> None:
+    class ProductCategory(enum.Enum):
+        CATEGORY_A = "category_a"
+        CATEGORY_B = "category_b"
+
+    @tool
+    async def my_enum_tool(context: ToolContext, category: ProductCategory) -> ToolResult:
+        return ToolResult(category.value)
+
+    async with run_service_server([my_enum_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_enum_tool.tool.name,
+                context,
+                arguments={"category": "category_a"},
+            )
+
+            assert result.data == "category_a"

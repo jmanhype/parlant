@@ -1,16 +1,18 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import importlib
 import inspect
 from sys import _getframe
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from lagom import Container
 from pytest_bdd import parsers
 
+from parlant.core.common import generate_id, JSONSerializable
 from parlant.core.tools import Tool
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.guidelines import Guideline
 
-from parlant.core.sessions import Event
+from parlant.core.sessions import Event, MessageEventData, EventSource, EventId
 from tests.test_utilities import SyncAwaiter
 
 
@@ -62,3 +64,29 @@ def step(
         return Step(installer, parser, kwargs, func)
 
     return wrapper
+
+
+def create_event_message(
+    offset: int,
+    source: EventSource,
+    message: str,
+) -> Event:
+    message_data: MessageEventData = {
+        "message": message,
+        "participant": {
+            "display_name": source,
+        },
+    }
+
+    event = Event(
+        id=EventId(generate_id()),
+        source=source,
+        kind="message",
+        offset=offset,
+        correlation_id="test_correlation_id",
+        data=cast(JSONSerializable, message_data),
+        creation_utc=datetime.now(timezone.utc),
+        deleted=False,
+    )
+
+    return event

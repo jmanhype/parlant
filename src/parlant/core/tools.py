@@ -25,13 +25,16 @@ ToolParameterType = Literal[
     "number",
     "integer",
     "boolean",
+    "enum",
 ]
+
+EnumValueType = Union[str, int]
 
 
 class ToolParameter(TypedDict):
     type: ToolParameterType
     description: NotRequired[str]
-    enum: NotRequired[list[Union[str, int, float, bool]]]
+    enum: NotRequired[list[EnumValueType]]
 
 
 # These two aliases are redefined here to avoid a circular reference.
@@ -237,7 +240,12 @@ class LocalToolService(ToolService):
             raise ToolImportError(name) from e
 
         try:
-            result: ToolResult = func(**arguments)
+            func_params = inspect.signature(func).parameters
+            converted_arguments = {
+                param_name: func_params[param_name].annotation(arg_value)
+                for param_name, arg_value in arguments.items()
+            }
+            result: ToolResult = func(**converted_arguments)
 
             if inspect.isawaitable(result):
                 result = await result

@@ -123,6 +123,20 @@ def given_the_tool_from_service(
                 "required": [],
             }
         },
+        "ksp": {
+            "available_products_by_category": {
+                "name": "available_products_by_category",
+                "description": "",
+                "module_path": "tests.tool_utilities",
+                "parameters": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["laptops", "peripherals"],
+                    },
+                },
+                "required": ["category"],
+            }
+        },
     }
 
     tool = context.sync_await(create_tool(**service_tools[service_name][tool_name]))

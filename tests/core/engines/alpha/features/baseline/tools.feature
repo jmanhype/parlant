@@ -216,3 +216,12 @@ Feature: Tools
         And the tool calls event contains a call to "local:get_account_balance" with Larry David's current balance
         And the tool calls event contains a call to "local:check_fruit_price" with the price of apples
 
+    Scenario: Tool call takes enum parameter into consideration
+        Given a guideline "get_available_products_by_category" to get all products by a specific category when a user asks for the availability of products from a certain category
+        And the tool "available_products_by_category" from "ksp"
+        And an association between "get_available_products_by_category" and "available_products_by_category" from "ksp"
+        And a user message, "What available keyboards do you have?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call to "available_products_by_category" with category "peripherals"
