@@ -457,8 +457,9 @@ class Actions:
         updated_id: Optional[str] = None,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
+            urljoin(ctx.obj.server_address, "/index/evaluations"),
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -545,8 +546,9 @@ class Actions:
         updated_id: Optional[str] = None,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         response = requests.post(
-            urljoin(ctx.obj.server_address, f"/agents/{agent_id}/index/evaluations"),
+            urljoin(ctx.obj.server_address, "/index/evaluations"),
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
