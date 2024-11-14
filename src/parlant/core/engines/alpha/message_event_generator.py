@@ -30,7 +30,7 @@ class Revision(DefaultBaseModel):
     guidelines_broken_due_to_missing_data: Optional[bool] = False
     missing_data_rationale: Optional[str] = None
     guidelines_broken_only_due_to_prioritization: Optional[bool] = False
-    prioritization_rationale: Optional[str] = None
+    prioritization_rationale: Optional[str] = None  # Not explained in prompt - fix when revisiting
 
 
 class GuidelineEvaluation(DefaultBaseModel):

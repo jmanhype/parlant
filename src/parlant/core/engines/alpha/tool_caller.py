@@ -28,9 +28,9 @@ class ToolCallEvaluation(DefaultBaseModel):
     name: str
     rationale: str
     applicability_score: int
-    should_run: bool
-    arguments: Mapping[str, Any]
+    arguments: Optional[Mapping[str, Any]] = dict()
     same_call_is_already_staged: bool
+    should_run: bool
 
 
 class ToolCallInferenceSchema(DefaultBaseModel):
@@ -102,18 +102,14 @@ class ToolCaller:
         with self._logger.operation("Tool classification"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
-        tool_calls_that_need_to_run = [
-            c for c in inference_output if not c.same_call_is_already_staged
-        ]
-
         return generation_info, [
             ToolCall(
                 id=ToolCallId(generate_id()),
                 tool_id=ToolId.from_string(tc.name),
-                arguments=tc.arguments,
+                arguments=tc.arguments or {},
             )
-            for tc in tool_calls_that_need_to_run
-            if tc.should_run and tc.applicability_score >= 7
+            for tc in inference_output
+            if tc.should_run and tc.applicability_score >= 6
         ]
 
     async def execute_tool_calls(
@@ -160,121 +156,190 @@ class ToolCaller:
 
         builder = PromptBuilder()
 
-        builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_event_list)
-        builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
-
         builder.add_section(
             """
-Before generating your next response, you are highly encouraged to use tools that are provided to you,
-in order to generate a high-quality, well-informed response.
 
-Your task at this point is to evaluate what, if any, tools should be run in order to facilitate
-an informed continuation of your interaction with the user.
 
-You will also receive a list of tool calls that have already been staged, under the heading STAGED TOOL CALLS.
-If you find what you need in those staged calls, then you don't need to call the corresponding tool(s) again
-with the same arguments, as the staged calls' data is extremely fresh.
-"""  # noqa
+GENERAL INSTRUCTIONS
+-----------------
+You are part of a system of AI agents which interact with a user on the behalf of a business.
+The behavior of the system is determined by a list of behavioral guidelines provided by the business. 
+Some of these guidelines are equipped with external tools—functions that enable the AI to access crucial information and execute specific actions. 
+Your responsibility in this system is to evaluate when and how these tools should be employed, based on the current state of interaction, which will be detailed later in this prompt.
+
+This evaluation and execution process occurs iteratively, preceding each response generated to the user. 
+Consequently, some tool calls may have already been initiated and executed following the user's most recent message. 
+Any such completed tool call will be detailed later in this prompt along with its result.
+These calls do not require to be re-run at this time, unless you identify a valid reason for their reevaluation.
+
+
+"""
         )
-
-        builder.add_guideline_propositions(
-            ordinary_guideline_propositions,
-            proposition_tool_ids,
-            include_priority=False,
-            include_tool_associations=True,
-        )
-
-        builder.add_tool_definitions(id_tool_pairs)
-
+        builder.add_agent_identity(agents[0])
         builder.add_section(
             f"""
-Before generating your next response, you must now decide whether to use any of the tools provided.
-Here are the principles by which you can decide whether to use tools:
+-----------------
+TASK DESCRIPTION
+-----------------
+Your task is to review the available tools and, based on your most recent interaction with the user, decide whether to use each one. 
+For each tool, assign a score from 1 to 10 to indicate its usefulness at this time, where a higher score indicates that the tool call should execute. 
+For any tool with a score of 5 or higher, provide the arguments for activation, following the format in its description.
 
-1. Determine the tools that need to be called based on the provided instructions and the interaction's latest state.
-2. It is permissible to propose tools that do not directly answer the interaction's latest state but can compute based on the function definitions to promote a more advanced state for answering.
-3. A tool may be called multiple times with different arguments, but preferably not with the same ones unless the situation clearly merits it.
-4. If a tool is not to be called at all, it must still be mentioned in the results!
-5. Avoid calling a tool that has already been called with the same arguments!
-6. If the data required for a tool call is already given in previous invoked tool results, then the same tool call should not run.
-7. Ensure that each proposed tool call relies solely on the immediate context and the staged calls, without depending on other tools yet to be invoked. This prevents the proposal of interconnected tools unless their dependencies are already satisfied by previous calls.
+While doing so, take the following instructions into account:
 
-Produce a valid JSON object according to the following format:
+1. You may suggest tools that don’t directly address the user’s latest interaction but can advance the conversation to a more useful state based on function definitions.
+2. Each tool may be called multiple times with different arguments.
+3. Avoid calling a tool with the same arguments more than once, unless clearly justified by the interaction.
+4. Ensure each tool call relies only on the immediate context and staged calls, without requiring other tools not yet invoked, to avoid dependencies.
+5. Use the "should_run" argument to indicate whether a tool should be executed, meaning it has a high applicability score and either (a) has not been staged with the same arguments, or (b) was staged but needs to be re-executed.
+6. If a tool needs to be applied multiple times (each with different arguments), you may include it in the output multiple times.
 
-{{
-    "tool_call_evaluations": [
-        {{
-            "name": "<TOOL NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL NEEDS TO BE CALLED>",
-            "applicability_score": <INTEGER FROM 1 TO 10>,
-            "should_run": <BOOLEAN>,
-            "arguments": <ARGUMENTS FOR THE TOOL>,
-            "same_call_is_already_staged": <BOOLEAN>
-        }},
-        ...,
-        {{
-            "name": "<TOOL NAME>",
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND WHY THE TOOL NEEDS TO BE CALLED>",
-            "applicability_score": <INTEGER FROM 1 TO 10>,
-            "should_run": <BOOLEAN>,
-            "arguments": <ARGUMENTS FOR THE TOOL>,
-            "same_call_is_already_staged": <BOOLEAN>
-        }}
-    ]
-}}
 
-Here's a hypothetical example, for your reference:
-
+Produce a valid JSON object according to the following general format:
+```json
 {{
     "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
-    "most_recent_user_inquiry_or_need": "<...>",
+    "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
     "most_recent_user_inquiry_or_need_was_already_resolved": <BOOL>,
     "tool_call_evaluations": [
         {{
-            "name": "transfer_money",
-            "rationale": "Jack owes John $5",
-            "applicability_score": 9,
-            "should_run": true,
-            "arguments": {{
-                "from": "Jack",
-                "to": "John",
-                "amount": 5.00
-            }}
-            "same_call_is_already_staged": false
+            "name": "<TOOL NAME>",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
+            "applicability_score": <INTEGER FROM 1 TO 10>,
+            "arguments": <ARGUMENTS FOR THE TOOL. CAN BE DROPPED IF THE TOOL SHOULD NOT EXECUTE>,
+            "same_call_is_already_staged": <BOOLEAN>,
+            "should_run": <BOOL>,
         }},
-        {{
-            "name": "loan_money",
-            "rationale": "There's no obvious reason for Jack to loan any money to anyone",
-            "applicability_score": 2,
-            "should_run": false,
-            "same_call_is_already_staged": false
-        }},
-        {{
-            "name": "get_account_information",
-            "rationale": "Bob's account information is already given in the list of staged tool calls",
-            "applicability_score": 9,
-            "should_run": false,
-            "same_call_is_already_staged": true
-        }}
+        ...
     ]
 }}
+```
 
+where each tool provided to you under appears at least once in "tool_call_evaluations", whether you decide to use it or not.
+The exact format of your output will be provided to you at the end of this prompt.
 
-Note that the `tool_call_evaluations` list can be empty if no tools need to be called.
+The following examples show correct outputs for various hypothetical situations. 
+Only the responses are provided, without the interaction history or tool descriptions, though these can be inferred from the responses.
+
+EXAMPLES
+-----------------
+###
+Example 1:
+
+Context - the id of the user is 12345, and check_balance(12345) is the only staged tool call
+###
+```json
+{{
+    "last_user_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
+    "most_recent_user_inquiry_or_need": "Checking the user's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the user",
+    "most_recent_user_inquiry_or_need_was_already_resolved": false,
+    "tool_call_evaluations": [
+        {{
+            "name": "check_balance",
+            "rationale": "We need the client's current balance to respond to their question",
+            "applicability_score": 9,
+            "arguments": {{
+                "user_id": "12345",
+            }},
+            "same_call_is_already_staged": true,
+            "should_run": false,
+        }},
+        {{
+            "name": "ping_supervisor",
+            "rationale": "There is no reason to notify the supervisor of anything",
+            "applicability_score": 1,
+            "same_call_is_already_staged": false,
+            "should_run": false,
+        }},
+        {{
+            "name": "check_ride_price",
+            "rationale": "We need to know the price of a ride from New York to Newark to respond to the user",
+            "applicability_score": 9,
+            "arguments": {{
+                "origin": "New York",
+                "Destination": "Newark",
+            }},
+            "same_call_is_already_staged": false,
+            "should_run": true,
+        }},
+        {{
+            "name": "order_taxi",
+            "rationale": "The client hasn't asked for a taxi to be ordered yet",
+            "applicability_score": 2,
+            "same_call_is_already_staged": false,
+            "should_run": false,
+        }},
+    ]
+}}
+```
+###
+Example 2:
+Context - there are two available tools, and no calls have been staged yet:
+check_calories(<product_name>): returns the number of calories in a the product
+check_stock(): returns all menu items that are currently in stock
+###
+```json
+{{
+    "last_user_message": "Which pizza has more calories, the classic margherita or the deep dish?",
+    "most_recent_user_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
+    "most_recent_user_inquiry_or_need_was_already_resolved": false,
+    "tool_call_evaluations": [
+        {{
+            "name": "check_calories",
+            "rationale": "We need to check how many calories are in the margherita pizza",
+            "applicability_score": 9,
+            "arguments": {{
+                "product_name": "margherita",
+            }},
+            "same_call_is_already_staged": false,
+            "should_run": true,
+        }},
+        {{
+            "name": "check_calories",
+            "rationale": "We need to check how many calories are in the deep dish pizza",
+            "applicability_score": 9,
+            "arguments": {{
+                "product_name": "deep dish",
+            }},
+            "same_call_is_already_staged": false,
+            "should_run": true,
+        }},
+        {{
+            "name": "check_stock",
+            "rationale": "Knowing which of the mentioned pizzas are in stock could improve the quality of the agent's next response, even if it's not directly called for",
+            "applicability_score": 7,
+            "arguments": {{
+            }},
+            "same_call_is_already_staged": false,
+            "should_run": true,
+        }},
+    ]
+}}
+```
 """  # noqa
         )
+        builder.add_context_variables(context_variables)
+        builder.add_glossary(terms)
+        builder.add_interaction_history(interaction_event_list)
 
+        builder.add_section(
+            self._get_guideline_propositions_section(
+                ordinary_guideline_propositions,
+                proposition_tool_ids,
+            )
+        )
+        builder.add_tool_definitions(id_tool_pairs)
         if staged_calls:
             builder.add_section(
                 f"""
 STAGED TOOL CALLS
 -----------------
-The following is a list of staged tool calls after the interaction's latest state.
-You can use this information to avoid redundant calls and inform your response.
-If the same tool is already staged with the exact same arguments, then you must
-set "same_call_is_already_staged" to true, because its information is fresh here!: ###
+The following is a list of tool calls staged after the interaction’s latest state. Use this information to avoid redundant calls and to guide your response.
+
+Reminder: If a tool is already staged with the exact same arguments, set "same_call_is_already_staged" to true. 
+You may still choose to re-run the tool call, but only if there is a specific reason for it to be executed multiple times.
+
+The staged tool calls are:
 {staged_calls}
 ###
 """
@@ -284,12 +349,90 @@ set "same_call_is_already_staged" to true, because its information is fresh here
                 """
 STAGED TOOL CALLS
 -----------------
-There are no staged tool calls at this moment.
+There are no staged tool calls at this time.
 ###
 """
             )
 
+        builder.add_section(
+            f"""
+OUTPUT FORMAT
+-----------------
+Given these tools, your output should adhere to the following format:
+{self._get_output_format(id_tool_pairs)}
+
+However, note that you may choose to duplicate certain entries in 'tool_call_evaluations' if you wish to call a certain tool multiple times with different arguments.
+###
+        """
+        )
+
         return builder.build()
+
+    def _get_output_format(self, id_tool_pairs: Sequence[tuple[ToolId, Tool]]) -> str:
+        tool_call_evaluation_format = "\n".join(
+            [
+                f"""
+        {{
+            "name": "{tool_id.service_name}:{tool_id.tool_name}",
+            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
+            "applicability_score": <INTEGER FROM 1 TO 10>,
+            "arguments": <ARGUMENTS FOR THE TOOL. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
+            "same_call_is_already_staged": <BOOLEAN>,
+            "should_run": <BOOL>,
+        }},                                                
+"""
+                for tool_id, _ in id_tool_pairs
+            ]
+        )
+        return f"""
+```json
+{{
+    "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
+    "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
+    "most_recent_user_inquiry_or_need_was_already_resolved": <BOOL>,
+    "tool_call_evaluations": [{tool_call_evaluation_format}]
+}}
+```
+"""
+
+    def _get_guideline_propositions_section(
+        self,
+        ordinary_guideline_propositions: Sequence[GuidelineProposition],
+        proposition_tool_ids: Mapping[GuidelineProposition, Sequence[ToolId]],
+    ) -> str:
+        all_propositions = list(chain(ordinary_guideline_propositions, proposition_tool_ids))
+
+        if all_propositions:
+            guidelines = []
+
+            for i, p in enumerate(all_propositions, start=1):
+                guideline = (
+                    f"{i}) When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                )
+
+                if p in proposition_tool_ids:
+                    service_tool_names = ", ".join(
+                        [
+                            f"{t_id.service_name}:{t_id.tool_name}"
+                            for t_id in proposition_tool_ids[p]
+                        ]
+                    )
+                    guideline += f"\n    [Associated Tools: {service_tool_names}]"
+
+                guidelines.append(guideline)
+
+            guideline_list = "\n".join(guidelines)
+        return f"""
+GUIDELINES
+---------------------
+The following guidelines have been identified as relevant to the current state of interaction with the user. 
+Some guidelines have tools associated with them, which you may decide to apply as needed. Use these guidelines to understand the context for each tool.
+
+Guidelines: 
+###
+{guideline_list}
+###
+"""
 
     def _get_staged_calls(
         self,
@@ -321,7 +464,7 @@ There are no staged tool calls at this moment.
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
-            hints={"temperature": 0.3},
+            hints={"temperature": 0.0},
         )
 
         self._logger.debug(

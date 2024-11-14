@@ -162,4 +162,57 @@ Feature: Tools
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
-        And the tool calls event contains a call with tool_id of "second_service:schedule
+        And the tool calls event contains a call with tool_id of "second_service:schedule"
+
+    Scenario: The agent correctly calls tools from an entailed guideline
+        Given a guideline "suggest_toppings" to suggest pineapple when the user asks for topping recommendations
+        And a guideline "check_stock" to check if the product is available in stock, and only suggest it if it is when suggesting products
+        And the tool "get_available_toppings"
+        And an association between "check_stock" and "get_available_toppings"
+        And a guideline connection whereby "suggest_toppings" entails "check_stock"
+        And a user message, "What pizza topping should I take?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "local:get_available_toppings"
+        And a single message event is emitted
+        And the message contains a recommendation for toppings which do not include pineapple
+
+    Scenario: The agent uses tools based on the agents description
+        Given an agent whose job is to sell groceries, while remembering that our business considers carrots to be fruit
+        And a guideline "check_prices" to reply with the price of the item when a user asks about an items price 
+        And the tool "check_fruit_price"
+        And the tool "check_vegetable_price"
+        And an association between "check_prices" and "check_fruit_price"
+        And an association between "check_prices" and "check_vegetable_price"
+        And a user message, "What's the price of 1 kg of carrots?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call with tool_id of "local:check_fruit_price"
+        And a single message event is emitted
+        And the message contains that the price of 1 kg of carrots is 10 dollars
+
+    Scenario: The agent uses tools correctly when many are available
+        Given a guideline "retrieve_account_information" to retrieve account information when users inquire about account-related information
+        And the tool "get_account_balance"
+        And the tool "check_fruit_price"
+        And the tool "get_available_toppings"
+        And the tool "schedule" from "first_service"
+        And the tool "schedule" from "second_service"
+        And the tool "get_available_product_by_type"
+        And the tool "multiply"
+        And an association between "retrieve_account_information" and "get_account_balance"
+        And an association between "retrieve_account_information" and "check_fruit_price"
+        And an association between "retrieve_account_information" and "get_available_toppings"
+        And an association between "retrieve_account_information" and "schedule" from "first_service"
+        And an association between "retrieve_account_information" and "schedule" from "second_service"
+        And an association between "retrieve_account_information" and "get_available_product_by_type"
+        And an association between "retrieve_account_information" and "multiply"
+        And a user message, "Does Larry David have enough money in his account to buy a kilogram of apples?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 2 tool call(s)
+        And the tool calls event contains a call to "local:get_account_balance" with Larry David's current balance
+        And the tool calls event contains a call to "local:check_fruit_price" with the price of apples
+
