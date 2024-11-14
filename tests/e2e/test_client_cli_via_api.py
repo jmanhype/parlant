@@ -697,12 +697,23 @@ async def test_that_terms_can_be_listed(
 
         _ = await API.create_term(agent_id, tool_term_name, tool_description)
 
-        terms = await API.list_terms(agent_id)
-        assert len(terms) == 2
+        process = await run_cli(
+            "glossary",
+            "list",
+            "-a",
+            agent_id,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
 
-        term_names = {term["name"] for term in terms}
-        assert guideline_term_name in term_names
-        assert tool_term_name in term_names
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+
+        assert guideline_term_name in output
+        assert guideline_description in output
+        assert guideline_synonyms in output
+        assert tool_term_name in output
+        assert tool_description in output
 
 
 async def test_that_a_term_can_be_deleted(

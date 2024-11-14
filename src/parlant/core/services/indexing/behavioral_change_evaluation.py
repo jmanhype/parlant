@@ -2,7 +2,9 @@ import asyncio
 import hashlib
 from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
+from parlant.core import async_utils
 from parlant.core.agents import Agent, AgentStore
+from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.evaluations import (
     CoherenceCheck,
     ConnectionProposition,
@@ -95,7 +97,7 @@ class GuidelineEvaluator:
         tasks.append(connection_propositions_task)
 
         if tasks:
-            await asyncio.gather(*tasks)
+            await async_utils.safe_gather(*tasks)
 
         coherence_checks: Optional[Iterable[Sequence[CoherenceCheck]]] = []
         if coherence_checks_task:
@@ -310,6 +312,7 @@ class BehavioralChangeEvaluator:
     def __init__(
         self,
         logger: Logger,
+        background_task_service: BackgroundTaskService,
         agent_store: AgentStore,
         evaluation_store: EvaluationStore,
         guideline_store: GuidelineStore,
@@ -317,6 +320,7 @@ class BehavioralChangeEvaluator:
         coherence_checker: CoherenceChecker,
     ) -> None:
         self._logger = logger
+        self._background_task_service = background_task_service
         self._agent_store = agent_store
         self._evaluation_store = evaluation_store
         self._guideline_store = guideline_store
@@ -372,7 +376,10 @@ class BehavioralChangeEvaluator:
             payload_descriptors,
         )
 
-        asyncio.create_task(self.run_evaluation(evaluation))
+        await self._background_task_service.start(
+            self.run_evaluation(evaluation),
+            tag=f"evaluation({evaluation.id})",
+        )
 
         return evaluation.id
 
@@ -380,8 +387,6 @@ class BehavioralChangeEvaluator:
         self,
         evaluation: Evaluation,
     ) -> None:
-        self._logger.info(f"Starting evaluation task '{evaluation.id}'")
-
         async def _update_progress(percentage: float) -> None:
             await self._evaluation_store.update_evaluation(
                 evaluation_id=evaluation.id,
@@ -460,3 +465,5 @@ class BehavioralChangeEvaluator:
                     "error": str(exc),
                 },
             )
+
+            raise

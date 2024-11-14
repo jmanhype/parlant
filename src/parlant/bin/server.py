@@ -3,9 +3,7 @@
 import asyncio
 from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
-from enum import Enum, auto
 import os
-from fastapi import FastAPI
 from lagom import Container, Singleton
 from typing import AsyncIterator
 import click
@@ -14,13 +12,14 @@ from pathlib import Path
 import sys
 import uvicorn
 
-from parlant import VERSION
+from parlant.version import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.anthropic import AnthropicService
 from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.together import TogetherService
-from parlant.api.app import create_api_app
+from parlant.api.app import create_api_app, ASGIApplication
+from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
@@ -103,6 +102,7 @@ sys.path.append(PARLANT_HOME_DIR.as_posix())
 
 CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
+BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
 LOGGER.info(f"Parlant server version {VERSION}")
 LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
@@ -117,11 +117,6 @@ class StartupError(Exception):
 class CLIParams:
     port: int
     nlp_service: str
-
-
-class ShutdownReason(Enum):
-    HOT_RELOAD = auto()
-    SHUTDOWN_REQUEST = auto()
 
 
 async def create_agent_if_absent(agent_store: AgentStore) -> None:
@@ -184,6 +179,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
+    c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
+
     c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
         ServiceDocumentRegistry(
             database=services_db,
@@ -243,6 +240,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[BehavioralChangeEvaluator] = BehavioralChangeEvaluator(
         c[Logger],
+        c[BackgroundTaskService],
         c[AgentStore],
         c[EvaluationStore],
         c[GuidelineStore],
@@ -265,7 +263,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[Engine] = AlphaEngine
 
-    c[Application] = await EXIT_STACK.enter_async_context(Application(c))
+    c[Application] = Application(c)
+
     yield c
 
 
@@ -280,7 +279,7 @@ async def recover_server_tasks(
 
 
 @asynccontextmanager
-async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
+async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
     global EXIT_STACK
 
     EXIT_STACK = AsyncExitStack()
@@ -297,49 +296,34 @@ async def load_app(params: CLIParams) -> AsyncIterator[FastAPI]:
 
 
 async def serve_app(
-    app: FastAPI,
+    app: ASGIApplication,
     port: int,
-) -> ShutdownReason:
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+) -> None:
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        timeout_graceful_shutdown=1,
+    )
     server = uvicorn.Server(config)
-    interrupted = False
-
-    async def monitor_shutdown_request() -> ShutdownReason:
-        try:
-            while True:
-                await asyncio.sleep(1)
-
-                if interrupted:
-                    return ShutdownReason.SHUTDOWN_REQUEST
-        except asyncio.CancelledError:
-            return ShutdownReason.SHUTDOWN_REQUEST
-
-    shutdown_monitor_task = asyncio.create_task(monitor_shutdown_request())
 
     try:
         await server.serve()
-        interrupted = True
+        await asyncio.sleep(0)  # Required to trigger the possible cancellation error
     except (KeyboardInterrupt, asyncio.CancelledError):
-        return ShutdownReason.SHUTDOWN_REQUEST
+        await BACKGROUND_TASK_SERVICE.cancel_all(reason="Server shutting down")
     except BaseException as e:
         LOGGER.critical(e.__class__.__name__ + ": " + str(e))
         sys.exit(1)
 
-    return await shutdown_monitor_task
-
 
 async def start_server(params: CLIParams) -> None:
-    while True:
-        async with load_app(params) as app:
-            shutdown_reason = await serve_app(
-                app,
-                params.port,
-            )
-
-            if shutdown_reason == ShutdownReason.SHUTDOWN_REQUEST:
-                return
-            elif shutdown_reason == ShutdownReason.HOT_RELOAD:
-                LOGGER.info("***** HOT RELOAD *****")
+    async with load_app(params) as app:
+        await serve_app(
+            app,
+            params.port,
+        )
 
 
 def main() -> None:

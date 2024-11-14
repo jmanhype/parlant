@@ -57,18 +57,18 @@ def set_package_version(version: str, package: Package) -> None:
 
 def update_version_variable_in_code(version: str) -> None:
     server_package = next(p for p in get_packages() if p.name == "parlant")
-    init_file: Path = server_package.path / "src/parlant/__init__.py"
+    version_file: Path = server_package.path / "src/parlant/version.py"
 
-    init_file_content = init_file.read_text()
+    version_file_content = version_file.read_text()
     current_version = get_current_version(server_package)
 
-    init_file_content = re.sub(
+    version_file_content = re.sub(
         f'VERSION = "{current_version}"',
         f'VERSION = "{version}"',
-        init_file_content,
+        version_file_content,
     )
 
-    init_file.write_text(init_file_content)
+    version_file.write_text(version_file_content)
 
 
 def tag_repo(version: str) -> None:

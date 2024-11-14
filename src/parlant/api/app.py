@@ -1,7 +1,12 @@
-from typing import Awaitable, Callable
+import asyncio
+import os
+from typing import Awaitable, Callable, TypeAlias
+
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.types import Receive, Scope, Send
 from lagom import Container
 
 from parlant.api import agents, index
@@ -27,11 +32,34 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.application import Application
-from fastapi.staticfiles import StaticFiles
-import os
+
+ASGIApplication: TypeAlias = Callable[
+    [
+        Scope,
+        Receive,
+        Send,
+    ],
+    Awaitable[None],
+]
 
 
-async def create_api_app(container: Container) -> FastAPI:
+class AppWrapper:
+    def __init__(self, app: FastAPI) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """FastAPI's built-in exception handling doesn't catch BaseExceptions
+        such as asyncio.CancelledError. This causes the server process to terminate
+        with an ugly traceback. This wrapper addresses that by specifically allowing
+        asyncio.CancelledError to gracefully exit.
+        """
+        try:
+            return await self.app(scope, receive, send)
+        except asyncio.CancelledError:
+            pass
+
+
+async def create_api_app(container: Container) -> ASGIApplication:
     logger = container[Logger]
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
@@ -49,6 +77,16 @@ async def create_api_app(container: Container) -> FastAPI:
     application = container[Application]
 
     api_app = FastAPI()
+
+    @api_app.middleware("http")
+    async def handle_cancellation(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except asyncio.CancelledError:
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     api_app.add_middleware(
         CORSMiddleware,
@@ -145,4 +183,4 @@ async def create_api_app(container: Container) -> FastAPI:
         ),
     )
 
-    return api_app
+    return AppWrapper(api_app)
