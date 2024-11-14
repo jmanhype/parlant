@@ -23,8 +23,9 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
     evaluation_store = container[EvaluationStore]
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
+        "/index/evaluations",
         json={
+            "agent_id": agent_id,
             "payloads": [
                 {
                     "kind": "guideline",
@@ -49,7 +50,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
     await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
     assert len(content["invoices"]) == 1
@@ -65,8 +66,9 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -88,7 +90,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "coherence_check": True,
                         "connection_proposition": True,
                     },
-                ]
+                ],
             },
         )
         .raise_for_status()
@@ -97,7 +99,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "running"
 
@@ -108,8 +110,9 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -130,7 +133,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    content = client.get(f"/agents/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -147,8 +150,9 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -178,7 +182,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -209,8 +213,9 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -230,7 +235,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -264,8 +269,9 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -295,7 +301,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -340,8 +346,9 @@ async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloa
     }
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
+        "/index/evaluations",
         json={
+            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
                 duplicate_payload,
@@ -381,8 +388,9 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
     }
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
+        "/index/evaluations",
         json={
+            "agent_id": agent_id,
             "payloads": [
                 duplicate_payload,
             ],
@@ -402,7 +410,7 @@ async def test_that_an_error_is_returned_when_no_payloads_are_provided(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
-    response = client.post(f"/agents/{agent_id}/index/evaluations", json={"payloads": []})
+    response = client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": []})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
@@ -415,33 +423,31 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
-    payloads = {
-        "payloads": [
-            {
-                "kind": "guideline",
-                "content": {
-                    "predicate": "the user greets you",
-                    "action": "greet them back with 'Hello'",
-                },
-                "operation": "add",
-                "coherence_check": True,
-                "connection_proposition": True,
+    payloads = [
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "the user greets you",
+                "action": "greet them back with 'Hello'",
             },
-            {
-                "kind": "guideline",
-                "content": {
-                    "predicate": "the user asks about the weather",
-                    "action": "provide a weather update",
-                },
-                "operation": "add",
-                "coherence_check": True,
-                "connection_proposition": True,
+            "operation": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+        {
+            "kind": "guideline",
+            "content": {
+                "predicate": "the user asks about the weather",
+                "action": "provide a weather update",
             },
-        ],
-    }
+            "operation": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+    ]
 
     first_evaluation_id = (
-        client.post(f"/agents/{agent_id}/index/evaluations", json=payloads)
+        client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
         .json()["evaluation_id"]
     )
@@ -449,14 +455,12 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     second_evaluation_id = (
-        client.post(f"/agents/{agent_id}/index/evaluations", json=payloads)
+        client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
         .json()["evaluation_id"]
     )
 
-    content = (
-        client.get(f"/agents/index/evaluations/{second_evaluation_id}").raise_for_status().json()
-    )
+    content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "failed"
     assert content["error"] == f"An evaluation task '{first_evaluation_id}' is already running."
@@ -468,8 +472,9 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -499,7 +504,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -521,8 +526,9 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -552,7 +558,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -577,8 +583,9 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 ) -> None:
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -618,7 +625,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -653,8 +660,9 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
 
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
+            "/index/evaluations",
             json={
+                "agent_id": agent_id,
                 "payloads": [
                     {
                         "kind": "guideline",
@@ -675,7 +683,7 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -716,15 +724,15 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     }
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
-        json={"payloads": [update_payload]},
+        "/index/evaluations",
+        json={"agent_id": agent_id, "payloads": [update_payload]},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -772,15 +780,15 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     }
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
-        json={"payloads": [update_payload]},
+        "/index/evaluations",
+        json={"agent_id": agent_id, "payloads": [update_payload]},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -824,15 +832,15 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     ]
 
     response = client.post(
-        f"/agents/{agent_id}/index/evaluations",
-        json={"payloads": payloads},
+        "/index/evaluations",
+        json={"agent_id": agent_id, "payloads": payloads},
     )
 
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["evaluation_id"]
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -888,15 +896,15 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
 
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
-            json={"payloads": payloads},
+            "/index/evaluations",
+            json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
         .json()["evaluation_id"]
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
@@ -967,15 +975,15 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
 
     evaluation_id = (
         client.post(
-            f"/agents/{agent_id}/index/evaluations",
-            json={"payloads": payloads},
+            "/index/evaluations",
+            json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
         .json()["evaluation_id"]
     )
 
     content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/agents/index/evaluations/{evaluation_id}")
+        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
         .raise_for_status()
         .json(),
         done_predicate=lambda content: content["status"] in ["completed", "failed"],
