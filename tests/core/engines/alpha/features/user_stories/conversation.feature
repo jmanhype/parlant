@@ -19,7 +19,7 @@ Feature: Conversation
         And the message contains a farewell
 
     Scenario: The agent strictly follows guideline rule
-        Given an agent
+        Given an agent whose job is to answer questions regarding Mobileye
         And an empty session
         And a guideline to politely answer that you don't have access to information when a user asks any question aside from Mobileye
         And a guideline to rudely answer to go away when a user asks any question aside from Mobileye for the third time
@@ -32,4 +32,4 @@ Feature: Conversation
         And a user message, "whats a relevant topic for you?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains an explanation of what a relevant question is in respect to the guideline
+        And the message contains an explanation that a relevant question is one that regards Mobileye
