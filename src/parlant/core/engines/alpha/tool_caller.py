@@ -196,7 +196,7 @@ While doing so, take the following instructions into account:
 
 
 Produce a valid JSON object according to the following general format:
-
+```json
 {{
     "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
     "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
@@ -213,6 +213,7 @@ Produce a valid JSON object according to the following general format:
         ...
     ]
 }}
+```
 
 where each tool provided to you under appears at least once in "tool_call_evaluations", whether you decide to use it or not.
 The exact format of your output will be provided to you at the end of this prompt.
@@ -227,6 +228,7 @@ Example 1:
 
 Context - the id of the user is 12345, and check_balance(12345) is the only staged tool call
 ###
+```json
 {{
     "last_user_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
     "most_recent_user_inquiry_or_need": "Checking the user's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the user",
@@ -269,12 +271,14 @@ Context - the id of the user is 12345, and check_balance(12345) is the only stag
         }},
     ]
 }}
+```
 ###
 Example 2:
 Context - there are two available tools, and no calls have been staged yet:
 check_calories(<product_name>): returns the number of calories in a the product
 check_stock(): returns all menu items that are currently in stock
 ###
+```json
 {{
     "last_user_message": "Which pizza has more calories, the classic margherita or the deep dish?",
     "most_recent_user_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
@@ -311,7 +315,7 @@ check_stock(): returns all menu items that are currently in stock
         }},
     ]
 }}
-
+```
 """  # noqa
         )
         builder.add_context_variables(context_variables)
@@ -381,12 +385,14 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
             ]
         )
         return f"""
+```json
 {{
     "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
     "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
     "most_recent_user_inquiry_or_need_was_already_resolved": <BOOL>,
     "tool_call_evaluations": [{tool_call_evaluation_format}]
 }}
+```
 """
 
     def _get_guideline_propositions_section(
@@ -458,7 +464,7 @@ Guidelines:
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
-            hints={"temperature": 0.3},
+            hints={"temperature": 0.0},
         )
 
         self._logger.debug(
