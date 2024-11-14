@@ -127,7 +127,17 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
             raw_content = response.choices[0].message.content or "{}"
 
             try:
-                json_content = json.loads(raw_content)
+                json_start = max(0, raw_content.find("```json"))
+
+                if json_start != -1:
+                    json_start = json_start + 7
+
+                json_end = raw_content[json_start:].find("```")
+
+                if json_end == -1:
+                    json_end = len(raw_content[json_start:])
+
+                json_content = json.loads(raw_content[json_start : json_start + json_end])
             except json.JSONDecodeError:
                 self._logger.warning(f"Invalid JSON returned by {self.model_name}:\n{raw_content}")
                 json_content = jsonfinder.only_json(raw_content)[2]
