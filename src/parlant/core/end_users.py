@@ -47,7 +47,7 @@ class EndUserStore(ABC):
     async def create_end_user(
         self,
         name: str,
-        extra: Mapping[str, Union[str, int, float, bool]],
+        extra: Mapping[str, Union[str, int, float, bool]] = {},
         creation_utc: Optional[datetime] = None,
     ) -> EndUser: ...
 
@@ -87,6 +87,7 @@ class EndUserStore(ABC):
         end_user_id: EndUserId,
         tag_id: EndUserTagId,
     ) -> None: ...
+
 
 class _EndUserDocument(TypedDict, total=False):
     id: ObjectId
@@ -187,7 +188,7 @@ class EndUserDocumentStore(EndUserStore):
     async def create_end_user(
         self,
         name: str,
-        extra: Mapping[str, Union[str, int, float, bool]],
+        extra: Mapping[str, Union[str, int, float, bool]] = {},
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)

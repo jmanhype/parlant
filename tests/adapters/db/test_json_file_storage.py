@@ -239,10 +239,10 @@ async def test_end_user_creation(
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as end_user_db:
         end_user_store = EndUserDocumentStore(end_user_db)
         name = "Jane Doe"
-        email = "jane.doe@example.com"
+        extra = {"email": "jane.doe@example.com"}
         created_user = await end_user_store.create_end_user(
             name=name,
-            email=email,
+            extra=extra,
         )
 
     with open(new_file, "r") as file:
@@ -251,7 +251,7 @@ async def test_end_user_creation(
     assert len(data["end_users"]) == 1
     json_end_user = data["end_users"][0]
     assert json_end_user["name"] == name
-    assert json_end_user["email"] == email
+    assert json_end_user["extra"] == extra
     assert datetime.fromisoformat(json_end_user["creation_utc"]) == created_user.creation_utc
 
 
@@ -262,9 +262,9 @@ async def test_end_user_retrieval(
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as end_user_db:
         end_user_store = EndUserDocumentStore(end_user_db)
         name = "John Doe"
-        email = "john.doe@example.com"
+        extra = {"email": "john.doe@example.com"}
 
-        created_user = await end_user_store.create_end_user(name=name, email=email)
+        created_user = await end_user_store.create_end_user(name=name, extra=extra)
 
         retrieved_user = await end_user_store.read_end_user(created_user.id)
 

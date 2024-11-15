@@ -15,6 +15,7 @@ from parlant.api import glossary
 from parlant.api import guidelines
 from parlant.api import context_variables as variables
 from parlant.api import services
+from parlant.api import end_users
 from parlant.core.context_variables import ContextVariableStore
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentStore
@@ -182,6 +183,13 @@ async def create_api_app(container: Container) -> ASGIApplication:
         prefix="/services",
         router=services.create_router(
             service_registry=service_registry,
+        ),
+    )
+
+    api_app.include_router(
+        prefix="/end_users",
+        router=end_users.create_router(
+            end_user_store=end_user_store,
         ),
     )
 

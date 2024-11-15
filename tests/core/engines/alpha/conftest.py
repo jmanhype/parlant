@@ -44,7 +44,7 @@ def end_user(context: ContextOfTest) -> EndUser:
     user = context.sync_await(
         store.create_end_user(
             name="Test User",
-            email="test@user.com",
+            extra={"email": "test@user.com"},
         ),
     )
     return user
