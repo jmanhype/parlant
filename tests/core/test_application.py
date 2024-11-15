@@ -72,7 +72,7 @@ async def session(
 @fixture
 async def end_user_id(container: Container) -> EndUserId:
     store = container[EndUserStore]
-    user = await store.create_end_user("Larry David", email="larry@seinfeld.com")
+    user = await store.create_end_user("Larry David", extra={"email": "larry@seinfeld.com"})
     return user.id
 
 

@@ -112,7 +112,7 @@ async def create_agent(container: Container, name: str) -> Agent:
 async def create_end_user(container: Container, name: str) -> EndUser:
     return await container[EndUserStore].create_end_user(
         name=name,
-        email="test@user.com",
+        extra={"email": "test@user.com"},
     )
 
 
