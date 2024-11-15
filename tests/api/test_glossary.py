@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from parlant.core.agents import AgentId
 
 
-def test_create_term(
+def test_that_a_term_can_be_created(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -31,7 +31,7 @@ def test_create_term(
     assert data["synonyms"] == synonyms
 
 
-def test_create_term_without_synonyms(
+def test_that_a_term_can_be_createdwithout_synonyms(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -56,7 +56,7 @@ def test_create_term_without_synonyms(
     assert data["synonyms"] == []
 
 
-def test_read_term(
+def test_that_a_term_can_be_read(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -84,7 +84,7 @@ def test_read_term(
     assert data["synonyms"] == synonyms
 
 
-def test_read_term_without_synonyms(
+def test_that_a_term_can_be_read_without_synonyms(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -110,7 +110,7 @@ def test_read_term_without_synonyms(
     assert data["synonyms"] == []
 
 
-def test_list_terms(
+def test_that_terms_can_be_listed_for_an_agent(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -150,7 +150,7 @@ def test_list_terms(
     } in terms
 
 
-def test_update_term(
+def test_that_a_term_can_be_updated(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -192,7 +192,7 @@ def test_update_term(
     assert data["synonyms"] == updated_synonyms
 
 
-def test_delete_term(
+def test_that_a_term_can_be_deleted(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
