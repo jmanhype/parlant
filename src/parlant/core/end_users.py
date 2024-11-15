@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import Mapping, NewType, Optional, Sequence, TypedDict, Union
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.document_database import (
@@ -17,8 +17,8 @@ EndUserTagAssociationId = NewType("EndUserTagAssociationId", str)
 @dataclass(frozen=True)
 class EndUserTag:
     id: EndUserTagId
-    label: str
     creation_utc: datetime
+    label: str
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,12 @@ class EndUser:
     id: EndUserId
     creation_utc: datetime
     name: str
-    email: str
+    extra: Mapping[str, Union[str, int, float, bool]]
+
+
+class EndUserUpdateParams(TypedDict, total=False):
+    name: str
+    extra: Mapping[str, Union[str, int, float, bool]]
 
 
 class EndUserStore(ABC):
@@ -42,7 +47,7 @@ class EndUserStore(ABC):
     async def create_end_user(
         self,
         name: str,
-        email: str,
+        extra: Mapping[str, Union[str, int, float, bool]],
         creation_utc: Optional[datetime] = None,
     ) -> EndUser: ...
 
@@ -53,10 +58,20 @@ class EndUserStore(ABC):
     ) -> EndUser: ...
 
     @abstractmethod
+    async def update_end_user(
+        self,
+        end_user_id: EndUserId,
+        params: EndUserUpdateParams,
+    ) -> EndUser: ...
+
+    @abstractmethod
+    async def list_end_users(self) -> Sequence[EndUser]: ...
+
+    @abstractmethod
     async def set_tag(
         self,
-        label: str,
         end_user_id: EndUserId,
+        label: str,
         creation_utc: Optional[datetime] = None,
     ) -> EndUserTag: ...
 
@@ -69,22 +84,16 @@ class EndUserStore(ABC):
     @abstractmethod
     async def delete_tag(
         self,
-        tag_id: EndUserTagId,
         end_user_id: EndUserId,
+        tag_id: EndUserTagId,
     ) -> None: ...
-
-    @abstractmethod
-    async def list_tags(
-        self,
-    ) -> Sequence[EndUserTag]: ...
-
 
 class _EndUserDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     creation_utc: str
     name: str
-    email: str
+    extra: Mapping[str, Union[str, int, float, bool]]
 
 
 class _EndUserTagDocument(TypedDict, total=False):
@@ -128,7 +137,7 @@ class EndUserDocumentStore(EndUserStore):
             version=self.VERSION.to_string(),
             creation_utc=end_user.creation_utc.isoformat(),
             name=end_user.name,
-            email=end_user.email,
+            extra=end_user.extra,
         )
 
     def _deserialize_end_user(self, end_user_document: _EndUserDocument) -> EndUser:
@@ -136,7 +145,7 @@ class EndUserDocumentStore(EndUserStore):
             id=EndUserId(end_user_document["id"]),
             creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
             name=end_user_document["name"],
-            email=end_user_document["email"],
+            extra=end_user_document["extra"],
         )
 
     def _serialize_tag(self, tag: EndUserTag) -> _EndUserTagDocument:
@@ -178,7 +187,7 @@ class EndUserDocumentStore(EndUserStore):
     async def create_end_user(
         self,
         name: str,
-        email: str,
+        extra: Mapping[str, Union[str, int, float, bool]],
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
@@ -186,7 +195,7 @@ class EndUserDocumentStore(EndUserStore):
         end_user = EndUser(
             id=EndUserId(generate_id()),
             name=name,
-            email=email,
+            extra=extra,
             creation_utc=creation_utc,
         )
 
@@ -209,10 +218,43 @@ class EndUserDocumentStore(EndUserStore):
 
         return self._deserialize_end_user(end_user_document)
 
+    async def update_end_user(
+        self,
+        end_user_id: EndUserId,
+        params: EndUserUpdateParams,
+    ) -> EndUser:
+        document_to_update = await self._end_users_collection.find_one(
+            filters={"id": {"$eq": end_user_id}}
+        )
+
+        if not document_to_update:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
+
+        assert "name" in document_to_update
+        assert "extra" in document_to_update
+
+        name = params.get("name", document_to_update["name"])
+        extra = params.get("extra", document_to_update["extra"])
+
+        update_result = await self._end_users_collection.update_one(
+            filters={"id": {"$eq": end_user_id}},
+            params={
+                "name": name,
+                "extra": extra,
+            },
+        )
+
+        assert update_result.updated_document
+
+        return self._deserialize_end_user(end_user_document=update_result.updated_document)
+
+    async def list_end_users(self) -> Sequence[EndUser]:
+        return [self._deserialize_end_user(e) for e in await self._end_users_collection.find({})]
+
     async def set_tag(
         self,
-        label: str,
         end_user_id: EndUserId,
+        label: str,
         creation_utc: Optional[datetime] = None,
     ) -> EndUserTag:
         _ = await self.read_end_user(end_user_id)
@@ -272,8 +314,8 @@ class EndUserDocumentStore(EndUserStore):
 
     async def delete_tag(
         self,
-        tag_id: EndUserTagId,
         end_user_id: EndUserId,
+        tag_id: EndUserTagId,
     ) -> None:
         await self._user_tag_assocication_collection.delete_one(
             filters={
@@ -281,8 +323,3 @@ class EndUserDocumentStore(EndUserStore):
                 "tag_id": {"$eq": tag_id},
             }
         )
-
-    async def list_tags(
-        self,
-    ) -> Sequence[EndUserTag]:
-        return [self._deserialize_tag(t) for t in await self._tags_collection.find(filters={})]
