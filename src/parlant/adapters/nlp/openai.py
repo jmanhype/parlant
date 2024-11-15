@@ -2,7 +2,7 @@ from __future__ import annotations
 from itertools import chain
 import time
 from openai import AsyncClient
-from typing import Any, Mapping, Type
+from typing import Any, Mapping
 import json
 import jsonfinder  # type: ignore
 import os
@@ -294,7 +294,7 @@ class OpenAIService(NLPService):
     ) -> None:
         self._logger = logger
 
-    async def get_schematic_generator(self, t: Type[T]) -> OpenAISchematicGenerator[T]:
+    async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
         if t == ToolCallInferenceSchema:
             return FallbackSchematicGenerator(
                 GPT_4o_Mini[t](self._logger),  # type: ignore
