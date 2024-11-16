@@ -3,7 +3,7 @@ import json
 from pytest_bdd import given, parsers
 
 from parlant.core.agents import Agent, AgentId
-from parlant.core.end_users import EndUser, EndUserId
+from parlant.core.end_users import EndUser, EndUserStore
 from parlant.core.sessions import Session, SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
@@ -14,12 +14,16 @@ def given_an_empty_session(
     context: ContextOfTest,
     agent_id: AgentId,
 ) -> SessionId:
-    store = context.container[SessionStore]
+    session_store = context.container[SessionStore]
+    end_user_store = context.container[EndUserStore]
+
     utc_now = datetime.now(timezone.utc)
+
+    end_user = context.sync_await(end_user_store.create_end_user("test_user"))
     session = context.sync_await(
-        store.create_session(
+        session_store.create_session(
             creation_utc=utc_now,
-            end_user_id=EndUserId("test_user"),
+            end_user_id=end_user.id,
             agent_id=agent_id,
         )
     )

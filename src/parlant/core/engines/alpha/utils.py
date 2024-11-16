@@ -11,8 +11,8 @@ def context_variables_to_json(
 ) -> str:
     context_values = {
         variable.name: {
-            "description": variable.description,
             "value": value.data,
+            **({"description": variable.description} if variable.description else {}),
         }
         for variable, value in context_variables
     }

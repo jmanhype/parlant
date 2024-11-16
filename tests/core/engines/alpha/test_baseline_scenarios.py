@@ -25,6 +25,7 @@ scenarios(
             "supervision",
             "glossary",
             "tools",
+            "context_variables",
         )
     )
 )
