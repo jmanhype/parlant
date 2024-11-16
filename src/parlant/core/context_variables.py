@@ -390,6 +390,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "key": {"$eq": key},
             }
         )
+
         if not value_document:
             raise ItemNotFoundError(
                 item_id=UniqueId(variable_id),

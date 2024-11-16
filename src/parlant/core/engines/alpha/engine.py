@@ -6,11 +6,13 @@ import traceback
 from typing import Mapping, Optional, Sequence, cast
 
 from parlant.core.agents import Agent, AgentId, AgentStore
+from parlant.core.common import ItemNotFoundError
 from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
     ContextVariableValue,
 )
+from parlant.core.end_users import EndUserStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
@@ -61,6 +63,7 @@ class AlphaEngine(Engine):
         correlator: ContextualCorrelator,
         agent_store: AgentStore,
         session_store: SessionStore,
+        end_user_store: EndUserStore,
         context_variable_store: ContextVariableStore,
         glossary_store: GlossaryStore,
         guideline_store: GuidelineStore,
@@ -76,6 +79,7 @@ class AlphaEngine(Engine):
 
         self._agent_store = agent_store
         self._session_store = session_store
+        self._end_user_store = end_user_store
         self._context_variable_store = context_variable_store
         self._glossary_store = glossary_store
         self._guideline_store = guideline_store
@@ -378,21 +382,39 @@ class AlphaEngine(Engine):
     ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
         session = await self._session_store.read_session(session_id)
 
-        variables = await self._context_variable_store.list_variables(
+        agent_variables = await self._context_variable_store.list_variables(
             variable_set=agent_id,
         )
 
-        return [
-            (
-                variable,
-                await self._context_variable_store.read_value(
-                    variable_set=agent_id,
-                    key=session.end_user_id,  # noqa: F821
-                    variable_id=variable.id,
-                ),
-            )
-            for variable in variables
-        ]
+        context_variables = []
+
+        for variable in agent_variables:
+            try:
+                context_variables.append(
+                    (
+                        variable,
+                        await self._context_variable_store.read_value(
+                            variable_set=agent_id,
+                            key=session.end_user_id,  # noqa: F821
+                            variable_id=variable.id,
+                        ),
+                    )
+                )
+                for tag in await self._end_user_store.get_tags(session.end_user_id):
+                    context_variables.append(
+                        (
+                            variable,
+                            await self._context_variable_store.read_value(
+                                variable_set=agent_id,
+                                key=tag.label,
+                                variable_id=variable.id,
+                            ),
+                        )
+                    )
+            except ItemNotFoundError:
+                pass
+
+        return context_variables
 
     async def _load_guideline_propositions(
         self,
