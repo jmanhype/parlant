@@ -9,6 +9,7 @@ from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.common import generate_id
+from parlant.core.end_users import EndUser, EndUserId
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
@@ -51,6 +52,9 @@ def propose_guidelines(
     conversation_context: list[tuple[str, str]],
 ) -> Sequence[GuidelineProposition]:
     guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
+    end_user = EndUser(
+        EndUserId("123"), creation_utc=datetime.now(timezone.utc), name="test_user", extra={}
+    )
 
     agents = [
         Agent(
@@ -74,6 +78,7 @@ def propose_guidelines(
     guideline_proposition_result = context.sync_await(
         guideline_proposer.propose_guidelines(
             agents=agents,
+            user_tags_pair=(end_user, []),
             guidelines=context.guidelines,
             context_variables=[],
             interaction_history=interaction_history,
