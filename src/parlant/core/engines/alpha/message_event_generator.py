@@ -433,13 +433,13 @@ Example 4: Avoiding repetitive responses. Given that the previous response by th
 ###
 """  # noqa
         )
-        builder.add_interaction_history(interaction_history)
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
         builder.add_guideline_propositions(
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,
         )
+        builder.add_interaction_history(interaction_history)
         if ordinary_guideline_propositions or tool_enabled_guideline_propositions:
             builder.add_section(
                 """
@@ -455,6 +455,8 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
+        with open('message generator prompt.txt', 'w') as f:
+            f.write(prompt)
         return prompt
 
     def _get_output_format(

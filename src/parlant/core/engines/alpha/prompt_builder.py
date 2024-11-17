@@ -17,12 +17,14 @@ from parlant.core.engines.alpha.utils import (
 )
 from parlant.core.emissions import EmittedEvent
 from parlant.core.tools import ToolId
+from parlant.core.end_users import EndUser, EndUserTag
 
 
 class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
+    USER_INFORMATION = auto()
     TERMINOLOGY = auto()
     GUIDELINE_CONDITIONS = auto()
     GUIDELINE_PROPOSITIONS = auto()
@@ -178,6 +180,35 @@ The following is information that you're given about the user and context of the
                 status=SectionStatus.ACTIVE,
             )
 
+        return self
+
+    def add_user_name_and_tags(
+        self,
+        user: EndUser,
+        user_tags: Sequence[EndUserTag],
+    ) -> PromptBuilder:
+        content = ""
+        if user.name or user_tags:
+            content += """
+The following information applies to the user you are interacting with:
+"""
+            if user.name:
+                content += f"""
+    - The name of the user is {user.name}. 
+"""
+            if user_tags:
+                tags_text = ", ".join([tag.label for tag in user_tags])
+                content += f"""
+    - This user is tagged as: {tags_text}
+"""
+        else:
+            content += """
+Normally, you would receive the user's name and any special tags that apply to them. However, in this case, no name or tags are available.
+"""
+        self.add_section(
+            title=BuiltInSection.USER_INFORMATION,
+            status=SectionStatus.ACTIVE if user.name or user_tags else SectionStatus.PASSIVE,
+        )
         return self
 
     def add_glossary(
