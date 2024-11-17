@@ -178,3 +178,14 @@ def get_products_by_tags(category: Categories, tags: str) -> ToolResult:
                     products.append(product)
 
     return ToolResult(products)
+
+
+def recommend_drink(user_is_adult: bool) -> ToolResult:
+    if user_is_adult:
+        return ToolResult("Beer")
+    else:
+        return ToolResult("Soda")
+
+
+def check_username_validity(name: str) -> ToolResult:
+    return ToolResult(name != "Dukie")
