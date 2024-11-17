@@ -514,7 +514,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         builder.add_glossary(terms)
         builder.add_interaction_history(interaction_history)
         builder.add_staged_events(staged_events)
-        self.add_section(
+        builder.add_section(
             name=BuiltInSection.GUIDELINE_PREDICATES,
             content=f"""
 - Predicate List: ###
