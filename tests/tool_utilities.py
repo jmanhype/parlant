@@ -83,3 +83,14 @@ def available_products_by_category(category: ProductCategory) -> ToolResult:
     }
 
     return ToolResult(products_by_category[category])
+
+
+def recommend_drink(user_is_adult: bool) -> ToolResult:
+    if user_is_adult:
+        return ToolResult("Beer")
+    else:
+        return ToolResult("Soda")
+
+
+def check_username_validity(name: str) -> ToolResult:
+    return ToolResult(name != "Dukie")

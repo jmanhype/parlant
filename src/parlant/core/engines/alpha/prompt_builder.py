@@ -199,7 +199,7 @@ The following information applies to the user you are interacting with:
             if user_tags:
                 tags_text = ", ".join([tag.label for tag in user_tags])
                 content += f"""
-    - This user is tagged as: {tags_text}
+    - This user has the following tags (separated by commas): {tags_text}
 """
         else:
             content += """
