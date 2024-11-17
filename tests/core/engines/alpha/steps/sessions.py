@@ -30,6 +30,36 @@ def given_an_empty_session(
     return session.id
 
 
+@step(given, parsers.parse('an empty session with "{end_user_name}"'), target_fixture="session_id")
+def given_an_empty_session_with_user(
+    context: ContextOfTest,
+    agent_id: AgentId,
+    end_user_name: str,
+) -> SessionId:
+    session_store = context.container[SessionStore]
+    end_user_store = context.container[EndUserStore]
+
+    utc_now = datetime.now(timezone.utc)
+
+    end_user = next(
+        (
+            user
+            for user in context.sync_await(end_user_store.list_end_users())
+            if user.name == end_user_name
+        ),
+        context.sync_await(end_user_store.create_end_user(end_user_name)),
+    )
+
+    session = context.sync_await(
+        session_store.create_session(
+            creation_utc=utc_now,
+            end_user_id=end_user.id,
+            agent_id=agent_id,
+        )
+    )
+    return session.id
+
+
 @step(given, "a session with a single user message", target_fixture="session_id")
 def given_a_session_with_a_single_user_message(
     context: ContextOfTest,
