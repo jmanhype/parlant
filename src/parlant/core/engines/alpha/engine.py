@@ -329,6 +329,7 @@ class AlphaEngine(Engine):
             for event_generation_result in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
                 agents=[agent],
+                user_tags_pair=(end_user, end_user_tags),
                 context_variables=context_variables,
                 interaction_history=interaction.history,
                 terms=list(terms),

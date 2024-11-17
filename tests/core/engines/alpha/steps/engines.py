@@ -4,13 +4,14 @@ from pytest_bdd import given, when
 from unittest.mock import AsyncMock
 
 from parlant.core.agents import Agent, AgentId, AgentStore
+from parlant.core.end_users import EndUserStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 
 from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
 from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.types import Context
 from parlant.core.emission.event_buffer import EventBuffer
-from parlant.core.sessions import SessionId
+from parlant.core.sessions import SessionId, SessionStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -91,7 +92,16 @@ def when_processing_is_triggered_and_cancelled_in_the_middle(
 def when_messages_are_emitted(
     context: ContextOfTest,
     agent: Agent,
+    session_id: SessionId,
 ) -> list[EmittedEvent]:
+    session = context.sync_await(context.container[SessionStore].read_session(session_id))
+    end_user = context.sync_await(
+        context.container[EndUserStore].read_end_user(session.end_user_id)
+    )
+    end_user_tags = context.sync_await(
+        context.container[EndUserStore].get_tags(session.end_user_id)
+    )
+
     event_buffer = EventBuffer(
         context.sync_await(
             context.container[AgentStore].read_agent(agent.id),
@@ -104,6 +114,7 @@ def when_messages_are_emitted(
         message_event_generator.generate_events(
             event_emitter=event_buffer,
             agents=[agent],
+            user_tags_pair=(end_user, end_user_tags),
             context_variables=[],
             interaction_history=context.events,
             terms=[],
