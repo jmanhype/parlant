@@ -8,7 +8,7 @@ setup-cache:
   mkdir -p {{PARLANT_HOME}}
 
 @server *args: setup-cache
-  PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server run {{args}}
+  PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server {{args}}
 
 @client *args='':
   poetry run parlant -s {{SERVER_ADDRESS}} "$@"
