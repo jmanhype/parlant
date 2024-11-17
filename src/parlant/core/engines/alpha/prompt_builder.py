@@ -347,8 +347,9 @@ IMPORTANT: You must not return results for any tool that do not appear in the fo
             self.add_section(
                 name=BuiltInSection.STAGED_EVENTS,
                 content=f"""
-For your information, here are some staged events that have just been emitted,
-to assist you with generating your reply message while following the guidelines above: ###
+Here are some recently emitted events for your consideration. 
+These events represent calls to external tools that perform real-world actions or provide useful information. 
+Use the details they offer to assist in your task: ###
 {staged_events_as_dict}
 ###
 """,

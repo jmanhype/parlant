@@ -26,7 +26,7 @@ from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import PromptBuilder
+from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.guidelines import Guideline
 from parlant.core.sessions import Event
@@ -252,6 +252,7 @@ class GuidelineProposer:
             }
             for i, condition in enumerate(conditions, start=1)
         ]
+        predicates = "\n".join(f"{i}) {p}" for i, p in enumerate(predicates, start=1))
 
         builder = PromptBuilder()
 
@@ -509,17 +510,21 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 """  # noqa
         )
         builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_history)
-        builder.add_section(
-            f"""
-The following is an additional list of staged events that were just added: ###
-{staged_events}
-###
-"""
-        )
-
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
+        builder.add_interaction_history(interaction_history)
+        builder.add_staged_events(staged_events)
+        self.add_section(
+            name=BuiltInSection.GUIDELINE_PREDICATES,
+            content=f"""
+- Predicate List: ###
+{predicates}
+###
+
+IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
+    """,
+            status=SectionStatus.ACTIVE,
+        )
 
         builder.add_guideline_conditions(conditions)
         builder.add_section(f"""
@@ -537,5 +542,6 @@ Expected Output
     ```""")
 
         prompt = builder.build()
-
+        with open("message generation prompt.txt", "w") as f:
+            f.write(prompt)
         return prompt
