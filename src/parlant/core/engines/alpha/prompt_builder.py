@@ -207,6 +207,7 @@ Normally, you would receive the user's name and any special tags that apply to t
 """
         self.add_section(
             title=BuiltInSection.USER_INFORMATION,
+            content=content,
             status=SectionStatus.ACTIVE if user.name or user_tags else SectionStatus.PASSIVE,
         )
         return self
