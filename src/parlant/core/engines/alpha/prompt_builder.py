@@ -206,7 +206,7 @@ The following information applies to the user you are interacting with:
 Normally, you would receive the user's name and any special tags that apply to them. However, in this case, no name or tags are available.
 """
         self.add_section(
-            title=BuiltInSection.USER_INFORMATION,
+            name=BuiltInSection.USER_INFORMATION,
             content=content,
             status=SectionStatus.ACTIVE if (user.name or user_tags) else SectionStatus.PASSIVE,
         )
