@@ -9,6 +9,7 @@ from typing import Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
+from parlant.core.end_users import EndUser, EndUserTag
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
@@ -64,6 +65,7 @@ class GuidelineProposer:
     async def propose_guidelines(
         self,
         agents: Sequence[Agent],
+        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -98,6 +100,7 @@ class GuidelineProposer:
             batch_tasks = [
                 self._process_condition_batch(
                     agents,
+                    user_tags_pair,
                     context_variables,
                     interaction_history,
                     staged_events,
@@ -164,6 +167,7 @@ class GuidelineProposer:
     async def _process_condition_batch(
         self,
         agents: Sequence[Agent],
+        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
@@ -172,6 +176,7 @@ class GuidelineProposer:
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
+            user_tags_pair,
             context_variables=context_variables,
             interaction_history=interaction_history,
             staged_events=staged_events,
@@ -212,6 +217,7 @@ class GuidelineProposer:
     def _format_prompt(
         self,
         agents: Sequence[Agent],
+        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],

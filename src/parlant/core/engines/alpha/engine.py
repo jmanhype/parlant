@@ -11,7 +11,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.core.end_users import EndUserStore
+from parlant.core.end_users import EndUserStore, EndUserTag
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
@@ -27,7 +27,7 @@ from parlant.core.sessions import (
     MessageGenerationInspection,
     PreparationIteration,
     PreparationIterationGenerations,
-    SessionId,
+    Session,
     SessionStore,
     Term as StoredTerm,
     ToolEventData,
@@ -137,6 +137,8 @@ class AlphaEngine(Engine):
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
         session = await self._session_store.read_session(context.session_id)
+        end_user = await self._end_user_store.read_end_user(session.end_user_id)
+        end_user_tags = await self._end_user_store.get_tags(session.end_user_id)
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
@@ -149,8 +151,7 @@ class AlphaEngine(Engine):
 
         try:
             context_variables = await self._load_context_variables(
-                agent_id=context.agent_id,
-                session_id=context.session_id,
+                agent_id=context.agent_id, session=session, end_user_tags=end_user_tags
             )
 
             terms = set(
@@ -181,6 +182,7 @@ class AlphaEngine(Engine):
 
                 guideline_proposition_result = await self._guideline_proposer.propose_guidelines(
                     agents=[agent],
+                    user_tags_pair=(end_user, end_user_tags),
                     guidelines=list(all_possible_guidelines),
                     context_variables=context_variables,
                     interaction_history=interaction.history,
@@ -377,10 +379,9 @@ class AlphaEngine(Engine):
     async def _load_context_variables(
         self,
         agent_id: AgentId,
-        session_id: SessionId,
+        session: Session,
+        end_user_tags: Sequence[EndUserTag],
     ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
-        session = await self._session_store.read_session(session_id)
-
         agent_variables = await self._context_variable_store.list_variables(
             variable_set=agent_id,
         )
@@ -396,7 +397,7 @@ class AlphaEngine(Engine):
             if value is not None:
                 context_variables.append((variable, value))
 
-            for tag in await self._end_user_store.get_tags(session.end_user_id):
+            for tag in end_user_tags:
                 tag_value = await self._context_variable_store.read_value(
                     variable_set=agent_id,
                     key=tag.label,
