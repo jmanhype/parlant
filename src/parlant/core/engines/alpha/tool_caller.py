@@ -5,6 +5,7 @@ import json
 import traceback
 from typing import Any, Mapping, NewType, Optional, Sequence
 
+from parlant.core.end_users import EndUser, EndUserTag
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
@@ -68,6 +69,7 @@ class ToolCaller:
     async def infer_tool_calls(
         self,
         agents: Sequence[Agent],
+        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -88,6 +90,7 @@ class ToolCaller:
 
         inference_prompt = self._format_tool_call_inference_prompt(
             agents,
+            user_tags_pair,
             context_variables,
             interaction_history,
             terms,
@@ -134,6 +137,7 @@ class ToolCaller:
     def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
+        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
