@@ -261,7 +261,7 @@ class GuidelineProposer:
 Task Description
 ----------------
 Your job is to assess the relevance and/or applicability of a few provided predicates
-to the last known state of an interaction between yourself, AI assistant, and a customer.
+to the last known state of an interaction between yourself, an AI assistant, and a user.
 The predicates and the interaction will be provided to you later in this message.
 """
         )
@@ -299,7 +299,7 @@ Is there anything else I can help you with?"}}}},
 ```json
 {{ "checks": [
     {{
-        "predicate_number": "1",
+        "predicate_number": 1,
         "predicate": "the client initiates a purchase",
         "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
         "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
@@ -307,7 +307,7 @@ Is there anything else I can help you with?"}}}},
         "applies_score": 3
     }},
     {{
-        "predicate_number": "2",
+        "predicate_number": 2,
         "predicate": "the client asks about data security",
         "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
         "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
@@ -337,7 +337,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
+            "predicate_number": 1,
             "predicate": "the client indicates they are in a hurry",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
@@ -345,7 +345,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
             "applies_score": 8
         }},
         {{
-            "predicate_number": "2",
+            "predicate_number": 2,
             "predicate": "a client inquires about pricing plans",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
@@ -353,7 +353,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
             "applies_score": 9
         }},
         {{
-            "predicate_number": "3",
+            "predicate_number": 3,
             "predicate": "a client asks for a summary of the features of the three plans.",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
@@ -382,9 +382,9 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         {{
             "predicate_number": "1",
             "predicate": "the client asks for a recommendation",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
+            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
+            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": false,
+            "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this predicate highly relevant.",
             "applies_score": 9
         }},
         {{
@@ -526,7 +526,6 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
             status=SectionStatus.ACTIVE,
         )
 
-        builder.add_guideline_conditions(conditions)
         builder.add_section(f"""
 IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
 
@@ -542,6 +541,6 @@ Expected Output
     ```""")
 
         prompt = builder.build()
-        with open("message generation prompt.txt", "w") as f:
+        with open("guideline proposition prompt.txt", "w") as f:
             f.write(prompt)
         return prompt

@@ -216,28 +216,6 @@ and let the user know if/when you assume they meant a term by their typo: ###
 
         return self
 
-    def add_guideline_conditions(
-        self,
-        conditions: Sequence[str],
-    ) -> PromptBuilder:
-        assert conditions
-
-        conditions = "\n".join(f"{i}) {p}" for i, p in enumerate(conditions, start=1))
-
-        self.add_section(
-            name=BuiltInSection.GUIDELINE_CONDITIONS,
-            content=f"""
-- Predicate List: ###
-{conditions}
-###
-
-IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
-    """,
-            status=SectionStatus.ACTIVE,
-        )
-
-        return self
-
     def add_guideline_propositions(
         self,
         ordinary: Sequence[GuidelineProposition],
