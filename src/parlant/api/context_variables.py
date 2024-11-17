@@ -272,11 +272,14 @@ def create_router(
             variable_id=variable_id,
         )
 
-        return ContextVariableValueDTO(
-            id=variable_value.id,
-            last_modified=variable_value.last_modified,
-            data=cast(JSONSerializableDTO, variable_value.data),
-        )
+        if variable_value is not None:
+            return ContextVariableValueDTO(
+                id=variable_value.id,
+                last_modified=variable_value.last_modified,
+                data=cast(JSONSerializableDTO, variable_value.data),
+            )
+
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     @router.get(
         "/{agent_id}/context-variables/{variable_id}",

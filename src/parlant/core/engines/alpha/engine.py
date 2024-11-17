@@ -6,7 +6,6 @@ import traceback
 from typing import Mapping, Optional, Sequence, cast
 
 from parlant.core.agents import Agent, AgentId, AgentStore
-from parlant.core.common import ItemNotFoundError
 from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableStore,
@@ -389,30 +388,22 @@ class AlphaEngine(Engine):
         context_variables = []
 
         for variable in agent_variables:
-            try:
-                context_variables.append(
-                    (
-                        variable,
-                        await self._context_variable_store.read_value(
-                            variable_set=agent_id,
-                            key=session.end_user_id,  # noqa: F821
-                            variable_id=variable.id,
-                        ),
-                    )
+            value = await self._context_variable_store.read_value(
+                variable_set=agent_id,
+                key=session.end_user_id,
+                variable_id=variable.id,
+            )
+            if value is not None:
+                context_variables.append((variable, value))
+
+            for tag in await self._end_user_store.get_tags(session.end_user_id):
+                tag_value = await self._context_variable_store.read_value(
+                    variable_set=agent_id,
+                    key=tag.label,
+                    variable_id=variable.id,
                 )
-                for tag in await self._end_user_store.get_tags(session.end_user_id):
-                    context_variables.append(
-                        (
-                            variable,
-                            await self._context_variable_store.read_value(
-                                variable_set=agent_id,
-                                key=tag.label,
-                                variable_id=variable.id,
-                            ),
-                        )
-                    )
-            except ItemNotFoundError:
-                pass
+                if tag_value is not None:
+                    context_variables.append((variable, tag_value))
 
         return context_variables
 

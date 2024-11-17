@@ -70,7 +70,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         name: str,
-        description: Optional[str],
+        description: Optional[str] = None,
         tool_id: Optional[ToolId] = None,
         freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable: ...
@@ -110,7 +110,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-    ) -> ContextVariableValue: ...
+    ) -> Optional[ContextVariableValue]: ...
 
     @abstractmethod
     async def delete_value(
@@ -274,7 +274,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         name: str,
-        description: Optional[str],
+        description: Optional[str] = None,
         tool_id: Optional[ToolId] = None,
         freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable:
@@ -382,7 +382,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-    ) -> ContextVariableValue:
+    ) -> Optional[ContextVariableValue]:
         value_document = await self._value_collection.find_one(
             {
                 "variable_set": {"$eq": variable_set},
@@ -392,10 +392,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         )
 
         if not value_document:
-            raise ItemNotFoundError(
-                item_id=UniqueId(variable_id),
-                message=f"variable_set={variable_set}, key={key}",
-            )
+            return None
 
         return self._deserialize_context_variable_value(value_document)
 

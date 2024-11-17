@@ -11,6 +11,7 @@ load_steps(
     "sessions",
     "terms",
     "tools",
+    "end_users",
 )
 
 scenarios(

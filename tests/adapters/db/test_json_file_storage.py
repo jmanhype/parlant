@@ -328,6 +328,8 @@ async def test_context_variable_value_update_and_retrieval(
             variable_id=variable.id,
         )
 
+    assert value
+
     with open(new_file) as f:
         values_from_json = json.load(f)
 
