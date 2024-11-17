@@ -435,6 +435,7 @@ Example 4: Avoiding repetitive responses. Given that the previous response by th
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
+        builder.add_user_name_and_tags(*user_tags_pair)
         builder.add_guideline_propositions(
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,
@@ -455,8 +456,6 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
-        with open("message generator prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
 
     def _get_output_format(
