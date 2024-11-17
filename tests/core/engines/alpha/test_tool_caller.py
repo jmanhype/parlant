@@ -6,6 +6,7 @@ from pytest import fixture
 
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
+from parlant.core.end_users import EndUser, EndUserStore, EndUserId
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCaller
 from parlant.core.guidelines import Guideline, GuidelineId, GuidelineContent
@@ -31,6 +32,11 @@ def tool_caller(container: Container) -> ToolCaller:
         container[ServiceRegistry],
         container[SchematicGenerator[ToolCallInferenceSchema]],
     )
+
+
+@fixture
+async def end_user(container: Container, end_user_id: EndUserId) -> EndUser:
+    return await container[EndUserStore].read_end_user(end_user_id)
 
 
 def create_interaction_history(conversation_context: list[tuple[str, str]]) -> list[Event]:
@@ -124,6 +130,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
     _, tool_calls = await tool_caller.infer_tool_calls(
         agents=[agent],
+        user_tags_pair=(end_user, []),
         context_variables=[],
         interaction_history=interaction_history,
         terms=[],
@@ -141,6 +148,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
 async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
     container: Container,
+    end_user: EndUser,
     tool_caller: ToolCaller,
     agent: Agent,
 ) -> None:
@@ -196,6 +204,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
 
         _, tool_calls = await tool_caller.infer_tool_calls(
             agents=[agent],
+            user_tags_pair=(end_user, []),
             context_variables=[],
             interaction_history=interaction_history,
             terms=[],

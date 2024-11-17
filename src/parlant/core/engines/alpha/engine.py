@@ -157,6 +157,7 @@ class AlphaEngine(Engine):
             terms = set(
                 await self._load_relevant_terms(
                     agents=[agent],
+                    end_user_tags=end_user_tags,
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                 )
@@ -214,6 +215,7 @@ class AlphaEngine(Engine):
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
+                    user_tags_pair=(end_user, end_user_tags),
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                     terms=list(terms),
@@ -545,6 +547,7 @@ class AlphaEngine(Engine):
     async def _load_relevant_terms(
         self,
         agents: Sequence[Agent],
+        end_user_tags: Optional[Sequence[EndUserTag]] = None,
         context_variables: Optional[Sequence[tuple[ContextVariable, ContextVariableValue]]] = None,
         interaction_history: Optional[Sequence[Event]] = None,
         propositions: Optional[Sequence[GuidelineProposition]] = None,
@@ -555,6 +558,9 @@ class AlphaEngine(Engine):
         agent = agents[0]
 
         context = ""
+
+        if end_user_tags:
+            context += str([tag.label for tag in end_user_tags])
 
         if context_variables:
             context += f"\n{context_variables_to_json(context_variables=context_variables)}"
