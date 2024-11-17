@@ -37,6 +37,7 @@ from parlant.core.tools import (
     ToolResult,
     ToolContext,
     EnumValueType,
+    ToolResultError,
 )
 from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -504,6 +505,12 @@ class PluginClient(ToolService):
                 )
 
                 async for chunk in response.aiter_text():
+                    if len(chunk) > 15000:
+                        raise ToolResultError(
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}', Response exceeds 15KB limit",
+                        )
+
                     chunk_dict = json.loads(chunk)
 
                     if "data" and "metadata" in chunk_dict:
@@ -531,10 +538,12 @@ class PluginClient(ToolService):
                             message=f"url='{self.url}', arguments='{arguments}', error: {chunk_dict["error"]}",
                         )
                     else:
-                        raise ToolExecutionError(
+                        raise ToolResultError(
                             tool_name=name,
                             message=f"url='{self.url}', arguments='{arguments}', Unexpected chunk dict: {chunk_dict}",
                         )
+        except (ToolResultError, ToolExecutionError) as exc:
+            raise exc
         except Exception as exc:
             raise ToolExecutionError(tool_name=name) from exc
 
