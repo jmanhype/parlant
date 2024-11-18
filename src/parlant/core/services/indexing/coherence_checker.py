@@ -64,8 +64,8 @@ class IncoherenceTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     IncoherenceKind: IncoherenceKind
-    predicates_entailment_rationale: str
-    predicates_entailment_severity: int
+    conditions_entailment_rationale: str
+    conditions_entailment_severity: int
     actions_contradiction_rationale: str
     actions_contradiction_severity: int
     creation_utc: datetime
@@ -80,7 +80,7 @@ class CoherenceChecker:
         glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
-        self._predicates_entailment_checker = PredicatesEntailmentChecker(
+        self._conditions_entailment_checker = ConditionsEntailmentChecker(
             logger, predicates_test_schematic_generator, glossary_store
         )
         self._actions_contradiction_checker = ActionsContradictionChecker(
@@ -133,10 +133,10 @@ class CoherenceChecker:
     ) -> Sequence[IncoherenceTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
         (
-            predicates_entailment_responses,
+            conditions_entailment_responses,
             actions_contradiction_responses,
         ) = await async_utils.safe_gather(
-            self._predicates_entailment_checker.evaluate(
+            self._conditions_entailment_checker.evaluate(
                 agent, guideline_to_evaluate, indexed_comparison_guidelines
             ),
             self._actions_contradiction_checker.evaluate(
@@ -146,7 +146,7 @@ class CoherenceChecker:
 
         incoherencies = []
         for id, g in indexed_comparison_guidelines.items():
-            w = [w for w in predicates_entailment_responses if w.compared_guideline_id == id][0]
+            w = [w for w in conditions_entailment_responses if w.compared_guideline_id == id][0]
             t = [t for t in actions_contradiction_responses if t.compared_guideline_id == id][0]
             if t.severity >= ACTION_CONTRADICTION_SEVERITY_THRESHOLD:
                 if w.compared_entails_origin_severity > w.origin_entails_compared_severity:
@@ -162,8 +162,8 @@ class CoherenceChecker:
                         IncoherenceKind=IncoherenceKind.STRICT
                         if entailment_severity >= CRITICAL_INCOHERENCE_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
-                        predicates_entailment_rationale=entailment_rationale,
-                        predicates_entailment_severity=entailment_severity,
+                        conditions_entailment_rationale=entailment_rationale,
+                        conditions_entailment_severity=entailment_severity,
                         actions_contradiction_rationale=t.rationale,
                         actions_contradiction_severity=t.severity,
                         creation_utc=datetime.now(timezone.utc),
@@ -176,7 +176,7 @@ class CoherenceChecker:
         return incoherencies
 
 
-class PredicatesEntailmentChecker:
+class ConditionsEntailmentChecker:
     def __init__(
         self,
         logger: Logger,
@@ -205,7 +205,7 @@ class PredicatesEntailmentChecker:
         self._logger.debug(
             f"""
 ----------------------------------------
-Predicate Entailment Test Results:
+Condition Entailment Test Results:
 ----------------------------------------
 {json.dumps([p.model_dump(mode="json") for p in response.content.predicate_entailments], indent=2)}
 ----------------------------------------
@@ -222,10 +222,10 @@ Predicate Entailment Test Results:
     ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
-            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
+            f"""{{"id": {id}, "when": "{g.condition}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.condition}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_section(
             f"""
@@ -494,10 +494,10 @@ Action Contradiction Test Results:
     ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
-            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
+            f"""{{"id": {id}, "when": "{g.condition}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.condition}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_section(
             f"""

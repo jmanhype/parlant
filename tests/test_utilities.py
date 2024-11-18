@@ -64,7 +64,7 @@ class TestLogger(Logger):
         yield
 
 
-async def nlp_test(context: str, predicate: str) -> bool:
+async def nlp_test(context: str, condition: str) -> bool:
     schematic_generator = GPT_4o[NLPTestSchema](logger=TestLogger())
 
     inference = await schematic_generator.generate(
@@ -79,7 +79,7 @@ Context: ###
 ###
 
 Predicate: ###
-{predicate}
+{condition}
 ###
 
 Output JSON structure: ###
@@ -176,7 +176,7 @@ async def set_context_variable_value(
 async def create_guideline(
     container: Container,
     agent_id: AgentId,
-    predicate: str,
+    condition: str,
     action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
 ) -> Guideline:
@@ -184,7 +184,7 @@ async def create_guideline(
 
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
-        predicate=predicate,
+        condition=condition,
         action=action,
     )
 
@@ -267,12 +267,12 @@ async def post_message(
 
 async def get_when_async_done_or_timeout(
     result_getter: Callable[[], Awaitable[T]],
-    done_predicate: Callable[[T], bool],
+    done_condition: Callable[[T], bool],
     timeout: int,
 ) -> T:
     for _ in range(timeout):
         result = await result_getter()
-        if done_predicate(result):
+        if done_condition(result):
             return result
         await asyncio.sleep(1)
 
@@ -281,12 +281,12 @@ async def get_when_async_done_or_timeout(
 
 def get_when_done_or_timeout(
     result_getter: Callable[[], T],
-    done_predicate: Callable[[T], bool],
+    done_condition: Callable[[T], bool],
     timeout: int,
 ) -> T:
     for _ in range(timeout):
         result = result_getter()
-        if done_predicate(result):
+        if done_condition(result):
             return result
         sleep(1)
 

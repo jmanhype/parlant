@@ -14,7 +14,7 @@ GuidelineId = NewType("GuidelineId", str)
 
 @dataclass(frozen=True)
 class GuidelineContent:
-    predicate: str
+    condition: str
     action: str
 
 
@@ -25,12 +25,12 @@ class Guideline:
     content: GuidelineContent
 
     def __str__(self) -> str:
-        return f"When {self.content.predicate}, then {self.content.action}"
+        return f"When {self.content.condition}, then {self.content.action}"
 
 
 class GuidelineUpdateParams(TypedDict, total=False):
     guideline_set: str
-    predicate: str
+    condition: str
     action: str
 
 
@@ -39,7 +39,7 @@ class GuidelineStore(ABC):
     async def create_guideline(
         self,
         guideline_set: str,
-        predicate: str,
+        condition: str,
         action: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline: ...
@@ -84,7 +84,7 @@ class _GuidelineDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     guideline_set: str
-    predicate: str
+    condition: str
     action: str
 
 
@@ -107,7 +107,7 @@ class GuidelineDocumentStore(GuidelineStore):
             version=self.VERSION.to_string(),
             creation_utc=guideline.creation_utc.isoformat(),
             guideline_set=guideline_set,
-            predicate=guideline.content.predicate,
+            condition=guideline.content.condition,
             action=guideline.content.action,
         )
 
@@ -119,14 +119,14 @@ class GuidelineDocumentStore(GuidelineStore):
             id=GuidelineId(guideline_document["id"]),
             creation_utc=datetime.fromisoformat(guideline_document["creation_utc"]),
             content=GuidelineContent(
-                predicate=guideline_document["predicate"], action=guideline_document["action"]
+                condition=guideline_document["condition"], action=guideline_document["action"]
             ),
         )
 
     async def create_guideline(
         self,
         guideline_set: str,
-        predicate: str,
+        condition: str,
         action: str,
         creation_utc: Optional[datetime] = None,
     ) -> Guideline:
@@ -136,7 +136,7 @@ class GuidelineDocumentStore(GuidelineStore):
             id=GuidelineId(generate_id()),
             creation_utc=creation_utc,
             content=GuidelineContent(
-                predicate=predicate,
+                condition=condition,
                 action=action,
             ),
         )
@@ -205,7 +205,7 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_document = _GuidelineDocument(
             {
                 **({"guideline_set": params["guideline_set"]} if "guideline_set" in params else {}),
-                **({"predicate": params["predicate"]} if "predicate" in params else {}),
+                **({"condition": params["condition"]} if "condition" in params else {}),
                 **({"action": params["action"]} if "action" in params else {}),
             }
         )
@@ -227,14 +227,14 @@ class GuidelineDocumentStore(GuidelineStore):
         guideline_document = await self._collection.find_one(
             filters={
                 "guideline_set": {"$eq": guideline_set},
-                "predicate": {"$eq": guideline_content.predicate},
+                "condition": {"$eq": guideline_content.condition},
                 "action": {"$eq": guideline_content.action},
             }
         )
 
         if not guideline_document:
             raise ItemNotFoundError(
-                item_id=UniqueId(f"{guideline_content.predicate}{guideline_content.action}"),
+                item_id=UniqueId(f"{guideline_content.condition}{guideline_content.action}"),
                 message=f"with guideline_set '{guideline_set}'",
             )
 

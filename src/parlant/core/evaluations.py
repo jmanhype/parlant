@@ -61,7 +61,7 @@ class GuidelinePayload:
     updated_id: Optional[GuidelineId] = None
 
     def __repr__(self) -> str:
-        return f"predicate: {self.content.predicate}, action: {self.content.action}"
+        return f"condition: {self.content.condition}, action: {self.content.action}"
 
 
 Payload: TypeAlias = Union[GuidelinePayload]
@@ -158,7 +158,7 @@ class EvaluationStore(ABC):
 
 
 class _GuidelineContentDocument(TypedDict):
-    predicate: str
+    condition: str
     action: str
 
 
@@ -231,11 +231,11 @@ class EvaluationDocumentStore(EvaluationStore):
             return _CoherenceCheckDocument(
                 kind=check.kind,
                 first=_GuidelineContentDocument(
-                    predicate=check.first.predicate,
+                    condition=check.first.condition,
                     action=check.first.action,
                 ),
                 second=_GuidelineContentDocument(
-                    predicate=check.second.predicate,
+                    condition=check.second.condition,
                     action=check.second.action,
                 ),
                 issue=check.issue,
@@ -248,11 +248,11 @@ class EvaluationDocumentStore(EvaluationStore):
             return _ConnectionPropositionDocument(
                 check_kind=cp.check_kind,
                 source=_GuidelineContentDocument(
-                    predicate=cp.source.predicate,
+                    condition=cp.source.condition,
                     action=cp.source.action,
                 ),
                 target=_GuidelineContentDocument(
-                    predicate=cp.target.predicate,
+                    condition=cp.target.condition,
                     action=cp.target.action,
                 ),
                 connection_kind=cp.connection_kind.name,
@@ -274,7 +274,7 @@ class EvaluationDocumentStore(EvaluationStore):
             if isinstance(payload, GuidelinePayload):
                 return _GuidelinePayloadDocument(
                     content=_GuidelineContentDocument(
-                        predicate=payload.content.predicate,
+                        condition=payload.content.condition,
                         action=payload.content.action,
                     ),
                     action=payload.operation,
@@ -316,7 +316,7 @@ class EvaluationDocumentStore(EvaluationStore):
             gc_doc: _GuidelineContentDocument,
         ) -> GuidelineContent:
             return GuidelineContent(
-                predicate=gc_doc["predicate"],
+                condition=gc_doc["condition"],
                 action=gc_doc["action"],
             )
 
@@ -365,7 +365,7 @@ class EvaluationDocumentStore(EvaluationStore):
             if kind == PayloadKind.GUIDELINE:
                 return GuidelinePayload(
                     content=GuidelineContent(
-                        predicate=payload_doc["content"]["predicate"],
+                        condition=payload_doc["content"]["condition"],
                         action=payload_doc["content"]["action"],
                     ),
                     operation=payload_doc["action"],

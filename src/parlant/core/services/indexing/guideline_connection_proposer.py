@@ -543,10 +543,10 @@ Expected Output:
         builder.add_agent_identity(agent)
         # Find and add glossary to prompt
         causation_candidates = "\n\t".join(
-            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            f"{{id: {id}, when: {g.condition}, then: {g.action}}}"
             for id, g in comparison_set.items()
         )
-        test_guideline = f"{{id: 0, when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
+        test_guideline = f"{{id: 0, when: '{evaluated_guideline.condition}', then: '{evaluated_guideline.action}'}}"
         terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=test_guideline + causation_candidates,

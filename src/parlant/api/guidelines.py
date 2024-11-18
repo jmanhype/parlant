@@ -39,7 +39,7 @@ from parlant.core.tools import ToolId
 
 class GuidelineDTO(DefaultBaseModel):
     id: GuidelineId
-    predicate: str
+    condition: str
     action: str
 
 
@@ -125,7 +125,7 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
 
     payload = GuidelinePayload(
         content=GuidelineContent(
-            predicate=dto.payload.content.predicate,
+            condition=dto.payload.content.condition,
             action=dto.payload.content.action,
         ),
         operation=dto.payload.operation.value,
@@ -157,9 +157,9 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
         coherence_checks = [
             CoherenceCheck(
                 kind=check.kind.value,
-                first=GuidelineContent(predicate=check.first.predicate, action=check.first.action),
+                first=GuidelineContent(condition=check.first.condition, action=check.first.action),
                 second=GuidelineContent(
-                    predicate=check.second.predicate, action=check.second.action
+                    condition=check.second.condition, action=check.second.action
                 ),
                 issue=check.issue,
                 severity=check.severity,
@@ -172,10 +172,10 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
                 ConnectionProposition(
                     check_kind=prop.check_kind.value,
                     source=GuidelineContent(
-                        predicate=prop.source.predicate, action=prop.source.action
+                        condition=prop.source.condition, action=prop.source.action
                     ),
                     target=GuidelineContent(
-                        predicate=prop.target.predicate, action=prop.target.action
+                        condition=prop.target.condition, action=prop.target.action
                     ),
                     connection_kind=connection_kind_dto_to_connection_kind(prop.connection_kind),
                 )
@@ -277,7 +277,7 @@ def create_router(
                 GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(
                         id=guideline.id,
-                        predicate=guideline.content.predicate,
+                        condition=guideline.content.condition,
                         action=guideline.content.action,
                     ),
                     connections=[
@@ -285,12 +285,12 @@ def create_router(
                             id=connection.id,
                             source=GuidelineDTO(
                                 id=connection.source.id,
-                                predicate=connection.source.content.predicate,
+                                condition=connection.source.content.condition,
                                 action=connection.source.content.action,
                             ),
                             target=GuidelineDTO(
                                 id=connection.target.id,
-                                predicate=connection.target.content.predicate,
+                                condition=connection.target.content.condition,
                                 action=connection.target.content.action,
                             ),
                             kind=connection_kind_to_dto(connection.kind),
@@ -329,7 +329,7 @@ def create_router(
         return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
-                predicate=guideline.content.predicate,
+                condition=guideline.content.condition,
                 action=guideline.content.action,
             ),
             connections=[
@@ -337,12 +337,12 @@ def create_router(
                     id=connection.id,
                     source=GuidelineDTO(
                         id=connection.source.id,
-                        predicate=connection.source.content.predicate,
+                        condition=connection.source.content.condition,
                         action=connection.source.content.action,
                     ),
                     target=GuidelineDTO(
                         id=connection.target.id,
-                        predicate=connection.target.content.predicate,
+                        condition=connection.target.content.condition,
                         action=connection.target.content.action,
                     ),
                     kind=connection_kind_to_dto(connection.kind),
@@ -375,7 +375,7 @@ def create_router(
             guidelines=[
                 GuidelineDTO(
                     id=guideline.id,
-                    predicate=guideline.content.predicate,
+                    condition=guideline.content.condition,
                     action=guideline.content.action,
                 )
                 for guideline in guidelines
@@ -477,7 +477,7 @@ def create_router(
         return GuidelineWithConnectionsAndToolAssociationsDTO(
             guideline=GuidelineDTO(
                 id=guideline.id,
-                predicate=guideline.content.predicate,
+                condition=guideline.content.condition,
                 action=guideline.content.action,
             ),
             connections=[
@@ -485,12 +485,12 @@ def create_router(
                     id=connection.id,
                     source=GuidelineDTO(
                         id=connection.source.id,
-                        predicate=connection.source.content.predicate,
+                        condition=connection.source.content.condition,
                         action=connection.source.content.action,
                     ),
                     target=GuidelineDTO(
                         id=connection.target.id,
-                        predicate=connection.target.content.predicate,
+                        condition=connection.target.content.condition,
                         action=connection.target.content.action,
                     ),
                     kind=connection_kind_to_dto(connection.kind),

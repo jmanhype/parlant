@@ -37,7 +37,7 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user greets you",
+                        condition="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -67,7 +67,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user greets you",
+                        condition="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -80,7 +80,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -106,7 +106,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="a customer inquires about upgrading their service package",
+        condition="a customer inquires about upgrading their service package",
         action="provide information on available upgrade options and benefits",
     )
 
@@ -117,7 +117,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="a customer needs assistance with understanding their billing statements",
+                        condition="a customer needs assistance with understanding their billing statements",
                         action="guide them through the billing details and explain any charges",
                     ),
                     operation="add",
@@ -130,7 +130,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -156,7 +156,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+        condition="A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
         action="Escalate the request to product management for special consideration",
     )
 
@@ -167,7 +167,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="Any customer requests a feature not available in the current version",
+                        condition="Any customer requests a feature not available in the current version",
                         action="Inform them that upcoming features are added only according to the roadmap",
                     ),
                     operation="add",
@@ -180,7 +180,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -211,7 +211,7 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="any customer requests a feature not available in the current version",
+                        condition="any customer requests a feature not available in the current version",
                         action="Inform them that upcoming features are added only according to the roadmap",
                     ),
                     operation="add",
@@ -223,7 +223,7 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
+                        condition="a VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",
                         action="escalate the request to product management for special consideration",
                     ),
                     operation="add",
@@ -236,7 +236,7 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -269,7 +269,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user greets you",
+                        condition="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -281,7 +281,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user asks about the weather",
+                        condition="the user asks about the weather",
                         action="provide a weather update",
                     ),
                     operation="add",
@@ -294,7 +294,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -324,7 +324,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user greets you",
+                        condition="the user greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -336,7 +336,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user greets you",
+                        condition="the user greets you",
                         action="greet them back with 'Hola'",
                     ),
                     operation="add",
@@ -350,7 +350,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     second_payloads = [
         GuidelinePayload(
             content=GuidelineContent(
-                predicate="the user asks about the weather",
+                condition="the user asks about the weather",
                 action="provide a weather update",
             ),
             operation="add",
@@ -382,7 +382,7 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
 
     duplicate_payload = GuidelinePayload(
         content=GuidelineContent(
-            predicate="the user greets you",
+            condition="the user greets you",
             action="greet them back with 'Hello'",
         ),
         operation="add",
@@ -415,7 +415,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="the user greets you",
+        condition="the user greets you",
         action="greet them back with 'Hello'",
     )
 
@@ -427,7 +427,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                     PayloadKind.GUIDELINE,
                     GuidelinePayload(
                         content=GuidelineContent(
-                            predicate="the user greets you",
+                            condition="the user greets you",
                             action="greet them back with 'Hello'",
                         ),
                         operation="add",
@@ -455,7 +455,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        predicate="the user asks about the weather",
+        condition="the user asks about the weather",
         action="provide the current weather update",
     )
 
@@ -466,7 +466,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="providing the weather update",
+                        condition="providing the weather update",
                         action="mention the best time to go for a walk",
                     ),
                     operation="add",
@@ -479,7 +479,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -502,7 +502,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
         == "provide the current weather update"
     )
     assert (
-        invoice_data.connection_propositions[0].target.predicate == "providing the weather update"
+        invoice_data.connection_propositions[0].target.condition == "providing the weather update"
     )
 
 
@@ -520,7 +520,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="the user asks about the weather",
+                        condition="the user asks about the weather",
                         action="provide the current weather update",
                     ),
                     operation="add",
@@ -532,7 +532,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        predicate="providing the weather update",
+                        condition="providing the weather update",
                         action="mention the best time to go for a walk",
                     ),
                     operation="add",
@@ -545,7 +545,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
 
     evaluation = await get_when_async_done_or_timeout(
         result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_predicate=lambda evaluation: evaluation.status
+        done_condition=lambda evaluation: evaluation.status
         in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
         timeout=TEST_WAIT_TIMEOUT,
     )
@@ -563,11 +563,11 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
         == "connection_with_another_evaluated_guideline"
     )
     assert (
-        invoice_data.connection_propositions[0].source.predicate
+        invoice_data.connection_propositions[0].source.condition
         == "the user asks about the weather"
     )
     assert (
-        invoice_data.connection_propositions[0].target.predicate == "providing the weather update"
+        invoice_data.connection_propositions[0].target.condition == "providing the weather update"
     )
 
     assert evaluation.invoices[1].data
@@ -585,5 +585,5 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
         == "provide the current weather update"
     )
     assert (
-        invoice_data.connection_propositions[0].target.predicate == "providing the weather update"
+        invoice_data.connection_propositions[0].target.condition == "providing the weather update"
     )

@@ -623,7 +623,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
     await create_guideline(
         container=container,
         agent_id=agent_id,
-        predicate="a user says hello",
+        condition="a user says hello",
         action="answer like a cow",
         tool_function=get_cow_uttering,
     )
@@ -764,7 +764,7 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
     guideline = await create_guideline(
         container=container,
         agent_id=agent_id,
-        predicate="a user mentions cows",
+        condition="a user mentions cows",
         action="answer like a cow while mentioning the user's full name",
         tool_function=get_cow_uttering,
     )
@@ -817,7 +817,7 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
 
     assert len(iterations[0]["guideline_propositions"]) == 1
     assert iterations[0]["guideline_propositions"][0]["guideline_id"] == guideline.id
-    assert iterations[0]["guideline_propositions"][0]["predicate"] == guideline.content.predicate
+    assert iterations[0]["guideline_propositions"][0]["condition"] == guideline.content.condition
     assert iterations[0]["guideline_propositions"][0]["action"] == guideline.content.action
 
     assert len(iterations[0]["tool_calls"]) == 1
@@ -856,7 +856,7 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     _ = await create_guideline(
         container=container,
         agent_id=agent_id,
-        predicate="a user asks what the cow says",
+        condition="a user asks what the cow says",
         action="answer 'Woof Woof'",
         tool_function=get_cow_uttering,
     )
@@ -922,7 +922,7 @@ async def test_that_a_message_interaction_can_be_regenerated(
     _ = await create_guideline(
         container=container,
         agent_id=agent_id,
-        predicate="a user ask what is the weather today",
+        condition="a user ask what is the weather today",
         action="answer that it's cold",
         tool_function=get_cow_uttering,
     )

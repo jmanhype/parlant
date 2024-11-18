@@ -205,7 +205,7 @@ def then_the_message_contains(
     assert context.sync_await(
         nlp_test(
             context=f"Here's a message in the context of a conversation: {message}",
-            predicate=f"the text contains {something}",
+            condition=f"the text contains {something}",
         )
     )
 
@@ -222,7 +222,7 @@ def then_the_message_mentions(
     assert context.sync_await(
         nlp_test(
             context=f"Here's a message in the context of a conversation: {message}",
-            predicate=f"the text mentions {something}",
+            condition=f"the text mentions {something}",
         )
     )
 
@@ -378,7 +378,7 @@ def then_the_tool_calls_event_contains_expected_content(
     assert context.sync_await(
         nlp_test(
             context=f"The following is the result of tool (function) calls: {tool_calls}",
-            predicate=f"The calls contain {expected_content}",
+            condition=f"The calls contain {expected_content}",
         )
     )
 

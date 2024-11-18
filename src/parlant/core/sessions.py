@@ -128,7 +128,7 @@ class StatusEventData(TypedDict):
 
 class GuidelineProposition(TypedDict):
     guideline_id: GuidelineId
-    predicate: str
+    condition: str
     action: str
     score: int
     rationale: str

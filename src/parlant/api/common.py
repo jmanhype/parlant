@@ -23,7 +23,7 @@ class PayloadKindDTO(Enum):
 
 
 class GuidelineContentDTO(DefaultBaseModel):
-    predicate: str
+    condition: str
     action: str
 
 

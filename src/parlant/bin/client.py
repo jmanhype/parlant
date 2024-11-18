@@ -61,7 +61,7 @@ class TermDTO(TypedDict):
 
 class GuidelineDTO(TypedDict):
     id: str
-    predicate: str
+    condition: str
     action: str
 
 
@@ -127,7 +127,7 @@ class ContextVariableValueDTO(TypedDict):
 
 class GuidelinePropositionDTO(TypedDict):
     guideline_id: str
-    predicate: str
+    condition: str
     action: str
     score: int
     rationale: str
@@ -450,7 +450,7 @@ class Actions:
     def create_guideline(
         ctx: click.Context,
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         check: bool,
         index: bool,
@@ -464,7 +464,7 @@ class Actions:
                     {
                         "kind": "guideline",
                         "content": {
-                            "predicate": predicate,
+                            "condition": condition,
                             "action": action,
                         },
                         "operation": "add",
@@ -539,7 +539,7 @@ class Actions:
     def update_guideline(
         ctx: click.Context,
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         check: bool,
         index: bool,
@@ -553,7 +553,7 @@ class Actions:
                     {
                         "kind": "guideline",
                         "content": {
-                            "predicate": predicate,
+                            "condition": condition,
                             "action": action,
                         },
                         "operation": "update",
@@ -1175,7 +1175,7 @@ class Interface:
 
             if iteration["guideline_propositions"]:
                 for proposition in iteration["guideline_propositions"]:
-                    rich.print(f"{INDENT*2}Predicate: {proposition['predicate']}")
+                    rich.print(f"{INDENT*2}Condition: {proposition['condition']}")
                     rich.print(f"{INDENT*2}Action: {proposition['action']}")
                     rich.print(f"{INDENT*2}Relevance Score: {proposition['score']}/10")
                     rich.print(f"{INDENT*2}Rationale: {proposition['rationale']}\n")
@@ -1375,7 +1375,7 @@ class Interface:
         guideline_items = [
             {
                 "ID": guideline["id"],
-                "Predicate": guideline["predicate"],
+                "Condition": guideline["condition"],
                 "Action": guideline["action"],
             }
             for guideline in guidelines
@@ -1399,7 +1399,7 @@ class Interface:
                 "Role": "Source" if conn["source"]["id"] == guideline["id"] else "Target",
                 "Peer Role": "Target" if conn["source"]["id"] == guideline["id"] else "Source",
                 "Peer ID": peer["id"],
-                "Peer Predicate": peer["predicate"],
+                "Peer Condition": peer["condition"],
                 "Peer Action": peer["action"],
             }
 
@@ -1408,10 +1408,10 @@ class Interface:
                 "Connection ID": conn["id"],
                 "Entailment": "Strict" if conn["kind"] == "entails" else "Suggestive",
                 "Source ID": conn["source"]["id"],
-                "Source Predicate": conn["source"]["predicate"],
+                "Source Condition": conn["source"]["condition"],
                 "Source Action": conn["source"]["action"],
                 "Target ID": conn["target"]["id"],
-                "Target Predicate": conn["target"]["predicate"],
+                "Target Condition": conn["target"]["condition"],
                 "Target Action": conn["target"]["action"],
             }
 
@@ -1437,7 +1437,7 @@ class Interface:
     def create_guideline(
         ctx: click.Context,
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         check: bool,
         index: bool,
@@ -1446,7 +1446,7 @@ class Interface:
             guideline_with_connections_and_associations = Actions.create_guideline(
                 ctx,
                 agent_id,
-                predicate,
+                condition,
                 action,
                 check,
                 index,
@@ -1481,7 +1481,7 @@ class Interface:
     def update_guideline(
         ctx: click.Context,
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         guideline_id: str,
         check: bool,
@@ -1491,7 +1491,7 @@ class Interface:
             guideline_with_connections = Actions.update_guideline(
                 ctx,
                 agent_id=agent_id,
-                predicate=predicate,
+                condition=condition,
                 action=action,
                 check=check,
                 index=index,
@@ -2250,7 +2250,7 @@ async def async_main() -> None:
         pass
 
     @guideline.command("add", help="Add a new guideline")
-    @click.argument("predicate", type=str)
+    @click.argument("condition", type=str)
     @click.argument("action", type=str)
     @click.option(
         "-a",
@@ -2278,7 +2278,7 @@ async def async_main() -> None:
     def guideline_add(
         ctx: click.Context,
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         check: bool,
         index: bool,
@@ -2289,7 +2289,7 @@ async def async_main() -> None:
         Interface.create_guideline(
             ctx=ctx,
             agent_id=agent_id,
-            predicate=predicate,
+            condition=condition,
             action=action,
             check=check,
             index=index,
@@ -2297,7 +2297,7 @@ async def async_main() -> None:
 
     @guideline.command("update", help="Update an existing guideline")
     @click.argument("guideline_id", type=str)
-    @click.argument("predicate", type=str)
+    @click.argument("condition", type=str)
     @click.argument("action", type=str)
     @click.option(
         "-a",
@@ -2326,7 +2326,7 @@ async def async_main() -> None:
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         check: bool,
         index: bool,
@@ -2337,7 +2337,7 @@ async def async_main() -> None:
         Interface.update_guideline(
             ctx=ctx,
             agent_id=agent_id,
-            predicate=predicate,
+            condition=condition,
             action=action,
             guideline_id=guideline_id,
             check=check,

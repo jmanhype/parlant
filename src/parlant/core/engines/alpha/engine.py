@@ -239,7 +239,7 @@ class AlphaEngine(Engine):
                         guideline_propositions=[
                             StoredGuidelineProposition(
                                 guideline_id=proposition.guideline.id,
-                                predicate=proposition.guideline.content.predicate,
+                                condition=proposition.guideline.content.condition,
                                 action=proposition.guideline.content.action,
                                 score=proposition.score,
                                 rationale=proposition.rationale,
@@ -551,7 +551,7 @@ class AlphaEngine(Engine):
         if propositions:
             context += str(
                 [
-                    f"When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                    f"When {p.guideline.content.condition}, then {p.guideline.content.action}"
                     for p in propositions
                 ]
             )

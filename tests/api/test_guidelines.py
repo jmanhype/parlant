@@ -17,7 +17,7 @@ async def create_and_connect(
     guidelines = [
         await container[GuidelineStore].create_guideline(
             guideline_set=agent_id,
-            predicate=gc.predicate,
+            condition=gc.condition,
             action=gc.action,
         )
         for gc in guideline_contents
@@ -41,7 +41,7 @@ async def test_that_a_guideline_can_be_created(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user greets you",
+                        "condition": "the user greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     "operation": "add",
@@ -64,7 +64,7 @@ async def test_that_a_guideline_can_be_created(
     items = response.json()["items"]
 
     assert len(items) == 1
-    assert items[0]["guideline"]["predicate"] == "the user greets you"
+    assert items[0]["guideline"]["condition"] == "the user greets you"
     assert items[0]["guideline"]["action"] == "greet them back with 'Hello'"
 
 
@@ -77,7 +77,7 @@ async def test_that_a_guideline_can_be_deleted(
 
     guideline_to_delete = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user wants to unsubscribe",
+        condition="the user wants to unsubscribe",
         action="ask for confirmation",
     )
 
@@ -98,7 +98,7 @@ async def test_that_an_unapproved_invoice_is_rejected(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user says goodbye",
+                        "condition": "the user says goodbye",
                         "action": "say 'Goodbye' back",
                     },
                     "operation": "add",
@@ -131,7 +131,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
             "payload": {
                 "kind": "guideline",
                 "content": {
-                    "predicate": "the user asks about nearby restaurants",
+                    "condition": "the user asks about nearby restaurants",
                     "action": "provide a list of restaurants",
                 },
                 "operation": "add",
@@ -146,11 +146,11 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                     {
                         "check_kind": "connection_with_another_evaluated_guideline",
                         "source": {
-                            "predicate": "the user asks about nearby restaurants",
+                            "condition": "the user asks about nearby restaurants",
                             "action": "provide a list of restaurants",
                         },
                         "target": {
-                            "predicate": "highlight the best-reviewed restaurant",
+                            "condition": "highlight the best-reviewed restaurant",
                             "action": "recommend the top choice",
                         },
                         "connection_kind": "entails",
@@ -163,7 +163,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
             "payload": {
                 "kind": "guideline",
                 "content": {
-                    "predicate": "highlight the best-reviewed restaurant",
+                    "condition": "highlight the best-reviewed restaurant",
                     "action": "recommend the top choice",
                 },
                 "operation": "add",
@@ -178,11 +178,11 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                     {
                         "check_kind": "connection_with_another_evaluated_guideline",
                         "source": {
-                            "predicate": "the user asks about nearby restaurants",
+                            "condition": "the user asks about nearby restaurants",
                             "action": "provide a list of restaurants",
                         },
                         "target": {
-                            "predicate": "highlight the best-reviewed restaurant",
+                            "condition": "highlight the best-reviewed restaurant",
                             "action": "recommend the top choice",
                         },
                         "connection_kind": "entails",
@@ -208,7 +208,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         (
             i
             for i in items
-            if i["guideline"]["predicate"] == "the user asks about nearby restaurants"
+            if i["guideline"]["condition"] == "the user asks about nearby restaurants"
         ),
         None,
     )
@@ -231,7 +231,7 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user asks about the weather",
+        condition="the user asks about the weather",
         action="provide the current weather update",
     )
 
@@ -239,7 +239,7 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
         "payload": {
             "kind": "guideline",
             "content": {
-                "predicate": "provide the current weather update",
+                "condition": "provide the current weather update",
                 "action": "include temperature and humidity",
             },
             "operation": "add",
@@ -254,11 +254,11 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
                 {
                     "check_kind": "connection_with_existing_guideline",
                     "source": {
-                        "predicate": "the user asks about the weather",
+                        "condition": "the user asks about the weather",
                         "action": "provide the current weather update",
                     },
                     "target": {
-                        "predicate": "provide the current weather update",
+                        "condition": "provide the current weather update",
                         "action": "include temperature and humidity",
                     },
                     "connection_kind": "entails",
@@ -298,7 +298,7 @@ async def test_that_a_guideline_can_be_read_by_id(
 
     stored_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user asks about the weather",
+        condition="the user asks about the weather",
         action="provide the current weather update",
     )
 
@@ -307,7 +307,7 @@ async def test_that_a_guideline_can_be_read_by_id(
     )
 
     assert item["guideline"]["id"] == stored_guideline.id
-    assert item["guideline"]["predicate"] == "the user asks about the weather"
+    assert item["guideline"]["condition"] == "the user asks about the weather"
     assert item["guideline"]["action"] == "provide the current weather update"
     assert len(item["connections"]) == 0
 
@@ -489,10 +489,10 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
     guidelines = [
         await container[GuidelineStore].create_guideline(
             guideline_set=agent_id,
-            predicate=predicate,
+            condition=condition,
             action=action,
         )
-        for predicate, action in [
+        for condition, action in [
             ("A", "B"),
             ("B", "C"),
             ("C", "D"),
@@ -513,7 +513,7 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
     assert 2 == len([c for c in third_item["connections"] if c["indirect"]])
     assert 2 == len([c for c in third_item["connections"] if not c["indirect"]])
 
-    connections = sorted(third_item["connections"], key=lambda c: c["source"]["predicate"])
+    connections = sorted(third_item["connections"], key=lambda c: c["source"]["condition"])
 
     for i, c in enumerate(connections):
         guideline_a = guidelines[i]
@@ -521,13 +521,13 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
 
         assert c["source"] == {
             "id": guideline_a.id,
-            "predicate": guideline_a.content.predicate,
+            "condition": guideline_a.content.condition,
             "action": guideline_a.content.action,
         }
 
         assert c["target"] == {
             "id": guideline_b.id,
-            "predicate": guideline_b.content.predicate,
+            "condition": guideline_b.content.condition,
             "action": guideline_b.content.action,
         }
 
@@ -553,7 +553,7 @@ async def test_that_a_tool_association_can_be_added(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user wants to get meeting details",
+        condition="the user wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -631,7 +631,7 @@ async def test_that_a_tool_association_can_be_removed(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user wants to get meeting details",
+        condition="the user wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -700,7 +700,7 @@ async def test_that_guideline_deletion_removes_tool_associations(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user wants to get meeting details",
+        condition="the user wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -729,18 +729,18 @@ async def test_that_an_existing_guideline_can_be_updated(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user greets you",
+        condition="the user greets you",
         action="reply with 'Hello'",
     )
     connected_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="reply with 'Hello'",
+        condition="reply with 'Hello'",
         action="finish with a smile",
     )
 
     connected_guideline_post_update = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="reply with 'Howdy!'",
+        condition="reply with 'Howdy!'",
         action="finish with a smile",
     )
 
@@ -758,7 +758,7 @@ async def test_that_an_existing_guideline_can_be_updated(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user greets you",
+                        "condition": "the user greets you",
                         "action": new_action,
                     },
                     "operation": "update",
@@ -774,11 +774,11 @@ async def test_that_an_existing_guideline_can_be_updated(
                         {
                             "check_kind": "connection_with_existing_guideline",
                             "source": {
-                                "predicate": "the user greets you",
+                                "condition": "the user greets you",
                                 "action": new_action,
                             },
                             "target": {
-                                "predicate": connected_guideline_post_update.content.predicate,
+                                "condition": connected_guideline_post_update.content.condition,
                                 "action": connected_guideline_post_update.content.action,
                             },
                             "connection_kind": "entails",
@@ -799,7 +799,7 @@ async def test_that_an_existing_guideline_can_be_updated(
     assert len(items) == 1
     updated_guideline = items[0]["guideline"]
     assert updated_guideline["id"] == existing_guideline.id
-    assert updated_guideline["predicate"] == "the user greets you"
+    assert updated_guideline["condition"] == "the user greets you"
     assert updated_guideline["action"] == new_action
 
     updated_connections = await connection_store.list_connections(
@@ -821,7 +821,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user greets you",
+        condition="the user greets you",
         action="reply with 'Hello'",
     )
 
@@ -833,7 +833,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user greets you",
+                        "condition": "the user greets you",
                         "action": new_aciton,
                     },
                     "operation": "update",
@@ -849,11 +849,11 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                         {
                             "check_kind": "connection_with_another_evaluated_guideline",
                             "source": {
-                                "predicate": "the user greets you",
+                                "condition": "the user greets you",
                                 "action": new_aciton,
                             },
                             "target": {
-                                "predicate": "replying to greeting message",
+                                "condition": "replying to greeting message",
                                 "action": "ask how they are",
                             },
                             "connection_kind": "entails",
@@ -866,7 +866,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "replying to greeting message",
+                        "condition": "replying to greeting message",
                         "action": "ask how they are",
                     },
                     "operation": "add",
@@ -881,11 +881,11 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                         {
                             "check_kind": "connection_with_another_evaluated_guideline",
                             "source": {
-                                "predicate": "the user greets you",
+                                "condition": "the user greets you",
                                 "action": new_aciton,
                             },
                             "target": {
-                                "predicate": "replying to greeting message",
+                                "condition": "replying to greeting message",
                                 "action": "ask how they are",
                             },
                             "connection_kind": "entails",
@@ -935,12 +935,12 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="the user greets you",
+        condition="the user greets you",
         action="reply with 'Hello'",
     )
     connected_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        predicate="reply with 'Hello'",
+        condition="reply with 'Hello'",
         action="finish with a smile",
     )
 
@@ -958,7 +958,7 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
                 "payload": {
                     "kind": "guideline",
                     "content": {
-                        "predicate": "the user greets you",
+                        "condition": "the user greets you",
                         "action": new_action,
                     },
                     "operation": "update",
@@ -986,7 +986,7 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
     assert len(items) == 1
     updated_guideline = items[0]["guideline"]
     assert updated_guideline["id"] == existing_guideline.id
-    assert updated_guideline["predicate"] == "the user greets you"
+    assert updated_guideline["condition"] == "the user greets you"
     assert updated_guideline["action"] == new_action
 
     updated_connections = await connection_store.list_connections(

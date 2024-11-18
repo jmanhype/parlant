@@ -24,7 +24,7 @@ class BuiltInSection(Enum):
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
     TERMINOLOGY = auto()
-    GUIDELINE_PREDICATES = auto()
+    GUIDELINE_CONDITIONS = auto()
     GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
     STAGED_EVENTS = auto()
@@ -201,22 +201,22 @@ and let the user know if/when you assume they meant a term by their typo: ###
 
         return self
 
-    def add_guideline_predicates(
+    def add_guideline_conditions(
         self,
-        predicates: Sequence[str],
+        conditions: Sequence[str],
     ) -> PromptBuilder:
-        assert predicates
+        assert conditions
 
-        predicates = "\n".join(f"{i}) {p}" for i, p in enumerate(predicates, start=1))
+        conditions = "\n".join(f"{i}) {p}" for i, p in enumerate(conditions, start=1))
 
         self.add_section(
-            name=BuiltInSection.GUIDELINE_PREDICATES,
+            name=BuiltInSection.GUIDELINE_CONDITIONS,
             content=f"""
 - Predicate List: ###
-{predicates}
+{conditions}
 ###
 
-IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
     """,
             status=SectionStatus.ACTIVE,
         )
@@ -237,7 +237,7 @@ IMPORTANT: Please note there are exactly {len(predicates)} predicates in the lis
 
             for i, p in enumerate(all_propositions, start=1):
                 guideline = (
-                    f"{i}) When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                    f"{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
                 )
 
                 if include_priority:

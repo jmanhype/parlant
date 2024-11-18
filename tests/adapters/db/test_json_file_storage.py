@@ -170,7 +170,7 @@ async def test_guideline_creation_and_loading_data_from_file(
         guideline_store = GuidelineDocumentStore(guideline_db)
         guideline = await guideline_store.create_guideline(
             guideline_set=context.agent_id,
-            predicate="Creating a guideline with JSONFileDatabase implementation",
+            condition="Creating a guideline with JSONFileDatabase implementation",
             action="Expecting it to show in the guidelines json file",
         )
 
@@ -182,7 +182,7 @@ async def test_guideline_creation_and_loading_data_from_file(
     json_guideline = guidelines_from_json["guidelines"][0]
     assert json_guideline["guideline_set"] == context.agent_id
 
-    assert json_guideline["predicate"] == guideline.content.predicate
+    assert json_guideline["condition"] == guideline.content.condition
     assert json_guideline["action"] == guideline.content.action
     assert datetime.fromisoformat(json_guideline["creation_utc"]) == guideline.creation_utc
 
@@ -191,7 +191,7 @@ async def test_guideline_creation_and_loading_data_from_file(
 
         second_guideline = await guideline_store.create_guideline(
             guideline_set=context.agent_id,
-            predicate="Second guideline creation",
+            condition="Second guideline creation",
             action="Additional test entry in the JSON file",
         )
 
@@ -203,7 +203,7 @@ async def test_guideline_creation_and_loading_data_from_file(
     second_json_guideline = guidelines_from_json["guidelines"][1]
     assert second_json_guideline["guideline_set"] == context.agent_id
 
-    assert second_json_guideline["predicate"] == second_guideline.content.predicate
+    assert second_json_guideline["condition"] == second_guideline.content.condition
     assert second_json_guideline["action"] == second_guideline.content.action
     assert (
         datetime.fromisoformat(second_json_guideline["creation_utc"])
@@ -219,7 +219,7 @@ async def test_guideline_retrieval(
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
-            predicate="Test predicate for loading",
+            condition="Test condition for loading",
             action="Test content for loading guideline",
         )
 
@@ -228,7 +228,7 @@ async def test_guideline_retrieval(
 
         assert len(loaded_guideline_list) == 1
         loaded_guideline = loaded_guideline_list[0]
-        assert loaded_guideline.content.predicate == "Test predicate for loading"
+        assert loaded_guideline.content.condition == "Test condition for loading"
         assert loaded_guideline.content.action == "Test content for loading guideline"
 
 
@@ -481,7 +481,7 @@ async def test_successful_loading_of_an_empty_json_file(
         guideline_store = GuidelineDocumentStore(guideline_db)
         await guideline_store.create_guideline(
             guideline_set=context.agent_id,
-            predicate="Create a guideline just for testing",
+            condition="Create a guideline just for testing",
             action="Expect it to appear in the guidelines JSON file eventually",
         )
 
@@ -504,7 +504,7 @@ async def test_evaluation_creation(
         payloads = [
             GuidelinePayload(
                 content=GuidelineContent(
-                    predicate="Test evaluation creation with invoice",
+                    condition="Test evaluation creation with invoice",
                     action="Ensure the evaluation with invoice is persisted in the JSON file",
                 ),
                 operation="add",
@@ -539,7 +539,7 @@ async def test_evaluation_update(
         payloads = [
             GuidelinePayload(
                 content=GuidelineContent(
-                    predicate="Initial evaluation payload with invoice",
+                    condition="Initial evaluation payload with invoice",
                     action="This content will be updated",
                 ),
                 operation="add",

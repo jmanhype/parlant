@@ -165,7 +165,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
             {
                 "kind": "guideline",
                 "content": {
-                    "predicate": "the user greets you",
+                    "condition": "the user greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 "operation": "add",
@@ -175,7 +175,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
             {
                 "kind": "guideline",
                 "content": {
-                    "predicate": "the user greeting you",
+                    "condition": "the user greeting you",
                     "action": "greet them back with 'Hola'",
                 },
                 "operation": "add",
@@ -232,13 +232,13 @@ async def test_that_guidelines_are_loaded_after_server_restarts(
 
         first = await create_guideline(
             agent_id=agent.id,
-            predicate="the user greets you",
+            condition="the user greets you",
             action="greet them back with 'Hello'",
         )
 
         second = await create_guideline(
             agent_id=agent.id,
-            predicate="the user say goodbye",
+            condition="the user say goodbye",
             action="say goodbye",
         )
 
@@ -253,10 +253,10 @@ async def test_that_guidelines_are_loaded_after_server_restarts(
 
         guidelines = await list_guidelines(agent_id=agent.id)
 
-        assert any(first["predicate"] == g["predicate"] for g in guidelines)
+        assert any(first["condition"] == g["condition"] for g in guidelines)
         assert any(first["action"] == g["action"] for g in guidelines)
 
-        assert any(second["predicate"] == g["predicate"] for g in guidelines)
+        assert any(second["condition"] == g["condition"] for g in guidelines)
         assert any(second["action"] == g["action"] for g in guidelines)
 
 
