@@ -53,7 +53,7 @@ def _payload_from_dto(dto: PayloadDTO) -> Payload:
     return {
         PayloadKindDTO.GUIDELINE: GuidelinePayload(
             content=GuidelineContent(
-                predicate=dto.content.predicate,
+                condition=dto.content.condition,
                 action=dto.content.action,
             ),
             operation=dto.operation.value,
@@ -69,7 +69,7 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
         PayloadKind.GUIDELINE: PayloadDTO(
             kind=PayloadKindDTO.GUIDELINE,
             content=GuidelineContentDTO(
-                predicate=descriptor.payload.content.predicate,
+                condition=descriptor.payload.content.condition,
                 action=descriptor.payload.content.action,
             ),
             operation=GuidelinePayloadOperationDTO(descriptor.payload.operation),
@@ -87,11 +87,11 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
                 CoherenceCheckDTO(
                     kind=CoherenceCheckKindDTO(c.kind),
                     first=GuidelineContentDTO(
-                        predicate=c.first.predicate,
+                        condition=c.first.condition,
                         action=c.first.action,
                     ),
                     second=GuidelineContentDTO(
-                        predicate=c.second.predicate,
+                        condition=c.second.condition,
                         action=c.second.action,
                     ),
                     issue=c.issue,
@@ -103,11 +103,11 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
                 ConnectionPropositionDTO(
                     check_kind=ConnectionPropositionKindDTO(c.check_kind),
                     source=GuidelineContentDTO(
-                        predicate=c.source.predicate,
+                        condition=c.source.condition,
                         action=c.source.action,
                     ),
                     target=GuidelineContentDTO(
-                        predicate=c.target.predicate,
+                        condition=c.target.condition,
                         action=c.target.action,
                     ),
                     connection_kind=connection_kind_to_dto(c.connection_kind),

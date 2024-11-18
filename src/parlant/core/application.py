@@ -163,17 +163,17 @@ class Application:
             )
 
         content_guidelines: dict[str, GuidelineId] = {
-            f"{invoice.payload.content.predicate}_{invoice.payload.content.action}": (
+            f"{invoice.payload.content.condition}_{invoice.payload.content.action}": (
                 await self._guideline_store.create_guideline(
                     guideline_set=guideline_set,
-                    predicate=invoice.payload.content.predicate,
+                    condition=invoice.payload.content.condition,
                     action=invoice.payload.content.action,
                 )
                 if invoice.payload.operation == "add"
                 else await self._guideline_store.update_guideline(
                     guideline_id=cast(GuidelineId, invoice.payload.updated_id),
                     params={
-                        "predicate": invoice.payload.content.predicate,
+                        "condition": invoice.payload.content.condition,
                         "action": invoice.payload.content.action,
                     },
                 )
@@ -210,8 +210,8 @@ class Application:
                 continue
 
             for proposition in invoice.data.connection_propositions:
-                source_key = f"{proposition.source.predicate}_{proposition.source.action}"
-                target_key = f"{proposition.target.predicate}_{proposition.target.action}"
+                source_key = f"{proposition.source.condition}_{proposition.source.action}"
+                target_key = f"{proposition.target.condition}_{proposition.target.action}"
 
                 if proposition not in connections:
                     if proposition.check_kind == "connection_with_another_evaluated_guideline":

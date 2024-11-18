@@ -61,7 +61,7 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
-    PredicatesEntailmentTestsSchema,
+    ConditionsEntailmentTestsSchema,
     ActionsContradictionTestsSchema,
 )
 from parlant.core.services.indexing.guideline_connection_proposer import (
@@ -152,9 +152,9 @@ async def container() -> AsyncIterator[Container]:
         container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
             NLPService
         ].get_schematic_generator(ToolCallInferenceSchema)
-        container[SchematicGenerator[PredicatesEntailmentTestsSchema]] = await container[
+        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = await container[
             NLPService
-        ].get_schematic_generator(PredicatesEntailmentTestsSchema)
+        ].get_schematic_generator(ConditionsEntailmentTestsSchema)
         container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
             NLPService
         ].get_schematic_generator(ActionsContradictionTestsSchema)

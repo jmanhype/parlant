@@ -93,7 +93,7 @@ class MessageEventGenerator:
 
             self._logger.debug(
                 f'Guidelines applied: {json.dumps([{
-                    "predicate": p.guideline.content.predicate,
+                    "condition": p.guideline.content.condition,
                     "action": p.guideline.content.action,
                     "rationale": p.rationale,
                     "score": p.score}

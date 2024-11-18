@@ -108,9 +108,9 @@ class GuidelineConnectionProposer:
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
 
 Each guideline is composed of two parts:
-- "when": This is a natural-language predicate that specifies when a guideline should apply.
+- "when": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
-          predicate to understand if we should have this guideline participate in generating
+          condition to understand if we should have this guideline participate in generating
           the next reply to the user.
 - "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.
@@ -543,10 +543,10 @@ Expected Output:
         builder.add_agent_identity(agent)
         # Find and add glossary to prompt
         causation_candidates = "\n\t".join(
-            f"{{id: {id}, when: {g.predicate}, then: {g.action}}}"
+            f"{{id: {id}, when: {g.condition}, then: {g.action}}}"
             for id, g in comparison_set.items()
         )
-        test_guideline = f"{{id: 0, when: '{evaluated_guideline.predicate}', then: '{evaluated_guideline.action}'}}"
+        test_guideline = f"{{id: 0, when: '{evaluated_guideline.condition}', then: '{evaluated_guideline.action}'}}"
         terms = await self._glossary_store.find_relevant_terms(
             agent.id,
             query=test_guideline + causation_candidates,

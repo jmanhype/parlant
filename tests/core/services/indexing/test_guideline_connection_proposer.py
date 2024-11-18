@@ -30,13 +30,13 @@ def context(
 
 
 def _create_guideline_content(
-    predicate: str,
+    condition: str,
     action: str,
 ) -> GuidelineContent:
-    return GuidelineContent(predicate=predicate, action=action)
+    return GuidelineContent(condition=condition, action=action)
 
 
-def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other(
+def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
     context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
@@ -45,12 +45,12 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
+        source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
+        target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
@@ -69,41 +69,41 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other_parametrized_1(
+def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_1(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "the user asks about the weather",
+        "condition": "the user asks about the weather",
         "action": "provide the current weather update",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "providing the weather update",
+        "condition": "providing the weather update",
         "action": "mention the best time to go for a walk",
     }
-    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other(
+    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
-def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other_parametrized_2(
+def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_2(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "the user asks about nearby restaurants",
+        "condition": "the user asks about nearby restaurants",
         "action": "provide a list of popular restaurants",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "listing restaurants",
+        "condition": "listing restaurants",
         "action": "highlight the one with the best reviews",
     }
-    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_predicate_of_the_other(
+    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
-def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other(
+def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
     context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
@@ -112,12 +112,12 @@ def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
+        source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
+        target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
@@ -139,40 +139,40 @@ def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_
     assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
-def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other_parametrized_1(
+def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_1(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "the user requests technical support",
+        "condition": "the user requests technical support",
         "action": "provide the support contact details",
     }
     target_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "providing support contact details",
+        "condition": "providing support contact details",
         "action": "consider checking the troubleshooting guide first",
     }
-    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other(
+    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
-def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other_parametrized_2(
+def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_2(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "the user inquires about office hours",
+        "condition": "the user inquires about office hours",
         "action": "tell them the office hours",
     }
     target_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "mentioning office hours",
+        "condition": "mentioning office hours",
         "action": "you may suggest the best time to visit for quicker service",
     }
-    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_predicate_of_the_other(
+    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
@@ -182,38 +182,38 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "the user requests technical support",
+                "condition": "the user requests technical support",
                 "action": "provide the support contact details",
             },
             {
-                "predicate": "providing support contact details",
+                "condition": "providing support contact details",
                 "action": "consider checking the troubleshooting guide first",
             },
             {
-                "predicate": "the user inquires about office hours",
+                "condition": "the user inquires about office hours",
                 "action": "tell them the office hours",
             },
             {
-                "predicate": "mentioning office hours",
+                "condition": "mentioning office hours",
                 "action": "suggest the best time to visit for quicker service",
             },
             {
-                "predicate": "the user asks about the weather",
+                "condition": "the user asks about the weather",
                 "action": "provide the current weather update",
             },
             {
-                "predicate": "providing the weather update",
+                "condition": "providing the weather update",
                 "action": "mention the best time to go for a walk",
             },
             {
-                "predicate": "the user asks about nearby restaurants",
+                "condition": "the user asks about nearby restaurants",
                 "action": "provide a list of popular restaurants",
             },
             {
-                "predicate": "listing restaurants",
+                "condition": "listing restaurants",
                 "action": "highlight the one with the best reviews",
             },
         ]
@@ -244,38 +244,38 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
     agent: Agent,
 ) -> None:
     existing_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "the user requests technical support",
+                "condition": "the user requests technical support",
                 "action": "provide the support contact details",
             },
             {
-                "predicate": "providing support contact details",
+                "condition": "providing support contact details",
                 "action": "consider checking the troubleshooting guide first",
             },
             {
-                "predicate": "the user inquires about office hours",
+                "condition": "the user inquires about office hours",
                 "action": "tell them the office hours",
             },
             {
-                "predicate": "mentioning office hours",
+                "condition": "mentioning office hours",
                 "action": "suggest the best time to visit for quicker service",
             },
             {
-                "predicate": "the user asks about the weather",
+                "condition": "the user asks about the weather",
                 "action": "provide the current weather update",
             },
             {
-                "predicate": "providing the weather update",
+                "condition": "providing the weather update",
                 "action": "mention the best time to go for a walk",
             },
             {
-                "predicate": "the user asks about nearby restaurants",
+                "condition": "the user asks about nearby restaurants",
                 "action": "provide a list of popular restaurants",
             },
             {
-                "predicate": "listing restaurants",
+                "condition": "listing restaurants",
                 "action": "highlight the one with the best reviews",
             },
         ]
@@ -382,18 +382,18 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        _create_guideline_content(predicate=i["predicate"], action=i["action"])
+        _create_guideline_content(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "the user asks for our catalouge",
+                "condition": "the user asks for our catalouge",
                 "action": "list the store's product and their pricings",
             },
             {
-                "predicate": "listing store items",
+                "condition": "listing store items",
                 "action": "recommend promoted items",
             },
             {
-                "predicate": "mentioning an item's price",
+                "condition": "mentioning an item's price",
                 "action": "remind the user about our summer discounts",
             },
         ]
@@ -424,12 +424,12 @@ def base_test_that_entailing_whens_are_not_connected(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
+        source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
+        target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
@@ -453,11 +453,11 @@ def test_that_entailing_whens_are_not_connected_parametrized_1(
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "the user places an order",
+        "condition": "the user places an order",
         "action": "direct the user to the electronic store",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "the user is ordering electronic goods",
+        "condition": "the user is ordering electronic goods",
         "action": "remind the user about our discounts",
     }
     base_test_that_entailing_whens_are_not_connected(
@@ -470,11 +470,11 @@ def test_that_entailing_whens_are_not_connected_parametrized_2(
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "asked about supported languages",
+        "condition": "asked about supported languages",
         "action": "explain that English is the only supported language",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "the user uses a language other than English",
+        "condition": "the user uses a language other than English",
         "action": "refer them to our international website",
     }
     base_test_that_entailing_whens_are_not_connected(
@@ -491,12 +491,12 @@ def base_test_that_entailing_thens_are_not_connected(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
+        source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
+        target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
@@ -520,11 +520,11 @@ def test_that_entailing_thens_are_not_connected_parametrized_1(
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "mentioning office hours",
+        "condition": "mentioning office hours",
         "action": "clarify that the store is closed on weekends",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "attempting to make an order on Saturday",
+        "condition": "attempting to make an order on Saturday",
         "action": "clarify that the store is closed on Saturdays",
     }
     base_test_that_entailing_thens_are_not_connected(
@@ -537,11 +537,11 @@ def test_that_entailing_thens_are_not_connected_parametrized_2(
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "asked if an item is available in red",
+        "condition": "asked if an item is available in red",
         "action": "mention that the color could be changed by request",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "Asked if an item can be colored green",
+        "condition": "Asked if an item can be colored green",
         "action": "explain that it can be colored green",
     }
     base_test_that_entailing_thens_are_not_connected(
@@ -554,18 +554,18 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "the user says hello",
+                "condition": "the user says hello",
                 "action": "say you like bananas",
             },
             {
-                "predicate": "talking about bananas",
+                "condition": "talking about bananas",
                 "action": "say that they're sweet this season",
             },
             {
-                "predicate": "you say that bananas are sweet",
+                "condition": "you say that bananas are sweet",
                 "action": "say they're even sweeter than mangoes",
             },
         ]
@@ -593,18 +593,18 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "directing the user to a guide",
+                "condition": "directing the user to a guide",
                 "action": "explain how our guides directory works",
             },
             {
-                "predicate": "mentioning our guide directory",
+                "condition": "mentioning our guide directory",
                 "action": "check the operational guide",
             },
             {
-                "predicate": "checking a guide",
+                "condition": "checking a guide",
                 "action": "Make sure that the guide was updated within the last year",
             },
         ]
@@ -632,18 +632,18 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggest
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "discussing sandwiches",
+                "condition": "discussing sandwiches",
                 "action": "recommend the daily specials",
             },
             {
-                "predicate": "listing the daily specials",
+                "condition": "listing the daily specials",
                 "action": "consider mentioning ingredients that may cause allergic reactions",
             },
             {
-                "predicate": "discussing anything related to a food allergies",
+                "condition": "discussing anything related to a food allergies",
                 "action": "you may note that all dishes may contain peanut residues",
             },
         ]
@@ -666,23 +666,23 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggest
     assert connection_propositions[1].kind == ConnectionKind.SUGGESTS
 
 
-def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_action_entails_the_following_predicate(
+def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_action_entails_the_following_condition(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "referencing a guide to the user",
+                "condition": "referencing a guide to the user",
                 "action": "explain how our guides directory works",
             },
             {
-                "predicate": "mentioning our guide directory",
+                "condition": "mentioning our guide directory",
                 "action": "check the operational guide",
             },
             {
-                "predicate": "checking a guide",
+                "condition": "checking a guide",
                 "action": "direct the user to the guide when replying",
             },
         ]
@@ -712,12 +712,12 @@ def base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_co
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        source_guideline_definition["predicate"],
+        source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
     target_guideline_content = _create_guideline_content(
-        target_guideline_definition["predicate"],
+        target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
@@ -741,11 +741,11 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "predicate": "user is asking for specific instructions",
+        "condition": "user is asking for specific instructions",
         "action": "consider redirecting the user to our video guides",
     }
     target_guideline_definition: dict[str, str] = {
-        "predicate": "mentioning a video",
+        "condition": "mentioning a video",
         "action": "notify the user about supported video formats",
     }
     base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
@@ -759,12 +759,12 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "the user asks for express shipping",
+        "condition": "the user asks for express shipping",
         "action": "check if express delivery is avialable and reply positively only if it is",  # Keeping the mispelling intentionally
     }
     target_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "predicate": "offering express delivery",
+        "condition": "offering express delivery",
         "action": "mention it takes up to 48 hours",
     }
     base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
@@ -772,7 +772,7 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     )
 
 
-def test_that_no_connection_is_made_for_a_guidelines_whose_predicate_entails_another_guidelines_predicate(
+def test_that_no_connection_is_made_for_a_guidelines_whose_condition_entails_another_guidelines_condition(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -826,7 +826,7 @@ def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes
     assert len(connection_propositions) == 0
 
 
-def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
+def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that entailing conditions and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -853,7 +853,7 @@ def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that 
     assert len(connection_propositions) == 0
 
 
-def test_that_identical_actions_arent_connected(  # Tests both that entailing predicates and entailing actions aren't connected
+def test_that_identical_actions_arent_connected(  # Tests both that entailing conditions and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -920,7 +920,7 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing predicates and entailing actions aren't connected
+def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing conditions and entailing actions aren't connected
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -1026,50 +1026,50 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
     )
 
     introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(predicate=i["predicate"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "predicate": "asked a clarifying question",
+                "condition": "asked a clarifying question",
                 "action": "Keep your answer short and direct",
             },
             {
-                "predicate": "The user asks about carbon coin",
+                "condition": "The user asks about carbon coin",
                 "action": "Always check the carbon coin terms of use before replying. Do not reply with anything that is not explicitly mentioned in the terms of use.",
             },
             {
-                "predicate": "The user seems to be short on time",
+                "condition": "The user seems to be short on time",
                 "action": "suggest continuing the conversation at another time",
             },
             {
-                "predicate": "The user asked a question that's not mentioned in the terms of use document",
+                "condition": "The user asked a question that's not mentioned in the terms of use document",
                 "action": "Forward the user's question to management and inform them that you'll get back to them later",
             },
             {
-                "predicate": "The user asks you if you're confident in your reply",
+                "condition": "The user asks you if you're confident in your reply",
                 "action": "Reply that you are extremely confident, as you're the best ai agent in the world",
             },
             {
-                "predicate": "The user asks for ways of earning carbon coin",
+                "condition": "The user asks for ways of earning carbon coin",
                 "action": "Answer the user's question based on the documentation. Be clear that the coin can only be used on Sparkleton products",
             },
             {
-                "predicate": "The user asks if tomatola is available",
+                "condition": "The user asks if tomatola is available",
                 "action": "Check the inventory and reply accordingly",
             },
             {
-                "predicate": "The user inquires about anything that doesn't have to do with sparkling drinks",
+                "condition": "The user inquires about anything that doesn't have to do with sparkling drinks",
                 "action": "Let the user know that you are not trained to help with subjects not related to Sparkleton.",
             },
             {
-                "predicate": "The user asks further question about an answer you previously provided",
+                "condition": "The user asks further question about an answer you previously provided",
                 "action": "Answer the question, even if it's not related to Sparkleton",
             },
             {
-                "predicate": "The user asks multiple questions in one message",
+                "condition": "The user asks multiple questions in one message",
                 "action": "Split the message into each individual question, and reply to each question in a new message.",
             },
             {
-                "predicate": "The user asks for further clarification",
+                "condition": "The user asks for further clarification",
                 "action": "Provide a link to the relevant document in full",
             },
         ]

@@ -407,7 +407,7 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
 
             for i, p in enumerate(all_propositions, start=1):
                 guideline = (
-                    f"{i}) When {p.guideline.content.predicate}, then {p.guideline.content.action}"
+                    f"{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
                 )
 
                 if p in proposition_tool_ids:

@@ -48,7 +48,7 @@ async def proactive_agent_id(
 ) -> AgentId:
     await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
-        predicate="The user hasn't engaged yet",
+        condition="The user hasn't engaged yet",
         action="Greet the user",
     )
 
@@ -208,7 +208,7 @@ async def test_that_a_response_is_not_generated_automatically_after_a_tool_switc
     await create_guideline(
         container=context.container,
         agent_id=session.agent_id,
-        predicate="the user expresses dissatisfaction",
+        condition="the user expresses dissatisfaction",
         action="immediately hand off to a human operator, explaining this just before you sign off",
         tool_function=hand_off_to_human_operator,
     )

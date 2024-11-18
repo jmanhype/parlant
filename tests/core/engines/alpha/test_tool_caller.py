@@ -45,7 +45,7 @@ def create_interaction_history(conversation_context: list[tuple[str, str]]) -> l
 
 
 def create_guideline_proposition(
-    predicate: str,
+    condition: str,
     action: str,
     score: int,
     rationale: str,
@@ -54,7 +54,7 @@ def create_guideline_proposition(
         id=GuidelineId(generate_id()),
         creation_utc=datetime.now(timezone.utc),
         content=GuidelineContent(
-            predicate=predicate,
+            condition=condition,
             action=action,
         ),
     )
@@ -106,7 +106,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
     ordinary_guideline_propositions = [
         create_guideline_proposition(
-            predicate="user asking a question",
+            condition="user asking a question",
             action="response in concise and breif answer",
             score=9,
             rationale="user ask a question of what available keyboard do we have",
@@ -115,7 +115,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
     tool_enabled_guideline_propositions = {
         create_guideline_proposition(
-            predicate="get all products by a specific category",
+            condition="get all products by a specific category",
             action="a user asks for the availability of products from a certain category",
             score=9,
             rationale="user asks for keyboards availability",
@@ -171,7 +171,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
 
     ordinary_guideline_propositions = [
         create_guideline_proposition(
-            predicate="user asking a question",
+            condition="user asking a question",
             action="response in concise and breif answer",
             score=9,
             rationale="user ask a question of what available keyboard do we have",
@@ -180,7 +180,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
 
     tool_enabled_guideline_propositions = {
         create_guideline_proposition(
-            predicate="get all products by a specific category",
+            condition="get all products by a specific category",
             action="a user asks for the availability of products from a certain category",
             score=9,
             rationale="user asks for keyboards availability",

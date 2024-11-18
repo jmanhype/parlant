@@ -152,7 +152,7 @@ class DeleteEventsResponse(DefaultBaseModel):
 
 class GuidelinePropositionDTO(DefaultBaseModel):
     guideline_id: GuidelineId
-    predicate: str
+    condition: str
     action: str
     score: int
     rationale: str
@@ -221,7 +221,7 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
         guideline_propositions=[
             GuidelinePropositionDTO(
                 guideline_id=proposition["guideline_id"],
-                predicate=proposition["predicate"],
+                condition=proposition["condition"],
                 action=proposition["action"],
                 score=proposition["score"],
                 rationale=proposition["rationale"],

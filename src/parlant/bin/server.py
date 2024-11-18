@@ -75,7 +75,7 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
-    PredicatesEntailmentTestsSchema,
+    ConditionsEntailmentTestsSchema,
     ActionsContradictionTestsSchema,
 )
 from parlant.core.services.indexing.guideline_connection_proposer import (
@@ -90,7 +90,7 @@ SERVER_ADDRESS = "https://localhost"
 
 DEFAULT_NLP_SERVICE = "openai"
 
-PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", "/var/lib/parlant"))
+PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", ".parlant-cache"))
 PARLANT_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 EXIT_STACK: AsyncExitStack
@@ -213,8 +213,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         ToolCallInferenceSchema
     )
     c[
-        SchematicGenerator[PredicatesEntailmentTestsSchema]
-    ] = await nlp_service.get_schematic_generator(PredicatesEntailmentTestsSchema)
+        SchematicGenerator[ConditionsEntailmentTestsSchema]
+    ] = await nlp_service.get_schematic_generator(ConditionsEntailmentTestsSchema)
     c[
         SchematicGenerator[ActionsContradictionTestsSchema]
     ] = await nlp_service.get_schematic_generator(ActionsContradictionTestsSchema)
@@ -234,7 +234,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[CoherenceChecker] = CoherenceChecker(
         c[Logger],
-        c[SchematicGenerator[PredicatesEntailmentTestsSchema]],
+        c[SchematicGenerator[ConditionsEntailmentTestsSchema]],
         c[SchematicGenerator[ActionsContradictionTestsSchema]],
         c[GlossaryStore],
     )

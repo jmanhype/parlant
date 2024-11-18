@@ -57,7 +57,7 @@ class _ContextVariableDTO(TypedDict):
 
 class _GuidelineDTO(TypedDict):
     id: str
-    predicate: str
+    condition: str
     action: str
 
 
@@ -215,7 +215,7 @@ async def list_guidelines(agent_id: str) -> list[_GuidelineDTO]:
 
 async def create_guideline(
     agent_id: str,
-    predicate: str,
+    condition: str,
     action: str,
     coherence_check: Optional[dict[str, Any]] = None,
     connection_propositions: Optional[dict[str, Any]] = None,
@@ -232,7 +232,7 @@ async def create_guideline(
                         "payload": {
                             "kind": "guideline",
                             "content": {
-                                "predicate": predicate,
+                                "condition": condition,
                                 "action": action,
                             },
                             "operation": "add",

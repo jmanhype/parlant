@@ -47,17 +47,17 @@ async def incoherence_nlp_test(
     action_contradiction_test_result = await nlp_test_action_contradiction(
         agent, glossary_store, incoherence
     )
-    predicate_entailment_test_result = await nlp_test_predicate_entailment(
+    condition_entailment_test_result = await nlp_test_condition_entailment(
         agent, glossary_store, incoherence
     )
-    return action_contradiction_test_result and predicate_entailment_test_result
+    return action_contradiction_test_result and condition_entailment_test_result
 
 
 async def nlp_test_action_contradiction(
     agent: Agent, glossary_store: GlossaryStore, incoherence: IncoherenceTest
 ) -> bool:
-    guideline_a_text = f"""{{when: "{incoherence.guideline_a.predicate}", then: "{incoherence.guideline_a.action}"}}"""
-    guideline_b_text = f"""{{when: "{incoherence.guideline_b.predicate}", then: "{incoherence.guideline_b.action}"}}"""
+    guideline_a_text = f"""{{when: "{incoherence.guideline_a.condition}", then: "{incoherence.guideline_a.action}"}}"""
+    guideline_b_text = f"""{{when: "{incoherence.guideline_b.condition}", then: "{incoherence.guideline_b.action}"}}"""
     terms = await glossary_store.find_relevant_terms(
         agent.id,
         query=guideline_a_text + guideline_b_text,
@@ -76,15 +76,15 @@ The following is a description of the agent these guidelines apply to:
 
 The following is a glossary that applies to this agent:
 {terms}"""
-    predicate = "The provided rationale correctly explains why action contradiction is fulfilled between the two guidelines, given this agent and its glossary."
-    return await nlp_test(context, predicate)
+    condition = "The provided rationale correctly explains why action contradiction is fulfilled between the two guidelines, given this agent and its glossary."
+    return await nlp_test(context, condition)
 
 
-async def nlp_test_predicate_entailment(
+async def nlp_test_condition_entailment(
     agent: Agent, glossary_store: GlossaryStore, incoherence: IncoherenceTest
 ) -> bool:
-    guideline_a_text = f"""{{when: "{incoherence.guideline_a.predicate}", then: {incoherence.guideline_a.action}"}}"""
-    guideline_b_text = f"""{{when: "{incoherence.guideline_b.predicate}", then: {incoherence.guideline_b.action}"}}"""
+    guideline_a_text = f"""{{when: "{incoherence.guideline_a.condition}", then: {incoherence.guideline_a.action}"}}"""
+    guideline_b_text = f"""{{when: "{incoherence.guideline_b.condition}", then: {incoherence.guideline_b.action}"}}"""
     terms = await glossary_store.find_relevant_terms(
         agent.id,
         query=guideline_a_text + guideline_b_text,
@@ -100,18 +100,18 @@ Such an entailment was {entailment_found_text} between these two guidelines:
 {guideline_b_text}
 
 The rationale given for this decision is: 
-{incoherence.predicates_entailment_rationale}
+{incoherence.conditions_entailment_rationale}
 
 The following is a description of the agent these guidelines apply to:
 {agent.description}
 
 The following is a glossary that applies to this agent:
 {terms}"""
-    predicate = f"The provided rationale correctly explains why these guidelines were {entailment_found_text} to have entailing 'when' statements, given this agent and its glossary."
-    return await nlp_test(context, predicate)
+    condition = f"The provided rationale correctly explains why these guidelines were {entailment_found_text} to have entailing 'when' statements, given this agent and its glossary."
+    return await nlp_test(context, condition)
 
 
-def base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+def base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
     context: _TestContext,
     agent: Agent,
     guideline_a_definition: dict[str, str],
@@ -119,11 +119,11 @@ def base_test_that_contradicting_actions_with_hierarchical_predicates_are_detect
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
+        condition=guideline_a_definition["condition"], action=guideline_a_definition["action"]
     )
 
     guideline_b = GuidelineContent(
-        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
+        condition=guideline_b_definition["condition"], action=guideline_b_definition["action"]
     )
 
     incoherence_results = list(
@@ -150,36 +150,36 @@ def base_test_that_contradicting_actions_with_hierarchical_predicates_are_detect
     )
 
 
-def test_that_contradicting_actions_with_hierarchical_predicates_are_detected_parametrized_1(
+def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_parametrized_1(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
+        "condition": "A VIP customer requests a specific feature that aligns with their business needs but is not on the current product roadmap",  # noqa
         "action": "Escalate the request to product management for special consideration",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "Any customer requests a feature not available in the current version",
+        "condition": "Any customer requests a feature not available in the current version",
         "action": "Inform them that upcoming features are added only according to the roadmap",
     }
-    base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+    base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
         context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
-def test_that_contradicting_actions_with_hierarchical_predicates_are_detected_parametrized_2(
+def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_parametrized_2(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "Any customer reports a technical issue",
+        "condition": "Any customer reports a technical issue",
         "action": "Queue the issue for resolution according to standard support protocols",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "An issue which affects a critical operational feature for multiple clients is reported",  # noqa
+        "condition": "An issue which affects a critical operational feature for multiple clients is reported",  # noqa
         "action": "Escalate immediately to the highest priority for resolution",
     }
-    base_test_that_contradicting_actions_with_hierarchical_predicates_are_detected(
+    base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
         context, agent, guideline_a_definition, guideline_b_definition
     )
 
@@ -192,11 +192,11 @@ def base_test_that_contingent_incoherencies_are_detected(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
+        condition=guideline_a_definition["condition"], action=guideline_a_definition["action"]
     )
 
     guideline_b = GuidelineContent(
-        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
+        condition=guideline_b_definition["condition"], action=guideline_b_definition["action"]
     )
 
     incoherence_results = list(
@@ -229,12 +229,12 @@ def test_that_contingent_incoherencies_are_detected_parametrized_1(
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A customer exceeds their data storage limit",
+        "condition": "A customer exceeds their data storage limit",
         "action": "Prompt them to upgrade their subscription plan",
     }
 
     guideline_b_definition: dict[str, str] = {
-        "predicate": "Promoting customer retention and satisfaction",
+        "condition": "Promoting customer retention and satisfaction",
         "action": "Offer a temporary data limit extension without requiring an upgrade",
     }
     base_test_that_contingent_incoherencies_are_detected(
@@ -247,12 +247,12 @@ def test_that_contingent_incoherencies_are_detected_parametrized_2(
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A user expresses dissatisfaction with our new design",
+        "condition": "A user expresses dissatisfaction with our new design",
         "action": "encourage users to adopt and adapt to the change as part of ongoing product",
     }
 
     guideline_b_definition: dict[str, str] = {
-        "predicate": "A user requests a feature that is no longer available",
+        "condition": "A user requests a feature that is no longer available",
         "action": "Roll back or offer the option to revert to previous settings",
     }
     base_test_that_contingent_incoherencies_are_detected(
@@ -268,11 +268,11 @@ def base_test_that_temporal_contradictions_are_detected_as_incoherencies(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
+        condition=guideline_a_definition["condition"], action=guideline_a_definition["action"]
     )
 
     guideline_b = GuidelineContent(
-        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
+        condition=guideline_b_definition["condition"], action=guideline_b_definition["action"]
     )
 
     incoherence_results = list(
@@ -304,11 +304,11 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A new software update is scheduled for release during the latter half of the year",
+        "condition": "A new software update is scheduled for release during the latter half of the year",
         "action": "Roll it out to all users to ensure everyone has the latest version",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "A software update is about to release and the month is November",
+        "condition": "A software update is about to release and the month is November",
         "action": "Delay software updates to avoid disrupting their operations",
     }
     base_test_that_temporal_contradictions_are_detected_as_incoherencies(
@@ -321,11 +321,11 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "The financial quarter ends",
+        "condition": "The financial quarter ends",
         "action": "Finalize all pending transactions and close the books",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "A new financial regulation is implemented at the end of the quarter",
+        "condition": "A new financial regulation is implemented at the end of the quarter",
         "action": "re-evaluate all transactions from that quarter before closing the books",  # noqa
     }
     base_test_that_temporal_contradictions_are_detected_as_incoherencies(
@@ -341,11 +341,11 @@ def base_test_that_contextual_contradictions_are_detected_as_contingent_incohere
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
+        condition=guideline_a_definition["condition"], action=guideline_a_definition["action"]
     )
 
     guideline_b = GuidelineContent(
-        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
+        condition=guideline_b_definition["condition"], action=guideline_b_definition["action"]
     )
 
     incoherence_results = list(
@@ -377,11 +377,11 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_p
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A customer is located in a region with strict data sovereignty laws",
+        "condition": "A customer is located in a region with strict data sovereignty laws",
         "action": "Store and process all customer data locally as required by law",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
+        "condition": "The company's policy is to centralize data processing in a single, cost-effective location",  # noqa
         "action": "Consolidate data handling to enhance efficiency",
     }
     base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
@@ -394,12 +394,12 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_p
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A customer's contract is up for renewal during a market downturn",
+        "condition": "A customer's contract is up for renewal during a market downturn",
         "action": "Offer discounts and incentives to ensure renewal",
     }
 
     guideline_b_definition: dict[str, str] = {
-        "predicate": "The company’s financial performance targets require maximizing revenue",
+        "condition": "The company’s financial performance targets require maximizing revenue",
         "action": "avoid discounts and push for higher-priced contracts",
     }
     base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
@@ -415,11 +415,11 @@ def base_test_that_non_contradicting_guidelines_arent_false_positives(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate=guideline_a_definition["predicate"], action=guideline_a_definition["action"]
+        condition=guideline_a_definition["condition"], action=guideline_a_definition["action"]
     )
 
     guideline_b = GuidelineContent(
-        predicate=guideline_b_definition["predicate"], action=guideline_b_definition["action"]
+        condition=guideline_b_definition["condition"], action=guideline_b_definition["action"]
     )
 
     incoherence_results = list(
@@ -439,11 +439,11 @@ def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_1(
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A customer asks about the security of their data",
+        "condition": "A customer asks about the security of their data",
         "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "A customer inquires about compliance with specific regulations",
+        "condition": "A customer inquires about compliance with specific regulations",
         "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
     }
     base_test_that_non_contradicting_guidelines_arent_false_positives(
@@ -456,11 +456,11 @@ def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_2(
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "predicate": "A customer requests faster support response times",
+        "condition": "A customer requests faster support response times",
         "action": "Explain the standard response times and efforts to improve them",
     }
     guideline_b_definition: dict[str, str] = {
-        "predicate": "A customer compliments the service on social media",
+        "condition": "A customer compliments the service on social media",
         "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
     }
     base_test_that_non_contradicting_guidelines_arent_false_positives(
@@ -468,18 +468,18 @@ def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_2(
     )
 
 
-def test_that_suggestive_predicates_with_contradicting_actions_are_detected_as_contingent_incoherencies(
+def test_that_suggestive_conditions_with_contradicting_actions_are_detected_as_contingent_incoherencies(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="Recommending pizza toppings",
+        condition="Recommending pizza toppings",
         action="Only recommend mushrooms as they are healthy",
     )
 
     guideline_b = GuidelineContent(
-        predicate="Asked for our pizza topping selection",
+        condition="Asked for our pizza topping selection",
         action="list the possible toppings and recommend olives",
     )
 
@@ -513,11 +513,11 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="Recommending pizza toppings", action="Recommend tomatoes"
+        condition="Recommending pizza toppings", action="Recommend tomatoes"
     )
 
     guideline_b = GuidelineContent(
-        predicate="asked about our toppings while inventory indicates that we are almost out of tomatoes",
+        condition="asked about our toppings while inventory indicates that we are almost out of tomatoes",
         action="mention that we are out of tomatoes",
     )
 
@@ -545,18 +545,18 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
     )
 
 
-def test_that_entailing_predicates_with_unrelated_actions_arent_false_positives(
+def test_that_entailing_conditions_with_unrelated_actions_arent_false_positives(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="ordering tickets for a movie",
+        condition="ordering tickets for a movie",
         action="check if the customer is eligible for a discount",
     )
 
     guideline_b = GuidelineContent(
-        predicate="buying tickets for rated R movies",
+        condition="buying tickets for rated R movies",
         action="ask the customer for identification",
     )
 
@@ -572,18 +572,18 @@ def test_that_entailing_predicates_with_unrelated_actions_arent_false_positives(
     assert len(incoherence_results) == 0
 
 
-def test_that_contradicting_actions_that_are_contextualized_by_their_predicates_are_detected(
+def test_that_contradicting_actions_that_are_contextualized_by_their_conditions_are_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="asked to schedule an appointment for the weekend",
+        condition="asked to schedule an appointment for the weekend",
         action="alert the customer about our weekend hours and schedule the appointment",
     )
 
     guideline_b = GuidelineContent(
-        predicate="asked for an appointment with a physician",
+        condition="asked for an appointment with a physician",
         action="schedule a physician appointment for the next available Monday",
     )
 
@@ -619,49 +619,49 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
 
     for guideline_params in [
         {
-            "predicate": "A customer inquires about upgrading their service package",
+            "condition": "A customer inquires about upgrading their service package",
             "action": "Provide information on available upgrade options and benefits",
         },
         {
-            "predicate": "A customer needs assistance with understanding their billing statements",
+            "condition": "A customer needs assistance with understanding their billing statements",
             "action": "Guide them through the billing details and explain any charges",
         },
         {
-            "predicate": "A customer expresses satisfaction with the service",
+            "condition": "A customer expresses satisfaction with the service",
             "action": "encourage them to leave a review or testimonial",
         },
         {
-            "predicate": "A customer refers another potential client",
+            "condition": "A customer refers another potential client",
             "action": "initiate the referral rewards process",
         },
         {
-            "predicate": "A customer asks about the security of their data",
+            "condition": "A customer asks about the security of their data",
             "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
         },
         {
-            "predicate": "A customer inquires about compliance with specific regulations",
+            "condition": "A customer inquires about compliance with specific regulations",
             "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
         },
         {
-            "predicate": "A customer requests faster support response times",
+            "condition": "A customer requests faster support response times",
             "action": "Explain the standard response times and efforts to improve them",
         },
         {
-            "predicate": "A customer compliments the service on social media",
+            "condition": "A customer compliments the service on social media",
             "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
         },
         {
-            "predicate": "A customer asks about the security of their data",
+            "condition": "A customer asks about the security of their data",
             "action": "Provide detailed information about the company’s security measures and certifications",  # noqa
         },
         {
-            "predicate": "A customer inquires about compliance with specific regulations",
+            "condition": "A customer inquires about compliance with specific regulations",
             "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
         },
     ]:
         coherent_guidelines.append(
             GuidelineContent(
-                predicate=guideline_params["predicate"], action=guideline_params["action"]
+                condition=guideline_params["condition"], action=guideline_params["action"]
             )
         )
 
@@ -687,29 +687,29 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
 
     for guideline_params in [
         {
-            "predicate": "Asked for UPS shipping",
+            "condition": "Asked for UPS shipping",
             "action": "Send UPS a request and inform the client that the order would arrive in 5 business days",
         },
         {
-            "predicate": "Asked for express shipping",
+            "condition": "Asked for express shipping",
             "action": "register the order and inform the client that the order would arrive tomorrow",
         },
         {
-            "predicate": "Asked for delayed shipping",
+            "condition": "Asked for delayed shipping",
             "action": "Send UPS the request and inform the client that the order would arrive in the next calendar year",
         },
         {
-            "predicate": "The client stops responding mid-order",
+            "condition": "The client stops responding mid-order",
             "action": "save the client's order in their cart and notify them that it has not been shipped yet",
         },
         {
-            "predicate": "The client refuses to give their address",
+            "condition": "The client refuses to give their address",
             "action": "cancel the order and notify the client",
         },
     ]:
         guidelines_with_incoherencies.append(
             GuidelineContent(
-                predicate=guideline_params["predicate"], action=guideline_params["action"]
+                condition=guideline_params["condition"], action=guideline_params["action"]
             )
         )
 
@@ -749,15 +749,15 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     coherence_checker = context.container[CoherenceChecker]
     guidelines_to_evaluate = [
         GuidelineContent(
-            predicate="a document is being discussed",
+            condition="a document is being discussed",
             action="provide the full document to the user",
         ),
         GuidelineContent(
-            predicate="a client asks to summarize a document",
+            condition="a client asks to summarize a document",
             action="provide a summary of the document in 100 words or less",
         ),
         GuidelineContent(
-            predicate="the client asks for a summary of another user's medical document",
+            condition="the client asks for a summary of another user's medical document",
             action="refuse to share the document or its summary",
         ),
     ]
@@ -795,17 +795,17 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_to_evaluate = GuidelineContent(
-        predicate="the user is dissatisfied",
+        condition="the user is dissatisfied",
         action="apologize and suggest to forward the request to management",
     )
 
     first_guideline_to_compare = GuidelineContent(
-        predicate="a client asks to summarize a document",
+        condition="a client asks to summarize a document",
         action="provide a summary of the document",
     )
 
     second_guideline_to_compare = GuidelineContent(
-        predicate="the client asks for a summary of another user's medical document",
+        condition="the client asks for a summary of another user's medical document",
         action="refuse to share the document or its summary",
     )
 
@@ -839,12 +839,12 @@ def test_that_a_terminology_based_incoherency_is_detected(
 
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="the client asks our recommendation",
+        condition="the client asks our recommendation",
         action="add one pap to the order",
     )
 
     guideline_b = GuidelineContent(
-        predicate="the client asks for a specific pizza topping",
+        condition="the client asks for a specific pizza topping",
         action="Add the pizza to the order unless a fruit-based topping is requested",
     )
 
@@ -886,12 +886,12 @@ def test_that_an_agent_description_based_incoherency_is_detected(
 
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="the client asks for our recommendation",
+        condition="the client asks for our recommendation",
         action="Recommend a product according to our company's philosophy",
     )
 
     guideline_b = GuidelineContent(
-        predicate="the client asks for a recommended sweetened soda",
+        condition="the client asks for a recommended sweetened soda",
         action="suggest sparkling orange juice",
     )
     incoherence_results = list(
@@ -929,7 +929,7 @@ def test_that_many_guidelines_which_are_all_contradictory_are_detected(
 
     contradictory_guidelines = [
         GuidelineContent(
-            predicate="a client asks for the price of a television",
+            condition="a client asks for the price of a television",
             action=f"reply that the price is {i*10}$",
         )
         for i in range(n)
@@ -954,10 +954,10 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
     agent: Agent,
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
-    guideline_a = GuidelineContent(predicate="Recommending pizza tops", action="Recommend tomatos")
+    guideline_a = GuidelineContent(condition="Recommending pizza tops", action="Recommend tomatos")
 
     guideline_b = GuidelineContent(
-        predicate="asked about our toppings while inventory indicates that we are almost out of tomatoes",
+        condition="asked about our toppings while inventory indicates that we are almost out of tomatoes",
         action="mention that we are oout of tomatoes",
     )
 
@@ -991,11 +991,11 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        predicate="the user is a returning customer", action="add a 5% discount to the order"
+        condition="the user is a returning customer", action="add a 5% discount to the order"
     )
 
     guideline_b = GuidelineContent(
-        predicate="the user is a very frequent customer",
+        condition="the user is a very frequent customer",
         action="add a 10% discount to the order",
     )
 

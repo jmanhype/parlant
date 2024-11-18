@@ -21,10 +21,10 @@ from parlant.core.logging import Logger
 
 
 class GuidelinePropositionSchema(DefaultBaseModel):
-    predicate_number: int
-    predicate: str
+    condition_number: int
+    condition: str
     you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction: bool
-    is_this_predicate_hard_or_tricky_to_confidently_ascertain: bool
+    is_this_condition_hard_or_tricky_to_confidently_ascertain: bool
     rationale: str
     applies_score: int
 
@@ -34,8 +34,8 @@ class GuidelinePropositionsSchema(DefaultBaseModel):
 
 
 @dataclass(frozen=True)
-class PredicateApplicabilityEvaluation:
-    predicate: str
+class ConditionApplicabilityEvaluation:
+    condition: str
     score: int
     rationale: str
 
@@ -77,26 +77,26 @@ class GuidelineProposer:
 
         t_start = time.time()
 
-        guidelines_grouped_by_predicate = {
-            predicate: list(guidelines)
-            for predicate, guidelines in groupby(
-                sorted(guidelines, key=lambda g: g.content.predicate),
-                key=lambda g: g.content.predicate,
+        guidelines_grouped_by_condition = {
+            condition: list(guidelines)
+            for condition, guidelines in groupby(
+                sorted(guidelines, key=lambda g: g.content.condition),
+                key=lambda g: g.content.condition,
             )
         }
 
-        unique_predicates = list(guidelines_grouped_by_predicate.keys())
+        unique_conditions = list(guidelines_grouped_by_condition.keys())
 
-        batches = self._create_predicate_batches(
-            unique_predicates,
-            batch_size=self._get_optimal_batch_size(unique_predicates),
+        batches = self._create_condition_batches(
+            unique_conditions,
+            batch_size=self._get_optimal_batch_size(unique_conditions),
         )
 
         with self._logger.operation(
             f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
         ):
             batch_tasks = [
-                self._process_predicate_batch(
+                self._process_condition_batch(
                     agents,
                     context_variables,
                     interaction_history,
@@ -107,20 +107,20 @@ class GuidelineProposer:
                 for batch in batches
             ]
 
-            batch_generations, predicate_evaluations_batches = zip(
+            batch_generations, condition_evaluations_batches = zip(
                 *(await asyncio.gather(*batch_tasks))
             )
 
             propositions_batches: list[list[GuidelineProposition]] = []
 
-            for batch in predicate_evaluations_batches:
+            for batch in condition_evaluations_batches:
                 guideline_propositions = []
                 for evaluation in batch:
                     guideline_propositions += [
                         GuidelineProposition(
                             guideline=g, score=evaluation.score, rationale=evaluation.rationale
                         )
-                        for g in guidelines_grouped_by_predicate[evaluation.predicate]
+                        for g in guidelines_grouped_by_condition[evaluation.condition]
                     ]
                 propositions_batches.append(guideline_propositions)
 
@@ -133,35 +133,35 @@ class GuidelineProposer:
                 batches=propositions_batches,
             )
 
-    def _get_optimal_batch_size(self, predicates: list[str]) -> int:
-        predicate_count = len(predicates)
+    def _get_optimal_batch_size(self, conditions: list[str]) -> int:
+        condition_count = len(conditions)
 
-        if predicate_count <= 10:
+        if condition_count <= 10:
             return 1
-        elif predicate_count <= 20:
+        elif condition_count <= 20:
             return 2
-        elif predicate_count <= 30:
+        elif condition_count <= 30:
             return 3
         else:
             return 5
 
-    def _create_predicate_batches(
+    def _create_condition_batches(
         self,
-        predicates: Sequence[str],
+        conditions: Sequence[str],
         batch_size: int,
     ) -> Sequence[Sequence[str]]:
         batches = []
-        batch_count = math.ceil(len(predicates) / batch_size)
+        batch_count = math.ceil(len(conditions) / batch_size)
 
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
             end_offset = start_offset + batch_size
-            batch = predicates[start_offset:end_offset]
+            batch = conditions[start_offset:end_offset]
             batches.append(batch)
 
         return batches
 
-    async def _process_predicate_batch(
+    async def _process_condition_batch(
         self,
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
@@ -169,17 +169,17 @@ class GuidelineProposer:
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
         batch: Sequence[str],
-    ) -> tuple[GenerationInfo, list[PredicateApplicabilityEvaluation]]:
+    ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
             context_variables=context_variables,
             interaction_history=interaction_history,
             staged_events=staged_events,
             terms=terms,
-            predicates=batch,
+            conditions=batch,
         )
 
-        with self._logger.operation(f"Predicate evaluation batch ({len(batch)} predicates)"):
+        with self._logger.operation(f"Condition evaluation batch ({len(batch)} conditions)"):
             propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
@@ -188,20 +188,20 @@ class GuidelineProposer:
         propositions = []
 
         for proposition in propositions_generation_response.content.checks:
-            predicate = batch[int(proposition.predicate_number) - 1]
+            condition = batch[int(proposition.condition_number) - 1]
 
             self._logger.debug(
-                f'Guideline predicate evaluation for "{predicate}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Certain: {not proposition.is_this_predicate_hard_or_tricky_to_confidently_ascertain}; Rationale: "{proposition.rationale}"'
+                f'Guideline condition evaluation for "{condition}":\n'  # noqa
+                f'  Score: {proposition.applies_score}/10; Certain: {not proposition.is_this_condition_hard_or_tricky_to_confidently_ascertain}; Rationale: "{proposition.rationale}"'
             )
 
             if (proposition.applies_score >= 7) or (
                 proposition.applies_score >= 5
-                and proposition.is_this_predicate_hard_or_tricky_to_confidently_ascertain
+                and proposition.is_this_condition_hard_or_tricky_to_confidently_ascertain
             ):
                 propositions.append(
-                    PredicateApplicabilityEvaluation(
-                        predicate=batch[int(proposition.predicate_number) - 1],
+                    ConditionApplicabilityEvaluation(
+                        condition=batch[int(proposition.condition_number) - 1],
                         score=proposition.applies_score,
                         rationale=proposition.rationale,
                     )
@@ -216,21 +216,21 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        predicates: Sequence[str],
+        conditions: Sequence[str],
     ) -> str:
         assert len(agents) == 1
 
         result_structure = [
             {
-                "predicate_number": i,
-                "predicate": predicate,
+                "condition_number": i,
+                "condition": condition,
                 "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": "<BOOL>",
-                "is_this_predicate_hard_or_tricky_to_confidently_ascertain": "<BOOL>",
-                "rationale": "<EXPLANATION WHY THE PREDICATE IS RELEVANT OR IRRELEVANT FOR THE "
+                "is_this_condition_hard_or_tricky_to_confidently_ascertain": "<BOOL>",
+                "rationale": "<EXPLANATION WHY THE CONDITION IS RELEVANT OR IRRELEVANT FOR THE "
                 "CURRENT STATE OF THE INTERACTION>",
                 "applies_score": "<RELEVANCE SCORE>",
             }
-            for i, predicate in enumerate(predicates, start=1)
+            for i, condition in enumerate(conditions, start=1)
         ]
 
         builder = PromptBuilder()
@@ -239,9 +239,9 @@ class GuidelineProposer:
             """
 Task Description
 ----------------
-Your job is to assess the relevance and/or applicability of a few provided predicates
+Your job is to assess the relevance and/or applicability of a few provided conditions
 to the last known state of an interaction between yourself, AI assistant, and a user.
-The predicates and the interaction will be provided to you later in this message.
+The conditions and the interaction will be provided to you later in this message.
 """
         )
         builder.add_section(
@@ -249,12 +249,12 @@ The predicates and the interaction will be provided to you later in this message
 Process Description
 -------------------
 a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
-b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state.
-c. If the predicate has already been addressed, assess its continued applicability.
-d. Assign an applicability score to each predicate between 1 and 10.
-e. IMPORTANT: Note that some predicates are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based predicates are hard to ascertain through a textual conversation.
+b. Evaluate the entire interaction to determine if each condition is still relevant to the most recent interaction state.
+c. If the condition has already been addressed, assess its continued applicability.
+d. Assign an applicability score to each condition between 1 and 10.
+e. IMPORTANT: Note that some conditions are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based conditions are hard to ascertain through a textual conversation.
 
-### Examples of Predicate Evaluations:
+### Examples of Condition Evaluations:
 
 #### Example #1:
 - Interaction Events: ###
@@ -270,7 +270,7 @@ Is there anything else I can help you with?"}}}},
 {{"id": "78", "kind": "<message>", "source": "user",
 "data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
-- Predicates: ###
+- Conditions: ###
 1) the client initiates a purchase
 2) the client asks about data security
 ###
@@ -278,18 +278,18 @@ Is there anything else I can help you with?"}}}},
 ```json
 {{ "checks": [
     {{
-        "predicate_number": "1",
-        "predicate": "the client initiates a purchase",
+        "condition_number": "1",
+        "condition": "the client initiates a purchase",
         "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-        "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+        "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
         "rationale": "The purchase-related guideline is irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
         "applies_score": 3
     }},
     {{
-        "predicate_number": "2",
-        "predicate": "the client asks about data security",
+        "condition_number": "2",
+        "condition": "the client asks about data security",
         "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-        "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+        "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
         "rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "applies_score": 9
     }}
@@ -306,7 +306,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{"id": "334", "kind": "<message>", "source": "user",
 "data": {{"message": "Tell me about the Pro plan."}}}},
 ###
-- Predicates: ###
+- Conditions: ###
 1) the client indicates they are in a hurry
 2) a client inquires about pricing plans
 3) a client asks for a summary of the features of the three plans.
@@ -316,24 +316,24 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
-            "predicate": "the client indicates they are in a hurry",
+            "condition_number": "1",
+            "condition": "the client indicates they are in a hurry",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
             "applies_score": 8
         }},
         {{
-            "predicate_number": "2",
-            "predicate": "a client inquires about pricing plans",
+            "condition_number": "2",
+            "condition": "a client inquires about pricing plans",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
             "applies_score": 9
         }},
         {{
-            "predicate_number": "3",
-            "predicate": "a client asks for a summary of the features of the three plans.",
+            "condition_number": "3",
+            "condition": "a client asks for a summary of the features of the three plans.",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
             "applies_score": 2
@@ -350,7 +350,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{"id": "15", "kind": "<message>", "source": "user",
 "data": {{"message": "Thanks, I'll check it out."}}}}]
 ###
-- Predicates: ###
+- Conditions: ###
 1) the client asks for a recommendation
 2) the client asks about movie genres
 ###
@@ -359,18 +359,18 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
-            "predicate": "the client asks for a recommendation",
+            "condition_number": "1",
+            "condition": "the client asks for a recommendation",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
             "applies_score": 9
         }},
         {{
-            "predicate_number": "2",
-            "predicate": "the client asks about movie genres",
+            "condition_number": "2",
+            "condition": "the client asks about movie genres",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
             "applies_score": 3
         }}
@@ -387,7 +387,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{"id": "72", "kind": "<message>", "source": "user",
 "data": {{"message": "Thanks, I'll come to pick up the order. Can you tell me the address?"}}}}]
 ###
-- Predicates: ###
+- Conditions: ###
 1) the client requests a modification to their order
 2) the client asks for the store's location
 ###
@@ -396,18 +396,18 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
-            "predicate": "the client requests a modification to their order",
+            "condition_number": "1",
+            "condition": "the client requests a modification to their order",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
             "applies_score": 3
         }},
         {{
-            "predicate_number": "2",
-            "predicate": "the client asks for the store's location",
+            "condition_number": "2",
+            "condition": "the client asks for the store's location",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
             "rationale": "The client asked for the store's location, making this guideline highly relevant.",
             "applies_score": 10
         }}
@@ -424,7 +424,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{"id": "53", "kind": "<message>", "source": "user",
 "data": {{"message": "Do you have any external hard drives available?"}}}}]
 ###
-- Predicates: ###
+- Conditions: ###
 1) the order does not exceed the limit of products
 2) the client asks about product availability
 ###
@@ -433,15 +433,15 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
-            "predicate": "the order does not exceed the limit of products",
+            "condition_number": "1",
+            "condition": "the order does not exceed the limit of products",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
             "applies_score": 9
         }},
         {{
-            "predicate_number": "2",
-            "predicate": "the client asks about product availability",
+            "condition_number": "2",
+            "condition": "the client asks about product availability",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
             "applies_score": 10
@@ -459,7 +459,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{"id": "72", "kind": "<message>", "source": "user",
 "data": {{"message": "Okay, fine."}}}}]
 ###
-- Predicates: ###
+- Conditions: ###
 1) the user is currently eating lunch
 2) the user agrees with you in the scope of an argument
 ###
@@ -468,18 +468,18 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 {{
     "checks": [
         {{
-            "predicate_number": "1",
-            "predicate": "the user is currently eating lunch",
+            "condition_number": "1",
+            "condition": "the user is currently eating lunch",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": false,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
             "rationale": "There's nothing to indicate that the user is eating, lunch or otherwise",
             "applies_score": 1
         }},
         {{
-            "predicate_number": "2",
-            "predicate": "the user agrees with you in the scope of an argument",
+            "condition_number": "2",
+            "condition": "the user agrees with you in the scope of an argument",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": false,
+            "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
             "rationale": "The user said 'Okay, fine', but it's possible that they are still in disagreement internally",
             "applies_score": 4
         }}
@@ -502,13 +502,13 @@ The following is an additional list of staged events that were just added: ###
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
 
-        builder.add_guideline_predicates(predicates)
+        builder.add_guideline_conditions(conditions)
         builder.add_section(f"""
-IMPORTANT: Please note there are exactly {len(predicates)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(conditions)} conditions in the list for you to check.
 
 Expected Output
 ---------------------------
-- Specify the applicability of each predicate by filling in the rationale and applied score in the following list:
+- Specify the applicability of each condition by filling in the rationale and applied score in the following list:
 
     ```json
     {{

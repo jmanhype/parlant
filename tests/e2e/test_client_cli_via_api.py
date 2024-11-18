@@ -306,7 +306,7 @@ class API:
     @staticmethod
     async def create_guideline(
         agent_id: str,
-        predicate: str,
+        condition: str,
         action: str,
         coherence_check: Optional[dict[str, Any]] = None,
         connection_propositions: Optional[dict[str, Any]] = None,
@@ -322,7 +322,7 @@ class API:
                             "payload": {
                                 "kind": "guideline",
                                 "content": {
-                                    "predicate": predicate,
+                                    "condition": condition,
                                     "action": action,
                                 },
                                 "operation": operation,
@@ -733,7 +733,7 @@ async def test_that_terms_are_loaded_on_server_startup(
 async def test_that_a_guideline_can_be_added(
     context: ContextOfTest,
 ) -> None:
-    predicate = "the user greets you"
+    condition = "the user greets you"
     action = "greet them back with 'Hello'"
 
     with run_server(context):
@@ -747,20 +747,20 @@ async def test_that_a_guideline_can_be_added(
                 "add",
                 "-a",
                 agent_id,
-                predicate,
+                condition,
                 action,
             )
             == os.EX_OK
         )
 
         guidelines = await API.list_guidelines(agent_id)
-        assert any(g["predicate"] == predicate and g["action"] == action for g in guidelines)
+        assert any(g["condition"] == condition and g["action"] == action for g in guidelines)
 
 
 async def test_that_a_guideline_can_be_updated(
     context: ContextOfTest,
 ) -> None:
-    predicate = "the user asks for help"
+    condition = "the user asks for help"
     initial_action = "offer assistance"
     updated_action = "provide detailed support information"
 
@@ -770,7 +770,7 @@ async def test_that_a_guideline_can_be_updated(
         agent_id = await API.get_first_agent_id()
 
         guideline = await API.create_guideline(
-            agent_id=agent_id, predicate=predicate, action=initial_action
+            agent_id=agent_id, condition=condition, action=initial_action
         )
 
         assert (
@@ -780,7 +780,7 @@ async def test_that_a_guideline_can_be_updated(
                 "-a",
                 agent_id,
                 guideline["id"],
-                predicate,
+                condition,
                 updated_action,
             )
             == os.EX_OK
@@ -790,14 +790,14 @@ async def test_that_a_guideline_can_be_updated(
             await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
         )["guideline"]
 
-        assert updated_guideline["predicate"] == predicate
+        assert updated_guideline["condition"] == condition
         assert updated_guideline["action"] == updated_action
 
 
 async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     context: ContextOfTest,
 ) -> None:
-    predicate = "the user greets you"
+    condition = "the user greets you"
     action = "greet them back with 'Hello'"
 
     conflicting_action = "ignore the user"
@@ -813,7 +813,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
                 "add",
                 "-a",
                 agent_id,
-                predicate,
+                condition,
                 action,
             )
             == os.EX_OK
@@ -824,7 +824,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
             "add",
             "-a",
             agent_id,
-            predicate,
+            condition,
             conflicting_action,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -838,17 +838,17 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
         guidelines = await API.list_guidelines(agent_id)
 
         assert not any(
-            g["predicate"] == predicate and g["action"] == conflicting_action for g in guidelines
+            g["condition"] == condition and g["action"] == conflicting_action for g in guidelines
         )
 
 
 async def test_that_adding_connected_guidelines_creates_connections(
     context: ContextOfTest,
 ) -> None:
-    predicate1 = "the user asks about the weather"
+    condition1 = "the user asks about the weather"
     action1 = "provide a weather update"
 
-    predicate2 = "providing a weather update"
+    condition2 = "providing a weather update"
     action2 = "include temperature and humidity"
 
     with run_server(context):
@@ -862,7 +862,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
                 "add",
                 "-a",
                 agent_id,
-                predicate1,
+                condition1,
                 action1,
             )
             == os.EX_OK
@@ -874,7 +874,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
                 "add",
                 "-a",
                 agent_id,
-                predicate2,
+                condition2,
                 action2,
             )
             == os.EX_OK
@@ -900,7 +900,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
 async def test_that_a_guideline_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
-    predicate = "the user says goodbye"
+    condition = "the user says goodbye"
     action = "say 'Goodbye' back"
 
     with run_server(context):
@@ -909,7 +909,7 @@ async def test_that_a_guideline_can_be_viewed(
         agent_id = await API.get_first_agent_id()
 
         guideline = await API.create_guideline(
-            agent_id=agent_id, predicate=predicate, action=action
+            agent_id=agent_id, condition=condition, action=action
         )
 
         process = await run_cli(
@@ -926,17 +926,17 @@ async def test_that_a_guideline_can_be_viewed(
         assert process.returncode == os.EX_OK
 
         assert guideline["id"] in output
-        assert predicate in output
+        assert condition in output
         assert action in output
 
 
 async def test_that_guidelines_can_be_listed(
     context: ContextOfTest,
 ) -> None:
-    predicate1 = "the user asks for help"
+    condition1 = "the user asks for help"
     action1 = "provide assistance"
 
-    predicate2 = "the user needs support"
+    condition2 = "the user needs support"
     action2 = "offer support"
 
     with run_server(context):
@@ -944,8 +944,8 @@ async def test_that_guidelines_can_be_listed(
 
         agent_id = await API.get_first_agent_id()
 
-        _ = await API.create_guideline(agent_id=agent_id, predicate=predicate1, action=action1)
-        _ = await API.create_guideline(agent_id=agent_id, predicate=predicate2, action=action2)
+        _ = await API.create_guideline(agent_id=agent_id, condition=condition1, action=action1)
+        _ = await API.create_guideline(agent_id=agent_id, condition=condition2, action=action2)
 
         process = await run_cli(
             "guideline",
@@ -959,19 +959,19 @@ async def test_that_guidelines_can_be_listed(
         output_list = stdout.decode() + stderr.decode()
         assert process.returncode == os.EX_OK
 
-        assert predicate1 in output_list
+        assert condition1 in output_list
         assert action1 in output_list
-        assert predicate2 in output_list
+        assert condition2 in output_list
         assert action2 in output_list
 
 
 async def test_that_guidelines_can_be_entailed(
     context: ContextOfTest,
 ) -> None:
-    predicate1 = "the user needs assistance"
+    condition1 = "the user needs assistance"
     action1 = "provide help"
 
-    predicate2 = "user ask about a certain subject"
+    condition2 = "user ask about a certain subject"
     action2 = "offer detailed explanation"
 
     with run_server(context):
@@ -987,7 +987,7 @@ async def test_that_guidelines_can_be_entailed(
                 agent_id,
                 "--no-check",
                 "--no-index",
-                predicate1,
+                condition1,
                 action1,
             )
             == os.EX_OK
@@ -1001,7 +1001,7 @@ async def test_that_guidelines_can_be_entailed(
                 agent_id,
                 "--no-check",
                 "--no-index",
-                predicate2,
+                condition2,
                 action2,
             )
             == os.EX_OK
@@ -1010,10 +1010,10 @@ async def test_that_guidelines_can_be_entailed(
         guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
-            g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
+            g for g in guidelines if g["condition"] == condition1 and g["action"] == action1
         )
         second_guideline = next(
-            g for g in guidelines if g["predicate"] == predicate2 and g["action"] == action2
+            g for g in guidelines if g["condition"] == condition2 and g["action"] == action2
         )
 
         process = await run_cli(
@@ -1043,10 +1043,10 @@ async def test_that_guidelines_can_be_entailed(
 async def test_that_guidelines_can_be_suggestively_entailed(
     context: ContextOfTest,
 ) -> None:
-    predicate1 = "the user needs assistance"
+    condition1 = "the user needs assistance"
     action1 = "provide help"
 
-    predicate2 = "user ask about a certain subject"
+    condition2 = "user ask about a certain subject"
     action2 = "offer detailed explanation"
 
     with run_server(context):
@@ -1062,7 +1062,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
                 agent_id,
                 "--no-check",
                 "--no-index",
-                predicate1,
+                condition1,
                 action1,
             )
             == os.EX_OK
@@ -1076,7 +1076,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
                 agent_id,
                 "--no-check",
                 "--no-index",
-                predicate2,
+                condition2,
                 action2,
             )
             == os.EX_OK
@@ -1085,10 +1085,10 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         guidelines = await API.list_guidelines(agent_id)
 
         first_guideline = next(
-            g for g in guidelines if g["predicate"] == predicate1 and g["action"] == action1
+            g for g in guidelines if g["condition"] == condition1 and g["action"] == action1
         )
         second_guideline = next(
-            g for g in guidelines if g["predicate"] == predicate2 and g["action"] == action2
+            g for g in guidelines if g["condition"] == condition2 and g["action"] == action2
         )
 
         process = await run_cli(
@@ -1126,7 +1126,7 @@ async def test_that_a_guideline_can_be_removed(
         agent_id = await API.get_first_agent_id()
 
         guideline = await API.create_guideline(
-            agent_id, predicate="the user greets you", action="greet them back with 'Hello'"
+            agent_id, condition="the user greets you", action="greet them back with 'Hello'"
         )
 
         assert (
@@ -1164,7 +1164,7 @@ async def test_that_a_connection_can_be_removed(
                             "payload": {
                                 "kind": "guideline",
                                 "content": {
-                                    "predicate": "the user greets you",
+                                    "condition": "the user greets you",
                                     "action": "greet them back with 'Hello'",
                                 },
                                 "operation": "add",
@@ -1179,11 +1179,11 @@ async def test_that_a_connection_can_be_removed(
                                     {
                                         "check_kind": "connection_with_another_evaluated_guideline",
                                         "source": {
-                                            "predicate": "the user greets you",
+                                            "condition": "the user greets you",
                                             "action": "greet them back with 'Hello'",
                                         },
                                         "target": {
-                                            "predicate": "greeting the user",
+                                            "condition": "greeting the user",
                                             "action": "ask for his health condition",
                                         },
                                         "connection_kind": "entails",
@@ -1196,7 +1196,7 @@ async def test_that_a_connection_can_be_removed(
                             "payload": {
                                 "kind": "guideline",
                                 "content": {
-                                    "predicate": "greeting the user",
+                                    "condition": "greeting the user",
                                     "action": "ask for his health condition",
                                 },
                                 "operation": "add",
@@ -1211,11 +1211,11 @@ async def test_that_a_connection_can_be_removed(
                                     {
                                         "check_kind": "connection_with_another_evaluated_guideline",
                                         "source": {
-                                            "predicate": "the user greets you",
+                                            "condition": "the user greets you",
                                             "action": "greet them back with 'Hello'",
                                         },
                                         "target": {
-                                            "predicate": "greeting the user",
+                                            "condition": "greeting the user",
                                             "action": "ask for his health condition",
                                         },
                                         "connection_kind": "entails",
@@ -1258,7 +1258,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
 
         guideline = await API.create_guideline(
             agent_id,
-            predicate="the user wants to get meeting details",
+            condition="the user wants to get meeting details",
             action="get meeting event information",
         )
 
@@ -1317,7 +1317,7 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
 
         guideline = await API.create_guideline(
             agent_id,
-            predicate="the user wants to get meeting details",
+            condition="the user wants to get meeting details",
             action="get meeting event information",
         )
 
@@ -1591,7 +1591,7 @@ async def test_that_a_message_interaction_can_be_inspected(
 
         guideline = await API.create_guideline(
             agent_id=agent_id,
-            predicate="the user talks about cows",
+            condition="the user talks about cows",
             action="address the user by his first name and say you like Pepsi",
         )
 
@@ -1636,7 +1636,7 @@ async def test_that_a_message_interaction_can_be_inspected(
         output = stdout.decode() + stderr.decode()
         assert process.returncode == os.EX_OK
 
-        assert guideline["predicate"] in output
+        assert guideline["condition"] in output
         assert guideline["action"] in output
         assert term["name"] in output
         assert term["description"] in output

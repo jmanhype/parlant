@@ -84,12 +84,12 @@ def propose_guidelines(
     return list(chain.from_iterable(guideline_proposition_result.batches))
 
 
-def create_guideline(context: ContextOfTest, predicate: str, action: str) -> Guideline:
+def create_guideline(context: ContextOfTest, condition: str, action: str) -> Guideline:
     guideline = Guideline(
         id=GuidelineId(generate_id()),
         creation_utc=datetime.now(timezone.utc),
         content=GuidelineContent(
-            predicate=predicate,
+            condition=condition,
             action=action,
         ),
     )
@@ -105,31 +105,31 @@ def create_guideline_by_name(
 ) -> Guideline:
     guidelines = {
         "check_drinks_in_stock": {
-            "predicate": "a client asks for a drink",
+            "condition": "a client asks for a drink",
             "action": "check if the drink is available in the following stock: "
             "['Sprite', 'Coke', 'Fanta']",
         },
         "check_toppings_in_stock": {
-            "predicate": "a client asks for toppings",
+            "condition": "a client asks for toppings",
             "action": "check if the toppings are available in the following stock: "
             "['Pepperoni', 'Tomatoes', 'Olives']",
         },
         "payment_process": {
-            "predicate": "a client is in the payment process",
+            "condition": "a client is in the payment process",
             "action": "Follow the payment instructions, "
             "which are: 1. Pay in cash only, 2. Pay only at the location.",
         },
         "address_location": {
-            "predicate": "the client needs to know our address",
+            "condition": "the client needs to know our address",
             "action": "Inform the client that our address is at Sapir 2, Herzliya.",
         },
         "mood_support": {
-            "predicate": "the client is experiencing stress or dissatisfaction",
+            "condition": "the client is experiencing stress or dissatisfaction",
             "action": "Provide comforting responses and suggest alternatives "
             "or support to alleviate the client's mood.",
         },
         "class_booking": {
-            "predicate": "the client asks about booking a class or an appointment",
+            "condition": "the client asks about booking a class or an appointment",
             "action": "Provide available times and facilitate the booking process, "
             "ensuring to clarify any necessary details such as class type, date, and requirements.",
         },
@@ -137,7 +137,7 @@ def create_guideline_by_name(
 
     guideline = create_guideline(
         context=context,
-        predicate=guidelines[guideline_name]["predicate"],
+        condition=guidelines[guideline_name]["condition"],
         action=guidelines[guideline_name]["action"],
     )
 
@@ -321,18 +321,18 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_2(
     )
 
 
-def test_that_guidelines_with_the_same_predicates_are_scored_identically(
+def test_that_guidelines_with_the_same_conditions_are_scored_identically(
     context: ContextOfTest,
 ) -> None:
     relevant_guidelines = [
         create_guideline(
             context=context,
-            predicate="the user greets you",
+            condition="the user greets you",
             action="talk about apples",
         ),
         create_guideline(
             context=context,
-            predicate="the user greets you",
+            condition="the user greets you",
             action="talk about oranges",
         ),
     ]
@@ -340,12 +340,12 @@ def test_that_guidelines_with_the_same_predicates_are_scored_identically(
     _ = [  # irrelevant guidelines
         create_guideline(
             context=context,
-            predicate="talking about the weather",
+            condition="talking about the weather",
             action="talk about apples",
         ),
         create_guideline(
             context=context,
-            predicate="talking about the weather",
+            condition="talking about the weather",
             action="talk about oranges",
         ),
     ]

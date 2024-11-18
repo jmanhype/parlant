@@ -30,7 +30,7 @@ class IncoherenceKind(Enum):
     CONTINGENT = auto()
 
 
-class PredicatesEntailmentTestSchema(DefaultBaseModel):
+class ConditionsEntailmentTestSchema(DefaultBaseModel):
     compared_guideline_id: int
     origin_guideline_when: str
     compared_guideline_when: str
@@ -42,8 +42,8 @@ class PredicatesEntailmentTestSchema(DefaultBaseModel):
     compared_entails_origin_severity: int
 
 
-class PredicatesEntailmentTestsSchema(DefaultBaseModel):
-    predicate_entailments: list[PredicatesEntailmentTestSchema]
+class ConditionsEntailmentTestsSchema(DefaultBaseModel):
+    condition_entailments: list[ConditionsEntailmentTestSchema]
 
 
 class ActionsContradictionTestSchema(DefaultBaseModel):
@@ -64,8 +64,8 @@ class IncoherenceTest:
     guideline_a: GuidelineContent
     guideline_b: GuidelineContent
     IncoherenceKind: IncoherenceKind
-    predicates_entailment_rationale: str
-    predicates_entailment_severity: int
+    conditions_entailment_rationale: str
+    conditions_entailment_severity: int
     actions_contradiction_rationale: str
     actions_contradiction_severity: int
     creation_utc: datetime
@@ -75,13 +75,13 @@ class CoherenceChecker:
     def __init__(
         self,
         logger: Logger,
-        predicates_test_schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
+        conditions_test_schematic_generator: SchematicGenerator[ConditionsEntailmentTestsSchema],
         actions_test_schematic_generator: SchematicGenerator[ActionsContradictionTestsSchema],
         glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
-        self._predicates_entailment_checker = PredicatesEntailmentChecker(
-            logger, predicates_test_schematic_generator, glossary_store
+        self._conditions_entailment_checker = ConditionsEntailmentChecker(
+            logger, conditions_test_schematic_generator, glossary_store
         )
         self._actions_contradiction_checker = ActionsContradictionChecker(
             logger, actions_test_schematic_generator, glossary_store
@@ -133,10 +133,10 @@ class CoherenceChecker:
     ) -> Sequence[IncoherenceTest]:
         indexed_comparison_guidelines = {i: c for i, c in enumerate(comparison_guidelines, start=1)}
         (
-            predicates_entailment_responses,
+            conditions_entailment_responses,
             actions_contradiction_responses,
         ) = await async_utils.safe_gather(
-            self._predicates_entailment_checker.evaluate(
+            self._conditions_entailment_checker.evaluate(
                 agent, guideline_to_evaluate, indexed_comparison_guidelines
             ),
             self._actions_contradiction_checker.evaluate(
@@ -146,7 +146,7 @@ class CoherenceChecker:
 
         incoherencies = []
         for id, g in indexed_comparison_guidelines.items():
-            w = [w for w in predicates_entailment_responses if w.compared_guideline_id == id][0]
+            w = [w for w in conditions_entailment_responses if w.compared_guideline_id == id][0]
             t = [t for t in actions_contradiction_responses if t.compared_guideline_id == id][0]
             if t.severity >= ACTION_CONTRADICTION_SEVERITY_THRESHOLD:
                 if w.compared_entails_origin_severity > w.origin_entails_compared_severity:
@@ -162,8 +162,8 @@ class CoherenceChecker:
                         IncoherenceKind=IncoherenceKind.STRICT
                         if entailment_severity >= CRITICAL_INCOHERENCE_THRESHOLD
                         else IncoherenceKind.CONTINGENT,
-                        predicates_entailment_rationale=entailment_rationale,
-                        predicates_entailment_severity=entailment_severity,
+                        conditions_entailment_rationale=entailment_rationale,
+                        conditions_entailment_severity=entailment_severity,
                         actions_contradiction_rationale=t.rationale,
                         actions_contradiction_severity=t.severity,
                         creation_utc=datetime.now(timezone.utc),
@@ -176,11 +176,11 @@ class CoherenceChecker:
         return incoherencies
 
 
-class PredicatesEntailmentChecker:
+class ConditionsEntailmentChecker:
     def __init__(
         self,
         logger: Logger,
-        schematic_generator: SchematicGenerator[PredicatesEntailmentTestsSchema],
+        schematic_generator: SchematicGenerator[ConditionsEntailmentTestsSchema],
         glossary_store: GlossaryStore,
     ) -> None:
         self._logger = logger
@@ -193,7 +193,7 @@ class PredicatesEntailmentChecker:
         agent: Agent,
         guideline_to_evaluate: GuidelineContent,
         indexed_comparison_guidelines: dict[int, GuidelineContent],
-    ) -> Sequence[PredicatesEntailmentTestSchema]:
+    ) -> Sequence[ConditionsEntailmentTestSchema]:
         prompt = await self._format_prompt(
             agent, guideline_to_evaluate, indexed_comparison_guidelines
         )
@@ -205,14 +205,14 @@ class PredicatesEntailmentChecker:
         self._logger.debug(
             f"""
 ----------------------------------------
-Predicate Entailment Test Results:
+Condition Entailment Test Results:
 ----------------------------------------
-{json.dumps([p.model_dump(mode="json") for p in response.content.predicate_entailments], indent=2)}
+{json.dumps([p.model_dump(mode="json") for p in response.content.condition_entailments], indent=2)}
 ----------------------------------------
 """
         )
 
-        return response.content.predicate_entailments
+        return response.content.condition_entailments
 
     async def _format_prompt(
         self,
@@ -222,19 +222,19 @@ Predicate Entailment Test Results:
     ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
-            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
+            f"""{{"id": {id}, "when": "{g.condition}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.condition}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
 
 Each guideline is composed of two parts:
-- "when": This is a natural-language predicate that specifies when a guideline should apply.
+- "when": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
-          predicate to understand if we should have this guideline participate in generating
+          condition to understand if we should have this guideline participate in generating
           the next reply to the user.
 - "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.
@@ -250,7 +250,7 @@ Be forgiving regarding misspellings and grammatical errors.
 Please output JSON structured in the following format:
 ```json
 {{
-    "predicate_entailments": [
+    "condition_entailments": [
         {{
             "compared_guideline_id": <id of the compared guideline>,
             "origin_guideline_when": <The origin guideline's 'when'>,
@@ -291,7 +291,7 @@ Comparison candidates: ###
 Expected Output:
 ```json
 {{
-    "predicate_entailments": [
+    "condition_entailments": [
         {{
             "compared_guideline_id": 1,
             "origin_guideline_when": "a customer orders an electrical appliance",
@@ -371,7 +371,7 @@ Comparison candidates: ###
 Expected Output:
 ```json
 {{
-    "predicate_entailments": [
+    "condition_entailments": [
         {{
             "compared_guideline_id": 1,
             "origin_guideline_when": "offering products to the user",
@@ -494,19 +494,19 @@ Action Contradiction Test Results:
     ) -> str:
         builder = PromptBuilder()
         comparison_candidates_text = "\n".join(
-            f"""{{"id": {id}, "when": "{g.predicate}", "then": "{g.action}"}}"""
+            f"""{{"id": {id}, "when": "{g.condition}", "then": "{g.action}"}}"""
             for id, g in indexed_comparison_guidelines.items()
         )
-        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.predicate}", "then": "{guideline_to_evaluate.action}"}}"""
+        guideline_to_evaluate_text = f"""{{"when": "{guideline_to_evaluate.condition}", "then": "{guideline_to_evaluate.action}"}}"""
 
         builder.add_section(
             f"""
 In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
 
 Each guideline is composed of two parts:
-- "when": This is a natural-language predicate that specifies when a guideline should apply.
+- "when": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
-          predicate to understand if we should have this guideline participate in generating
+          condition to understand if we should have this guideline participate in generating
           the next reply to the user.
 - "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.

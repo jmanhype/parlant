@@ -68,7 +68,7 @@ def given_a_guideline_name_to_when(
     context.guidelines[guideline_name] = context.sync_await(
         guideline_store.create_guideline(
             guideline_set=agent_id,
-            predicate=a_condition_holds,
+            condition=a_condition_holds,
             action=do_something,
         )
     )
