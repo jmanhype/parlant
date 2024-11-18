@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
+import httpx
 import logging
 import os
 from pathlib import Path
@@ -9,8 +10,6 @@ import sys
 import time
 from typing import Any, Iterator, Optional, TypedDict, cast
 from typing_extensions import Literal
-
-import httpx
 
 
 class _ServiceDTO(TypedDict):
@@ -96,11 +95,22 @@ class ContextOfTest:
     home_dir: Path
 
 
+def is_server_running(port: int) -> bool:
+    if _output_view := subprocess.getoutput(f"lsof -i:{port}"):
+        print(_output_view)
+        return True
+
+    return False
+
+
 @contextmanager
 def run_server(
     context: ContextOfTest,
     extra_args: list[str] = [],
 ) -> Iterator[subprocess.Popen[str]]:
+    if is_server_running(int(SERVER_PORT)):
+        raise Exception(f"Server already running on chosen port {SERVER_PORT}")
+
     exec_args = [
         "poetry",
         "run",
@@ -132,14 +142,14 @@ def run_server(
 
             process.send_signal(signal.SIGINT)
 
-            for i in range(5):
+            for _ in range(5):
                 if process.poll() is not None:
                     return
                 time.sleep(0.5)
 
             process.terminate()
 
-            for i in range(5):
+            for _ in range(5):
                 if process.poll() is not None:
                     return
                 time.sleep(0.5)

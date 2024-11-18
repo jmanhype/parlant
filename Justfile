@@ -2,6 +2,7 @@ set dotenv-load
 set positional-arguments
 
 PARLANT_HOME := "./cache"
+LOGS_DIR := "./logs"
 SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8000")
 
 setup-cache:
@@ -19,18 +20,52 @@ setup-cache:
 @kill-server:
   netstat -tulpn | grep :8000 | awk '{print $7}' | cut -d'/' -f1 | xargs kill
 
-@test *tests='':
-  mkdir -p logs
-  poetry run pytest -v {{tests}} --plan=initial --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log
+@kill-cli-test-server:
+  lsof -i:8089 | grep 8089 | cut -d " " -f 3 | xargs kill
 
-@test-ns *tests='':
-  mkdir -p logs
-  poetry run pytest -v {{tests}} --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log
+@mklogdir:
+  mkdir -p {{LOGS_DIR}}
 
-@test-co *tests='':
-  mkdir -p logs
-  poetry run pytest -v {{tests}} --co  --plan=initial --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml| tee logs/testresults.log
+@test *tests='': mklogdir
+  poetry run pytest \
+    -v {{tests}} \
+    --plan=initial \
+    --tap-combined --tap-outdir=logs \
+    --junit-xml=logs/testresults.xml \
+    | tee logs/testresults.log
 
-@test-ns-co *tests='':
-  mkdir -p logs
-  poetry run pytest -v {{tests}} --co  --tap-combined --tap-outdir=logs --junit-xml=logs/testresults.xml | tee logs/testresults.log
+@test-ns *tests='': mklogdir
+  poetry run pytest \
+    -v {{tests}} \
+    --tap-combined --tap-outdir=logs \
+    --junit-xml=logs/testresults.xml \
+    | tee logs/testresults.log
+
+@test-co *tests='': mklogdir
+  poetry run pytest \
+    -v {{tests}} \
+    --plan=initial --co \
+    --tap-combined --tap-outdir=logs \
+    --junit-xml=logs/testresults.xml \
+    | tee logs/testresults.log
+
+@test-ns-co *tests='': mklogdir
+  poetry run pytest \
+    -v {{tests}} \
+    --co \
+    --tap-combined --tap-outdir=logs \
+    --junit-xml=logs/testresults.xml \
+    | tee logs/testresults.log
+
+@test-client:
+  poetry run pytest \
+    -v tests/e2e/test_client_cli_via_api.py --plan=initial
+
+@test-client-ns:
+  poetry run pytest \
+    -v tests/e2e/test_client_cli_via_api.py
+
+    
+@test-client-sdk:
+  poetry run pytest \
+    -v tests/client --plan=initial

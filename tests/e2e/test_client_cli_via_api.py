@@ -20,7 +20,7 @@ from tests.e2e.test_utilities import (
 from parlant.core.services.tools.plugins import tool, ToolEntry, PluginServer
 from parlant.core.tools import ToolResult, ToolContext
 
-REASONABLE_AMOUNT_OF_TIME = 5
+REASONABLE_AMOUNT_OF_TIME = 15
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 OPENAPI_SERVER_PORT = 8091
@@ -341,7 +341,7 @@ class API:
                             "error": None,
                         }
                     ]
-                },
+                },  # type: ignore
             )
 
             response.raise_for_status()
@@ -450,7 +450,7 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        exit_status = await run_cli_and_get_exit_status(
+        process = await run_cli(
             "agent",
             "add",
             name,
@@ -458,8 +458,13 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
             description,
             "--max-engine-iterations",
             str(123),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        assert exit_status == os.EX_OK
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         agents = await API.list_agents()
         new_agent = next((a for a in agents if a["name"] == name), None)
@@ -467,12 +472,17 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
         assert new_agent["description"] == description
         assert new_agent["max_engine_iterations"] == 123
 
-        exit_status = await run_cli_and_get_exit_status(
+        process = await run_cli(
             "agent",
             "add",
             "Test Agent With No Description",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        assert exit_status == os.EX_OK
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         agents = await API.list_agents()
         new_agent_no_desc = next(
@@ -491,17 +501,22 @@ async def test_that_an_agent_can_be_updated(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        await run_cli_and_get_exit_status(
+        process = await run_cli(
             "agent",
             "update",
             "--description",
             new_description,
             "--max-engine-iterations",
             str(new_max_engine_iterations),
-        ) == os.EX_OK
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         agent = (await API.list_agents())[0]
-
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
 
@@ -600,7 +615,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
 
         agent_id = await API.get_first_agent_id()
 
-        await run_cli_and_get_exit_status(
+        process = await run_cli(
             "glossary",
             "add",
             "--agent-id",
@@ -609,7 +624,13 @@ async def test_that_a_term_can_be_created_with_synonyms(
             description,
             "--synonyms",
             synonyms,
-        ) == os.EX_OK
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
 
 async def test_that_a_term_can_be_created_without_synonyms(
@@ -623,14 +644,20 @@ async def test_that_a_term_can_be_created_without_synonyms(
 
         agent_id = await API.get_first_agent_id()
 
-        await run_cli_and_get_exit_status(
+        process = await run_cli(
             "glossary",
             "add",
             "--agent-id",
             agent_id,
             term_name,
             description,
-        ) == os.EX_OK
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         terms = await API.list_terms(agent_id)
         assert any(t["name"] == term_name for t in terms)
@@ -656,7 +683,7 @@ async def test_that_a_term_can_be_updated(
 
         term_to_update = await API.create_term(agent_id, name, description, synonyms)
 
-        await run_cli_and_get_exit_status(
+        process = await run_cli(
             "glossary",
             "update",
             "--agent-id",
@@ -668,10 +695,15 @@ async def test_that_a_term_can_be_updated(
             new_description,
             "--synonyms",
             new_synonyms,
-        ) == os.EX_OK
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         updated_term = await API.read_term(agent_id=agent_id, term_id=term_to_update["id"])
-
         assert updated_term["name"] == new_name
         assert updated_term["description"] == new_description
         assert updated_term["synonyms"] == [new_synonyms]
@@ -691,16 +723,19 @@ async def test_that_a_term_can_be_deleted(
 
         term = await API.create_term(agent_id, name, description, synonyms)
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "glossary",
-                "remove",
-                "--agent-id",
-                agent_id,
-                term["id"],
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "glossary",
+            "remove",
+            "--agent-id",
+            agent_id,
+            term["id"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         terms = await API.list_terms(agent_id)
         assert len(terms) == 0
@@ -741,17 +776,20 @@ async def test_that_a_guideline_can_be_added(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                condition,
-                action,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            condition,
+            action,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
         assert any(g["condition"] == condition and g["action"] == action for g in guidelines)
@@ -773,18 +811,21 @@ async def test_that_a_guideline_can_be_updated(
             agent_id=agent_id, condition=condition, action=initial_action
         )
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "update",
-                "-a",
-                agent_id,
-                guideline["id"],
-                condition,
-                updated_action,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "update",
+            "-a",
+            agent_id,
+            guideline["id"],
+            condition,
+            updated_action,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         updated_guideline = (
             await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
@@ -807,17 +848,20 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                condition,
-                action,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            condition,
+            action,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         process = await run_cli(
             "guideline",
@@ -856,29 +900,35 @@ async def test_that_adding_connected_guidelines_creates_connections(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                condition1,
-                action1,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            condition1,
+            action1,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                condition2,
-                action2,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            condition2,
+            action2,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
 
@@ -979,33 +1029,39 @@ async def test_that_guidelines_can_be_entailed(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                "--no-check",
-                "--no-index",
-                condition1,
-                action1,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            "--no-check",
+            "--no-index",
+            condition1,
+            action1,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                "--no-check",
-                "--no-index",
-                condition2,
-                action2,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            "--no-check",
+            "--no-index",
+            condition2,
+            action2,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
 
@@ -1054,33 +1110,39 @@ async def test_that_guidelines_can_be_suggestively_entailed(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                "--no-check",
-                "--no-index",
-                condition1,
-                action1,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            "--no-check",
+            "--no-index",
+            condition1,
+            action1,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "add",
-                "-a",
-                agent_id,
-                "--no-check",
-                "--no-index",
-                condition2,
-                action2,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "add",
+            "-a",
+            agent_id,
+            "--no-check",
+            "--no-index",
+            condition2,
+            action2,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
 
@@ -1129,16 +1191,19 @@ async def test_that_a_guideline_can_be_removed(
             agent_id, condition="the user greets you", action="greet them back with 'Hello'"
         )
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "remove",
-                "-a",
-                agent_id,
-                guideline["id"],
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "remove",
+            "-a",
+            agent_id,
+            guideline["id"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
         assert len(guidelines) == 0
@@ -1225,24 +1290,27 @@ async def test_that_a_connection_can_be_removed(
                             "error": None,
                         },
                     ]
-                },
+                },  # type: ignore
             )
 
             guidelines_response.raise_for_status()
             first = guidelines_response.json()["items"][0]["guideline"]["id"]
             second = guidelines_response.json()["items"][1]["guideline"]["id"]
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "guideline",
-                "disentail",
-                "-a",
-                agent_id,
-                first,
-                second,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "guideline",
+            "disentail",
+            "-a",
+            agent_id,
+            first,
+            second,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         guideline = await API.read_guideline(agent_id, first)
         assert len(guideline["connections"]) == 0
@@ -1410,18 +1478,21 @@ async def test_that_a_variable_can_be_added(
 
         agent_id = await API.get_first_agent_id()
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "variable",
-                "add",
-                "--agent-id",
-                agent_id,
-                "--description",
-                description,
-                name,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "variable",
+            "add",
+            "--agent-id",
+            agent_id,
+            "--description",
+            description,
+            name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         variables = await API.list_context_variables(agent_id)
 
@@ -1445,16 +1516,19 @@ async def test_that_a_variable_can_be_removed(
 
         _ = await API.create_context_variable(agent_id, name, description)
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "variable",
-                "remove",
-                "--agent-id",
-                agent_id,
-                name,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "variable",
+            "remove",
+            "--agent-id",
+            agent_id,
+            name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         variables = await API.list_context_variables(agent_id)
         assert len(variables) == 0
@@ -1466,7 +1540,7 @@ async def test_that_a_variable_value_can_be_set_with_json(
     variable_name = "test_variable_set"
     variable_description = "Variable to test setting value via CLI"
     key = "test_key"
-    data = {"test": "data", "type": 27}
+    data: dict[str, Any] = {"test": "data", "type": 27}
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -1474,18 +1548,21 @@ async def test_that_a_variable_value_can_be_set_with_json(
         agent_id = await API.get_first_agent_id()
         variable = await API.create_context_variable(agent_id, variable_name, variable_description)
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "variable",
-                "set",
-                "--agent-id",
-                agent_id,
-                variable_name,
-                key,
-                json.dumps(data),
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "variable",
+            "set",
+            "--agent-id",
+            agent_id,
+            variable_name,
+            key,
+            json.dumps(data),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         value = await API.read_context_variable_value(agent_id, variable["id"], key)
         assert json.loads(value["data"]) == data
@@ -1505,18 +1582,21 @@ async def test_that_a_variable_value_can_be_set_with_string(
         agent_id = await API.get_first_agent_id()
         variable = await API.create_context_variable(agent_id, variable_name, variable_description)
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "variable",
-                "set",
-                "--agent-id",
-                agent_id,
-                variable_name,
-                key,
-                data,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "variable",
+            "set",
+            "--agent-id",
+            agent_id,
+            variable_name,
+            key,
+            data,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         value = await API.read_context_variable_value(agent_id, variable["id"], key)
 
@@ -1775,14 +1855,17 @@ async def test_that_a_service_can_be_removed(
         async with run_openapi_server(rng_app()):
             await API.create_openapi_service(service_name, OPENAPI_SERVER_URL)
 
-        assert (
-            await run_cli_and_get_exit_status(
-                "service",
-                "remove",
-                service_name,
-            )
-            == os.EX_OK
+        process = await run_cli(
+            "service",
+            "remove",
+            service_name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
+        stdout_view, stderr_view = await process.communicate()
+        _output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in _output_view
+        assert process.returncode == os.EX_OK
 
         async with API.make_client() as client:
             response = await client.get("/services/")
