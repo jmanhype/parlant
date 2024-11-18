@@ -57,17 +57,15 @@ setup-cache:
     --junit-xml=logs/testresults.xml \
     | tee logs/testresults.log
 
-@test-client: mklogdir
+@test-client:
   poetry run pytest \
-    -v tests/e2e/test_client_cli_via_api.py \
-    --plan=initial \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
+    -v tests/e2e/test_client_cli_via_api.py --plan=initial
 
-@test-client-ns: mklogdir
+@test-client-ns:
   poetry run pytest \
-    -v tests/e2e/test_client_cli_via_api.py \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
+    -v tests/e2e/test_client_cli_via_api.py
+
+    
+@test-client-sdk:
+  poetry run pytest \
+    -v tests/client --plan=initial

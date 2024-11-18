@@ -1,24 +1,23 @@
 # mypy: disable-error-code=import-untyped
 
 import asyncio
-from dataclasses import dataclass
-import os
-import sys
-import time
-from datetime import datetime
-from textwrap import wrap
-from typing import Any, Optional, cast
-from urllib.parse import urljoin
-
 import click
 import click.shell_completion
 import click_completion  # type: ignore
+from dataclasses import dataclass
+from datetime import datetime
+import os
 import requests
 import rich
 from rich import box
 from rich.table import Table
 from rich.text import Text
 from tqdm import tqdm
+import sys
+from textwrap import wrap
+import time
+from typing import Any, Optional, cast
+from urllib.parse import urljoin
 
 from parlant.client import ParlantClient
 from parlant.client.types import (
@@ -26,6 +25,8 @@ from parlant.client.types import (
     ContextVariable,
     ContextVariableValue,
     CreateAgentRequest,
+    CreateOpenApiServiceRequest,
+    CreateSdkServiceRequest,
     Event,
     FreshnessRules,
     Guideline,
@@ -42,8 +43,6 @@ from parlant.client.types import (
     ReadContextVariableResponse,
     ReadInteractionResponse,
     Request,
-    Request_Openapi,
-    Request_Sdk,
     Service,
     Session,
     Term,
@@ -268,12 +267,12 @@ class Actions:
         client = cast(ParlantClient, ctx.obj.client)
 
         response = client.create_evaluation(
-            agent_id,
+            agent_id=agent_id,
             payloads=[
                 GuidelinePayload(
                     kind="guideline",
                     content=GuidelineContent(
-                        predicate=predicate,
+                        condition=condition,
                         action=action,
                     ),
                     operation="add",
@@ -345,12 +344,12 @@ class Actions:
         client = cast(ParlantClient, ctx.obj.client)
 
         response = client.create_evaluation(
-            agent_id,
+            agent_id=agent_id,
             payloads=[
                 GuidelinePayload(
                     kind="guideline",
                     content=GuidelineContent(
-                        predicate=predicate,
+                        condition=condition,
                         action=action,
                     ),
                     operation="update",
@@ -666,10 +665,10 @@ class Actions:
 
         request: Request
         if kind == "sdk":
-            request = Request_Sdk(url=url)
+            request = CreateSdkServiceRequest(url=url)
 
         elif kind == "openapi":
-            request = Request_Openapi(
+            request = CreateOpenApiServiceRequest(
                 url=url,
                 source=source,
             )
@@ -922,7 +921,7 @@ class Interface:
 
             if iteration.guideline_propositions:
                 for proposition in iteration.guideline_propositions:
-                    rich.print(f"{INDENT*2}Predicate: {proposition.predicate}")
+                    rich.print(f"{INDENT*2}Condition: {proposition.condition}")
                     rich.print(f"{INDENT*2}Action: {proposition.action}")
                     rich.print(f"{INDENT*2}Relevance Score: {proposition.score}/10")
                     rich.print(f"{INDENT*2}Rationale: {proposition.rationale}\n")
@@ -1135,7 +1134,7 @@ class Interface:
         guideline_items: list[dict[str, Any]] = [
             {
                 "ID": guideline.id,
-                "Predicate": guideline.predicate,
+                "Condition": guideline.condition,
                 "Action": guideline.action,
             }
             for guideline in guidelines
@@ -1159,7 +1158,7 @@ class Interface:
                 "Role": "Source" if conn.source.id == guideline.id else "Target",
                 "Peer Role": "Target" if conn.source.id == guideline.id else "Source",
                 "Peer ID": peer.id,
-                "Peer Predicate": peer.predicate,
+                "Peer Condition": peer.condition,
                 "Peer Action": peer.action,
             }
 
@@ -1168,10 +1167,10 @@ class Interface:
                 "Connection ID": conn.id,
                 "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Source ID": conn.source.id,
-                "Source Predicate": conn.source.predicate,
+                "Source Condition": conn.source.condition,
                 "Source Action": conn.source.action,
                 "Target ID": conn.target.id,
-                "Target Predicate": conn.target.predicate,
+                "Target Condition": conn.target.condition,
                 "Target Action": conn.target.action,
             }
 

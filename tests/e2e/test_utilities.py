@@ -1,6 +1,6 @@
-import asyncio
 from contextlib import contextmanager
 from dataclasses import dataclass
+import httpx
 import logging
 import os
 from pathlib import Path
@@ -10,8 +10,6 @@ import sys
 import time
 from typing import Any, Iterator, Optional, TypedDict, cast
 from typing_extensions import Literal
-
-import httpx
 
 
 class _ServiceDTO(TypedDict):
@@ -98,20 +96,11 @@ class ContextOfTest:
 
 
 def is_server_running(port: int) -> bool:
-    process = subprocess.Popen(
-        args=["lsof", f"-i:{port}"],
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    process.wait()
-
-    stdout_view, stderr_view = process.communicate()
-    _output_view = stdout_view.decode() + stderr_view.decode()
-    if _output_view:
+    if _output_view := subprocess.getoutput(f"lsof -i:{port}"):
         print(_output_view)
         return True
-    else:
-        return False
+
+    return False
 
 
 @contextmanager
