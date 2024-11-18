@@ -187,7 +187,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
     )
 
     api_app.include_router(
-        prefix="/end_users",
+        prefix="/end-users",
         router=end_users.create_router(
             end_user_store=end_user_store,
         ),
