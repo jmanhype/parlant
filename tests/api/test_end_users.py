@@ -11,7 +11,7 @@ def test_that_an_end_user_can_be_created(client: TestClient) -> None:
     extra = {"email": "john@gmail.com"}
 
     response = client.post(
-        "/end_users",
+        "/end-users",
         json={
             "name": name,
             "extra": extra,
@@ -39,7 +39,7 @@ async def test_that_an_end_user_can_be_read(
 
     end_user = await end_user_store.create_end_user(name, extra)
 
-    read_response = client.get(f"/end_users/{end_user.id}")
+    read_response = client.get(f"/end-users/{end_user.id}")
     assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
@@ -71,7 +71,7 @@ async def test_that_end_users_can_be_listed(
         extra=second_extra,
     )
 
-    list_response = client.get("/end_users")
+    list_response = client.get("/end-users")
     assert list_response.status_code == status.HTTP_200_OK
     data = list_response.json()
     assert "end_users" in data
@@ -103,7 +103,7 @@ async def test_that_an_end_user_can_be_updated(
     new_extra = {"age": 45}
 
     patch_response = client.patch(
-        f"/end_users/{end_user.id}",
+        f"/end-users/{end_user.id}",
         json={
             "name": new_name,
             "extra": new_extra,
@@ -127,7 +127,7 @@ async def test_that_a_tag_can_be_created(
     label = "VIP"
 
     tag_response = client.post(
-        f"/end_users/{end_user.id}/tags",
+        f"/end-users/{end_user.id}/tags",
         json={
             "label": label,
         },
@@ -152,7 +152,7 @@ async def test_that_tags_can_be_listed_by_end_user(
     first_tag = await end_user_store.set_tag(end_user.id, label="VIP")
     second_tag = await end_user_store.set_tag(end_user.id, label="Beta Tester")
 
-    list_response = client.get(f"/end_users/{end_user.id}/tags")
+    list_response = client.get(f"/end-users/{end_user.id}/tags")
     assert list_response.status_code == status.HTTP_200_OK
 
     data = list_response.json()
@@ -177,7 +177,7 @@ async def test_that_a_tag_associated_to_an_end_user_can_be_deleted(
     label = "Temporary Tag"
     tag = await end_user_store.set_tag(end_user_id=end_user.id, label=label)
 
-    delete_response = client.delete(f"/end_users/{end_user.id}/tags/{tag.id}")
+    delete_response = client.delete(f"/end-users/{end_user.id}/tags/{tag.id}")
     assert delete_response.status_code == status.HTTP_200_OK
     data = delete_response.json()
     assert data["tag_id"] == tag.id
