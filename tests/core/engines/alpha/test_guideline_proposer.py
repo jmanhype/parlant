@@ -168,7 +168,7 @@ def create_guideline_by_name(
     return guideline
 
 
-def base_test_that_relevant_guidelines_are_proposed(
+def base_test_that_correct_guidelines_are_proposed(
     context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
@@ -186,8 +186,7 @@ def base_test_that_relevant_guidelines_are_proposed(
     guideline_propositions = propose_guidelines(context, conversation_context)
     guidelines = [p.guideline for p in guideline_propositions]
 
-    for guideline in relevant_guidelines:
-        assert guideline in guidelines
+    assert set(guidelines) == set(relevant_guidelines)
 
 
 def test_that_relevant_guidelines_are_proposed_parametrized_1(
@@ -222,7 +221,7 @@ def test_that_relevant_guidelines_are_proposed_parametrized_1(
     relevant_guideline_names: list[str] = [
         "payment_process",
     ]
-    base_test_that_relevant_guidelines_are_proposed(
+    base_test_that_correct_guidelines_are_proposed(
         context, conversation_context, conversation_guideline_names, relevant_guideline_names
     )
 
@@ -258,7 +257,7 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
         (
             "ai_agent",
             "Take care and see you soon at the meditation class. "
-            "Our gym is at Sapir 2, Herzliya, in case you need directions.",
+            "Our gym is at the mall on the 2nd floor.",
         ),
         ("customer", "Thank you!"),
     ]
@@ -271,32 +270,9 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
     relevant_guideline_names: list[str] = [
         "mood_support",
     ]
-    base_test_that_relevant_guidelines_are_proposed(
+    base_test_that_correct_guidelines_are_proposed(
         context, conversation_context, conversation_guideline_names, relevant_guideline_names
     )
-
-
-def base_test_that_irrelevant_guidelines_are_not_proposed(
-    context: ContextOfTest,
-    conversation_context: list[tuple[str, str]],
-    conversation_guideline_names: list[str],
-    irrelevant_guideline_names: list[str],
-) -> None:
-    conversation_guidelines = {
-        name: create_guideline_by_name(context, name) for name in conversation_guideline_names
-    }
-
-    irrelevant_guidelines = [
-        conversation_guidelines[name]
-        for name in conversation_guidelines
-        if name in irrelevant_guideline_names
-    ]
-
-    guideline_propositions = propose_guidelines(context, conversation_context)
-    guidelines = [p.guideline for p in guideline_propositions]
-
-    for guideline in guidelines:
-        assert guideline not in irrelevant_guidelines
 
 
 def test_that_irrelevant_guidelines_are_not_proposed_parametrized_1(
@@ -322,9 +298,8 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_1(
     ]
 
     conversation_guideline_names: list[str] = ["check_toppings_in_stock", "check_drinks_in_stock"]
-    irrelevant_guideline_names: list[str] = ["check_toppings_in_stock", "check_drinks_in_stock"]
-    base_test_that_irrelevant_guidelines_are_not_proposed(
-        context, conversation_context, conversation_guideline_names, irrelevant_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, []
     )
 
 
@@ -339,9 +314,8 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_2(
         ("customer", "Great, where are you located at?"),
     ]
     conversation_guideline_names: list[str] = ["check_drinks_in_stock"]
-    irrelevant_guideline_names: list[str] = ["check_drinks_in_stock"]
-    base_test_that_irrelevant_guidelines_are_not_proposed(
-        context, conversation_context, conversation_guideline_names, irrelevant_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, []
     )
 
 

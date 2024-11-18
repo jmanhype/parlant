@@ -1099,3 +1099,30 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
     )
 
     assert len(connection_propositions) == 0
+
+
+def test_that_strictly_entailed_predicate_describing_an_agent_action_is_detected(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    source_guideline_content = _create_guideline_content(
+        predicate="Asked for our pizza topping selection",
+        action="list the possible toppings and recommend olives",
+    )
+    target_guideline_content = _create_guideline_content(
+        predicate="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
+    )
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
+    assert len(connection_propositions) == 1
+    assert connection_propositions[0].source == source_guideline_content
+    assert connection_propositions[0].target == target_guideline_content
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
