@@ -89,7 +89,7 @@ async def test_that_fallback_generation_falls_back_to_the_next_generator_when_en
     assert schema_generation_result.content.result == "Success"
 
 
-async def test_that_fallback_generation_raise_an_error_when_all_generators_fail(
+async def test_that_fallback_generation_raises_an_error_when_all_generators_fail(
     container: Container,
 ) -> None:
     mock_first_generator = AsyncMock(spec=SchematicGenerator[DummySchema])

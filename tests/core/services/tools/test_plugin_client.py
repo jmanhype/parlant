@@ -287,7 +287,7 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
             assert result.data == "category_a"
 
 
-async def test_that_a_plugin_tool_that_return_huge_payload_raise_an_error(
+async def test_that_a_plugin_tool_that_return_huge_payload_raises_an_error(
     context: ToolContext,
     container: Container,
     agent: Agent,

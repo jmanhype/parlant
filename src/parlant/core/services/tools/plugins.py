@@ -32,6 +32,7 @@ import uvicorn
 from parlant.core.agents import AgentId
 from parlant.core.tools import (
     Tool,
+    ToolError,
     ToolParameter,
     ToolParameterType,
     ToolResult,
@@ -505,10 +506,10 @@ class PluginClient(ToolService):
                 )
 
                 async for chunk in response.aiter_text():
-                    if len(chunk) > 15000:
+                    if len(chunk) > (16 * 1024):
                         raise ToolResultError(
                             tool_name=name,
-                            message=f"url='{self.url}', arguments='{arguments}', Response exceeds 15KB limit",
+                            message=f"url='{self.url}', arguments='{arguments}', Response exceeds 16KB limit",
                         )
 
                     chunk_dict = json.loads(chunk)
@@ -542,7 +543,7 @@ class PluginClient(ToolService):
                             tool_name=name,
                             message=f"url='{self.url}', arguments='{arguments}', Unexpected chunk dict: {chunk_dict}",
                         )
-        except (ToolResultError, ToolExecutionError) as exc:
+        except ToolError as exc:
             raise exc
         except Exception as exc:
             raise ToolExecutionError(tool_name=name) from exc
