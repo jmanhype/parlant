@@ -64,25 +64,19 @@ def context(
 def propose_guidelines(
     context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
+    agents: Sequence[Agent] = [],
 ) -> Sequence[GuidelineProposition]:
     guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
-    customer = Customer(
-        CustomerId("123"),
-        creation_utc=datetime.now(timezone.utc),
-        name="test_customer",
-        extra={},
-        tags=[],
-    )
-
-    agents = [
-        Agent(
-            id=AgentId("123"),
-            creation_utc=datetime.now(timezone.utc),
-            name="Test Agent",
-            description="You are an agent that works for Parlant",
-            max_engine_iterations=3,
-        )
-    ]
+    if not agents:
+        agents = [
+            Agent(
+                id=AgentId("123"),
+                creation_utc=datetime.now(timezone.utc),
+                name="Test Agent",
+                description="You are an agent that works for Parlant",
+                max_engine_iterations=3,
+            )
+        ]
 
     interaction_history = [
         create_event_message(
@@ -173,6 +167,7 @@ def base_test_that_correct_guidelines_are_proposed(
     conversation_context: list[tuple[str, str]],
     conversation_guideline_names: list[str],
     relevant_guideline_names: list[str],
+    agents: Sequence[Agent] = [],
 ) -> None:
     conversation_guidelines = {
         name: create_guideline_by_name(context, name) for name in conversation_guideline_names
@@ -183,7 +178,7 @@ def base_test_that_correct_guidelines_are_proposed(
         if name in relevant_guideline_names
     ]
 
-    guideline_propositions = propose_guidelines(context, conversation_context)
+    guideline_propositions = propose_guidelines(context, conversation_context, agents)
     guidelines = [p.guideline for p in guideline_propositions]
 
     assert set(guidelines) == set(relevant_guidelines)
@@ -353,3 +348,9 @@ def test_that_guidelines_with_the_same_conditions_are_scored_identically(
     assert len(guideline_propositions) == len(relevant_guidelines)
     assert all(gp.guideline in relevant_guidelines for gp in guideline_propositions)
     assert len(list(unique(gp.score for gp in guideline_propositions))) == 1
+
+
+def test_that_many_guidelines_are_classified_correctly(  # a stress test
+    context: ContextOfTest,
+) -> None:
+    assert True
