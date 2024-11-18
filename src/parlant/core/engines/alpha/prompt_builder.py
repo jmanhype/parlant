@@ -212,11 +212,11 @@ and let the user know if/when you assume they meant a term by their typo: ###
         self.add_section(
             name=BuiltInSection.GUIDELINE_CONDITIONS,
             content=f"""
-- Predicate List: ###
+- Condition List: ###
 {conditions}
 ###
 
-IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(conditions)} conditions in the list for you to check.
     """,
             status=SectionStatus.ACTIVE,
         )

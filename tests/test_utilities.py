@@ -69,16 +69,16 @@ async def nlp_test(context: str, condition: str) -> bool:
 
     inference = await schematic_generator.generate(
         prompt=f"""\
-Given a context and a predicate, determine whether the
-predicate applies with respect to the given context.
-If the predicate applies, the answer is true;
+Given a context and a condition, determine whether the
+condition applies with respect to the given context.
+If the condition applies, the answer is true;
 otherwise, the answer is false.
 
 Context: ###
 {context}
 ###
 
-Predicate: ###
+Condition: ###
 {condition}
 ###
 
