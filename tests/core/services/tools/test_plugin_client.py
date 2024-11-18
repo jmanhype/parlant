@@ -3,10 +3,10 @@ from contextlib import asynccontextmanager
 import enum
 from typing import AsyncIterator, Optional
 
-from parlant.core.tools import ToolContext, ToolResult
+from parlant.core.tools import ToolContext, ToolResult, ToolResultError
 from parlant.core.services.tools.plugins import PluginServer, ToolEntry, tool
 from lagom import Container
-from pytest import fixture
+from pytest import fixture, raises
 import pytest
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -285,3 +285,24 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
             )
 
             assert result.data == "category_a"
+
+
+async def test_that_a_plugin_tool_that_return_huge_payload_raises_an_error(
+    context: ToolContext,
+    container: Container,
+    agent: Agent,
+) -> None:
+    @tool
+    def huge_payload_tool(context: ToolContext) -> ToolResult:
+        huge_payload = {f"key_{i}": "value" for i in range(10000)}
+        return ToolResult({"size": len(huge_payload), "payload": huge_payload})
+
+    async with run_service_server([huge_payload_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            with raises(ToolResultError) as exc:
+                await client.call_tool(huge_payload_tool.tool.name, context, arguments={})
+
+            assert "Response exceeds 15KB limit" in str(exc.value)
