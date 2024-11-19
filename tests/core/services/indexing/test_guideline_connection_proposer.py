@@ -1108,11 +1108,11 @@ def test_that_strictly_entailed_predicate_describing_an_agent_action_is_detected
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        predicate="Asked for our pizza topping selection",
+        condition="Asked for our pizza topping selection",
         action="list the possible toppings and recommend olives",
     )
     target_guideline_content = _create_guideline_content(
-        predicate="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
+        condition="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
     )
     connection_propositions = list(
         context.sync_await(

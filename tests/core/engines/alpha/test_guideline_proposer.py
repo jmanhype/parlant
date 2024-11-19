@@ -136,6 +136,10 @@ GUIDELINES_DICT = guidelines = {
         "condition": "the agent just confirmed that the order will be shipped to the user",
         "action": "provide the package's tracking information",
     },
+    "tree_allergies": {
+        "condition": "recommending routes to a user with tree allergies",
+        "action": "warn the user about allergy inducing trees along the route",
+    },
 }
 
 
@@ -493,19 +497,149 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
 def test_that_guidelines_are_proposed_based_on_agent_description(
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey, do you sell skateboards?"),
+        (
+            "ai_agent",
+            "Yes, we do! We have a variety of skateboards for all skill levels. Are you looking for something specific?",
+        ),
+        ("end_user", "I'm looking for a skateboard for a beginner. What do you recommend?"),
+        (
+            "ai_agent",
+            "For beginners, I recommend our complete skateboards with a sturdy deck and softer wheels for easier control. Would you like to see some options?",
+        ),
+        ("end_user", "That sounds perfect. Can you show me a few?"),
+        (
+            "ai_agent",
+            "Sure! We have a few options: the 'Smooth Ride' model, the 'City Cruiser,' and the 'Basic Starter.' Which one would you like to know more about?",
+        ),
+        ("end_user", "I like the 'City Cruiser.' What color options do you have?"),
+        ("ai_agent", "The 'City Cruiser' comes in red, blue, and black. Which one do you prefer?"),
+        ("end_user", "I'll go with the blue one."),
+        (
+            "ai_agent",
+            "Great choice! I'll add the blue 'City Cruiser' to your cart. Would you like to add any accessories like a helmet or grip tape?",
+        ),
+        ("end_user", "Yes, I'll take a helmet. What do you have in stock?"),
+        (
+            "ai_agent",
+            "We have helmets in small, medium, and large sizes, all available in black and gray. What size do you need?",
+        ),
+        ("end_user", "I need a medium. I'll take one in black."),
+        (
+            "ai_agent",
+            "Got it! Your blue 'City Cruiser' skateboard and black medium helmet are ready for checkout. How would you like to pay?",
+        ),
+        ("end_user", "I'll pay with a credit card, thanks."),
+        (
+            "ai_agent",
+            "Thank you for your order! Your skateboard and helmet will be shipped shortly. Enjoy your ride!",
+        ),
+    ]
+
+    conversation_guideline_names: list[str] = [
+        guideline_name for guideline_name in GUIDELINES_DICT.keys()
+    ]
+    relevant_guideline_names = ["announce_shipment"]
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
 
 
 def test_that_guidelines_are_proposed_based_on_glossary(
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    terms = [
+        Term(
+            id="123",
+            creation_utc=datetime.now(timezone.utc),
+            name="skateboard",
+            description="a time-travelling device",
+        ),
+        Term(
+            id="456",
+            creation_utc=datetime.now(timezone.utc),
+            name="Pinewood Rash Syndrome",
+            synonyms=["Pine Rash", "PRS"],
+            description="allergy to pinewood trees",
+        ),
+    ]
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hi, I’m looking for a hiking route through a forest. Can you help me?"),
+        (
+            "ai_agent",
+            "Of course! I can help you find a trail. Are you looking for an easy, moderate, or challenging hike?",
+        ),
+        ("end_user", "I’d prefer something moderate, not too easy but also not too tough."),
+        (
+            "ai_agent",
+            "Great choice! We have a few moderate trails in the Redwood Forest and the Pinewood Trail. Would you like details on these?",
+        ),
+        ("end_user", "Yes, tell me more about the Pinewood Trail."),
+        (
+            "ai_agent",
+            "The Pinewood Trail is a 6-mile loop with moderate elevation changes. It takes about 3-4 hours to complete. The scenery is beautiful, with plenty of shade and a stream crossing halfway through. Would you like to go with that one?",
+        ),
+        ("end_user", "I have PRS, would that route be suitable for me?"),
+    ]
+    conversation_guideline_names: list[str] = [
+        "recommending_routes",
+        "mood_support",
+        "first_time_client",
+    ]
+    relevant_guideline_names = ["tree_allergies"]
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+        terms=terms,
+    )
 
 
 def test_that_conflicting_actions_with_similar_conditions_are_both_detected(
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey, do you sell skateboards?"),
+        (
+            "ai_agent",
+            "Yes, we do! We have a variety of skateboards for all skill levels. Are you looking for something specific?",
+        ),
+        ("end_user", "I'm looking for a skateboard for a beginner. What do you recommend?"),
+        (
+            "ai_agent",
+            "For beginners, I recommend our complete skateboards with a sturdy deck and softer wheels for easier control. Would you like to see some options?",
+        ),
+        ("end_user", "That sounds perfect. Can you show me a few?"),
+        (
+            "ai_agent",
+            "Sure! We have a few options: the 'Smooth Ride' model, the 'City Cruiser,' and the 'Basic Starter.' Which one would you like to know more about?",
+        ),
+        ("end_user", "I like the 'City Cruiser.' What color options do you have?"),
+        ("ai_agent", "The 'City Cruiser' comes in red, blue, and black. Which one do you prefer?"),
+        ("end_user", "I'll go with the blue one."),
+        (
+            "ai_agent",
+            "Great choice! I'll add the blue 'City Cruiser' to your cart. Would you like to add any accessories like a helmet or grip tape?",
+        ),
+        ("end_user", "Yes, I'll take a helmet. What do you have in stock?"),
+        (
+            "ai_agent",
+            "We have helmets in small, medium, and large sizes, all available in black and gray. What size do you need?",
+        ),
+        ("end_user", "I need a medium. I'll take one in black."),
+        (
+            "ai_agent",
+            "Got it! Your blue 'City Cruiser' skateboard and black medium helmet are ready for checkout. How would you like to pay?",
+        ),
+        ("end_user", "I'll pay with a credit card, thanks."),
+    ]
+    conversation_guideline_names: list[str] = ["credit_payment1", "credit_payment2"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
 
 
 def test_that_guidelines_are_proposed_based_on_staged_tool_calls(
