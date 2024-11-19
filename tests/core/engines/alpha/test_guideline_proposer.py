@@ -37,12 +37,13 @@ from parlant.core.engines.alpha.guideline_proposition import (
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineId
 from parlant.core.sessions import EventSource
 from parlant.core.logging import Logger
+from parlant.core.glossary import TermId
 
 from tests.core.engines.alpha.utils import create_event_message
 from tests.test_utilities import SyncAwaiter
 
 
-GUIDELINES_DICT = guidelines = {
+GUIDELINES_DICT = {
     "check_drinks_in_stock": {
         "condition": "a client asks for a drink",
         "action": "check if the drink is available in the following stock: "
@@ -126,7 +127,7 @@ GUIDELINES_DICT = guidelines = {
     },
     "suggest_drink_underage": {
         "condition": "an underage client asks for drink recommendations",
-        "action": "recommmend a soda pop",
+        "action": "recommend a soda pop",
     },
     "suggest_drink_adult": {
         "condition": "an adult client asks for drink recommendations",
@@ -139,6 +140,18 @@ GUIDELINES_DICT = guidelines = {
     "tree_allergies": {
         "condition": "recommending routes to a user with tree allergies",
         "action": "warn the user about allergy inducing trees along the route",
+    },
+    "credit_payment1": {
+        "condition": "the user requests a credit card payment",
+        "action": "guide the user through the payment process",
+    },
+    "credit_payment2": {
+        "condition": "the user wants to pay with a credit card",
+        "action": "refuse payment as we only perform in-store purchases",
+    },
+    "cant_perform_request": {
+        "condition": "the user wants to agent to perform an action that the agent is not designed for",
+        "action": "forward the request to a supervisor",
     },
 }
 
@@ -221,6 +234,16 @@ def create_guideline(context: ContextOfTest, condition: str, action: str) -> Gui
     context.guidelines.append(guideline)
 
     return guideline
+
+
+def create_term(name: str, description: str, synonyms: list[str] = []) -> Guideline:
+    return Term(
+        id=TermId("-"),
+        creation_utc=datetime.now(timezone.utc),
+        name=name,
+        description=description,
+        synonyms=synonyms,
+    )
 
 
 def get_all_guidelines(context: ContextOfTest) -> Sequence[Guideline]:
@@ -494,9 +517,17 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
     )
 
 
-def test_that_guidelines_are_proposed_based_on_agent_description(
+def test_that_guidelines_are_proposed_based_on_agent_description(  # TODO alter
     context: ContextOfTest,
 ) -> None:
+    agent = Agent(
+        id=AgentId("123"),
+        creation_utc=datetime.now(timezone.utc),
+        name="skaetboard-sales-agent",
+        description="You are an agent working for a skateboarding manufacturer. You help clients by discussing and recommending our products."
+        "Your role is only to consult clients, and not to actually sell anything, as we sell our products in-store.",
+        max_engine_iterations=3,
+    )
     conversation_context: list[tuple[str, str]] = [
         ("end_user", "Hey, do you sell skateboards?"),
         (
@@ -515,34 +546,20 @@ def test_that_guidelines_are_proposed_based_on_agent_description(
         ),
         ("end_user", "I like the 'City Cruiser.' What color options do you have?"),
         ("ai_agent", "The 'City Cruiser' comes in red, blue, and black. Which one do you prefer?"),
-        ("end_user", "I'll go with the blue one."),
         (
-            "ai_agent",
-            "Great choice! I'll add the blue 'City Cruiser' to your cart. Would you like to add any accessories like a helmet or grip tape?",
-        ),
-        ("end_user", "Yes, I'll take a helmet. What do you have in stock?"),
-        (
-            "ai_agent",
-            "We have helmets in small, medium, and large sizes, all available in black and gray. What size do you need?",
-        ),
-        ("end_user", "I need a medium. I'll take one in black."),
-        (
-            "ai_agent",
-            "Got it! Your blue 'City Cruiser' skateboard and black medium helmet are ready for checkout. How would you like to pay?",
-        ),
-        ("end_user", "I'll pay with a credit card, thanks."),
-        (
-            "ai_agent",
-            "Thank you for your order! Your skateboard and helmet will be shipped shortly. Enjoy your ride!",
+            "end_user",
+            "I'll go with the blue one. My credit card number is 4242 4242 4242 4242, please charge it and ship the product to my address.",
         ),
     ]
 
-    conversation_guideline_names: list[str] = [
-        guideline_name for guideline_name in GUIDELINES_DICT.keys()
-    ]
-    relevant_guideline_names = ["announce_shipment"]
+    conversation_guideline_names: list[str] = ["cant_perform_request"]
+    relevant_guideline_names = ["cant_perform_request"]
     base_test_that_correct_guidelines_are_proposed(
-        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+        agents=[agent],
     )
 
 
@@ -550,18 +567,14 @@ def test_that_guidelines_are_proposed_based_on_glossary(
     context: ContextOfTest,
 ) -> None:
     terms = [
-        Term(
-            id="123",
-            creation_utc=datetime.now(timezone.utc),
+        create_term(
             name="skateboard",
             description="a time-travelling device",
         ),
-        Term(
-            id="456",
-            creation_utc=datetime.now(timezone.utc),
+        create_term(
             name="Pinewood Rash Syndrome",
-            synonyms=["Pine Rash", "PRS"],
             description="allergy to pinewood trees",
+            synonyms=["Pine Rash", "PRS"],
         ),
     ]
     conversation_context: list[tuple[str, str]] = [
