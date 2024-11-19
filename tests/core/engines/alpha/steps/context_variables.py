@@ -37,9 +37,7 @@ def get_or_create_variable(
     return variable
 
 
-@step(
-    given, parsers.parse('a context variable "{variable_name}" with a value of "{variable_value}"')
-)
+@step(given, parsers.parse('a context variable "{variable_name}" with a value "{variable_value}"'))
 def given_a_context_variable(
     context: ContextOfTest,
     variable_name: str,
@@ -75,7 +73,7 @@ def given_a_context_variable(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" with a value of "{variable_value}" to "{end_user_name}"'
+        'a context variable "{variable_name}" with a value "{variable_value}" to "{end_user_name}"'
     ),
 )
 def given_a_context_variable_to_specific_user(
@@ -107,7 +105,7 @@ def given_a_context_variable_to_specific_user(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" with the value "{variable_value}" assigned to the tag "{label}"'
+        'a context variable "{variable_name}" with a value "{variable_value}" to tag "{label}"'
     ),
 )
 def given_a_context_variable_for_a_tag(
