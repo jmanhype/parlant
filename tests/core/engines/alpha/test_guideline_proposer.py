@@ -236,7 +236,7 @@ def create_guideline(context: ContextOfTest, condition: str, action: str) -> Gui
     return guideline
 
 
-def create_term(name: str, description: str, synonyms: list[str] = []) -> Guideline:
+def create_term(name: str, description: str, synonyms: list[str] = []) -> Term:
     return Term(
         id=TermId("-"),
         creation_utc=datetime.now(timezone.utc),
