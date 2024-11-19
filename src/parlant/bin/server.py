@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 import uvicorn
 
+from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.version import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.anthropic import AnthropicService
@@ -139,6 +140,9 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     context_variables_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "context_variables.json")
     )
+    tags_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
+    )
     end_users_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "end_users.json")
     )
@@ -166,6 +170,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[AgentStore] = AgentDocumentStore(agents_db)
     c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
+    c[TagStore] = TagDocumentStore(tags_db)
     c[EndUserStore] = EndUserDocumentStore(end_users_db)
     c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
 

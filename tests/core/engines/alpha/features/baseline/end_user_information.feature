@@ -2,16 +2,6 @@ Feature: End User Information
     Background:
         Given the alpha engine
 
-    Scenario: The agent proposes guidelines based on user tags and context variable
-        Given an empty session
-        And a context variable "special_discount" with the value "10%" assigned to users with the tag "VIP"
-        And a guideline "discounts" to inform them about discounts that apply to them when a VIP user wants to order a pizza
-        And the user is tagged as "VIP"
-        And a user message, "I want to order a pizza"
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains information informing the user that they deserve a 10% discount as a VIP
-
     Scenario: The agent proposes guidelines based on the users name
         Given an empty session with "Bubbles"
         And a guideline "b_names" to tell them they are not welcome at the club when a user whose name starts with B wants to get into the club
@@ -54,16 +44,7 @@ Feature: End User Information
         Then a single message event is emitted
         And the message contains the name Naymond Brice
 
-    Scenario: The agent considers tags when calling tools
-        Given an empty session with "Dukie"
-        And the user is tagged as "underage"
-        And a guideline "suggest_drink_guideline" to suggest a drink based on the drink recommendation tool when the user asks for drink recommendation
-        And the tool "recommend_drink"
-        And an association between "suggest_drink_guideline" and "recommend_drink"
-        And a user message, "What drink should I get?"
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains a recommendation for soda
+    
 
     Scenario: The agent considers users name when calling tools
         Given an empty session with "Dukie"

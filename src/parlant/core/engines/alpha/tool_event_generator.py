@@ -1,6 +1,6 @@
 from typing import Mapping, Optional, Sequence
 
-from parlant.core.end_users import EndUser, EndUserTag
+from parlant.core.end_users import EndUser
 from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.tools import ToolContext
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -36,7 +36,7 @@ class ToolEventGenerator:
         event_emitter: EventEmitter,
         session_id: SessionId,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -52,7 +52,7 @@ class ToolEventGenerator:
 
         generation_info, tool_calls = await self._tool_caller.infer_tool_calls(
             agents,
-            user_tags_pair,
+            end_user,
             context_variables,
             interaction_history,
             terms,

@@ -2,6 +2,7 @@ from pytest_bdd import given, parsers
 
 from parlant.core.end_users import EndUserStore, EndUserId
 from parlant.core.sessions import SessionStore, SessionId
+from parlant.core.tags import TagStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -25,12 +26,15 @@ def given_a_user_tag(
 ) -> None:
     session_store = context.container[SessionStore]
     end_user_store = context.container[EndUserStore]
+    tag_store = context.container[TagStore]
+
+    tag = context.sync_await(tag_store.create_tag(label))
 
     end_user_id = context.sync_await(session_store.read_session(session_id)).end_user_id
 
     context.sync_await(
-        end_user_store.set_tag(
+        end_user_store.add_tag(
             end_user_id=end_user_id,
-            label=label,
+            tag_id=tag.id,
         )
     )

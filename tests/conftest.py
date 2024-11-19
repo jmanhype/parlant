@@ -78,6 +78,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
+from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
 from .test_utilities import SyncAwaiter
@@ -106,6 +107,7 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
     container[SessionStore] = Singleton(SessionDocumentStore)
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
+    container[TagStore] = Singleton(TagDocumentStore)
     container[EndUserStore] = Singleton(EndUserDocumentStore)
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
 

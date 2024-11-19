@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Mapping, NewType, Optional, Sequence, TypedDict, Union
+from typing import Mapping, NewType, Optional, Sequence, TypeAlias, TypedDict, Union
 
+from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.document_database import (
     DocumentDatabase,
@@ -10,23 +11,8 @@ from parlant.core.persistence.document_database import (
 )
 
 EndUserId = NewType("EndUserId", str)
-EndUserTagId = NewType("EndUserTagId", str)
-EndUserTagAssociationId = NewType("EndUserTagAssociationId", str)
 
-
-@dataclass(frozen=True)
-class EndUserTag:
-    id: EndUserTagId
-    creation_utc: datetime
-    label: str
-
-
-@dataclass(frozen=True)
-class EndUserTagAssociation:
-    id: EndUserTagAssociationId
-    creation_utc: datetime
-    tag_id: EndUserTagId
-    end_user_id: EndUserId
+ExtraType: TypeAlias = Mapping[str, Union[str, int, float, bool]]
 
 
 @dataclass(frozen=True)
@@ -34,12 +20,12 @@ class EndUser:
     id: EndUserId
     creation_utc: datetime
     name: str
-    extra: Mapping[str, Union[str, int, float, bool]]
+    extra: ExtraType
+    tags: Sequence[TagId]
 
 
 class EndUserUpdateParams(TypedDict, total=False):
     name: str
-    extra: Mapping[str, Union[str, int, float, bool]]
 
 
 class EndUserStore(ABC):
@@ -47,7 +33,7 @@ class EndUserStore(ABC):
     async def create_end_user(
         self,
         name: str,
-        extra: Mapping[str, Union[str, int, float, bool]] = {},
+        extra: ExtraType = {},
         creation_utc: Optional[datetime] = None,
     ) -> EndUser: ...
 
@@ -68,25 +54,33 @@ class EndUserStore(ABC):
     async def list_end_users(self) -> Sequence[EndUser]: ...
 
     @abstractmethod
-    async def set_tag(
+    async def add_tag(
         self,
         end_user_id: EndUserId,
-        label: str,
+        tag_id: TagId,
         creation_utc: Optional[datetime] = None,
-    ) -> EndUserTag: ...
+    ) -> EndUser: ...
 
     @abstractmethod
-    async def get_tags(
+    async def remove_tag(
         self,
         end_user_id: EndUserId,
-    ) -> Sequence[EndUserTag]: ...
+        tag_id: TagId,
+    ) -> EndUser: ...
 
     @abstractmethod
-    async def delete_tag(
+    async def add_extra(
         self,
         end_user_id: EndUserId,
-        tag_id: EndUserTagId,
-    ) -> None: ...
+        extra: ExtraType,
+    ) -> EndUser: ...
+
+    @abstractmethod
+    async def remove_extra(
+        self,
+        end_user_id: EndUserId,
+        keys: Sequence[str],
+    ) -> EndUser: ...
 
 
 class _EndUserDocument(TypedDict, total=False):
@@ -94,22 +88,15 @@ class _EndUserDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     name: str
-    extra: Mapping[str, Union[str, int, float, bool]]
-
-
-class _EndUserTagDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-    creation_utc: str
-    label: str
+    extra: ExtraType
 
 
 class _EndUserTagAssociationDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     creation_utc: str
-    tag_id: EndUserTagId
     end_user_id: EndUserId
+    tag_id: TagId
 
 
 class EndUserDocumentStore(EndUserStore):
@@ -123,12 +110,8 @@ class EndUserDocumentStore(EndUserStore):
             name="end_users",
             schema=_EndUserDocument,
         )
-        self._tags_collection = database.get_or_create_collection(
-            name="tags",
-            schema=_EndUserTagDocument,
-        )
-        self._user_tag_assocication_collection = database.get_or_create_collection(
-            name="user_tag_association",
+        self._end_user_tag_association_collection = database.get_or_create_collection(
+            name="end_user_tag_associations",
             schema=_EndUserTagAssociationDocument,
         )
 
@@ -141,54 +124,26 @@ class EndUserDocumentStore(EndUserStore):
             extra=end_user.extra,
         )
 
-    def _deserialize_end_user(self, end_user_document: _EndUserDocument) -> EndUser:
+    async def _deserialize_end_user(self, end_user_document: _EndUserDocument) -> EndUser:
+        tags = [
+            doc["tag_id"]
+            for doc in await self._end_user_tag_association_collection.find(
+                {"end_user_id": {"$eq": end_user_document["id"]}}
+            )
+        ]
+
         return EndUser(
             id=EndUserId(end_user_document["id"]),
             creation_utc=datetime.fromisoformat(end_user_document["creation_utc"]),
             name=end_user_document["name"],
             extra=end_user_document["extra"],
-        )
-
-    def _serialize_tag(self, tag: EndUserTag) -> _EndUserTagDocument:
-        return _EndUserTagDocument(
-            id=ObjectId(tag.id),
-            version=self.VERSION.to_string(),
-            creation_utc=tag.creation_utc.isoformat(),
-            label=tag.label,
-        )
-
-    def _deserialize_tag(self, tag_document: _EndUserTagDocument) -> EndUserTag:
-        return EndUserTag(
-            id=EndUserTagId(tag_document["id"]),
-            creation_utc=datetime.fromisoformat(tag_document["creation_utc"]),
-            label=tag_document["label"],
-        )
-
-    def _serialize_association(
-        self, association: EndUserTagAssociation
-    ) -> _EndUserTagAssociationDocument:
-        return _EndUserTagAssociationDocument(
-            id=ObjectId(association.id),
-            version=self.VERSION.to_string(),
-            creation_utc=association.creation_utc.isoformat(),
-            tag_id=association.tag_id,
-            end_user_id=association.end_user_id,
-        )
-
-    def _deserialize_association(
-        self, association_document: _EndUserTagAssociationDocument
-    ) -> EndUserTagAssociation:
-        return EndUserTagAssociation(
-            id=EndUserTagAssociationId(association_document["id"]),
-            creation_utc=datetime.fromisoformat(association_document["creation_utc"]),
-            tag_id=association_document["tag_id"],
-            end_user_id=association_document["end_user_id"],
+            tags=tags,
         )
 
     async def create_end_user(
         self,
         name: str,
-        extra: Mapping[str, Union[str, int, float, bool]] = {},
+        extra: ExtraType = {},
         creation_utc: Optional[datetime] = None,
     ) -> EndUser:
         creation_utc = creation_utc or datetime.now(timezone.utc)
@@ -198,6 +153,7 @@ class EndUserDocumentStore(EndUserStore):
             name=name,
             extra=extra,
             creation_utc=creation_utc,
+            tags=[],
         )
 
         await self._end_users_collection.insert_one(
@@ -217,110 +173,121 @@ class EndUserDocumentStore(EndUserStore):
         if not end_user_document:
             raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
-        return self._deserialize_end_user(end_user_document)
+        return await self._deserialize_end_user(end_user_document)
 
     async def update_end_user(
         self,
         end_user_id: EndUserId,
         params: EndUserUpdateParams,
     ) -> EndUser:
-        document_to_update = await self._end_users_collection.find_one(
+        end_user_document = await self._end_users_collection.find_one(
             filters={"id": {"$eq": end_user_id}}
         )
 
-        if not document_to_update:
+        if not end_user_document:
             raise ItemNotFoundError(item_id=UniqueId(end_user_id))
 
-        assert "name" in document_to_update
-        assert "extra" in document_to_update
-
-        name = params.get("name", document_to_update["name"])
-        extra = params.get("extra", document_to_update["extra"])
-
-        update_result = await self._end_users_collection.update_one(
+        result = await self._end_users_collection.update_one(
             filters={"id": {"$eq": end_user_id}},
-            params={
-                "name": name,
-                "extra": extra,
-            },
-        )
-
-        assert update_result.updated_document
-
-        return self._deserialize_end_user(end_user_document=update_result.updated_document)
-
-    async def list_end_users(self) -> Sequence[EndUser]:
-        return [self._deserialize_end_user(e) for e in await self._end_users_collection.find({})]
-
-    async def set_tag(
-        self,
-        end_user_id: EndUserId,
-        label: str,
-        creation_utc: Optional[datetime] = None,
-    ) -> EndUserTag:
-        _ = await self.read_end_user(end_user_id)
-
-        creation_utc = creation_utc or datetime.now(timezone.utc)
-
-        result = await self._tags_collection.update_one(
-            filters={"label": {"$eq": label}},
-            params=self._serialize_tag(
-                EndUserTag(
-                    id=EndUserTagId(generate_id()),
-                    creation_utc=creation_utc,
-                    label=label,
-                )
-            ),
-            upsert=True,
+            params={"name": params["name"]},
         )
 
         assert result.updated_document
 
-        tag = self._deserialize_tag(result.updated_document)
+        return await self._deserialize_end_user(end_user_document=result.updated_document)
 
-        association = EndUserTagAssociation(
-            id=EndUserTagAssociationId(generate_id()),
-            creation_utc=creation_utc,
-            tag_id=tag.id,
-            end_user_id=end_user_id,
-        )
-
-        _ = await self._user_tag_assocication_collection.insert_one(
-            document=self._serialize_association(association)
-        )
-
-        return tag
-
-    async def get_tags(
-        self,
-        end_user_id: EndUserId,
-    ) -> Sequence[EndUserTag]:
-        _ = await self.read_end_user(end_user_id)
-
-        associations = await self._user_tag_assocication_collection.find(
-            filters={"end_user_id": {"$eq": end_user_id}}
-        )
-
+    async def list_end_users(self) -> Sequence[EndUser]:
         return [
-            self._deserialize_tag(d)
-            for d in await self._tags_collection.find(
-                filters={
-                    "$or": [
-                        {"id": {"$eq": tag_id}}
-                        for tag_id in map(lambda a: a["tag_id"], associations)
-                    ]
-                }
-            )
+            await self._deserialize_end_user(e) for e in await self._end_users_collection.find({})
         ]
 
-    async def delete_tag(
+    async def add_tag(
         self,
         end_user_id: EndUserId,
-        tag_id: EndUserTagId,
-    ) -> None:
-        await self._user_tag_assocication_collection.delete_one(
-            filters={
+        tag_id: TagId,
+        creation_utc: Optional[datetime] = None,
+    ) -> EndUser:
+        creation_utc = creation_utc or datetime.now(timezone.utc)
+
+        association_document: _EndUserTagAssociationDocument = {
+            "id": ObjectId(generate_id()),
+            "version": self.VERSION.to_string(),
+            "creation_utc": creation_utc.isoformat(),
+            "end_user_id": end_user_id,
+            "tag_id": tag_id,
+        }
+
+        _ = await self._end_user_tag_association_collection.insert_one(
+            document=association_document
+        )
+
+        end_user_document = await self._end_users_collection.find_one({"id": {"$eq": end_user_id}})
+
+        if not end_user_document:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
+
+        return await self._deserialize_end_user(end_user_document=end_user_document)
+
+    async def remove_tag(
+        self,
+        end_user_id: EndUserId,
+        tag_id: TagId,
+    ) -> EndUser:
+        delete_result = await self._end_user_tag_association_collection.delete_one(
+            {
                 "end_user_id": {"$eq": end_user_id},
                 "tag_id": {"$eq": tag_id},
             }
         )
+
+        if delete_result.deleted_count == 0:
+            raise ItemNotFoundError(item_id=UniqueId(tag_id))
+
+        end_user_document = await self._end_users_collection.find_one({"id": {"$eq": end_user_id}})
+
+        if not end_user_document:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
+
+        return await self._deserialize_end_user(end_user_document=end_user_document)
+
+    async def add_extra(
+        self,
+        end_user_id: EndUserId,
+        extra: ExtraType,
+    ) -> EndUser:
+        end_user_document = await self._end_users_collection.find_one({"id": {"$eq": end_user_id}})
+
+        if not end_user_document:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
+
+        updated_extra = {**end_user_document["extra"], **extra}
+
+        result = await self._end_users_collection.update_one(
+            filters={"id": {"$eq": end_user_id}},
+            params={"extra": updated_extra},
+        )
+
+        assert result.updated_document
+
+        return await self._deserialize_end_user(end_user_document=result.updated_document)
+
+    async def remove_extra(
+        self,
+        end_user_id: EndUserId,
+        keys: Sequence[str],
+    ) -> EndUser:
+        end_user_document = await self._end_users_collection.find_one({"id": {"$eq": end_user_id}})
+
+        if not end_user_document:
+            raise ItemNotFoundError(item_id=UniqueId(end_user_id))
+
+        updated_extra = {k: v for k, v in end_user_document["extra"].items() if k not in keys}
+
+        result = await self._end_users_collection.update_one(
+            filters={"id": {"$eq": end_user_id}},
+            params={"extra": updated_extra},
+        )
+
+        assert result.updated_document
+
+        return await self._deserialize_end_user(end_user_document=result.updated_document)

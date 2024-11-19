@@ -98,9 +98,6 @@ def when_messages_are_emitted(
     end_user = context.sync_await(
         context.container[EndUserStore].read_end_user(session.end_user_id)
     )
-    end_user_tags = context.sync_await(
-        context.container[EndUserStore].get_tags(session.end_user_id)
-    )
 
     event_buffer = EventBuffer(
         context.sync_await(
@@ -114,7 +111,7 @@ def when_messages_are_emitted(
         message_event_generator.generate_events(
             event_emitter=event_buffer,
             agents=[agent],
-            user_tags_pair=(end_user, end_user_tags),
+            end_user=end_user,
             context_variables=[],
             interaction_history=context.events,
             terms=[],
