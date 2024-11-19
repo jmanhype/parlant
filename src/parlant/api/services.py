@@ -3,12 +3,15 @@ from enum import Enum
 from typing import Optional, TypeAlias, Union, cast
 from fastapi import APIRouter, HTTPException, status
 
+from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
 from parlant.core.tools import Tool, ToolParameter
 from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
 from parlant.core.tools import ToolService
+
+API_GROUP = "services"
 
 
 class ToolServiceKindDTO(Enum):
@@ -23,27 +26,28 @@ class ToolParameterTypeDTO(Enum):
     BOOLEAN = "boolean"
 
 
-class CreateSDKServiceRequest(DefaultBaseModel):
-    kind: ToolServiceKindDTO = ToolServiceKindDTO.SDK
+class SDKServiceParamsDTO(DefaultBaseModel):
     url: str
 
 
-class CreateOpenAPIServiceRequest(DefaultBaseModel):
-    kind: ToolServiceKindDTO = ToolServiceKindDTO.OPENAPI
+class OpenAPIServiceParamsDTO(DefaultBaseModel):
     url: str
     source: str
 
 
-CreateServiceRequest = Union[CreateSDKServiceRequest, CreateOpenAPIServiceRequest]
+class ServiceUpdateParamsDTO(DefaultBaseModel):
+    kind: ToolServiceKindDTO
+    sdk: Optional[SDKServiceParamsDTO] = None
+    openapi: Optional[OpenAPIServiceParamsDTO] = None
 
 
-class CreateServiceResponse(DefaultBaseModel):
+class ServiceUpdateResponse(DefaultBaseModel):
     name: str
     kind: ToolServiceKindDTO
     url: str
 
 
-class DeleteServiceResponse(DefaultBaseModel):
+class ServiceDeletionResponse(DefaultBaseModel):
     name: str
 
 
@@ -71,7 +75,7 @@ class ServiceDTO(DefaultBaseModel):
     tools: Optional[list[ToolDTO]] = None
 
 
-class ListServicesResponse(DefaultBaseModel):
+class ServiceListResponse(DefaultBaseModel):
     services: list[ServiceDTO]
 
 
@@ -129,25 +133,58 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
 
     @router.put(
         "/{name}",
-        operation_id="upsert_service",
+        operation_id="update_service",
+        **apigen_config(group_name=API_GROUP, method_name="create_or_update"),
     )
-    async def create_service(name: str, request: CreateServiceRequest) -> CreateServiceResponse:
-        if request.kind == ToolServiceKindDTO.SDK and not (
-            request.url.startswith("http://") or request.url.startswith("https://")
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=str("Service URL is missing schema (http:// or https://)"),
-            )
+    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceUpdateResponse:
+        if params.kind == ToolServiceKindDTO.SDK:
+            if not params.sdk:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Missing SDK parameters",
+                )
+
+            if not (params.sdk.url.startswith("http://") or params.sdk.url.startswith("https://")):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Service URL is missing schema (http:// or https://)",
+                )
+        elif params.kind == ToolServiceKindDTO.OPENAPI:
+            if not params.openapi:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Missing OpenAPI parameters",
+                )
+            if not (
+                params.openapi.url.startswith("http://")
+                or params.openapi.url.startswith("https://")
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Service URL is missing schema (http:// or https://)",
+                )
+        else:
+            raise Exception("Should never logically get here")
+
+        if params.kind == ToolServiceKindDTO.SDK:
+            assert params.sdk
+            url = params.sdk.url
+            source = None
+        elif params.kind == ToolServiceKindDTO.OPENAPI:
+            assert params.openapi
+            url = params.openapi.url
+            source = params.openapi.source
+        else:
+            raise Exception("Should never logically get here")
 
         service = await service_registry.update_tool_service(
             name=name,
-            kind=_tool_service_kind_dto_to_tool_service_kind(request.kind),
-            url=request.url,
-            source=getattr(request, "source", None),
+            kind=_tool_service_kind_dto_to_tool_service_kind(params.kind),
+            url=url,
+            source=source,
         )
 
-        return CreateServiceResponse(
+        return ServiceUpdateResponse(
             name=name,
             kind=_get_service_kind(service),
             url=_get_service_url(service),
@@ -156,18 +193,20 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
     @router.delete(
         "/{name}",
         operation_id="delete_service",
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_service(name: str) -> DeleteServiceResponse:
+    async def delete_service(name: str) -> ServiceDeletionResponse:
         await service_registry.delete_service(name)
 
-        return DeleteServiceResponse(name=name)
+        return ServiceDeletionResponse(name=name)
 
     @router.get(
         "/",
         operation_id="list_services",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_services() -> ListServicesResponse:
-        return ListServicesResponse(
+    async def list_services() -> ServiceListResponse:
+        return ServiceListResponse(
             services=[
                 ServiceDTO(
                     name=name,
@@ -182,6 +221,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
     @router.get(
         "/{name}",
         operation_id="read_service",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_service(name: str) -> ServiceDTO:
         service = await service_registry.read_tool_service(name)

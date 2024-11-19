@@ -3,12 +3,12 @@ from itertools import chain
 from typing import Optional, Sequence
 from fastapi import APIRouter, HTTPException, status
 
-
 from parlant.api.common import (
     ConnectionKindDTO,
     GuidelinePayloadDTO,
     GuidelineInvoiceDataDTO,
     ToolIdDTO,
+    apigen_config,
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
@@ -35,6 +35,8 @@ from parlant.core.guideline_tool_associations import (
 from parlant.core.application import Application
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import ToolId
+
+API_GROUP = "guidelines"
 
 
 class GuidelineDTO(DefaultBaseModel):
@@ -71,11 +73,11 @@ class GuidelineInvoiceDTO(DefaultBaseModel):
     error: Optional[str]
 
 
-class CreateGuidelinesRequest(DefaultBaseModel):
+class GuidelineCreationParamsDTO(DefaultBaseModel):
     invoices: Sequence[GuidelineInvoiceDTO]
 
 
-class CreateGuidelinesResponse(DefaultBaseModel):
+class GuidelineCreationResponse(DefaultBaseModel):
     items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
 
 
@@ -83,11 +85,11 @@ class DeleteGuidelineRequest(DefaultBaseModel):
     guideline_id: GuidelineId
 
 
-class DeleteGuidelineResponse(DefaultBaseModel):
+class GuidelineDeletionResponse(DefaultBaseModel):
     guideline_id: GuidelineId
 
 
-class ListGuidelinesResponse(DefaultBaseModel):
+class GuidelineListResponse(DefaultBaseModel):
     guidelines: list[GuidelineDTO]
 
 
@@ -97,19 +99,19 @@ class GuidelineConnectionAdditionDTO(DefaultBaseModel):
     kind: ConnectionKindDTO
 
 
-class GuidelineConnectionsPatchDTO(DefaultBaseModel):
+class GuidelineConnectionUpdateParamsDTO(DefaultBaseModel):
     add: Optional[Sequence[GuidelineConnectionAdditionDTO]] = None
     remove: Optional[Sequence[GuidelineId]] = None
 
 
-class GuidelineToolAssociationsPatchDTO(DefaultBaseModel):
+class GuidelineToolAssociationUpdateParamsDTO(DefaultBaseModel):
     add: Optional[Sequence[ToolIdDTO]] = None
     remove: Optional[Sequence[ToolIdDTO]] = None
 
 
-class PatchGuidelineRequest(DefaultBaseModel):
-    connections: Optional[GuidelineConnectionsPatchDTO] = None
-    tool_associations: Optional[GuidelineToolAssociationsPatchDTO] = None
+class GuidelineUpdateParamsDTO(DefaultBaseModel):
+    connections: Optional[GuidelineConnectionUpdateParamsDTO] = None
+    tool_associations: Optional[GuidelineToolAssociationUpdateParamsDTO] = None
 
 
 class GuidelineConnection(DefaultBaseModel):
@@ -233,13 +235,14 @@ def create_router(
         "/{agent_id}/guidelines",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_guidelines",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_guidelines(
         agent_id: AgentId,
-        request: CreateGuidelinesRequest,
-    ) -> CreateGuidelinesResponse:
+        params: GuidelineCreationParamsDTO,
+    ) -> GuidelineCreationResponse:
         try:
-            invoices = [_invoice_dto_to_invoice(i) for i in request.invoices]
+            invoices = [_invoice_dto_to_invoice(i) for i in params.invoices]
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -272,7 +275,7 @@ def create_router(
                     )
                 )
 
-        return CreateGuidelinesResponse(
+        return GuidelineCreationResponse(
             items=[
                 GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(
@@ -311,6 +314,7 @@ def create_router(
     @router.get(
         "/{agent_id}/guidelines/{guideline_id}",
         operation_id="read_guideline",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_guideline(
         agent_id: AgentId,
@@ -367,11 +371,12 @@ def create_router(
     @router.get(
         "/{agent_id}/guidelines",
         operation_id="list_guidelines",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_guidelines(agent_id: AgentId) -> ListGuidelinesResponse:
+    async def list_guidelines(agent_id: AgentId) -> GuidelineListResponse:
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
 
-        return ListGuidelinesResponse(
+        return GuidelineListResponse(
             guidelines=[
                 GuidelineDTO(
                     id=guideline.id,
@@ -384,18 +389,21 @@ def create_router(
 
     @router.patch(
         "/{agent_id}/guidelines/{guideline_id}",
-        operation_id="patch_guideline",
+        operation_id="update_guideline",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def patch_guideline(
-        agent_id: AgentId, guideline_id: GuidelineId, request: PatchGuidelineRequest
+    async def update_guideline(
+        agent_id: AgentId,
+        guideline_id: GuidelineId,
+        params: GuidelineUpdateParamsDTO,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
         )
 
-        if request.connections and request.connections.add:
-            for req in request.connections.add:
+        if params.connections and params.connections.add:
+            for req in params.connections.add:
                 if req.source == req.target:
                     raise HTTPException(
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -429,8 +437,8 @@ def create_router(
             include_indirect=False,
         )
 
-        if request.connections and request.connections.remove:
-            for id in request.connections.remove:
+        if params.connections and params.connections.remove:
+            for id in params.connections.remove:
                 if found_connection := next(
                     (c for c, _ in connections if id in [c.source.id, c.target.id]), None
                 ):
@@ -441,8 +449,8 @@ def create_router(
                         detail="Only direct connections may be removed",
                     )
 
-        if request.tool_associations and request.tool_associations.add:
-            for tool_id_dto in request.tool_associations.add:
+        if params.tool_associations and params.tool_associations.add:
+            for tool_id_dto in params.tool_associations.add:
                 service_name = tool_id_dto.service_name
                 tool_name = tool_id_dto.tool_name
 
@@ -454,10 +462,10 @@ def create_router(
                     tool_id=ToolId(service_name=service_name, tool_name=tool_name),
                 )
 
-        if request.tool_associations and request.tool_associations.remove:
+        if params.tool_associations and params.tool_associations.remove:
             associations = await guideline_tool_association_store.list_associations()
 
-            for tool_id_dto in request.tool_associations.remove:
+            for tool_id_dto in params.tool_associations.remove:
                 if association := next(
                     (
                         assoc
@@ -517,11 +525,12 @@ def create_router(
     @router.delete(
         "/{agent_id}/guidelines/{guideline_id}",
         operation_id="delete_guideline",
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_guideline(
         agent_id: AgentId,
         guideline_id: GuidelineId,
-    ) -> DeleteGuidelineResponse:
+    ) -> GuidelineDeletionResponse:
         await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -537,6 +546,6 @@ def create_router(
             if associastion.guideline_id == guideline_id:
                 await guideline_tool_association_store.delete_association(associastion.id)
 
-        return DeleteGuidelineResponse(guideline_id=guideline_id)
+        return GuidelineDeletionResponse(guideline_id=guideline_id)
 
     return router

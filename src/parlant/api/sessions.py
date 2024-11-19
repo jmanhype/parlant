@@ -1,12 +1,13 @@
 from datetime import datetime
 from enum import Enum
 from itertools import chain, groupby
-from typing import Any, Mapping, Optional, cast
-
+from typing import Mapping, Optional, cast
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import Field
 
+from parlant.api.common import JSONSerializableDTO, apigen_config
 from parlant.api.glossary import TermDTO
+from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import ContextVariableId
@@ -27,7 +28,7 @@ from parlant.core.sessions import (
     ToolEventData,
 )
 
-from parlant.core.application import Application
+API_GROUP = "sessions"
 
 
 class EventKindDTO(Enum):
@@ -73,7 +74,7 @@ class CreateSessionResponse(DefaultBaseModel):
     session: SessionDTO
 
 
-class CreateEventRequest(DefaultBaseModel):
+class EventCreationParamsDTO(DefaultBaseModel):
     kind: EventKindDTO
     source: EventSourceDTO
     content: str
@@ -86,23 +87,23 @@ class EventDTO(DefaultBaseModel):
     offset: int
     creation_utc: datetime
     correlation_id: str
-    data: Any
+    data: JSONSerializableDTO
 
 
-class CreateEventResponse(DefaultBaseModel):
+class EventCreationResponse(DefaultBaseModel):
     event: EventDTO
 
 
-class ConsumptionOffsetsPatchDTO(DefaultBaseModel):
+class ConsumptionOffsetsUpdateParamsDTO(DefaultBaseModel):
     client: Optional[int] = None
 
 
-class PatchSessionRequest(DefaultBaseModel):
-    consumption_offsets: Optional[ConsumptionOffsetsPatchDTO] = None
+class SessionUpdateParamsDTO(DefaultBaseModel):
+    consumption_offsets: Optional[ConsumptionOffsetsUpdateParamsDTO] = None
     title: Optional[str] = None
 
 
-class ListEventsResponse(DefaultBaseModel):
+class EventListResponse(DefaultBaseModel):
     session_id: SessionId
     events: list[EventDTO]
 
@@ -116,13 +117,13 @@ class DeleteSessionResponse(DefaultBaseModel):
 
 
 class ToolResultDTO(DefaultBaseModel):
-    data: Any
-    metadata: Mapping[str, Any]
+    data: JSONSerializableDTO
+    metadata: Mapping[str, JSONSerializableDTO]
 
 
 class ToolCallDTO(DefaultBaseModel):
     tool_id: str
-    arguments: Mapping[str, Any]
+    arguments: Mapping[str, JSONSerializableDTO]
     result: ToolResultDTO
 
 
@@ -134,19 +135,19 @@ class InteractionDTO(DefaultBaseModel):
     kind: InteractionKindDTO
     source: EventSourceDTO
     correlation_id: str
-    data: Any = Field(
+    data: JSONSerializableDTO = Field(
         description="The data associated with this interaction's kind. "
         "If kind is 'message', this is the message string."
     )
     tool_calls: list[ToolCallDTO]
 
 
-class ListInteractionsResponse(DefaultBaseModel):
+class InteractionListResponse(DefaultBaseModel):
     session_id: SessionId
     interactions: list[InteractionDTO]
 
 
-class DeleteEventsResponse(DefaultBaseModel):
+class EventDeletionResponse(DefaultBaseModel):
     event_ids: list[EventId]
 
 
@@ -163,7 +164,7 @@ class ContextVariableAndValueDTO(DefaultBaseModel):
     name: str
     description: str
     key: str
-    value: Any
+    value: JSONSerializableDTO
 
 
 class UsageInfoDTO(DefaultBaseModel):
@@ -191,7 +192,7 @@ class PreparationIterationDTO(DefaultBaseModel):
     context_variables: list[ContextVariableAndValueDTO]
 
 
-class ReadInteractionResponse(DefaultBaseModel):
+class InteractionReadResponse(DefaultBaseModel):
     session_id: SessionId
     correlation_id: str
     message_generations: list[MessageGenerationInspectionDTO]
@@ -231,10 +232,12 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
         tool_calls=[
             ToolCallDTO(
                 tool_id=tool_call["tool_id"],
-                arguments=tool_call["arguments"],
+                arguments=cast(Mapping[str, JSONSerializableDTO], tool_call["arguments"]),
                 result=ToolResultDTO(
-                    data=tool_call["result"]["data"],
-                    metadata=tool_call["result"]["metadata"],
+                    data=cast(JSONSerializableDTO, tool_call["result"]["data"]),
+                    metadata=cast(
+                        Mapping[str, JSONSerializableDTO], tool_call["result"]["metadata"]
+                    ),
                 ),
             )
             for tool_call in iteration.tool_calls
@@ -254,14 +257,14 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
                 name=cv["name"],
                 description=cv["description"] or "",
                 key=cv["key"],
-                value=cv["value"],
+                value=cast(JSONSerializableDTO, cv["value"]),
             )
             for cv in iteration.context_variables
         ],
     )
 
 
-class CreateInteractionsResponse(DefaultBaseModel):
+class InteractionCreationResponse(DefaultBaseModel):
     correlation_id: str
 
 
@@ -279,6 +282,7 @@ def create_router(
         "/",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_session",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_session(
         request: CreateSessionRequest,
@@ -309,6 +313,7 @@ def create_router(
     @router.get(
         "/{session_id}",
         operation_id="read_session",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_session(session_id: SessionId) -> SessionDTO:
         session = await session_store.read_session(session_id=session_id)
@@ -327,6 +332,7 @@ def create_router(
     @router.get(
         "/",
         operation_id="list_sessions",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
@@ -354,9 +360,23 @@ def create_router(
         )
 
     @router.delete(
+        "/{session_id}",
+        operation_id="delete_session",
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
+    )
+    async def delete_session(
+        session_id: SessionId,
+    ) -> DeleteSessionResponse:
+        if await session_store.delete_session(session_id):
+            return DeleteSessionResponse(session_id=session_id)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    @router.delete(
         "/",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_sessions",
+        **apigen_config(group_name=API_GROUP, method_name="delete_many"),
     )
     async def delete_sessions(
         agent_id: Optional[AgentId] = None,
@@ -372,56 +392,52 @@ def create_router(
 
     @router.patch(
         "/{session_id}",
-        operation_id="patch_session",
+        operation_id="update_session",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def patch_session(
+    async def update_session(
         session_id: SessionId,
-        request: PatchSessionRequest,
+        params: SessionUpdateParamsDTO,
     ) -> Response:
-        params: SessionUpdateParams = {}
+        async def from_dto(dto: SessionUpdateParamsDTO) -> SessionUpdateParams:
+            params: SessionUpdateParams = {}
 
-        if request.consumption_offsets:
-            session = await session_store.read_session(session_id)
+            if dto.consumption_offsets:
+                session = await session_store.read_session(session_id)
 
-            if request.consumption_offsets.client:
-                params["consumption_offsets"] = {
-                    **session.consumption_offsets,
-                    "client": request.consumption_offsets.client,
-                }
+                if dto.consumption_offsets.client:
+                    params["consumption_offsets"] = {
+                        **session.consumption_offsets,
+                        "client": dto.consumption_offsets.client,
+                    }
 
-        if request.title:
-            params["title"] = request.title
+            if dto.title:
+                params["title"] = dto.title
 
-        await session_store.update_session(session_id=session_id, params=params)
+            return params
+
+        await session_store.update_session(
+            session_id=session_id,
+            params=await from_dto(params),
+        )
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
-
-    @router.delete(
-        "/{session_id}",
-        operation_id="delete_session",
-    )
-    async def delete_session(
-        session_id: SessionId,
-    ) -> DeleteSessionResponse:
-        if await session_store.delete_session(session_id):
-            return DeleteSessionResponse(session_id=session_id)
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     @router.post(
         "/{session_id}/events",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_event",
+        **apigen_config(group_name=API_GROUP, method_name="create_event"),
     )
     async def create_event(
         session_id: SessionId,
-        request: CreateEventRequest,
+        params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> CreateEventResponse:
-        if request.source == EventSourceDTO.END_USER:
-            return await _add_end_user_message(session_id, request, moderation)
-        elif request.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
-            return await _add_agent_message(session_id, request)
+    ) -> EventCreationResponse:
+        if params.source == EventSourceDTO.END_USER:
+            return await _add_end_user_message(session_id, params, moderation)
+        elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
+            return await _add_agent_message(session_id, params)
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -430,9 +446,9 @@ def create_router(
 
     async def _add_end_user_message(
         session_id: SessionId,
-        request: CreateEventRequest,
+        request: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> CreateEventResponse:
+    ) -> EventCreationResponse:
         flagged = False
         tags = set()
 
@@ -468,7 +484,7 @@ def create_router(
             trigger_processing=True,
         )
 
-        return CreateEventResponse(
+        return EventCreationResponse(
             event=EventDTO(
                 id=event.id,
                 source=EventSourceDTO(event.source),
@@ -476,14 +492,14 @@ def create_router(
                 offset=event.offset,
                 creation_utc=event.creation_utc,
                 correlation_id=event.correlation_id,
-                data=event.data,
+                data=cast(JSONSerializableDTO, event.data),
             )
         )
 
     async def _add_agent_message(
         session_id: SessionId,
-        request: CreateEventRequest,
-    ) -> CreateEventResponse:
+        request: EventCreationParamsDTO,
+    ) -> EventCreationResponse:
         session = await session_store.read_session(session_id)
         agent = await agent_store.read_agent(session.agent_id)
 
@@ -503,7 +519,7 @@ def create_router(
             trigger_processing=False,
         )
 
-        return CreateEventResponse(
+        return EventCreationResponse(
             event=EventDTO(
                 id=event.id,
                 source=EventSourceDTO(event.source),
@@ -511,13 +527,14 @@ def create_router(
                 offset=event.offset,
                 creation_utc=event.creation_utc,
                 correlation_id=event.correlation_id,
-                data=event.data,
+                data=cast(JSONSerializableDTO, event.data),
             )
         )
 
     @router.get(
         "/{session_id}/events",
         operation_id="list_events",
+        **apigen_config(group_name=API_GROUP, method_name="list_events"),
     )
     async def list_events(
         session_id: SessionId,
@@ -527,7 +544,7 @@ def create_router(
             description="If set, only list events of the specified kinds (separated by commas)",
         ),
         wait: Optional[bool] = None,
-    ) -> ListEventsResponse:
+    ) -> EventListResponse:
         kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
         assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
 
@@ -550,7 +567,7 @@ def create_router(
             min_offset=min_offset,
         )
 
-        return ListEventsResponse(
+        return EventListResponse(
             session_id=session_id,
             events=[
                 EventDTO(
@@ -560,22 +577,58 @@ def create_router(
                     offset=e.offset,
                     creation_utc=e.creation_utc,
                     correlation_id=e.correlation_id,
-                    data=e.data,
+                    data=cast(JSONSerializableDTO, e.data),
                 )
                 for e in events
             ],
         )
 
+    @router.delete(
+        "/{session_id}/events",
+        operation_id="delete_events",
+        **apigen_config(group_name=API_GROUP, method_name="delete_events"),
+    )
+    async def delete_events(
+        session_id: SessionId,
+        min_offset: int,
+    ) -> EventDeletionResponse:
+        events = await session_store.list_events(
+            session_id=session_id,
+            min_offset=min_offset,
+            exclude_deleted=True,
+        )
+
+        deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
+
+        return EventDeletionResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+
+    @router.post(
+        "/{session_id}/interactions",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="create_interactions",
+        **apigen_config(group_name=API_GROUP, method_name="create_interaction"),
+    )
+    async def create_interactions(
+        session_id: SessionId,
+        moderation: Moderation = Moderation.NONE,
+    ) -> InteractionCreationResponse:
+        session = await session_store.read_session(session_id)
+
+        correlation_id = await application.dispatch_processing_task(session)
+
+        return InteractionCreationResponse(correlation_id=correlation_id)
+
     @router.get(
         "/{session_id}/interactions",
         operation_id="list_interactions",
+        **apigen_config(group_name=API_GROUP, method_name="list_interactions"),
     )
     async def list_interactions(
         session_id: SessionId,
         min_event_offset: int,
         source: EventSourceDTO,
         wait: bool = False,
-    ) -> ListInteractionsResponse:
+    ) -> InteractionListResponse:
         if wait:
             await application.wait_for_update(
                 session_id=session_id,
@@ -612,10 +665,12 @@ def create_router(
                         tool_calls=[
                             ToolCallDTO(
                                 tool_id=tc["tool_id"],
-                                arguments=tc["arguments"],
+                                arguments=cast(Mapping[str, JSONSerializableDTO], tc["arguments"]),
                                 result=ToolResultDTO(
-                                    data=tc["result"]["data"],
-                                    metadata=tc["result"]["metadata"],
+                                    data=cast(JSONSerializableDTO, tc["result"]["data"]),
+                                    metadata=cast(
+                                        Mapping[str, JSONSerializableDTO], tc["result"]["metadata"]
+                                    ),
                                 ),
                             )
                             for tc in tool_calls
@@ -623,58 +678,26 @@ def create_router(
                     )
                 )
 
-        return ListInteractionsResponse(
+        return InteractionListResponse(
             session_id=session_id,
             interactions=interactions,
         )
 
-    @router.delete(
-        "/{session_id}/events",
-        operation_id="delete_events",
-    )
-    async def delete_events(
-        session_id: SessionId,
-        min_offset: int,
-    ) -> DeleteEventsResponse:
-        events = await session_store.list_events(
-            session_id=session_id,
-            min_offset=min_offset,
-            exclude_deleted=True,
-        )
-
-        deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
-
-        return DeleteEventsResponse(event_ids=[id for id in deleted_event_ids if id is not None])
-
-    @router.post(
-        "/{session_id}/interactions",
-        status_code=status.HTTP_201_CREATED,
-        operation_id="create_interactions",
-    )
-    async def create_interactions(
-        session_id: SessionId,
-        moderation: Moderation = Moderation.NONE,
-    ) -> CreateInteractionsResponse:
-        session = await session_store.read_session(session_id)
-
-        correlation_id = await application.dispatch_processing_task(session)
-
-        return CreateInteractionsResponse(correlation_id=correlation_id)
-
     @router.get(
         "/{session_id}/interactions/{correlation_id}",
         operation_id="read_interaction",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve_interaction"),
     )
     async def read_interaction(
         session_id: SessionId,
         correlation_id: str,
-    ) -> ReadInteractionResponse:
+    ) -> InteractionReadResponse:
         inspection = await session_store.read_inspection(
             session_id=session_id,
             correlation_id=correlation_id,
         )
 
-        return ReadInteractionResponse(
+        return InteractionReadResponse(
             session_id=session_id,
             correlation_id=correlation_id,
             message_generations=[

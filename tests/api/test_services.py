@@ -28,7 +28,9 @@ async def test_that_sdk_service_is_created(
             "/services/my_sdk_service",
             json={
                 "kind": "sdk",
-                "url": "https://example.com/sdk",
+                "sdk": {
+                    "url": "https://example.com/sdk",
+                },
             },
         )
         .raise_for_status()
@@ -47,7 +49,9 @@ async def test_that_sdk_service_fails_to_create_due_to_url_not_starting_with_htt
         "/services/my_sdk_service",
         json={
             "kind": "sdk",
-            "url": "example.com/sdk",
+            "sdk": {
+                "url": "example.com/sdk",
+            },
         },
     )
 
@@ -65,8 +69,10 @@ async def test_that_openapi_service_is_created_with_url_source(
             "/services/my_openapi_service",
             json={
                 "kind": "openapi",
-                "url": OPENAPI_SERVER_URL,
-                "source": source,
+                "openapi": {
+                    "url": OPENAPI_SERVER_URL,
+                    "source": source,
+                },
             },
         )
         response.raise_for_status()
@@ -106,8 +112,10 @@ async def test_that_openapi_service_is_created_with_file_source(
         "/services/my_openapi_file_service",
         json={
             "kind": "openapi",
-            "url": "http://localhost",
-            "source": source,
+            "openapi": {
+                "url": "http://localhost",
+                "source": source,
+            },
         },
     )
     response.raise_for_status()
@@ -128,7 +136,9 @@ def test_that_sdk_service_is_created_and_deleted(
             "/services/my_sdk_service",
             json={
                 "kind": "sdk",
-                "url": "https://example.com/sdk",
+                "sdk": {
+                    "url": "https://example.com/sdk",
+                },
             },
         )
         .raise_for_status()
@@ -156,8 +166,10 @@ async def test_that_openapi_service_is_created_and_deleted(
                 "/services/my_openapi_service",
                 json={
                     "kind": "openapi",
-                    "url": OPENAPI_SERVER_URL,
-                    "source": source,
+                    "openapi": {
+                        "url": OPENAPI_SERVER_URL,
+                        "source": source,
+                    },
                 },
             )
         ).raise_for_status()
@@ -185,7 +197,9 @@ async def test_that_services_are_listed_correctly(
             "/services/my_sdk_service",
             json={
                 "kind": "sdk",
-                "url": "https://example.com/sdk",
+                "sdk": {
+                    "url": "https://example.com/sdk",
+                },
             },
         )
         .raise_for_status()
@@ -198,8 +212,10 @@ async def test_that_services_are_listed_correctly(
             "/services/my_openapi_service",
             json={
                 "kind": "openapi",
-                "url": OPENAPI_SERVER_URL,
-                "source": source,
+                "openapi": {
+                    "url": OPENAPI_SERVER_URL,
+                    "source": source,
+                },
             },
         )
         response.raise_for_status()

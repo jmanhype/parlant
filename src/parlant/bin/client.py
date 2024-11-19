@@ -23,26 +23,24 @@ from parlant.client import ParlantClient
 from parlant.client.types import (
     Agent,
     ContextVariable,
+    ContextVariableReadResponse,
     ContextVariableValue,
-    CreateAgentRequest,
-    CreateOpenApiServiceRequest,
-    CreateSdkServiceRequest,
     Event,
     FreshnessRules,
     Guideline,
     GuidelineConnection,
     GuidelineConnectionAddition,
-    GuidelineConnectionsPatch,
+    GuidelineConnectionUpdateParams,
     GuidelineContent,
     GuidelineInvoice,
-    GuidelineInvoiceData,
     GuidelinePayload,
     GuidelineToolAssociation,
-    GuidelineToolAssociationsPatch,
+    GuidelineToolAssociationUpdateParams,
     GuidelineWithConnectionsAndToolAssociations,
-    ReadContextVariableResponse,
-    ReadInteractionResponse,
-    Request,
+    InteractionReadResponse,
+    OpenApiServiceParams,
+    Payload,
+    SdkServiceParams,
     Service,
     Session,
     Term,
@@ -87,13 +85,12 @@ class Actions:
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_agent(
-            request=CreateAgentRequest(
-                name=name,
-                description=description,
-                max_engine_iterations=max_engine_iterations,
-            )
+        response = client.agents.create(
+            name=name,
+            description=description,
+            max_engine_iterations=max_engine_iterations,
         )
+
         return response.agent
 
     @staticmethod
@@ -103,13 +100,12 @@ class Actions:
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.read_agent(agent_id)
+        return client.agents.retrieve(agent_id)
 
     @staticmethod
     def list_agents(ctx: click.Context) -> list[Agent]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_agents()
+        response = client.agents.list()
         return response.agents
 
     @staticmethod
@@ -121,7 +117,7 @@ class Actions:
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
 
-        client.patch_agent(
+        client.agents.update(
             agent_id,
             description=description,
             max_engine_iterations=max_engine_iterations,
@@ -136,7 +132,7 @@ class Actions:
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_session(
+        response = client.sessions.create(
             end_user_id=end_user_id,
             agent_id=agent_id,
             allow_greeting=False,
@@ -152,10 +148,11 @@ class Actions:
     ) -> list[Session]:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.list_sessions(
+        response = client.sessions.list(
             agent_id=agent_id,
             end_user_id=end_user_id,
         )
+
         return response.sessions
 
     @staticmethod
@@ -163,10 +160,10 @@ class Actions:
         ctx: click.Context,
         session_id: str,
         correlation_id: str,
-    ) -> ReadInteractionResponse:
+    ) -> InteractionReadResponse:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.read_interaction(
+        return client.sessions.retrieve_interaction(
             session_id=session_id,
             correlation_id=correlation_id,
         )
@@ -177,8 +174,7 @@ class Actions:
         session_id: str,
     ) -> list[Event]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_events(session_id=session_id)
+        response = client.sessions.list_events(session_id=session_id)
         return response.events
 
     @staticmethod
@@ -189,12 +185,13 @@ class Actions:
     ) -> Event:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_event(
+        response = client.sessions.create_event(
             session_id,
             kind="message",
             source="end_user",
             content=message,
         )
+
         return response.event
 
     @staticmethod
@@ -207,12 +204,13 @@ class Actions:
     ) -> Term:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_term(
+        response = client.glossary.create_term(
             agent_id,
             name=name,
             description=description,
             synonyms=synonyms,
         )
+
         return response.term
 
     @staticmethod
@@ -226,7 +224,7 @@ class Actions:
     ) -> Term:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.patch_term(
+        return client.glossary.update_term(
             agent_id,
             term_id,
             name=name,
@@ -241,8 +239,7 @@ class Actions:
         term_id: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-
-        client.delete_term(agent_id, term_id)
+        client.glossary.delete_term(agent_id, term_id)
 
     @staticmethod
     def list_terms(
@@ -250,8 +247,7 @@ class Actions:
         agent_id: str,
     ) -> list[Term]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_terms(agent_id)
+        response = client.glossary.list_terms(agent_id)
         return response.terms
 
     @staticmethod
@@ -266,19 +262,21 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_evaluation(
+        response = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
-                GuidelinePayload(
+                Payload(
                     kind="guideline",
-                    content=GuidelineContent(
-                        condition=condition,
-                        action=action,
+                    guideline=GuidelinePayload(
+                        content=GuidelineContent(
+                            condition=condition,
+                            action=action,
+                        ),
+                        operation="add",
+                        updated_id=updated_id,
+                        coherence_check=check,
+                        connection_proposition=index,
                     ),
-                    operation="add",
-                    updated_id=updated_id,
-                    coherence_check=check,
-                    connection_proposition=index,
                 ),
             ],
         )
@@ -291,7 +289,7 @@ class Actions:
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.read_evaluation(evaluation_id)
+                evaluation_response = client.evaluations.retrieve(evaluation_id)
 
                 if evaluation_response.status in ["pending", "running"]:
                     progress_bar.n = int(evaluation_response.progress)
@@ -306,15 +304,17 @@ class Actions:
                         progress_bar.refresh()
 
                         assert invoice.data
+                        assert invoice.data.guideline
+                        assert invoice.payload.guideline
 
-                        guideline_response = client.create_guidelines(
+                        guideline_response = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
-                                    payload=invoice.payload,
+                                    payload=invoice.payload.guideline,
                                     checksum=invoice.checksum,
                                     approved=invoice.approved,
-                                    data=invoice.data,
+                                    data=invoice.data.guideline,
                                     error=invoice.error,
                                 ),
                             ],
@@ -322,9 +322,10 @@ class Actions:
                         return guideline_response.items[0]
 
                     else:
-                        assert isinstance(invoice.data, GuidelineInvoiceData)
+                        assert invoice.data
+                        assert invoice.data.guideline
                         contradictions = list(
-                            map(lambda x: x.__dict__, invoice.data.coherence_checks)
+                            map(lambda x: x.__dict__, invoice.data.guideline.coherence_checks)
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
@@ -343,19 +344,21 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_evaluation(
+        response = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
-                GuidelinePayload(
+                Payload(
                     kind="guideline",
-                    content=GuidelineContent(
-                        condition=condition,
-                        action=action,
+                    guideline=GuidelinePayload(
+                        content=GuidelineContent(
+                            condition=condition,
+                            action=action,
+                        ),
+                        operation="update",
+                        updated_id=updated_id,
+                        coherence_check=check,
+                        connection_proposition=index,
                     ),
-                    operation="update",
-                    updated_id=updated_id,
-                    coherence_check=check,
-                    connection_proposition=index,
                 ),
             ],
         )
@@ -368,7 +371,7 @@ class Actions:
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.read_evaluation(evaluation_id)
+                evaluation_response = client.evaluations.retrieve(evaluation_id)
 
                 if evaluation_response.status in ["pending", "running"]:
                     progress_bar.n = int(evaluation_response.progress)
@@ -383,15 +386,17 @@ class Actions:
                         progress_bar.refresh()
 
                         assert invoice.data
+                        assert invoice.data.guideline
+                        assert invoice.payload.guideline
 
-                        guideline_response = client.create_guidelines(
+                        guideline_response = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
-                                    payload=invoice.payload,
+                                    payload=invoice.payload.guideline,
                                     checksum=invoice.checksum,
                                     approved=invoice.approved,
-                                    data=invoice.data,
+                                    data=invoice.data.guideline,
                                     error=invoice.error,
                                 ),
                             ],
@@ -399,9 +404,10 @@ class Actions:
                         return guideline_response.items[0]
 
                     else:
-                        assert isinstance(invoice.data, GuidelineInvoiceData)
+                        assert invoice.data
+                        assert invoice.data.guideline
                         contradictions = list(
-                            map(lambda x: x.__dict__, invoice.data.coherence_checks)
+                            map(lambda x: x.__dict__, invoice.data.guideline.coherence_checks)
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
@@ -415,8 +421,7 @@ class Actions:
         guideline_id: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-
-        client.delete_guideline(agent_id, guideline_id)
+        client.guidelines.delete(agent_id, guideline_id)
 
     @staticmethod
     def view_guideline(
@@ -425,8 +430,7 @@ class Actions:
         guideline_id: str,
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
-
-        return client.read_guideline(agent_id, guideline_id)
+        return client.guidelines.retrieve(agent_id, guideline_id)
 
     @staticmethod
     def list_guidelines(
@@ -434,8 +438,7 @@ class Actions:
         agent_id: str,
     ) -> list[Guideline]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_guidelines(agent_id)
+        response = client.guidelines.list(agent_id)
         return response.guidelines
 
     @staticmethod
@@ -448,10 +451,10 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.patch_guideline(
+        return client.guidelines.update(
             agent_id,
             source_guideline_id,
-            connections=GuidelineConnectionsPatch(
+            connections=GuidelineConnectionUpdateParams(
                 add=[
                     GuidelineConnectionAddition(
                         source=source_guideline_id,
@@ -471,17 +474,17 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.read_guideline(agent_id, source_guideline_id)
+        guideline_response = client.guidelines.retrieve(agent_id, source_guideline_id)
         connections = guideline_response.connections
 
         if connection := next(
             (c for c in connections if target_guideline_id in [c.source.id, c.target.id]),
             None,
         ):
-            client.patch_guideline(
+            client.guidelines.update(
                 agent_id,
                 source_guideline_id,
-                connections=GuidelineConnectionsPatch(remove=[target_guideline_id]),
+                connections=GuidelineConnectionUpdateParams(remove=[target_guideline_id]),
             )
 
             return connection.id
@@ -500,10 +503,10 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.patch_guideline(
+        return client.guidelines.update(
             agent_id,
             guideline_id,
-            tool_associations=GuidelineToolAssociationsPatch(
+            tool_associations=GuidelineToolAssociationUpdateParams(
                 add=[
                     ToolId(
                         service_name=service_name,
@@ -523,7 +526,7 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.read_guideline(agent_id, guideline_id)
+        guideline_response = client.guidelines.retrieve(agent_id, guideline_id)
         associations = guideline_response.tool_associations
 
         if association := next(
@@ -534,10 +537,10 @@ class Actions:
             ),
             None,
         ):
-            client.patch_guideline(
+            client.guidelines.update(
                 agent_id,
                 guideline_id,
-                tool_associations=GuidelineToolAssociationsPatch(
+                tool_associations=GuidelineToolAssociationUpdateParams(
                     remove=[
                         ToolId(
                             service_name=service_name,
@@ -559,8 +562,7 @@ class Actions:
         agent_id: str,
     ) -> list[ContextVariable]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_variables(agent_id)
+        response = client.context_variables.list(agent_id)
         return response.context_variables
 
     @staticmethod
@@ -571,7 +573,7 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.list_variables(agent_id)
+        response = client.context_variables.list(agent_id)
         variables = response.context_variables
 
         if variable := next((v for v in variables if v.name == name), None):
@@ -588,11 +590,12 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.create_variable(
+        response = client.context_variables.create(
             agent_id,
             name=name,
             description=description,
         )
+
         return response.context_variable
 
     @staticmethod
@@ -602,8 +605,7 @@ class Actions:
         variable_id: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-
-        client.delete_variable(agent_id, variable_id)
+        client.context_variables.delete(agent_id, variable_id)
 
     @staticmethod
     def set_variable_value(
@@ -615,12 +617,13 @@ class Actions:
     ) -> ContextVariableValue:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.update_variable_value(
+        response = client.context_variables.set_value(
             agent_id,
             variable_id,
             key,
             data=value,
         )
+
         return response.context_variable_value
 
     @staticmethod
@@ -629,10 +632,10 @@ class Actions:
         agent_id: str,
         variable_id: str,
         include_values: bool,
-    ) -> ReadContextVariableResponse:
+    ) -> ContextVariableReadResponse:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.read_variable(
+        return client.context_variables.retrieve(
             agent_id,
             variable_id,
             include_values=include_values,
@@ -647,7 +650,7 @@ class Actions:
     ) -> ContextVariableValue:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.read_variable_value(
+        return client.context_variables.get_value(
             agent_id,
             variable_id,
             key,
@@ -663,23 +666,23 @@ class Actions:
     ) -> Service:
         client = cast(ParlantClient, ctx.obj.client)
 
-        request: Request
         if kind == "sdk":
-            request = CreateSdkServiceRequest(url=url)
+            response = client.services.create_or_update(
+                name=name,
+                kind="sdk",
+                sdk=SdkServiceParams(url=url),
+            )
 
         elif kind == "openapi":
-            request = CreateOpenApiServiceRequest(
-                url=url,
-                source=source,
+            response = client.services.create_or_update(
+                name=name,
+                kind="openapi",
+                openapi=OpenApiServiceParams(url=url, source=source),
             )
 
         else:
             raise ValueError(f"Unsupported kind: {kind}")
 
-        response = client.upsert_service(
-            name,
-            request=request,
-        )
         return Service(
             name=response.name,
             kind=response.kind,
@@ -692,14 +695,12 @@ class Actions:
         name: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-
-        client.delete_service(name)
+        client.services.delete(name)
 
     @staticmethod
     def list_services(ctx: click.Context) -> list[Service]:
         client = cast(ParlantClient, ctx.obj.client)
-
-        response = client.list_services()
+        response = client.services.list()
         return response.services
 
     @staticmethod
@@ -708,8 +709,7 @@ class Actions:
         service_name: str,
     ) -> Service:
         client = cast(ParlantClient, ctx.obj.client)
-
-        return client.read_service(service_name)
+        return client.services.retrieve(service_name)
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:

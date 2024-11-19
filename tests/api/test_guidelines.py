@@ -39,7 +39,6 @@ async def test_that_a_guideline_can_be_created(
         "invoices": [
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "the user greets you",
                         "action": "greet them back with 'Hello'",
@@ -96,7 +95,6 @@ async def test_that_an_unapproved_invoice_is_rejected(
         "invoices": [
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "the user says goodbye",
                         "action": "say 'Goodbye' back",
@@ -129,7 +127,6 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
     invoices = [
         {
             "payload": {
-                "kind": "guideline",
                 "content": {
                     "condition": "the user asks about nearby restaurants",
                     "action": "provide a list of restaurants",
@@ -161,7 +158,6 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         },
         {
             "payload": {
-                "kind": "guideline",
                 "content": {
                     "condition": "highlight the best-reviewed restaurant",
                     "action": "recommend the top choice",
@@ -237,7 +233,6 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
 
     invoice = {
         "payload": {
-            "kind": "guideline",
             "content": {
                 "condition": "provide the current weather update",
                 "action": "include temperature and humidity",
@@ -756,7 +751,6 @@ async def test_that_an_existing_guideline_can_be_updated(
         "invoices": [
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "the user greets you",
                         "action": new_action,
@@ -831,7 +825,6 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
         "invoices": [
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "the user greets you",
                         "action": new_aciton,
@@ -864,7 +857,6 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
             },
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "replying to greeting message",
                         "action": "ask how they are",
@@ -956,7 +948,6 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
         "invoices": [
             {
                 "payload": {
-                    "kind": "guideline",
                     "content": {
                         "condition": "the user greets you",
                         "action": new_action,

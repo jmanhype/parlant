@@ -1,10 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, status
 from typing import Optional, cast
 
 from fastapi import APIRouter
-from parlant.api.common import ToolIdDTO, JSONSerializableDTO
+from parlant.api.common import ToolIdDTO, JSONSerializableDTO, apigen_config
 from parlant.core.agents import AgentId
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import (
@@ -15,6 +15,8 @@ from parlant.core.context_variables import (
 )
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import ToolId
+
+API_GROUP = "context-variables"
 
 
 class DayOfWeekDTO(Enum):
@@ -44,22 +46,22 @@ class ContextVariableDTO(DefaultBaseModel):
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
-class CreateContextVariableRequest(DefaultBaseModel):
+class ContextVariableCreationParamsDTO(DefaultBaseModel):
     name: str
     description: Optional[str] = None
     tool_id: Optional[ToolIdDTO] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
-class CreateContextVariableResponse(DefaultBaseModel):
+class ContextVariableCreationResponse(DefaultBaseModel):
     context_variable: ContextVariableDTO
 
 
-class DeleteContextVariableReponse(DefaultBaseModel):
+class ContextVariableDeletionResponse(DefaultBaseModel):
     context_variable_id: ContextVariableId
 
 
-class ListContextVariablesResponse(DefaultBaseModel):
+class ContextVariableListResponse(DefaultBaseModel):
     context_variables: list[ContextVariableDTO]
 
 
@@ -69,20 +71,20 @@ class ContextVariableValueDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class UpdateContextVariableValueRequest(DefaultBaseModel):
+class ContextVariableValueUpdateParamsDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class UpdateContextVariableValueResponse(DefaultBaseModel):
+class ContextVariableValueUpdateResponse(DefaultBaseModel):
     context_variable_value: ContextVariableValueDTO
 
 
-class ReadContextVariableResponse(DefaultBaseModel):
+class ContextVariableReadResponse(DefaultBaseModel):
     context_variable: ContextVariableDTO
     key_value_pairs: Optional[dict[str, ContextVariableValueDTO]]
 
 
-class DeleteContextVariableValueResponse(DefaultBaseModel):
+class ContextVariableValueDeletionResponse(DefaultBaseModel):
     context_variable_value_id: ContextVariableValueId
 
 
@@ -120,28 +122,29 @@ def create_router(
         "/{agent_id}/context-variables",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_variable",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_variable(
         agent_id: AgentId,
-        request: CreateContextVariableRequest,
-    ) -> CreateContextVariableResponse:
-        if request.tool_id:
-            service = await service_registry.read_tool_service(request.tool_id.service_name)
-            _ = await service.read_tool(request.tool_id.tool_name)
+        params: ContextVariableCreationParamsDTO,
+    ) -> ContextVariableCreationResponse:
+        if params.tool_id:
+            service = await service_registry.read_tool_service(params.tool_id.service_name)
+            _ = await service.read_tool(params.tool_id.tool_name)
 
         variable = await context_variable_store.create_variable(
             variable_set=agent_id,
-            name=request.name,
-            description=request.description,
-            tool_id=ToolId(request.tool_id.service_name, request.tool_id.tool_name)
-            if request.tool_id
+            name=params.name,
+            description=params.description,
+            tool_id=ToolId(params.tool_id.service_name, params.tool_id.tool_name)
+            if params.tool_id
             else None,
-            freshness_rules=_freshness_ruless_dto_to_freshness_rules(request.freshness_rules)
-            if request.freshness_rules
+            freshness_rules=_freshness_ruless_dto_to_freshness_rules(params.freshness_rules)
+            if params.freshness_rules
             else None,
         )
 
-        return CreateContextVariableResponse(
+        return ContextVariableCreationResponse(
             context_variable=ContextVariableDTO(
                 id=variable.id,
                 name=variable.name,
@@ -161,39 +164,43 @@ def create_router(
         "/{agent_id}/context-variables",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_variables",
+        **apigen_config(group_name=API_GROUP, method_name="delete_many"),
     )
     async def delete_all_variables(
         agent_id: AgentId,
-    ) -> None:
+    ) -> Response:
         for v in await context_variable_store.list_variables(variable_set=agent_id):
             await context_variable_store.delete_variable(variable_set=agent_id, id=v.id)
 
-        return
+        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}",
         operation_id="delete_variable",
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_variable(
-        agent_id: AgentId, variable_id: ContextVariableId
-    ) -> DeleteContextVariableReponse:
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+    ) -> ContextVariableDeletionResponse:
         _ = await context_variable_store.delete_variable(
             variable_set=agent_id,
             id=variable_id,
         )
 
-        return DeleteContextVariableReponse(context_variable_id=variable_id)
+        return ContextVariableDeletionResponse(context_variable_id=variable_id)
 
     @router.get(
         "/{agent_id}/context-variables",
         operation_id="list_variables",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_variables(
         agent_id: AgentId,
-    ) -> ListContextVariablesResponse:
+    ) -> ContextVariableListResponse:
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 
-        return ListContextVariablesResponse(
+        return ContextVariableListResponse(
             context_variables=[
                 ContextVariableDTO(
                     id=variable.id,
@@ -216,13 +223,14 @@ def create_router(
     @router.put(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         operation_id="update_variable_value",
+        **apigen_config(group_name=API_GROUP, method_name="set_value"),
     )
     async def update_variable_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         key: str,
-        request: UpdateContextVariableValueRequest,
-    ) -> UpdateContextVariableValueResponse:
+        params: ContextVariableValueUpdateParamsDTO,
+    ) -> ContextVariableValueUpdateResponse:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -232,10 +240,10 @@ def create_router(
             variable_set=agent_id,
             key=key,
             variable_id=variable_id,
-            data=request.data,
+            data=params.data,
         )
 
-        return UpdateContextVariableValueResponse(
+        return ContextVariableValueUpdateResponse(
             context_variable_value=ContextVariableValueDTO(
                 id=variable_value.id,
                 last_modified=variable_value.last_modified,
@@ -246,6 +254,7 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         operation_id="read_variable_value",
+        **apigen_config(group_name=API_GROUP, method_name="get_value"),
     )
     async def read_variable_value(
         agent_id: AgentId,
@@ -272,12 +281,13 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables/{variable_id}",
         operation_id="read_variable",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_variable(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         include_values: bool = True,
-    ) -> ReadContextVariableResponse:
+    ) -> ContextVariableReadResponse:
         variable = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -299,7 +309,7 @@ def create_router(
         )
 
         if not include_values:
-            return ReadContextVariableResponse(
+            return ContextVariableReadResponse(
                 context_variable=variable_dto,
                 key_value_pairs=None,
             )
@@ -309,7 +319,7 @@ def create_router(
             variable_id=variable_id,
         )
 
-        return ReadContextVariableResponse(
+        return ContextVariableReadResponse(
             context_variable=variable_dto,
             key_value_pairs={
                 key: ContextVariableValueDTO(
@@ -324,12 +334,13 @@ def create_router(
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         operation_id="delete_value",
+        **apigen_config(group_name=API_GROUP, method_name="delete_value"),
     )
     async def delete_value(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         key: str,
-    ) -> DeleteContextVariableValueResponse:
+    ) -> ContextVariableValueDeletionResponse:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -340,7 +351,7 @@ def create_router(
             variable_id=variable_id,
             key=key,
         ):
-            return DeleteContextVariableValueResponse(
+            return ContextVariableValueDeletionResponse(
                 context_variable_value_id=deleted_variable_value_id
             )
         else:

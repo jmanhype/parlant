@@ -29,13 +29,15 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
             "payloads": [
                 {
                     "kind": "guideline",
-                    "content": {
-                        "condition": "the user greets you",
-                        "action": "greet them back with 'Hello'",
+                    "guideline": {
+                        "content": {
+                            "condition": "the user greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "operation": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
                 }
             ],
         },
@@ -57,7 +59,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
     invoice = content["invoices"][0]
 
     assert invoice["approved"]
-    assert len(invoice["data"]["coherence_checks"]) == 0
+    assert len(invoice["data"]["guideline"]["coherence_checks"]) == 0
 
 
 async def test_that_an_evaluation_can_be_fetched_with_running_status(
@@ -72,23 +74,27 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "greet them back with 'Hello'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greeting you",
-                            "action": "greet them back with 'Hola'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greeting you",
+                                "action": "greet them back with 'Hola'",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                 ],
             },
@@ -116,13 +122,15 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "greet them back with 'Hello'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     }
                 ],
             },
@@ -141,7 +149,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
     invoice = content["invoices"][0]
 
     assert invoice["approved"]
-    assert len(invoice["data"]["coherence_checks"]) == 0
+    assert len(invoice["data"]["guideline"]["coherence_checks"]) == 0
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_containing_a_detailed_unapproved_invoice(
@@ -156,23 +164,27 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "greet them back with 'Hello'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greeting you",
-                            "action": "greet them back with 'Good bye'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greeting you",
+                                "action": "greet them back with 'Good bye'",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                 ],
             },
@@ -195,7 +207,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
 
     assert not first_invoice["approved"]
 
-    assert len(first_invoice["data"]["coherence_checks"]) >= 1
+    assert len(first_invoice["data"]["guideline"]["coherence_checks"]) >= 1
 
 
 async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoice_with_existing_guideline_connection_proposition(
@@ -219,14 +231,16 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "providing the weather update",
-                            "action": "mention the best time to go for a walk",
+                        "guideline": {
+                            "content": {
+                                "condition": "providing the weather update",
+                                "action": "mention the best time to go for a walk",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
-                    }
+                    },
                 ],
             },
         )
@@ -247,18 +261,18 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     assert len(content["invoices"]) == 1
     invoice = content["invoices"][0]
 
-    assert len(invoice["data"]["connection_propositions"]) == 1
+    assert len(invoice["data"]["guideline"]["connection_propositions"]) == 1
     assert (
-        invoice["data"]["connection_propositions"][0]["check_kind"]
+        invoice["data"]["guideline"]["connection_propositions"][0]["check_kind"]
         == "connection_with_existing_guideline"
     )
 
     assert (
-        invoice["data"]["connection_propositions"][0]["source"]["condition"]
+        invoice["data"]["guideline"]["connection_propositions"][0]["source"]["condition"]
         == "the user asks about the weather"
     )
     assert (
-        invoice["data"]["connection_propositions"][0]["target"]["condition"]
+        invoice["data"]["guideline"]["connection_propositions"][0]["target"]["condition"]
         == "providing the weather update"
     )
 
@@ -275,23 +289,27 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user asks about nearby restaurants",
-                            "action": "provide a list of popular restaurants",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user asks about nearby restaurants",
+                                "action": "provide a list of popular restaurants",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "listing restaurants",
-                            "action": "highlight the one with the best reviews",
+                        "guideline": {
+                            "content": {
+                                "condition": "listing restaurants",
+                                "action": "highlight the one with the best reviews",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     },
                 ],
             },
@@ -314,18 +332,18 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
     first_invoice = content["invoices"][0]
 
     assert first_invoice["data"]
-    assert len(first_invoice["data"]["connection_propositions"]) == 1
+    assert len(first_invoice["data"]["guideline"]["connection_propositions"]) == 1
     assert (
-        first_invoice["data"]["connection_propositions"][0]["check_kind"]
+        first_invoice["data"]["guideline"]["connection_propositions"][0]["check_kind"]
         == "connection_with_another_evaluated_guideline"
     )
 
     assert (
-        first_invoice["data"]["connection_propositions"][0]["source"]["condition"]
+        first_invoice["data"]["guideline"]["connection_propositions"][0]["source"]["condition"]
         == "the user asks about nearby restaurants"
     )
     assert (
-        first_invoice["data"]["connection_propositions"][0]["target"]["condition"]
+        first_invoice["data"]["guideline"]["connection_propositions"][0]["target"]["condition"]
         == "listing restaurants"
     )
 
@@ -336,13 +354,15 @@ async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloa
 ) -> None:
     duplicate_payload = {
         "kind": "guideline",
-        "content": {
-            "condition": "the user greets you",
-            "action": "greet them back with 'Hello'",
+        "guideline": {
+            "content": {
+                "condition": "the user greets you",
+                "action": "greet them back with 'Hello'",
+            },
+            "operation": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
         },
-        "operation": "add",
-        "coherence_check": True,
-        "connection_proposition": True,
     }
 
     response = client.post(
@@ -378,13 +398,15 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
 
     duplicate_payload = {
         "kind": "guideline",
-        "content": {
-            "condition": "the user greets you",
-            "action": "greet them back with 'Hello'",
+        "guideline": {
+            "content": {
+                "condition": "the user greets you",
+                "action": "greet them back with 'Hello'",
+            },
+            "operation": "add",
+            "coherence_check": True,
+            "connection_proposition": True,
         },
-        "operation": "add",
-        "coherence_check": True,
-        "connection_proposition": True,
     }
 
     response = client.post(
@@ -426,23 +448,27 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     payloads = [
         {
             "kind": "guideline",
-            "content": {
-                "condition": "the user greets you",
-                "action": "greet them back with 'Hello'",
+            "guideline": {
+                "content": {
+                    "condition": "the user greets you",
+                    "action": "greet them back with 'Hello'",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
         },
         {
             "kind": "guideline",
-            "content": {
-                "condition": "the user asks about the weather",
-                "action": "provide a weather update",
+            "guideline": {
+                "content": {
+                    "condition": "the user asks about the weather",
+                    "action": "provide a weather update",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
         },
     ]
 
@@ -478,23 +504,27 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "ignore the user",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "ignore the user",
+                            },
+                            "operation": "add",
+                            "coherence_check": False,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": False,
-                        "connection_proposition": True,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "greet them back with 'Hello'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "operation": "add",
+                            "coherence_check": False,
+                            "connection_proposition": True,
                         },
-                        "operation": "add",
-                        "coherence_check": False,
-                        "connection_proposition": True,
                     },
                 ],
             },
@@ -532,23 +562,27 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user asks for help",
-                            "action": "provide assistance",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user asks for help",
+                                "action": "provide assistance",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": False,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "provide assistance",
-                            "action": "offer support resources",
+                        "guideline": {
+                            "content": {
+                                "condition": "provide assistance",
+                                "action": "offer support resources",
+                            },
+                            "operation": "add",
+                            "coherence_check": True,
+                            "connection_proposition": False,
                         },
-                        "operation": "add",
-                        "coherence_check": True,
-                        "connection_proposition": False,
                     },
                 ],
             },
@@ -570,10 +604,10 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
     assert len(content["invoices"]) == 2
 
     assert content["invoices"][0]["data"]
-    assert content["invoices"][0]["data"]["connection_propositions"] is None
+    assert content["invoices"][0]["data"]["guideline"]["connection_propositions"] is None
 
     assert content["invoices"][1]["data"]
-    assert content["invoices"][1]["data"]["connection_propositions"] is None
+    assert content["invoices"][1]["data"]["guideline"]["connection_propositions"] is None
 
 
 async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_indexing_when_check_and_index_flags_are_false(
@@ -589,33 +623,39 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user says 'goodbye'",
-                            "action": "say 'farewell'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user says 'goodbye'",
+                                "action": "say 'farewell'",
+                            },
+                            "operation": "add",
+                            "coherence_check": False,
+                            "connection_proposition": False,
                         },
-                        "operation": "add",
-                        "coherence_check": False,
-                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user says 'goodbye'",
-                            "action": "ignore the user",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user says 'goodbye'",
+                                "action": "ignore the user",
+                            },
+                            "operation": "add",
+                            "coherence_check": False,
+                            "connection_proposition": False,
                         },
-                        "operation": "add",
-                        "coherence_check": False,
-                        "connection_proposition": False,
                     },
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "ignoring the user",
-                            "action": "say that your favorite pizza topping is pineapple.",
+                        "guideline": {
+                            "content": {
+                                "condition": "ignoring the user",
+                                "action": "say that your favorite pizza topping is pineapple.",
+                            },
+                            "operation": "add",
+                            "coherence_check": False,
+                            "connection_proposition": False,
                         },
-                        "operation": "add",
-                        "coherence_check": False,
-                        "connection_proposition": False,
                     },
                 ],
             },
@@ -638,18 +678,18 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
 
     assert content["invoices"][0]["approved"]
     assert content["invoices"][0]["data"]
-    assert content["invoices"][0]["data"]["coherence_checks"] == []
-    assert content["invoices"][0]["data"]["connection_propositions"] is None
+    assert content["invoices"][0]["data"]["guideline"]["coherence_checks"] == []
+    assert content["invoices"][0]["data"]["guideline"]["connection_propositions"] is None
 
     assert content["invoices"][1]["approved"]
     assert content["invoices"][1]["data"]
-    assert content["invoices"][1]["data"]["coherence_checks"] == []
-    assert content["invoices"][1]["data"]["connection_propositions"] is None
+    assert content["invoices"][1]["data"]["guideline"]["coherence_checks"] == []
+    assert content["invoices"][1]["data"]["guideline"]["connection_propositions"] is None
 
     assert content["invoices"][2]["approved"]
     assert content["invoices"][2]["data"]
-    assert content["invoices"][2]["data"]["coherence_checks"] == []
-    assert content["invoices"][2]["data"]["connection_propositions"] is None
+    assert content["invoices"][2]["data"]["guideline"]["coherence_checks"] == []
+    assert content["invoices"][2]["data"]["guideline"]["connection_propositions"] is None
 
 
 async def test_that_evaluation_fails_when_updated_id_does_not_exist(
@@ -666,14 +706,16 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
                 "payloads": [
                     {
                         "kind": "guideline",
-                        "content": {
-                            "condition": "the user greets you",
-                            "action": "greet them back with 'Hello'",
+                        "guideline": {
+                            "content": {
+                                "condition": "the user greets you",
+                                "action": "greet them back with 'Hello'",
+                            },
+                            "operation": "update",
+                            "updated_id": non_existent_guideline_id,
+                            "coherence_check": True,
+                            "connection_proposition": True,
                         },
-                        "operation": "update",
-                        "updated_id": non_existent_guideline_id,
-                        "coherence_check": True,
-                        "connection_proposition": True,
                     }
                 ],
             },
@@ -713,14 +755,16 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
 
     update_payload = {
         "kind": "guideline",
-        "content": {
-            "condition": "the user asks for help",
-            "action": "provide updated assistance with additional resources",
+        "guideline": {
+            "content": {
+                "condition": "the user asks for help",
+                "action": "provide updated assistance with additional resources",
+            },
+            "operation": "update",
+            "updated_id": existing_guideline.id,
+            "coherence_check": True,
+            "connection_proposition": True,
         },
-        "operation": "update",
-        "updated_id": existing_guideline.id,
-        "coherence_check": True,
-        "connection_proposition": True,
     }
 
     response = client.post(
@@ -745,7 +789,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     invoice = content["invoices"][0]
 
     assert invoice["approved"]
-    assert invoice["data"]["coherence_checks"] == []
+    assert invoice["data"]["guideline"]["coherence_checks"] == []
 
 
 async def test_that_evaluation_task_with_update_of_existing_guideline_is_unapproved(
@@ -769,14 +813,16 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
 
     update_payload = {
         "kind": "guideline",
-        "content": {
-            "condition": "the user greets you",
-            "action": "ignore the user",
+        "guideline": {
+            "content": {
+                "condition": "the user greets you",
+                "action": "ignore the user",
+            },
+            "operation": "update",
+            "updated_id": guideline_to_override.id,
+            "coherence_check": True,
+            "connection_proposition": True,
         },
-        "operation": "update",
-        "updated_id": guideline_to_override.id,
-        "coherence_check": True,
-        "connection_proposition": True,
     }
 
     response = client.post(
@@ -801,7 +847,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     invoice = content["invoices"][0]
 
     assert not invoice["approved"]
-    assert len(invoice["data"]["coherence_checks"]) > 0
+    assert len(invoice["data"]["guideline"]["coherence_checks"]) > 0
 
 
 async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_payload_with_the_coherence_check_disabled(
@@ -811,23 +857,27 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     payloads = [
         {
             "kind": "guideline",
-            "content": {
-                "condition": "the user greets you",
-                "action": "greet them back with 'Hello'",
+            "guideline": {
+                "content": {
+                    "condition": "the user greets you",
+                    "action": "greet them back with 'Hello'",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
         },
         {
             "kind": "guideline",
-            "content": {
-                "condition": "the user greeting you",
-                "action": "greet them back with 'Good bye'",
+            "guideline": {
+                "content": {
+                    "condition": "the user greeting you",
+                    "action": "greet them back with 'Good bye'",
+                },
+                "operation": "add",
+                "coherence_check": False,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": False,
-            "connection_proposition": True,
         },
     ]
 
@@ -853,15 +903,15 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     assert len(invoices) == 2
 
     assert any(
-        i["payload"]["content"]["condition"] == "the user greets you"
-        and i["payload"]["content"]["action"] == "greet them back with 'Hello'"
+        i["payload"]["guideline"]["content"]["condition"] == "the user greets you"
+        and i["payload"]["guideline"]["content"]["action"] == "greet them back with 'Hello'"
         and not i["approved"]
         for i in invoices
     )
 
     assert any(
-        i["payload"]["content"]["condition"] == "the user greeting you"
-        and i["payload"]["content"]["action"] == "greet them back with 'Good bye'"
+        i["payload"]["guideline"]["content"]["condition"] == "the user greeting you"
+        and i["payload"]["guideline"]["content"]["action"] == "greet them back with 'Good bye'"
         and i["approved"]
         for i in invoices
     )
@@ -874,23 +924,27 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
     payloads = [
         {
             "kind": "guideline",
-            "content": {
-                "condition": "the user asks about the weather",
-                "action": "provide the current weather update",
+            "guideline": {
+                "content": {
+                    "condition": "the user asks about the weather",
+                    "action": "provide the current weather update",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
         },
         {
             "kind": "guideline",
-            "content": {
-                "condition": "providing the weather update",
-                "action": "mention the best time to go for a walk",
+            "guideline": {
+                "content": {
+                    "condition": "providing the weather update",
+                    "action": "mention the best time to go for a walk",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": False,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": False,
         },
     ]
 
@@ -917,18 +971,19 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
     assert len(invoices) == 2
 
     assert any(
-        i["payload"]["content"]["condition"] == "the user asks about the weather"
-        and i["payload"]["content"]["action"] == "provide the current weather update"
+        i["payload"]["guideline"]["content"]["condition"] == "the user asks about the weather"
+        and i["payload"]["guideline"]["content"]["action"] == "provide the current weather update"
         and i["approved"]
-        and len(i["data"]["connection_propositions"]) > 0
+        and len(i["data"]["guideline"]["connection_propositions"]) > 0
         for i in invoices
     )
 
     assert any(
-        i["payload"]["content"]["condition"] == "providing the weather update"
-        and i["payload"]["content"]["action"] == "mention the best time to go for a walk"
+        i["payload"]["guideline"]["content"]["condition"] == "providing the weather update"
+        and i["payload"]["guideline"]["content"]["action"]
+        == "mention the best time to go for a walk"
         and i["approved"]
-        and i["data"]["connection_propositions"] is None
+        and i["data"]["guideline"]["connection_propositions"] is None
         for i in invoices
     )
 
@@ -958,18 +1013,22 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
     payloads = [
         {
             "kind": "guideline",
-            "content": updated_guideline_content,
-            "operation": "update",
-            "updated_id": existing_guideline.id,
-            "coherence_check": True,
-            "connection_proposition": True,
+            "guideline": {
+                "content": updated_guideline_content,
+                "operation": "update",
+                "updated_id": existing_guideline.id,
+                "coherence_check": True,
+                "connection_proposition": True,
+            },
         },
         {
             "kind": "guideline",
-            "content": added_guideline_content,
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
+            "guideline": {
+                "content": added_guideline_content,
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
+            },
         },
     ]
 
@@ -995,24 +1054,28 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
     invoices = content["invoices"]
     assert len(invoices) == 2
 
-    updated_invoice = next((i for i in invoices if i["payload"]["operation"] == "update"), None)
-    new_invoice = next((i for i in invoices if i["payload"]["operation"] == "add"), None)
+    updated_invoice = next(
+        (i for i in invoices if i["payload"]["guideline"]["operation"] == "update"), None
+    )
+    new_invoice = next(
+        (i for i in invoices if i["payload"]["guideline"]["operation"] == "add"), None
+    )
 
     assert updated_invoice is not None
     assert new_invoice is not None
 
-    assert len(updated_invoice["data"]["coherence_checks"]) == 1
-    conflict = updated_invoice["data"]["coherence_checks"][0]
+    assert len(updated_invoice["data"]["guideline"]["coherence_checks"]) == 1
+    conflict = updated_invoice["data"]["guideline"]["coherence_checks"][0]
 
     assert conflict["kind"] == "contradiction_with_another_evaluated_guideline"
 
     assert (
-        conflict["first"] == updated_invoice["payload"]["content"]
-        or new_invoice["payload"]["content"]
+        conflict["first"] == updated_invoice["payload"]["guideline"]["content"]
+        or new_invoice["payload"]["guideline"]["content"]
     )
     assert (
-        conflict["second"] == updated_invoice["payload"]["content"]
-        or new_invoice["payload"]["content"]
+        conflict["second"] == updated_invoice["payload"]["guideline"]["content"]
+        or new_invoice["payload"]["guideline"]["content"]
     )
 
     assert conflict["first"] != conflict["second"]

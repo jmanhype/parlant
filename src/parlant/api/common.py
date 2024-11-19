@@ -1,9 +1,18 @@
 from enum import Enum
-from typing import Optional, TypeAlias, Union, cast
+from typing import Any, Mapping, Optional, TypeAlias, cast
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineId
+
+
+def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
+    return {
+        "openapi_extra": {
+            "x-fern-sdk-group-name": group_name,
+            "x-fern-sdk-method-name": method_name,
+        }
+    }
 
 
 class EvaluationStatusDTO(Enum):
@@ -16,10 +25,6 @@ class EvaluationStatusDTO(Enum):
 class ConnectionKindDTO(Enum):
     ENTAILS = "entails"
     SUGGESTS = "suggests"
-
-
-class PayloadKindDTO(Enum):
-    GUIDELINE = "guideline"
 
 
 class GuidelineContentDTO(DefaultBaseModel):
@@ -44,8 +49,11 @@ class ConnectionPropositionKindDTO(Enum):
     CONNECTION_WITH_ANOTHER_EVALUATED_GUIDELINE = "connection_with_another_evaluated_guideline"
 
 
+class PayloadKindDTO(Enum):
+    GUIDELINE = "guideline"
+
+
 class GuidelinePayloadDTO(DefaultBaseModel):
-    kind: PayloadKindDTO
     content: GuidelineContentDTO
     operation: GuidelinePayloadOperationDTO
     updated_id: Optional[GuidelineId] = None
@@ -53,7 +61,9 @@ class GuidelinePayloadDTO(DefaultBaseModel):
     connection_proposition: bool
 
 
-PayloadDTO: TypeAlias = Union[GuidelinePayloadDTO]
+class PayloadDTO(DefaultBaseModel):
+    kind: PayloadKindDTO
+    guideline: Optional[GuidelinePayloadDTO]
 
 
 class CoherenceCheckDTO(DefaultBaseModel):
@@ -76,7 +86,8 @@ class GuidelineInvoiceDataDTO(DefaultBaseModel):
     connection_propositions: Optional[list[ConnectionPropositionDTO]]
 
 
-InvoiceDataDTO: TypeAlias = Union[GuidelineInvoiceDataDTO]
+class InvoiceDataDTO(DefaultBaseModel):
+    guideline: Optional[GuidelineInvoiceDataDTO]
 
 
 def connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
@@ -101,11 +112,4 @@ class ToolIdDTO(DefaultBaseModel):
     tool_name: str
 
 
-JSONSerializableDTO: TypeAlias = Union[
-    str,
-    int,
-    float,
-    bool,
-    list[Union[str, int, float, bool]],
-    dict[str, Union[str, int, float, bool]],
-]
+JSONSerializableDTO: TypeAlias = Any

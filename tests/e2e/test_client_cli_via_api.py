@@ -320,7 +320,6 @@ class API:
                     "invoices": [
                         {
                             "payload": {
-                                "kind": "guideline",
                                 "content": {
                                     "condition": condition,
                                     "action": action,
@@ -436,7 +435,7 @@ class API:
         service_name: str,
         url: str,
     ) -> None:
-        payload = {"kind": "openapi", "source": f"{url}/openapi.json", "url": url}
+        payload = {"kind": "openapi", "openapi": {"source": f"{url}/openapi.json", "url": url}}
 
         async with API.make_client() as client:
             response = await client.put(f"/services/{service_name}", json=payload)
@@ -462,8 +461,8 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         agents = await API.list_agents()
@@ -480,8 +479,8 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         agents = await API.list_agents()
@@ -512,8 +511,8 @@ async def test_that_an_agent_can_be_updated(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         agent = (await API.list_agents())[0]
@@ -628,8 +627,8 @@ async def test_that_a_term_can_be_created_with_synonyms(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
 
@@ -655,8 +654,8 @@ async def test_that_a_term_can_be_created_without_synonyms(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         terms = await API.list_terms(agent_id)
@@ -699,8 +698,8 @@ async def test_that_a_term_can_be_updated(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         updated_term = await API.read_term(agent_id=agent_id, term_id=term_to_update["id"])
@@ -733,8 +732,8 @@ async def test_that_a_term_can_be_deleted(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         terms = await API.list_terms(agent_id)
@@ -787,8 +786,8 @@ async def test_that_a_guideline_can_be_added(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
@@ -823,8 +822,8 @@ async def test_that_a_guideline_can_be_updated(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         updated_guideline = (
@@ -859,8 +858,8 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         process = await run_cli(
@@ -911,8 +910,8 @@ async def test_that_adding_connected_guidelines_creates_connections(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         process = await run_cli(
@@ -926,8 +925,8 @@ async def test_that_adding_connected_guidelines_creates_connections(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
@@ -1042,8 +1041,8 @@ async def test_that_guidelines_can_be_entailed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         process = await run_cli(
@@ -1059,8 +1058,8 @@ async def test_that_guidelines_can_be_entailed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
@@ -1123,8 +1122,8 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         process = await run_cli(
@@ -1140,8 +1139,8 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
@@ -1201,8 +1200,8 @@ async def test_that_a_guideline_can_be_removed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guidelines = await API.list_guidelines(agent_id)
@@ -1227,7 +1226,6 @@ async def test_that_a_connection_can_be_removed(
                     "invoices": [
                         {
                             "payload": {
-                                "kind": "guideline",
                                 "content": {
                                     "condition": "the user greets you",
                                     "action": "greet them back with 'Hello'",
@@ -1259,7 +1257,6 @@ async def test_that_a_connection_can_be_removed(
                         },
                         {
                             "payload": {
-                                "kind": "guideline",
                                 "content": {
                                     "condition": "greeting the user",
                                     "action": "ask for his health condition",
@@ -1308,8 +1305,8 @@ async def test_that_a_connection_can_be_removed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         guideline = await API.read_guideline(agent_id, first)
@@ -1490,8 +1487,8 @@ async def test_that_a_variable_can_be_added(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         variables = await API.list_context_variables(agent_id)
@@ -1526,8 +1523,8 @@ async def test_that_a_variable_can_be_removed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         variables = await API.list_context_variables(agent_id)
@@ -1560,8 +1557,8 @@ async def test_that_a_variable_value_can_be_set_with_json(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         value = await API.read_context_variable_value(agent_id, variable["id"], key)
@@ -1594,8 +1591,8 @@ async def test_that_a_variable_value_can_be_set_with_string(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         value = await API.read_context_variable_value(agent_id, variable["id"], key)
@@ -1863,8 +1860,8 @@ async def test_that_a_service_can_be_removed(
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_view, stderr_view = await process.communicate()
-        _output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in _output_view
+        output_view = stdout_view.decode() + stderr_view.decode()
+        assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
         async with API.make_client() as client:
@@ -1874,7 +1871,7 @@ async def test_that_a_service_can_be_removed(
             assert not any(s["name"] == service_name for s in services)
 
 
-async def test_that_a_services_can_be_listed(
+async def test_that_services_can_be_listed(
     context: ContextOfTest,
 ) -> None:
     service_name_1 = "test_openapi_service_1"
@@ -1903,7 +1900,7 @@ async def test_that_a_services_can_be_listed(
         assert "openapi" in output, "Service type 'openapi' was not found in the output"
 
 
-async def test_that_a_services_can_be_viewed(
+async def test_that_a_service_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
     service_name = "test_service_view"

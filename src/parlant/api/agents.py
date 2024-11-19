@@ -2,8 +2,11 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Response, status
 
+from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
 from parlant.core.agents import AgentId, AgentStore, AgentUpdateParams
+
+API_GROUP = "agents"
 
 
 class AgentDTO(DefaultBaseModel):
@@ -14,21 +17,21 @@ class AgentDTO(DefaultBaseModel):
     max_engine_iterations: int
 
 
-class CreateAgentRequest(DefaultBaseModel):
+class AgentCreationParamsDTO(DefaultBaseModel):
     name: str
     description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
 
-class CreateAgentResponse(DefaultBaseModel):
+class AgentCreationResponse(DefaultBaseModel):
     agent: AgentDTO
 
 
-class ListAgentsResponse(DefaultBaseModel):
+class AgentListResponse(DefaultBaseModel):
     agents: list[AgentDTO]
 
 
-class PatchAgentRequest(DefaultBaseModel):
+class AgentUpdateParamsDTO(DefaultBaseModel):
     description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
@@ -42,17 +45,18 @@ def create_router(
         "/",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_agent",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_agent(
-        request: Optional[CreateAgentRequest] = None,
-    ) -> CreateAgentResponse:
+        params: AgentCreationParamsDTO,
+    ) -> AgentCreationResponse:
         agent = await agent_store.create_agent(
-            name=request and request.name or "Unnamed Agent",
-            description=request and request.description or None,
-            max_engine_iterations=request and request.max_engine_iterations or None,
+            name=params and params.name or "Unnamed Agent",
+            description=params and params.description or None,
+            max_engine_iterations=params and params.max_engine_iterations or None,
         )
 
-        return CreateAgentResponse(
+        return AgentCreationResponse(
             agent=AgentDTO(
                 id=agent.id,
                 name=agent.name,
@@ -62,11 +66,15 @@ def create_router(
             )
         )
 
-    @router.get("/", operation_id="list_agents")
-    async def list_agents() -> ListAgentsResponse:
+    @router.get(
+        "/",
+        operation_id="list_agents",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
+    )
+    async def list_agents() -> AgentListResponse:
         agents = await agent_store.list_agents()
 
-        return ListAgentsResponse(
+        return AgentListResponse(
             agents=[
                 AgentDTO(
                     id=a.id,
@@ -79,7 +87,11 @@ def create_router(
             ]
         )
 
-    @router.get("/{agent_id}", operation_id="read_agent")
+    @router.get(
+        "/{agent_id}",
+        operation_id="read_agent",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
+    )
     async def read_agent(agent_id: AgentId) -> AgentDTO:
         agent = await agent_store.read_agent(agent_id=agent_id)
 
@@ -91,20 +103,30 @@ def create_router(
             max_engine_iterations=agent.max_engine_iterations,
         )
 
-    @router.patch("/{agent_id}", operation_id="patch_agent")
-    async def patch_agent(
+    @router.patch(
+        "/{agent_id}",
+        operation_id="update_agent",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
+    )
+    async def update_agent(
         agent_id: AgentId,
-        request: PatchAgentRequest,
+        params: AgentUpdateParamsDTO,
     ) -> Response:
-        params: AgentUpdateParams = {}
+        def from_dto(dto: AgentUpdateParamsDTO) -> AgentUpdateParams:
+            params: AgentUpdateParams = {}
 
-        if request.description:
-            params["description"] = request.description
+            if dto.description:
+                params["description"] = dto.description
 
-        if request.max_engine_iterations:
-            params["max_engine_iterations"] = request.max_engine_iterations
+            if dto.max_engine_iterations:
+                params["max_engine_iterations"] = dto.max_engine_iterations
 
-        await agent_store.update_agent(agent_id=agent_id, params=params)
+            return params
+
+        await agent_store.update_agent(
+            agent_id=agent_id,
+            params=from_dto(params),
+        )
 
         return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 

@@ -5,21 +5,19 @@ from pathlib import Path
 from pytest import fixture
 from typing import Any, Iterator
 
-from parlant.client import ParlantClient
-from parlant.client.types.agent import Agent  # OR from parlant.client import Agent
-from parlant.client.types.create_agent_request import CreateAgentRequest
-from parlant.client.types.guideline_content import GuidelineContent
-from parlant.client.types.guideline_invoice import GuidelineInvoice
-from parlant.client.types.guideline_payload import GuidelinePayload
-from parlant.client.types.guideline_tool_associations_patch import (
-    GuidelineToolAssociationsPatch,
-)
-from parlant.client.types.guideline_with_connections_and_tool_associations import (
+from parlant.client import (
+    ParlantClient,
+    Agent,
+    GuidelineContent,
+    GuidelineInvoice,
+    GuidelinePayload,
+    GuidelineToolAssociationUpdateParams,
     GuidelineWithConnectionsAndToolAssociations,
+    Payload,
+    SdkServiceParams,
+    Term,
+    ToolId,
 )
-from parlant.client.types import CreateSdkServiceRequest
-from parlant.client.types.term import Term
-from parlant.client.types.tool_id import ToolId
 
 from tests.e2e.test_utilities import (
     SERVER_ADDRESS,
@@ -58,8 +56,7 @@ def make_parlant_client(base_url: str) -> ParlantClient:
 
 
 def make_api_agent(client: ParlantClient, name: str) -> Agent:
-    create_agent_request = CreateAgentRequest(name=name)
-    create_agent_reponse = client.create_agent(request=create_agent_request)
+    create_agent_reponse = client.agents.create(name=name)
     print(f"Agent `{name}` created.")
     return create_agent_reponse.agent
 
@@ -74,13 +71,12 @@ def make_guideline_evaluation(
         coherence_check=True,
         connection_proposition=True,
         content=GuidelineContent(action=action, condition=condition),
-        kind="guideline",
         operation="add",
     )
 
-    create_evaluation_response = client.create_evaluation(
+    create_evaluation_response = client.evaluations.create(
         agent_id=agent_id,
-        payloads=[guideline_payload],
+        payloads=[Payload(kind="guideline", guideline=guideline_payload)],
     )
     print(f"Evaluation created with id=`{create_evaluation_response.evaluation_id}`")
     return create_evaluation_response.evaluation_id
@@ -100,7 +96,7 @@ def make_guideline(
     )
 
     while True:
-        read_evaluation_response = client.read_evaluation(evaluation_id=evaluation_id)
+        read_evaluation_response = client.evaluations.retrieve(evaluation_id=evaluation_id)
 
         if read_evaluation_response.status == "running":
             time.sleep(1)
@@ -112,20 +108,20 @@ def make_guideline(
         guidelines_invoices: list[GuidelineInvoice] = []
 
         for invoice in read_evaluation_response.invoices:
-            if invoice.data is None:
+            if not invoice.data or not invoice.payload.guideline or not invoice.data.guideline:
                 continue
 
             guidelines_invoices.append(
                 GuidelineInvoice(
-                    payload=invoice.payload,
+                    payload=invoice.payload.guideline,
                     checksum=invoice.checksum,
                     approved=invoice.approved,
-                    data=invoice.data,
+                    data=invoice.data.guideline,
                     error=invoice.error,
                 ),
             )
 
-        guidelines_create_response = client.create_guidelines(
+        guidelines_create_response = client.guidelines.create(
             agent_id,
             invoices=guidelines_invoices,
         )
@@ -140,7 +136,7 @@ def make_term(
     description: str,
     synonyms: list[str] | None,
 ) -> Term:
-    create_term_response = client.create_term(
+    create_term_response = client.glossary.create_term(
         agent_id=agent_id, name=name, description=description, synonyms=synonyms
     )
     print(f"Created Term `{name}~{synonyms}`='{description}'")
@@ -152,21 +148,22 @@ def make_service_tool_association(
     agent_id: str,
     guideline_id: str,
     tool_name: str,
-    tool_url: str,
+    service_url: str,
 ) -> None:
-    _create_service_response = client.upsert_service(
+    _create_service_response = client.services.create_or_update(
         tool_name,
-        request=CreateSdkServiceRequest(url=tool_url),
+        kind="sdk",
+        sdk=SdkServiceParams(url=service_url),
     )
-    service = client.read_service(tool_name)
+    service = client.services.retrieve(tool_name)
     assert service.tools
     tool_randoms_flip = service.tools[1]
     tool_randoms_roll = service.tools[2]
     print("Got tools from service.")
-    _patch_guildeline_reponse = client.patch_guideline(
+    _ = client.guidelines.update(
         agent_id,
         guideline_id,
-        tool_associations=GuidelineToolAssociationsPatch(
+        tool_associations=GuidelineToolAssociationUpdateParams(
             add=[
                 ToolId(service_name=service.name, tool_name=tool_randoms_flip.name),
                 ToolId(service_name=service.name, tool_name=tool_randoms_roll.name),
@@ -208,17 +205,17 @@ async def test_parlant_client_happy_path(context: ContextOfTest) -> None:
             agent_id=agent.id,
             guideline_id=guideline_randoms.guideline.id,
             tool_name="randoms",
-            tool_url=PLUGIN_ADDRESS,
+            service_url=PLUGIN_ADDRESS,
         )
 
-        create_session_response = client.create_session(
+        create_session_response = client.sessions.create(
             end_user_id="end_user",
             agent_id=agent.id,
         )
         assert create_session_response
         demo_session = create_session_response.session
 
-        create_event_response = client.create_event(
+        create_event_response = client.sessions.create_event(
             demo_session.id,
             kind="message",
             source="end_user",
@@ -228,7 +225,7 @@ async def test_parlant_client_happy_path(context: ContextOfTest) -> None:
         assert create_event_response
 
         last_known_offset = create_event_response.event.offset
-        list_interaction_response = client.list_interactions(
+        list_interaction_response = client.sessions.list_interactions(
             demo_session.id,
             min_event_offset=last_known_offset,
             source="ai_agent",

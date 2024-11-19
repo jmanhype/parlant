@@ -40,7 +40,7 @@ class SyncAwaiter:
         return self.event_loop.run_until_complete(awaitable)  # type: ignore
 
 
-class TestLogger(Logger):
+class _TestLogger(Logger):
     def __init__(self) -> None:
         self.logger = logging.getLogger("TestLogger")
 
@@ -65,7 +65,7 @@ class TestLogger(Logger):
 
 
 async def nlp_test(context: str, condition: str) -> bool:
-    schematic_generator = GPT_4o[NLPTestSchema](logger=TestLogger())
+    schematic_generator = GPT_4o[NLPTestSchema](logger=_TestLogger())
 
     inference = await schematic_generator.generate(
         prompt=f"""\
