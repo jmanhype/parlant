@@ -11,7 +11,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.core.end_users import EndUserStore, EndUserTag
+from parlant.core.end_users import EndUser, EndUserStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
@@ -138,7 +138,6 @@ class AlphaEngine(Engine):
         agent = await self._agent_store.read_agent(context.agent_id)
         session = await self._session_store.read_session(context.session_id)
         end_user = await self._end_user_store.read_end_user(session.end_user_id)
-        end_user_tags = await self._end_user_store.get_tags(session.end_user_id)
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
@@ -151,13 +150,12 @@ class AlphaEngine(Engine):
 
         try:
             context_variables = await self._load_context_variables(
-                agent_id=context.agent_id, session=session, end_user_tags=end_user_tags
+                agent_id=context.agent_id, session=session, end_user=end_user
             )
 
             terms = set(
                 await self._load_relevant_terms(
                     agents=[agent],
-                    end_user_tags=end_user_tags,
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                 )
@@ -183,7 +181,7 @@ class AlphaEngine(Engine):
 
                 guideline_proposition_result = await self._guideline_proposer.propose_guidelines(
                     agents=[agent],
-                    user_tags_pair=(end_user, end_user_tags),
+                    end_user=end_user,
                     guidelines=list(all_possible_guidelines),
                     context_variables=context_variables,
                     interaction_history=interaction.history,
@@ -215,7 +213,7 @@ class AlphaEngine(Engine):
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
-                    user_tags_pair=(end_user, end_user_tags),
+                    end_user=end_user,
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                     terms=list(terms),
@@ -329,7 +327,7 @@ class AlphaEngine(Engine):
             for event_generation_result in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
                 agents=[agent],
-                user_tags_pair=(end_user, end_user_tags),
+                end_user=end_user,
                 context_variables=context_variables,
                 interaction_history=interaction.history,
                 terms=list(terms),
@@ -383,7 +381,7 @@ class AlphaEngine(Engine):
         self,
         agent_id: AgentId,
         session: Session,
-        end_user_tags: Sequence[EndUserTag],
+        end_user: EndUser,
     ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
         agent_variables = await self._context_variable_store.list_variables(
             variable_set=agent_id,
@@ -400,10 +398,10 @@ class AlphaEngine(Engine):
             if value is not None:
                 context_variables.append((variable, value))
 
-            for tag in end_user_tags:
+            for tag_id in end_user.tags:
                 tag_value = await self._context_variable_store.read_value(
                     variable_set=agent_id,
-                    key=tag.label,
+                    key=f"tag:{tag_id}",
                     variable_id=variable.id,
                 )
                 if tag_value is not None:
@@ -548,7 +546,6 @@ class AlphaEngine(Engine):
     async def _load_relevant_terms(
         self,
         agents: Sequence[Agent],
-        end_user_tags: Optional[Sequence[EndUserTag]] = None,
         context_variables: Optional[Sequence[tuple[ContextVariable, ContextVariableValue]]] = None,
         interaction_history: Optional[Sequence[Event]] = None,
         propositions: Optional[Sequence[GuidelineProposition]] = None,
@@ -559,9 +556,6 @@ class AlphaEngine(Engine):
         agent = agents[0]
 
         context = ""
-
-        if end_user_tags:
-            context += str([tag.label for tag in end_user_tags])
 
         if context_variables:
             context += f"\n{context_variables_to_json(context_variables=context_variables)}"

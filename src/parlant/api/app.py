@@ -15,6 +15,7 @@ from parlant.api import glossary
 from parlant.api import guidelines
 from parlant.api import context_variables as variables
 from parlant.api import services
+from parlant.api import tags
 from parlant.api import end_users
 from parlant.core.context_variables import ContextVariableStore
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -33,6 +34,7 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.application import Application
+from parlant.core.tags import TagStore
 
 ASGIApplication: TypeAlias = Callable[
     [
@@ -65,6 +67,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
     end_user_store = container[EndUserStore]
+    tag_store = container[TagStore]
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
@@ -183,6 +186,13 @@ async def create_api_app(container: Container) -> ASGIApplication:
         prefix="/services",
         router=services.create_router(
             service_registry=service_registry,
+        ),
+    )
+
+    api_app.include_router(
+        prefix="/tags",
+        router=tags.create_router(
+            tag_store=tag_store,
         ),
     )
 

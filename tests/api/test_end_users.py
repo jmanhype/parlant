@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from lagom import Container
 
 from parlant.core.end_users import EndUserStore
+from parlant.core.tags import TagStore
 
 
 def test_that_an_end_user_can_be_created(client: TestClient) -> None:
@@ -34,7 +35,8 @@ async def test_that_an_end_user_can_be_read(
     container: Container,
 ) -> None:
     end_user_store = container[EndUserStore]
-    name = "Alice Johnson"
+
+    name = "Menachem Brich"
     extra = {"id": 102938485}
 
     end_user = await end_user_store.create_end_user(name, extra)
@@ -88,99 +90,124 @@ async def test_that_end_users_can_be_listed(
     )
 
 
-async def test_that_an_end_user_can_be_updated(
+async def test_that_an_end_user_can_be_updated_with_a_new_name(
     client: TestClient,
     container: Container,
 ) -> None:
     end_user_store = container[EndUserStore]
 
-    name = "Old Name"
-    extra = {"age": 40}
+    name = "Original Name"
+    extra = {"role": "user"}
 
     end_user = await end_user_store.create_end_user(name=name, extra=extra)
 
-    new_name = "New Name"
-    new_extra = {"age": 45}
+    new_name = "Updated Name"
 
-    patch_response = client.patch(
+    update_response = client.patch(
         f"/end-users/{end_user.id}",
         json={
             "name": new_name,
-            "extra": new_extra,
         },
     )
-    assert patch_response.status_code == status.HTTP_200_OK
-    updated_end_user = patch_response.json()
-    assert updated_end_user["name"] == new_name
-    assert updated_end_user["extra"] == new_extra
+    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+
+    updated_end_user = await end_user_store.read_end_user(end_user.id)
+
+    assert updated_end_user.name == new_name
+    assert updated_end_user.extra == extra
 
 
-async def test_that_a_tag_can_be_created(
+async def test_that_a_tag_can_be_added(
     client: TestClient,
     container: Container,
 ) -> None:
     end_user_store = container[EndUserStore]
+    tag_store = container[TagStore]
+
+    tag = await tag_store.create_tag(label="VIP")
 
     name = "Tagged User"
-    end_user = await end_user_store.create_end_user(name)
 
-    label = "VIP"
+    end_user = await end_user_store.create_end_user(name=name)
 
-    tag_response = client.post(
-        f"/end-users/{end_user.id}/tags",
+    update_response = client.patch(
+        f"/end-users/{end_user.id}",
         json={
-            "label": label,
+            "tags": {"add": [tag.id]},
         },
     )
-    assert tag_response.status_code == status.HTTP_201_CREATED
+    assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
-    tag = tag_response.json()
-    assert tag["label"] == label
-    assert "id" in tag
-    assert "creation_utc" in tag
+    updated_end_user = await end_user_store.read_end_user(end_user.id)
+    assert tag.id in updated_end_user.tags
 
 
-async def test_that_tags_can_be_listed_by_end_user(
+async def test_that_a_tag_can_be_removed(
     client: TestClient,
     container: Container,
 ) -> None:
     end_user_store = container[EndUserStore]
+    tag_store = container[TagStore]
 
-    name = "User with Tags"
-    end_user = await end_user_store.create_end_user(name)
+    tag = await tag_store.create_tag(label="VIP")
 
-    first_tag = await end_user_store.set_tag(end_user.id, label="VIP")
-    second_tag = await end_user_store.set_tag(end_user.id, label="Beta Tester")
+    name = "Tagged User"
 
-    list_response = client.get(f"/end-users/{end_user.id}/tags")
-    assert list_response.status_code == status.HTTP_200_OK
+    end_user = await end_user_store.create_end_user(name=name)
 
-    data = list_response.json()
+    await end_user_store.add_tag(end_user_id=end_user.id, tag_id=tag.id)
 
-    assert "tags" in data
-    tags = data["tags"]
-    assert len(tags) == 2
+    update_response = client.patch(
+        f"/end-users/{end_user.id}",
+        json={
+            "tags": {"remove": [tag.id]},
+        },
+    )
+    assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
-    assert any(first_tag.label == t["label"] for t in tags)
-    assert any(second_tag.label == t["label"] for t in tags)
+    updated_end_user = await end_user_store.read_end_user(end_user.id)
+    assert tag.id not in updated_end_user.tags
 
 
-async def test_that_a_tag_associated_to_an_end_user_can_be_deleted(
+async def test_that_extra_can_be_added(
     client: TestClient,
     container: Container,
 ) -> None:
     end_user_store = container[EndUserStore]
+    name = "User with Extras"
 
-    name = "Moses"
-    end_user = await end_user_store.create_end_user(name)
+    end_user = await end_user_store.create_end_user(name=name)
 
-    label = "Temporary Tag"
-    tag = await end_user_store.set_tag(end_user_id=end_user.id, label=label)
+    new_extra = {"department": "sales"}
 
-    delete_response = client.delete(f"/end-users/{end_user.id}/tags/{tag.id}")
-    assert delete_response.status_code == status.HTTP_200_OK
-    data = delete_response.json()
-    assert data["tag_id"] == tag.id
+    update_response = client.patch(
+        f"/end-users/{end_user.id}",
+        json={
+            "extra": {"add": new_extra},
+        },
+    )
+    assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
-    tags = await end_user_store.get_tags(end_user.id)
-    assert len(tags) == 0
+    updated_end_user = await end_user_store.read_end_user(end_user.id)
+    assert updated_end_user.extra.get("department") == "sales"
+
+
+async def test_that_extra_can_be_removed(
+    client: TestClient,
+    container: Container,
+) -> None:
+    end_user_store = container[EndUserStore]
+    name = "User with Extras"
+
+    end_user = await end_user_store.create_end_user(name=name, extra={"department": "sales"})
+
+    update_response = client.patch(
+        f"/end-users/{end_user.id}",
+        json={
+            "extra": {"remove": ["department"]},
+        },
+    )
+    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+
+    updated_end_user = await end_user_store.read_end_user(end_user.id)
+    assert "department" not in updated_end_user.extra

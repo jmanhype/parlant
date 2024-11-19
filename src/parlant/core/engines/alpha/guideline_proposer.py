@@ -9,7 +9,7 @@ from typing import Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.end_users import EndUser, EndUserTag
+from parlant.core.end_users import EndUser
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
@@ -65,7 +65,7 @@ class GuidelineProposer:
     async def propose_guidelines(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -100,7 +100,7 @@ class GuidelineProposer:
             batch_tasks = [
                 self._process_condition_batch(
                     agents,
-                    user_tags_pair,
+                    end_user,
                     context_variables,
                     interaction_history,
                     staged_events,
@@ -167,7 +167,7 @@ class GuidelineProposer:
     async def _process_condition_batch(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
@@ -176,7 +176,7 @@ class GuidelineProposer:
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
-            user_tags_pair,
+            end_user,
             context_variables=context_variables,
             interaction_history=interaction_history,
             staged_events=staged_events,
@@ -217,7 +217,7 @@ class GuidelineProposer:
     def _format_prompt(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
@@ -496,7 +496,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         )
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
-        builder.add_user_name_and_tags(*user_tags_pair)
+        builder.add_user_name(end_user)
         builder.add_section(
             f"""
 The following is an additional list of staged events that were just added: ###

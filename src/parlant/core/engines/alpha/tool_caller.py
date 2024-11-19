@@ -5,7 +5,7 @@ import json
 import traceback
 from typing import Any, Mapping, NewType, Optional, Sequence
 
-from parlant.core.end_users import EndUser, EndUserTag
+from parlant.core.end_users import EndUser
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
@@ -69,7 +69,7 @@ class ToolCaller:
     async def infer_tool_calls(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -90,7 +90,7 @@ class ToolCaller:
 
         inference_prompt = self._format_tool_call_inference_prompt(
             agents,
-            user_tags_pair,
+            end_user,
             context_variables,
             interaction_history,
             terms,
@@ -137,7 +137,7 @@ class ToolCaller:
     def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
@@ -324,7 +324,7 @@ check_stock(): returns all menu items that are currently in stock
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
-        builder.add_user_name_and_tags(*user_tags_pair)
+        builder.add_user_name(end_user)
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(

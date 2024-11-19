@@ -9,6 +9,7 @@ from parlant.core.context_variables import (
 from parlant.core.end_users import EndUserStore
 from parlant.core.sessions import SessionId, SessionStore
 
+from parlant.core.tags import TagStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -106,21 +107,20 @@ def given_a_context_variable_to_specific_user(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" with the value "{variable_value}" assigned to users with the tag "{label}"'
+        'a context variable "{variable_name}" with the value "{variable_value}" assigned to the tag "{label}"'
     ),
 )
-def given_a_context_variable_for_users_with_a_tag(
+def given_a_context_variable_for_a_tag(
     context: ContextOfTest,
     variable_name: str,
     variable_value: str,
     agent_id: AgentId,
-    session_id: SessionId,
     label: str,
 ) -> ContextVariableValue:
-    session_store = context.container[SessionStore]
     context_variable_store = context.container[ContextVariableStore]
+    tag_store = context.container[TagStore]
 
-    end_user_id = context.sync_await(session_store.read_session(session_id)).end_user_id
+    tag = next(t for t in context.sync_await(tag_store.list_tags()) if t.label == label)
 
     variable = context.sync_await(
         context_variable_store.create_variable(
@@ -135,8 +135,8 @@ def given_a_context_variable_for_users_with_a_tag(
     return context.sync_await(
         context_variable_store.update_value(
             variable_set=agent_id,
-            key=end_user_id,
+            key=f"tag:{tag.id}",
             variable_id=variable.id,
-            data={f"tag:{label}": variable_value},
+            data=variable_value,
         )
     )

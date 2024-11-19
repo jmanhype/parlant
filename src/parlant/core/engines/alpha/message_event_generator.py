@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Sequence
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.end_users import EndUser, EndUserTag
+from parlant.core.end_users import EndUser
 from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
@@ -70,7 +70,7 @@ class MessageEventGenerator:
         self,
         event_emitter: EventEmitter,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -105,7 +105,7 @@ class MessageEventGenerator:
             prompt = self._format_prompt(
                 agents=agents,
                 context_variables=context_variables,
-                user_tags_pair=user_tags_pair,
+                end_user=end_user,
                 interaction_history=interaction_history,
                 terms=terms,
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
@@ -164,7 +164,7 @@ class MessageEventGenerator:
     def _format_prompt(
         self,
         agents: Sequence[Agent],
-        user_tags_pair: tuple[EndUser, Sequence[EndUserTag]],
+        end_user: EndUser,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -435,7 +435,7 @@ Example 4: Avoiding repetitive responses. Given that the previous response by th
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
-        builder.add_user_name_and_tags(*user_tags_pair)
+        builder.add_user_name(end_user)
         builder.add_guideline_propositions(
             ordinary_guideline_propositions,
             tool_enabled_guideline_propositions,

@@ -130,7 +130,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
     _, tool_calls = await tool_caller.infer_tool_calls(
         agents=[agent],
-        user_tags_pair=(end_user, []),
+        end_user=end_user,
         context_variables=[],
         interaction_history=interaction_history,
         terms=[],
@@ -204,7 +204,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
 
         _, tool_calls = await tool_caller.infer_tool_calls(
             agents=[agent],
-            user_tags_pair=(end_user, []),
+            end_user=end_user,
             context_variables=[],
             interaction_history=interaction_history,
             terms=[],

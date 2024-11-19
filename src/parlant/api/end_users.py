@@ -1,21 +1,26 @@
 from datetime import datetime
-from fastapi import APIRouter, status
-from typing import Mapping, Optional, Union
+from fastapi import APIRouter, Response, status
+from typing import Mapping, Optional, Sequence, TypeAlias, Union
 
 from parlant.core.common import DefaultBaseModel
-from parlant.core.end_users import EndUserId, EndUserStore, EndUserTagId, EndUserUpdateParams
+from parlant.core.end_users import EndUserId, EndUserStore, EndUserUpdateParams
+from parlant.core.tags import TagId
+
+
+EndUserExtraType: TypeAlias = Mapping[str, Union[str, int, float, bool]]
 
 
 class CreateEndUserRequest(DefaultBaseModel):
     name: str
-    extra: Optional[Mapping[str, Union[str, int, float, bool]]]
+    extra: Optional[EndUserExtraType]
 
 
 class EndUserDTO(DefaultBaseModel):
     id: EndUserId
     creation_utc: datetime
     name: str
-    extra: Mapping[str, Union[str, int, float, bool]]
+    extra: EndUserExtraType
+    tags: Sequence[TagId]
 
 
 class CreateEndUserResponse(DefaultBaseModel):
@@ -26,31 +31,20 @@ class ListEndUsersResponse(DefaultBaseModel):
     end_users: list[EndUserDTO]
 
 
-class PatchEndUserRequest(DefaultBaseModel):
+class ExtraUpdateDTO(DefaultBaseModel):
+    add: Optional[EndUserExtraType] = None
+    remove: Optional[Sequence[str]] = None
+
+
+class TagsUpdateDTO(DefaultBaseModel):
+    add: Optional[Sequence[TagId]] = None
+    remove: Optional[Sequence[TagId]] = None
+
+
+class UpdateEndUserRequest(DefaultBaseModel):
     name: Optional[str] = None
-    extra: Optional[Mapping[str, Union[str, int, float, bool]]] = None
-
-
-class EndUserTag(DefaultBaseModel):
-    id: EndUserTagId
-    creation_utc: datetime
-    label: str
-
-
-class CreateTagRequest(DefaultBaseModel):
-    label: str
-
-
-class CreateTagResponse(DefaultBaseModel):
-    tag: EndUserTag
-
-
-class ListTagsResponse(DefaultBaseModel):
-    tags: list[EndUserTag]
-
-
-class DeleteTagResponse(DefaultBaseModel):
-    tag_id: EndUserTagId
+    extra: Optional[ExtraUpdateDTO] = None
+    tags: Optional[TagsUpdateDTO] = None
 
 
 def create_router(
@@ -75,6 +69,7 @@ def create_router(
                 creation_utc=end_user.creation_utc,
                 name=end_user.name,
                 extra=end_user.extra,
+                tags=end_user.tags,
             )
         )
 
@@ -90,6 +85,7 @@ def create_router(
             creation_utc=end_user.creation_utc,
             name=end_user.name,
             extra=end_user.extra,
+            tags=end_user.tags,
         )
 
     @router.get(
@@ -106,6 +102,7 @@ def create_router(
                     creation_utc=end_user.creation_utc,
                     name=end_user.name,
                     extra=end_user.extra,
+                    tags=end_user.tags,
                 )
                 for end_user in end_users
             ]
@@ -113,55 +110,32 @@ def create_router(
 
     @router.patch(
         "/{end_user_id}",
-        operation_id="patch_end_user",
+        operation_id="update_end_user",
     )
-    async def patch_end_user(end_user_id: EndUserId, request: PatchEndUserRequest) -> EndUserDTO:
-        params: EndUserUpdateParams = {}
+    async def update_end_user(end_user_id: EndUserId, request: UpdateEndUserRequest) -> Response:
         if request.name:
+            params: EndUserUpdateParams = {}
             params["name"] = request.name
+
+            _ = await end_user_store.update_end_user(
+                end_user_id=end_user_id,
+                params=params,
+            )
+
         if request.extra:
-            params["extra"] = request.extra
+            if request.extra.add:
+                await end_user_store.add_extra(end_user_id, request.extra.add)
+            if request.extra.remove:
+                await end_user_store.remove_extra(end_user_id, request.extra.remove)
 
-        end_user = await end_user_store.update_end_user(
-            end_user_id=end_user_id,
-            params=params,
-        )
+        if request.tags:
+            if request.tags.add:
+                for tag_id in request.tags.add:
+                    await end_user_store.add_tag(end_user_id, tag_id)
+            if request.tags.remove:
+                for tag_id in request.tags.remove:
+                    await end_user_store.remove_tag(end_user_id, tag_id)
 
-        return EndUserDTO(
-            id=end_user.id,
-            creation_utc=end_user.creation_utc,
-            name=end_user.name,
-            extra=end_user.extra,
-        )
-
-    @router.post(
-        "/{end_user_id}/tags",
-        status_code=status.HTTP_201_CREATED,
-        operation_id="create_tag",
-    )
-    async def create_tag(end_user_id: EndUserId, request: CreateTagRequest) -> EndUserTag:
-        tag = await end_user_store.set_tag(end_user_id=end_user_id, label=request.label)
-        return EndUserTag(id=tag.id, creation_utc=tag.creation_utc, label=tag.label)
-
-    @router.get(
-        "/{end_user_id}/tags",
-        operation_id="list_tags",
-    )
-    async def list_tags(end_user_id: EndUserId) -> ListTagsResponse:
-        tags = await end_user_store.get_tags(end_user_id=end_user_id)
-        return ListTagsResponse(
-            tags=[
-                EndUserTag(id=tag.id, creation_utc=tag.creation_utc, label=tag.label)
-                for tag in tags
-            ]
-        )
-
-    @router.delete(
-        "/{end_user_id}/tags/{tag_id}",
-        operation_id="delete_tag",
-    )
-    async def delete_tag(end_user_id: EndUserId, tag_id: EndUserTagId) -> DeleteTagResponse:
-        await end_user_store.delete_tag(end_user_id=end_user_id, tag_id=tag_id)
-        return DeleteTagResponse(tag_id=tag_id)
+        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     return router
