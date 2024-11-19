@@ -65,6 +65,8 @@ class ContextVariableValue:
 
 
 class ContextVariableStore(ABC):
+    GLOBAL_KEY = "__default"
+
     @abstractmethod
     async def create_variable(
         self,
@@ -79,8 +81,8 @@ class ContextVariableStore(ABC):
     async def update_value(
         self,
         variable_set: str,
-        key: str,
         variable_id: ContextVariableId,
+        key: str,
         data: JSONSerializable,
     ) -> ContextVariableValue: ...
 
@@ -295,8 +297,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
     async def update_value(
         self,
         variable_set: str,
-        key: str,
         variable_id: ContextVariableId,
+        key: str,
         data: JSONSerializable,
     ) -> ContextVariableValue:
         last_modified = datetime.now(timezone.utc)

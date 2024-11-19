@@ -392,20 +392,25 @@ class AlphaEngine(Engine):
         for variable in agent_variables:
             value = await self._context_variable_store.read_value(
                 variable_set=agent_id,
-                key=session.end_user_id,
+                key=ContextVariableStore.GLOBAL_KEY,
                 variable_id=variable.id,
             )
-            if value is not None:
-                context_variables.append((variable, value))
 
             for tag_id in end_user.tags:
-                tag_value = await self._context_variable_store.read_value(
+                value = await self._context_variable_store.read_value(
                     variable_set=agent_id,
                     key=f"tag:{tag_id}",
                     variable_id=variable.id,
                 )
-                if tag_value is not None:
-                    context_variables.append((variable, tag_value))
+
+            value = await self._context_variable_store.read_value(
+                variable_set=agent_id,
+                key=session.end_user_id,
+                variable_id=variable.id,
+            )
+
+            if value is not None:
+                context_variables.append((variable, value))
 
         return context_variables
 
