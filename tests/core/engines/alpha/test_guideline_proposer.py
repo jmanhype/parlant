@@ -23,7 +23,9 @@ from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.common import generate_id
-from parlant.core.customers import Customer, CustomerId
+from parlant.core.context_variables import ContextVariable, ContextVariableValue
+from parlant.core.emissions import EmittedEvent
+from parlant.core.glossary import Term
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
@@ -38,6 +40,103 @@ from parlant.core.logging import Logger
 
 from tests.core.engines.alpha.utils import create_event_message
 from tests.test_utilities import SyncAwaiter
+
+
+GUIDELINES_DICT = guidelines = {
+    "check_drinks_in_stock": {
+        "condition": "a client asks for a drink",
+        "action": "check if the drink is available in the following stock: "
+        "['Sprite', 'Coke', 'Fanta']",
+    },
+    "check_toppings_in_stock": {
+        "condition": "a client asks for toppings",
+        "action": "check if the toppings are available in the following stock: "
+        "['Pepperoni', 'Tomatoes', 'Olives']",
+    },
+    "payment_process": {
+        "condition": "a client is in the payment process",
+        "action": "Follow the payment instructions, "
+        "which are: 1. Pay in cash only, 2. Pay only at the location.",
+    },
+    "address_location": {
+        "condition": "the client needs to know our address",
+        "action": "Inform the client that our address is at Sapir 2, Herzliya.",
+    },
+    "mood_support": {
+        "condition": "the client is experiencing stress or dissatisfaction",
+        "action": "Provide comforting responses and suggest alternatives "
+        "or support to alleviate the client's mood.",
+    },
+    "class_booking": {
+        "condition": "the client asks about booking a class or an appointment",
+        "action": "Provide available times and facilitate the booking process, "
+        "ensuring to clarify any necessary details such as class type, date, and requirements.",
+    },
+    "class_cancellation": {
+        "condition": "the client wants to cancel a class or an appointment",
+        "action": "ask for the reason of cancellation, unless it's an emergecy mention the cancellation fee.",
+    },
+    "frustrated_user": {
+        "condition": "the client appears frustrated or upset",
+        "action": "Acknowledge the client's concerns, apologize for any inconvenience, and offer a solution or escalate the issue to a supervisor if necessary.",
+    },
+    "thankful_user": {
+        "condition": "the client expresses gratitude or satisfaction",
+        "action": "Acknowledge their thanks warmly and let them know you appreciate their feedback or kind words.",
+    },
+    "hesitant_user": {
+        "condition": "the client seems unsure or indecisive about a decision",
+        "action": "Offer additional information, provide reassurance, and suggest the most suitable option based on their needs.",
+    },
+    "holiday_season": {
+        "condition": "the interaction takes place during the holiday season",
+        "action": "Mention any holiday-related offers, adjusted schedules, or greetings to make the interaction festive and accommodating.",
+    },
+    "previous_issue_resurfaced": {
+        "condition": "the client brings up an issue they previously experienced",
+        "action": "Acknowledge the previous issue, apologize for any inconvenience, and take immediate steps to resolve it or escalate if needed.",
+    },
+    "question_already_answered": {
+        "condition": "the client asks a question that has already been answered",
+        "action": "Politely reiterate the information and ensure they understand or provide additional clarification if needed.",
+    },
+    "product_out_of_stock": {
+        "condition": "the client asks for a product that is currently unavailable",
+        "action": "Apologize for the inconvenience, inform them of the unavailability, and suggest alternative products or notify them of restocking timelines if available.",
+    },
+    "technical_issue": {
+        "condition": "the client reports a technical issue with the website or service",
+        "action": "Acknowledge the issue, apologize for the inconvenience, and guide them through troubleshooting steps or escalate the issue to the technical team.",
+    },
+    "first_time_client": {
+        "condition": "the client mentions it is their first time using the service",
+        "action": "Welcome them warmly, provide a brief overview of how the service works, and offer any resources to help them get started.",
+    },
+    "request_for_feedback": {
+        "condition": "the client is asked for feedback about the service or product",
+        "action": "Politely request their feedback, emphasizing its value for improvement, and provide simple instructions for submitting their response.",
+    },
+    "client_refers_friends": {
+        "condition": "the client mentions referring friends to the service or product",
+        "action": "Thank them sincerely for the referral and mention any referral rewards or benefits if applicable.",
+    },
+    "check_age": {
+        "condition": "the conversation neccesitates checking for the age of the client",
+        "action": "Use the 'check_age' tool to check for their age",
+    },
+    "suggest_drink_underage": {
+        "condition": "an underage client asks for drink recommendations",
+        "action": "recommmend a soda pop",
+    },
+    "suggest_drink_adult": {
+        "condition": "an adult client asks for drink recommendations",
+        "action": "recommend either wine or beer",
+    },
+    "announce_shipment": {
+        "condition": "the agent just confirmed that the order will be shipped to the user",
+        "action": "provide the package's tracking information",
+    },
+}
 
 
 @dataclass
@@ -65,6 +164,9 @@ def propose_guidelines(
     context: ContextOfTest,
     conversation_context: list[tuple[str, str]],
     agents: Sequence[Agent] = [],
+    context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]] = [],
+    terms: Sequence[Term] = [],
+    staged_events: Sequence[EmittedEvent] = [],
 ) -> Sequence[GuidelineProposition]:
     guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
     if not agents:
@@ -92,10 +194,10 @@ def propose_guidelines(
             agents=agents,
             customer=customer,
             guidelines=context.guidelines,
-            context_variables=[],
+            context_variables=context_variables,
             interaction_history=interaction_history,
-            terms=[],
-            staged_events=[],
+            terms=terms,
+            staged_events=staged_events,
         )
     )
 
@@ -117,48 +219,24 @@ def create_guideline(context: ContextOfTest, condition: str, action: str) -> Gui
     return guideline
 
 
+def get_all_guidelines(context: ContextOfTest) -> Sequence[Guideline]:
+    return [
+        create_guideline(
+            context=context, condition=guideline["condition"], action=guideline["action"]
+        )
+        for guideline in GUIDELINES_DICT.values()
+    ]
+
+
 def create_guideline_by_name(
     context: ContextOfTest,
     guideline_name: str,
 ) -> Guideline:
-    guidelines = {
-        "check_drinks_in_stock": {
-            "condition": "a client asks for a drink",
-            "action": "check if the drink is available in the following stock: "
-            "['Sprite', 'Coke', 'Fanta']",
-        },
-        "check_toppings_in_stock": {
-            "condition": "a client asks for toppings",
-            "action": "check if the toppings are available in the following stock: "
-            "['Pepperoni', 'Tomatoes', 'Olives']",
-        },
-        "payment_process": {
-            "condition": "a client is in the payment process",
-            "action": "Follow the payment instructions, "
-            "which are: 1. Pay in cash only, 2. Pay only at the location.",
-        },
-        "address_location": {
-            "condition": "the client needs to know our address",
-            "action": "Inform the client that our address is at Sapir 2, Herzliya.",
-        },
-        "mood_support": {
-            "condition": "the client is experiencing stress or dissatisfaction",
-            "action": "Provide comforting responses and suggest alternatives "
-            "or support to alleviate the client's mood.",
-        },
-        "class_booking": {
-            "condition": "the client asks about booking a class or an appointment",
-            "action": "Provide available times and facilitate the booking process, "
-            "ensuring to clarify any necessary details such as class type, date, and requirements.",
-        },
-    }
-
     guideline = create_guideline(
         context=context,
-        condition=guidelines[guideline_name]["condition"],
-        action=guidelines[guideline_name]["action"],
+        condition=GUIDELINES_DICT[guideline_name]["condition"],
+        action=GUIDELINES_DICT[guideline_name]["action"],
     )
-
     return guideline
 
 
@@ -168,6 +246,9 @@ def base_test_that_correct_guidelines_are_proposed(
     conversation_guideline_names: list[str],
     relevant_guideline_names: list[str],
     agents: Sequence[Agent] = [],
+    context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]] = [],
+    terms: Sequence[Term] = [],
+    staged_events: Sequence[EmittedEvent] = [],
 ) -> None:
     conversation_guidelines = {
         name: create_guideline_by_name(context, name) for name in conversation_guideline_names
@@ -178,7 +259,14 @@ def base_test_that_correct_guidelines_are_proposed(
         if name in relevant_guideline_names
     ]
 
-    guideline_propositions = propose_guidelines(context, conversation_context, agents)
+    guideline_propositions = propose_guidelines(
+        context,
+        conversation_context,
+        agents=agents,
+        context_variables=context_variables,
+        terms=terms,
+        staged_events=staged_events,
+    )
     guidelines = [p.guideline for p in guideline_propositions]
 
     assert set(guidelines) == set(relevant_guidelines)
@@ -353,4 +441,86 @@ def test_that_guidelines_with_the_same_conditions_are_scored_identically(
 def test_that_many_guidelines_are_classified_correctly(  # a stress test
     context: ContextOfTest,
 ) -> None:
-    assert True
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey, do you sell skateboards?"),
+        (
+            "ai_agent",
+            "Yes, we do! We have a variety of skateboards for all skill levels. Are you looking for something specific?",
+        ),
+        ("end_user", "I'm looking for a skateboard for a beginner. What do you recommend?"),
+        (
+            "ai_agent",
+            "For beginners, I recommend our complete skateboards with a sturdy deck and softer wheels for easier control. Would you like to see some options?",
+        ),
+        ("end_user", "That sounds perfect. Can you show me a few?"),
+        (
+            "ai_agent",
+            "Sure! We have a few options: the 'Smooth Ride' model, the 'City Cruiser,' and the 'Basic Starter.' Which one would you like to know more about?",
+        ),
+        ("end_user", "I like the 'City Cruiser.' What color options do you have?"),
+        ("ai_agent", "The 'City Cruiser' comes in red, blue, and black. Which one do you prefer?"),
+        ("end_user", "I'll go with the blue one."),
+        (
+            "ai_agent",
+            "Great choice! I'll add the blue 'City Cruiser' to your cart. Would you like to add any accessories like a helmet or grip tape?",
+        ),
+        ("end_user", "Yes, I'll take a helmet. What do you have in stock?"),
+        (
+            "ai_agent",
+            "We have helmets in small, medium, and large sizes, all available in black and gray. What size do you need?",
+        ),
+        ("end_user", "I need a medium. I'll take one in black."),
+        (
+            "ai_agent",
+            "Got it! Your blue 'City Cruiser' skateboard and black medium helmet are ready for checkout. How would you like to pay?",
+        ),
+        ("end_user", "I'll pay with a credit card, thanks."),
+        (
+            "ai_agent",
+            "Thank you for your order! Your skateboard and helmet will be shipped shortly. Enjoy your ride!",
+        ),
+    ]
+
+    conversation_guideline_names: list[str] = [
+        guideline_name for guideline_name in GUIDELINES_DICT.keys()
+    ]
+    relevant_guideline_names = ["announce_shipment"]
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
+
+
+def test_that_guidelines_are_proposed_based_on_agent_description(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write
+
+
+def test_that_guidelines_are_proposed_based_on_glossary(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write
+
+
+def test_that_conflicting_actions_with_similar_conditions_are_both_detected(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write
+
+
+def test_that_guidelines_are_proposed_based_on_staged_tool_calls(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write
+
+
+def test_that_already_adressed_guidelines_arent_proposed(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write
+
+
+def test_that_guideline_isnt_detected_based_on_its_action(
+    context: ContextOfTest,
+) -> None:
+    assert True  # TODO write

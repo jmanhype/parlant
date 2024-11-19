@@ -252,7 +252,7 @@ class GuidelineProposer:
             }
             for i, condition in enumerate(conditions, start=1)
         ]
-        predicates = "\n".join(f"{i}) {p}" for i, p in enumerate(predicates, start=1))
+        predicates = "\n".join(f"{i}) {p}" for i, p in enumerate(conditions, start=1))
 
         builder = PromptBuilder()
 
@@ -269,11 +269,11 @@ The predicates and the interaction will be provided to you later in this message
             f"""
 Process Description
 -------------------
-a. Examine the provided interaction events to discern the latest state of interaction between the customer and the assistant.
-b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state.
-c. If the predicate has already been addressed, assess its continued applicability.
-d. Assign an applicability score to each predicate between 1 and 10.
-e. IMPORTANT: Note that some predicates are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based predicates are hard to ascertain through a textual conversation.
+a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
+b. Evaluate the entire interaction to determine if each condition is still relevant to the most recent interaction state.
+c. Asses whether the condition has already been adressed, meaning that it already applied in an earlier state of the conversation, and that its action was already performed.
+d. A condition should receive a high applicabilaty score only if it's directly fulfilled. It is not sufficient for it to be implied to be true, or for you to believe that it will become true in a future state of the interaction.
+e. IMPORTANT: Note that some conditions are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based conditions are hard to ascertain through a textual conversation.
 
 ### Examples of Predicate Evaluations:
 
