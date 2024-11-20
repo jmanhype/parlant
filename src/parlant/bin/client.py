@@ -127,14 +127,14 @@ class Actions:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        customer_id: str,
+        customer_id: Optional[str] = None,
         title: Optional[str] = None,
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
         response = client.sessions.create(
-            customer_id=customer_id,
             agent_id=agent_id,
+            customer_id=customer_id,
             allow_greeting=False,
             title=title,
         )
@@ -896,7 +896,7 @@ class Interface:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        customer_id: str,
+        customer_id: Optional[str] = None,
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, customer_id, title)
@@ -1808,7 +1808,7 @@ async def async_main() -> None:
     def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-        session = Actions.create_session(ctx, agent_id=agent_id, customer_id="<unused>")
+        session = Actions.create_session(ctx, agent_id=agent_id)
 
         Interface.chat(ctx, session.id)
 
@@ -1825,13 +1825,13 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-u", "--customer-id", type=str, help="Customer ID", metavar="ID", required=True)
+    @click.option("-u", "--customer-id", type=str, help="Customer ID", metavar="ID", required=False)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
     def session_new(
         ctx: click.Context,
         agent_id: str,
-        customer_id: str,
+        customer_id: Optional[str],
         title: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
