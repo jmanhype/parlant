@@ -12,6 +12,7 @@ from typing import (
     TypeAlias,
     TypedDict,
     Union,
+    override,
 )
 from typing_extensions import Literal
 
@@ -416,6 +417,7 @@ class EvaluationDocumentStore(EvaluationStore):
             progress=evaluation_document["progress"],
         )
 
+    @override
     async def create_evaluation(
         self,
         agent_id: AgentId,
@@ -456,6 +458,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return evaluation
 
+    @override
     async def update_evaluation(
         self,
         evaluation_id: EvaluationId,
@@ -483,6 +486,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return self._deserialize_evaluation(result.updated_document)
 
+    @override
     async def read_evaluation(
         self,
         evaluation_id: EvaluationId,
@@ -496,6 +500,7 @@ class EvaluationDocumentStore(EvaluationStore):
 
         return self._deserialize_evaluation(evaluation_document=evaluation_document)
 
+    @override
     async def list_evaluations(
         self,
     ) -> Sequence[Evaluation]:

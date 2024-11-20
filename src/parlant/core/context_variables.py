@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Literal, NewType, Optional, Sequence, TypedDict
+from typing import Literal, NewType, Optional, Sequence, TypedDict, override
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
@@ -272,6 +272,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             data=context_variable_value_document["data"],
         )
 
+    @override
     async def create_variable(
         self,
         variable_set: str,
@@ -294,6 +295,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         return context_variable
 
+    @override
     async def update_value(
         self,
         variable_set: str,
@@ -328,6 +330,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         return value
 
+    @override
     async def delete_variable(
         self,
         variable_set: str,
@@ -345,6 +348,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         for k, _ in await self.list_values(variable_set=variable_set, variable_id=id):
             await self.delete_value(variable_set=variable_set, variable_id=id, key=k)
 
+    @override
     async def list_variables(
         self,
         variable_set: str,
@@ -354,6 +358,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             for d in await self._variable_collection.find({"variable_set": {"$eq": variable_set}})
         ]
 
+    @override
     async def read_variable(
         self,
         variable_set: str,
@@ -373,6 +378,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         return self._deserialize_context_variable(variable_document)
 
+    @override
     async def read_value(
         self,
         variable_set: str,
@@ -392,6 +398,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         return self._deserialize_context_variable_value(value_document)
 
+    @override
     async def delete_value(
         self,
         variable_set: str,
@@ -406,6 +413,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
             }
         )
 
+    @override
     async def list_values(
         self,
         variable_set: str,

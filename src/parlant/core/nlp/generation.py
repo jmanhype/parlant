@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args
+from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args, override
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
@@ -71,6 +71,7 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         self._generators = generators
         self._logger = logger
 
+    @override
     async def generate(
         self,
         prompt: str,
@@ -91,14 +92,17 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
         raise last_exception
 
     @property
+    @override
     def id(self) -> str:
         ids = ", ".join(g.id for g in self._generators)
         return f"fallback({ids})"
 
     @property
+    @override
     def tokenizer(self) -> EstimatingTokenizer:
         return self._generators[0].tokenizer
 
     @property
+    @override
     def max_tokens(self) -> int:
         return min(*(g.max_tokens for g in self._generators))

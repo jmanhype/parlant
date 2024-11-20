@@ -41,12 +41,22 @@ def replace_in_files(rootdir: Path, search: str, replace: str) -> None:
 
 
 if __name__ == "__main__":
+    DEFAULT_PORT = 8000
+    port = DEFAULT_PORT
+    if len(sys.argv) >= 2:
+        port = int(sys.argv[1])
+
+    print(f"The script will now try to fetch the latest openapi.json from http://localhost:{port}.")
+    input(
+        f"Ensure that parlant-server is running on port {port} and then press any key to continue..."
+    )
+
     status, output = subprocess.getstatusoutput(
-        f"curl -m 3 -o {DIR_FERN}/openapi/parlant.openapi.json http://localhost:8000/openapi.json"
+        f"curl -m 3 -o {DIR_FERN}/openapi/parlant.openapi.json http://localhost:{port}/openapi.json"
     )
 
     if status != 0:
-        print("Failed to fetch openapi.json from http://localhost:8000", file=sys.stderr)
+        print(f"Failed to fetch openapi.json from http://localhost:{port}", file=sys.stderr)
         print("Please ensure that the desired Parlant server is accessible there.", file=sys.stderr)
         sys.exit(1)
 
@@ -56,8 +66,8 @@ if __name__ == "__main__":
 
         raise Exception(f"Missing dir for {sdk}: {repo}")
 
-    input("Fetched openapi.json from http://localhost:8000. Press any key to continue...")
-    print("\n")
+    print(f"Fetched openapi.json from http://localhost:{port}.")
+
     if not DIR_FERN.is_dir():
         raise Exception("fern directory not found where expected")
     for sdk in PATHDICT_SDK_REPO_TARGETS:

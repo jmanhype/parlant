@@ -1,7 +1,7 @@
 import time
 from pydantic import ValidationError
 from anthropic import AsyncAnthropic  # type: ignore
-from typing import Any, Mapping
+from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 import os
 import tiktoken
@@ -27,6 +27,7 @@ class AnthropicEstimatingTokenizer(EstimatingTokenizer):
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
         self._client = client
 
+    @override
     async def estimate_token_count(self, prompt: str) -> int:
         return await self._client.count_tokens(prompt)
 
@@ -47,13 +48,16 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
         self._estimating_tokenizer = AnthropicEstimatingTokenizer(self._client)
 
     @property
+    @override
     def id(self) -> str:
         return f"anthropic/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> AnthropicEstimatingTokenizer:
         return self._estimating_tokenizer
 
+    @override
     async def generate(
         self,
         prompt: str,
@@ -109,6 +113,7 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
             logger=logger,
         )
 
+    @override
     @property
     def max_tokens(self) -> int:
         return 200_000
@@ -118,11 +123,14 @@ class AnthropicService(NLPService):
     def __init__(self, logger: Logger) -> None:
         self._logger = logger
 
+    @override
     async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:
         return Claude_Sonnet_3_5[t](self._logger)  # type: ignore
 
+    @override
     async def get_embedder(self) -> Embedder:
         return JinaAIEmbedder()
 
+    @override
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

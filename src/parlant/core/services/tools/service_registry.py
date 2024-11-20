@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
 from types import TracebackType
-from typing import Mapping, Optional, Self, Sequence, TypedDict, cast
+from typing import Mapping, Optional, Self, Sequence, TypedDict, cast, override
 import aiofiles
 import httpx
 from typing_extensions import Literal
@@ -192,6 +192,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
         else:
             raise ValueError("Unsupported ToolService kind.")
 
+    @override
     async def update_tool_service(
         self,
         name: str,
@@ -235,6 +236,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
         return service
 
+    @override
     async def read_tool_service(
         self,
         name: str,
@@ -243,11 +245,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
             raise ItemNotFoundError(item_id=UniqueId(name))
         return self._running_services[name]
 
+    @override
     async def list_tool_services(
         self,
     ) -> Sequence[tuple[str, ToolService]]:
         return list(self._running_services.items())
 
+    @override
     async def read_moderation_service(
         self,
         name: str,
@@ -256,11 +260,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
             raise ItemNotFoundError(item_id=UniqueId(name))
         return self._moderation_services[name]
 
+    @override
     async def list_moderation_services(
         self,
     ) -> Sequence[tuple[str, ModerationService]]:
         return list(self._moderation_services.items())
 
+    @override
     async def read_nlp_service(
         self,
         name: str,
@@ -269,11 +275,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
             raise ItemNotFoundError(item_id=UniqueId(name))
         return self._nlp_services[name]
 
+    @override
     async def list_nlp_services(
         self,
     ) -> Sequence[tuple[str, NLPService]]:
         return list(self._nlp_services.items())
 
+    @override
     async def delete_service(self, name: str) -> None:
         if name in self._running_services:
             if isinstance(self._running_services[name], LocalToolService):

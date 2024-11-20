@@ -4,7 +4,7 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Mapping, Optional, Sequence, cast, override
 import aiofiles
 
 from parlant.core.persistence.document_database import (
@@ -108,6 +108,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             )
             await file.write(json_string)
 
+    @override
     def create_collection(
         self,
         name: str,
@@ -123,6 +124,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
+    @override
     def get_collection(
         self,
         name: str,
@@ -131,6 +133,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             return cast(JSONFileDocumentCollection[TDocument], collection)
         raise ValueError(f'Collection "{name}" does not exists')
 
+    @override
     def get_or_create_collection(
         self,
         name: str,
@@ -147,6 +150,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
+    @override
     def delete_collection(
         self,
         name: str,
@@ -177,6 +181,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self._op_counter = 0
         self._lock = asyncio.Lock()
 
+    @override
     async def find(
         self,
         filters: Where,
@@ -190,6 +195,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
         return result
 
+    @override
     async def find_one(
         self,
         filters: Where,
@@ -200,6 +206,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
         return None
 
+    @override
     async def insert_one(
         self,
         document: TDocument,
@@ -213,6 +220,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
         return InsertResult(acknowledged=True)
 
+    @override
     async def update_one(
         self,
         filters: Where,
@@ -252,6 +260,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
             updated_document=None,
         )
 
+    @override
     async def delete_one(
         self,
         filters: Where,

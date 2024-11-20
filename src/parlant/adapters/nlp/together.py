@@ -1,7 +1,7 @@
 import time
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
-from typing import Any, Mapping
+from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 import os
 import tiktoken
@@ -29,6 +29,7 @@ class LlamaEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self) -> None:
         self.encoding = tiktoken.encoding_for_model("gpt-4o-2024-08-06")
 
+    @override
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self.encoding.encode(prompt)
         return len(tokens) + 36
@@ -46,6 +47,7 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
         self._logger = logger
         self._client = AsyncTogether(api_key=os.environ.get("TOGETHER_API_KEY"))
 
+    @override
     async def generate(
         self,
         prompt: str,
@@ -105,14 +107,17 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
         self._estimating_tokenizer = LlamaEstimatingTokenizer()
 
     @property
+    @override
     def id(self) -> str:
         return self.model_name
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 128_000
 
     @property
+    @override
     def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
@@ -127,14 +132,17 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
         self._estimating_tokenizer = LlamaEstimatingTokenizer()
 
     @property
+    @override
     def id(self) -> str:
         return self.model_name
 
     @property
+    @override
     def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 128_000
 
@@ -149,14 +157,17 @@ class Llama3_1_405B(TogetherAISchematicGenerator[T]):
         self._estimating_tokenizer = LlamaEstimatingTokenizer()
 
     @property
+    @override
     def id(self) -> str:
         return self.model_name
 
     @property
+    @override
     def tokenizer(self) -> LlamaEstimatingTokenizer:
         return self._estimating_tokenizer
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 128_000
 
@@ -166,6 +177,7 @@ class TogetherAIEmbedder(Embedder):
         self.model_name = model_name
         self._client = AsyncTogether(api_key=os.environ.get("TOGETHER_API_KEY"))
 
+    @override
     async def embed(
         self,
         texts: list[str],
@@ -188,14 +200,17 @@ class M2Bert32K(TogetherAIEmbedder):
         self._estimating_tokenizer = HuggingFaceEstimatingTokenizer(self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return self.model_name
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 32768
 
     @property
+    @override
     def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._estimating_tokenizer
 
@@ -207,6 +222,7 @@ class TogetherService(NLPService):
     ) -> None:
         self._logger = logger
 
+    @override
     async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
         if t == MessageEventSchema:
             return Llama3_1_405B[t](self._logger)  # type: ignore
@@ -218,8 +234,10 @@ class TogetherService(NLPService):
             )
         return Llama3_1_70B[t](self._logger)  # type: ignore
 
+    @override
     async def get_embedder(self) -> Embedder:
         return M2Bert32K()
 
+    @override
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

@@ -1,4 +1,4 @@
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, override
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -123,6 +123,7 @@ class GuidelineDocumentStore(GuidelineStore):
             ),
         )
 
+    @override
     async def create_guideline(
         self,
         guideline_set: str,
@@ -150,6 +151,7 @@ class GuidelineDocumentStore(GuidelineStore):
 
         return guideline
 
+    @override
     async def list_guidelines(
         self,
         guideline_set: str,
@@ -159,6 +161,7 @@ class GuidelineDocumentStore(GuidelineStore):
             for d in await self._collection.find(filters={"guideline_set": {"$eq": guideline_set}})
         ]
 
+    @override
     async def read_guideline(
         self,
         guideline_set: str,
@@ -178,6 +181,7 @@ class GuidelineDocumentStore(GuidelineStore):
 
         return self._deserialize(guideline_document)
 
+    @override
     async def delete_guideline(
         self,
         guideline_set: str,
@@ -195,6 +199,7 @@ class GuidelineDocumentStore(GuidelineStore):
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
 
+    @override
     async def update_guideline(
         self,
         guideline_id: GuidelineId,
@@ -217,6 +222,7 @@ class GuidelineDocumentStore(GuidelineStore):
 
         return self._deserialize(result.updated_document)
 
+    @override
     async def find_guideline(
         self,
         guideline_set: str,

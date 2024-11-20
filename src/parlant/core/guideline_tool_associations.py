@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, override
 
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.guidelines import GuidelineId
@@ -89,6 +89,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
             tool_id=ToolId.from_string(association_document["tool_id"]),
         )
 
+    @override
     async def create_association(
         self,
         guideline_id: GuidelineId,
@@ -108,6 +109,7 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
 
         return association
 
+    @override
     async def read_association(
         self,
         association_id: GuidelineToolAssociationId,
@@ -121,11 +123,13 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
 
         return self._deserialize(guideline_tool_association_document)
 
+    @override
     async def delete_association(self, association_id: GuidelineToolAssociationId) -> None:
         result = await self._collection.delete_one(filters={"id": {"$eq": association_id}})
 
         if not result.deleted_document:
             raise ItemNotFoundError(item_id=UniqueId(association_id))
 
+    @override
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [self._deserialize(d) for d in await self._collection.find(filters={})]

@@ -16,6 +16,7 @@ from typing import (
     TypeAlias,
     TypedDict,
     Union,
+    override,
 )
 
 from parlant.core.common import JSONSerializable
@@ -213,17 +214,20 @@ class LocalToolService(ToolService):
 
         return self._local_tool_to_tool(local_tool)
 
+    @override
     async def list_tools(
         self,
     ) -> Sequence[Tool]:
         return [self._local_tool_to_tool(t) for t in self._local_tools_by_name.values()]
 
+    @override
     async def read_tool(
         self,
         name: str,
     ) -> Tool:
         return self._local_tool_to_tool(self._local_tools_by_name[name])
 
+    @override
     async def call_tool(
         self,
         name: str,

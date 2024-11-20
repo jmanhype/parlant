@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 import os
-from typing import Any
+from typing import Any, override
 import torch  # type: ignore
 from transformers import AutoModel, AutoTokenizer  # type: ignore
 
@@ -25,6 +25,7 @@ class HuggingFaceEstimatingTokenizer(EstimatingTokenizer):
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._tokenizer.save_pretrained(save_dir)
 
+    @override
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self._tokenizer.tokenize(prompt)
         return len(tokens)
@@ -53,17 +54,21 @@ class HuggingFaceEmbedder(Embedder):
         self._tokenizer = HuggingFaceEstimatingTokenizer(model_name=model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"hugging-face/{self.model_name}"
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 8192
 
     @property
+    @override
     def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._tokenizer
 
+    @override
     async def embed(
         self,
         texts: list[str],
