@@ -29,6 +29,8 @@ class EndUserUpdateParams(TypedDict, total=False):
 
 
 class EndUserStore(ABC):
+    GUEST_USER_ID = EndUserId("guest")
+
     @abstractmethod
     async def create_end_user(
         self,
