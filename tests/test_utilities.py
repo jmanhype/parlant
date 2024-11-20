@@ -16,7 +16,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.core.end_users import EndUser, EndUserId, EndUserStore
+from parlant.core.customers import Customer, CustomerId, CustomerStore
 from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
@@ -108,21 +108,21 @@ async def create_agent(container: Container, name: str) -> Agent:
     return await container[AgentStore].create_agent(name="test-agent")
 
 
-async def create_end_user(container: Container, name: str) -> EndUser:
-    return await container[EndUserStore].create_end_user(
+async def create_customer(container: Container, name: str) -> Customer:
+    return await container[CustomerStore].create_customer(
         name=name,
-        extra={"email": "test@user.com"},
+        extra={"email": "test@customer.com"},
     )
 
 
 async def create_session(
     container: Container,
     agent_id: AgentId,
-    end_user_id: Optional[EndUserId] = None,
+    customer_id: Optional[CustomerId] = None,
     title: Optional[str] = None,
 ) -> Session:
     return await container[SessionStore].create_session(
-        end_user_id or (await create_end_user(container, "Auto-Created User")).id,
+        customer_id or (await create_customer(container, "Auto-Created Customer")).id,
         agent_id=agent_id,
         title=title,
     )
@@ -212,14 +212,14 @@ async def create_guideline(
 async def read_reply(
     container: Container,
     session_id: SessionId,
-    user_event_offset: int,
+    customer_event_offset: int,
 ) -> Event:
     return next(
         iter(
             await container[SessionStore].list_events(
                 session_id=session_id,
                 source="ai_agent",
-                min_offset=user_event_offset,
+                min_offset=customer_event_offset,
                 kinds=["message"],
             )
         )
@@ -232,14 +232,14 @@ async def post_message(
     message: str,
     response_timeout: Timeout = Timeout.none(),
 ) -> Event:
-    end_user_id = (await container[SessionStore].read_session(session_id)).end_user_id
-    end_user = await container[EndUserStore].read_end_user(end_user_id)
+    customer_id = (await container[SessionStore].read_session(session_id)).customer_id
+    customer = await container[CustomerStore].read_customer(customer_id)
 
     data: MessageEventData = {
         "message": message,
         "participant": {
-            "id": end_user_id,
-            "display_name": end_user.name,
+            "id": customer_id,
+            "display_name": customer.name,
         },
     }
 

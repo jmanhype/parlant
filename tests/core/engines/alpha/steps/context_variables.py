@@ -6,7 +6,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.core.end_users import EndUserStore
+from parlant.core.customers import CustomerStore
 from parlant.core.sessions import SessionId, SessionStore
 
 from parlant.core.tags import TagStore
@@ -48,7 +48,7 @@ def given_a_context_variable(
     session_store = context.container[SessionStore]
     context_variable_store = context.container[ContextVariableStore]
 
-    end_user_id = context.sync_await(session_store.read_session(session_id)).end_user_id
+    customer_id = context.sync_await(session_store.read_session(session_id)).customer_id
 
     variable = context.sync_await(
         context_variable_store.create_variable(
@@ -63,7 +63,7 @@ def given_a_context_variable(
     return context.sync_await(
         context_variable_store.update_value(
             variable_set=agent_id,
-            key=end_user_id,
+            key=customer_id,
             variable_id=variable.id,
             data=variable_value,
         )
@@ -73,29 +73,29 @@ def given_a_context_variable(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" set to "{variable_value}" to "{end_user_name}"'
+        'a context variable "{variable_name}" set to "{variable_value}" to "{customer_name}"'
     ),
 )
-def given_a_context_variable_to_specific_user(
+def given_a_context_variable_to_specific_customer(
     context: ContextOfTest,
     variable_name: str,
     variable_value: str,
-    end_user_name: str,
+    customer_name: str,
     agent_id: AgentId,
 ) -> ContextVariableValue:
-    end_user_store = context.container[EndUserStore]
+    customer_store = context.container[CustomerStore]
     context_variable_store = context.container[ContextVariableStore]
 
-    end_users = context.sync_await(end_user_store.list_end_users())
+    customers = context.sync_await(customer_store.list_customers())
 
-    end_user = next(user for user in end_users if user.name == end_user_name)
+    customer = next(c for c in customers if c.name == customer_name)
 
     variable = get_or_create_variable(context, agent_id, context_variable_store, variable_name)
 
     return context.sync_await(
         context_variable_store.update_value(
             variable_set=agent_id,
-            key=end_user.id,
+            key=customer.id,
             variable_id=variable.id,
             data=variable_value,
         )

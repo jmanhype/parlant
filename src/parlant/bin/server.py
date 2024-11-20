@@ -26,7 +26,7 @@ from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
-from parlant.core.end_users import EndUserDocumentStore, EndUserStore
+from parlant.core.customers import CustomerDocumentStore, CustomerStore
 from parlant.core.evaluations import (
     EvaluationDocumentStore,
     EvaluationStatus,
@@ -143,8 +143,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     tags_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
     )
-    end_users_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "end_users.json")
+    customers_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "customers.json")
     )
     sessions_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(
@@ -171,7 +171,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[AgentStore] = AgentDocumentStore(agents_db)
     c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
     c[TagStore] = TagDocumentStore(tags_db)
-    c[EndUserStore] = EndUserDocumentStore(end_users_db)
+    c[CustomerStore] = CustomerDocumentStore(customers_db)
     c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
 
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(

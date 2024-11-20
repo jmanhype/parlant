@@ -71,7 +71,7 @@ async def get_agent_replies(
             session_creation_response = await client.post(
                 f"{SERVER_ADDRESS}/sessions",
                 json={
-                    "end_user_id": "test_user",
+                    "customer_id": "test_customer",
                     "agent_id": agent.id,
                 },
             )
@@ -80,18 +80,18 @@ async def get_agent_replies(
 
             await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-            user_message_response = await client.post(
+            customer_message_response = await client.post(
                 f"{SERVER_ADDRESS}/sessions/{session_id}/events",
                 json={
                     "kind": "message",
-                    "source": "end_user",
+                    "source": "customer",
                     "content": message,
                 },
             )
-            user_message_response.raise_for_status()
-            user_message_offset = int(user_message_response.json()["event"]["offset"])
+            customer_message_response.raise_for_status()
+            customer_message_offset = int(customer_message_response.json()["event"]["offset"])
 
-            last_known_offset = user_message_offset
+            last_known_offset = customer_message_offset
 
             replies: list[str] = []
             timeout = Timeout(300)
@@ -149,7 +149,7 @@ async def test_that_the_server_starts_and_gernerate_a_message(
 
         assert await nlp_test(
             agent_replies[0],
-            "It greets the user",
+            "It greets the customer",
         )
 
 
@@ -165,7 +165,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
             {
                 "kind": "guideline",
                 "content": {
-                    "condition": "the user greets you",
+                    "condition": "the customer greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 "operation": "add",
@@ -175,7 +175,7 @@ async def test_that_the_server_recovery_restarts_all_active_evaluation_tasks(
             {
                 "kind": "guideline",
                 "content": {
-                    "condition": "the user greeting you",
+                    "condition": "the customer greeting you",
                     "action": "greet them back with 'Hola'",
                 },
                 "operation": "add",
@@ -232,13 +232,13 @@ async def test_that_guidelines_are_loaded_after_server_restarts(
 
         first = await create_guideline(
             agent_id=agent.id,
-            condition="the user greets you",
+            condition="the customer greets you",
             action="greet them back with 'Hello'",
         )
 
         second = await create_guideline(
             agent_id=agent.id,
-            condition="the user say goodbye",
+            condition="the customer say goodbye",
             action="say goodbye",
         )
 

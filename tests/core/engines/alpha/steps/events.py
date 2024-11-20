@@ -3,7 +3,7 @@ from pytest_bdd import given, then, parsers, when
 
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable
-from parlant.core.end_users import EndUser
+from parlant.core.customers import Customer
 from parlant.core.engines.alpha.utils import emitted_tool_event_to_dict
 from parlant.core.emissions import EmittedEvent
 from parlant.core.nlp.moderation import ModerationTag
@@ -96,28 +96,28 @@ def given_a_human_message_on_behalf_of_the_agent(
     return session.id
 
 
-@step(given, parsers.parse('a user message, "{user_message}"'), target_fixture="session_id")
-def given_a_user_message(
+@step(given, parsers.parse('a customer message, "{customer_message}"'), target_fixture="session_id")
+def given_a_customer_message(
     context: ContextOfTest,
     session_id: SessionId,
-    user_message: str,
-    end_user: EndUser,
+    customer_message: str,
+    customer: Customer,
 ) -> SessionId:
     store = context.container[SessionStore]
     session = context.sync_await(store.read_session(session_id=session_id))
 
     message_data: MessageEventData = {
-        "message": user_message,
+        "message": customer_message,
         "participant": {
-            "id": end_user.id,
-            "display_name": end_user.name,
+            "id": customer.id,
+            "display_name": customer.name,
         },
     }
 
     event = context.sync_await(
         store.create_event(
             session_id=session.id,
-            source="end_user",
+            source="customer",
             kind="message",
             correlation_id="test_correlation_id",
             data=cast(JSONSerializable, message_data),
@@ -131,20 +131,20 @@ def given_a_user_message(
 
 @step(
     given,
-    parsers.parse('a user message, "{user_message}", flagged for {moderation_tag}'),
+    parsers.parse('a customer message, "{customer_message}", flagged for {moderation_tag}'),
     target_fixture="session_id",
 )
-def given_a_flagged_user_message(
+def given_a_flagged_customer_message(
     context: ContextOfTest,
     session_id: SessionId,
-    user_message: str,
+    customer_message: str,
     moderation_tag: ModerationTag,
 ) -> SessionId:
     store = context.container[SessionStore]
     session = context.sync_await(store.read_session(session_id=session_id))
 
     message_data: MessageEventData = {
-        "message": user_message,
+        "message": customer_message,
         "participant": {"display_name": ""},
         "flagged": True,
         "tags": [moderation_tag],
@@ -153,7 +153,7 @@ def given_a_flagged_user_message(
     event = context.sync_await(
         store.create_event(
             session_id=session.id,
-            source="end_user",
+            source="customer",
             kind="message",
             correlation_id="test_correlation_id",
             data=cast(JSONSerializable, message_data),

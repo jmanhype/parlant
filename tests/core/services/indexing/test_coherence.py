@@ -248,12 +248,12 @@ def test_that_contingent_incoherencies_are_detected_parametrized_2(
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
-        "condition": "A user expresses dissatisfaction with our new design",
-        "action": "encourage users to adopt and adapt to the change as part of ongoing product",
+        "condition": "A customer expresses dissatisfaction with our new design",
+        "action": "encourage customers to adopt and adapt to the change as part of ongoing product",
     }
 
     guideline_b_definition: dict[str, str] = {
-        "condition": "A user requests a feature that is no longer available",
+        "condition": "A customer requests a feature that is no longer available",
         "action": "Roll back or offer the option to revert to previous settings",
     }
     base_test_that_contingent_incoherencies_are_detected(
@@ -306,7 +306,7 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized
 ) -> None:
     guideline_a_definition: dict[str, str] = {
         "condition": "A new software update is scheduled for release during the latter half of the year",
-        "action": "Roll it out to all users to ensure everyone has the latest version",
+        "action": "Roll it out to all customers to ensure everyone has the latest version",
     }
     guideline_b_definition: dict[str, str] = {
         "condition": "A software update is about to release and the month is November",
@@ -751,14 +751,14 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     guidelines_to_evaluate = [
         GuidelineContent(
             condition="a document is being discussed",
-            action="provide the full document to the user",
+            action="provide the full document to the customer",
         ),
         GuidelineContent(
             condition="a client asks to summarize a document",
             action="provide a summary of the document in 100 words or less",
         ),
         GuidelineContent(
-            condition="the client asks for a summary of another user's medical document",
+            condition="the client asks for a summary of another customer's medical document",
             action="refuse to share the document or its summary",
         ),
     ]
@@ -796,7 +796,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_to_evaluate = GuidelineContent(
-        condition="the user is dissatisfied",
+        condition="the customer is dissatisfied",
         action="apologize and suggest to forward the request to management",
     )
 
@@ -806,7 +806,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
     )
 
     second_guideline_to_compare = GuidelineContent(
-        condition="the client asks for a summary of another user's medical document",
+        condition="the client asks for a summary of another customer's medical document",
         action="refuse to share the document or its summary",
     )
 
@@ -992,11 +992,11 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
 ) -> None:
     coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
-        condition="the user is a returning customer", action="add a 5% discount to the order"
+        condition="the customer is a returning customer", action="add a 5% discount to the order"
     )
 
     guideline_b = GuidelineContent(
-        condition="the user is a very frequent customer",
+        condition="the customer is a very frequent customer",
         action="add a 10% discount to the order",
     )
 

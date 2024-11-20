@@ -11,7 +11,7 @@ from parlant.core.common import generate_id
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentId
 from parlant.core.emissions import EventEmitterFactory
-from parlant.core.end_users import EndUserId
+from parlant.core.customers import CustomerId
 from parlant.core.evaluations import ConnectionProposition, Invoice
 from parlant.core.guideline_connections import (
     GuidelineConnectionStore,
@@ -63,16 +63,16 @@ class Application:
             timeout=timeout,
         )
 
-    async def create_end_user_session(
+    async def create_customer_session(
         self,
-        end_user_id: EndUserId,
+        customer_id: CustomerId,
         agent_id: AgentId,
         title: Optional[str] = None,
         allow_greeting: bool = False,
     ) -> Session:
         session = await self._session_store.create_session(
             creation_utc=datetime.now(timezone.utc),
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=agent_id,
             title=title,
         )
@@ -87,7 +87,7 @@ class Application:
         session_id: SessionId,
         kind: EventKind,
         data: Mapping[str, Any],
-        source: EventSource = "end_user",
+        source: EventSource = "customer",
         trigger_processing: bool = True,
     ) -> Event:
         event = await self._session_store.create_event(

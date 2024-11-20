@@ -2,10 +2,10 @@ from lagom import Container
 from pytest import fixture
 
 from parlant.core.agents import AgentId
-from parlant.core.end_users import EndUserId
+from parlant.core.customers import CustomerId
 from parlant.core.sessions import SessionId
 
-from tests.test_utilities import create_agent, create_end_user, create_session
+from tests.test_utilities import create_agent, create_customer, create_session
 
 
 @fixture
@@ -15,9 +15,9 @@ async def agent_id(container: Container) -> AgentId:
 
 
 @fixture
-async def end_user_id(container: Container) -> EndUserId:
-    end_user = await create_end_user(container, "Test User")
-    return end_user.id
+async def customer_id(container: Container) -> CustomerId:
+    customer = await create_customer(container, "Test Customer")
+    return customer.id
 
 
 @fixture

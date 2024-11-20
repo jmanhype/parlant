@@ -193,7 +193,7 @@ def given_a_tool(
             "description": "Get answers to questions by consulting documentation",
             "module_path": "tests.tool_utilities",
             "parameters": {
-                "user_query": {"type": "string", "description": "The query from the user"}
+                "user_query": {"type": "string", "description": "The query from the customer"}
             },
             "required": ["user_query"],
         },

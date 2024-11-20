@@ -127,13 +127,13 @@ class Actions:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: str,
         title: Optional[str] = None,
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
         response = client.sessions.create(
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=agent_id,
             allow_greeting=False,
             title=title,
@@ -144,13 +144,13 @@ class Actions:
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
-        end_user_id: Optional[str],
+        customer_id: Optional[str],
     ) -> list[Session]:
         client = cast(ParlantClient, ctx.obj.client)
 
         response = client.sessions.list(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
 
         return response.sessions
@@ -188,8 +188,8 @@ class Actions:
         response = client.sessions.create_event(
             session_id,
             kind="message",
-            source="end_user",
-            data=message,
+            source="customer",
+            content=message,
         )
 
         return response.event
@@ -841,7 +841,7 @@ class Interface:
                 "ID": s.id,
                 "Title": s.title or "",
                 "Creation Date": reformat_datetime(s.creation_utc),
-                "End User ID": s.end_user_id,
+                "Costumer ID": s.customer_id,
             }
             for s in sessions
         ]
@@ -882,9 +882,9 @@ class Interface:
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
-        end_user_id: Optional[str],
+        customer_id: Optional[str],
     ) -> None:
-        sessions = Actions.list_sessions(ctx, agent_id, end_user_id)
+        sessions = Actions.list_sessions(ctx, agent_id, customer_id)
 
         if not sessions:
             rich.print("No data available")
@@ -896,10 +896,10 @@ class Interface:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: str,
         title: Optional[str] = None,
     ) -> None:
-        session = Actions.create_session(ctx, agent_id, end_user_id, title)
+        session = Actions.create_session(ctx, agent_id, customer_id, title)
         Interface._write_success(f"Added session (id={session.id})")
         Interface._render_sessions([session])
 
@@ -980,10 +980,10 @@ class Interface:
         session_id: str,
     ) -> None:
         def print_message(message_event: dict[str, Any]) -> None:
-            role = {"end_user": "User", "ai_agent": "Agent"}[message_event["source"]]
+            role = {"customer": "Customer", "ai_agent": "Agent"}[message_event["source"]]
             prefix = Text(
                 f"{role}:".ljust(6),
-                style="bold " + {"User": "blue", "Agent": "green"}[role],
+                style="bold " + {"Customer": "blue", "Agent": "green"}[role],
             )
 
             message = wrap(
@@ -1021,7 +1021,7 @@ class Interface:
 
         while True:
             try:
-                rich.print(Text("User:  ", style="bold blue"), end="")
+                rich.print(Text("Customer:  ", style="bold blue"), end="")
                 new_message = input()
 
                 response = requests.post(
@@ -1031,7 +1031,7 @@ class Interface:
                     ),
                     json={
                         "kind": "message",
-                        "source": "end_user",
+                        "source": "customer",
                         "data": new_message,
                     },
                 )
@@ -1808,7 +1808,7 @@ async def async_main() -> None:
     def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
-        session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
+        session = Actions.create_session(ctx, agent_id=agent_id, customer_id="<unused>")
 
         Interface.chat(ctx, session.id)
 
@@ -1825,19 +1825,19 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
+    @click.option("-u", "--customer-id", type=str, help="Customer ID", metavar="ID", required=True)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
     def session_new(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: str,
         title: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.create_session(ctx, agent_id, end_user_id, title)
+        Interface.create_session(ctx, agent_id, customer_id, title)
 
     @session.command("list", help="List all sessions")
     @click.option(
@@ -1850,17 +1850,17 @@ async def async_main() -> None:
     )
     @click.option(
         "-u",
-        "--end-user-id",
+        "--customer-id",
         type=str,
-        help="Filter by End User ID",
+        help="Filter by Customer ID",
         metavar="ID",
         required=False,
     )
     @click.pass_context
     def session_list(
-        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+        ctx: click.Context, agent_id: Optional[str], customer_id: Optional[str]
     ) -> None:
-        Interface.list_sessions(ctx, agent_id, end_user_id)
+        Interface.list_sessions(ctx, agent_id, customer_id)
 
     @session.command("view", help="View session content")
     @click.argument("session_id")
@@ -1875,7 +1875,7 @@ async def async_main() -> None:
     def session_inspect(ctx: click.Context, session_id: str, event_id: str) -> None:
         Interface.inspect_event(ctx, session_id, event_id)
 
-    @session.command("post", help="Post user message to session")
+    @session.command("post", help="Post customer message to session")
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
