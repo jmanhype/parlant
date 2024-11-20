@@ -710,25 +710,29 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_var
         ),
         ("end_user", "I'm Bob Bobberson"),
     ]
-    tool_result_1 = {
-        "tool_calls": [
-            {
-                "tool_id": "local:get_user_age",
-                "arguments": {"user_id": "199877"},
-                "result": {"data": 16, "metadata": {}, "control": {}},
-            }
-        ]
-    }
+    tool_result_1 = JSONSerializable(
+        {
+            "tool_calls": [
+                {
+                    "tool_id": "local:get_user_age",
+                    "arguments": {"user_id": "199877"},
+                    "result": {"data": 16, "metadata": {}, "control": {}},
+                }
+            ]
+        }
+    )
 
-    tool_result_2 = {
-        "tool_calls": [
-            {
-                "tool_id": "local:get_user_age",
-                "arguments": {"user_id": "816779"},
-                "result": {"data": 30, "metadata": {}, "control": {}},
-            }
-        ]
-    }
+    tool_result_2 = JSONSerializable(
+        {
+            "tool_calls": [
+                {
+                    "tool_id": "local:get_user_age",
+                    "arguments": {"user_id": "816779"},
+                    "result": {"data": 30, "metadata": {}, "control": {}},
+                }
+            ]
+        }
+    )
     staged_events = [
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_2),
@@ -774,25 +778,29 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context
         ("end_user", "It's 199877"),
     ]
 
-    tool_result_1 = {
-        "tool_calls": [
-            {
-                "tool_id": "local:get_user_age",
-                "arguments": {"user_id": "199877"},
-                "result": {"data": 16, "metadata": {}, "control": {}},
-            }
-        ]
-    }
+    tool_result_1 = JSONSerializable(
+        {
+            "tool_calls": [
+                {
+                    "tool_id": "local:get_user_age",
+                    "arguments": {"user_id": "199877"},
+                    "result": {"data": 16, "metadata": {}, "control": {}},
+                }
+            ]
+        }
+    )
 
-    tool_result_2 = {
-        "tool_calls": [
-            {
-                "tool_id": "local:get_user_age",
-                "arguments": {"user_id": "816779"},
-                "result": {"data": 30, "metadata": {}, "control": {}},
-            }
-        ]
-    }
+    tool_result_2 = JSONSerializable(
+        {
+            "tool_calls": [
+                {
+                    "tool_id": "local:get_user_age",
+                    "arguments": {"user_id": "816779"},
+                    "result": {"data": 30, "metadata": {}, "control": {}},
+                }
+            ]
+        }
+    )
     staged_events = [
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_2),
