@@ -66,8 +66,8 @@ class SessionDTO(DefaultBaseModel):
 
 
 class CreateSessionRequest(DefaultBaseModel):
-    end_user_id: EndUserId
     agent_id: AgentId
+    end_user_id: Optional[EndUserId]
     title: Optional[str] = None
 
 
@@ -313,7 +313,7 @@ def create_router(
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
         session = await application.create_end_user_session(
-            end_user_id=request.end_user_id,
+            end_user_id=request.end_user_id or EndUserStore.GUEST_USER_ID,
             agent_id=request.agent_id,
             title=request.title,
             allow_greeting=allow_greeting,
