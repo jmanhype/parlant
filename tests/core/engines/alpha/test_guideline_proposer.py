@@ -25,7 +25,9 @@ from parlant.core.agents import Agent, AgentId
 from parlant.core.common import generate_id, JSONSerializable
 from parlant.core.context_variables import (
     ContextVariable,
+    ContextVariableId,
     ContextVariableValue,
+    ContextVariableValueId,
 )
 from parlant.core.emissions import EmittedEvent
 from parlant.core.glossary import Term
@@ -276,8 +278,10 @@ def create_context_variable(
     data: JSONSerializable,
 ) -> tuple[ContextVariable, ContextVariableValue]:
     return ContextVariable(
-        id="-", name=name, description="", tool_id=None, freshness_rules=None
-    ), ContextVariableValue(id="", last_modified=datetime.now(timezone.utc), data=data)
+        id=ContextVariableId("-"), name=name, description="", tool_id=None, freshness_rules=None
+    ), ContextVariableValue(
+        ContextVariableValueId("-"), last_modified=datetime.now(timezone.utc), data=data
+    )
 
 
 def get_all_guidelines(context: ContextOfTest) -> Sequence[Guideline]:
@@ -726,8 +730,8 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_var
         ]
     }
     staged_events = [
-        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_1),
-        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_2),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_2),
     ]
     context_variables = [
         create_context_variable(
@@ -790,8 +794,8 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context
         ]
     }
     staged_events = [
-        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_1),
-        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_2),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_2),
     ]
     conversation_guideline_names: list[str] = ["suggest_drink_underage", "suggest_drink_adult"]
     relevant_guideline_names = ["suggest_drink_underage"]
@@ -821,9 +825,8 @@ def test_that_already_addressed_guidelines_arent_proposed(
         ("end_user", "Ship it to my address please"),
     ]
     conversation_guideline_names: list[str] = ["cheese_pizza"]
-    relevant_guideline_names = []
     base_test_that_correct_guidelines_are_proposed(
-        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+        context, conversation_context, conversation_guideline_names, []
     )
 
 
@@ -922,12 +925,11 @@ def test_that_guidelines_based_on_context_variables_arent_proposed_repetitively(
     ]
 
     conversation_guideline_names: list[str] = ["summer_sale"]
-    relevant_guideline_names = []
     base_test_that_correct_guidelines_are_proposed(
         context,
         conversation_context,
         conversation_guideline_names,
-        relevant_guideline_names,
+        [],
         context_variables=context_variables,
     )
 
@@ -975,12 +977,11 @@ def test_that_guideline_that_needs_to_be_reapplied_is_proposed(
     ]
 
     conversation_guideline_names: list[str] = ["large_pizza_crust"]
-    relevant_guideline_names = []
     base_test_that_correct_guidelines_are_proposed(
         context,
         conversation_context,
         conversation_guideline_names,
-        relevant_guideline_names,
+        [],
         context_variables=[],
     )
 
