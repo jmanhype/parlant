@@ -27,7 +27,6 @@ scenarios(
             "glossary",
             "tools",
             "context_variables",
-            "end_user_information",
         )
     )
 )

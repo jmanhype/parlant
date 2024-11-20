@@ -1,8 +1,11 @@
 from datetime import datetime
 from fastapi import APIRouter, Response, status
 
+from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
 from parlant.core.tags import TagId, TagStore, TagUpdateParams
+
+API_GROUP = "tags"
 
 
 class TagDTO(DefaultBaseModel):
@@ -40,6 +43,7 @@ def create_router(
         "/",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_tag",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_tag(request: CreateTagRequest) -> CreateTagResponse:
         tag = await tag_store.create_tag(
@@ -53,6 +57,7 @@ def create_router(
     @router.get(
         "/{tag_id}",
         operation_id="read_tag",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_tag(tag_id: TagId) -> TagDTO:
         tag = await tag_store.read_tag(tag_id=tag_id)
@@ -62,6 +67,7 @@ def create_router(
     @router.get(
         "/",
         operation_id="list_tags",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_tags() -> ListTagsResponse:
         tags = await tag_store.list_tags()
@@ -73,6 +79,7 @@ def create_router(
     @router.patch(
         "/{tag_id}",
         operation_id="update_tag",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_tag(tag_id: TagId, request: UpdateTagRequest) -> Response:
         params: TagUpdateParams = {"name": request.name}
@@ -87,6 +94,7 @@ def create_router(
     @router.delete(
         "/{tag_id}",
         operation_id="delete_tag",
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_tag(tag_id: TagId) -> DeleteTagResponse:
         await tag_store.delete_tag(tag_id=tag_id)

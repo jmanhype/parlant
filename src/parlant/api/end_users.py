@@ -2,9 +2,12 @@ from datetime import datetime
 from fastapi import APIRouter, Response, status
 from typing import Mapping, Optional, Sequence, TypeAlias, Union
 
+from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
 from parlant.core.end_users import EndUserId, EndUserStore, EndUserUpdateParams
 from parlant.core.tags import TagId
+
+API_GROUP = "end-users"
 
 
 EndUserExtraType: TypeAlias = Mapping[str, Union[str, int, float, bool]]
@@ -56,6 +59,7 @@ def create_router(
         "/",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_end_user",
+        **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_end_user(request: CreateEndUserRequest) -> CreateEndUserResponse:
         end_user = await end_user_store.create_end_user(
@@ -76,6 +80,7 @@ def create_router(
     @router.get(
         "/{end_user_id}",
         operation_id="read_end_user",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_end_user(end_user_id: EndUserId) -> EndUserDTO:
         end_user = await end_user_store.read_end_user(end_user_id=end_user_id)
@@ -91,6 +96,7 @@ def create_router(
     @router.get(
         "/",
         operation_id="list_end_users",
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_end_users() -> ListEndUsersResponse:
         end_users = await end_user_store.list_end_users()
@@ -111,6 +117,7 @@ def create_router(
     @router.patch(
         "/{end_user_id}",
         operation_id="update_end_user",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_end_user(end_user_id: EndUserId, request: UpdateEndUserRequest) -> Response:
         if request.name:
