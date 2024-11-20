@@ -8,7 +8,7 @@ import { spaceClick } from '@/utils/methods';
 export const NEW_SESSION_ID = 'NEW_SESSION';
 
 const newSessionObj: SessionInterface = {
-    end_user_id: '',
+    customer_id: '',
     title: 'New Conversation',
     agent_id: '',
     creation_utc: new Date().toLocaleString(),

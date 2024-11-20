@@ -11,7 +11,7 @@ from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import ContextVariableId
 from parlant.core.agents import AgentId, AgentStore
-from parlant.core.end_users import EndUserId, EndUserStore
+from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.services.tools.service_registry import ServiceRegistry
@@ -40,8 +40,8 @@ class EventKindDTO(Enum):
 
 
 class EventSourceDTO(Enum):
-    END_USER = "end_user"
-    END_USER_UI = "end_user_ui"
+    CUSTOMER = "customer"
+    CUSTOMER_UI = "customer_ui"
     HUMAN_AGENT = "human_agent"
     HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
     AI_AGENT = "ai_agent"
@@ -59,7 +59,7 @@ class ConsumptionOffsetsDTO(DefaultBaseModel):
 class SessionDTO(DefaultBaseModel):
     id: SessionId
     agent_id: AgentId
-    end_user_id: EndUserId
+    customer_id: CustomerId
     creation_utc: datetime
     title: Optional[str] = None
     consumption_offsets: ConsumptionOffsetsDTO
@@ -67,7 +67,7 @@ class SessionDTO(DefaultBaseModel):
 
 class CreateSessionRequest(DefaultBaseModel):
     agent_id: AgentId
-    end_user_id: Optional[EndUserId]
+    customer_id: Optional[CustomerId]
     title: Optional[str] = None
 
 
@@ -293,7 +293,7 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
 def create_router(
     application: Application,
     agent_store: AgentStore,
-    end_user_store: EndUserStore,
+    customer_store: CustomerStore,
     session_store: SessionStore,
     session_listener: SessionListener,
     service_registry: ServiceRegistry,
@@ -312,8 +312,8 @@ def create_router(
     ) -> CreateSessionResponse:
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
-        session = await application.create_end_user_session(
-            end_user_id=request.end_user_id or EndUserStore.GUEST_USER_ID,
+        session = await application.create_customer_session(
+            customer_id=request.customer_id or CustomerStore.GUEST_USER_ID,
             agent_id=request.agent_id,
             title=request.title,
             allow_greeting=allow_greeting,
@@ -323,7 +323,7 @@ def create_router(
             session=SessionDTO(
                 id=session.id,
                 agent_id=session.agent_id,
-                end_user_id=session.end_user_id,
+                customer_id=session.customer_id,
                 creation_utc=session.creation_utc,
                 consumption_offsets=ConsumptionOffsetsDTO(
                     client=session.consumption_offsets["client"]
@@ -345,7 +345,7 @@ def create_router(
             agent_id=session.agent_id,
             creation_utc=session.creation_utc,
             title=session.title,
-            end_user_id=session.end_user_id,
+            customer_id=session.customer_id,
             consumption_offsets=ConsumptionOffsetsDTO(
                 client=session.consumption_offsets["client"],
             ),
@@ -358,11 +358,11 @@ def create_router(
     )
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
+        customer_id: Optional[CustomerId] = None,
     ) -> SessionListResponse:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
 
         return SessionListResponse(
@@ -372,7 +372,7 @@ def create_router(
                     agent_id=s.agent_id,
                     creation_utc=s.creation_utc,
                     title=s.title,
-                    end_user_id=s.end_user_id,
+                    customer_id=s.customer_id,
                     consumption_offsets=ConsumptionOffsetsDTO(
                         client=s.consumption_offsets["client"],
                     ),
@@ -402,11 +402,11 @@ def create_router(
     )
     async def delete_sessions(
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
+        customer_id: Optional[CustomerId] = None,
     ) -> None:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
 
         for s in sessions:
@@ -462,8 +462,8 @@ def create_router(
                 detail="Only message events can currently be added manually",
             )
 
-        if params.source == EventSourceDTO.END_USER:
-            return await _add_end_user_message(session_id, params, moderation)
+        if params.source == EventSourceDTO.CUSTOMER:
+            return await _add_customer_message(session_id, params, moderation)
         elif params.source == EventSourceDTO.AI_AGENT:
             return await _add_agent_message(session_id, params)
         elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
@@ -471,10 +471,10 @@ def create_router(
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail='Only "end_user" and "human_agent_on_behalf_of_ai_agent" sources are supported for direct posting.',
+                detail='Only "customer" and "human_agent_on_behalf_of_ai_agent" sources are supported for direct posting.',
             )
 
-    async def _add_end_user_message(
+    async def _add_customer_message(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
@@ -497,16 +497,16 @@ def create_router(
         session = await session_store.read_session(session_id)
 
         try:
-            end_user = await end_user_store.read_end_user(session.end_user_id)
-            end_user_display_name = end_user.name
+            customer = await customer_store.read_customer(session.customer_id)
+            customer_display_name = customer.name
         except Exception:
-            end_user_display_name = session.end_user_id
+            customer_display_name = session.customer_id
 
         message_data: MessageEventData = {
             "message": params.data,
             "participant": {
-                "id": session.end_user_id,
-                "display_name": end_user_display_name,
+                "id": session.customer_id,
+                "display_name": customer_display_name,
             },
             "flagged": flagged,
             "tags": list(tags),
@@ -516,7 +516,7 @@ def create_router(
             session_id=session_id,
             kind=params.kind.value,
             data=message_data,
-            source="end_user",
+            source="customer",
             trigger_processing=True,
         )
 

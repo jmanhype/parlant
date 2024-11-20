@@ -7,7 +7,7 @@ import '@testing-library/jest-dom/vitest';
 import { SessionInterface } from '@/utils/interfaces';
 import Session, { DeleteDialog } from './session';
 
-const session: SessionInterface | null = { id: 'session1', title: 'Session One', end_user_id: '', agent_id: '', creation_utc: new Date().toLocaleString()};
+const session: SessionInterface | null = { id: 'session1', title: 'Session One', customer_id: '', agent_id: '', creation_utc: new Date().toLocaleString()};
 
 vi.mock('@/utils/api', () => ({
     deleteData: vi.fn(() => Promise.resolve()),

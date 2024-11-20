@@ -9,7 +9,7 @@ from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.common import generate_id
-from parlant.core.end_users import EndUser, EndUserId
+from parlant.core.customers import Customer, CustomerId
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
@@ -52,10 +52,10 @@ def propose_guidelines(
     conversation_context: list[tuple[str, str]],
 ) -> Sequence[GuidelineProposition]:
     guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
-    end_user = EndUser(
-        EndUserId("123"),
+    customer = Customer(
+        CustomerId("123"),
         creation_utc=datetime.now(timezone.utc),
-        name="test_user",
+        name="test_customer",
         extra={},
         tags=[],
     )
@@ -82,7 +82,7 @@ def propose_guidelines(
     guideline_proposition_result = context.sync_await(
         guideline_proposer.propose_guidelines(
             agents=agents,
-            end_user=end_user,
+            customer=customer,
             guidelines=context.guidelines,
             context_variables=[],
             interaction_history=interaction_history,
@@ -180,24 +180,24 @@ def test_that_relevant_guidelines_are_proposed_parametrized_1(
     context: ContextOfTest,
 ) -> None:
     conversation_context: list[tuple[str, str]] = [
-        ("end_user", "I'd like to order a pizza, please."),
+        ("customer", "I'd like to order a pizza, please."),
         ("ai_agent", "No problem. What would you like to have?"),
-        ("end_user", "I'd like a large pizza. What toppings do you have?"),
+        ("customer", "I'd like a large pizza. What toppings do you have?"),
         ("ai_agent", "Today, we have pepperoni, tomatoes, and olives available."),
-        ("end_user", "I'll take pepperoni, thanks."),
+        ("customer", "I'll take pepperoni, thanks."),
         (
             "ai_agent",
             "Awesome. I've added a large pepperoni pizza. " "Would you like a drink on the side?",
         ),
-        ("end_user", "Sure. What types of drinks do you have?"),
+        ("customer", "Sure. What types of drinks do you have?"),
         ("ai_agent", "We have Sprite, Coke, and Fanta."),
-        ("end_user", "I'll take two Sprites, please."),
+        ("customer", "I'll take two Sprites, please."),
         ("ai_agent", "Anything else?"),
-        ("end_user", "No, that's all. I want to pay."),
+        ("customer", "No, that's all. I want to pay."),
         ("ai_agent", "No problem! We accept only cash."),
-        ("end_user", "Sure, I'll pay the delivery guy."),
+        ("customer", "Sure, I'll pay the delivery guy."),
         ("ai_agent", "Unfortunately, we accept payments only at our location."),
-        ("end_user", "So what should I do now?"),
+        ("customer", "So what should I do now?"),
     ]
     conversation_guideline_names: list[str] = [
         "check_toppings_in_stock",
@@ -218,7 +218,7 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
 ) -> None:
     conversation_context: list[tuple[str, str]] = [
         (
-            "end_user",
+            "customer",
             "I'm feeling a bit stressed about coming in. Can I cancel my class for today?",
         ),
         (
@@ -226,27 +226,27 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
             "I'm sorry to hear that. While cancellation is not possible now, "
             "how about a lighter session? Maybe it helps to relax.",
         ),
-        ("end_user", "I suppose that could work. What do you suggest?"),
+        ("customer", "I suppose that could work. What do you suggest?"),
         (
             "ai_agent",
             "How about our guided meditation session? "
             "It’s very calming and might be just what you need right now.",
         ),
-        ("end_user", "Alright, please book me into that. Thank you for understanding."),
+        ("customer", "Alright, please book me into that. Thank you for understanding."),
         (
             "ai_agent",
             "You're welcome! I've switched your booking to the meditation session. "
             "Remember, it's okay to feel stressed. We're here to support you.",
         ),
-        ("end_user", "Thanks, I really appreciate it."),
+        ("customer", "Thanks, I really appreciate it."),
         ("ai_agent", "Anytime! Is there anything else I can assist you with today?"),
-        ("end_user", "No, that's all for now."),
+        ("customer", "No, that's all for now."),
         (
             "ai_agent",
             "Take care and see you soon at the meditation class. "
             "Our gym is at Sapir 2, Herzliya, in case you need directions.",
         ),
-        ("end_user", "Thank you!"),
+        ("customer", "Thank you!"),
     ]
     conversation_guideline_names: list[str] = [
         "class_booking",
@@ -289,22 +289,22 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_1(
     context: ContextOfTest,
 ) -> None:
     conversation_context: list[tuple[str, str]] = [
-        ("end_user", "I'd like to order a pizza, please."),
+        ("customer", "I'd like to order a pizza, please."),
         ("ai_agent", "No problem. What would you like to have?"),
-        ("end_user", "I'd like a large pizza. What toppings do you have?"),
+        ("customer", "I'd like a large pizza. What toppings do you have?"),
         ("ai_agent", "Today we have pepperoni, tomatoes, and olives available."),
-        ("end_user", "I'll take pepperoni, thanks."),
+        ("customer", "I'll take pepperoni, thanks."),
         (
             "ai_agent",
             "Awesome. I've added a large pepperoni pizza. " "Would you like a drink on the side?",
         ),
-        ("end_user", "Sure. What types of drinks do you have?"),
+        ("customer", "Sure. What types of drinks do you have?"),
         ("ai_agent", "We have Sprite, Coke, and Fanta."),
-        ("end_user", "I'll take two Sprites, please."),
+        ("customer", "I'll take two Sprites, please."),
         ("ai_agent", "Anything else?"),
-        ("end_user", "No, that's all."),
+        ("customer", "No, that's all."),
         ("ai_agent", "How would you like to pay?"),
-        ("end_user", "I'll pick it up and pay in cash, thanks."),
+        ("customer", "I'll pick it up and pay in cash, thanks."),
     ]
 
     conversation_guideline_names: list[str] = ["check_toppings_in_stock", "check_drinks_in_stock"]
@@ -318,11 +318,11 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_2(
     context: ContextOfTest,
 ) -> None:
     conversation_context: list[tuple[str, str]] = [
-        ("end_user", "Could you add some pretzels to my order?"),
+        ("customer", "Could you add some pretzels to my order?"),
         ("ai_agent", "Pretzels have been added to your order. Anything else?"),
-        ("end_user", "Do you have Coke? I'd like one, please."),
+        ("customer", "Do you have Coke? I'd like one, please."),
         ("ai_agent", "Coke has been added to your order."),
-        ("end_user", "Great, where are you located at?"),
+        ("customer", "Great, where are you located at?"),
     ]
     conversation_guideline_names: list[str] = ["check_drinks_in_stock"]
     irrelevant_guideline_names: list[str] = ["check_drinks_in_stock"]
@@ -337,12 +337,12 @@ def test_that_guidelines_with_the_same_conditions_are_scored_identically(
     relevant_guidelines = [
         create_guideline(
             context=context,
-            condition="the user greets you",
+            condition="the customer greets you",
             action="talk about apples",
         ),
         create_guideline(
             context=context,
-            condition="the user greets you",
+            condition="the customer greets you",
             action="talk about oranges",
         ),
     ]
@@ -360,7 +360,7 @@ def test_that_guidelines_with_the_same_conditions_are_scored_identically(
         ),
     ]
 
-    guideline_propositions = propose_guidelines(context, [("end_user", "Hello there")])
+    guideline_propositions = propose_guidelines(context, [("customer", "Hello there")])
 
     assert len(guideline_propositions) == len(relevant_guidelines)
     assert all(gp.guideline in relevant_guidelines for gp in guideline_propositions)

@@ -9,7 +9,7 @@ from typing import Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.end_users import EndUser
+from parlant.core.customers import Customer
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
@@ -65,7 +65,7 @@ class GuidelineProposer:
     async def propose_guidelines(
         self,
         agents: Sequence[Agent],
-        end_user: EndUser,
+        customer: Customer,
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -100,7 +100,7 @@ class GuidelineProposer:
             batch_tasks = [
                 self._process_condition_batch(
                     agents,
-                    end_user,
+                    customer,
                     context_variables,
                     interaction_history,
                     staged_events,
@@ -167,7 +167,7 @@ class GuidelineProposer:
     async def _process_condition_batch(
         self,
         agents: Sequence[Agent],
-        end_user: EndUser,
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
@@ -176,7 +176,7 @@ class GuidelineProposer:
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
-            end_user,
+            customer,
             context_variables=context_variables,
             interaction_history=interaction_history,
             staged_events=staged_events,
@@ -217,7 +217,7 @@ class GuidelineProposer:
     def _format_prompt(
         self,
         agents: Sequence[Agent],
-        end_user: EndUser,
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
@@ -246,7 +246,7 @@ class GuidelineProposer:
 Task Description
 ----------------
 Your job is to assess the relevance and/or applicability of a few provided conditions
-to the last known state of an interaction between yourself, AI assistant, and a user.
+to the last known state of an interaction between yourself, AI assistant, and a customer.
 The conditions and the interaction will be provided to you later in this message.
 """
         )
@@ -254,7 +254,7 @@ The conditions and the interaction will be provided to you later in this message
             f"""
 Process Description
 -------------------
-a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
+a. Examine the provided interaction events to discern the latest state of interaction between the customer and the assistant.
 b. Evaluate the entire interaction to determine if each condition is still relevant to the most recent interaction state.
 c. If the condition has already been addressed, assess its continued applicability.
 d. Assign an applicability score to each condition between 1 and 10.
@@ -264,16 +264,16 @@ e. IMPORTANT: Note that some conditions are harder to ascertain objectively, esp
 
 #### Example #1:
 - Interaction Events: ###
-[{{"id": "11", "kind": "<message>", "source": "user",
+[{{"id": "11", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can I purchase a subscription to your software?"}}}},
 {{"id": "23", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Absolutely, I can assist you with that right now."}}}},
-{{"id": "34", "kind": "<message>", "source": "user",
+{{"id": "34", "kind": "<message>", "source": "customer",
 "data": {{"message": "Please proceed with the subscription for the Pro plan."}}}},
 {{"id": "56", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Your subscription has been successfully activated.
 Is there anything else I can help you with?"}}}},
-{{"id": "78", "kind": "<message>", "source": "user",
+{{"id": "78", "kind": "<message>", "source": "customer",
 "data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
 - Conditions: ###
@@ -303,13 +303,13 @@ Is there anything else I can help you with?"}}}},
 ```
 
 #### Example #2:
-[{{"id": "112", "kind": "<message>", "source": "user",
+[{{"id": "112", "kind": "<message>", "source": "customer",
 "data": {{"message": "I need to make this quick.
 Can you give me a brief overview of your pricing plans?"}}}},
 {{"id": "223", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
 Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}}}},
-{{"id": "334", "kind": "<message>", "source": "user",
+{{"id": "334", "kind": "<message>", "source": "customer",
 "data": {{"message": "Tell me about the Pro plan."}}}},
 ###
 - Conditions: ###
@@ -349,11 +349,11 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 ```
 ### Example #3:
 - Interaction Events: ###
-[{{"id": "13", "kind": "<message>", "source": "user",
+[{{"id": "13", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can you recommend a good science fiction movie?"}}}},
 {{"id": "14", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Sure, I recommend 'Inception'. It's a great science fiction movie."}}}},
-{{"id": "15", "kind": "<message>", "source": "user",
+{{"id": "15", "kind": "<message>", "source": "customer",
 "data": {{"message": "Thanks, I'll check it out."}}}}]
 ###
 - Conditions: ###
@@ -386,11 +386,11 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 
 ### Example #4:
 - Interaction Events: ###
-[{{"id": "54", "kind": "<message>", "source": "user",
+[{{"id": "54", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can I add an extra pillow to my bed order?"}}}},
 {{"id": "66", "kind": "<message>", "source": "assistant",
 "data": {{"message": "An extra pillow has been added to your order."}}}},
-{{"id": "72", "kind": "<message>", "source": "user",
+{{"id": "72", "kind": "<message>", "source": "customer",
 "data": {{"message": "Thanks, I'll come to pick up the order. Can you tell me the address?"}}}}]
 ###
 - Conditions: ###
@@ -423,11 +423,11 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 
 ### Example #5:
 - Interaction Events: ###
-[{{"id": "21", "kind": "<message>", "source": "user",
+[{{"id": "21", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can I add an extra charger to my laptop order?"}}}},
 {{"id": "34", "kind": "<message>", "source": "assistant",
 "data": {{"message": "An extra charger has been added to your order."}}}},
-{{"id": "53", "kind": "<message>", "source": "user",
+{{"id": "53", "kind": "<message>", "source": "customer",
 "data": {{"message": "Do you have any external hard drives available?"}}}}]
 ###
 - Conditions: ###
@@ -449,7 +449,7 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
             "condition_number": "2",
             "condition": "the client asks about product availability",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
+            "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the customer if they reach the product limit before adding another item to the cart.",
             "applies_score": 10
         }}
     ]
@@ -458,16 +458,16 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
 
 ### Example #6:
 - Interaction Events: ###
-[{{"id": "54", "kind": "<message>", "source": "user",
+[{{"id": "54", "kind": "<message>", "source": "customer",
 "data": {{"message": "I disagree with you about this point."}}}},
 {{"id": "66", "kind": "<message>", "source": "assistant",
 "data": {{"message": "But I fully disproved your thesis!"}}}},
-{{"id": "72", "kind": "<message>", "source": "user",
+{{"id": "72", "kind": "<message>", "source": "customer",
 "data": {{"message": "Okay, fine."}}}}]
 ###
 - Conditions: ###
-1) the user is currently eating lunch
-2) the user agrees with you in the scope of an argument
+1) the customer is currently eating lunch
+2) the customer agrees with you in the scope of an argument
 ###
 - **Expected Result**:
 ```json
@@ -475,18 +475,18 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
     "checks": [
         {{
             "condition_number": "1",
-            "condition": "the user is currently eating lunch",
+            "condition": "the customer is currently eating lunch",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
-            "rationale": "There's nothing to indicate that the user is eating, lunch or otherwise",
+            "rationale": "There's nothing to indicate that the customer is eating, lunch or otherwise",
             "applies_score": 1
         }},
         {{
             "condition_number": "2",
-            "condition": "the user agrees with you in the scope of an argument",
+            "condition": "the customer agrees with you in the scope of an argument",
             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
-            "rationale": "The user said 'Okay, fine', but it's possible that they are still in disagreement internally",
+            "rationale": "The customer said 'Okay, fine', but it's possible that they are still in disagreement internally",
             "applies_score": 4
         }}
     ]

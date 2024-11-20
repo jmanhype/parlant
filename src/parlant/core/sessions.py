@@ -26,7 +26,7 @@ from parlant.core.common import (
 )
 from parlant.core.agents import AgentId
 from parlant.core.context_variables import ContextVariableId
-from parlant.core.end_users import EndUserId
+from parlant.core.customers import CustomerId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.document_database import (
@@ -40,8 +40,8 @@ SessionId = NewType("SessionId", str)
 
 EventId = NewType("EventId", str)
 EventSource: TypeAlias = Literal[
-    "end_user",
-    "end_user_ui",
+    "customer",
+    "customer_ui",
     "human_agent",
     "human_agent_on_behalf_of_ai_agent",
     "ai_agent",
@@ -63,8 +63,8 @@ class Event:
     def is_from_client(self) -> bool:
         return self.source in list[EventSource](
             [
-                "end_user",
-                "end_user_ui",
+                "customer",
+                "customer_ui",
             ]
         )
 
@@ -79,7 +79,7 @@ class Event:
 
 
 class Participant(TypedDict):
-    id: NotRequired[AgentId | EndUserId | None]
+    id: NotRequired[AgentId | CustomerId | None]
     display_name: str
 
 
@@ -192,7 +192,7 @@ SessionMode: TypeAlias = Literal["auto", "manual"]
 class Session:
     id: SessionId
     creation_utc: datetime
-    end_user_id: EndUserId
+    customer_id: CustomerId
     agent_id: AgentId
     mode: SessionMode
     title: Optional[str]
@@ -200,7 +200,7 @@ class Session:
 
 
 class SessionUpdateParams(TypedDict, total=False):
-    end_user_id: EndUserId
+    customer_id: CustomerId
     agent_id: AgentId
     mode: SessionMode
     title: Optional[str]
@@ -211,7 +211,7 @@ class SessionStore(ABC):
     @abstractmethod
     async def create_session(
         self,
-        end_user_id: EndUserId,
+        customer_id: CustomerId,
         agent_id: AgentId,
         creation_utc: Optional[datetime] = None,
         title: Optional[str] = None,
@@ -240,7 +240,7 @@ class SessionStore(ABC):
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
+        customer_id: Optional[CustomerId] = None,
     ) -> Sequence[Session]: ...
 
     @abstractmethod
@@ -299,7 +299,7 @@ class _SessionDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     creation_utc: str
-    end_user_id: EndUserId
+    customer_id: CustomerId
     agent_id: AgentId
     mode: SessionMode
     title: Optional[str]
@@ -389,7 +389,7 @@ class SessionDocumentStore(SessionStore):
             id=ObjectId(session.id),
             version=self.VERSION.to_string(),
             creation_utc=session.creation_utc.isoformat(),
-            end_user_id=session.end_user_id,
+            customer_id=session.customer_id,
             agent_id=session.agent_id,
             mode=session.mode,
             title=session.title if session.title else None,
@@ -403,7 +403,7 @@ class SessionDocumentStore(SessionStore):
         return Session(
             id=SessionId(session_document["id"]),
             creation_utc=datetime.fromisoformat(session_document["creation_utc"]),
-            end_user_id=session_document["end_user_id"],
+            customer_id=session_document["customer_id"],
             agent_id=session_document["agent_id"],
             mode=session_document["mode"],
             title=session_document["title"],
@@ -545,7 +545,7 @@ class SessionDocumentStore(SessionStore):
 
     async def create_session(
         self,
-        end_user_id: EndUserId,
+        customer_id: CustomerId,
         agent_id: AgentId,
         creation_utc: Optional[datetime] = None,
         title: Optional[str] = None,
@@ -558,7 +558,7 @@ class SessionDocumentStore(SessionStore):
         session = Session(
             id=SessionId(generate_id()),
             creation_utc=creation_utc,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=agent_id,
             mode=mode or "auto",
             consumption_offsets=consumption_offsets,
@@ -608,11 +608,11 @@ class SessionDocumentStore(SessionStore):
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
+        customer_id: Optional[CustomerId] = None,
     ) -> Sequence[Session]:
         filters = {
             **({"agent_id": {"$eq": agent_id}} if agent_id else {}),
-            **({"end_user_id": {"$eq": end_user_id}} if end_user_id else {}),
+            **({"customer_id": {"$eq": customer_id}} if customer_id else {}),
         }
 
         return [

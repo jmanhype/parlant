@@ -221,12 +221,12 @@ def given_50_random_terms_related_to_technology_companies(
         },
         {
             "name": "Proxy Server",
-            "description": "An intermediary server separating end users from the websites they browse.",  # noqa
+            "description": "An intermediary server separating customers from the websites they browse.",  # noqa
             "synonyms": [],
         },
         {
             "name": "VPN",
-            "description": "A virtual private network extends a private network across a public network and enables users to send and receive data across shared or public networks as if their computing devices were directly connected to the private network.",  # noqa
+            "description": "A virtual private network extends a private network across a public network and enables customers to send and receive data across shared or public networks as if their computing devices were directly connected to the private network.",  # noqa
             "synonyms": ["Virtual Private Network"],
         },
         {

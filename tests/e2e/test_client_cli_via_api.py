@@ -163,7 +163,7 @@ class API:
     @staticmethod
     async def create_session(
         agent_id: str,
-        end_user_id: str,
+        customer_id: str,
         title: Optional[str] = None,
     ) -> Any:
         async with API.make_client() as client:
@@ -172,7 +172,7 @@ class API:
                 params={"allow_greeting": False},
                 json={
                     "agent_id": agent_id,
-                    "end_user_id": end_user_id,
+                    "customer_id": customer_id,
                     "title": title,
                 },
             )
@@ -194,18 +194,18 @@ class API:
     ) -> list[Any]:
         async with API.make_client() as client:
             try:
-                user_message_response = await client.post(
+                customer_message_response = await client.post(
                     f"/sessions/{session_id}/events",
                     json={
                         "kind": "message",
-                        "source": "end_user",
-                        "data": message,
+                        "source": "customer",
+                        "content": message,
                     },
                 )
-                user_message_response.raise_for_status()
-                user_message_offset = int(user_message_response.json()["event"]["offset"])
+                customer_message_response.raise_for_status()
+                customer_message_offset = int(customer_message_response.json()["event"]["offset"])
 
-                last_known_offset = user_message_offset
+                last_known_offset = customer_message_offset
 
                 replies: list[Any] = []
                 start_time = time.time()
@@ -556,8 +556,8 @@ async def test_that_an_agent_can_be_viewed(
 async def test_that_sessions_can_be_listed(
     context: ContextOfTest,
 ) -> None:
-    first_user = "First User"
-    second_user = "Second User"
+    first_customer = "First Customer"
+    second_customer = "Second Customer"
 
     first_title = "First Title"
     second_title = "Second Title"
@@ -567,9 +567,15 @@ async def test_that_sessions_can_be_listed(
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         agent_id = await API.get_first_agent_id()
-        _ = await API.create_session(agent_id=agent_id, end_user_id=first_user, title=first_title)
-        _ = await API.create_session(agent_id=agent_id, end_user_id=first_user, title=second_title)
-        _ = await API.create_session(agent_id=agent_id, end_user_id=second_user, title=third_title)
+        _ = await API.create_session(
+            agent_id=agent_id, customer_id=first_customer, title=first_title
+        )
+        _ = await API.create_session(
+            agent_id=agent_id, customer_id=first_customer, title=second_title
+        )
+        _ = await API.create_session(
+            agent_id=agent_id, customer_id=second_customer, title=third_title
+        )
 
         process = await run_cli(
             "session",
@@ -589,7 +595,7 @@ async def test_that_sessions_can_be_listed(
             "session",
             "list",
             "-u",
-            first_user,
+            first_customer,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -767,7 +773,7 @@ async def test_that_terms_are_loaded_on_server_startup(
 async def test_that_a_guideline_can_be_added(
     context: ContextOfTest,
 ) -> None:
-    condition = "the user greets you"
+    condition = "the customer greets you"
     action = "greet them back with 'Hello'"
 
     with run_server(context):
@@ -797,7 +803,7 @@ async def test_that_a_guideline_can_be_added(
 async def test_that_a_guideline_can_be_updated(
     context: ContextOfTest,
 ) -> None:
-    condition = "the user asks for help"
+    condition = "the customer asks for help"
     initial_action = "offer assistance"
     updated_action = "provide detailed support information"
 
@@ -837,10 +843,10 @@ async def test_that_a_guideline_can_be_updated(
 async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     context: ContextOfTest,
 ) -> None:
-    condition = "the user greets you"
+    condition = "the customer greets you"
     action = "greet them back with 'Hello'"
 
-    conflicting_action = "ignore the user"
+    conflicting_action = "ignore the customer"
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
@@ -888,7 +894,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 async def test_that_adding_connected_guidelines_creates_connections(
     context: ContextOfTest,
 ) -> None:
-    condition1 = "the user asks about the weather"
+    condition1 = "the customer asks about the weather"
     action1 = "provide a weather update"
 
     condition2 = "providing a weather update"
@@ -949,7 +955,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
 async def test_that_a_guideline_can_be_viewed(
     context: ContextOfTest,
 ) -> None:
-    condition = "the user says goodbye"
+    condition = "the customer says goodbye"
     action = "say 'Goodbye' back"
 
     with run_server(context):
@@ -982,10 +988,10 @@ async def test_that_a_guideline_can_be_viewed(
 async def test_that_guidelines_can_be_listed(
     context: ContextOfTest,
 ) -> None:
-    condition1 = "the user asks for help"
+    condition1 = "the customer asks for help"
     action1 = "provide assistance"
 
-    condition2 = "the user needs support"
+    condition2 = "the customer needs support"
     action2 = "offer support"
 
     with run_server(context):
@@ -1017,10 +1023,10 @@ async def test_that_guidelines_can_be_listed(
 async def test_that_guidelines_can_be_entailed(
     context: ContextOfTest,
 ) -> None:
-    condition1 = "the user needs assistance"
+    condition1 = "the customer needs assistance"
     action1 = "provide help"
 
-    condition2 = "user ask about a certain subject"
+    condition2 = "customer ask about a certain subject"
     action2 = "offer detailed explanation"
 
     with run_server(context):
@@ -1098,10 +1104,10 @@ async def test_that_guidelines_can_be_entailed(
 async def test_that_guidelines_can_be_suggestively_entailed(
     context: ContextOfTest,
 ) -> None:
-    condition1 = "the user needs assistance"
+    condition1 = "the customer needs assistance"
     action1 = "provide help"
 
-    condition2 = "user ask about a certain subject"
+    condition2 = "customer ask about a certain subject"
     action2 = "offer detailed explanation"
 
     with run_server(context):
@@ -1187,7 +1193,7 @@ async def test_that_a_guideline_can_be_removed(
         agent_id = await API.get_first_agent_id()
 
         guideline = await API.create_guideline(
-            agent_id, condition="the user greets you", action="greet them back with 'Hello'"
+            agent_id, condition="the customer greets you", action="greet them back with 'Hello'"
         )
 
         process = await run_cli(
@@ -1227,7 +1233,7 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "content": {
-                                    "condition": "the user greets you",
+                                    "condition": "the customer greets you",
                                     "action": "greet them back with 'Hello'",
                                 },
                                 "operation": "add",
@@ -1242,11 +1248,11 @@ async def test_that_a_connection_can_be_removed(
                                     {
                                         "check_kind": "connection_with_another_evaluated_guideline",
                                         "source": {
-                                            "condition": "the user greets you",
+                                            "condition": "the customer greets you",
                                             "action": "greet them back with 'Hello'",
                                         },
                                         "target": {
-                                            "condition": "greeting the user",
+                                            "condition": "greeting the customer",
                                             "action": "ask for his health condition",
                                         },
                                         "connection_kind": "entails",
@@ -1258,7 +1264,7 @@ async def test_that_a_connection_can_be_removed(
                         {
                             "payload": {
                                 "content": {
-                                    "condition": "greeting the user",
+                                    "condition": "greeting the customer",
                                     "action": "ask for his health condition",
                                 },
                                 "operation": "add",
@@ -1273,11 +1279,11 @@ async def test_that_a_connection_can_be_removed(
                                     {
                                         "check_kind": "connection_with_another_evaluated_guideline",
                                         "source": {
-                                            "condition": "the user greets you",
+                                            "condition": "the customer greets you",
                                             "action": "greet them back with 'Hello'",
                                         },
                                         "target": {
-                                            "condition": "greeting the user",
+                                            "condition": "greeting the customer",
                                             "action": "ask for his health condition",
                                         },
                                         "connection_kind": "entails",
@@ -1323,7 +1329,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
 
         guideline = await API.create_guideline(
             agent_id,
-            condition="the user wants to get meeting details",
+            condition="the customer wants to get meeting details",
             action="get meeting event information",
         )
 
@@ -1382,7 +1388,7 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
 
         guideline = await API.create_guideline(
             agent_id,
-            condition="the user wants to get meeting details",
+            condition="the customer wants to get meeting details",
             action="get meeting event information",
         )
 
@@ -1668,8 +1674,8 @@ async def test_that_a_message_can_be_inspected(
 
         guideline = await API.create_guideline(
             agent_id=agent_id,
-            condition="the user talks about cows",
-            action="address the user by his first name and say you like Pepsi",
+            condition="the customer talks about cows",
+            action="address the customer by his first name and say you like Pepsi",
         )
 
         term = await API.create_term(
@@ -1680,20 +1686,20 @@ async def test_that_a_message_can_be_inspected(
 
         variable = await API.create_context_variable(
             agent_id=agent_id,
-            name="User first name",
+            name="Customer first name",
             description="",
         )
 
-        end_user_id = "john.s@peppery.co"
+        customer_id = "john.s@peppery.co"
 
         await API.update_context_variable_value(
             agent_id=agent_id,
             variable_id=variable["id"],
-            key=end_user_id,
+            key=customer_id,
             value="Johnny",
         )
 
-        session = await API.create_session(agent_id, end_user_id)
+        session = await API.create_session(agent_id, customer_id)
 
         reply_event = await API.get_agent_reply(session["id"], "Oh do I like bazoos")
 
@@ -1718,7 +1724,7 @@ async def test_that_a_message_can_be_inspected(
         assert term["name"] in output
         assert term["description"] in output
         assert variable["name"] in output
-        assert end_user_id in output
+        assert customer_id in output
 
 
 async def test_that_an_openapi_service_can_be_added_via_file(
@@ -1812,7 +1818,7 @@ async def test_that_a_sdk_service_can_be_added(
         """I want to check also the description here.
         So for that, I will just write multiline text, so I can test both the
         limit of chars in one line, and also, test that multiline works as expected
-        and displayed such that the user can easily read and understand it."""
+        and displayed such that the customer can easily read and understand it."""
         return ToolResult(param * 2)
 
     with run_server(context):

@@ -13,7 +13,7 @@ from parlant.core.nlp.service import NLPService
 from parlant.core.tools import ToolResult
 from parlant.core.agents import AgentId
 from parlant.core.async_utils import Timeout
-from parlant.core.end_users import EndUserId
+from parlant.core.customers import CustomerId
 from parlant.core.sessions import (
     EventSource,
     MessageEventData,
@@ -25,7 +25,7 @@ from parlant.core.sessions import (
 from tests.test_utilities import (
     create_agent,
     create_context_variable,
-    create_end_user,
+    create_customer,
     create_guideline,
     create_session,
     create_term,
@@ -45,12 +45,12 @@ async def long_session_id(
         container,
         session_id,
         [
-            make_event_params("end_user"),
+            make_event_params("customer"),
             make_event_params("ai_agent"),
-            make_event_params("end_user"),
+            make_event_params("customer"),
             make_event_params("ai_agent"),
             make_event_params("ai_agent"),
-            make_event_params("end_user"),
+            make_event_params("customer"),
         ],
     )
 
@@ -118,7 +118,7 @@ def test_that_a_session_can_be_created_without_a_title(
     response = client.post(
         "/sessions",
         json={
-            "end_user_id": "test_user",
+            "customer_id": "test_customer",
             "agent_id": agent_id,
         },
     )
@@ -141,7 +141,7 @@ def test_that_a_session_can_be_created_with_title(
     response = client.post(
         "/sessions",
         json={
-            "end_user_id": "test_user",
+            "customer_id": "test_customer",
             "agent_id": agent_id,
             "title": title,
         },
@@ -165,7 +165,7 @@ def test_that_a_created_session_has_meaningful_creation_utc(
         client.post(
             "/sessions",
             json={
-                "end_user_id": "test_user",
+                "customer_id": "test_customer",
                 "agent_id": agent_id,
             },
         )
@@ -212,7 +212,7 @@ async def test_that_sessions_can_be_listed(
 
     for listed_session, created_session in zip(data["sessions"], sessions):
         assert listed_session["title"] == created_session.title
-        assert listed_session["end_user_id"] == created_session.end_user_id
+        assert listed_session["customer_id"] == created_session.customer_id
 
 
 async def test_that_sessions_can_be_listed_by_agent_id(
@@ -240,10 +240,10 @@ async def test_that_sessions_can_be_listed_by_agent_id(
         for listed_session, created_session in zip(data["sessions"], agent_sessions):
             assert listed_session["agent_id"] == agent.id
             assert listed_session["title"] == created_session.title
-            assert listed_session["end_user_id"] == created_session.end_user_id
+            assert listed_session["customer_id"] == created_session.customer_id
 
 
-async def test_that_sessions_can_be_listed_by_end_user_id(
+async def test_that_sessions_can_be_listed_by_customer_id(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -251,13 +251,13 @@ async def test_that_sessions_can_be_listed_by_end_user_id(
     _ = await create_session(container, agent_id=agent_id, title="first-session")
     _ = await create_session(container, agent_id=agent_id, title="second-session")
     _ = await create_session(
-        container, agent_id=agent_id, title="three-session", end_user_id=EndUserId("Joe")
+        container, agent_id=agent_id, title="three-session", customer_id=CustomerId("Joe")
     )
 
-    data = client.get("/sessions", params={"end_user_id": "Joe"}).raise_for_status().json()
+    data = client.get("/sessions", params={"customer_id": "Joe"}).raise_for_status().json()
 
     assert len(data["sessions"]) == 1
-    assert data["sessions"][0]["end_user_id"] == "Joe"
+    assert data["sessions"][0]["customer_id"] == "Joe"
 
 
 def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
@@ -338,7 +338,7 @@ async def test_that_a_deleted_session_is_removed_from_the_session_list(
     assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
 
 
-async def test_that_all_sessions_related_to_end_user_can_be_deleted_in_one_request(
+async def test_that_all_sessions_related_to_customer_can_be_deleted_in_one_request(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -347,10 +347,10 @@ async def test_that_all_sessions_related_to_end_user_can_be_deleted_in_one_reque
         await create_session(
             container=container,
             agent_id=agent_id,
-            end_user_id=EndUserId("test-user"),
+            customer_id=CustomerId("test-customer"),
         )
 
-    response = client.delete("/sessions", params={"end_user_id": "test-user"})
+    response = client.delete("/sessions", params={"customer_id": "test-customer"})
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -368,7 +368,7 @@ async def test_that_all_sessions_can_be_deleted_with_one_request(
         await create_session(
             container=container,
             agent_id=agent_id,
-            end_user_id=EndUserId("test-user"),
+            customer_id=CustomerId("test-customer"),
         )
 
     response = client.delete("/sessions", params={"agent_id": agent_id})
@@ -386,7 +386,7 @@ async def test_that_deleting_a_session_also_deletes_its_events(
     session_id: SessionId,
 ) -> None:
     session_events = [
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
     ]
 
@@ -412,10 +412,10 @@ async def test_that_events_can_be_listed(
     session_id: SessionId,
 ) -> None:
     session_events = [
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
         make_event_params("ai_agent"),
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
     ]
 
@@ -439,11 +439,11 @@ async def test_that_events_can_be_filtered_by_offset(
     offset: int,
 ) -> None:
     session_events = [
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
-        make_event_params("end_user"),
+        make_event_params("customer"),
     ]
 
     await populate_session_id(container, session_id, session_events)
@@ -472,8 +472,8 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
         params={"moderation": "auto"},
         json={
             "kind": "message",
-            "source": "end_user",
-            "data": "Fuck all those guys",
+            "source": "customer",
+            "content": "Fuck all those guys",
         },
     )
 
@@ -485,7 +485,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
     assert "harassment" in event["data"].get("tags")
 
 
-def test_that_posting_a_user_message_elicits_a_response_from_the_agent(
+def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
@@ -493,8 +493,8 @@ def test_that_posting_a_user_message_elicits_a_response_from_the_agent(
         f"/sessions/{session_id}/events",
         json={
             "kind": "message",
-            "source": "end_user",
-            "data": "Hello there!",
+            "source": "customer",
+            "content": "Hello there!",
         },
     )
 
@@ -589,8 +589,8 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
             f"/sessions/{session_id}/events",
             json={
                 "kind": "message",
-                "source": "end_user",
-                "data": "Hello there!",
+                "source": "customer",
+                "content": "Hello there!",
             },
         )
         .raise_for_status()
@@ -621,7 +621,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
     await create_guideline(
         container=container,
         agent_id=agent_id,
-        condition="a user says hello",
+        condition="a customer says hello",
         action="answer like a cow",
         tool_function=get_cow_uttering,
     )
@@ -653,11 +653,11 @@ async def test_that_deleted_events_no_longer_show_up_in_the_listing(
     session_id: SessionId,
 ) -> None:
     session_events = [
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
-        make_event_params("end_user"),
+        make_event_params("customer"),
         make_event_params("ai_agent"),
-        make_event_params("end_user"),
+        make_event_params("customer"),
     ]
     await populate_session_id(container, session_id, session_events)
 
@@ -691,7 +691,7 @@ async def test_that_a_message_can_be_inspected(
     container: Container,
     agent_id: AgentId,
 ) -> None:
-    end_user = await create_end_user(
+    customer = await create_customer(
         container=container,
         name="John Smith",
     )
@@ -699,14 +699,14 @@ async def test_that_a_message_can_be_inspected(
     session = await create_session(
         container=container,
         agent_id=agent_id,
-        end_user_id=end_user.id,
+        customer_id=customer.id,
     )
 
     guideline = await create_guideline(
         container=container,
         agent_id=agent_id,
-        condition="a user mentions cows",
-        action="answer like a cow while mentioning the user's full name",
+        condition="a customer mentions cows",
+        action="answer like a cow while mentioning the customer's full name",
         tool_function=get_cow_uttering,
     )
 
@@ -721,18 +721,18 @@ async def test_that_a_message_can_be_inspected(
     context_variable = await create_context_variable(
         container=container,
         agent_id=agent_id,
-        name="User full name",
+        name="Customer full name",
     )
 
     await set_context_variable_value(
         container=container,
         agent_id=agent_id,
         variable_id=context_variable.id,
-        key=session.end_user_id,
-        data=end_user.name,
+        key=session.customer_id,
+        data=customer.name,
     )
 
-    user_event = await post_message(
+    customer_event = await post_message(
         container=container,
         session_id=session.id,
         message="Bobo!",
@@ -742,7 +742,7 @@ async def test_that_a_message_can_be_inspected(
     reply_event = await read_reply(
         container=container,
         session_id=session.id,
-        user_event_offset=user_event.offset,
+        customer_event_offset=customer_event.offset,
     )
 
     trace = (
@@ -751,7 +751,7 @@ async def test_that_a_message_can_be_inspected(
         .json()["trace"]
     )
 
-    assert end_user.name in cast(MessageEventData, reply_event.data)["message"]
+    assert customer.name in cast(MessageEventData, reply_event.data)["message"]
 
     iterations = trace["preparation_iterations"]
     assert len(iterations) >= 1
@@ -772,8 +772,8 @@ async def test_that_a_message_can_be_inspected(
 
     assert len(iterations[0]["context_variables"]) == 1
     assert iterations[0]["context_variables"][0]["name"] == context_variable.name
-    assert iterations[0]["context_variables"][0]["key"] == end_user.id
-    assert iterations[0]["context_variables"][0]["value"] == end_user.name
+    assert iterations[0]["context_variables"][0]["key"] == customer.id
+    assert iterations[0]["context_variables"][0]["value"] == customer.name
 
 
 async def test_that_a_message_is_generated_using_the_active_nlp_service(
@@ -783,7 +783,7 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
 ) -> None:
     nlp_service = container[NLPService]
 
-    end_user = await create_end_user(
+    customer = await create_customer(
         container=container,
         name="John Smith",
     )
@@ -791,17 +791,17 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     session = await create_session(
         container=container,
         agent_id=agent_id,
-        end_user_id=end_user.id,
+        customer_id=customer.id,
     )
 
     _ = await create_guideline(
         container=container,
         agent_id=agent_id,
-        condition="a user asks what the cow says",
+        condition="a customer asks what the cow says",
         action="answer 'Woof Woof'",
     )
 
-    user_event = await post_message(
+    customer_event = await post_message(
         container=container,
         session_id=session.id,
         message="What does the cow say?!",
@@ -811,7 +811,7 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     reply_event = await read_reply(
         container=container,
         session_id=session.id,
-        user_event_offset=user_event.offset,
+        customer_event_offset=customer_event.offset,
     )
 
     inspection_data = (
@@ -843,11 +843,11 @@ async def test_that_an_agent_message_can_be_regenerated(
     agent_id: AgentId,
 ) -> None:
     session_events = [
-        make_event_params("end_user", data={"content": "Hello"}),
+        make_event_params("customer", data={"content": "Hello"}),
         make_event_params("ai_agent", data={"content": "Hi, how can I assist you?"}),
-        make_event_params("end_user", data={"content": "What's the weather today?"}),
+        make_event_params("customer", data={"content": "What's the weather today?"}),
         make_event_params("ai_agent", data={"content": "It's sunny and warm."}),
-        make_event_params("end_user", data={"content": "Thank you!"}),
+        make_event_params("customer", data={"content": "Thank you!"}),
     ]
 
     await populate_session_id(container, session_id, session_events)
@@ -862,7 +862,7 @@ async def test_that_an_agent_message_can_be_regenerated(
     _ = await create_guideline(
         container=container,
         agent_id=agent_id,
-        condition="a user ask what is the weather today",
+        condition="a customer ask what is the weather today",
         action="answer that it's cold",
     )
 

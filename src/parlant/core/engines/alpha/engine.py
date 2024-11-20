@@ -11,7 +11,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
     ContextVariableValue,
 )
-from parlant.core.end_users import EndUser, EndUserStore
+from parlant.core.customers import Customer, CustomerStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
@@ -62,7 +62,7 @@ class AlphaEngine(Engine):
         correlator: ContextualCorrelator,
         agent_store: AgentStore,
         session_store: SessionStore,
-        end_user_store: EndUserStore,
+        customer_store: CustomerStore,
         context_variable_store: ContextVariableStore,
         glossary_store: GlossaryStore,
         guideline_store: GuidelineStore,
@@ -78,7 +78,7 @@ class AlphaEngine(Engine):
 
         self._agent_store = agent_store
         self._session_store = session_store
-        self._end_user_store = end_user_store
+        self._customer_store = customer_store
         self._context_variable_store = context_variable_store
         self._glossary_store = glossary_store
         self._guideline_store = guideline_store
@@ -137,7 +137,7 @@ class AlphaEngine(Engine):
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
         session = await self._session_store.read_session(context.session_id)
-        end_user = await self._end_user_store.read_end_user(session.end_user_id)
+        customer = await self._customer_store.read_customer(session.customer_id)
 
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
@@ -150,7 +150,7 @@ class AlphaEngine(Engine):
 
         try:
             context_variables = await self._load_context_variables(
-                agent_id=context.agent_id, session=session, end_user=end_user
+                agent_id=context.agent_id, session=session, customer=customer
             )
 
             terms = set(
@@ -181,7 +181,7 @@ class AlphaEngine(Engine):
 
                 guideline_proposition_result = await self._guideline_proposer.propose_guidelines(
                     agents=[agent],
-                    end_user=end_user,
+                    customer=customer,
                     guidelines=list(all_possible_guidelines),
                     context_variables=context_variables,
                     interaction_history=interaction.history,
@@ -213,7 +213,7 @@ class AlphaEngine(Engine):
                     event_emitter=event_emitter,
                     session_id=context.session_id,
                     agents=[agent],
-                    end_user=end_user,
+                    customer=customer,
                     context_variables=context_variables,
                     interaction_history=interaction.history,
                     terms=list(terms),
@@ -273,7 +273,7 @@ class AlphaEngine(Engine):
                                 id=variable.id,
                                 name=variable.name,
                                 description=variable.description,
-                                key=session.end_user_id,
+                                key=session.customer_id,
                                 value=value.data,
                             )
                             for variable, value in context_variables
@@ -327,7 +327,7 @@ class AlphaEngine(Engine):
             for event_generation_result in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
                 agents=[agent],
-                end_user=end_user,
+                customer=customer,
                 context_variables=context_variables,
                 interaction_history=interaction.history,
                 terms=list(terms),
@@ -381,7 +381,7 @@ class AlphaEngine(Engine):
         self,
         agent_id: AgentId,
         session: Session,
-        end_user: EndUser,
+        customer: Customer,
     ) -> Sequence[tuple[ContextVariable, ContextVariableValue]]:
         agent_variables = await self._context_variable_store.list_variables(
             variable_set=agent_id,
@@ -396,7 +396,7 @@ class AlphaEngine(Engine):
                 variable_id=variable.id,
             )
 
-            for tag_id in end_user.tags:
+            for tag_id in customer.tags:
                 value = (
                     await self._context_variable_store.read_value(
                         variable_set=agent_id,
@@ -409,7 +409,7 @@ class AlphaEngine(Engine):
             value = (
                 await self._context_variable_store.read_value(
                     variable_set=agent_id,
-                    key=session.end_user_id,
+                    key=session.customer_id,
                     variable_id=variable.id,
                 )
                 or value

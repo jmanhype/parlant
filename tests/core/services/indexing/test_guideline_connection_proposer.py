@@ -75,7 +75,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "condition": "the user asks about the weather",
+        "condition": "the customer asks about the weather",
         "action": "provide the current weather update",
     }
     target_guideline_definition: dict[str, str] = {
@@ -92,7 +92,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "condition": "the user asks about nearby restaurants",
+        "condition": "the customer asks about nearby restaurants",
         "action": "provide a list of popular restaurants",
     }
     target_guideline_definition: dict[str, str] = {
@@ -146,7 +146,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "condition": "the user requests technical support",
+        "condition": "the customer requests technical support",
         "action": "provide the support contact details",
     }
     target_guideline_definition: dict[str, str] = {
@@ -165,7 +165,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "condition": "the user inquires about office hours",
+        "condition": "the customer inquires about office hours",
         "action": "tell them the office hours",
     }
     target_guideline_definition: dict[str, str] = {
@@ -186,7 +186,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
         GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "the user requests technical support",
+                "condition": "the customer requests technical support",
                 "action": "provide the support contact details",
             },
             {
@@ -194,7 +194,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                 "action": "consider checking the troubleshooting guide first",
             },
             {
-                "condition": "the user inquires about office hours",
+                "condition": "the customer inquires about office hours",
                 "action": "tell them the office hours",
             },
             {
@@ -202,7 +202,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                 "action": "suggest the best time to visit for quicker service",
             },
             {
-                "condition": "the user asks about the weather",
+                "condition": "the customer asks about the weather",
                 "action": "provide the current weather update",
             },
             {
@@ -210,7 +210,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
                 "action": "mention the best time to go for a walk",
             },
             {
-                "condition": "the user asks about nearby restaurants",
+                "condition": "the customer asks about nearby restaurants",
                 "action": "provide a list of popular restaurants",
             },
             {
@@ -248,7 +248,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
         GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "the user requests technical support",
+                "condition": "the customer requests technical support",
                 "action": "provide the support contact details",
             },
             {
@@ -256,7 +256,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                 "action": "consider checking the troubleshooting guide first",
             },
             {
-                "condition": "the user inquires about office hours",
+                "condition": "the customer inquires about office hours",
                 "action": "tell them the office hours",
             },
             {
@@ -264,7 +264,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                 "action": "suggest the best time to visit for quicker service",
             },
             {
-                "condition": "the user asks about the weather",
+                "condition": "the customer asks about the weather",
                 "action": "provide the current weather update",
             },
             {
@@ -272,7 +272,7 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
                 "action": "mention the best time to go for a walk",
             },
             {
-                "condition": "the user asks about nearby restaurants",
+                "condition": "the customer asks about nearby restaurants",
                 "action": "provide a list of popular restaurants",
             },
             {
@@ -307,7 +307,7 @@ def test_that_a_connection_is_proposed_based_on_given_glossary(
     )
 
     source_guideline_content = _create_guideline_content(
-        "the user asks about walnut prices",
+        "the customer asks about walnut prices",
         "provide the current walnut prices",
     )
 
@@ -354,8 +354,8 @@ def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
     )
 
     source_guideline_content = _create_guideline_content(
-        "the user asks about getting walnuts",
-        "reply that the user can buy walnuts from the tall tree",
+        "the customer asks about getting walnuts",
+        "reply that the customer can buy walnuts from the tall tree",
     )
 
     target_guideline_content = _create_guideline_content(
@@ -386,7 +386,7 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
         _create_guideline_content(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "the user asks for our catalouge",
+                "condition": "the customer asks for our catalouge",
                 "action": "list the store's product and their pricings",
             },
             {
@@ -395,7 +395,7 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
             },
             {
                 "condition": "mentioning an item's price",
-                "action": "remind the user about our summer discounts",
+                "action": "remind the customer about our summer discounts",
             },
         ]
     ]
@@ -454,12 +454,12 @@ def test_that_entailing_whens_are_not_connected_parametrized_1(
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "condition": "the user places an order",
-        "action": "direct the user to the electronic store",
+        "condition": "the customer places an order",
+        "action": "direct the customer to the electronic store",
     }
     target_guideline_definition: dict[str, str] = {
-        "condition": "the user is ordering electronic goods",
-        "action": "remind the user about our discounts",
+        "condition": "the customer is ordering electronic goods",
+        "action": "remind the customer about our discounts",
     }
     base_test_that_entailing_whens_are_not_connected(
         context, agent, source_guideline_definition, target_guideline_definition
@@ -475,7 +475,7 @@ def test_that_entailing_whens_are_not_connected_parametrized_2(
         "action": "explain that English is the only supported language",
     }
     target_guideline_definition: dict[str, str] = {
-        "condition": "the user uses a language other than English",
+        "condition": "the customer uses a language other than English",
         "action": "refer them to our international website",
     }
     base_test_that_entailing_whens_are_not_connected(
@@ -558,7 +558,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "the user says hello",
+                "condition": "the customer says hello",
                 "action": "say you like bananas",
             },
             {
@@ -597,7 +597,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "directing the user to a guide",
+                "condition": "directing the customer to a guide",
                 "action": "explain how our guides directory works",
             },
             {
@@ -675,7 +675,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
         GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
-                "condition": "referencing a guide to the user",
+                "condition": "referencing a guide to the customer",
                 "action": "explain how our guides directory works",
             },
             {
@@ -684,7 +684,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
             },
             {
                 "condition": "checking a guide",
-                "action": "direct the user to the guide when replying",
+                "action": "direct the customer to the guide when replying",
             },
         ]
     ]
@@ -742,12 +742,12 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
-        "condition": "user is asking for specific instructions",
-        "action": "consider redirecting the user to our video guides",
+        "condition": "customer is asking for specific instructions",
+        "action": "consider redirecting the customer to our video guides",
     }
     target_guideline_definition: dict[str, str] = {
         "condition": "mentioning a video",
-        "action": "notify the user about supported video formats",
+        "action": "notify the customer about supported video formats",
     }
     base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
         context, agent, source_guideline_definition, target_guideline_definition
@@ -760,7 +760,7 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
 ) -> None:
     source_guideline_definition: dict[str, str] = {
         "guideline_set": "test-agent",
-        "condition": "the user asks for express shipping",
+        "condition": "the customer asks for express shipping",
         "action": "check if express delivery is avialable and reply positively only if it is",  # Keeping the mispelling intentionally
     }
     target_guideline_definition: dict[str, str] = {
@@ -780,12 +780,12 @@ def test_that_no_connection_is_made_for_a_guidelines_whose_condition_entails_ano
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        "the user refers to a past interaction",
+        "the customer refers to a past interaction",
         "ask for the date of this previous interaction",
     )
 
     target_guideline_content = _create_guideline_content(
-        "the user refers to a quota offered in a past interaction",
+        "the customer refers to a quota offered in a past interaction",
         "answer that that quota is no longer relevant",
     )
 
@@ -807,7 +807,7 @@ def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        "The user complains that the phrases in the photograph are blurry",
+        "The customer complains that the phrases in the photograph are blurry",
         "clarify what the unclear phrases mean",
     )
 
@@ -834,12 +834,12 @@ def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that 
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        "the user refers to a past interaction",
-        "ask the user for the date of this interaction",
+        "the customer refers to a past interaction",
+        "ask the customer for the date of this interaction",
     )
 
     target_guideline_content = _create_guideline_content(
-        "the user asks about a solution suggested in a previous interaction",
+        "the customer asks about a solution suggested in a previous interaction",
         "ask when that conversation occurred",
     )
 
@@ -897,7 +897,7 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     )
 
     source_guideline_content = _create_guideline_content(
-        "the user ask about wallnut prices",
+        "the customer ask about wallnut prices",
         "provide the curent walnut prices",
     )
 
@@ -928,7 +928,7 @@ def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that e
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        "the user complains that a suggested solution did not work",
+        "the customer complains that a suggested solution did not work",
         "reply in a hostile manner",
     )
 
@@ -964,7 +964,7 @@ def test_that_agent_based_connection_is_detected(
         max_engine_iterations=3,
     )
     source_guideline_content = _create_guideline_content(
-        "the user asks for drink recommendation",
+        "the customer asks for drink recommendation",
         "recommend orange soda",
     )
 
@@ -1034,43 +1034,43 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
                 "action": "Keep your answer short and direct",
             },
             {
-                "condition": "The user asks about carbon coin",
+                "condition": "The customer asks about carbon coin",
                 "action": "Always check the carbon coin terms of use before replying. Do not reply with anything that is not explicitly mentioned in the terms of use.",
             },
             {
-                "condition": "The user seems to be short on time",
+                "condition": "The customer seems to be short on time",
                 "action": "suggest continuing the conversation at another time",
             },
             {
-                "condition": "The user asked a question that's not mentioned in the terms of use document",
-                "action": "Forward the user's question to management and inform them that you'll get back to them later",
+                "condition": "The customer asked a question that's not mentioned in the terms of use document",
+                "action": "Forward the customer's question to management and inform them that you'll get back to them later",
             },
             {
-                "condition": "The user asks you if you're confident in your reply",
+                "condition": "The customer asks you if you're confident in your reply",
                 "action": "Reply that you are extremely confident, as you're the best ai agent in the world",
             },
             {
-                "condition": "The user asks for ways of earning carbon coin",
-                "action": "Answer the user's question based on the documentation. Be clear that the coin can only be used on Sparkleton products",
+                "condition": "The customer asks for ways of earning carbon coin",
+                "action": "Answer the customer's question based on the documentation. Be clear that the coin can only be used on Sparkleton products",
             },
             {
-                "condition": "The user asks if tomatola is available",
+                "condition": "The customer asks if tomatola is available",
                 "action": "Check the inventory and reply accordingly",
             },
             {
-                "condition": "The user inquires about anything that doesn't have to do with sparkling drinks",
-                "action": "Let the user know that you are not trained to help with subjects not related to Sparkleton.",
+                "condition": "The customer inquires about anything that doesn't have to do with sparkling drinks",
+                "action": "Let the customer know that you are not trained to help with subjects not related to Sparkleton.",
             },
             {
-                "condition": "The user asks further question about an answer you previously provided",
+                "condition": "The customer asks further question about an answer you previously provided",
                 "action": "Answer the question, even if it's not related to Sparkleton",
             },
             {
-                "condition": "The user asks multiple questions in one message",
+                "condition": "The customer asks multiple questions in one message",
                 "action": "Split the message into each individual question, and reply to each question in a new message.",
             },
             {
-                "condition": "The user asks for further clarification",
+                "condition": "The customer asks for further clarification",
                 "action": "Provide a link to the relevant document in full",
             },
         ]

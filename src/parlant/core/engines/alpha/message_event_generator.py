@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Sequence
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.end_users import EndUser
+from parlant.core.customers import Customer
 from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
@@ -48,7 +48,7 @@ class MessageGenerationError(Exception):
 
 
 class MessageEventSchema(DefaultBaseModel):
-    last_message_of_user: str
+    last_message_of_customer: str
     produced_reply: Optional[bool] = True
     rationale: str
     revisions: list[Revision]
@@ -70,7 +70,7 @@ class MessageEventGenerator:
         self,
         event_emitter: EventEmitter,
         agents: Sequence[Agent],
-        end_user: EndUser,
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -105,7 +105,7 @@ class MessageEventGenerator:
             prompt = self._format_prompt(
                 agents=agents,
                 context_variables=context_variables,
-                end_user=end_user,
+                customer=customer,
                 interaction_history=interaction_history,
                 terms=terms,
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
@@ -164,7 +164,7 @@ class MessageEventGenerator:
     def _format_prompt(
         self,
         agents: Sequence[Agent],
-        end_user: EndUser,
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -177,7 +177,7 @@ class MessageEventGenerator:
 
         builder.add_section(
             """
-You are an AI agent who is interacting with a user. The current state of this interaction will be provided to you later in this message.
+You are an AI agent who is interacting with a customer. The current state of this interaction will be provided to you later in this message.
 You must generate your reply message to the current (latest) state of the interaction.
 """
         )
@@ -189,8 +189,8 @@ Task Description:
 Continue the provided interaction in a natural and human-like manner. Your task is to produce a response to the latest state of the interaction.
 Always do the following:
 1. GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary. 
-2. AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the user to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the user instead of maintaining the loop.
-3. DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the user requests information you're unsure about, state that this information is not available to you. 
+2. AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the customer to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to customercustomer instead of maintaining the loop.
+3. DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the customer requests information you're unsure about, state that this information is not available to you. 
 """
         )
         if not interaction_history or all(
@@ -198,11 +198,11 @@ Always do the following:
         ):
             builder.add_section(
                 """
-The interaction with the user has just began, and no messages were sent by either party.
+The interaction with the customer has just began, and no messages were sent by either party.
 If told so by a guideline or some other contextual condition, send the first message. Otherwise, do not produce a reply.
 If you decide not to emit a message, output the following:
 {{
-    “last_message_of_user”: None,
+    “last_message_of_customer”: None,
     "produced_reply": false,
     "rationale": "<a few words to justify why a reply was NOT produced here>",
     "revisions": []
@@ -213,9 +213,9 @@ Otherwise, follow the rest of this prompt to choose the content of your response
 
         else:
             builder.add_section("""
-Since the interaction with the user is already ongoing, always produce a reply to the user's last message. 
-The only exception where you may not produce a reply is if the user explicitly asked you not to respond to their message.
-In all other cases, even if the user is indicating that the conversation is over, you must produce a reply.
+Since the interaction with the customer is already ongoing, always produce a reply to customercustomer's last message. 
+The only exception where you may not produce a reply is if the customer explicitly asked you not to respond to their message.
+In all other cases, even if the customer is indicating that the conversation is over, you must produce a reply.
                 """)
 
         builder.add_section(
@@ -228,7 +228,7 @@ adherence to a higher-priority guideline may necessitate deviation from another.
 Use your best judgment in applying prioritization.
 Note too that it is permissible for the final revision to break rules IF AND ONLY IF
 all of the broken rules were broken due to conscious prioritization of guidelines,
-due to either (1) conflicting with another guideline, (2) contradicting a user's request or (3) lack of necessary context or data.
+due to either (1) conflicting with another guideline, (2) contradicting a customer's request or (3) lack of necessary context or data.
 If you do not fulfill a guideline, you must clearly justify your reasoning for doing so in your reply.
 
 Continuously critique each revision to refine the reply.
@@ -251,8 +251,8 @@ Examine the following examples to understand your expected behavior:
 
 Example 1: A reply that took critique in a few revisions to get right: ###
 {{
-    “last_message_of_user”: “<the user’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the user at all>",
+    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
             "number": 1,
@@ -320,21 +320,21 @@ Example 1: A reply that took critique in a few revisions to get right: ###
 
 Example 2: A reply where one guideline was prioritized over another: ###
 {{
-    “last_message_of_user”: “<the user’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the user at all>",
+    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
             "number": 1,
-            "instruction": "When the user chooses and orders a burger, then provide it",
-            "evaluation": "The user asked for a burger with cheese, so I need to provide it to him.",
+            "instruction": "When the customer chooses and orders a burger, then provide it",
+            "evaluation": "The customer asked for a burger with cheese, so I need to provide it to him.",
             "adds_value": "I didn't provide the burger yet, so I should do so now.",
             "data_available": "The burger choice is available in the interaction"
         }},
         {{
             "number": 2,
-            "instruction": "When the user chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
-            "evaluation": "The user chose cheese on the burger, but all of the cheese we currently have is expired",
-            "adds_value": "I must reject the order, otherwise the user might eat bad cheese",
+            "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
+            "evaluation": "The customer chose cheese on the burger, but all of the cheese we currently have is expired",
+            "adds_value": "I must reject the order, otherwise the customer might eat bad cheese",
             "data_available": "The relevant stock availability is given in the tool calls' data"
         }}
     ],
@@ -361,14 +361,14 @@ Example 2: A reply where one guideline was prioritized over another: ###
 
 Example 3: Non-Adherence Due to Missing Data: ###
 {{
-    “last_message_of_user”: “<the user’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the user at all>",
+    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
             "number": 1,
-            "instruction": "When the user asks for a drink, check the menu and offer what's on it"
-            "evaluation": "The user did ask for a drink, so I should check the menu to see what's available.",
-            "adds_value": "The user doesn't know what drinks we have yet, so I should tell him.",
+            "instruction": "When the customer asks for a drink, check the menu and offer what's on it"
+            "evaluation": "The customer did ask for a drink, so I should check the menu to see what's available.",
+            "adds_value": "The customer doesn't know what drinks we have yet, so I should tell him.",
             "data_available": "No, I don't have the menu info in the interaction or tool calls"
         }}
     ],
@@ -394,8 +394,8 @@ Example 3: Non-Adherence Due to Missing Data: ###
 
 Example 4: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
 {{
-    “last_message_of_user”: “This is not what I was asking for”,
-    "rationale": "<a few words to justify why you decided to respond to the user at all>",
+    “last_message_of_customer”: “This is not what I was asking for”,
+    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [],
     "revisions": [
         {{
@@ -443,7 +443,7 @@ Example 4: Avoiding repetitive responses. Given that the previous response by th
         if ordinary_guideline_propositions or tool_enabled_guideline_propositions:
             builder.add_section(
                 """
-If a given guideline contradicts a previous request made by the user, or if it's absolutely inappropriate given the state of the conversation, ignore the guideline while specifying why you broke it in your response.
+If a given guideline contradicts a previous request made by the customer, or if it's absolutely inappropriate given the state of the conversation, ignore the guideline while specifying why you broke it in your response.
         """
             )
         builder.add_staged_events(staged_events)
@@ -460,13 +460,13 @@ Produce a valid JSON object in the following format: ###
     def _get_output_format(
         self, interaction_history: Sequence[Event], guidelines: Sequence[GuidelineProposition]
     ) -> str:
-        last_user_message = next(
+        last_customer_message = next(
             (
                 event.data["message"]
                 for event in reversed(interaction_history)
                 if (
                     event.kind == "message"
-                    and event.source == "end_user"
+                    and event.source == "customer"
                     and isinstance(event.data, dict)
                 )
             ),
@@ -488,8 +488,8 @@ Produce a valid JSON object in the following format: ###
 
         return f"""
         {{
-            “last_message_of_user”: “{last_user_message}”,
-            "rationale": "<a few words to explain why you should or shouldn't produce a reply to the user in this case>",
+            “last_message_of_customer”: “{last_customer_message}”,
+            "rationale": "<a few words to explain why you should or shouldn't produce a reply to the customer in this case>",
             "produced_reply": <BOOL>,
             "evaluations_for_each_of_the_provided_guidelines": [
 {guidelines_output_format}

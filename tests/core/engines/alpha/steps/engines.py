@@ -4,7 +4,7 @@ from pytest_bdd import given, when
 from unittest.mock import AsyncMock
 
 from parlant.core.agents import Agent, AgentId, AgentStore
-from parlant.core.end_users import EndUserStore
+from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 
 from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
@@ -95,8 +95,8 @@ def when_messages_are_emitted(
     session_id: SessionId,
 ) -> list[EmittedEvent]:
     session = context.sync_await(context.container[SessionStore].read_session(session_id))
-    end_user = context.sync_await(
-        context.container[EndUserStore].read_end_user(session.end_user_id)
+    customer = context.sync_await(
+        context.container[CustomerStore].read_customer(session.customer_id)
     )
 
     event_buffer = EventBuffer(
@@ -111,7 +111,7 @@ def when_messages_are_emitted(
         message_event_generator.generate_events(
             event_emitter=event_buffer,
             agents=[agent],
-            end_user=end_user,
+            customer=customer,
             context_variables=[],
             interaction_history=context.events,
             terms=[],

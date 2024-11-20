@@ -37,7 +37,7 @@ async def test_that_a_new_evaluation_starts_with_a_pending_status(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user greets you",
+                        condition="the customer greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -67,7 +67,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user greets you",
+                        condition="the customer greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -269,7 +269,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user greets you",
+                        condition="the customer greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -281,7 +281,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user asks about the weather",
+                        condition="the customer asks about the weather",
                         action="provide a weather update",
                     ),
                     operation="add",
@@ -324,7 +324,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user greets you",
+                        condition="the customer greets you",
                         action="greet them back with 'Hello'",
                     ),
                     operation="add",
@@ -336,7 +336,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user greets you",
+                        condition="the customer greets you",
                         action="greet them back with 'Hola'",
                     ),
                     operation="add",
@@ -350,7 +350,7 @@ async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_
     second_payloads = [
         GuidelinePayload(
             content=GuidelineContent(
-                condition="the user asks about the weather",
+                condition="the customer asks about the weather",
                 action="provide a weather update",
             ),
             operation="add",
@@ -382,7 +382,7 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
 
     duplicate_payload = GuidelinePayload(
         content=GuidelineContent(
-            condition="the user greets you",
+            condition="the customer greets you",
             action="greet them back with 'Hello'",
         ),
         operation="add",
@@ -415,7 +415,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="greet them back with 'Hello'",
     )
 
@@ -427,7 +427,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                     PayloadKind.GUIDELINE,
                     GuidelinePayload(
                         content=GuidelineContent(
-                            condition="the user greets you",
+                            condition="the customer greets you",
                             action="greet them back with 'Hello'",
                         ),
                         operation="add",
@@ -441,7 +441,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
 
     assert (
         str(exc.value)
-        == f"Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in {agent.id} guideline_set"
+        == f"Duplicate guideline found against existing guidelines: When the customer greets you, then greet them back with 'Hello' in {agent.id} guideline_set"
     )
 
 
@@ -455,7 +455,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
-        condition="the user asks about the weather",
+        condition="the customer asks about the weather",
         action="provide the current weather update",
     )
 
@@ -520,7 +520,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
                 PayloadKind.GUIDELINE,
                 GuidelinePayload(
                     content=GuidelineContent(
-                        condition="the user asks about the weather",
+                        condition="the customer asks about the weather",
                         action="provide the current weather update",
                     ),
                     operation="add",
@@ -564,7 +564,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     )
     assert (
         invoice_data.connection_propositions[0].source.condition
-        == "the user asks about the weather"
+        == "the customer asks about the weather"
     )
     assert (
         invoice_data.connection_propositions[0].target.condition == "providing the weather update"
