@@ -18,17 +18,17 @@ def given_an_end_user(
     return end_user.id
 
 
-@step(given, parsers.parse('the user is tagged as "{label}"'))
+@step(given, parsers.parse('an end-user tagged with "{tag_name}"'))
 def given_a_user_tag(
     context: ContextOfTest,
     session_id: SessionId,
-    label: str,
+    tag_name: str,
 ) -> None:
     session_store = context.container[SessionStore]
     end_user_store = context.container[EndUserStore]
     tag_store = context.container[TagStore]
 
-    tag = context.sync_await(tag_store.create_tag(label))
+    tag = context.sync_await(tag_store.create_tag(tag_name))
 
     end_user_id = context.sync_await(session_store.read_session(session_id)).end_user_id
 

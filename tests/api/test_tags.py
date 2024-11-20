@@ -9,12 +9,12 @@ from parlant.core.tags import TagStore
 
 
 def test_that_a_tag_can_be_created(client: TestClient) -> None:
-    label = "VIP"
+    name = "VIP"
 
     response = client.post(
         "/tags",
         json={
-            "label": label,
+            "name": name,
         },
     )
 
@@ -23,7 +23,7 @@ def test_that_a_tag_can_be_created(client: TestClient) -> None:
 
     assert "tag" in data
     tag = data["tag"]
-    assert tag["label"] == label
+    assert tag["name"] == name
     assert "id" in tag
     assert "creation_utc" in tag
 
@@ -34,16 +34,16 @@ async def test_that_a_tag_can_be_read(
 ) -> None:
     tag_store = container[TagStore]
 
-    label = "VIP"
+    name = "VIP"
 
-    tag = await tag_store.create_tag(label)
+    tag = await tag_store.create_tag(name)
 
     read_response = client.get(f"/tags/{tag.id}")
     assert read_response.status_code == status.HTTP_200_OK
 
     data = read_response.json()
     assert data["id"] == tag.id
-    assert data["label"] == label
+    assert data["name"] == name
     assert datetime.fromisoformat(data["creation_utc"]) == tag.creation_utc
 
 
@@ -53,11 +53,11 @@ async def test_that_tags_can_be_listed(
 ) -> None:
     tag_store = container[TagStore]
 
-    first_label = "VIP"
-    second_label = "Female"
+    first_name = "VIP"
+    second_name = "Female"
 
-    _ = await tag_store.create_tag(first_label)
-    _ = await tag_store.create_tag(second_label)
+    _ = await tag_store.create_tag(first_name)
+    _ = await tag_store.create_tag(second_name)
 
     list_response = client.get("/tags")
     assert list_response.status_code == status.HTTP_200_OK
@@ -67,8 +67,8 @@ async def test_that_tags_can_be_listed(
     tag_list = data["tags"]
 
     assert len(tag_list) == 2
-    assert any(first_label == tag["label"] for tag in tag_list)
-    assert any(second_label == tag["label"] for tag in tag_list)
+    assert any(first_name == tag["name"] for tag in tag_list)
+    assert any(second_name == tag["name"] for tag in tag_list)
 
 
 async def test_that_a_tag_can_be_updated(
@@ -77,21 +77,21 @@ async def test_that_a_tag_can_be_updated(
 ) -> None:
     tag_store = container[TagStore]
 
-    old_label = "VIP"
+    old_name = "VIP"
 
-    tag = await tag_store.create_tag(old_label)
+    tag = await tag_store.create_tag(old_name)
 
-    new_label = "Alpha"
+    new_name = "Alpha"
     update_response = client.patch(
         f"/tags/{tag.id}",
         json={
-            "label": new_label,
+            "name": new_name,
         },
     )
     assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
     updated_tag = await tag_store.read_tag(tag.id)
-    assert updated_tag.label == new_label
+    assert updated_tag.name == new_name
 
 
 async def test_that_a_tag_can_be_deleted(
@@ -100,9 +100,9 @@ async def test_that_a_tag_can_be_deleted(
 ) -> None:
     tag_store = container[TagStore]
 
-    label = "VIP"
+    name = "VIP"
 
-    tag = await tag_store.create_tag(label)
+    tag = await tag_store.create_tag(name)
 
     delete_response = client.delete(f"/tags/{tag.id}")
     assert delete_response.status_code == status.HTTP_200_OK

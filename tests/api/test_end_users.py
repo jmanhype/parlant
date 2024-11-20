@@ -124,7 +124,7 @@ async def test_that_a_tag_can_be_added(
     end_user_store = container[EndUserStore]
     tag_store = container[TagStore]
 
-    tag = await tag_store.create_tag(label="VIP")
+    tag = await tag_store.create_tag(name="VIP")
 
     name = "Tagged User"
 
@@ -149,7 +149,7 @@ async def test_that_a_tag_can_be_removed(
     end_user_store = container[EndUserStore]
     tag_store = container[TagStore]
 
-    tag = await tag_store.create_tag(label="VIP")
+    tag = await tag_store.create_tag(name="VIP")
 
     name = "Tagged User"
 

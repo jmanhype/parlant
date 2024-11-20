@@ -37,7 +37,7 @@ def get_or_create_variable(
     return variable
 
 
-@step(given, parsers.parse('a context variable "{variable_name}" with a value "{variable_value}"'))
+@step(given, parsers.parse('a context variable "{variable_name}" set to "{variable_value}"'))
 def given_a_context_variable(
     context: ContextOfTest,
     variable_name: str,
@@ -73,7 +73,7 @@ def given_a_context_variable(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" with a value "{variable_value}" to "{end_user_name}"'
+        'a context variable "{variable_name}" set to "{variable_value}" to "{end_user_name}"'
     ),
 )
 def given_a_context_variable_to_specific_user(
@@ -105,7 +105,7 @@ def given_a_context_variable_to_specific_user(
 @step(
     given,
     parsers.parse(
-        'a context variable "{variable_name}" with a value "{variable_value}" to tag "{label}"'
+        'a context variable "{variable_name}" set to "{variable_value}" for the tag "{name}"'
     ),
 )
 def given_a_context_variable_for_a_tag(
@@ -113,12 +113,12 @@ def given_a_context_variable_for_a_tag(
     variable_name: str,
     variable_value: str,
     agent_id: AgentId,
-    label: str,
+    name: str,
 ) -> ContextVariableValue:
     context_variable_store = context.container[ContextVariableStore]
     tag_store = context.container[TagStore]
 
-    tag = next(t for t in context.sync_await(tag_store.list_tags()) if t.label == label)
+    tag = next(t for t in context.sync_await(tag_store.list_tags()) if t.name == name)
 
     variable = context.sync_await(
         context_variable_store.create_variable(
