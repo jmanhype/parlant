@@ -8,11 +8,11 @@ from parlant.core.tags import TagId, TagStore, TagUpdateParams
 class TagDTO(DefaultBaseModel):
     id: TagId
     creation_utc: datetime
-    label: str
+    name: str
 
 
 class CreateTagRequest(DefaultBaseModel):
-    label: str
+    name: str
 
 
 class CreateTagResponse(DefaultBaseModel):
@@ -28,7 +28,7 @@ class DeleteTagResponse(DefaultBaseModel):
 
 
 class UpdateTagRequest(DefaultBaseModel):
-    label: str
+    name: str
 
 
 def create_router(
@@ -43,11 +43,11 @@ def create_router(
     )
     async def create_tag(request: CreateTagRequest) -> CreateTagResponse:
         tag = await tag_store.create_tag(
-            label=request.label,
+            name=request.name,
         )
 
         return CreateTagResponse(
-            tag=TagDTO(id=tag.id, creation_utc=tag.creation_utc, label=tag.label)
+            tag=TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
         )
 
     @router.get(
@@ -57,7 +57,7 @@ def create_router(
     async def read_tag(tag_id: TagId) -> TagDTO:
         tag = await tag_store.read_tag(tag_id=tag_id)
 
-        return TagDTO(id=tag.id, creation_utc=tag.creation_utc, label=tag.label)
+        return TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
 
     @router.get(
         "/",
@@ -67,7 +67,7 @@ def create_router(
         tags = await tag_store.list_tags()
 
         return ListTagsResponse(
-            tags=[TagDTO(id=tag.id, creation_utc=tag.creation_utc, label=tag.label) for tag in tags]
+            tags=[TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name) for tag in tags]
         )
 
     @router.patch(
@@ -75,7 +75,7 @@ def create_router(
         operation_id="update_tag",
     )
     async def update_tag(tag_id: TagId, request: UpdateTagRequest) -> Response:
-        params: TagUpdateParams = {"label": request.label}
+        params: TagUpdateParams = {"name": request.name}
 
         await tag_store.update_tag(
             tag_id=tag_id,

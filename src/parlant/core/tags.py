@@ -14,18 +14,18 @@ TagId = NewType("TagId", str)
 class Tag:
     id: TagId
     creation_utc: datetime
-    label: str
+    name: str
 
 
 class TagUpdateParams(TypedDict, total=False):
-    label: str
+    name: str
 
 
 class TagStore(ABC):
     @abstractmethod
     async def create_tag(
         self,
-        label: str,
+        name: str,
         creation_utc: Optional[datetime] = None,
     ) -> Tag: ...
 
@@ -58,7 +58,7 @@ class _TagDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     creation_utc: str
-    label: str
+    name: str
 
 
 class TagDocumentStore(TagStore):
@@ -78,24 +78,24 @@ class TagDocumentStore(TagStore):
             id=ObjectId(tag.id),
             version=self.VERSION.to_string(),
             creation_utc=tag.creation_utc.isoformat(),
-            label=tag.label,
+            name=tag.name,
         )
 
     def _deserialize(self, document: _TagDocument) -> Tag:
         return Tag(
             id=TagId(document["id"]),
             creation_utc=datetime.fromisoformat(document["creation_utc"]),
-            label=document["label"],
+            name=document["name"],
         )
 
     async def create_tag(
         self,
-        label: str,
+        name: str,
         creation_utc: Optional[datetime] = None,
     ) -> Tag:
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        tag = Tag(id=TagId(generate_id()), creation_utc=creation_utc, label=label)
+        tag = Tag(id=TagId(generate_id()), creation_utc=creation_utc, name=name)
         await self._collection.insert_one(self._serialize(tag))
 
         return tag
@@ -123,7 +123,7 @@ class TagDocumentStore(TagStore):
 
         result = await self._collection.update_one(
             filters={"id": {"$eq": tag_id}},
-            params={"label": params["label"]},
+            params={"name": params["name"]},
         )
 
         assert result.updated_document

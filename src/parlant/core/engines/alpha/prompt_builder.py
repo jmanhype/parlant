@@ -24,7 +24,7 @@ class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
-    USER_INFORMATION = auto()
+    USER_CONTEXT = auto()
     TERMINOLOGY = auto()
     GUIDELINE_CONDITIONS = auto()
     GUIDELINE_PROPOSITIONS = auto()
@@ -191,7 +191,7 @@ The following is information that you're given about the user and context of the
     - The name of the user is {user.name}. 
 """
         self.add_section(
-            name=BuiltInSection.USER_INFORMATION,
+            name=BuiltInSection.USER_CONTEXT,
             content=content,
             status=SectionStatus.ACTIVE,
         )

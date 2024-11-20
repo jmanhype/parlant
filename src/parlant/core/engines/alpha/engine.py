@@ -397,16 +397,22 @@ class AlphaEngine(Engine):
             )
 
             for tag_id in end_user.tags:
-                value = await self._context_variable_store.read_value(
-                    variable_set=agent_id,
-                    key=f"tag:{tag_id}",
-                    variable_id=variable.id,
+                value = (
+                    await self._context_variable_store.read_value(
+                        variable_set=agent_id,
+                        key=f"tag:{tag_id}",
+                        variable_id=variable.id,
+                    )
+                    or value
                 )
 
-            value = await self._context_variable_store.read_value(
-                variable_set=agent_id,
-                key=session.end_user_id,
-                variable_id=variable.id,
+            value = (
+                await self._context_variable_store.read_value(
+                    variable_set=agent_id,
+                    key=session.end_user_id,
+                    variable_id=variable.id,
+                )
+                or value
             )
 
             if value is not None:

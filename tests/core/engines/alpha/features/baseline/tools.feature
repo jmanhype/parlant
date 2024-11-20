@@ -118,7 +118,7 @@ Feature: Tools
         Given a guideline "retrieve_account_information", to retrieve account information when users inquire about account-related information
         And the tool "get_account_balance"
         And an association between "retrieve_account_information" and "get_account_balance"
-        And a context variable "user_account_name" with a value of "Jerry Seinfeld"
+        And a context variable "user_account_name" set to "Jerry Seinfeld"
         And a user message, "What's my account balance?"
         When processing is triggered
         Then a single tool calls event is emitted
