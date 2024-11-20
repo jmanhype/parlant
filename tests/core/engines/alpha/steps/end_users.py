@@ -18,7 +18,7 @@ def given_an_end_user(
     return end_user.id
 
 
-@step(given, parsers.parse('an end-user tagged with "{tag_name}"'))
+@step(given, parsers.parse('an end-user tagged as "{tag_name}"'))
 def given_a_user_tag(
     context: ContextOfTest,
     session_id: SessionId,

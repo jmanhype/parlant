@@ -324,7 +324,6 @@ check_stock(): returns all menu items that are currently in stock
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
-        builder.add_user_name(end_user)
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(

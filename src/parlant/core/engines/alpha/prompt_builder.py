@@ -17,14 +17,12 @@ from parlant.core.engines.alpha.utils import (
 )
 from parlant.core.emissions import EmittedEvent
 from parlant.core.tools import ToolId
-from parlant.core.end_users import EndUser
 
 
 class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
-    USER_CONTEXT = auto()
     TERMINOLOGY = auto()
     GUIDELINE_CONDITIONS = auto()
     GUIDELINE_PROPOSITIONS = auto()
@@ -180,20 +178,6 @@ The following is information that you're given about the user and context of the
                 status=SectionStatus.ACTIVE,
             )
 
-        return self
-
-    def add_user_name(
-        self,
-        user: EndUser,
-    ) -> PromptBuilder:
-        content = f"""
-    - The name of the user is {user.name}. 
-"""
-        self.add_section(
-            name=BuiltInSection.USER_CONTEXT,
-            content=content,
-            status=SectionStatus.ACTIVE,
-        )
         return self
 
     def add_glossary(
