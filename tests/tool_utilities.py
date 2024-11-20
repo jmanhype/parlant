@@ -16,6 +16,10 @@ import enum
 
 from parlant.core.tools import ToolResult
 
+supabase_url = os.environ["SUPABASE_URL"]
+supabase_anon = os.environ["SUPABASE_ANON_KEY"]
+supabase = create_client(supabase_url, supabase_anon)
+
 
 def get_available_drinks() -> ToolResult:
     return ToolResult(["Sprite", "Coca Cola"])
@@ -112,3 +116,65 @@ def recommend_drink(user_is_adult: bool) -> ToolResult:
 
 def check_username_validity(name: str) -> ToolResult:
     return ToolResult(name != "Dukie")
+
+
+class Categories(enum.Enum):
+    GRAPHICSCARD = "Graphics Card"
+    PROCESSOR = "Processor"
+    STORAGE = "Storage"
+    POWER_SUPPLY = "Power Supply"
+    MOTHERBOARD = "Motherboard"
+    MEMORY = "Memory"
+    CASE = "Case"
+    CPUCOOLER = "CPU Cooler"
+    MONITOR = "Monitor"
+    KEYBOARD = "Keyboard"
+    MOUSE = "Mouse"
+    HEADSET = "Headset"
+    AUDIO = "Audio"
+    COOLING = "Cooling"
+    ACCESSORIES = "Accessories"
+    LIGHTING = "Lighting"
+    NETWORKING = "Networking"
+    LAPTOP = "Laptop"
+
+
+# verify if product category is in stock
+def get_in_stock(category: Categories) -> ToolResult:
+    print(category.value)
+    in_stock = []
+    all_db = (
+        supabase.table("products")
+        .select("id, title, variant_inventory_qty")
+        .eq("type", category.value)
+        .execute()
+    )
+
+    for item in all_db.data:
+        if item["variant_inventory_qty"] > 2:
+            in_stock.append(item["variant_inventory_qty"])
+
+    return ToolResult(len(in_stock) > 2)
+
+
+# fetch products by tags
+def get_products_by_tags(category: Categories, tags: str) -> ToolResult:
+    tags_list = tags.split(",")
+    products = []  # This will store unique products
+    unique_ids = set()  # To track added product IDs
+
+    for item in tags_list:
+        item_db = (
+            supabase.table("products")
+            .select("id, title, variant_inventory_qty, variant_price, tags, body_html")
+            .eq("type", category.value)
+            .contains("tags", [item])
+            .execute()
+        )
+        if item_db and item_db.data:
+            for product in item_db.data:
+                if product["id"] not in unique_ids:
+                    unique_ids.add(product["id"])
+                    products.append(product)
+
+    return ToolResult(products)
