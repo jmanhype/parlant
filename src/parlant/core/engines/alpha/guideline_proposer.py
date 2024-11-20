@@ -496,7 +496,6 @@ Advanced, and Pro. Each offers different features, which I can summarize quickly
         )
         builder.add_agent_identity(agents[0])
         builder.add_interaction_history(interaction_history)
-        builder.add_user_name(end_user)
         builder.add_section(
             f"""
 The following is an additional list of staged events that were just added: ###
