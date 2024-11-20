@@ -696,7 +696,7 @@ def test_that_conflicting_actions_with_similar_conditions_are_both_detected(
     )
 
 
-def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_variables(  # TODO talk to Dor about adding context variables
+def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_variables(
     context: ContextOfTest,
 ) -> None:
     conversation_context: list[tuple[str, str]] = [
@@ -710,7 +710,8 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_var
         ),
         ("end_user", "I'm Bob Bobberson"),
     ]
-    tool_result_1 = JSONSerializable(
+    tool_result_1 = cast(
+        JSONSerializable,
         {
             "tool_calls": [
                 {
@@ -719,10 +720,11 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_var
                     "result": {"data": 16, "metadata": {}, "control": {}},
                 }
             ]
-        }
+        },
     )
 
-    tool_result_2 = JSONSerializable(
+    tool_result_2 = cast(
+        JSONSerializable,
         {
             "tool_calls": [
                 {
@@ -731,7 +733,7 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_var
                     "result": {"data": 30, "metadata": {}, "control": {}},
                 }
             ]
-        }
+        },
     )
     staged_events = [
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
@@ -778,7 +780,8 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context
         ("end_user", "It's 199877"),
     ]
 
-    tool_result_1 = JSONSerializable(
+    tool_result_1 = cast(
+        JSONSerializable,
         {
             "tool_calls": [
                 {
@@ -787,10 +790,11 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context
                     "result": {"data": 16, "metadata": {}, "control": {}},
                 }
             ]
-        }
+        },
     )
 
-    tool_result_2 = JSONSerializable(
+    tool_result_2 = cast(
+        JSONSerializable,
         {
             "tool_calls": [
                 {
@@ -799,7 +803,7 @@ def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context
                     "result": {"data": 30, "metadata": {}, "control": {}},
                 }
             ]
-        }
+        },
     )
     staged_events = [
         EmittedEvent(source="ai_agent", kind="tool", correlation_id="", data=tool_result_1),
