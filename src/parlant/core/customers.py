@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Mapping, NewType, Optional, Sequence, TypeAlias, TypedDict, Union
+from typing import Mapping, NewType, Optional, Sequence, TypeAlias, TypedDict, Union, override
 
 from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
@@ -142,6 +142,7 @@ class CustomerDocumentStore(CustomerStore):
             tags=tags,
         )
 
+    @override
     async def create_customer(
         self,
         name: str,
@@ -164,6 +165,7 @@ class CustomerDocumentStore(CustomerStore):
 
         return customer
 
+    @override
     async def read_customer(
         self,
         customer_id: CustomerId,
@@ -177,6 +179,7 @@ class CustomerDocumentStore(CustomerStore):
 
         return await self._deserialize_customer(customer_document)
 
+    @override
     async def update_customer(
         self,
         customer_id: CustomerId,
@@ -203,6 +206,7 @@ class CustomerDocumentStore(CustomerStore):
             await self._deserialize_customer(e) for e in await self._customers_collection.find({})
         ]
 
+    @override
     async def add_tag(
         self,
         customer_id: CustomerId,
@@ -230,6 +234,7 @@ class CustomerDocumentStore(CustomerStore):
 
         return await self._deserialize_customer(customer_document=customer_document)
 
+    @override
     async def remove_tag(
         self,
         customer_id: CustomerId,
@@ -252,6 +257,7 @@ class CustomerDocumentStore(CustomerStore):
 
         return await self._deserialize_customer(customer_document=customer_document)
 
+    @override
     async def add_extra(
         self,
         customer_id: CustomerId,
@@ -273,6 +279,7 @@ class CustomerDocumentStore(CustomerStore):
 
         return await self._deserialize_customer(customer_document=result.updated_document)
 
+    @override
     async def remove_extra(
         self,
         customer_id: CustomerId,

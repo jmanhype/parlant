@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, override
 
 from parlant.core.common import ItemNotFoundError, generate_id, UniqueId
 from parlant.core.persistence.document_database import DocumentDatabase, ObjectId
@@ -88,6 +88,7 @@ class TagDocumentStore(TagStore):
             name=document["name"],
         )
 
+    @override
     async def create_tag(
         self,
         name: str,
@@ -100,6 +101,7 @@ class TagDocumentStore(TagStore):
 
         return tag
 
+    @override
     async def read_tag(
         self,
         tag_id: TagId,
@@ -111,6 +113,7 @@ class TagDocumentStore(TagStore):
 
         return self._deserialize(document)
 
+    @override
     async def update_tag(
         self,
         tag_id: TagId,
@@ -130,11 +133,13 @@ class TagDocumentStore(TagStore):
 
         return self._deserialize(document=result.updated_document)
 
+    @override
     async def list_tags(
         self,
     ) -> Sequence[Tag]:
         return [self._deserialize(doc) for doc in await self._collection.find({})]
 
+    @override
     async def delete_tag(
         self,
         tag_id: TagId,
