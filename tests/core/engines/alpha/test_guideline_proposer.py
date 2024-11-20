@@ -22,8 +22,11 @@ from more_itertools import unique
 from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
-from parlant.core.common import generate_id
-from parlant.core.context_variables import ContextVariable, ContextVariableValue
+from parlant.core.common import generate_id, JSONSerializable
+from parlant.core.context_variables import (
+    ContextVariable,
+    ContextVariableValue,
+)
 from parlant.core.emissions import EmittedEvent
 from parlant.core.glossary import Term
 from parlant.core.nlp.generation import SchematicGenerator
@@ -153,11 +156,32 @@ GUIDELINES_DICT = {
         "condition": "the user wants to agent to perform an action that the agent is not designed for",
         "action": "forward the request to a supervisor",
     },
+    "announce_deals": {
+        "condition": "A special deal is active",
+        "action": "Announce the deal in an excited tone, while mentioning our slogan 'Ride the Future, One Kick at a Time!'",
+    },
+    "cheese_pizza": {
+        "condition": "The customer is in the process of ordering a cheese pizza",
+        "action": "Ask which toppings they would like",
+    },
+    "cheese_pizza_process": {
+        "condition": "The customer is in the process of ordering a cheese pizza",
+        "action": "Refer to the pizza as a 'pie'",
+    },
+    "summer_sale": {
+        "condition": "In the season of summer",
+        "action": "Mention we offer two large pizzas for the price of one",
+    },
+    "large_pizza_crust": {
+        "condition": "The customer orders a large pizza",
+        "action": "Ask what type of crust they would like",
+    },
 }
 
 
 @dataclass
 class ContextOfTest:
+    container: Container
     sync_await: SyncAwaiter
     guidelines: list[Guideline]
     schematic_generator: SchematicGenerator[GuidelinePropositionsSchema]
@@ -170,6 +194,7 @@ def context(
     container: Container,
 ) -> ContextOfTest:
     return ContextOfTest(
+        container,
         sync_await,
         guidelines=list(),
         logger=container[Logger],
@@ -244,6 +269,15 @@ def create_term(name: str, description: str, synonyms: list[str] = []) -> Term:
         description=description,
         synonyms=synonyms,
     )
+
+
+def create_context_variable(
+    name: str,
+    data: JSONSerializable,
+) -> tuple[ContextVariable, ContextVariableValue]:
+    return ContextVariable(
+        id="-", name=name, description="", tool_id=None, freshness_rules=None
+    ), ContextVariableValue(id="", last_modified=datetime.now(timezone.utc), data=data)
 
 
 def get_all_guidelines(context: ContextOfTest) -> Sequence[Guideline]:
@@ -506,12 +540,19 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
             "ai_agent",
             "Thank you for your order! Your skateboard and helmet will be shipped shortly. Enjoy your ride!",
         ),
+        ("end_user", "That's great! Thanks!"),
     ]
 
     conversation_guideline_names: list[str] = [
         guideline_name for guideline_name in GUIDELINES_DICT.keys()
     ]
-    relevant_guideline_names = ["announce_shipment"]
+    relevant_guideline_names = [
+        "announce_shipment",
+        "credit_payment1",
+        "credit_payment2",
+        "thankful_user",
+        "payment_process",
+    ]
     base_test_that_correct_guidelines_are_proposed(
         context, conversation_context, conversation_guideline_names, relevant_guideline_names
     )
@@ -595,11 +636,7 @@ def test_that_guidelines_are_proposed_based_on_glossary(
         ),
         ("end_user", "I have PRS, would that route be suitable for me?"),
     ]
-    conversation_guideline_names: list[str] = [
-        "recommending_routes",
-        "mood_support",
-        "first_time_client",
-    ]
+    conversation_guideline_names: list[str] = ["tree_allergies"]
     relevant_guideline_names = ["tree_allergies"]
     base_test_that_correct_guidelines_are_proposed(
         context,
@@ -655,19 +692,310 @@ def test_that_conflicting_actions_with_similar_conditions_are_both_detected(
     )
 
 
-def test_that_guidelines_are_proposed_based_on_staged_tool_calls(
+def test_that_guidelines_are_proposed_based_on_staged_tool_calls_and_context_variables(  # TODO talk to Dor about adding context variables
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "end_user",
+            "Hi there, I want a drink that's on the sweeter side, what would you suggest?",
+        ),
+        (
+            "ai_agent",
+            "Hi there! Let me take a quick look at your account to recommend the best product for you. Could you please provide your full name?",
+        ),
+        ("end_user", "I'm Bob Bobberson"),
+    ]
+    tool_result_1 = {
+        "tool_calls": [
+            {
+                "tool_id": "local:get_user_age",
+                "arguments": {"user_id": "199877"},
+                "result": {"data": 16, "metadata": {}, "control": {}},
+            }
+        ]
+    }
+
+    tool_result_2 = {
+        "tool_calls": [
+            {
+                "tool_id": "local:get_user_age",
+                "arguments": {"user_id": "816779"},
+                "result": {"data": 30, "metadata": {}, "control": {}},
+            }
+        ]
+    }
+    staged_events = [
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_1),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_2),
+    ]
+    context_variables = [
+        create_context_variable(
+            name="user_id_1",
+            data={"name": "Jimmy McGill", "ID": 566317},
+        ),
+        create_context_variable(
+            name="user_id_2",
+            data={"name": "Bob Bobberson", "ID": 199877},
+        ),
+        create_context_variable(
+            name="user_id_3",
+            data={"name": "Dorothy Dortmund", "ID": 816779},
+        ),
+    ]
+    conversation_guideline_names: list[str] = ["suggest_drink_underage", "suggest_drink_adult"]
+    relevant_guideline_names = ["suggest_drink_underage"]
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+        staged_events=staged_events,
+        context_variables=context_variables,
+    )
 
 
-def test_that_already_adressed_guidelines_arent_proposed(
+def test_that_guidelines_are_proposed_based_on_staged_tool_calls_without_context_variables(
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "end_user",
+            "Hi there, I want a drink that's on the sweeter side, what would you suggest?",
+        ),
+        (
+            "ai_agent",
+            "Hi there! Let me take a quick look at your account to recommend the best product for you. Could you please provide your ID number?",
+        ),
+        ("end_user", "It's 199877"),
+    ]
+
+    tool_result_1 = {
+        "tool_calls": [
+            {
+                "tool_id": "local:get_user_age",
+                "arguments": {"user_id": "199877"},
+                "result": {"data": 16, "metadata": {}, "control": {}},
+            }
+        ]
+    }
+
+    tool_result_2 = {
+        "tool_calls": [
+            {
+                "tool_id": "local:get_user_age",
+                "arguments": {"user_id": "816779"},
+                "result": {"data": 30, "metadata": {}, "control": {}},
+            }
+        ]
+    }
+    staged_events = [
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_1),
+        EmittedEvent(source="ai_agent", kind="tool", correlation_id=None, data=tool_result_2),
+    ]
+    conversation_guideline_names: list[str] = ["suggest_drink_underage", "suggest_drink_adult"]
+    relevant_guideline_names = ["suggest_drink_underage"]
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names=relevant_guideline_names,
+        staged_events=staged_events,
+    )
+
+
+def test_that_already_addressed_guidelines_arent_proposed(
+    context: ContextOfTest,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey there, can I get one cheese pizza?"),
+        (
+            "ai_agent",
+            "Of course! What toppings would you like?",
+        ),
+        ("end_user", "Mushrooms if they're fresh"),
+        (
+            "ai_agent",
+            "All of our toppings are fresh! Are you collecting it from our shop or should we ship it to your address?",
+        ),
+        ("end_user", "Ship it to my address please"),
+    ]
+    conversation_guideline_names: list[str] = ["cheese_pizza"]
+    relevant_guideline_names = []
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
+
+
+def test_that_guidelines_referring_to_continuous_processes_are_detected_even_if_already_fulfilled(
+    context: ContextOfTest,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey there, can I get one cheese pizza?"),
+        (
+            "ai_agent",
+            "Of course! What toppings would you like on your pie?",
+        ),
+        ("end_user", "Mushrooms if they're fresh"),
+        (
+            "ai_agent",
+            "All of our toppings are fresh! Are you collecting the pie from our shop or should we ship it to your address?",
+        ),
+        ("end_user", "Ship it to my address please"),
+    ]
+    conversation_guideline_names: list[str] = ["cheese_pizza_process"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
+
+
+def test_that_guideline_with_already_addressed_condition_but_unaddressed_action_is_proposed(
+    context: ContextOfTest,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        ("end_user", "Hey there, can I get one cheese pizza?"),
+        (
+            "ai_agent",
+            "No, we don't have those",
+        ),
+        ("end_user", "I thought you're a pizza shop, this is very frustrating"),
+        (
+            "ai_agent",
+            "I'm sorry that you're frustrated, but unfortunately we're out ingredients at this time",
+        ),
+        ("end_user", "What the heck! I'm never ordering from you guys again"),
+    ]
+    conversation_guideline_names: list[str] = ["frustrated_user"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )
+
+
+def test_that_guidelines_based_on_context_variables_arent_proposed_repetitively(
+    context: ContextOfTest,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "ai_agent",
+            "Hi! Welcome to PizzaBot, your virtual pizza assistant. We have a special summer deal - two large pizzas for the price of one! How can I help you today?",
+        ),
+        ("end_user", "Hi, I’d like to order a pizza."),
+        ("ai_agent", "Great choice! What size would you like—small, medium, or large?"),
+        ("end_user", "I’ll take a large pizza."),
+        (
+            "ai_agent",
+            "Got it! And what type of crust would you like? We have classic, thin, stuffed, or gluten-free.",
+        ),
+        ("end_user", "Let’s go with stuffed crust."),
+        (
+            "ai_agent",
+            "Yum! Now for the toppings. Would you like a classic like pepperoni or something custom?",
+        ),
+        ("end_user", "Can I do half pepperoni and half veggie?"),
+        (
+            "ai_agent",
+            "Absolutely! Your pizza will have half pepperoni and half veggie. For the veggie side, would you like a mix of mushrooms, onions, bell peppers, and olives?",
+        ),
+        ("end_user", "Yes, that sounds perfect."),
+        ("ai_agent", "Great! Would you like any extra cheese or dipping sauces?"),
+        ("end_user", "Extra cheese for sure, and ranch dipping sauce, please."),
+        (
+            "ai_agent",
+            "Got it. A large, stuffed crust pizza with half pepperoni, half veggie, extra cheese, and ranch dipping sauce. Anything else?",
+        ),
+        ("end_user", "Nope, that’s all. How long will it take?"),
+        (
+            "ai_agent",
+            "Your pizza will be ready in about 25 minutes. Would you like delivery or pickup?",
+        ),
+        ("end_user", "Delivery please?"),
+        ("ai_agent", "Great, the total would be 10$, would you like to pay by credit or cash?"),
+        ("end_user", "Actually hold up, could you add another large pizza to the order?"),
+    ]
+    context_variables = [
+        create_context_variable(
+            name="season",
+            data={"season": "Summer"},
+        ),
+    ]
+
+    conversation_guideline_names: list[str] = ["summer_sale"]
+    relevant_guideline_names = []
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+        context_variables=context_variables,
+    )
+
+
+def test_that_guideline_that_needs_to_be_reapplied_is_proposed(
+    context: ContextOfTest,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "ai_agent",
+            "Hi! Welcome to PizzaBot, your virtual pizza assistant. How can I help you today?",
+        ),
+        ("end_user", "Hi, I’d like to order a pizza."),
+        ("ai_agent", "Great choice! What size would you like—small, medium, or large?"),
+        ("end_user", "I’ll take a large pizza."),
+        (
+            "ai_agent",
+            "Got it! And what type of crust would you like? We have classic, thin, stuffed, or gluten-free.",
+        ),
+        ("end_user", "Let’s go with stuffed crust."),
+        (
+            "ai_agent",
+            "Yum! Now for the toppings. Would you like a classic like pepperoni or something custom?",
+        ),
+        ("end_user", "Can I do half pepperoni and half veggie?"),
+        (
+            "ai_agent",
+            "Absolutely! Your pizza will have half pepperoni and half veggie. For the veggie side, would you like a mix of mushrooms, onions, bell peppers, and olives?",
+        ),
+        ("end_user", "Yes, that sounds perfect."),
+        ("ai_agent", "Great! Would you like any extra cheese or dipping sauces?"),
+        ("end_user", "Extra cheese for sure, and ranch dipping sauce, please."),
+        (
+            "ai_agent",
+            "Got it. A large, stuffed crust pizza with half pepperoni, half veggie, extra cheese, and ranch dipping sauce. Anything else?",
+        ),
+        ("end_user", "Nope, that’s all. How long will it take?"),
+        (
+            "ai_agent",
+            "Your pizza will be ready in about 25 minutes. Would you like delivery or pickup?",
+        ),
+        ("end_user", "Delivery please?"),
+        ("ai_agent", "Great, the total would be 10$, would you like to pay by credit or cash?"),
+        ("end_user", "Actually hold up, could you add another large pizza to the order?"),
+    ]
+
+    conversation_guideline_names: list[str] = ["large_pizza_crust"]
+    relevant_guideline_names = []
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+        context_variables=[],
+    )
 
 
 def test_that_guideline_isnt_detected_based_on_its_action(
     context: ContextOfTest,
 ) -> None:
-    assert True  # TODO write
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "end_user",
+            "There's currently a 20 percent discount on all items! Ride the Future, One Kick at a Time!",
+        ),
+    ]
+    conversation_guideline_names: list[str] = ["announce_deals"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context, conversation_context, conversation_guideline_names, relevant_guideline_names
+    )

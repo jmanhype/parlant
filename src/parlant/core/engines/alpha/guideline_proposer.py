@@ -35,6 +35,7 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 
 
+# TODO change user to customer
 class GuidelinePropositionSchema(DefaultBaseModel):
     predicate_number: int
     predicate: str
@@ -271,8 +272,8 @@ Process Description
 -------------------
 a. Examine the provided interaction events to discern the latest state of interaction between the user and the assistant.
 b. Evaluate the entire interaction to determine if each condition is still relevant to the most recent interaction state.
-c. Asses whether the condition has already been adressed, meaning that it already applied in an earlier state of the conversation, and that its action was already performed.
-d. A condition should receive a high applicabilaty score only if it's directly fulfilled. It is not sufficient for it to be implied to be true, or for you to believe that it will become true in a future state of the interaction.
+c. Asses whether the condition has already been addressed, meaning that it already applied in an earlier state of the conversation, and that its action was already performed.
+d. A condition should receive a high applicability score only if it's directly fulfilled. It is not sufficient for it to be implied to be true, or for you to believe that it will become true in a future state of the interaction.
 e. IMPORTANT: Note that some conditions are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based conditions are hard to ascertain through a textual conversation.
 
 ### Examples of Predicate Evaluations:
