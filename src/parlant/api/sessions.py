@@ -605,17 +605,14 @@ def create_router(
     @router.post(
         "/{session_id}/interactions",
         status_code=status.HTTP_201_CREATED,
-        operation_id="create_interactions",
+        operation_id="create_interaction",
         **apigen_config(group_name=API_GROUP, method_name="create_interaction"),
     )
-    async def create_interactions(
+    async def create_interaction(
         session_id: SessionId,
-        moderation: Moderation = Moderation.NONE,
     ) -> InteractionCreationResponse:
         session = await session_store.read_session(session_id)
-
         correlation_id = await application.dispatch_processing_task(session)
-
         return InteractionCreationResponse(correlation_id=correlation_id)
 
     @router.get(
