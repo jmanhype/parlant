@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Mapping, NewType, Optional, Sequence, TypeAlias, TypedDict, Union, override
+from typing import Mapping, NewType, Optional, Sequence, TypedDict, override
 
 from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
@@ -12,15 +12,13 @@ from parlant.core.persistence.document_database import (
 
 CustomerId = NewType("CustomerId", str)
 
-ExtraType: TypeAlias = Mapping[str, Union[str, int, float, bool]]
-
 
 @dataclass(frozen=True)
 class Customer:
     id: CustomerId
     creation_utc: datetime
     name: str
-    extra: ExtraType
+    extra: Mapping[str, str]
     tags: Sequence[TagId]
 
 
@@ -35,7 +33,7 @@ class CustomerStore(ABC):
     async def create_customer(
         self,
         name: str,
-        extra: ExtraType = {},
+        extra: Mapping[str, str] = {},
         creation_utc: Optional[datetime] = None,
     ) -> Customer: ...
 
@@ -74,7 +72,7 @@ class CustomerStore(ABC):
     async def add_extra(
         self,
         customer_id: CustomerId,
-        extra: ExtraType,
+        extra: Mapping[str, str],
     ) -> Customer: ...
 
     @abstractmethod
@@ -90,7 +88,7 @@ class _CustomerDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     name: str
-    extra: ExtraType
+    extra: Mapping[str, str]
 
 
 class _CustomerTagAssociationDocument(TypedDict, total=False):
@@ -146,7 +144,7 @@ class CustomerDocumentStore(CustomerStore):
     async def create_customer(
         self,
         name: str,
-        extra: ExtraType = {},
+        extra: Mapping[str, str] = {},
         creation_utc: Optional[datetime] = None,
     ) -> Customer:
         creation_utc = creation_utc or datetime.now(timezone.utc)
@@ -261,7 +259,7 @@ class CustomerDocumentStore(CustomerStore):
     async def add_extra(
         self,
         customer_id: CustomerId,
-        extra: ExtraType,
+        extra: Mapping[str, str],
     ) -> Customer:
         customer_document = await self._customers_collection.find_one({"id": {"$eq": customer_id}})
 

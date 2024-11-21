@@ -1,6 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Response, status
-from typing import Mapping, Optional, Sequence, TypeAlias, Union
+from typing import Mapping, Optional, Sequence, TypeAlias
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
@@ -9,8 +9,7 @@ from parlant.core.tags import TagId
 
 API_GROUP = "customers"
 
-
-CustomerExtraType: TypeAlias = Mapping[str, Union[str, int, float, bool]]
+CustomerExtraType: TypeAlias = Mapping[str, str]
 
 
 class CreateCustomerRequest(DefaultBaseModel):
