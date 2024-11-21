@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, status
 from typing import Mapping, Optional, Sequence, TypeAlias
 
 from parlant.api.common import apigen_config
@@ -116,9 +116,10 @@ def create_router(
     @router.patch(
         "/{customer_id}",
         operation_id="update_customer",
+        status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_customer(customer_id: CustomerId, request: UpdateCustomerRequest) -> Response:
+    async def update_customer(customer_id: CustomerId, request: UpdateCustomerRequest) -> None:
         if request.name:
             params: CustomerUpdateParams = {}
             params["name"] = request.name
@@ -141,7 +142,5 @@ def create_router(
             if request.tags.remove:
                 for tag_id in request.tags.remove:
                     await customer_store.remove_tag(customer_id, tag_id)
-
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     return router
