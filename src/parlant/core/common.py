@@ -85,4 +85,7 @@ class ItemNotFoundError(Exception):
 
 
 def generate_id() -> UniqueId:
-    return UniqueId(nanoid.generate(size=10))
+    while True:
+        new_id = nanoid.generate(size=10)
+        if not new_id.startswith("-") and not new_id.endswith("-"):
+            return UniqueId(new_id)
