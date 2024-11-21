@@ -163,7 +163,7 @@ class API:
     @staticmethod
     async def create_session(
         agent_id: str,
-        customer_id: str,
+        customer_id: Optional[str] = None,
         title: Optional[str] = None,
     ) -> Any:
         async with API.make_client() as client:
@@ -172,12 +172,21 @@ class API:
                 params={"allow_greeting": False},
                 json={
                     "agent_id": agent_id,
-                    "customer_id": customer_id,
+                    **({"customer_id": customer_id} if customer_id else {}),
                     "title": title,
                 },
             )
 
             return response.raise_for_status().json()["session"]
+
+    @staticmethod
+    async def read_session(session_id: str) -> Any:
+        async with API.make_client() as client:
+            response = await client.get(
+                f"/sessions/{session_id}",
+            )
+
+            return response.raise_for_status().json()
 
     @staticmethod
     async def get_agent_reply(
@@ -657,6 +666,28 @@ async def test_that_sessions_can_be_listed(
         assert first_title in output_list
         assert second_title in output_list
         assert third_title not in output_list
+
+
+async def test_that_session_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    session_title = "Old Title"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = await API.get_first_agent_id()
+        session_id = (await API.create_session(agent_id=agent_id, title=session_title))["id"]
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "session", "update", session_id, "--title", "New Title"
+            )
+            == os.EX_OK
+        )
+
+        session = await API.read_session(session_id)
+        assert session["title"] == "New Title"
 
 
 async def test_that_a_term_can_be_created_with_synonyms(
