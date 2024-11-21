@@ -165,7 +165,7 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
 
 class GPT_4o(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
-        super().__init__(model_name="gpt-4o-2024-08-06", logger=logger)
+        super().__init__(model_name="gpt-4o-2024-11-20", logger=logger)
 
     @property
     def max_tokens(self) -> int:

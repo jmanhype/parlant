@@ -126,6 +126,7 @@ The following is a description of your identity: ###
                 "human_agent": "human_agent",
                 "human_agent_on_behalf_of_ai_agent": "ai_agent",
                 "ai_agent": "ai_agent",
+                "system": "system-provided",
             }
 
             return json.dumps(
@@ -212,11 +213,11 @@ and let the user know if/when you assume they meant a term by their typo: ###
         self.add_section(
             name=BuiltInSection.GUIDELINE_CONDITIONS,
             content=f"""
-- Condition List: ###
+- Predicate List: ###
 {conditions}
 ###
 
-IMPORTANT: Please note there are exactly {len(conditions)} conditions in the list for you to check.
+IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
     """,
             status=SectionStatus.ACTIVE,
         )
@@ -236,9 +237,7 @@ IMPORTANT: Please note there are exactly {len(conditions)} conditions in the lis
             guidelines = []
 
             for i, p in enumerate(all_propositions, start=1):
-                guideline = (
-                    f"{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
-                )
+                guideline = f"Guideline #{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
 
                 if include_priority:
                     guideline += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
@@ -286,7 +285,8 @@ Guidelines: ###
                 name=BuiltInSection.GUIDELINE_PROPOSITIONS,
                 content="""
 In formulating your reply, you are normally required to follow a number of behavioral guidelines.
-However, in this case, no special behavioral guidelines were provided.
+However, in this case, no special behavioral guidelines were provided. Therefore,
+you don't need to specifically double-check (when generating revisions) if you followed or broke any guidelines.
 """,
                 status=SectionStatus.PASSIVE,
             )

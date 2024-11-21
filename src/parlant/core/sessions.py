@@ -45,6 +45,7 @@ EventSource: TypeAlias = Literal[
     "human_agent",
     "human_agent_on_behalf_of_ai_agent",
     "ai_agent",
+    "system",
 ]
 EventKind: TypeAlias = Literal["message", "tool", "status", "custom"]
 

@@ -68,7 +68,7 @@ class EventBuffer(EventEmitter):
         data: ToolEventData,
     ) -> EmittedEvent:
         event = EmittedEvent(
-            source="ai_agent",
+            source="system",
             kind="tool",
             correlation_id=correlation_id,
             data=cast(JSONSerializable, data),

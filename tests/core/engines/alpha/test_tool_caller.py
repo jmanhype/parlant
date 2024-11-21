@@ -20,7 +20,7 @@ from tests.core.services.tools.test_plugin_client import run_service_server
 
 
 @fixture
-def local_service_tool(container: Container) -> LocalToolService:
+def local_tool_service(container: Container) -> LocalToolService:
     return container[LocalToolService]
 
 
@@ -80,12 +80,12 @@ async def create_local_tool(
 
 
 async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_parameter(
-    local_service_tool: LocalToolService,
+    local_tool_service: LocalToolService,
     tool_caller: ToolCaller,
     agent: Agent,
 ) -> None:
     tool = await create_local_tool(
-        local_service_tool,
+        local_tool_service,
         name="available_products_by_category",
         parameters={
             "category": {

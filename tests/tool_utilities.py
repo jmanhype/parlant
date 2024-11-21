@@ -1,5 +1,4 @@
 import enum
-from typing import Literal
 
 from parlant.core.tools import ToolResult
 
@@ -17,10 +16,15 @@ def expert_answer(user_query: str) -> ToolResult:
     return ToolResult(answers[user_query])
 
 
-def get_available_product_by_type(product_type: Literal["drinks", "toppings"]) -> ToolResult:
-    if product_type == "drinks":
+class ProductType(enum.Enum):
+    DRINKS = "drinks"
+    TOPPINGS = "toppings"
+
+
+def get_available_product_by_type(product_type: ProductType) -> ToolResult:
+    if product_type == ProductType.DRINKS:
         return get_available_drinks()
-    elif product_type == "toppings":
+    elif product_type == ProductType.TOPPINGS:
         return get_available_toppings()
     else:
         return ToolResult([])

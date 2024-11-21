@@ -45,6 +45,7 @@ class EventSourceDTO(Enum):
     HUMAN_AGENT = "human_agent"
     HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
     AI_AGENT = "ai_agent"
+    SYSTEM = "system"
 
 
 class Moderation(Enum):

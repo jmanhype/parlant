@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import contextmanager
 from time import sleep
-from typing import Any, Awaitable, Callable, Generator, Iterator, Optional, TypeVar, cast
+from typing import Any, Awaitable, Callable, Generator, Iterator, Optional, TypeVar
 
 from lagom import Container
 from parlant.adapters.nlp.openai import GPT_4o
@@ -21,7 +21,6 @@ from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.logging import Logger
-from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
 
@@ -180,8 +179,6 @@ async def create_guideline(
     action: str,
     tool_function: Optional[Callable[[], ToolResult]] = None,
 ) -> Guideline:
-    local_tool_service = container[LocalToolService]
-
     guideline = await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
         condition=condition,
@@ -189,9 +186,7 @@ async def create_guideline(
     )
 
     if tool_function:
-        local_tool_service = cast(
-            LocalToolService, await container[ServiceRegistry].read_tool_service("local")
-        )
+        local_tool_service = container[LocalToolService]
 
         existing_tools = await local_tool_service.list_tools()
 

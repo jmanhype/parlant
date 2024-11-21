@@ -47,7 +47,7 @@ class MessageGenerationError(Exception):
 
 
 class MessageEventSchema(DefaultBaseModel):
-    last_message_of_user: str
+    last_message_of_user: Optional[str]
     produced_reply: Optional[bool] = True
     rationale: str
     revisions: list[Revision]
@@ -183,10 +183,10 @@ You must generate your reply message to the current (latest) state of the intera
             """
 Task Description:
 Continue the provided interaction in a natural and human-like manner. Your task is to produce a response to the latest state of the interaction.
-Always do the following:
-1. GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary. 
-2. AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the user to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the user instead of maintaining the loop.
-3. DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the user requests information you're unsure about, state that this information is not available to you. 
+Always abide by the following general principles (note these are not the "guidelines", these are "principles"):
+Principle #1) GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary.
+Principle #2) AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the user to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the user instead of maintaining the loop.
+Principle #3) DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the user requests information you're unsure about, state that this information is not available to you.
 """
         )
         if not interaction_history or all(
@@ -203,13 +203,13 @@ If you decide not to emit a message, output the following:
     "rationale": "<a few words to justify why a reply was NOT produced here>",
     "revisions": []
 }}
-Otherwise, follow the rest of this prompt to choose the content of your response. 
+Otherwise, follow the rest of this prompt to choose the content of your response.
         """
             )
 
         else:
             builder.add_section("""
-Since the interaction with the user is already ongoing, always produce a reply to the user's last message. 
+Since the interaction with the user is already ongoing, always produce a reply to the user's last message.
 The only exception where you may not produce a reply is if the user explicitly asked you not to respond to their message.
 In all other cases, even if the user is indicating that the conversation is over, you must produce a reply.
                 """)
@@ -234,7 +234,7 @@ Your final output should be a JSON object documenting the entire message develop
 This document should detail how each guideline was adhered to,
 instances where one guideline was prioritized over another,
 situations where guidelines could not be followed due to lack of context or data,
-and the rationale for each decision made during the revision process. 
+and the rationale for each decision made during the revision process.
 Additionally, mark whether your suggested response is repeating your previous message.
 if your suggested response is repetitive, further revisions are needed, until the suggested response is sufficiently unique.
 The exact format of this output will be provided to you at the end of this prompt.
