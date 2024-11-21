@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
+from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import Tool, ToolParameter
 from parlant.core.services.tools.openapi import OpenAPIClient
-from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
 from parlant.core.tools import ToolService
 

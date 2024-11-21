@@ -37,7 +37,7 @@ async def test_that_an_customer_can_be_read(
     customer_store = container[CustomerStore]
 
     name = "Menachem Brich"
-    extra = {"id": 102938485}
+    extra = {"id": str(102938485)}
 
     customer = await customer_store.create_customer(name, extra)
 

@@ -441,6 +441,47 @@ class API:
             response = await client.put(f"/services/{service_name}", json=payload)
             response.raise_for_status()
 
+    @staticmethod
+    async def create_tag(name: str) -> Any:
+        async with API.make_client() as client:
+            response = await client.post("/tags", json={"name": name})
+        return response.json()
+
+    @staticmethod
+    async def create_customer(
+        name: str,
+        extra: Optional[dict[str, Any]] = {},
+    ) -> Any:
+        async with API.make_client() as client:
+            respone = await client.post("/customers", json={"name": name, "extra": extra})
+            respone.raise_for_status()
+
+        return respone.json()
+
+    @staticmethod
+    async def list_customers() -> Any:
+        async with API.make_client() as client:
+            respone = await client.get("/customers")
+            respone.raise_for_status()
+
+        return respone.json()["customers"]
+
+    @staticmethod
+    async def read_customer(id: str) -> Any:
+        async with API.make_client() as client:
+            respone = await client.get(f"/customers/{id}")
+            respone.raise_for_status()
+
+        return respone.json()
+
+    @staticmethod
+    async def add_customer_tag(id: str, tag_id: str) -> Any:
+        async with API.make_client() as client:
+            respone = await client.patch(f"/customers/{id}", json={"tags": {"add": [tag_id]}})
+            respone.raise_for_status()
+
+        return respone.json()
+
 
 async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
     name = "TestAgent"
@@ -1940,3 +1981,148 @@ async def test_that_a_service_can_be_viewed(
         assert "two_required_query_params" in output
         assert "query_param_1:"
         assert "query_param_2:"
+
+
+async def test_that_customers_can_be_listed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        await API.create_customer(name="First Customer")
+        await API.create_customer(name="Second Customer")
+
+        process = await run_cli(
+            "customers",
+            "list",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert "First Customer" in output
+        assert "Second Customer" in output
+
+
+async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customers",
+                "add",
+                "TestCustomer",
+            )
+            == os.EX_OK
+        )
+
+        customers = await API.list_customers()
+        assert any(c["name"] == "TestCustomer" for c in customers)
+
+
+async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+
+        process = await run_cli(
+            "customers",
+            "view",
+            customer_id,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert customer_id in output
+        assert "TestCustomer" in output
+
+
+async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customers",
+                "add-extra",
+                customer_id,
+                "key1",
+                "value1",
+            )
+            == os.EX_OK
+        )
+
+        customer = await API.read_customer(id=customer_id)
+        assert customer["extra"].get("key1") == "value1"
+
+
+async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer", extra={"key1": "value1"}))[
+            "customer"
+        ]["id"]
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customers",
+                "remove-extra",
+                customer_id,
+                "key1",
+            )
+            == os.EX_OK
+        )
+
+        customer = await API.read_customer(id=customer_id)
+        assert "key1" not in customer["extra"]
+
+
+async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+        tag_id = (await API.create_tag(name="TestTag"))["tag"]["id"]
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customers",
+                "add-tag",
+                customer_id,
+                tag_id,
+            )
+            == os.EX_OK
+        )
+        customer = await API.read_customer(id=customer_id)
+        tags = customer["tags"]
+        assert tag_id in tags
+
+
+async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+        tag_id = (await API.create_tag(name="TestTag"))["tag"]["id"]
+        await API.add_customer_tag(customer_id, tag_id)
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customers",
+                "remove-tag",
+                customer_id,
+                tag_id,
+            )
+            == os.EX_OK
+        )
+        customer = await API.read_customer(id=customer_id)
+        tags = customer["tags"]
+        assert tag_id not in tags

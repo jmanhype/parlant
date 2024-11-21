@@ -45,6 +45,9 @@ from parlant.client.types import (
     Session,
     Term,
     ToolId,
+    Customer,
+    ExtraUpdate,
+    TagsUpdate,
 )
 
 INDENT = "  "
@@ -710,6 +713,61 @@ class Actions:
     ) -> Service:
         client = cast(ParlantClient, ctx.obj.client)
         return client.services.retrieve(service_name)
+
+    @staticmethod
+    def list_customers(
+        ctx: click.Context,
+    ) -> list[Customer]:
+        client = cast(ParlantClient, ctx.obj.client)
+        response = client.customers.list()
+        return response.customers
+
+    @staticmethod
+    def create_customer(
+        ctx: click.Context,
+        name: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        response = client.customers.create(name=name, extra={})
+        return response.customer
+
+    @staticmethod
+    def view_customer(
+        ctx: click.Context,
+        customer_id: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        response = client.customers.retrieve(customer_id=customer_id)
+        return response
+
+    @staticmethod
+    def add_customer_extra(
+        ctx: click.Context,
+        customer_id: str,
+        key: str,
+        value: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, extra=ExtraUpdate(add={key: value}))
+
+    @staticmethod
+    def remove_customer_extra(
+        ctx: click.Context,
+        customer_id: str,
+        key: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, extra=ExtraUpdate(remove=[key]))
+
+    @staticmethod
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, tags=TagsUpdate(add=[tag_id]))
+
+    @staticmethod
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, tags=TagsUpdate(remove=[tag_id]))
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -1704,6 +1762,88 @@ class Interface:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
+    @staticmethod
+    def _render_customer(customers: list[Customer]) -> None:
+        customer_items: list[dict[str, Any]] = [
+            {
+                "ID": customer.id,
+                "Name": customer.name,
+                "Extra": customer.extra,
+            }
+            for customer in customers
+        ]
+
+        Interface._print_table(customer_items)
+
+    @staticmethod
+    def list_customers(ctx: click.Context) -> None:
+        try:
+            customers = Actions.list_customers(ctx)
+            if not customers:
+                rich.print(Text("No customers found", style="bold yellow"))
+                return
+
+            Interface._render_customer(customers)
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def create_customer(ctx: click.Context, name: str) -> None:
+        try:
+            customer = Actions.create_customer(ctx, name)
+            Interface._write_success(f"Added customer (id={customer.id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def view_customer(ctx: click.Context, customer_id: str) -> None:
+        try:
+            customer = Actions.view_customer(ctx, customer_id)
+            Interface._render_customer([customer])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def add_customer_extra(ctx: click.Context, customer_id: str, key: str, value: str) -> None:
+        try:
+            Actions.add_customer_extra(ctx, customer_id, key, value)
+            Interface._write_success(
+                f"Added extra key '{key}' with value '{value}' to customer {customer_id}"
+            )
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
+        try:
+            Actions.remove_customer_extra(ctx, customer_id, key)
+            Interface._write_success(f"Removed extra key '{key}' from customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        try:
+            Actions.add_customer_tag(ctx, customer_id, tag_id)
+            Interface._write_success(f"Added tag '{tag_id}' to customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        try:
+            Actions.remove_customer_tag(ctx, customer_id, tag_id)
+            Interface._write_success(f"Removed tag '{tag_id}' from customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
 
 async def async_main() -> None:
     click_completion.init()  # type: ignore
@@ -2528,6 +2668,56 @@ async def async_main() -> None:
     @click.pass_context
     def service_view(ctx: click.Context, name: str) -> None:
         Interface.view_service(ctx, name)
+
+    @cli.group(help="Manage customers")
+    def customers() -> None:
+        pass
+
+    @customers.command("list", help="List all customers")
+    @click.pass_context
+    def list_customers(ctx: click.Context) -> None:
+        Interface.list_customers(ctx)
+
+    @customers.command("add", help="Add a new customer")
+    @click.argument("name")
+    @click.pass_context
+    def add_customer(ctx: click.Context, name: str) -> None:
+        Interface.create_customer(ctx, name)
+
+    @customers.command("view", help="View a customer's details")
+    @click.argument("customer_id")
+    @click.pass_context
+    def view_customer(ctx: click.Context, customer_id: str) -> None:
+        Interface.view_customer(ctx, customer_id)
+
+    @customers.command("add-extra", help="Add extra information to a customer")
+    @click.argument("customer_id")
+    @click.argument("key")
+    @click.argument("value")
+    @click.pass_context
+    def add_customer_extra(ctx: click.Context, customer_id: str, key: str, value: str) -> None:
+        Interface.add_customer_extra(ctx, customer_id, key, value)
+
+    @customers.command("remove-extra", help="Remove extra information from a customer")
+    @click.argument("customer_id")
+    @click.argument("key")
+    @click.pass_context
+    def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
+        Interface.remove_customer_extra(ctx, customer_id, key)
+
+    @customers.command("add-tag", help="Add a tag to a customer")
+    @click.argument("customer_id")
+    @click.argument("tag_id")
+    @click.pass_context
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        Interface.add_customer_tag(ctx, customer_id, tag_id)
+
+    @customers.command("remove-tag", help="Remove a tag from a customer")
+    @click.argument("customer_id")
+    @click.argument("tag_id")
+    @click.pass_context
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        Interface.remove_customer_tag(ctx, customer_id, tag_id)
 
     cli()
 
