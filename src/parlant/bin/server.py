@@ -171,7 +171,10 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[AgentStore] = AgentDocumentStore(agents_db)
     c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
     c[TagStore] = TagDocumentStore(tags_db)
+
     c[CustomerStore] = CustomerDocumentStore(customers_db)
+    await c[CustomerStore].create_guest_customer()
+
     c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
 
     c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(

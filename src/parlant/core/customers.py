@@ -30,6 +30,9 @@ class CustomerStore(ABC):
     GUEST_USER_ID = CustomerId("guest")
 
     @abstractmethod
+    async def create_guest_customer(self) -> None: ...
+
+    @abstractmethod
     async def create_customer(
         self,
         name: str,
@@ -114,6 +117,25 @@ class CustomerDocumentStore(CustomerStore):
             name="customer_tag_associations",
             schema=_CustomerTagAssociationDocument,
         )
+
+    @override
+    async def create_guest_customer(self) -> None:
+        guest_document = await self._customers_collection.find_one(
+            filters={"id": {"$eq": CustomerStore.GUEST_USER_ID}}
+        )
+
+        if not guest_document:
+            customer = Customer(
+                id=CustomerId(CustomerStore.GUEST_USER_ID),
+                name="Gues",
+                extra={},
+                creation_utc=datetime.now(timezone.utc),
+                tags=[],
+            )
+
+            await self._customers_collection.insert_one(
+                document=self._serialize_customer(customer=customer)
+            )
 
     def _serialize_customer(self, customer: Customer) -> _CustomerDocument:
         return _CustomerDocument(
