@@ -448,6 +448,18 @@ class API:
         return response.json()
 
     @staticmethod
+    async def list_tags() -> Any:
+        async with API.make_client() as client:
+            response = await client.get("/tags")
+        return response.json()
+
+    @staticmethod
+    async def read_tag(id: str) -> Any:
+        async with API.make_client() as client:
+            response = await client.get(f"/tags/{id}")
+        return response.json()
+
+    @staticmethod
     async def create_customer(
         name: str,
         extra: Optional[dict[str, Any]] = {},
@@ -475,12 +487,10 @@ class API:
         return respone.json()
 
     @staticmethod
-    async def add_customer_tag(id: str, tag_id: str) -> Any:
+    async def add_customer_tag(id: str, tag_id: str) -> None:
         async with API.make_client() as client:
             respone = await client.patch(f"/customers/{id}", json={"tags": {"add": [tag_id]}})
             respone.raise_for_status()
-
-        return respone.json()
 
 
 async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
@@ -1991,7 +2001,7 @@ async def test_that_customers_can_be_listed(context: ContextOfTest) -> None:
         await API.create_customer(name="Second Customer")
 
         process = await run_cli(
-            "customers",
+            "customer",
             "list",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -2010,7 +2020,7 @@ async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
 
         assert (
             await run_cli_and_get_exit_status(
-                "customers",
+                "customer",
                 "add",
                 "TestCustomer",
             )
@@ -2028,7 +2038,7 @@ async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
         customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
 
         process = await run_cli(
-            "customers",
+            "customer",
             "view",
             customer_id,
             stdout=asyncio.subprocess.PIPE,
@@ -2050,7 +2060,7 @@ async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> Non
 
         assert (
             await run_cli_and_get_exit_status(
-                "customers",
+                "customer",
                 "add-extra",
                 customer_id,
                 "key1",
@@ -2073,7 +2083,7 @@ async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> N
 
         assert (
             await run_cli_and_get_exit_status(
-                "customers",
+                "customer",
                 "remove-extra",
                 customer_id,
                 "key1",
@@ -2094,7 +2104,7 @@ async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
 
         assert (
             await run_cli_and_get_exit_status(
-                "customers",
+                "customer",
                 "add-tag",
                 customer_id,
                 tag_id,
@@ -2116,7 +2126,7 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
 
         assert (
             await run_cli_and_get_exit_status(
-                "customers",
+                "customer",
                 "remove-tag",
                 customer_id,
                 tag_id,
@@ -2126,3 +2136,85 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
         customer = await API.read_customer(id=customer_id)
         tags = customer["tags"]
         assert tag_id not in tags
+
+
+async def test_that_a_tag_can_be_added(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        tag_name = "TestTag"
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "tag",
+                "add",
+                tag_name,
+            )
+            == os.EX_OK
+        )
+
+        tags = (await API.list_tags())["tags"]
+        assert any(t["name"] == tag_name for t in tags)
+
+
+async def test_that_tags_can_be_listed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        await API.create_tag("FirstTag")
+        await API.create_tag("SecondTag")
+
+        process = await run_cli(
+            "tag",
+            "list",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert "FirstTag" in output
+        assert "SecondTag" in output
+
+
+async def test_that_a_tag_can_be_viewed(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        tag_id = (await API.create_tag("TestViewTag"))["tag"]["id"]
+
+        process = await run_cli(
+            "tag",
+            "view",
+            tag_id,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        output = stdout.decode() + stderr.decode()
+        assert process.returncode == os.EX_OK
+
+        assert "TestViewTag" in output
+        assert tag_id in output
+
+
+async def test_that_a_tag_can_be_updated(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        tag_id = (await API.create_tag("TestViewTag"))["tag"]["id"]
+        new_name = "UpdatedTagName"
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "tag",
+                "update",
+                tag_id,
+                new_name,
+            )
+            == os.EX_OK
+        )
+
+        updated_tag = await API.read_tag(tag_id)
+        assert updated_tag["name"] == new_name
