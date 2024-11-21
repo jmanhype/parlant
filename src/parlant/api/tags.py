@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, status
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
@@ -79,17 +79,16 @@ def create_router(
     @router.patch(
         "/{tag_id}",
         operation_id="update_tag",
+        status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_tag(tag_id: TagId, request: UpdateTagRequest) -> Response:
+    async def update_tag(tag_id: TagId, request: UpdateTagRequest) -> None:
         params: TagUpdateParams = {"name": request.name}
 
         await tag_store.update_tag(
             tag_id=tag_id,
             params=params,
         )
-
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     @router.delete(
         "/{tag_id}",

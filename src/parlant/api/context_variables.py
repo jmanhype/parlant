@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, status
 from typing import Optional, cast
 
 from fastapi import APIRouter
@@ -168,11 +168,9 @@ def create_router(
     )
     async def delete_all_variables(
         agent_id: AgentId,
-    ) -> Response:
+    ) -> None:
         for v in await context_variable_store.list_variables(variable_set=agent_id):
             await context_variable_store.delete_variable(variable_set=agent_id, id=v.id)
-
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}",
