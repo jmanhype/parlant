@@ -95,7 +95,7 @@ export default function Chat(): ReactElement {
             setLastOffset(prevLastOffset);
             return;
         }
-        postData(`sessions/${sessionId}/interactions`);
+        postData(`sessions/${sessionId}/events`, {kind: 'message', source: 'ai_agent'});
         refetch();
     };
 
@@ -167,7 +167,7 @@ export default function Chat(): ReactElement {
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
         const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
-        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', content, source: 'end_user' }).then(() => {
+        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', data: content, source: 'end_user' }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         }).catch(() => toast.error('Something went wrong'));
