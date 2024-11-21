@@ -5,34 +5,20 @@ from pathlib import Path
 import re
 import subprocess
 import shutil
+import sys
 import time
 
-_CHECKLIST = """
-1. Start a server from the latest `develop`.
-   - Navigate to the the parlant directory and run `just server` or `poetry run parlant-server`
-2. Update `fern/openapi/parlant.openapi.json`.
-   - From the root directory of this repo: `curl -o fern/openapi/parlant.openapi.json http://localhost:8000/openapi.json`
-   - Alternatively, open the server and navigate to `/openapi.json`, download it, rename to `parlant.openapi.json` and move to the `fern/openapi.
-"""
 
-DIR_SCRIPT_ROOT = Path(".")
+DIR_SCRIPT_ROOT = Path(__file__).parent
 DIR_FERN = DIR_SCRIPT_ROOT / "fern"
 DIR_SDKS = DIR_SCRIPT_ROOT / "sdks"
-DIR_PROJECTS_WORKSPACE = Path("../..")
+DIR_PROJECTS_WORKSPACE = DIR_SCRIPT_ROOT / ".." / ".." / "parlant-sdks"
 
 
-PATHDICT_SDK_REPO_TARGETS = dict(
-    [
-        (
-            "python",
-            DIR_PROJECTS_WORKSPACE / "parlant-client-python" / "src" / "parlant" / "client",
-        ),
-        (
-            "typescript",
-            DIR_PROJECTS_WORKSPACE / "parlant-client-typescript" / "src",
-        ),
-    ]
-)
+PATHDICT_SDK_REPO_TARGETS = {
+    "python": DIR_PROJECTS_WORKSPACE / "parlant-client-python" / "src" / "parlant" / "client",
+    "typescript": DIR_PROJECTS_WORKSPACE / "parlant-client-typescript" / "src",
+}
 
 
 def replace_in_files(rootdir: Path, search: str, replace: str) -> None:
@@ -55,31 +41,35 @@ def replace_in_files(rootdir: Path, search: str, replace: str) -> None:
 
 
 if __name__ == "__main__":
-    print(_CHECKLIST)
-    print("---")
+    status, output = subprocess.getstatusoutput(
+        f"curl -m 3 -o {DIR_FERN}/openapi/parlant.openapi.json http://localhost:8000/openapi.json"
+    )
+
+    if status != 0:
+        print("Failed to fetch openapi.json from http://localhost:8000", file=sys.stderr)
+        print("Please ensure that the desired Parlant server is accessible there.", file=sys.stderr)
+        sys.exit(1)
+
     for sdk, repo in PATHDICT_SDK_REPO_TARGETS.items():
         if os.path.isdir(repo):
             continue
 
         raise Exception(f"Missing dir for {sdk}: {repo}")
 
-    input("Press any key to continue...")
+    input("Fetched openapi.json from http://localhost:8000. Press any key to continue...")
     print("\n")
-    cwd = os.getcwd()
-    if not os.path.isdir(cwd + "/fern"):
-        if "mc-spitfyte" not in cwd:
-            raise Exception(
-                "fern directory not found, you should probably be in the mc-spitfyre repo root"
-            )
-        raise Exception("try `git reset --hard origin/master` or call for help")
+    if not DIR_FERN.is_dir():
+        raise Exception("fern directory not found where expected")
     for sdk in PATHDICT_SDK_REPO_TARGETS:
         sdk_path = DIR_SDKS / sdk
-        if not os.path.isdir(sdk_path):
+        if not sdk_path.is_dir():
             continue
 
         print(f"Deleting old {sdk} sdk")
         print(f"> rm -rf {sdk_path}")
         shutil.rmtree(sdk_path)
+
+    os.chdir(DIR_SCRIPT_ROOT)
 
     print("Invoking fern generation")
     print("> fern generate --log-level=debug")

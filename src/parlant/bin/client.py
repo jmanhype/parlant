@@ -26,6 +26,7 @@ from parlant.client.types import (
     ContextVariableReadResponse,
     ContextVariableValue,
     Event,
+    EventReadResponse,
     FreshnessRules,
     Guideline,
     GuidelineConnection,
@@ -37,7 +38,6 @@ from parlant.client.types import (
     GuidelineToolAssociation,
     GuidelineToolAssociationUpdateParams,
     GuidelineWithConnectionsAndToolAssociations,
-    InteractionReadResponse,
     OpenApiServiceParams,
     Payload,
     SdkServiceParams,
@@ -156,16 +156,16 @@ class Actions:
         return response.sessions
 
     @staticmethod
-    def inspect_interaction(
+    def inspect_event(
         ctx: click.Context,
         session_id: str,
-        correlation_id: str,
-    ) -> InteractionReadResponse:
+        event_id: str,
+    ) -> EventReadResponse:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.sessions.retrieve_interaction(
+        return client.sessions.retrieve_event(
             session_id=session_id,
-            correlation_id=correlation_id,
+            event_id=event_id,
         )
 
     @staticmethod
@@ -189,7 +189,7 @@ class Actions:
             session_id,
             kind="message",
             source="end_user",
-            content=message,
+            data=message,
         )
 
         return response.event
@@ -904,17 +904,24 @@ class Interface:
         Interface._render_sessions([session])
 
     @staticmethod
-    def inspect_interaction(
+    def inspect_event(
         ctx: click.Context,
         session_id: str,
-        correlation_id: str,
+        event_id: str,
     ) -> None:
-        interaction = Actions.inspect_interaction(ctx, session_id, correlation_id)
+        inspection = Actions.inspect_event(ctx, session_id, event_id)
 
         rich.print(f"Session ID: '{session_id}'")
-        rich.print(f"Correlation ID: '{correlation_id}'\n")
+        rich.print(f"Event ID: '{event_id}'\n")
 
-        for i, iteration in enumerate(interaction.preparation_iterations):
+        Interface._render_events([inspection.event])
+
+        rich.print("\n")
+
+        if not inspection.trace:
+            return
+
+        for i, iteration in enumerate(inspection.trace.preparation_iterations):
             rich.print(Text(f"Iteration #{i}:", style="bold yellow"))
 
             rich.print(Text(f"{INDENT}Guideline Propositions:", style="bold"))
@@ -988,7 +995,10 @@ class Interface:
 
         rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
 
-        response = requests.get(urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"))
+        response = requests.get(
+            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
+            params={"wait": False},
+        )
 
         raise_for_status_with_detail(response)
 
@@ -1022,7 +1032,7 @@ class Interface:
                     json={
                         "kind": "message",
                         "source": "end_user",
-                        "content": new_message,
+                        "data": new_message,
                     },
                 )
 
@@ -1860,10 +1870,10 @@ async def async_main() -> None:
 
     @session.command("inspect", help="Inspect an interaction from a session")
     @click.argument("session_id")
-    @click.argument("correlation_id")
+    @click.argument("event_id")
     @click.pass_context
-    def session_inspect(ctx: click.Context, session_id: str, correlation_id: str) -> None:
-        Interface.inspect_interaction(ctx, session_id, correlation_id)
+    def session_inspect(ctx: click.Context, session_id: str, event_id: str) -> None:
+        Interface.inspect_event(ctx, session_id, event_id)
 
     @session.command("post", help="Post user message to session")
     @click.argument("session_id")

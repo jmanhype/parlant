@@ -1,9 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from itertools import chain, groupby
+from itertools import chain
 from typing import Mapping, Optional, cast
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from pydantic import Field
 
 from parlant.api.common import JSONSerializableDTO, apigen_config
 from parlant.api.glossary import TermDTO
@@ -14,8 +13,10 @@ from parlant.core.context_variables import ContextVariableId
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.end_users import EndUserId, EndUserStore
 from parlant.core.guidelines import GuidelineId
+from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import (
+    Event,
     EventId,
     EventKind,
     MessageEventData,
@@ -77,7 +78,7 @@ class CreateSessionResponse(DefaultBaseModel):
 class EventCreationParamsDTO(DefaultBaseModel):
     kind: EventKindDTO
     source: EventSourceDTO
-    content: str
+    data: Optional[str] = None
 
 
 class EventDTO(DefaultBaseModel):
@@ -108,11 +109,11 @@ class EventListResponse(DefaultBaseModel):
     events: list[EventDTO]
 
 
-class ListSessionsResponse(DefaultBaseModel):
+class SessionListResponse(DefaultBaseModel):
     sessions: list[SessionDTO]
 
 
-class DeleteSessionResponse(DefaultBaseModel):
+class SessionDeletionResponse(DefaultBaseModel):
     session_id: SessionId
 
 
@@ -125,26 +126,6 @@ class ToolCallDTO(DefaultBaseModel):
     tool_id: str
     arguments: Mapping[str, JSONSerializableDTO]
     result: ToolResultDTO
-
-
-class InteractionKindDTO(Enum):
-    MESSAGE = "message"
-
-
-class InteractionDTO(DefaultBaseModel):
-    kind: InteractionKindDTO
-    source: EventSourceDTO
-    correlation_id: str
-    data: JSONSerializableDTO = Field(
-        description="The data associated with this interaction's kind. "
-        "If kind is 'message', this is the message string."
-    )
-    tool_calls: list[ToolCallDTO]
-
-
-class InteractionListResponse(DefaultBaseModel):
-    session_id: SessionId
-    interactions: list[InteractionDTO]
 
 
 class EventDeletionResponse(DefaultBaseModel):
@@ -182,43 +163,88 @@ class GenerationInfoDTO(DefaultBaseModel):
 
 class MessageGenerationInspectionDTO(DefaultBaseModel):
     generation: GenerationInfoDTO
-    messages: list[Optional[str]]
+    messages: list[str | None]
+
+
+class GuidelinePropositionInspectionDTO(DefaultBaseModel):
+    total_duration: float
+    batches: list[GenerationInfoDTO]
+
+
+class PreparationIterationGenerationsDTO(DefaultBaseModel):
+    guideline_proposition: GuidelinePropositionInspectionDTO
+    tool_calls: list[GenerationInfoDTO]
 
 
 class PreparationIterationDTO(DefaultBaseModel):
+    generations: PreparationIterationGenerationsDTO
     guideline_propositions: list[GuidelinePropositionDTO]
     tool_calls: list[ToolCallDTO]
     terms: list[TermDTO]
     context_variables: list[ContextVariableAndValueDTO]
 
 
-class InteractionReadResponse(DefaultBaseModel):
-    session_id: SessionId
-    correlation_id: str
+class EventTraceDTO(DefaultBaseModel):
+    tool_calls: list[ToolCallDTO]
     message_generations: list[MessageGenerationInspectionDTO]
     preparation_iterations: list[PreparationIterationDTO]
+
+
+class EventReadResponse(DefaultBaseModel):
+    session_id: SessionId
+    event: EventDTO
+    trace: Optional[EventTraceDTO]
+
+
+def event_to_dto(event: Event) -> EventDTO:
+    return EventDTO(
+        id=event.id,
+        source=EventSourceDTO(event.source),
+        kind=event.kind,
+        offset=event.offset,
+        creation_utc=event.creation_utc,
+        correlation_id=event.correlation_id,
+        data=cast(JSONSerializableDTO, event.data),
+    )
+
+
+def generation_info_to_dto(gi: GenerationInfo) -> GenerationInfoDTO:
+    return GenerationInfoDTO(
+        schema_name=gi.schema_name,
+        model=gi.model,
+        duration=gi.duration,
+        usage=UsageInfoDTO(
+            input_tokens=gi.usage.input_tokens,
+            output_tokens=gi.usage.output_tokens,
+            extra=gi.usage.extra,
+        ),
+    )
 
 
 def message_generation_inspection_to_dto(
     m: MessageGenerationInspection,
 ) -> MessageGenerationInspectionDTO:
     return MessageGenerationInspectionDTO(
-        generation=GenerationInfoDTO(
-            schema_name=m.generation.schema_name,
-            model=m.generation.model,
-            duration=m.generation.duration,
-            usage=UsageInfoDTO(
-                input_tokens=m.generation.usage.input_tokens,
-                output_tokens=m.generation.usage.output_tokens,
-                extra=m.generation.usage.extra,
-            ),
-        ),
+        generation=generation_info_to_dto(m.generation),
         messages=list(m.messages),
     )
 
 
 def preparation_iteration_to_dto(iteration: PreparationIteration) -> PreparationIterationDTO:
     return PreparationIterationDTO(
+        generations=PreparationIterationGenerationsDTO(
+            guideline_proposition=GuidelinePropositionInspectionDTO(
+                total_duration=iteration.generations.guideline_proposition.total_duration,
+                batches=[
+                    generation_info_to_dto(generation)
+                    for generation in iteration.generations.guideline_proposition.batches
+                ],
+            ),
+            tool_calls=[
+                generation_info_to_dto(generation)
+                for generation in iteration.generations.tool_calls
+            ],
+        ),
         guideline_propositions=[
             GuidelinePropositionDTO(
                 guideline_id=proposition["guideline_id"],
@@ -262,10 +288,6 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
             for cv in iteration.context_variables
         ],
     )
-
-
-class InteractionCreationResponse(DefaultBaseModel):
-    correlation_id: str
 
 
 def create_router(
@@ -337,13 +359,13 @@ def create_router(
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
         end_user_id: Optional[EndUserId] = None,
-    ) -> ListSessionsResponse:
+    ) -> SessionListResponse:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
             end_user_id=end_user_id,
         )
 
-        return ListSessionsResponse(
+        return SessionListResponse(
             sessions=[
                 SessionDTO(
                     id=s.id,
@@ -366,9 +388,9 @@ def create_router(
     )
     async def delete_session(
         session_id: SessionId,
-    ) -> DeleteSessionResponse:
+    ) -> SessionDeletionResponse:
         if await session_store.delete_session(session_id):
-            return DeleteSessionResponse(session_id=session_id)
+            return SessionDeletionResponse(session_id=session_id)
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -434,10 +456,18 @@ def create_router(
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
     ) -> EventCreationResponse:
+        if params.kind != EventKindDTO.MESSAGE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only message events can currently be added manually",
+            )
+
         if params.source == EventSourceDTO.END_USER:
             return await _add_end_user_message(session_id, params, moderation)
-        elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
+        elif params.source == EventSourceDTO.AI_AGENT:
             return await _add_agent_message(session_id, params)
+        elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
+            return await _add_human_agent_message_on_behalf_of_ai_agent(session_id, params)
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -446,15 +476,21 @@ def create_router(
 
     async def _add_end_user_message(
         session_id: SessionId,
-        request: EventCreationParamsDTO,
+        params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
     ) -> EventCreationResponse:
+        if not params.data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'data' field for message",
+            )
+
         flagged = False
         tags = set()
 
         if moderation == Moderation.AUTO:
             for _, moderation_service in await service_registry.list_moderation_services():
-                check = await moderation_service.check(request.content)
+                check = await moderation_service.check(params.data)
                 flagged |= check.flagged
                 tags.update(check.tags)
 
@@ -467,7 +503,7 @@ def create_router(
             end_user_display_name = session.end_user_id
 
         message_data: MessageEventData = {
-            "message": request.content,
+            "message": params.data,
             "participant": {
                 "id": session.end_user_id,
                 "display_name": end_user_display_name,
@@ -478,33 +514,61 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=request.kind.value,
+            kind=params.kind.value,
             data=message_data,
             source="end_user",
             trigger_processing=True,
         )
 
-        return EventCreationResponse(
-            event=EventDTO(
-                id=event.id,
-                source=EventSourceDTO(event.source),
-                kind=event.kind,
-                offset=event.offset,
-                creation_utc=event.creation_utc,
-                correlation_id=event.correlation_id,
-                data=cast(JSONSerializableDTO, event.data),
-            )
-        )
+        return EventCreationResponse(event=event_to_dto(event))
 
     async def _add_agent_message(
         session_id: SessionId,
-        request: EventCreationParamsDTO,
+        params: EventCreationParamsDTO,
     ) -> EventCreationResponse:
+        if params.data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="If you add an agent message, you cannot specify what the message will be, as it will be auto-generated by the agent.",
+            )
+
+        session = await session_store.read_session(session_id)
+
+        correlation_id = await application.dispatch_processing_task(session)
+
+        await session_listener.wait_for_events(
+            session_id=session_id,
+            correlation_id=correlation_id,
+            timeout=Timeout(60),
+        )
+
+        event = next(
+            iter(
+                await session_store.list_events(
+                    session_id=session_id,
+                    correlation_id=correlation_id,
+                    kinds=["status"],
+                )
+            )
+        )
+
+        return EventCreationResponse(event=event_to_dto(event))
+
+    async def _add_human_agent_message_on_behalf_of_ai_agent(
+        session_id: SessionId,
+        params: EventCreationParamsDTO,
+    ) -> EventCreationResponse:
+        if not params.data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'data' field for message",
+            )
+
         session = await session_store.read_session(session_id)
         agent = await agent_store.read_agent(session.agent_id)
 
         message_data: MessageEventData = {
-            "message": request.content,
+            "message": params.data,
             "participant": {
                 "id": agent.id,
                 "display_name": agent.name,
@@ -513,7 +577,7 @@ def create_router(
 
         event = await application.post_event(
             session_id=session_id,
-            kind=request.kind.value,
+            kind=params.kind.value,
             data=message_data,
             source="human_agent_on_behalf_of_ai_agent",
             trigger_processing=False,
@@ -543,7 +607,7 @@ def create_router(
             default=None,
             description="If set, only list events of the specified kinds (separated by commas)",
         ),
-        wait: Optional[bool] = None,
+        wait: bool = True,
     ) -> EventListResponse:
         kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
         assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
@@ -602,108 +666,66 @@ def create_router(
 
         return EventDeletionResponse(event_ids=[id for id in deleted_event_ids if id is not None])
 
-    @router.post(
-        "/{session_id}/interactions",
-        status_code=status.HTTP_201_CREATED,
-        operation_id="create_interaction",
-        **apigen_config(group_name=API_GROUP, method_name="create_interaction"),
-    )
-    async def create_interaction(
-        session_id: SessionId,
-    ) -> InteractionCreationResponse:
-        session = await session_store.read_session(session_id)
-        correlation_id = await application.dispatch_processing_task(session)
-        return InteractionCreationResponse(correlation_id=correlation_id)
-
     @router.get(
-        "/{session_id}/interactions",
-        operation_id="list_interactions",
-        **apigen_config(group_name=API_GROUP, method_name="list_interactions"),
+        "/{session_id}/events/{event_id}",
+        operation_id="read_event",
+        **apigen_config(group_name=API_GROUP, method_name="retrieve_event"),
     )
-    async def list_interactions(
+    async def read_event(
         session_id: SessionId,
-        min_event_offset: int,
-        source: EventSourceDTO,
-        wait: bool = False,
-    ) -> InteractionListResponse:
-        if wait:
-            await application.wait_for_update(
+        event_id: EventId,
+    ) -> EventReadResponse:
+        event = await session_store.read_event(session_id, event_id)
+
+        trace: Optional[EventTraceDTO] = None
+
+        if event.kind == "message" and event.source == "ai_agent":
+            inspection = await session_store.read_inspection(
                 session_id=session_id,
-                min_offset=min_event_offset,
-                kinds=["message"],
-                source=source.value,
-                timeout=Timeout(300),
+                correlation_id=event.correlation_id,
             )
 
-        events = await session_store.list_events(
-            session_id=session_id,
-            kinds=["message", "tool"],
-            source=source.value,
-            min_offset=min_event_offset,
-        )
-
-        interactions = []
-
-        for correlation_id, correlated_events in groupby(events, key=lambda e: e.correlation_id):
-            message_events = [e for e in correlated_events if e.kind == "message"]
-            tool_events = [e for e in correlated_events if e.kind == "tool"]
-
-            tool_calls = list(
-                chain.from_iterable(cast(ToolEventData, e.data)["tool_calls"] for e in tool_events)
+            trace = EventTraceDTO(
+                tool_calls=await _find_correlated_tool_calls(session_id, event),
+                message_generations=[
+                    message_generation_inspection_to_dto(m) for m in inspection.message_generations
+                ],
+                preparation_iterations=[
+                    preparation_iteration_to_dto(iteration)
+                    for iteration in inspection.preparation_iterations
+                ],
             )
 
-            for e in message_events:
-                interactions.append(
-                    InteractionDTO(
-                        kind=InteractionKindDTO.MESSAGE,
-                        source=EventSourceDTO(e.source),
-                        correlation_id=correlation_id,
-                        data=cast(MessageEventData, e.data)["message"],
-                        tool_calls=[
-                            ToolCallDTO(
-                                tool_id=tc["tool_id"],
-                                arguments=cast(Mapping[str, JSONSerializableDTO], tc["arguments"]),
-                                result=ToolResultDTO(
-                                    data=cast(JSONSerializableDTO, tc["result"]["data"]),
-                                    metadata=cast(
-                                        Mapping[str, JSONSerializableDTO], tc["result"]["metadata"]
-                                    ),
-                                ),
-                            )
-                            for tc in tool_calls
-                        ],
-                    )
-                )
-
-        return InteractionListResponse(
+        return EventReadResponse(
             session_id=session_id,
-            interactions=interactions,
+            event=event_to_dto(event),
+            trace=trace,
         )
 
-    @router.get(
-        "/{session_id}/interactions/{correlation_id}",
-        operation_id="read_interaction",
-        **apigen_config(group_name=API_GROUP, method_name="retrieve_interaction"),
-    )
-    async def read_interaction(
+    async def _find_correlated_tool_calls(
         session_id: SessionId,
-        correlation_id: str,
-    ) -> InteractionReadResponse:
-        inspection = await session_store.read_inspection(
+        event: Event,
+    ) -> list[ToolCallDTO]:
+        tool_events = await session_store.list_events(
             session_id=session_id,
-            correlation_id=correlation_id,
+            kinds=["tool"],
+            correlation_id=event.correlation_id,
         )
 
-        return InteractionReadResponse(
-            session_id=session_id,
-            correlation_id=correlation_id,
-            message_generations=[
-                message_generation_inspection_to_dto(m) for m in inspection.message_generations
-            ],
-            preparation_iterations=[
-                preparation_iteration_to_dto(iteration)
-                for iteration in inspection.preparation_iterations
-            ],
+        tool_calls = list(
+            chain.from_iterable(cast(ToolEventData, e.data)["tool_calls"] for e in tool_events)
         )
+
+        return [
+            ToolCallDTO(
+                tool_id=tc["tool_id"],
+                arguments=cast(Mapping[str, JSONSerializableDTO], tc["arguments"]),
+                result=ToolResultDTO(
+                    data=cast(JSONSerializableDTO, tc["result"]["data"]),
+                    metadata=cast(Mapping[str, JSONSerializableDTO], tc["result"]["metadata"]),
+                ),
+            )
+            for tc in tool_calls
+        ]
 
     return router

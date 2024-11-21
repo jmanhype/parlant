@@ -774,7 +774,7 @@ class SessionListener(ABC):
     async def wait_for_events(
         self,
         session_id: SessionId,
-        kinds: Sequence[EventKind],
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
         source: Optional[EventSource] = None,
         correlation_id: Optional[str] = None,
@@ -789,7 +789,7 @@ class PollingSessionListener(SessionListener):
     async def wait_for_events(
         self,
         session_id: SessionId,
-        kinds: Sequence[EventKind],
+        kinds: Sequence[EventKind] = [],
         min_offset: Optional[int] = None,
         source: Optional[EventSource] = None,
         correlation_id: Optional[str] = None,

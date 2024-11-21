@@ -92,7 +92,8 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
 
     @property
     def id(self) -> str:
-        return self._generators[0].id
+        ids = ", ".join(g.id for g in self._generators)
+        return f"fallback({ids})"
 
     @property
     def tokenizer(self) -> EstimatingTokenizer:
@@ -100,4 +101,4 @@ class FallbackSchematicGenerator(SchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return self._generators[0].max_tokens
+        return min(*(g.max_tokens for g in self._generators))

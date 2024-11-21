@@ -402,7 +402,7 @@ async def test_that_deleting_a_session_also_deletes_its_events(
 
 
 ###############################################################################
-## Events CRUD API
+## Event CRUD API
 ###############################################################################
 
 
@@ -473,7 +473,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
         json={
             "kind": "message",
             "source": "end_user",
-            "content": "Fuck all those guys",
+            "data": "Fuck all those guys",
         },
     )
 
@@ -485,7 +485,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
     assert "harassment" in event["data"].get("tags")
 
 
-def test_that_posting_a_user_message_elicits_a_response(
+def test_that_posting_a_user_message_elicits_a_response_from_the_agent(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
@@ -494,7 +494,7 @@ def test_that_posting_a_user_message_elicits_a_response(
         json={
             "kind": "message",
             "source": "end_user",
-            "content": "Hello there!",
+            "data": "Hello there!",
         },
     )
 
@@ -508,7 +508,7 @@ def test_that_posting_a_user_message_elicits_a_response(
             params={
                 "min_offset": event["offset"] + 1,
                 "kinds": "message",
-                "wait": True,
+                "source": "ai_agent",
             },
         )
         .raise_for_status()
@@ -518,7 +518,7 @@ def test_that_posting_a_user_message_elicits_a_response(
     assert events_in_session
 
 
-async def test_that_posting_an_agent_message_does_not_elicit_a_response(
+async def test_that_posting_a_manual_agent_message_does_not_cause_any_new_events_to_be_generated(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
@@ -527,7 +527,7 @@ async def test_that_posting_an_agent_message_does_not_elicit_a_response(
         json={
             "kind": "message",
             "source": "human_agent_on_behalf_of_ai_agent",
-            "content": "Hello there!",
+            "data": "Hello there!",
         },
     )
 
@@ -542,7 +542,6 @@ async def test_that_posting_an_agent_message_does_not_elicit_a_response(
             f"/sessions/{session_id}/events",
             params={
                 "min_offset": event["offset"] + 1,
-                "kinds": "message",
                 "wait": False,
             },
         )
@@ -571,7 +570,6 @@ async def test_that_status_updates_can_be_retrieved_separately_after_posting_a_m
             params={
                 "min_offset": event.offset + 1,
                 "kinds": "status",
-                "wait": True,
             },
         )
         .raise_for_status()
@@ -592,7 +590,7 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
             json={
                 "kind": "message",
                 "source": "end_user",
-                "content": "Hello there!",
+                "data": "Hello there!",
             },
         )
         .raise_for_status()
@@ -669,83 +667,26 @@ async def test_that_deleted_events_no_longer_show_up_in_the_listing(
     assert len(initial_events) == len(session_events)
 
     event_to_delete = initial_events[1]
+
     deleted_event_ids = (
         client.delete(f"/sessions/{session_id}/events?min_offset={event_to_delete['offset']}")
         .raise_for_status()
         .json()["event_ids"]
     )
 
-    for d_id, e in zip(deleted_event_ids, initial_events[1:]):
-        assert d_id == e["id"]
-
     remaining_events = (
         client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
     )
 
+    for d_id, e in zip(deleted_event_ids, initial_events[1:]):
+        assert d_id == e["id"]
+
     assert len(remaining_events) == 1
     assert event_is_according_to_params(remaining_events[0], session_events[0])
-
     assert all(e["offset"] > event_to_delete["offset"] for e in remaining_events) is False
 
 
-###############################################################################
-## Interaction API
-###############################################################################
-
-
-def test_that_no_interaction_is_found_for_an_empty_session(
-    client: TestClient,
-    session_id: SessionId,
-) -> None:
-    data = (
-        client.get(
-            f"/sessions/{session_id}/interactions",
-            params={
-                "min_event_offset": 0,
-                "source": "ai_agent",
-            },
-        )
-        .raise_for_status()
-        .json()
-    )
-
-    assert data["session_id"] == session_id
-    assert len(data["interactions"]) == 0
-
-
-async def test_that_a_server_interaction_is_found_for_a_session_with_a_user_message(
-    client: TestClient,
-    container: Container,
-    session_id: SessionId,
-) -> None:
-    event = await post_message(
-        container=container,
-        session_id=session_id,
-        message="Hello there!",
-        response_timeout=Timeout(30),
-    )
-
-    interactions = (
-        client.get(
-            f"/sessions/{session_id}/interactions",
-            params={
-                "min_event_offset": event.offset,
-                "source": "ai_agent",
-                "wait": True,
-            },
-        )
-        .raise_for_status()
-        .json()
-    )["interactions"]
-
-    assert len(interactions) == 1
-    assert interactions[0]["source"] == "ai_agent"
-    assert interactions[0]["kind"] == "message"
-    assert isinstance(interactions[0]["data"], str)
-    assert len(interactions[0]["data"]) > 0
-
-
-async def test_that_a_message_interaction_can_be_inspected_using_the_message_event_id(
+async def test_that_a_message_can_be_inspected(
     client: TestClient,
     container: Container,
     agent_id: AgentId,
@@ -804,15 +745,15 @@ async def test_that_a_message_interaction_can_be_inspected_using_the_message_eve
         user_event_offset=user_event.offset,
     )
 
-    inspection_data = (
-        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+    trace = (
+        client.get(f"/sessions/{session.id}/events/{reply_event.id}")
         .raise_for_status()
-        .json()
+        .json()["trace"]
     )
 
     assert end_user.name in cast(MessageEventData, reply_event.data)["message"]
 
-    iterations = inspection_data["preparation_iterations"]
+    iterations = trace["preparation_iterations"]
     assert len(iterations) >= 1
 
     assert len(iterations[0]["guideline_propositions"]) == 1
@@ -858,7 +799,6 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
         agent_id=agent_id,
         condition="a user asks what the cow says",
         action="answer 'Woof Woof'",
-        tool_function=get_cow_uttering,
     )
 
     user_event = await post_message(
@@ -875,9 +815,9 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     )
 
     inspection_data = (
-        client.get(f"/sessions/{session.id}/interactions/{reply_event.correlation_id}")
+        client.get(f"/sessions/{session.id}/events/{reply_event.id}")
         .raise_for_status()
-        .json()
+        .json()["trace"]
     )
 
     assert "Woof Woof" in cast(MessageEventData, reply_event.data)["message"]
@@ -896,7 +836,7 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     assert message_generation_inspections[0]["generation"]["usage"]["output_tokens"] >= 2
 
 
-async def test_that_a_message_interaction_can_be_regenerated(
+async def test_that_an_agent_message_can_be_regenerated(
     client: TestClient,
     container: Container,
     session_id: SessionId,
@@ -924,25 +864,30 @@ async def test_that_a_message_interaction_can_be_regenerated(
         agent_id=agent_id,
         condition="a user ask what is the weather today",
         action="answer that it's cold",
-        tool_function=get_cow_uttering,
     )
 
-    correlation_id = (
-        client.post(f"/sessions/{session_id}/interactions")
+    event = (
+        client.post(
+            f"/sessions/{session_id}/events",
+            json={
+                "kind": "message",
+                "source": "ai_agent",
+            },
+        )
         .raise_for_status()
-        .json()["correlation_id"]
+        .json()["event"]
     )
 
     await container[SessionListener].wait_for_events(
         session_id=session_id,
         kinds=["message"],
-        correlation_id=correlation_id,
+        correlation_id=event["correlation_id"],
     )
 
     inspection_data = (
-        client.get(f"/sessions/{session_id}/interactions/{correlation_id}")
+        client.get(f"/sessions/{session_id}/events/{event['id']}")
         .raise_for_status()
-        .json()
+        .json()["trace"]
     )
 
     message_generation_inspections = inspection_data["message_generations"]

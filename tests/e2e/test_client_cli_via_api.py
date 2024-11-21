@@ -199,7 +199,7 @@ class API:
                     json={
                         "kind": "message",
                         "source": "end_user",
-                        "content": message,
+                        "data": message,
                     },
                 )
                 user_message_response.raise_for_status()
@@ -1658,7 +1658,7 @@ async def test_that_a_variable_values_can_be_retrieved(
         assert expected_value in output
 
 
-async def test_that_a_message_interaction_can_be_inspected(
+async def test_that_a_message_can_be_inspected(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
@@ -1704,7 +1704,7 @@ async def test_that_a_message_interaction_can_be_inspected(
             "session",
             "inspect",
             session["id"],
-            reply_event["correlation_id"],
+            reply_event["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
