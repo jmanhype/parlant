@@ -49,6 +49,7 @@ from parlant.client.types import (
     ExtraUpdate,
     TagsUpdate,
     Tag,
+    ConsumptionOffsetsUpdateParams,
 )
 
 INDENT = "  "
@@ -145,6 +146,27 @@ class Actions:
         return response.session
 
     @staticmethod
+    def update_session(
+        ctx: click.Context,
+        session_id: str,
+        consumption_offsets: Optional[int] = None,
+        title: Optional[str] = None,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        if consumption_offsets:
+            client.sessions.update(
+                session_id=session_id,
+                consumption_offsets=ConsumptionOffsetsUpdateParams(client=consumption_offsets),
+                title=title,
+            )
+        else:
+            client.sessions.update(
+                session_id=session_id,
+                title=title,
+            )
+
+    @staticmethod
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
@@ -193,7 +215,7 @@ class Actions:
             session_id,
             kind="message",
             source="customer",
-            content=message,
+            data=message,
         )
 
         return response.event
@@ -988,6 +1010,16 @@ class Interface:
         session = Actions.create_session(ctx, agent_id, customer_id, title)
         Interface._write_success(f"Added session (id={session.id})")
         Interface._render_sessions([session])
+
+    @staticmethod
+    def update_session(
+        ctx: click.Context,
+        session_id: str,
+        title: Optional[str] = None,
+        consumption_offsets: Optional[int] = None,
+    ) -> None:
+        Actions.update_session(ctx, session_id, consumption_offsets, title)
+        Interface._write_success(f"Updated session (id={session_id})")
 
     @staticmethod
     def inspect_event(
@@ -2067,6 +2099,26 @@ async def async_main() -> None:
         assert agent_id
 
         Interface.create_session(ctx, agent_id, customer_id, title)
+
+    @session.command("update", help="Update a session")
+    @click.option(
+        "-c",
+        "--consumption_offsets",
+        type=int,
+        help="Customer Offsets",
+        metavar=int,
+        required=False,
+    )
+    @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
+    @click.argument("session_id")
+    @click.pass_context
+    def session_update(
+        ctx: click.Context,
+        session_id: str,
+        consumption_offsets: Optional[int],
+        title: Optional[str],
+    ) -> None:
+        Interface.update_session(ctx, session_id, title, consumption_offsets)
 
     @session.command("list", help="List all sessions")
     @click.option(

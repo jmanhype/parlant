@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from itertools import chain
 from typing import Mapping, Optional, cast
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from parlant.api.common import JSONSerializableDTO, apigen_config
 from parlant.api.glossary import TermDTO
@@ -67,7 +67,7 @@ class SessionDTO(DefaultBaseModel):
 
 class CreateSessionRequest(DefaultBaseModel):
     agent_id: AgentId
-    customer_id: Optional[CustomerId]
+    customer_id: Optional[CustomerId] = None
     title: Optional[str] = None
 
 
@@ -414,13 +414,14 @@ def create_router(
 
     @router.patch(
         "/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="update_session",
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_session(
         session_id: SessionId,
         params: SessionUpdateParamsDTO,
-    ) -> Response:
+    ) -> None:
         async def from_dto(dto: SessionUpdateParamsDTO) -> SessionUpdateParams:
             params: SessionUpdateParams = {}
 
@@ -442,8 +443,6 @@ def create_router(
             session_id=session_id,
             params=await from_dto(params),
         )
-
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
 
     @router.post(
         "/{session_id}/events",
