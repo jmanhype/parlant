@@ -62,7 +62,7 @@ class GuidelineStore(ABC):
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
-    ) -> Guideline: ...
+    ) -> None: ...
 
     @abstractmethod
     async def update_guideline(
@@ -182,7 +182,7 @@ class GuidelineDocumentStore(GuidelineStore):
         self,
         guideline_set: str,
         guideline_id: GuidelineId,
-    ) -> Guideline:
+    ) -> None:
         result = await self._collection.delete_one(
             filters={
                 "guideline_set": {"$eq": guideline_set},
@@ -194,8 +194,6 @@ class GuidelineDocumentStore(GuidelineStore):
             raise ItemNotFoundError(
                 item_id=UniqueId(guideline_id), message=f"with guideline_set '{guideline_set}'"
             )
-
-        return self._deserialize(result.deleted_document)
 
     async def update_guideline(
         self,

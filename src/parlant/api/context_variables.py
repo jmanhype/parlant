@@ -174,19 +174,18 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_variable",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_variable(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-    ) -> ContextVariableDeletionResult:
-        _ = await context_variable_store.delete_variable(
+    ) -> None:
+        await context_variable_store.delete_variable(
             variable_set=agent_id,
             id=variable_id,
         )
-
-        return ContextVariableDeletionResult(context_variable_id=variable_id)
 
     @router.get(
         "/{agent_id}/context-variables",
@@ -334,6 +333,7 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}/{key}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_value",
         **apigen_config(group_name=API_GROUP, method_name="delete_value"),
     )
@@ -341,21 +341,16 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         key: str,
-    ) -> ContextVariableValueDeletionResult:
+    ) -> None:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
         )
 
-        if deleted_variable_value_id := await context_variable_store.delete_value(
+        await context_variable_store.delete_value(
             variable_set=agent_id,
             variable_id=variable_id,
             key=key,
-        ):
-            return ContextVariableValueDeletionResult(
-                context_variable_value_id=deleted_variable_value_id
-            )
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        )
 
     return router
