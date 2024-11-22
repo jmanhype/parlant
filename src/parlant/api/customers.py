@@ -143,4 +143,13 @@ def create_router(
                 for tag_id in request.tags.remove:
                     await customer_store.remove_tag(customer_id, tag_id)
 
+    @router.delete(
+        "/{customer_id}",
+        operation_id="delete_customer",
+        status_code=status.HTTP_204_NO_CONTENT,
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
+    )
+    async def delete_custoemr(customer_id: CustomerId) -> None:
+        await customer_store.delete_customer(customer_id)
+
     return router

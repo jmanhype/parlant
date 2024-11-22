@@ -2,12 +2,14 @@ from datetime import datetime
 from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
+from pytest import raises
 
+from parlant.core.common import ItemNotFoundError
 from parlant.core.customers import CustomerStore
 from parlant.core.tags import TagStore
 
 
-def test_that_an_customer_can_be_created(client: TestClient) -> None:
+def test_that_a_customer_can_be_created(client: TestClient) -> None:
     name = "John Doe"
     extra = {"email": "john@gmail.com"}
 
@@ -30,7 +32,7 @@ def test_that_an_customer_can_be_created(client: TestClient) -> None:
     assert "creation_utc" in customer
 
 
-async def test_that_an_customer_can_be_read(
+async def test_that_a_customer_can_be_read(
     client: TestClient,
     container: Container,
 ) -> None:
@@ -90,7 +92,7 @@ async def test_that_customers_can_be_listed(
     )
 
 
-async def test_that_an_customer_can_be_updated_with_a_new_name(
+async def test_that_a_customer_can_be_updated_with_a_new_name(
     client: TestClient,
     container: Container,
 ) -> None:
@@ -115,6 +117,23 @@ async def test_that_an_customer_can_be_updated_with_a_new_name(
 
     assert updated_customer.name == new_name
     assert updated_customer.extra == extra
+
+
+async def test_that_a_customer_can_be_deleted(
+    client: TestClient,
+    container: Container,
+) -> None:
+    customer_store = container[CustomerStore]
+
+    name = "Original Name"
+
+    customer = await customer_store.create_customer(name=name)
+
+    delete_response = client.delete(f"/customers/{customer.id}")
+    assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+
+    with raises(ItemNotFoundError):
+        await customer_store.read_customer(customer.id)
 
 
 async def test_that_a_tag_can_be_added(

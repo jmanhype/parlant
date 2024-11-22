@@ -2,9 +2,10 @@ from typing import Any
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
-from pytest import mark
+from pytest import mark, raises
 
 from parlant.core.agents import AgentStore
+from parlant.core.common import ItemNotFoundError
 
 
 def test_that_an_agent_can_be_created_without_description(
@@ -107,3 +108,19 @@ async def test_that_agent_can_be_updated(
     assert agent_dto["name"] == patch_request.get("name", "test-agent")
     assert agent_dto["description"] == patch_request.get("description")
     assert agent_dto["max_engine_iterations"] == patch_request.get("max_engine_iterations", 3)
+
+
+async def test_that_an_agent_can_be_deleted(
+    client: TestClient,
+    container: Container,
+) -> None:
+    agent_store = container[AgentStore]
+    agent = await agent_store.create_agent("test-agent")
+
+    delete_response = client.delete(
+        f"/agents/{agent.id}",
+    )
+    assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+
+    with raises(ItemNotFoundError):
+        await agent_store.read_agent(agent.id)

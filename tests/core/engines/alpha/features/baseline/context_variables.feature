@@ -25,7 +25,7 @@ Feature: Context Variables
 
     Scenario: The agent proposes guidelines based on customer tags and context variable
         Given an empty session
-        And an customer tagged as "VIP"
+        And a customer tagged as "VIP"
         And a context variable "service level" set to "permium" for the tag "VIP"
         And a guideline "service_level" to tell the customer what their service level is when the customer asking for the service level
         And a customer message, "What service level am I?"
@@ -35,7 +35,7 @@ Feature: Context Variables
 
     Scenario: The agent considering customer value rather customer tag value
         Given an empty session
-        And an customer tagged as "VIP"
+        And a customer tagged as "VIP"
         And a context variable "service level" set to "permium" for the tag "VIP"
         And a context variable "service level" set to "elite"
         And a customer message, "What service level am I?"
@@ -45,7 +45,7 @@ Feature: Context Variables
     
     Scenario: The agent considers tags when calling tools
         Given an empty session with "Dukie"
-        And an customer tagged as "underage"
+        And a customer tagged as "underage"
         And a context variable "age_restriction" set to "non-alcoholic" for the tag "underage"
         And a guideline "suggest_drink_guideline" to suggest a drink based on the drink recommendation tool when the customer asks for drink recommendation
         And the tool "recommend_drink"

@@ -133,4 +133,15 @@ def create_router(
             params=from_dto(params),
         )
 
+    @router.delete(
+        "/{agent_id}",
+        operation_id="delete_agent",
+        status_code=status.HTTP_204_NO_CONTENT,
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
+    )
+    async def delete_agent(
+        agent_id: AgentId,
+    ) -> None:
+        await agent_store.delete_agent(agent_id=agent_id)
+
     return router
