@@ -53,15 +53,15 @@ class ContextVariableCreationParamsDTO(DefaultBaseModel):
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
-class ContextVariableCreationResponse(DefaultBaseModel):
+class ContextVariableCreationResult(DefaultBaseModel):
     context_variable: ContextVariableDTO
 
 
-class ContextVariableDeletionResponse(DefaultBaseModel):
+class ContextVariableDeletionResult(DefaultBaseModel):
     context_variable_id: ContextVariableId
 
 
-class ContextVariableListResponse(DefaultBaseModel):
+class ContextVariableListResult(DefaultBaseModel):
     context_variables: list[ContextVariableDTO]
 
 
@@ -75,16 +75,16 @@ class ContextVariableValueUpdateParamsDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class ContextVariableValueUpdateResponse(DefaultBaseModel):
+class ContextVariableValueUpdateResult(DefaultBaseModel):
     context_variable_value: ContextVariableValueDTO
 
 
-class ContextVariableReadResponse(DefaultBaseModel):
+class ContextVariableReadResult(DefaultBaseModel):
     context_variable: ContextVariableDTO
     key_value_pairs: Optional[dict[str, ContextVariableValueDTO]]
 
 
-class ContextVariableValueDeletionResponse(DefaultBaseModel):
+class ContextVariableValueDeletionResult(DefaultBaseModel):
     context_variable_value_id: ContextVariableValueId
 
 
@@ -127,7 +127,7 @@ def create_router(
     async def create_variable(
         agent_id: AgentId,
         params: ContextVariableCreationParamsDTO,
-    ) -> ContextVariableCreationResponse:
+    ) -> ContextVariableCreationResult:
         if params.tool_id:
             service = await service_registry.read_tool_service(params.tool_id.service_name)
             _ = await service.read_tool(params.tool_id.tool_name)
@@ -144,7 +144,7 @@ def create_router(
             else None,
         )
 
-        return ContextVariableCreationResponse(
+        return ContextVariableCreationResult(
             context_variable=ContextVariableDTO(
                 id=variable.id,
                 name=variable.name,
@@ -180,13 +180,13 @@ def create_router(
     async def delete_variable(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-    ) -> ContextVariableDeletionResponse:
+    ) -> ContextVariableDeletionResult:
         _ = await context_variable_store.delete_variable(
             variable_set=agent_id,
             id=variable_id,
         )
 
-        return ContextVariableDeletionResponse(context_variable_id=variable_id)
+        return ContextVariableDeletionResult(context_variable_id=variable_id)
 
     @router.get(
         "/{agent_id}/context-variables",
@@ -195,10 +195,10 @@ def create_router(
     )
     async def list_variables(
         agent_id: AgentId,
-    ) -> ContextVariableListResponse:
+    ) -> ContextVariableListResult:
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 
-        return ContextVariableListResponse(
+        return ContextVariableListResult(
             context_variables=[
                 ContextVariableDTO(
                     id=variable.id,
@@ -228,7 +228,7 @@ def create_router(
         variable_id: ContextVariableId,
         key: str,
         params: ContextVariableValueUpdateParamsDTO,
-    ) -> ContextVariableValueUpdateResponse:
+    ) -> ContextVariableValueUpdateResult:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -241,7 +241,7 @@ def create_router(
             data=params.data,
         )
 
-        return ContextVariableValueUpdateResponse(
+        return ContextVariableValueUpdateResult(
             context_variable_value=ContextVariableValueDTO(
                 id=variable_value.id,
                 last_modified=variable_value.last_modified,
@@ -288,7 +288,7 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         include_values: bool = True,
-    ) -> ContextVariableReadResponse:
+    ) -> ContextVariableReadResult:
         variable = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -310,7 +310,7 @@ def create_router(
         )
 
         if not include_values:
-            return ContextVariableReadResponse(
+            return ContextVariableReadResult(
                 context_variable=variable_dto,
                 key_value_pairs=None,
             )
@@ -320,7 +320,7 @@ def create_router(
             variable_id=variable_id,
         )
 
-        return ContextVariableReadResponse(
+        return ContextVariableReadResult(
             context_variable=variable_dto,
             key_value_pairs={
                 key: ContextVariableValueDTO(
@@ -341,7 +341,7 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         key: str,
-    ) -> ContextVariableValueDeletionResponse:
+    ) -> ContextVariableValueDeletionResult:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -352,7 +352,7 @@ def create_router(
             variable_id=variable_id,
             key=key,
         ):
-            return ContextVariableValueDeletionResponse(
+            return ContextVariableValueDeletionResult(
                 context_variable_value_id=deleted_variable_value_id
             )
         else:

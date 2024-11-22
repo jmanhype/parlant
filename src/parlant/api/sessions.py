@@ -71,7 +71,7 @@ class CreateSessionRequest(DefaultBaseModel):
     title: Optional[str] = None
 
 
-class CreateSessionResponse(DefaultBaseModel):
+class CreateSessionResult(DefaultBaseModel):
     session: SessionDTO
 
 
@@ -91,7 +91,7 @@ class EventDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class EventCreationResponse(DefaultBaseModel):
+class EventCreationResult(DefaultBaseModel):
     event: EventDTO
 
 
@@ -104,16 +104,16 @@ class SessionUpdateParamsDTO(DefaultBaseModel):
     title: Optional[str] = None
 
 
-class EventListResponse(DefaultBaseModel):
+class EventListResult(DefaultBaseModel):
     session_id: SessionId
     events: list[EventDTO]
 
 
-class SessionListResponse(DefaultBaseModel):
+class SessionListResult(DefaultBaseModel):
     sessions: list[SessionDTO]
 
 
-class SessionDeletionResponse(DefaultBaseModel):
+class SessionDeletionResult(DefaultBaseModel):
     session_id: SessionId
 
 
@@ -128,7 +128,7 @@ class ToolCallDTO(DefaultBaseModel):
     result: ToolResultDTO
 
 
-class EventDeletionResponse(DefaultBaseModel):
+class EventDeletionResult(DefaultBaseModel):
     event_ids: list[EventId]
 
 
@@ -190,7 +190,7 @@ class EventTraceDTO(DefaultBaseModel):
     preparation_iterations: list[PreparationIterationDTO]
 
 
-class EventReadResponse(DefaultBaseModel):
+class EventReadResult(DefaultBaseModel):
     session_id: SessionId
     event: EventDTO
     trace: Optional[EventTraceDTO]
@@ -309,7 +309,7 @@ def create_router(
     async def create_session(
         request: CreateSessionRequest,
         allow_greeting: bool = Query(default=True),
-    ) -> CreateSessionResponse:
+    ) -> CreateSessionResult:
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
         session = await application.create_customer_session(
@@ -319,7 +319,7 @@ def create_router(
             allow_greeting=allow_greeting,
         )
 
-        return CreateSessionResponse(
+        return CreateSessionResult(
             session=SessionDTO(
                 id=session.id,
                 agent_id=session.agent_id,
@@ -359,13 +359,13 @@ def create_router(
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
         customer_id: Optional[CustomerId] = None,
-    ) -> SessionListResponse:
+    ) -> SessionListResult:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
             customer_id=customer_id,
         )
 
-        return SessionListResponse(
+        return SessionListResult(
             sessions=[
                 SessionDTO(
                     id=s.id,
@@ -388,9 +388,9 @@ def create_router(
     )
     async def delete_session(
         session_id: SessionId,
-    ) -> SessionDeletionResponse:
+    ) -> SessionDeletionResult:
         if await session_store.delete_session(session_id):
-            return SessionDeletionResponse(session_id=session_id)
+            return SessionDeletionResult(session_id=session_id)
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -454,7 +454,7 @@ def create_router(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResponse:
+    ) -> EventCreationResult:
         if params.kind != EventKindDTO.MESSAGE:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -477,7 +477,7 @@ def create_router(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResponse:
+    ) -> EventCreationResult:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -519,12 +519,12 @@ def create_router(
             trigger_processing=True,
         )
 
-        return EventCreationResponse(event=event_to_dto(event))
+        return EventCreationResult(event=event_to_dto(event))
 
     async def _add_agent_message(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResponse:
+    ) -> EventCreationResult:
         if params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -551,12 +551,12 @@ def create_router(
             )
         )
 
-        return EventCreationResponse(event=event_to_dto(event))
+        return EventCreationResult(event=event_to_dto(event))
 
     async def _add_human_agent_message_on_behalf_of_ai_agent(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResponse:
+    ) -> EventCreationResult:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -582,7 +582,7 @@ def create_router(
             trigger_processing=False,
         )
 
-        return EventCreationResponse(
+        return EventCreationResult(
             event=EventDTO(
                 id=event.id,
                 source=EventSourceDTO(event.source),
@@ -607,7 +607,7 @@ def create_router(
             description="If set, only list events of the specified kinds (separated by commas)",
         ),
         wait: bool = True,
-    ) -> EventListResponse:
+    ) -> EventListResult:
         kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
         assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
 
@@ -630,7 +630,7 @@ def create_router(
             min_offset=min_offset,
         )
 
-        return EventListResponse(
+        return EventListResult(
             session_id=session_id,
             events=[
                 EventDTO(
@@ -654,7 +654,7 @@ def create_router(
     async def delete_events(
         session_id: SessionId,
         min_offset: int,
-    ) -> EventDeletionResponse:
+    ) -> EventDeletionResult:
         events = await session_store.list_events(
             session_id=session_id,
             min_offset=min_offset,
@@ -663,7 +663,7 @@ def create_router(
 
         deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
 
-        return EventDeletionResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+        return EventDeletionResult(event_ids=[id for id in deleted_event_ids if id is not None])
 
     @router.get(
         "/{session_id}/events/{event_id}",
@@ -673,7 +673,7 @@ def create_router(
     async def read_event(
         session_id: SessionId,
         event_id: EventId,
-    ) -> EventReadResponse:
+    ) -> EventReadResult:
         event = await session_store.read_event(session_id, event_id)
 
         trace: Optional[EventTraceDTO] = None
@@ -695,7 +695,7 @@ def create_router(
                 ],
             )
 
-        return EventReadResponse(
+        return EventReadResult(
             session_id=session_id,
             event=event_to_dto(event),
             trace=trace,

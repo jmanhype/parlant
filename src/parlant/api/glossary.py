@@ -22,11 +22,11 @@ class TermDTO(DefaultBaseModel):
     synonyms: list[str] = []
 
 
-class CreateTermResponse(DefaultBaseModel):
+class CreateTermResult(DefaultBaseModel):
     term: TermDTO
 
 
-class TermListResponse(DefaultBaseModel):
+class TermListResult(DefaultBaseModel):
     terms: list[TermDTO]
 
 
@@ -36,7 +36,7 @@ class TermUpdateParamsDTO(DefaultBaseModel):
     synonyms: Optional[list[str]] = None
 
 
-class TermDeletionResponse(DefaultBaseModel):
+class TermDeletionResult(DefaultBaseModel):
     term_id: TermId
 
 
@@ -51,7 +51,7 @@ def create_router(
         operation_id="create_term",
         **apigen_config(group_name=API_GROUP, method_name="create_term"),
     )
-    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> CreateTermResponse:
+    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> CreateTermResult:
         term = await glossary_store.create_term(
             term_set=agent_id,
             name=params.name,
@@ -59,7 +59,7 @@ def create_router(
             synonyms=params.synonyms,
         )
 
-        return CreateTermResponse(
+        return CreateTermResult(
             term=TermDTO(
                 id=term.id,
                 name=term.name,
@@ -88,10 +88,10 @@ def create_router(
         operation_id="list_terms",
         **apigen_config(group_name=API_GROUP, method_name="list_terms"),
     )
-    async def list_terms(agent_id: AgentId) -> TermListResponse:
+    async def list_terms(agent_id: AgentId) -> TermListResult:
         terms = await glossary_store.list_terms(term_set=agent_id)
 
-        return TermListResponse(
+        return TermListResult(
             terms=[
                 TermDTO(
                     id=term.id,
@@ -143,8 +143,8 @@ def create_router(
         operation_id="delete_term",
         **apigen_config(group_name=API_GROUP, method_name="delete_term"),
     )
-    async def delete_term(agent_id: str, term_id: TermId) -> TermDeletionResponse:
+    async def delete_term(agent_id: str, term_id: TermId) -> TermDeletionResult:
         deleted_term_id = await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
-        return TermDeletionResponse(term_id=deleted_term_id)
+        return TermDeletionResult(term_id=deleted_term_id)
 
     return router

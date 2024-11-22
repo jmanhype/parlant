@@ -18,15 +18,15 @@ class CreateTagRequest(DefaultBaseModel):
     name: str
 
 
-class CreateTagResponse(DefaultBaseModel):
+class CreateTagResult(DefaultBaseModel):
     tag: TagDTO
 
 
-class ListTagsResponse(DefaultBaseModel):
+class ListTagsResult(DefaultBaseModel):
     tags: list[TagDTO]
 
 
-class DeleteTagResponse(DefaultBaseModel):
+class DeleteTagResult(DefaultBaseModel):
     tag_id: TagId
 
 
@@ -45,14 +45,12 @@ def create_router(
         operation_id="create_tag",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_tag(request: CreateTagRequest) -> CreateTagResponse:
+    async def create_tag(request: CreateTagRequest) -> CreateTagResult:
         tag = await tag_store.create_tag(
             name=request.name,
         )
 
-        return CreateTagResponse(
-            tag=TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
-        )
+        return CreateTagResult(tag=TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name))
 
     @router.get(
         "/{tag_id}",
@@ -69,10 +67,10 @@ def create_router(
         operation_id="list_tags",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_tags() -> ListTagsResponse:
+    async def list_tags() -> ListTagsResult:
         tags = await tag_store.list_tags()
 
-        return ListTagsResponse(
+        return ListTagsResult(
             tags=[TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name) for tag in tags]
         )
 
@@ -95,8 +93,8 @@ def create_router(
         operation_id="delete_tag",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_tag(tag_id: TagId) -> DeleteTagResponse:
+    async def delete_tag(tag_id: TagId) -> DeleteTagResult:
         await tag_store.delete_tag(tag_id=tag_id)
-        return DeleteTagResponse(tag_id=tag_id)
+        return DeleteTagResult(tag_id=tag_id)
 
     return router
