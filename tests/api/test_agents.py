@@ -74,6 +74,7 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
 @mark.parametrize(
     "patch_request",
     (
+        {"name": "New Name"},
         {"description": None},
         {"description": "You are a test agent"},
         {"description": "You are a test agent", "max_engine_iterations": 1},
@@ -103,5 +104,6 @@ async def test_that_agent_can_be_updated(
     assert len(data["agents"]) == 1
     agent_dto = data["agents"][0]
 
+    assert agent_dto["name"] == patch_request.get("name", "test-agent")
     assert agent_dto["description"] == patch_request.get("description")
     assert agent_dto["max_engine_iterations"] == patch_request.get("max_engine_iterations", 3)

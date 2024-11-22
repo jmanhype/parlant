@@ -13,6 +13,7 @@ AgentId = NewType("AgentId", str)
 
 
 class AgentUpdateParams(TypedDict, total=False):
+    name: str
     description: Optional[str]
     max_engine_iterations: int
 
