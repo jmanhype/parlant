@@ -26,10 +26,6 @@ class ListTagsResult(DefaultBaseModel):
     tags: list[TagDTO]
 
 
-class DeleteTagResult(DefaultBaseModel):
-    tag_id: TagId
-
-
 class UpdateTagRequest(DefaultBaseModel):
     name: str
 
@@ -90,11 +86,11 @@ def create_router(
 
     @router.delete(
         "/{tag_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_tag",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_tag(tag_id: TagId) -> DeleteTagResult:
+    async def delete_tag(tag_id: TagId) -> None:
         await tag_store.delete_tag(tag_id=tag_id)
-        return DeleteTagResult(tag_id=tag_id)
 
     return router

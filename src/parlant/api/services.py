@@ -47,10 +47,6 @@ class ServiceUpdateResult(DefaultBaseModel):
     url: str
 
 
-class ServiceDeletionResult(DefaultBaseModel):
-    name: str
-
-
 EnumValueTypeDTO: TypeAlias = Union[str, int]
 
 
@@ -192,13 +188,12 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
 
     @router.delete(
         "/{name}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_service",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_service(name: str) -> ServiceDeletionResult:
+    async def delete_service(name: str) -> None:
         await service_registry.delete_service(name)
-
-        return ServiceDeletionResult(name=name)
 
     @router.get(
         "/",

@@ -91,7 +91,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> Optional[ContextVariableId]: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_variables(
@@ -120,7 +120,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         variable_id: ContextVariableId,
         key: str,
-    ) -> Optional[ContextVariableValueId]: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_values(
@@ -332,7 +332,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> Optional[ContextVariableId]:
+    ) -> None:
         variable_deletion_result = await self._variable_collection.delete_one(
             {
                 "id": {"$eq": id},
@@ -344,12 +344,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         for k, _ in await self.list_values(variable_set=variable_set, variable_id=id):
             await self.delete_value(variable_set=variable_set, variable_id=id, key=k)
-
-        return (
-            ContextVariableId(variable_deletion_result.deleted_document["id"])
-            if variable_deletion_result.deleted_document
-            else None
-        )
 
     async def list_variables(
         self,
@@ -403,19 +397,13 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         variable_id: ContextVariableId,
         key: str,
-    ) -> Optional[ContextVariableValueId]:
-        result = await self._value_collection.delete_one(
+    ) -> None:
+        await self._value_collection.delete_one(
             {
                 "variable_set": {"$eq": variable_set},
                 "variable_id": {"$eq": variable_id},
                 "key": {"$eq": key},
             }
-        )
-
-        return (
-            ContextVariableValueId(result.deleted_document["id"])
-            if result.deleted_document
-            else None
         )
 
     async def list_values(

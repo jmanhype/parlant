@@ -524,13 +524,14 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/guidelines/{guideline_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_guideline",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_guideline(
         agent_id: AgentId,
         guideline_id: GuidelineId,
-    ) -> GuidelineDeletionResult:
+    ) -> None:
         await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -545,7 +546,5 @@ def create_router(
         for associastion in await guideline_tool_association_store.list_associations():
             if associastion.guideline_id == guideline_id:
                 await guideline_tool_association_store.delete_association(associastion.id)
-
-        return GuidelineDeletionResult(guideline_id=guideline_id)
 
     return router

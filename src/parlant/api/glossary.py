@@ -36,10 +36,6 @@ class TermUpdateParamsDTO(DefaultBaseModel):
     synonyms: Optional[list[str]] = None
 
 
-class TermDeletionResult(DefaultBaseModel):
-    term_id: TermId
-
-
 def create_router(
     glossary_store: GlossaryStore,
 ) -> APIRouter:
@@ -140,11 +136,14 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/terms/{term_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_term",
         **apigen_config(group_name=API_GROUP, method_name="delete_term"),
     )
-    async def delete_term(agent_id: str, term_id: TermId) -> TermDeletionResult:
-        deleted_term_id = await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
-        return TermDeletionResult(term_id=deleted_term_id)
+    async def delete_term(
+        agent_id: str,
+        term_id: TermId,
+    ) -> None:
+        await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
 
     return router

@@ -68,7 +68,7 @@ class GlossaryStore:
         self,
         term_set: str,
         term_id: TermId,
-    ) -> TermId: ...
+    ) -> None: ...
 
     @abstractmethod
     async def find_relevant_terms(

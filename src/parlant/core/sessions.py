@@ -228,7 +228,7 @@ class SessionStore(ABC):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> Optional[SessionId]: ...
+    ) -> None: ...
 
     @abstractmethod
     async def update_session(
@@ -266,7 +266,7 @@ class SessionStore(ABC):
     async def delete_event(
         self,
         event_id: EventId,
-    ) -> EventId: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_events(
@@ -573,15 +573,13 @@ class SessionDocumentStore(SessionStore):
     async def delete_session(
         self,
         session_id: SessionId,
-    ) -> Optional[SessionId]:
+    ) -> None:
         events = await self._event_collection.find(filters={"session_id": {"$eq": session_id}})
         asyncio.gather(
             *(self._event_collection.delete_one(filters={"id": {"$eq": e["id"]}}) for e in events)
         )
 
-        result = await self._session_collection.delete_one({"id": {"$eq": session_id}})
-
-        return session_id if result.deleted_count else None
+        await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
     async def read_session(
         self,
@@ -672,7 +670,7 @@ class SessionDocumentStore(SessionStore):
     async def delete_event(
         self,
         event_id: EventId,
-    ) -> EventId:
+    ) -> None:
         result = await self._event_collection.update_one(
             filters={"id": {"$eq": event_id}},
             params=cast(_EventDocument, {"deleted": True}),
@@ -680,8 +678,6 @@ class SessionDocumentStore(SessionStore):
 
         if result.matched_count == 0:
             raise ItemNotFoundError(item_id=UniqueId(event_id), message="Event not found")
-
-        return event_id
 
     async def list_events(
         self,

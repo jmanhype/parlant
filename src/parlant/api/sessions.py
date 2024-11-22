@@ -114,10 +114,6 @@ class SessionListResult(DefaultBaseModel):
     sessions: list[SessionDTO]
 
 
-class SessionDeletionResult(DefaultBaseModel):
-    session_id: SessionId
-
-
 class ToolResultDTO(DefaultBaseModel):
     data: JSONSerializableDTO
     metadata: Mapping[str, JSONSerializableDTO]
@@ -127,10 +123,6 @@ class ToolCallDTO(DefaultBaseModel):
     tool_id: str
     arguments: Mapping[str, JSONSerializableDTO]
     result: ToolResultDTO
-
-
-class EventDeletionResult(DefaultBaseModel):
-    event_ids: list[EventId]
 
 
 class GuidelinePropositionDTO(DefaultBaseModel):
@@ -384,16 +376,14 @@ def create_router(
 
     @router.delete(
         "/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_session",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_session(
         session_id: SessionId,
-    ) -> SessionDeletionResult:
-        if await session_store.delete_session(session_id):
-            return SessionDeletionResult(session_id=session_id)
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    ) -> None:
+        await session_store.delete_session(session_id)
 
     @router.delete(
         "/",
@@ -649,22 +639,22 @@ def create_router(
 
     @router.delete(
         "/{session_id}/events",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_events",
         **apigen_config(group_name=API_GROUP, method_name="delete_events"),
     )
     async def delete_events(
         session_id: SessionId,
         min_offset: int,
-    ) -> EventDeletionResult:
+    ) -> None:
         events = await session_store.list_events(
             session_id=session_id,
             min_offset=min_offset,
             exclude_deleted=True,
         )
 
-        deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
-
-        return EventDeletionResult(event_ids=[id for id in deleted_event_ids if id is not None])
+        for e in events:
+            await session_store.delete_event(e.id)
 
     @router.get(
         "/{session_id}/events/{event_id}",

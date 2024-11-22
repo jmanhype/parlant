@@ -157,7 +157,7 @@ class GlossaryChromaStore(GlossaryStore):
         self,
         term_set: str,
         term_id: TermId,
-    ) -> TermId:
+    ) -> None:
         term_document = await self._collection.find_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"id": {"$eq": term_id}}]}
         )
@@ -168,8 +168,6 @@ class GlossaryChromaStore(GlossaryStore):
         await self._collection.delete_one(
             filters={"$and": [{"term_set": {"$eq": term_set}}, {"id": {"$eq": term_id}}]}
         )
-
-        return TermId(term_document["id"])
 
     async def _query_chunks(self, query: str) -> list[str]:
         max_length = self._embedder.max_tokens // 5

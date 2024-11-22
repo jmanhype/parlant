@@ -44,7 +44,7 @@ class GuidelineToolAssociationStore(ABC):
     async def delete_association(
         self,
         association_id: GuidelineToolAssociationId,
-    ) -> GuidelineToolAssociation: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]: ...
@@ -121,15 +121,11 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
 
         return self._deserialize(guideline_tool_association_document)
 
-    async def delete_association(
-        self, association_id: GuidelineToolAssociationId
-    ) -> GuidelineToolAssociation:
+    async def delete_association(self, association_id: GuidelineToolAssociationId) -> None:
         result = await self._collection.delete_one(filters={"id": {"$eq": association_id}})
 
         if not result.deleted_document:
             raise ItemNotFoundError(item_id=UniqueId(association_id))
-
-        return self._deserialize(result.deleted_document)
 
     async def list_associations(self) -> Sequence[GuidelineToolAssociation]:
         return [self._deserialize(d) for d in await self._collection.find(filters={})]
