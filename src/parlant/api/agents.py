@@ -32,6 +32,7 @@ class AgentListResult(DefaultBaseModel):
 
 
 class AgentUpdateParamsDTO(DefaultBaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
@@ -115,6 +116,9 @@ def create_router(
     ) -> None:
         def from_dto(dto: AgentUpdateParamsDTO) -> AgentUpdateParams:
             params: AgentUpdateParams = {}
+
+            if dto.name:
+                params["name"] = dto.name
 
             if dto.description:
                 params["description"] = dto.description

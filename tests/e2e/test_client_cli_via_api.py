@@ -554,6 +554,7 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
 async def test_that_an_agent_can_be_updated(
     context: ContextOfTest,
 ) -> None:
+    new_name = "Updated Agent"
     new_description = "Updated description"
     new_max_engine_iterations = 5
 
@@ -563,6 +564,8 @@ async def test_that_an_agent_can_be_updated(
         process = await run_cli(
             "agent",
             "update",
+            "--name",
+            new_name,
             "--description",
             new_description,
             "--max-engine-iterations",
@@ -576,6 +579,7 @@ async def test_that_an_agent_can_be_updated(
         assert process.returncode == os.EX_OK
 
         agent = (await API.list_agents())[0]
+        assert agent["name"] == new_name
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
 

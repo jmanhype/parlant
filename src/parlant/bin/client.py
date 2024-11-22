@@ -117,6 +117,7 @@ class Actions:
     def update_agent(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str] = None,
         description: Optional[str] = None,
         max_engine_iterations: Optional[int] = None,
     ) -> None:
@@ -124,6 +125,7 @@ class Actions:
 
         client.agents.update(
             agent_id,
+            name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
@@ -932,11 +934,12 @@ class Interface:
     def update_agent(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
         try:
-            Actions.update_agent(ctx, agent_id, description, max_engine_iterations)
+            Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
             Interface._write_success(f"Updated agent (id={agent_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -2033,6 +2036,13 @@ async def async_main() -> None:
 
     @agent.command("update", help="Update an agent's details")
     @click.option(
+        "-n",
+        "--name",
+        type=str,
+        help="Agent Name",
+        required=False,
+    )
+    @click.option(
         "-a",
         "--agent-id",
         type=str,
@@ -2051,13 +2061,14 @@ async def async_main() -> None:
     def agent_update(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.update_agent(ctx, agent_id, description, max_engine_iterations)
+        Interface.update_agent(ctx, agent_id, name, description, max_engine_iterations)
 
     @agent.command(
         "chat",
