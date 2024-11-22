@@ -99,6 +99,14 @@ class Actions:
         return result.agent
 
     @staticmethod
+    def delete_agent(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.agents.delete(agent_id=agent_id)
+
+    @staticmethod
     def view_agent(
         ctx: click.Context,
         agent_id: str,
@@ -261,7 +269,7 @@ class Actions:
         )
 
     @staticmethod
-    def remove_term(
+    def delete_term(
         ctx: click.Context,
         agent_id: str,
         term_id: str,
@@ -443,7 +451,7 @@ class Actions:
                     raise ValueError(evaluation_result.error)
 
     @staticmethod
-    def remove_guideline(
+    def delete_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -522,7 +530,7 @@ class Actions:
         )
 
     @staticmethod
-    def add_association(
+    def add_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -545,7 +553,7 @@ class Actions:
         )
 
     @staticmethod
-    def remove_association(
+    def remove_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -627,7 +635,7 @@ class Actions:
         return result.context_variable
 
     @staticmethod
-    def remove_variable(
+    def delete_variable(
         ctx: click.Context,
         agent_id: str,
         variable_id: str,
@@ -685,7 +693,7 @@ class Actions:
         )
 
     @staticmethod
-    def add_service(
+    def create_service(
         ctx: click.Context,
         name: str,
         kind: str,
@@ -718,7 +726,7 @@ class Actions:
         )
 
     @staticmethod
-    def remove_service(
+    def delete_service(
         ctx: click.Context,
         name: str,
     ) -> None:
@@ -755,6 +763,14 @@ class Actions:
         client = cast(ParlantClient, ctx.obj.client)
         result = client.customers.create(name=name, extra={})
         return result.customer
+
+    @staticmethod
+    def delete_customer(
+        ctx: click.Context,
+        customer_id: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.delete(customer_id)
 
     @staticmethod
     def view_customer(
@@ -817,7 +833,7 @@ class Actions:
         client.tags.update(tag_id=tag_id, name=name)
 
     @staticmethod
-    def remove_tag(ctx: click.Context, tag_id: str) -> None:
+    def delete_tag(ctx: click.Context, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
         client.tags.delete(tag_id=tag_id)
 
@@ -900,6 +916,15 @@ class Interface:
 
             Interface._write_success(f"Added agent (id={agent.id})")
             Interface._render_agents([agent])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def delete_agent(ctx: click.Context, agent_id: str) -> None:
+        try:
+            Actions.delete_agent(ctx, agent_id=agent_id)
+            Interface._write_success(f"Removed agent (id={agent_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1238,12 +1263,12 @@ class Interface:
         Interface._print_table([term.__dict__])
 
     @staticmethod
-    def remove_term(
+    def delete_term(
         ctx: click.Context,
         agent_id: str,
         term_id: str,
     ) -> None:
-        Actions.remove_term(ctx, agent_id, term_id)
+        Actions.delete_term(ctx, agent_id, term_id)
 
         Interface._write_success(f"Removed term '{term_id}'")
 
@@ -1414,13 +1439,13 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_guideline(
+    def delete_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
     ) -> None:
         try:
-            Actions.remove_guideline(ctx, agent_id, guideline_id)
+            Actions.delete_guideline(ctx, agent_id, guideline_id)
 
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
@@ -1527,7 +1552,7 @@ class Interface:
         Interface._print_table(association_items)
 
     @staticmethod
-    def add_association(
+    def add_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1535,7 +1560,7 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association = Actions.add_association(
+            association = Actions.add_guideline_tool_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
@@ -1549,7 +1574,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_association(
+    def remove_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1557,7 +1582,7 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association_id = Actions.remove_association(
+            association_id = Actions.remove_guideline_tool_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
@@ -1643,10 +1668,10 @@ class Interface:
         Interface._render_variable(variable)
 
     @staticmethod
-    def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
+    def delete_variable(ctx: click.Context, agent_id: str, name: str) -> None:
         try:
             variable = Actions.view_variable(ctx, agent_id, name)
-            Actions.remove_variable(ctx, agent_id, variable.id)
+            Actions.delete_variable(ctx, agent_id, variable.id)
 
             Interface._write_success(f"Removed variable '{name}'")
         except Exception as e:
@@ -1743,7 +1768,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def add_service(
+    def create_service(
         ctx: click.Context,
         name: str,
         kind: str,
@@ -1751,7 +1776,7 @@ class Interface:
         source: str,
     ) -> None:
         try:
-            result = Actions.add_service(ctx, name, kind, url, source)
+            result = Actions.create_service(ctx, name, kind, url, source)
 
             Interface._write_success(f"Added service '{name}'")
             Interface._print_table([result.dict()])
@@ -1760,12 +1785,12 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_service(
+    def delete_service(
         ctx: click.Context,
         name: str,
     ) -> None:
         try:
-            Actions.remove_service(ctx, name)
+            Actions.delete_service(ctx, name)
 
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
@@ -1856,6 +1881,15 @@ class Interface:
         try:
             customer = Actions.create_customer(ctx, name)
             Interface._write_success(f"Added customer (id={customer.id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def delete_customer(ctx: click.Context, customer_id: str) -> None:
+        try:
+            Actions.delete_customer(ctx, customer_id=customer_id)
+            Interface._write_success(f"Removed customer (id={customer_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1960,9 +1994,9 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_tag(ctx: click.Context, tag_id: str) -> None:
+    def delete_tag(ctx: click.Context, tag_id: str) -> None:
         try:
-            Actions.remove_tag(ctx, tag_id=tag_id)
+            Actions.delete_tag(ctx, tag_id=tag_id)
             Interface._write_success(f"Removed tag (id={tag_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -2022,6 +2056,12 @@ async def async_main() -> None:
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
+
+    @agent.command("remove", help="Remove agent")
+    @click.argument("agent_id")
+    @click.pass_context
+    def agent_remove(ctx: click.Context, agent_id: str) -> None:
+        Interface.delete_agent(ctx, agent_id)
 
     @agent.command("view", help="View agent information")
     @click.argument("agent_id")
@@ -2303,7 +2343,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_term(ctx, agent_id, term_id)
+        Interface.delete_term(ctx, agent_id, term_id)
 
     @glossary.command("list", help="List all terms in the glossary")
     @click.option(
@@ -2442,7 +2482,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_guideline(
+        Interface.delete_guideline(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2583,7 +2623,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.add_association(
+        Interface.add_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2614,7 +2654,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_association(
+        Interface.remove_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2695,7 +2735,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_variable(
+        Interface.delete_variable(
             ctx=ctx,
             agent_id=agent_id,
             name=name,
@@ -2802,13 +2842,13 @@ async def async_main() -> None:
         url: str,
         source: str,
     ) -> None:
-        Interface.add_service(ctx, name, kind, url, source)
+        Interface.create_service(ctx, name, kind, url, source)
 
     @service.command("remove", help="Remove a service")
     @click.argument("name", type=str)
     @click.pass_context
     def service_remove(ctx: click.Context, name: str) -> None:
-        Interface.remove_service(ctx, name)
+        Interface.delete_service(ctx, name)
 
     @service.command("list", help="List all services")
     @click.pass_context
@@ -2836,14 +2876,20 @@ async def async_main() -> None:
     def add_customer(ctx: click.Context, name: str) -> None:
         Interface.create_customer(ctx, name)
 
+    @customer.command("remove", help="Remove a customer")
+    @click.argument("customer_id", type=str)
+    @click.pass_context
+    def remove_customer(ctx: click.Context, customer_id: str) -> None:
+        Interface.delete_customer(ctx, customer_id)
+
     @customer.command("view", help="View a customer's details")
-    @click.argument("customer_id")
+    @click.argument("customer_id", type=str)
     @click.pass_context
     def view_customer(ctx: click.Context, customer_id: str) -> None:
         Interface.view_customer(ctx, customer_id)
 
     @customer.command("add-extra", help="Add extra information to a customer")
-    @click.argument("customer_id")
+    @click.argument("customer_id", type=str)
     @click.argument("key")
     @click.argument("value")
     @click.pass_context
@@ -2851,22 +2897,22 @@ async def async_main() -> None:
         Interface.add_customer_extra(ctx, customer_id, key, value)
 
     @customer.command("remove-extra", help="Remove extra information from a customer")
-    @click.argument("customer_id")
+    @click.argument("customer_id", type=str)
     @click.argument("key")
     @click.pass_context
     def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
         Interface.remove_customer_extra(ctx, customer_id, key)
 
     @customer.command("add-tag", help="Add a tag to a customer")
-    @click.argument("customer_id")
-    @click.argument("tag_id")
+    @click.argument("customer_id", type=str)
+    @click.argument("tag_id", type=str)
     @click.pass_context
     def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         Interface.add_customer_tag(ctx, customer_id, tag_id)
 
     @customer.command("remove-tag", help="Remove a tag from a customer")
-    @click.argument("customer_id")
-    @click.argument("tag_id")
+    @click.argument("customer_id", type=str)
+    @click.argument("tag_id", type=str)
     @click.pass_context
     def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         Interface.remove_customer_tag(ctx, customer_id, tag_id)
@@ -2903,7 +2949,7 @@ async def async_main() -> None:
     @click.argument("tag_id", type=str)
     @click.pass_context
     def remove_tag(ctx: click.Context, tag_id: str) -> None:
-        Interface.remove_tag(ctx, tag_id)
+        Interface.delete_tag(ctx, tag_id)
 
     cli()
 

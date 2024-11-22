@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict, cast
+from typing import NewType, Optional, Sequence, TypedDict, cast, override
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.document_database import (
@@ -38,16 +38,27 @@ class AgentStore(ABC):
     ) -> Agent: ...
 
     @abstractmethod
-    async def list_agents(self) -> Sequence[Agent]: ...
+    async def list_agents(
+        self,
+    ) -> Sequence[Agent]: ...
 
     @abstractmethod
-    async def read_agent(self, agent_id: AgentId) -> Agent: ...
+    async def read_agent(
+        self,
+        agent_id: AgentId,
+    ) -> Agent: ...
 
     @abstractmethod
     async def update_agent(
         self,
         agent_id: AgentId,
         params: AgentUpdateParams,
+    ) -> None: ...
+
+    @abstractmethod
+    async def delete_agent(
+        self,
+        agent_id: AgentId,
     ) -> None: ...
 
 
@@ -91,6 +102,7 @@ class AgentDocumentStore(AgentStore):
             max_engine_iterations=agent_document["max_engine_iterations"],
         )
 
+    @override
     async def create_agent(
         self,
         name: str,
@@ -113,11 +125,13 @@ class AgentDocumentStore(AgentStore):
 
         return agent
 
+    @override
     async def list_agents(
         self,
     ) -> Sequence[Agent]:
         return [self._deserialize(d) for d in await self._collection.find(filters={})]
 
+    @override
     async def read_agent(self, agent_id: AgentId) -> Agent:
         agent_document = await self._collection.find_one(
             filters={
@@ -130,6 +144,7 @@ class AgentDocumentStore(AgentStore):
 
         return self._deserialize(agent_document)
 
+    @override
     async def update_agent(
         self,
         agent_id: AgentId,
@@ -139,3 +154,13 @@ class AgentDocumentStore(AgentStore):
             filters={"id": {"$eq": agent_id}},
             params=cast(_AgentDocument, params),
         )
+
+    @override
+    async def delete_agent(
+        self,
+        agent_id: AgentId,
+    ) -> None:
+        result = await self._collection.delete_one({"id": {"$eq": agent_id}})
+
+        if result.deleted_count == 0:
+            raise ItemNotFoundError(item_id=UniqueId(agent_id))

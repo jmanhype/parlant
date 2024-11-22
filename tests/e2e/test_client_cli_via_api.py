@@ -132,15 +132,15 @@ class API:
     @staticmethod
     async def get_first_agent_id() -> str:
         async with API.make_client() as client:
-            response = await client.get("/agents/")
+            response = await client.get("/agents")
             agent = response.raise_for_status().json()["agents"][0]
             return str(agent["id"])
 
     @staticmethod
     async def create_agent(
         name: str,
-        description: Optional[str],
-        max_engine_iterations: Optional[int],
+        description: Optional[str] = None,
+        max_engine_iterations: Optional[int] = None,
     ) -> Any:
         async with API.make_client() as client:
             response = await client.post(
@@ -157,7 +157,7 @@ class API:
     @staticmethod
     async def list_agents() -> Any:
         async with API.make_client() as client:
-            response = await client.get("/agents/")
+            response = await client.get("/agents")
             return response.raise_for_status().json()["agents"]
 
     @staticmethod
@@ -582,6 +582,28 @@ async def test_that_an_agent_can_be_updated(
         assert agent["name"] == new_name
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
+
+
+async def test_that_an_agent_can_be_deleted(
+    context: ContextOfTest,
+) -> None:
+    name = "Test Agent"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent = await API.create_agent(name=name)
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "agent",
+                "remove",
+                agent["id"],
+            )
+            == os.EX_OK
+        )
+
+        assert not any(a["name"] == name for a in await API.list_agents())
 
 
 async def test_that_an_agent_can_be_viewed(
@@ -2085,6 +2107,25 @@ async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
 
         assert customer_id in output
         assert "TestCustomer" in output
+
+
+async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customer",
+                "remove",
+                customer_id,
+            )
+            == os.EX_OK
+        )
+
+        customers = await API.list_customers()
+        assert not any(c["name"] == "TestCustomer" for c in customers)
 
 
 async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> None:

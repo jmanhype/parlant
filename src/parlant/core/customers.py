@@ -54,7 +54,15 @@ class CustomerStore(ABC):
     ) -> Customer: ...
 
     @abstractmethod
-    async def list_customers(self) -> Sequence[Customer]: ...
+    async def delete_customer(
+        self,
+        customer_id: CustomerId,
+    ) -> None: ...
+
+    @abstractmethod
+    async def list_customers(
+        self,
+    ) -> Sequence[Customer]: ...
 
     @abstractmethod
     async def add_tag(
@@ -221,10 +229,23 @@ class CustomerDocumentStore(CustomerStore):
 
         return await self._deserialize_customer(customer_document=result.updated_document)
 
-    async def list_customers(self) -> Sequence[Customer]:
+    async def list_customers(
+        self,
+    ) -> Sequence[Customer]:
         return [
-            await self._deserialize_customer(e) for e in await self._customers_collection.find({})
+            await self._deserialize_customer(e)
+            for e in await self._customers_collection.find({"id": {"$ne": "guest"}})
         ]
+
+    @override
+    async def delete_customer(
+        self,
+        customer_id: CustomerId,
+    ) -> None:
+        result = await self._customers_collection.delete_one({"id": {"$eq": customer_id}})
+
+        if result.deleted_count == 0:
+            raise ItemNotFoundError(item_id=UniqueId(customer_id))
 
     @override
     async def add_tag(

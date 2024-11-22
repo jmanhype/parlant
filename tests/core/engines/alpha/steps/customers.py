@@ -6,8 +6,8 @@ from parlant.core.tags import TagStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
-@step(given, parsers.parse('an end customer with the name "{name}"'))
-def given_an_customer(
+@step(given, parsers.parse('a customer with the name "{name}"'))
+def given_a_customer(
     context: ContextOfTest,
     name: str,
 ) -> CustomerId:
@@ -18,7 +18,7 @@ def given_an_customer(
     return customer.id
 
 
-@step(given, parsers.parse('an customer tagged as "{tag_name}"'))
+@step(given, parsers.parse('a customer tagged as "{tag_name}"'))
 def given_a_customer_tag(
     context: ContextOfTest,
     session_id: SessionId,
