@@ -23,10 +23,10 @@ from parlant.client import ParlantClient
 from parlant.client.types import (
     Agent,
     ContextVariable,
-    ContextVariableReadResponse,
+    ContextVariableReadResult,
     ContextVariableValue,
     Event,
-    EventReadResponse,
+    EventReadResult,
     FreshnessRules,
     Guideline,
     GuidelineConnection,
@@ -90,13 +90,13 @@ class Actions:
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.agents.create(
+        result = client.agents.create(
             name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
 
-        return response.agent
+        return result.agent
 
     @staticmethod
     def view_agent(
@@ -110,8 +110,8 @@ class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[Agent]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.agents.list()
-        return response.agents
+        result = client.agents.list()
+        return result.agents
 
     @staticmethod
     def update_agent(
@@ -137,13 +137,13 @@ class Actions:
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.create(
+        result = client.sessions.create(
             agent_id=agent_id,
             customer_id=customer_id,
             allow_greeting=False,
             title=title,
         )
-        return response.session
+        return result.session
 
     @staticmethod
     def update_session(
@@ -174,19 +174,19 @@ class Actions:
     ) -> list[Session]:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.list(
+        result = client.sessions.list(
             agent_id=agent_id,
             customer_id=customer_id,
         )
 
-        return response.sessions
+        return result.sessions
 
     @staticmethod
     def inspect_event(
         ctx: click.Context,
         session_id: str,
         event_id: str,
-    ) -> EventReadResponse:
+    ) -> EventReadResult:
         client = cast(ParlantClient, ctx.obj.client)
 
         return client.sessions.retrieve_event(
@@ -200,8 +200,8 @@ class Actions:
         session_id: str,
     ) -> list[Event]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.sessions.list_events(session_id=session_id)
-        return response.events
+        result = client.sessions.list_events(session_id=session_id)
+        return result.events
 
     @staticmethod
     def create_event(
@@ -211,14 +211,14 @@ class Actions:
     ) -> Event:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.create_event(
+        result = client.sessions.create_event(
             session_id,
             kind="message",
             source="customer",
             data=message,
         )
 
-        return response.event
+        return result.event
 
     @staticmethod
     def create_term(
@@ -230,14 +230,14 @@ class Actions:
     ) -> Term:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.glossary.create_term(
+        result = client.glossary.create_term(
             agent_id,
             name=name,
             description=description,
             synonyms=synonyms,
         )
 
-        return response.term
+        return result.term
 
     @staticmethod
     def update_term(
@@ -273,8 +273,8 @@ class Actions:
         agent_id: str,
     ) -> list[Term]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.glossary.list_terms(agent_id)
-        return response.terms
+        result = client.glossary.list_terms(agent_id)
+        return result.terms
 
     @staticmethod
     def create_guideline(
@@ -288,7 +288,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.evaluations.create(
+        result = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -306,7 +306,7 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = response.evaluation_id
+        evaluation_id = result.evaluation_id
 
         with tqdm(
             total=100,
@@ -315,16 +315,16 @@ class Actions:
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation_id)
 
-                if evaluation_response.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_response.progress)
+                if evaluation_result.status in ["pending", "running"]:
+                    progress_bar.n = int(evaluation_result.progress)
                     progress_bar.refresh()
 
                     continue
 
-                if evaluation_response.status == "completed":
-                    invoice = evaluation_response.invoices[0]
+                if evaluation_result.status == "completed":
+                    invoice = evaluation_result.invoices[0]
                     if invoice.approved:
                         progress_bar.n = 100
                         progress_bar.refresh()
@@ -333,7 +333,7 @@ class Actions:
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
 
-                        guideline_response = client.guidelines.create(
+                        guideline_result = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
@@ -345,7 +345,7 @@ class Actions:
                                 ),
                             ],
                         )
-                        return guideline_response.items[0]
+                        return guideline_result.items[0]
 
                     else:
                         assert invoice.data
@@ -355,8 +355,8 @@ class Actions:
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation_response.status == "failed":
-                    raise ValueError(evaluation_response.error)
+                elif evaluation_result.status == "failed":
+                    raise ValueError(evaluation_result.error)
 
     @staticmethod
     def update_guideline(
@@ -370,7 +370,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.evaluations.create(
+        result = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -388,7 +388,7 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = response.evaluation_id
+        evaluation_id = result.evaluation_id
 
         with tqdm(
             total=100,
@@ -397,16 +397,16 @@ class Actions:
         ) as progress_bar:
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation_id)
 
-                if evaluation_response.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_response.progress)
+                if evaluation_result.status in ["pending", "running"]:
+                    progress_bar.n = int(evaluation_result.progress)
                     progress_bar.refresh()
 
                     continue
 
-                if evaluation_response.status == "completed":
-                    invoice = evaluation_response.invoices[0]
+                if evaluation_result.status == "completed":
+                    invoice = evaluation_result.invoices[0]
                     if invoice.approved:
                         progress_bar.n = 100
                         progress_bar.refresh()
@@ -415,7 +415,7 @@ class Actions:
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
 
-                        guideline_response = client.guidelines.create(
+                        guideline_result = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
@@ -427,7 +427,7 @@ class Actions:
                                 ),
                             ],
                         )
-                        return guideline_response.items[0]
+                        return guideline_result.items[0]
 
                     else:
                         assert invoice.data
@@ -437,8 +437,8 @@ class Actions:
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation_response.status == "failed":
-                    raise ValueError(evaluation_response.error)
+                elif evaluation_result.status == "failed":
+                    raise ValueError(evaluation_result.error)
 
     @staticmethod
     def remove_guideline(
@@ -464,8 +464,8 @@ class Actions:
         agent_id: str,
     ) -> list[Guideline]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.guidelines.list(agent_id)
-        return response.guidelines
+        result = client.guidelines.list(agent_id)
+        return result.guidelines
 
     @staticmethod
     def create_entailment(
@@ -500,8 +500,8 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.guidelines.retrieve(agent_id, source_guideline_id)
-        connections = guideline_response.connections
+        guideline_result = client.guidelines.retrieve(agent_id, source_guideline_id)
+        connections = guideline_result.connections
 
         if connection := next(
             (c for c in connections if target_guideline_id in [c.source.id, c.target.id]),
@@ -552,8 +552,8 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.guidelines.retrieve(agent_id, guideline_id)
-        associations = guideline_response.tool_associations
+        guideline_result = client.guidelines.retrieve(agent_id, guideline_id)
+        associations = guideline_result.tool_associations
 
         if association := next(
             (
@@ -588,8 +588,8 @@ class Actions:
         agent_id: str,
     ) -> list[ContextVariable]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.context_variables.list(agent_id)
-        return response.context_variables
+        result = client.context_variables.list(agent_id)
+        return result.context_variables
 
     @staticmethod
     def view_variable(
@@ -599,8 +599,8 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.list(agent_id)
-        variables = response.context_variables
+        result = client.context_variables.list(agent_id)
+        variables = result.context_variables
 
         if variable := next((v for v in variables if v.name == name), None):
             return variable
@@ -616,13 +616,13 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.create(
+        result = client.context_variables.create(
             agent_id,
             name=name,
             description=description,
         )
 
-        return response.context_variable
+        return result.context_variable
 
     @staticmethod
     def remove_variable(
@@ -643,14 +643,14 @@ class Actions:
     ) -> ContextVariableValue:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.set_value(
+        result = client.context_variables.set_value(
             agent_id,
             variable_id,
             key,
             data=value,
         )
 
-        return response.context_variable_value
+        return result.context_variable_value
 
     @staticmethod
     def read_variable(
@@ -658,7 +658,7 @@ class Actions:
         agent_id: str,
         variable_id: str,
         include_values: bool,
-    ) -> ContextVariableReadResponse:
+    ) -> ContextVariableReadResult:
         client = cast(ParlantClient, ctx.obj.client)
 
         return client.context_variables.retrieve(
@@ -693,14 +693,14 @@ class Actions:
         client = cast(ParlantClient, ctx.obj.client)
 
         if kind == "sdk":
-            response = client.services.create_or_update(
+            result = client.services.create_or_update(
                 name=name,
                 kind="sdk",
                 sdk=SdkServiceParams(url=url),
             )
 
         elif kind == "openapi":
-            response = client.services.create_or_update(
+            result = client.services.create_or_update(
                 name=name,
                 kind="openapi",
                 openapi=OpenApiServiceParams(url=url, source=source),
@@ -710,9 +710,9 @@ class Actions:
             raise ValueError(f"Unsupported kind: {kind}")
 
         return Service(
-            name=response.name,
-            kind=response.kind,
-            url=response.url,
+            name=result.name,
+            kind=result.kind,
+            url=result.url,
         )
 
     @staticmethod
@@ -726,8 +726,8 @@ class Actions:
     @staticmethod
     def list_services(ctx: click.Context) -> list[Service]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.services.list()
-        return response.services
+        result = client.services.list()
+        return result.services
 
     @staticmethod
     def view_service(
@@ -742,8 +742,8 @@ class Actions:
         ctx: click.Context,
     ) -> list[Customer]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.customers.list()
-        return response.customers
+        result = client.customers.list()
+        return result.customers
 
     @staticmethod
     def create_customer(
@@ -751,8 +751,8 @@ class Actions:
         name: str,
     ) -> Customer:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.customers.create(name=name, extra={})
-        return response.customer
+        result = client.customers.create(name=name, extra={})
+        return result.customer
 
     @staticmethod
     def view_customer(
@@ -760,8 +760,8 @@ class Actions:
         customer_id: str,
     ) -> Customer:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.customers.retrieve(customer_id=customer_id)
-        return response
+        result = client.customers.retrieve(customer_id=customer_id)
+        return result
 
     @staticmethod
     def add_customer_extra(
@@ -795,14 +795,14 @@ class Actions:
     @staticmethod
     def list_tags(ctx: click.Context) -> list[Tag]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.tags.list()
-        return response.tags
+        result = client.tags.list()
+        return result.tags
 
     @staticmethod
     def create_tag(ctx: click.Context, name: str) -> Tag:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.tags.create(name=name)
-        return response.tag
+        result = client.tags.create(name=name)
+        return result.tag
 
     @staticmethod
     def view_tag(ctx: click.Context, tag_id: str) -> Tag:
@@ -1699,21 +1699,21 @@ class Interface:
         try:
             variable = Actions.view_variable(ctx, agent_id, name)
 
-            read_variable_response = Actions.read_variable(
+            read_variable_result = Actions.read_variable(
                 ctx,
                 agent_id,
                 variable.id,
                 include_values=True,
             )
 
-            Interface._render_variable(read_variable_response.context_variable)
+            Interface._render_variable(read_variable_result.context_variable)
 
-            if not read_variable_response.key_value_pairs:
+            if not read_variable_result.key_value_pairs:
                 rich.print("No values are available")
                 return
 
             pairs: dict[str, ContextVariableValue] = {}
-            for k, v in read_variable_response.key_value_pairs.items():
+            for k, v in read_variable_result.key_value_pairs.items():
                 if v:
                     pairs[k] = v
 

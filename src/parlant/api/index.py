@@ -159,11 +159,11 @@ class EvaluationCreationParamsDTO(DefaultBaseModel):
     payloads: Sequence[PayloadDTO]
 
 
-class EvaluationCreationResponse(DefaultBaseModel):
+class EvaluationCreationResult(DefaultBaseModel):
     evaluation_id: EvaluationId
 
 
-class EvaluationReadResponse(DefaultBaseModel):
+class EvaluationReadResult(DefaultBaseModel):
     evaluation_id: EvaluationId
     status: EvaluationStatusDTO
     progress: float
@@ -185,7 +185,7 @@ def create_router(
         operation_id="create_evaluation",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_evaluation(params: EvaluationCreationParamsDTO) -> EvaluationCreationResponse:
+    async def create_evaluation(params: EvaluationCreationParamsDTO) -> EvaluationCreationResult:
         try:
             agent = await agent_store.read_agent(agent_id=params.agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
@@ -201,17 +201,17 @@ def create_router(
                 detail=str(exc),
             )
 
-        return EvaluationCreationResponse(evaluation_id=evaluation_id)
+        return EvaluationCreationResult(evaluation_id=evaluation_id)
 
     @router.get(
         "/evaluations/{evaluation_id}",
         operation_id="read_evaluation",
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_evaluation(evaluation_id: EvaluationId) -> EvaluationReadResponse:
+    async def read_evaluation(evaluation_id: EvaluationId) -> EvaluationReadResult:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
 
-        return EvaluationReadResponse(
+        return EvaluationReadResult(
             evaluation_id=evaluation.id,
             status=_evaluation_status_to_dto(evaluation.status),
             progress=evaluation.progress,

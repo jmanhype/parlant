@@ -23,11 +23,11 @@ class AgentCreationParamsDTO(DefaultBaseModel):
     max_engine_iterations: Optional[int] = None
 
 
-class AgentCreationResponse(DefaultBaseModel):
+class AgentCreationResult(DefaultBaseModel):
     agent: AgentDTO
 
 
-class AgentListResponse(DefaultBaseModel):
+class AgentListResult(DefaultBaseModel):
     agents: list[AgentDTO]
 
 
@@ -49,14 +49,14 @@ def create_router(
     )
     async def create_agent(
         params: AgentCreationParamsDTO,
-    ) -> AgentCreationResponse:
+    ) -> AgentCreationResult:
         agent = await agent_store.create_agent(
             name=params and params.name or "Unnamed Agent",
             description=params and params.description or None,
             max_engine_iterations=params and params.max_engine_iterations or None,
         )
 
-        return AgentCreationResponse(
+        return AgentCreationResult(
             agent=AgentDTO(
                 id=agent.id,
                 name=agent.name,
@@ -71,10 +71,10 @@ def create_router(
         operation_id="list_agents",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_agents() -> AgentListResponse:
+    async def list_agents() -> AgentListResult:
         agents = await agent_store.list_agents()
 
-        return AgentListResponse(
+        return AgentListResult(
             agents=[
                 AgentDTO(
                     id=a.id,

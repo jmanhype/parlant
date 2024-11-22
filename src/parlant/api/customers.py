@@ -25,11 +25,11 @@ class CustomerDTO(DefaultBaseModel):
     tags: Sequence[TagId]
 
 
-class CreateCustomerResponse(DefaultBaseModel):
+class CreateCustomerResult(DefaultBaseModel):
     customer: CustomerDTO
 
 
-class ListCustomersResponse(DefaultBaseModel):
+class ListCustomersResult(DefaultBaseModel):
     customers: list[CustomerDTO]
 
 
@@ -60,13 +60,13 @@ def create_router(
         operation_id="create_customer",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_customer(request: CreateCustomerRequest) -> CreateCustomerResponse:
+    async def create_customer(request: CreateCustomerRequest) -> CreateCustomerResult:
         customer = await customer_store.create_customer(
             name=request.name,
             extra=request.extra if request.extra else {},
         )
 
-        return CreateCustomerResponse(
+        return CreateCustomerResult(
             customer=CustomerDTO(
                 id=customer.id,
                 creation_utc=customer.creation_utc,
@@ -97,10 +97,10 @@ def create_router(
         operation_id="list_customers",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_customers() -> ListCustomersResponse:
+    async def list_customers() -> ListCustomersResult:
         customers = await customer_store.list_customers()
 
-        return ListCustomersResponse(
+        return ListCustomersResult(
             customers=[
                 CustomerDTO(
                     id=customer.id,

@@ -41,13 +41,13 @@ class ServiceUpdateParamsDTO(DefaultBaseModel):
     openapi: Optional[OpenAPIServiceParamsDTO] = None
 
 
-class ServiceUpdateResponse(DefaultBaseModel):
+class ServiceUpdateResult(DefaultBaseModel):
     name: str
     kind: ToolServiceKindDTO
     url: str
 
 
-class ServiceDeletionResponse(DefaultBaseModel):
+class ServiceDeletionResult(DefaultBaseModel):
     name: str
 
 
@@ -75,7 +75,7 @@ class ServiceDTO(DefaultBaseModel):
     tools: Optional[list[ToolDTO]] = None
 
 
-class ServiceListResponse(DefaultBaseModel):
+class ServiceListResult(DefaultBaseModel):
     services: list[ServiceDTO]
 
 
@@ -136,7 +136,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="update_service",
         **apigen_config(group_name=API_GROUP, method_name="create_or_update"),
     )
-    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceUpdateResponse:
+    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceUpdateResult:
         if params.kind == ToolServiceKindDTO.SDK:
             if not params.sdk:
                 raise HTTPException(
@@ -184,7 +184,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
             source=source,
         )
 
-        return ServiceUpdateResponse(
+        return ServiceUpdateResult(
             name=name,
             kind=_get_service_kind(service),
             url=_get_service_url(service),
@@ -195,18 +195,18 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="delete_service",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_service(name: str) -> ServiceDeletionResponse:
+    async def delete_service(name: str) -> ServiceDeletionResult:
         await service_registry.delete_service(name)
 
-        return ServiceDeletionResponse(name=name)
+        return ServiceDeletionResult(name=name)
 
     @router.get(
         "/",
         operation_id="list_services",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_services() -> ServiceListResponse:
-        return ServiceListResponse(
+    async def list_services() -> ServiceListResult:
+        return ServiceListResult(
             services=[
                 ServiceDTO(
                     name=name,
