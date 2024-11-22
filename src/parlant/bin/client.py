@@ -9,10 +9,10 @@ from datetime import datetime
 import os
 import requests
 import rich
+from rich.progress import Progress, BarColumn, TimeElapsedColumn, TaskProgressColumn
 from rich import box
 from rich.table import Table
 from rich.text import Text
-from tqdm import tqdm
 import sys
 from textwrap import wrap
 import time
@@ -318,27 +318,27 @@ class Actions:
         )
         evaluation_id = result.evaluation_id
 
-        with tqdm(
-            total=100,
-            desc="Evaluating added guideline impact",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
-        ) as progress_bar:
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            TaskProgressColumn(style="bold blue"),
+            "{task.completed}/{task.total}",
+            TimeElapsedColumn(),
+        ) as progress:
+            progress_task = progress.add_task("Evaluating added guideline impact\n", total=100)
             while True:
                 time.sleep(0.5)
                 evaluation_result = client.evaluations.retrieve(evaluation_id)
 
                 if evaluation_result.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_result.progress)
-                    progress_bar.refresh()
-
+                    progress.update(progress_task, completed=int(evaluation_result.progress))
                     continue
 
                 if evaluation_result.status == "completed":
+                    progress.update(progress_task, completed=100)
+
                     invoice = evaluation_result.invoices[0]
                     if invoice.approved:
-                        progress_bar.n = 100
-                        progress_bar.refresh()
-
                         assert invoice.data
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
@@ -400,27 +400,27 @@ class Actions:
         )
         evaluation_id = result.evaluation_id
 
-        with tqdm(
-            total=100,
-            desc="Evaluating added guideline impact",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
-        ) as progress_bar:
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            TaskProgressColumn(style="bold blue"),
+            "{task.completed}/{task.total}",
+            TimeElapsedColumn(),
+        ) as progress:
+            progress_task = progress.add_task("Evaluating added guideline impact\n", total=100)
+
             while True:
                 time.sleep(0.5)
                 evaluation_result = client.evaluations.retrieve(evaluation_id)
 
                 if evaluation_result.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_result.progress)
-                    progress_bar.refresh()
-
+                    progress.update(progress_task, completed=int(evaluation_result.progress))
                     continue
 
                 if evaluation_result.status == "completed":
+                    progress.update(progress_task, completed=100)
                     invoice = evaluation_result.invoices[0]
                     if invoice.approved:
-                        progress_bar.n = 100
-                        progress_bar.refresh()
-
                         assert invoice.data
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
