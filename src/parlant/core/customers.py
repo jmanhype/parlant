@@ -176,6 +176,15 @@ class CustomerDocumentStore(CustomerStore):
         self,
         customer_id: CustomerId,
     ) -> Customer:
+        if customer_id == CustomerStore.GUEST_USER_ID:
+            return Customer(
+                id=CustomerStore.GUEST_USER_ID,
+                name="guest",
+                creation_utc=datetime.now(timezone.utc),
+                extra={},
+                tags=[],
+            )
+
         customer_document = await self._customers_collection.find_one(
             filters={"id": {"$eq": customer_id}}
         )
@@ -211,8 +220,7 @@ class CustomerDocumentStore(CustomerStore):
         self,
     ) -> Sequence[Customer]:
         return [
-            await self._deserialize_customer(e)
-            for e in await self._customers_collection.find({"id": {"$ne": "guest"}})
+            await self._deserialize_customer(e) for e in await self._customers_collection.find({})
         ]
 
     @override
