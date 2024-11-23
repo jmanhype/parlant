@@ -109,8 +109,6 @@ async def container() -> AsyncIterator[Container]:
     container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
     container[TagStore] = Singleton(TagDocumentStore)
     container[CustomerStore] = Singleton(CustomerDocumentStore)
-    await container[CustomerStore].create_guest_customer()
-
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
