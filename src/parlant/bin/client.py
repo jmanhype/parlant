@@ -6,7 +6,6 @@ import click.shell_completion
 import click_completion  # type: ignore
 from dataclasses import dataclass
 from datetime import datetime
-import os
 import requests
 import rich
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, TaskProgressColumn
@@ -14,10 +13,8 @@ from rich import box
 from rich.table import Table
 from rich.text import Text
 import sys
-from textwrap import wrap
 import time
 from typing import Any, Optional, cast
-from urllib.parse import urljoin
 
 from parlant.client import ParlantClient
 from parlant.client.types import (
@@ -1099,103 +1096,6 @@ class Interface:
         Interface._write_success(f"Added event (id={event.id})")
 
     @staticmethod
-    def chat(
-        ctx: click.Context,
-        session_id: str,
-    ) -> None:
-        def print_message(message_event: dict[str, Any]) -> None:
-            role = {"customer": "Customer", "ai_agent": "Agent"}[message_event["source"]]
-            prefix = Text(
-                f"{role}:".ljust(6),
-                style="bold " + {"Customer": "blue", "Agent": "green"}[role],
-            )
-
-            message = wrap(
-                message_event["data"]["message"],
-                subsequent_indent=" " * (1 + len(prefix)),
-            )
-
-            rich.print(prefix, os.linesep.join(message))
-
-        rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
-
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
-            params={"wait": False},
-        )
-
-        raise_for_status_with_detail(response)
-
-        message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
-
-        max_number_of_history_events_to_show = 5
-
-        if len(message_events) > max_number_of_history_events_to_show:
-            rich.print(
-                f"(skipping {len(message_events) - max_number_of_history_events_to_show} "
-                "event(s) in history...)\n",
-                flush=True,
-            )
-            message_events = message_events[-max_number_of_history_events_to_show:]
-
-        for m in message_events:
-            print_message(m)
-
-        last_known_offset = message_events[-1]["offset"] if message_events else -1
-
-        while True:
-            try:
-                rich.print(Text("Customer:  ", style="bold blue"), end="")
-                new_message = input()
-
-                response = requests.post(
-                    urljoin(
-                        ctx.obj.server_address,
-                        f"/sessions/{session_id}/events",
-                    ),
-                    json={
-                        "kind": "message",
-                        "source": "customer",
-                        "data": new_message,
-                    },
-                )
-
-                raise_for_status_with_detail(response)
-
-                new_event = response.json()["event"]
-
-                last_known_offset = new_event["offset"]
-
-                while True:
-                    response = requests.get(
-                        urljoin(
-                            ctx.obj.server_address,
-                            f"/sessions/{session_id}/events"
-                            f"?min_offset={1 + last_known_offset}&wait=true",
-                        )
-                    )
-
-                    if response.status_code == 504:
-                        # Timeout occurred; try again
-                        continue
-
-                    events = response.json()["events"]
-                    if not events:
-                        continue
-
-                    last_known_offset = events[-1]["offset"]
-
-                    message_events = [e for e in events if e["kind"] == "message"]
-                    if message_events:
-                        for m in message_events:
-                            print_message(m)
-                        break
-
-            except KeyboardInterrupt:
-                rich.print("\nQuitting...", flush=True)
-                return
-
-    @staticmethod
     def create_term(
         ctx: click.Context,
         agent_id: str,
@@ -2086,20 +1986,6 @@ async def async_main() -> None:
 
         Interface.update_agent(ctx, agent_id, name, description, max_engine_iterations)
 
-    @agent.command(
-        "chat",
-        help="Jump into a chat with an agent\n\n"
-        "If AGENT_ID is omitted, the default agent will be selected.",
-    )
-    @click.argument("agent_id", required=False)
-    @click.pass_context
-    def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-        session = Actions.create_session(ctx, agent_id=agent_id)
-
-        Interface.chat(ctx, session.id)
-
     @cli.group(help="Manage sessions")
     def session() -> None:
         pass
@@ -2189,23 +2075,6 @@ async def async_main() -> None:
     @click.pass_context
     def session_post(ctx: click.Context, session_id: str, message: str) -> None:
         Interface.create_event(ctx, session_id, message)
-
-    @session.command("chat", help="Enter chat mode within the session")
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
-    @click.argument("session_id")
-    @click.pass_context
-    def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-
-        Interface.chat(ctx, session_id)
 
     @cli.group(help="Manage an agent's glossary")
     def glossary() -> None:
