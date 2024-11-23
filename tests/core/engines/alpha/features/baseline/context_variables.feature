@@ -3,8 +3,8 @@ Feature: Context Variables
         Given the alpha engine
 
     Scenario: The agent does not acknowledge values from other customers when the customer lacks a value
-        Given an end customer with the name "Keyleth"
-        And an end customer with the name "Vax"
+        Given a customer with the name "Keyleth"
+        And a customer with the name "Vax"
         And a context variable "Power" set to "Stealth" to "Vax"
         And an empty session with "Keyleth"
         And a customer message, "Do you know my power?"
@@ -13,8 +13,8 @@ Feature: Context Variables
         And the message contains no acknowledgment of the customer’s power
 
     Scenario: The agent selects variables that are specifically attached to the relevant customer
-        Given an end customer with the name "Keyleth"
-        And an end customer with the name "Vax"
+        Given a customer with the name "Keyleth"
+        And a customer with the name "Vax"
         And a context variable "Power" set to "Magic" to "Keyleth"
         And a context variable "Power" set to "Stealth" to "Vax"
         And an empty session with "Vax"
