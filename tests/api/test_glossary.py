@@ -213,10 +213,7 @@ def test_that_a_term_can_be_deleted(
         .json()["term"]
     )
 
-    delete_response = (
-        client.delete(f"/agents/{agent_id}/terms/{term['id']}").raise_for_status().json()
-    )
-    assert delete_response["term_id"] == term["id"]
+    client.delete(f"/agents/{agent_id}/terms/{term['id']}").raise_for_status()
 
     read_response = client.get(f"/agents/{agent_id}/terms/{name}")
     assert read_response.status_code == status.HTTP_404_NOT_FOUND

@@ -150,6 +150,8 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_custoemr(customer_id: CustomerId) -> None:
-        await customer_store.delete_customer(customer_id)
+        await customer_store.read_customer(customer_id=customer_id)
+
+        await customer_store.delete_customer(customer_id=customer_id)
 
     return router

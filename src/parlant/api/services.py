@@ -193,6 +193,8 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_service(name: str) -> None:
+        await service_registry.read_tool_service(name)
+
         await service_registry.delete_service(name)
 
     @router.get(

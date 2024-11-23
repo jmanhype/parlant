@@ -383,6 +383,8 @@ def create_router(
     async def delete_session(
         session_id: SessionId,
     ) -> None:
+        await session_store.read_session(session_id)
+
         await session_store.delete_session(session_id)
 
     @router.delete(

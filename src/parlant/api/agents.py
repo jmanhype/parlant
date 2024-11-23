@@ -142,6 +142,8 @@ def create_router(
     async def delete_agent(
         agent_id: AgentId,
     ) -> None:
+        await agent_store.read_agent(agent_id=agent_id)
+
         await agent_store.delete_agent(agent_id=agent_id)
 
     return router

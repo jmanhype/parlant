@@ -318,8 +318,7 @@ def test_that_a_session_can_be_deleted(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    delete_response = client.delete(f"/sessions/{session_id}").raise_for_status().json()
-    assert delete_response["session_id"] == session_id
+    client.delete(f"/sessions/{session_id}").raise_for_status().json()
 
     get_response = client.get(f"/sessions/{session_id}")
     assert get_response.status_code == status.HTTP_404_NOT_FOUND

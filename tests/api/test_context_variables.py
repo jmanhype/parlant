@@ -107,13 +107,9 @@ async def test_that_context_variable_can_be_deleted(
         tool_id=tool_id,
     )
 
-    respone = (
-        client.delete(f"/agents/{agent_id}/context-variables/{variable_to_delete.id}")
-        .raise_for_status()
-        .json()
-    )
-
-    assert respone["context_variable_id"] == variable_to_delete.id
+    client.delete(
+        f"/agents/{agent_id}/context-variables/{variable_to_delete.id}"
+    ).raise_for_status()
 
     response = client.get(f"/agents/{agent_id}/context-variables/{variable_to_delete.id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -321,9 +317,7 @@ async def test_that_context_variable_value_can_be_deleted(
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 
-    response = client.delete(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
-    deleted_value_id = response.json()["context_variable_value_id"]
-    assert deleted_value_id == variable_value["id"]
+    client.delete(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
 
     response = client.get(f"/agents/{agent_id}/context-variables/{variable.id}/{key}")
     assert response.status_code == status.HTTP_404_NOT_FOUND

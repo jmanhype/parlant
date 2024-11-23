@@ -91,6 +91,8 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_tag(tag_id: TagId) -> None:
+        await tag_store.read_tag(tag_id=tag_id)
+
         await tag_store.delete_tag(tag_id=tag_id)
 
     return router

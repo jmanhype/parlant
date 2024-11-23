@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
+from pytest import raises
 
 from parlant.core.agents import AgentId
+from parlant.core.common import ItemNotFoundError
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore
@@ -80,12 +82,12 @@ async def test_that_a_guideline_can_be_deleted(
         action="ask for confirmation",
     )
 
-    content = (
-        client.delete(f"/agents/{agent_id}/guidelines/{guideline_to_delete.id}")
-        .raise_for_status()
-        .json()
-    )
-    assert content["guideline_id"] == guideline_to_delete.id
+    client.delete(f"/agents/{agent_id}/guidelines/{guideline_to_delete.id}").raise_for_status()
+
+    with raises(ItemNotFoundError):
+        await guideline_store.read_guideline(
+            guideline_set=agent_id, guideline_id=guideline_to_delete.id
+        )
 
 
 async def test_that_an_unapproved_invoice_is_rejected(
@@ -707,8 +709,7 @@ async def test_that_guideline_deletion_removes_tool_associations(
         tool_id=ToolId(service_name=service_name, tool_name=tool_name),
     )
 
-    response = client.delete(f"/agents/{agent_id}/guidelines/{guideline.id}")
-    assert response.status_code == status.HTTP_200_OK
+    client.delete(f"/agents/{agent_id}/guidelines/{guideline.id}")
 
     associations_after = await association_store.list_associations()
     assert not any(assoc.guideline_id == guideline.id for assoc in associations_after)

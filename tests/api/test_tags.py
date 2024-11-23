@@ -104,11 +104,7 @@ async def test_that_a_tag_can_be_deleted(
 
     tag = await tag_store.create_tag(name)
 
-    delete_response = client.delete(f"/tags/{tag.id}")
-    assert delete_response.status_code == status.HTTP_200_OK
-
-    data = delete_response.json()
-    assert data["tag_id"] == tag.id
+    client.delete(f"/tags/{tag.id}")
 
     with raises(ItemNotFoundError):
         _ = await tag_store.read_tag(tag.id)

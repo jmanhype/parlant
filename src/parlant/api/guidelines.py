@@ -532,6 +532,11 @@ def create_router(
         agent_id: AgentId,
         guideline_id: GuidelineId,
     ) -> None:
+        await guideline_store.read_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
         await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,

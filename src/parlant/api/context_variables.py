@@ -182,10 +182,9 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
     ) -> None:
-        await context_variable_store.delete_variable(
-            variable_set=agent_id,
-            id=variable_id,
-        )
+        await context_variable_store.read_variable(variable_set=agent_id, id=variable_id)
+
+        await context_variable_store.delete_variable(variable_set=agent_id, id=variable_id)
 
     @router.get(
         "/{agent_id}/context-variables",
@@ -342,9 +341,15 @@ def create_router(
         variable_id: ContextVariableId,
         key: str,
     ) -> None:
-        _ = await context_variable_store.read_variable(
+        await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
+        )
+
+        await context_variable_store.read_value(
+            variable_set=agent_id,
+            variable_id=variable_id,
+            key=key,
         )
 
         await context_variable_store.delete_value(

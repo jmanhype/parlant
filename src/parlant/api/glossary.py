@@ -144,6 +144,8 @@ def create_router(
         agent_id: str,
         term_id: TermId,
     ) -> None:
+        await glossary_store.read_term(term_set=agent_id, term_id=term_id)
+
         await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
 
     return router
