@@ -251,7 +251,7 @@ Examine the following examples to understand your expected behavior:
 
 Example 1: A reply that took critique in a few revisions to get right: ###
 {{
-    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    “last_message_of_customer”: “<customer’s last message in the interaction>”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
@@ -320,7 +320,7 @@ Example 1: A reply that took critique in a few revisions to get right: ###
 
 Example 2: A reply where one guideline was prioritized over another: ###
 {{
-    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    “last_message_of_customer”: “<customer’s last message in the interaction>”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{
@@ -361,7 +361,7 @@ Example 2: A reply where one guideline was prioritized over another: ###
 
 Example 3: Non-Adherence Due to Missing Data: ###
 {{
-    “last_message_of_customer”: “<customercustomer’s last message in the interaction>”,
+    “last_message_of_customer”: “<customer’s last message in the interaction>”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
     "evaluations_for_each_of_the_provided_guidelines": [
         {{

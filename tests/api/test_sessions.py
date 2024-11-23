@@ -667,18 +667,13 @@ async def test_that_deleted_events_no_longer_show_up_in_the_listing(
 
     event_to_delete = initial_events[1]
 
-    deleted_event_ids = (
-        client.delete(f"/sessions/{session_id}/events?min_offset={event_to_delete['offset']}")
-        .raise_for_status()
-        .json()["event_ids"]
-    )
+    client.delete(
+        f"/sessions/{session_id}/events?min_offset={event_to_delete['offset']}"
+    ).raise_for_status()
 
     remaining_events = (
         client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
     )
-
-    for d_id, e in zip(deleted_event_ids, initial_events[1:]):
-        assert d_id == e["id"]
 
     assert len(remaining_events) == 1
     assert event_is_according_to_params(remaining_events[0], session_events[0])
@@ -881,11 +876,17 @@ async def test_that_an_agent_message_can_be_regenerated(
         correlation_id=event["correlation_id"],
     )
 
-    inspection_data = (
-        client.get(f"/sessions/{session_id}/events/{event['id']}")
+    events = (
+        client.get(
+            f"/sessions/{session_id}/events",
+            params={
+                "kinds": "message",
+                "correlation_id": event["correlation_id"],
+            },
+        )
         .raise_for_status()
-        .json()["trace"]
+        .json()["events"]
     )
 
-    message_generation_inspections = inspection_data["message_generations"]
-    assert "cold" in message_generation_inspections[0]["messages"][0].lower()
+    assert len(events) == 1
+    assert "cold" in events[0]["data"]["message"].lower()
