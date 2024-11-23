@@ -23,15 +23,14 @@ def test_that_a_term_can_be_created(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    assert "term" in response.json()
-    data = response.json()["term"]
+    data = response.json()
 
     assert data["name"] == name
     assert data["description"] == description
     assert data["synonyms"] == synonyms
 
 
-def test_that_a_term_can_be_createdwithout_synonyms(
+def test_that_a_term_can_be_created_without_synonyms(
     client: TestClient,
     agent_id: AgentId,
 ) -> None:
@@ -49,7 +48,7 @@ def test_that_a_term_can_be_createdwithout_synonyms(
     assert response.status_code == status.HTTP_201_CREATED
 
     assert "term" in response.json()
-    data = response.json()["term"]
+    data = response.json()
 
     assert data["name"] == name
     assert data["description"] == description
@@ -73,7 +72,7 @@ def test_that_a_term_can_be_read(
         },
     )
     assert create_response.status_code == status.HTTP_201_CREATED
-    term = create_response.json()["term"]
+    term = create_response.json()
 
     read_response = client.get(f"agents/{agent_id}/terms/{term['id']}")
     assert read_response.status_code == status.HTTP_200_OK
@@ -99,7 +98,7 @@ def test_that_a_term_can_be_read_without_synonyms(
         },
     )
     assert create_response.status_code == status.HTTP_201_CREATED
-    term = create_response.json()["term"]
+    term = create_response.json()
 
     read_response = client.get(f"/agents/{agent_id}/terms/{term['id']}")
     assert read_response.status_code == status.HTTP_200_OK
@@ -130,13 +129,9 @@ def test_that_terms_can_be_listed_for_an_agent(
         )
         assert response.status_code == status.HTTP_201_CREATED
 
-    list_response = client.get(f"/agents/{agent_id}/terms/")
-    assert list_response.status_code == status.HTTP_200_OK
+    returned_terms = client.get(f"/agents/{agent_id}/terms/").raise_for_status().json()
 
-    data = list_response.json()
-    returned_terms = data["terms"]
     assert len(returned_terms) == 2
-
     assert {
         "name": returned_terms[1]["name"],
         "description": returned_terms[1]["description"],
@@ -168,7 +163,7 @@ def test_that_a_term_can_be_updated(
             },
         )
         .raise_for_status()
-        .json()["term"]
+        .json()
     )
 
     updated_name = "updated guideline"
@@ -210,7 +205,7 @@ def test_that_a_term_can_be_deleted(
             },
         )
         .raise_for_status()
-        .json()["term"]
+        .json()
     )
 
     client.delete(f"/agents/{agent_id}/terms/{term['id']}").raise_for_status()

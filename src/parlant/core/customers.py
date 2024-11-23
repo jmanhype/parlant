@@ -27,7 +27,7 @@ class CustomerUpdateParams(TypedDict, total=False):
 
 
 class CustomerStore(ABC):
-    GUEST_USER_ID = CustomerId("guest")
+    GUEST_ID = CustomerId("guest")
 
     @abstractmethod
     async def create_customer(
@@ -176,9 +176,9 @@ class CustomerDocumentStore(CustomerStore):
         self,
         customer_id: CustomerId,
     ) -> Customer:
-        if customer_id == CustomerStore.GUEST_USER_ID:
+        if customer_id == CustomerStore.GUEST_ID:
             return Customer(
-                id=CustomerStore.GUEST_USER_ID,
+                id=CustomerStore.GUEST_ID,
                 name="guest",
                 creation_utc=datetime.now(timezone.utc),
                 extra={},

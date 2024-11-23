@@ -45,7 +45,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
     assert evaluation.id == evaluation_id
@@ -100,7 +100,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -136,7 +136,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -190,7 +190,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -245,7 +245,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -315,7 +315,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -475,7 +475,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     first_evaluation_id = (
         client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -483,7 +483,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     second_evaluation_id = (
         client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
@@ -530,7 +530,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -588,7 +588,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -661,7 +661,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -721,7 +721,7 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -773,7 +773,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -831,7 +831,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -887,7 +887,7 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -954,7 +954,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
             json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -1038,7 +1038,7 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
             json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(

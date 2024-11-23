@@ -18,7 +18,7 @@ def test_that_an_agent_can_be_created_without_description(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    agent = response.json()["agent"]
+    agent = response.json()
 
     assert agent["name"] == "test-agent"
     assert agent["description"] is None
@@ -34,7 +34,7 @@ def test_that_an_agent_can_be_created_with_description(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    agent = response.json()["agent"]
+    agent = response.json()
 
     assert agent["name"] == "test-agent"
     assert agent["description"] == "You are a test agent"
@@ -50,7 +50,7 @@ def test_that_an_agent_can_be_created_without_max_engine_iterations(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    agent = response.json()["agent"]
+    agent = response.json()
 
     assert agent["name"] == "test-agent"
     assert agent["max_engine_iterations"] == 3
@@ -66,7 +66,7 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    agent = response.json()["agent"]
+    agent = response.json()
 
     assert agent["name"] == "test-agent"
     assert agent["max_engine_iterations"] == 1
@@ -102,8 +102,8 @@ async def test_that_agent_can_be_updated(
 
     data = response.json()
 
-    assert len(data["agents"]) == 1
-    agent_dto = data["agents"][0]
+    assert len(data) == 1
+    agent_dto = data[0]
 
     assert agent_dto["name"] == patch_request.get("name", "test-agent")
     assert agent_dto["description"] == patch_request.get("description")

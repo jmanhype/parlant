@@ -177,14 +177,11 @@ async def test_that_openapi_service_is_created_and_deleted(
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-async def test_that_services_are_listed_correctly(
+async def test_that_services_can_be_listed(
     client: TestClient,
     async_client: httpx.AsyncClient,
 ) -> None:
-    response = client.get("/services/")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["services"] == []
+    assert client.get("/services/").raise_for_status().json() == []
 
     _ = (
         client.put(
@@ -214,10 +211,7 @@ async def test_that_services_are_listed_correctly(
         )
         response.raise_for_status()
 
-    response = client.get("/services/")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    services = data["services"]
+    services = client.get("/services/").raise_for_status().json()
 
     assert len(services) == 2
 

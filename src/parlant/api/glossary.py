@@ -22,14 +22,6 @@ class TermDTO(DefaultBaseModel):
     synonyms: list[str] = []
 
 
-class CreateTermResult(DefaultBaseModel):
-    term: TermDTO
-
-
-class TermListResult(DefaultBaseModel):
-    terms: list[TermDTO]
-
-
 class TermUpdateParamsDTO(DefaultBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -47,7 +39,7 @@ def create_router(
         operation_id="create_term",
         **apigen_config(group_name=API_GROUP, method_name="create_term"),
     )
-    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> CreateTermResult:
+    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> TermDTO:
         term = await glossary_store.create_term(
             term_set=agent_id,
             name=params.name,
@@ -55,13 +47,11 @@ def create_router(
             synonyms=params.synonyms,
         )
 
-        return CreateTermResult(
-            term=TermDTO(
-                id=term.id,
-                name=term.name,
-                description=term.description,
-                synonyms=term.synonyms,
-            )
+        return TermDTO(
+            id=term.id,
+            name=term.name,
+            description=term.description,
+            synonyms=term.synonyms,
         )
 
     @router.get(
@@ -84,20 +74,18 @@ def create_router(
         operation_id="list_terms",
         **apigen_config(group_name=API_GROUP, method_name="list_terms"),
     )
-    async def list_terms(agent_id: AgentId) -> TermListResult:
+    async def list_terms(agent_id: AgentId) -> list[TermDTO]:
         terms = await glossary_store.list_terms(term_set=agent_id)
 
-        return TermListResult(
-            terms=[
-                TermDTO(
-                    id=term.id,
-                    name=term.name,
-                    description=term.description,
-                    synonyms=term.synonyms,
-                )
-                for term in terms
-            ]
-        )
+        return [
+            TermDTO(
+                id=term.id,
+                name=term.name,
+                description=term.description,
+                synonyms=term.synonyms,
+            )
+            for term in terms
+        ]
 
     @router.patch(
         "/{agent_id}/terms/{term_id}",

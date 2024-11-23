@@ -123,7 +123,7 @@ def test_that_a_session_can_be_created_without_a_title(
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()["session"]
+    data = response.json()
 
     assert "id" in data
     assert "agent_id" in data
@@ -147,7 +147,7 @@ def test_that_a_session_can_be_created_with_title(
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()["session"]
+    data = response.json()
 
     assert "id" in data
     assert "agent_id" in data
@@ -170,7 +170,7 @@ def test_that_a_created_session_has_meaningful_creation_utc(
             },
         )
         .raise_for_status()
-        .json()["session"]
+        .json()
     )
 
     assert "creation_utc" in data
@@ -188,7 +188,13 @@ async def test_that_a_session_can_be_read(
     client: TestClient,
     container: Container,
 ) -> None:
-    pass
+    agent = await create_agent(container, "test-agent")
+    session = await create_session(container, agent_id=agent.id, title="first-session")
+
+    data = client.get(f"/sessions/{session.id}").raise_for_status().json()
+
+    assert data["id"] == session.id
+    assert data["agent_id"] == session.agent_id
 
 
 async def test_that_sessions_can_be_listed(
@@ -208,9 +214,9 @@ async def test_that_sessions_can_be_listed(
 
     data = client.get("/sessions").raise_for_status().json()
 
-    assert len(data["sessions"]) == len(sessions)
+    assert len(data) == len(sessions)
 
-    for listed_session, created_session in zip(data["sessions"], sessions):
+    for listed_session, created_session in zip(data, sessions):
         assert listed_session["title"] == created_session.title
         assert listed_session["customer_id"] == created_session.customer_id
 
@@ -235,9 +241,9 @@ async def test_that_sessions_can_be_listed_by_agent_id(
 
         data = client.get("/sessions", params={"agent_id": agent.id}).raise_for_status().json()
 
-        assert len(data["sessions"]) == len(agent_sessions)
+        assert len(data) == len(agent_sessions)
 
-        for listed_session, created_session in zip(data["sessions"], agent_sessions):
+        for listed_session, created_session in zip(data, agent_sessions):
             assert listed_session["agent_id"] == agent.id
             assert listed_session["title"] == created_session.title
             assert listed_session["customer_id"] == created_session.customer_id
@@ -256,8 +262,8 @@ async def test_that_sessions_can_be_listed_by_customer_id(
 
     data = client.get("/sessions", params={"customer_id": "Joe"}).raise_for_status().json()
 
-    assert len(data["sessions"]) == 1
-    assert data["sessions"][0]["customer_id"] == "Joe"
+    assert len(data) == 1
+    assert data[0]["customer_id"] == "Joe"
 
 
 def test_that_a_session_is_created_with_zeroed_out_consumption_offsets(
@@ -328,12 +334,12 @@ async def test_that_a_deleted_session_is_removed_from_the_session_list(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    sessions = client.get("/sessions").raise_for_status().json()["sessions"]
+    sessions = client.get("/sessions").raise_for_status().json()
     assert any(session["id"] == str(session_id) for session in sessions)
 
     client.delete(f"/sessions/{session_id}").raise_for_status()
 
-    sessions_after_deletion = client.get("/sessions").raise_for_status().json()["sessions"]
+    sessions_after_deletion = client.get("/sessions").raise_for_status().json()
     assert not any(session["session_id"] == str(session_id) for session in sessions_after_deletion)
 
 
@@ -391,7 +397,7 @@ async def test_that_deleting_a_session_also_deletes_its_events(
 
     await populate_session_id(container, session_id, session_events)
 
-    events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
+    events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()
     assert len(events) == len(session_events)
 
     client.delete(f"/sessions/{session_id}").raise_for_status()
@@ -422,10 +428,9 @@ async def test_that_events_can_be_listed(
 
     data = client.get(f"/sessions/{session_id}/events").raise_for_status().json()
 
-    assert data["session_id"] == session_id
-    assert len(data["events"]) == len(session_events)
+    assert len(data) == len(session_events)
 
-    for i, (event_params, listed_event) in enumerate(zip(session_events, data["events"])):
+    for i, (event_params, listed_event) in enumerate(zip(session_events, data)):
         assert listed_event["offset"] == i
         assert event_is_according_to_params(event=listed_event, params=event_params)
 
@@ -455,7 +460,7 @@ async def test_that_events_can_be_filtered_by_offset(
             },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     for event_params, listed_event in zip(session_events, retrieved_events):
@@ -478,7 +483,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    event = response.json()["event"]
+    event = response.json()
 
     assert event["data"].get("flagged")
     assert "harassment" in event["data"].get("tags")
@@ -499,7 +504,7 @@ def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    event = response.json()["event"]
+    event = response.json()
 
     events_in_session = (
         client.get(
@@ -511,7 +516,7 @@ def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
             },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     assert events_in_session
@@ -532,7 +537,7 @@ async def test_that_posting_a_manual_agent_message_does_not_cause_any_new_events
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    event = response.json()["event"]
+    event = response.json()
 
     await asyncio.sleep(10)
 
@@ -541,11 +546,11 @@ async def test_that_posting_a_manual_agent_message_does_not_cause_any_new_events
             f"/sessions/{session_id}/events",
             params={
                 "min_offset": event["offset"] + 1,
-                "wait": False,
+                "wait_for_data": 0,
             },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     assert not events_in_session
@@ -572,7 +577,7 @@ async def test_that_status_updates_can_be_retrieved_separately_after_posting_a_m
             },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     assert events
@@ -601,8 +606,8 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
     client.get(
         f"/sessions/{session_id}/events",
         params={
-            "min_offset": posted_event["event"]["offset"] + 1,
-            "wait": False,
+            "min_offset": posted_event["offset"] + 1,
+            "wait_for_data": 0,
         },
     )
 
@@ -635,10 +640,13 @@ async def test_that_tool_events_are_correlated_with_message_events(
     events_in_session = (
         client.get(
             f"/sessions/{session_id}/events",
-            params={"min_offset": event.offset + 1},
+            params={
+                "min_offset": event.offset + 1,
+                "kinds": "message",
+            },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     message_event = next(e for e in events_in_session if e["kind"] == "message")
@@ -660,9 +668,7 @@ async def test_that_deleted_events_no_longer_show_up_in_the_listing(
     ]
     await populate_session_id(container, session_id, session_events)
 
-    initial_events = (
-        client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
-    )
+    initial_events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()
     assert len(initial_events) == len(session_events)
 
     event_to_delete = initial_events[1]
@@ -671,9 +677,7 @@ async def test_that_deleted_events_no_longer_show_up_in_the_listing(
         f"/sessions/{session_id}/events?min_offset={event_to_delete['offset']}"
     ).raise_for_status()
 
-    remaining_events = (
-        client.get(f"/sessions/{session_id}/events").raise_for_status().json()["events"]
-    )
+    remaining_events = client.get(f"/sessions/{session_id}/events").raise_for_status().json()
 
     assert len(remaining_events) == 1
     assert event_is_according_to_params(remaining_events[0], session_events[0])
@@ -867,7 +871,7 @@ async def test_that_an_agent_message_can_be_regenerated(
             },
         )
         .raise_for_status()
-        .json()["event"]
+        .json()
     )
 
     await container[SessionListener].wait_for_events(
@@ -885,7 +889,7 @@ async def test_that_an_agent_message_can_be_regenerated(
             },
         )
         .raise_for_status()
-        .json()["events"]
+        .json()
     )
 
     assert len(events) == 1

@@ -26,7 +26,7 @@ from parlant.client.types import (
     ContextVariableReadResult,
     ContextVariableValue,
     Event,
-    EventReadResult,
+    EventInspectionResult,
     FreshnessRules,
     Guideline,
     GuidelineConnection,
@@ -46,8 +46,8 @@ from parlant.client.types import (
     Term,
     ToolId,
     Customer,
-    ExtraUpdate,
-    TagsUpdate,
+    CustomerExtraUpdateParams,
+    TagsUpdateParams,
     Tag,
     ConsumptionOffsetsUpdateParams,
 )
@@ -90,13 +90,11 @@ class Actions:
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.agents.create(
+        return client.agents.create(
             name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
-
-        return result.agent
 
     @staticmethod
     def delete_agent(
@@ -118,8 +116,7 @@ class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[Agent]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.agents.list()
-        return result.agents
+        return client.agents.list()
 
     @staticmethod
     def update_agent(
@@ -147,13 +144,12 @@ class Actions:
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.sessions.create(
+        return client.sessions.create(
             agent_id=agent_id,
             customer_id=customer_id,
             allow_greeting=False,
             title=title,
         )
-        return result.session
 
     @staticmethod
     def update_session(
@@ -184,22 +180,20 @@ class Actions:
     ) -> list[Session]:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.sessions.list(
+        return client.sessions.list(
             agent_id=agent_id,
             customer_id=customer_id,
         )
-
-        return result.sessions
 
     @staticmethod
     def inspect_event(
         ctx: click.Context,
         session_id: str,
         event_id: str,
-    ) -> EventReadResult:
+    ) -> EventInspectionResult:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.sessions.retrieve_event(
+        return client.sessions.inspect_event(
             session_id=session_id,
             event_id=event_id,
         )
@@ -210,8 +204,7 @@ class Actions:
         session_id: str,
     ) -> list[Event]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.sessions.list_events(session_id=session_id)
-        return result.events
+        return client.sessions.list_events(session_id=session_id)
 
     @staticmethod
     def create_event(
@@ -221,14 +214,12 @@ class Actions:
     ) -> Event:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.sessions.create_event(
+        return client.sessions.create_event(
             session_id,
             kind="message",
             source="customer",
             data=message,
         )
-
-        return result.event
 
     @staticmethod
     def create_term(
@@ -240,14 +231,12 @@ class Actions:
     ) -> Term:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.glossary.create_term(
+        return client.glossary.create_term(
             agent_id,
             name=name,
             description=description,
             synonyms=synonyms,
         )
-
-        return result.term
 
     @staticmethod
     def update_term(
@@ -283,8 +272,7 @@ class Actions:
         agent_id: str,
     ) -> list[Term]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.glossary.list_terms(agent_id)
-        return result.terms
+        return client.glossary.list_terms(agent_id)
 
     @staticmethod
     def create_guideline(
@@ -298,7 +286,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.evaluations.create(
+        evaluation = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -316,7 +304,6 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = result.evaluation_id
 
         with Progress(
             "[progress.description]{task.description}",
@@ -325,10 +312,10 @@ class Actions:
             "{task.completed}/{task.total}",
             TimeElapsedColumn(),
         ) as progress:
-            progress_task = progress.add_task("Evaluating added guideline impact\n", total=100)
+            progress_task = progress.add_task("Evaluating guideline impact\n", total=100)
             while True:
                 time.sleep(0.5)
-                evaluation_result = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation.id)
 
                 if evaluation_result.status in ["pending", "running"]:
                     progress.update(progress_task, completed=int(evaluation_result.progress))
@@ -380,7 +367,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.evaluations.create(
+        evaluation = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -398,7 +385,6 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = result.evaluation_id
 
         with Progress(
             "[progress.description]{task.description}",
@@ -407,11 +393,11 @@ class Actions:
             "{task.completed}/{task.total}",
             TimeElapsedColumn(),
         ) as progress:
-            progress_task = progress.add_task("Evaluating added guideline impact\n", total=100)
+            progress_task = progress.add_task("Evaluating guideline impact\n", total=100)
 
             while True:
                 time.sleep(0.5)
-                evaluation_result = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation.id)
 
                 if evaluation_result.status in ["pending", "running"]:
                     progress.update(progress_task, completed=int(evaluation_result.progress))
@@ -474,8 +460,7 @@ class Actions:
         agent_id: str,
     ) -> list[Guideline]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.guidelines.list(agent_id)
-        return result.guidelines
+        return client.guidelines.list(agent_id)
 
     @staticmethod
     def create_entailment(
@@ -598,21 +583,19 @@ class Actions:
         agent_id: str,
     ) -> list[ContextVariable]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.context_variables.list(agent_id)
-        return result.context_variables
+        return client.context_variables.list(agent_id)
 
     @staticmethod
     def view_variable(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        variable_id: str,
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.context_variables.list(agent_id)
-        variables = result.context_variables
+        variables = client.context_variables.list(agent_id)
 
-        if variable := next((v for v in variables if v.name == name), None):
+        if variable := next((v for v in variables if v.id == variable_id), None):
             return variable
 
         raise ValueError("A variable called '{name}' was not found under agent '{agent_id}'")
@@ -626,13 +609,11 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.context_variables.create(
+        return client.context_variables.create(
             agent_id,
             name=name,
             description=description,
         )
-
-        return result.context_variable
 
     @staticmethod
     def delete_variable(
@@ -653,14 +634,12 @@ class Actions:
     ) -> ContextVariableValue:
         client = cast(ParlantClient, ctx.obj.client)
 
-        result = client.context_variables.set_value(
+        return client.context_variables.set_value(
             agent_id,
             variable_id,
             key,
             data=value,
         )
-
-        return result.context_variable_value
 
     @staticmethod
     def read_variable(
@@ -736,8 +715,7 @@ class Actions:
     @staticmethod
     def list_services(ctx: click.Context) -> list[Service]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.services.list()
-        return result.services
+        return client.services.list()
 
     @staticmethod
     def view_service(
@@ -752,8 +730,7 @@ class Actions:
         ctx: click.Context,
     ) -> list[Customer]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.customers.list()
-        return result.customers
+        return client.customers.list()
 
     @staticmethod
     def create_customer(
@@ -761,8 +738,7 @@ class Actions:
         name: str,
     ) -> Customer:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.customers.create(name=name, extra={})
-        return result.customer
+        return client.customers.create(name=name, extra={})
 
     @staticmethod
     def delete_customer(
@@ -789,7 +765,9 @@ class Actions:
         value: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, extra=ExtraUpdate(add={key: value}))
+        client.customers.update(
+            customer_id=customer_id, extra=CustomerExtraUpdateParams(add={key: value})
+        )
 
     @staticmethod
     def remove_customer_extra(
@@ -798,29 +776,29 @@ class Actions:
         key: str,
     ) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, extra=ExtraUpdate(remove=[key]))
+        client.customers.update(
+            customer_id=customer_id, extra=CustomerExtraUpdateParams(remove=[key])
+        )
 
     @staticmethod
     def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, tags=TagsUpdate(add=[tag_id]))
+        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(add=[tag_id]))
 
     @staticmethod
     def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, tags=TagsUpdate(remove=[tag_id]))
+        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(remove=[tag_id]))
 
     @staticmethod
     def list_tags(ctx: click.Context) -> list[Tag]:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.tags.list()
-        return result.tags
+        return client.tags.list()
 
     @staticmethod
     def create_tag(ctx: click.Context, name: str) -> Tag:
         client = cast(ParlantClient, ctx.obj.client)
-        result = client.tags.create(name=name)
-        return result.tag
+        return client.tags.create(name=name)
 
     @staticmethod
     def view_tag(ctx: click.Context, tag_id: str) -> Tag:
@@ -1668,12 +1646,10 @@ class Interface:
         Interface._render_variable(variable)
 
     @staticmethod
-    def delete_variable(ctx: click.Context, agent_id: str, name: str) -> None:
+    def delete_variable(ctx: click.Context, agent_id: str, variable_id: str) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, name)
-            Actions.delete_variable(ctx, agent_id, variable.id)
-
-            Interface._write_success(f"Removed variable '{name}'")
+            Actions.delete_variable(ctx, agent_id, variable_id)
+            Interface._write_success(f"Removed variable '{variable_id}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1698,12 +1674,12 @@ class Interface:
     def set_variable_value(
         ctx: click.Context,
         agent_id: str,
-        variable_name: str,
+        variable_id: str,
         key: str,
         value: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
@@ -1722,10 +1698,10 @@ class Interface:
     def view_variable(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        variable_id: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
 
             read_variable_result = Actions.read_variable(
                 ctx,
@@ -1755,11 +1731,11 @@ class Interface:
     def view_variable_value(
         ctx: click.Context,
         agent_id: str,
-        variable_name: str,
+        variable_id: str,
         key: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
             value = Actions.read_variable_value(ctx, agent_id, variable.id, key)
 
             Interface._render_variable_key_value_pairs({key: value})
@@ -2725,12 +2701,12 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.pass_context
     def variable_remove(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2738,7 +2714,7 @@ async def async_main() -> None:
         Interface.delete_variable(
             ctx=ctx,
             agent_id=agent_id,
-            name=name,
+            variable_id=variable_id,
         )
 
     @variable.command("set", help="Set a variable's value")
@@ -2750,14 +2726,14 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.argument("key", type=str)
     @click.argument("value", type=str)
     @click.pass_context
     def variable_set(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
         key: str,
         value: str,
     ) -> None:
@@ -2767,7 +2743,7 @@ async def async_main() -> None:
         Interface.set_variable_value(
             ctx=ctx,
             agent_id=agent_id,
-            variable_name=name,
+            variable_id=variable_id,
             key=key,
             value=value,
         )
@@ -2781,13 +2757,13 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.argument("key", type=str, required=False)
     @click.pass_context
     def variable_get(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
         key: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
@@ -2797,14 +2773,14 @@ async def async_main() -> None:
             Interface.view_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_name=name,
+                variable_id=variable_id,
                 key=key,
             )
         else:
             Interface.view_variable(
                 ctx=ctx,
                 agent_id=agent_id,
-                name=name,
+                variable_id=variable_id,
             )
 
     @cli.group(help="Manage services")

@@ -23,14 +23,6 @@ class AgentCreationParamsDTO(DefaultBaseModel):
     max_engine_iterations: Optional[int] = None
 
 
-class AgentCreationResult(DefaultBaseModel):
-    agent: AgentDTO
-
-
-class AgentListResult(DefaultBaseModel):
-    agents: list[AgentDTO]
-
-
 class AgentUpdateParamsDTO(DefaultBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -50,21 +42,19 @@ def create_router(
     )
     async def create_agent(
         params: AgentCreationParamsDTO,
-    ) -> AgentCreationResult:
+    ) -> AgentDTO:
         agent = await agent_store.create_agent(
             name=params and params.name or "Unnamed Agent",
             description=params and params.description or None,
             max_engine_iterations=params and params.max_engine_iterations or None,
         )
 
-        return AgentCreationResult(
-            agent=AgentDTO(
-                id=agent.id,
-                name=agent.name,
-                description=agent.description,
-                creation_utc=agent.creation_utc,
-                max_engine_iterations=agent.max_engine_iterations,
-            )
+        return AgentDTO(
+            id=agent.id,
+            name=agent.name,
+            description=agent.description,
+            creation_utc=agent.creation_utc,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     @router.get(
@@ -72,21 +62,19 @@ def create_router(
         operation_id="list_agents",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_agents() -> AgentListResult:
+    async def list_agents() -> list[AgentDTO]:
         agents = await agent_store.list_agents()
 
-        return AgentListResult(
-            agents=[
-                AgentDTO(
-                    id=a.id,
-                    name=a.name,
-                    description=a.description,
-                    creation_utc=a.creation_utc,
-                    max_engine_iterations=a.max_engine_iterations,
-                )
-                for a in agents
-            ]
-        )
+        return [
+            AgentDTO(
+                id=a.id,
+                name=a.name,
+                description=a.description,
+                creation_utc=a.creation_utc,
+                max_engine_iterations=a.max_engine_iterations,
+            )
+            for a in agents
+        ]
 
     @router.get(
         "/{agent_id}",

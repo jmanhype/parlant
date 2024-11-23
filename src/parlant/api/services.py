@@ -41,12 +41,6 @@ class ServiceUpdateParamsDTO(DefaultBaseModel):
     openapi: Optional[OpenAPIServiceParamsDTO] = None
 
 
-class ServiceUpdateResult(DefaultBaseModel):
-    name: str
-    kind: ToolServiceKindDTO
-    url: str
-
-
 EnumValueTypeDTO: TypeAlias = Union[str, int]
 
 
@@ -69,10 +63,6 @@ class ServiceDTO(DefaultBaseModel):
     kind: ToolServiceKindDTO
     url: str
     tools: Optional[list[ToolDTO]] = None
-
-
-class ServiceListResult(DefaultBaseModel):
-    services: list[ServiceDTO]
 
 
 def _tool_parameters_to_dto(parameters: ToolParameter) -> ToolParameterDTO:
@@ -132,7 +122,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="update_service",
         **apigen_config(group_name=API_GROUP, method_name="create_or_update"),
     )
-    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceUpdateResult:
+    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceDTO:
         if params.kind == ToolServiceKindDTO.SDK:
             if not params.sdk:
                 raise HTTPException(
@@ -180,7 +170,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
             source=source,
         )
 
-        return ServiceUpdateResult(
+        return ServiceDTO(
             name=name,
             kind=_get_service_kind(service),
             url=_get_service_url(service),
@@ -202,18 +192,16 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="list_services",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_services() -> ServiceListResult:
-        return ServiceListResult(
-            services=[
-                ServiceDTO(
-                    name=name,
-                    kind=_get_service_kind(service),
-                    url=_get_service_url(service),
-                )
-                for name, service in await service_registry.list_tool_services()
-                if type(service) in [OpenAPIClient, PluginClient]
-            ]
-        )
+    async def list_services() -> list[ServiceDTO]:
+        return [
+            ServiceDTO(
+                name=name,
+                kind=_get_service_kind(service),
+                url=_get_service_url(service),
+            )
+            for name, service in await service_registry.list_tool_services()
+            if type(service) in [OpenAPIClient, PluginClient]
+        ]
 
     @router.get(
         "/{name}",

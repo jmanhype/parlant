@@ -22,10 +22,8 @@ def test_that_a_customer_can_be_created(client: TestClient) -> None:
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
 
-    assert "customer" in data
-    customer = data["customer"]
+    customer = response.json()
     assert customer["name"] == name
     assert customer["extra"] == extra
     assert "id" in customer
@@ -60,10 +58,10 @@ async def test_that_customers_can_be_listed(
     customer_store = container[CustomerStore]
 
     first_name = "YamChuk"
-    first_extra = {"address": "Hertzeliya"}
+    first_extra = {"address": "Hawaii"}
 
     second_name = "DorZo"
-    second_extra = {"address": "Givatayim"}
+    second_extra = {"address": "Alaska"}
 
     await customer_store.create_customer(
         name=first_name,
@@ -75,20 +73,16 @@ async def test_that_customers_can_be_listed(
         extra=second_extra,
     )
 
-    list_response = client.get("/customers")
-    assert list_response.status_code == status.HTTP_200_OK
-    data = list_response.json()
-    assert "customers" in data
-    customers_list = data["customers"]
-    assert len(customers_list) == 2
+    customers = client.get("/customers").raise_for_status().json()
 
+    assert len(customers) == 2
     assert any(
         first_name == customer["name"] and first_extra == customer["extra"]
-        for customer in customers_list
+        for customer in customers
     )
     assert any(
         second_name == customer["name"] and second_extra == customer["extra"]
-        for customer in customers_list
+        for customer in customers
     )
 
 

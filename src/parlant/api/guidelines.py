@@ -81,18 +81,6 @@ class GuidelineCreationResult(DefaultBaseModel):
     items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
 
 
-class DeleteGuidelineRequest(DefaultBaseModel):
-    guideline_id: GuidelineId
-
-
-class GuidelineDeletionResult(DefaultBaseModel):
-    guideline_id: GuidelineId
-
-
-class GuidelineListResult(DefaultBaseModel):
-    guidelines: list[GuidelineDTO]
-
-
 class GuidelineConnectionAdditionDTO(DefaultBaseModel):
     source: GuidelineId
     target: GuidelineId
@@ -373,19 +361,17 @@ def create_router(
         operation_id="list_guidelines",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_guidelines(agent_id: AgentId) -> GuidelineListResult:
+    async def list_guidelines(agent_id: AgentId) -> list[GuidelineDTO]:
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
 
-        return GuidelineListResult(
-            guidelines=[
-                GuidelineDTO(
-                    id=guideline.id,
-                    condition=guideline.content.condition,
-                    action=guideline.content.action,
-                )
-                for guideline in guidelines
-            ]
-        )
+        return [
+            GuidelineDTO(
+                id=guideline.id,
+                condition=guideline.content.condition,
+                action=guideline.content.action,
+            )
+            for guideline in guidelines
+        ]
 
     @router.patch(
         "/{agent_id}/guidelines/{guideline_id}",

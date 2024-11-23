@@ -14,19 +14,11 @@ class TagDTO(DefaultBaseModel):
     name: str
 
 
-class CreateTagRequest(DefaultBaseModel):
+class TagCreationParamsDTO(DefaultBaseModel):
     name: str
 
 
-class CreateTagResult(DefaultBaseModel):
-    tag: TagDTO
-
-
-class ListTagsResult(DefaultBaseModel):
-    tags: list[TagDTO]
-
-
-class UpdateTagRequest(DefaultBaseModel):
+class TagUpdateParamsDTO(DefaultBaseModel):
     name: str
 
 
@@ -41,12 +33,12 @@ def create_router(
         operation_id="create_tag",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_tag(request: CreateTagRequest) -> CreateTagResult:
+    async def create_tag(request: TagCreationParamsDTO) -> TagDTO:
         tag = await tag_store.create_tag(
             name=request.name,
         )
 
-        return CreateTagResult(tag=TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name))
+        return TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
 
     @router.get(
         "/{tag_id}",
@@ -63,12 +55,10 @@ def create_router(
         operation_id="list_tags",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_tags() -> ListTagsResult:
+    async def list_tags() -> list[TagDTO]:
         tags = await tag_store.list_tags()
 
-        return ListTagsResult(
-            tags=[TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name) for tag in tags]
-        )
+        return [TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name) for tag in tags]
 
     @router.patch(
         "/{tag_id}",
@@ -76,7 +66,7 @@ def create_router(
         status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_tag(tag_id: TagId, request: UpdateTagRequest) -> None:
+    async def update_tag(tag_id: TagId, request: TagUpdateParamsDTO) -> None:
         params: TagUpdateParams = {"name": request.name}
 
         await tag_store.update_tag(
@@ -91,8 +81,6 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_tag(tag_id: TagId) -> None:
-        await tag_store.read_tag(tag_id=tag_id)
-
         await tag_store.delete_tag(tag_id=tag_id)
 
     return router

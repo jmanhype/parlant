@@ -125,7 +125,7 @@ class API:
         async with httpx.AsyncClient(
             base_url=SERVER_ADDRESS,
             follow_redirects=True,
-            timeout=httpx.Timeout(30),
+            timeout=httpx.Timeout(60),
         ) as client:
             yield client
 
@@ -133,7 +133,7 @@ class API:
     async def get_first_agent_id() -> str:
         async with API.make_client() as client:
             response = await client.get("/agents")
-            agent = response.raise_for_status().json()["agents"][0]
+            agent = response.raise_for_status().json()[0]
             return str(agent["id"])
 
     @staticmethod
@@ -152,13 +152,13 @@ class API:
                 },
             )
 
-            return response.raise_for_status().json()["agent"]
+            return response.raise_for_status().json()
 
     @staticmethod
     async def list_agents() -> Any:
         async with API.make_client() as client:
             response = await client.get("/agents")
-            return response.raise_for_status().json()["agents"]
+            return response.raise_for_status().json()
 
     @staticmethod
     async def create_session(
@@ -177,7 +177,7 @@ class API:
                 },
             )
 
-            return response.raise_for_status().json()["session"]
+            return response.raise_for_status().json()
 
     @staticmethod
     async def read_session(session_id: str) -> Any:
@@ -208,11 +208,11 @@ class API:
                     json={
                         "kind": "message",
                         "source": "customer",
-                        "content": message,
+                        "data": message,
                     },
                 )
                 customer_message_response.raise_for_status()
-                customer_message_offset = int(customer_message_response.json()["event"]["offset"])
+                customer_message_offset = int(customer_message_response.json()["offset"])
 
                 last_known_offset = customer_message_offset
 
@@ -226,11 +226,10 @@ class API:
                         params={
                             "min_offset": last_known_offset + 1,
                             "kinds": "message",
-                            "wait": True,
                         },
                     )
                     response.raise_for_status()
-                    events = response.json()["events"]
+                    events = response.json()
 
                     if message_events := [e for e in events if e["kind"] == "message"]:
                         replies.append(message_events[0])
@@ -262,7 +261,7 @@ class API:
                 },
             )
 
-            return response.raise_for_status().json()["term"]
+            return response.raise_for_status().json()
 
     @staticmethod
     async def list_terms(agent_id: str) -> Any:
@@ -272,7 +271,7 @@ class API:
             )
             response.raise_for_status()
 
-            return response.json()["terms"]
+            return response.json()
 
     @staticmethod
     async def read_term(
@@ -296,7 +295,7 @@ class API:
 
             response.raise_for_status()
 
-            return response.json()["guidelines"]
+            return response.json()
 
     @staticmethod
     async def read_guideline(
@@ -399,7 +398,7 @@ class API:
 
             response.raise_for_status()
 
-            return response.json()["context_variable"]
+            return response.json()
 
     @staticmethod
     async def list_context_variables(agent_id: str) -> Any:
@@ -408,7 +407,7 @@ class API:
 
             response.raise_for_status()
 
-            return response.json()["context_variables"]
+            return response.json()
 
     @staticmethod
     async def update_context_variable_value(
@@ -485,7 +484,7 @@ class API:
             respone = await client.get("/customers")
             respone.raise_for_status()
 
-        return respone.json()["customers"]
+        return respone.json()
 
     @staticmethod
     async def read_customer(id: str) -> Any:
@@ -1543,7 +1542,7 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
             assert guideline["tool_associations"] == []
 
 
-async def test_that_a_variables_can_be_listed(
+async def test_that_variables_can_be_listed(
     context: ContextOfTest,
 ) -> None:
     name1 = "VAR1"
@@ -1625,14 +1624,14 @@ async def test_that_a_variable_can_be_removed(
 
         agent_id = await API.get_first_agent_id()
 
-        _ = await API.create_context_variable(agent_id, name, description)
+        variable = await API.create_context_variable(agent_id, name, description)
 
         process = await run_cli(
             "variable",
             "remove",
             "--agent-id",
             agent_id,
-            name,
+            variable["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -1664,7 +1663,7 @@ async def test_that_a_variable_value_can_be_set_with_json(
             "set",
             "--agent-id",
             agent_id,
-            variable_name,
+            variable["id"],
             key,
             json.dumps(data),
             stdout=asyncio.subprocess.PIPE,
@@ -1698,7 +1697,7 @@ async def test_that_a_variable_value_can_be_set_with_string(
             "set",
             "--agent-id",
             agent_id,
-            variable_name,
+            variable["id"],
             key,
             data,
             stdout=asyncio.subprocess.PIPE,
@@ -1714,7 +1713,7 @@ async def test_that_a_variable_value_can_be_set_with_string(
         assert value["data"] == data
 
 
-async def test_that_a_variable_values_can_be_retrieved(
+async def test_that_a_variables_values_can_be_retrieved(
     context: ContextOfTest,
 ) -> None:
     variable_name = "test_variable_get"
@@ -1739,7 +1738,7 @@ async def test_that_a_variable_values_can_be_retrieved(
             "get",
             "--agent-id",
             agent_id,
-            variable_name,
+            variable["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -1798,16 +1797,16 @@ async def test_that_a_message_can_be_inspected(
             description="",
         )
 
-        customer_id = "john.s@peppery.co"
+        customer = await API.create_customer("John Smith")
 
         await API.update_context_variable_value(
             agent_id=agent_id,
             variable_id=variable["id"],
-            key=customer_id,
+            key=customer["id"],
             value="Johnny",
         )
 
-        session = await API.create_session(agent_id, customer_id)
+        session = await API.create_session(agent_id, customer["id"])
 
         reply_event = await API.get_agent_reply(session["id"], "Oh do I like bazoos")
 
@@ -1832,7 +1831,7 @@ async def test_that_a_message_can_be_inspected(
         assert term["name"] in output
         assert term["description"] in output
         assert variable["name"] in output
-        assert customer_id in output
+        assert customer["id"] in output
 
 
 async def test_that_an_openapi_service_can_be_added_via_file(
@@ -1873,7 +1872,7 @@ async def test_that_an_openapi_service_can_be_added_via_file(
                 async with API.make_client() as client:
                     response = await client.get("/services/")
                     response.raise_for_status()
-                    services = response.json()["services"]
+                    services = response.json()
                     assert any(
                         s["name"] == service_name and s["kind"] == service_kind for s in services
                     )
@@ -1909,7 +1908,7 @@ async def test_that_an_openapi_service_can_be_added_via_url(
             async with API.make_client() as client:
                 response = await client.get("/services/")
                 response.raise_for_status()
-                services = response.json()["services"]
+                services = response.json()
                 assert any(
                     s["name"] == service_name and s["kind"] == service_kind for s in services
                 )
@@ -1949,7 +1948,7 @@ async def test_that_a_sdk_service_can_be_added(
             async with API.make_client() as client:
                 response = await client.get("/services/")
                 response.raise_for_status()
-                services = response.json()["services"]
+                services = response.json()
                 assert any(
                     s["name"] == service_name and s["kind"] == service_kind for s in services
                 )
@@ -1981,7 +1980,7 @@ async def test_that_a_service_can_be_removed(
         async with API.make_client() as client:
             response = await client.get("/services/")
             response.raise_for_status()
-            services = response.json()["services"]
+            services = response.json()
             assert not any(s["name"] == service_name for s in services)
 
 

@@ -12,7 +12,7 @@ import time
 DIR_SCRIPT_ROOT = Path(__file__).parent
 DIR_FERN = DIR_SCRIPT_ROOT / "fern"
 DIR_SDKS = DIR_SCRIPT_ROOT / "sdks"
-DIR_PROJECTS_WORKSPACE = DIR_SCRIPT_ROOT / ".." / ".."
+DIR_PROJECTS_WORKSPACE = DIR_SCRIPT_ROOT / ".." / ".." / "parlant-sdks"
 
 
 PATHDICT_SDK_REPO_TARGETS = {

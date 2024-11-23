@@ -9,44 +9,36 @@ from parlant.core.tags import TagId
 
 API_GROUP = "customers"
 
-CustomerExtraType: TypeAlias = Mapping[str, str]
+CustomerExtra: TypeAlias = Mapping[str, str]
 
 
-class CreateCustomerRequest(DefaultBaseModel):
+class CustomerCreationParamsDTO(DefaultBaseModel):
     name: str
-    extra: Optional[CustomerExtraType]
+    extra: Optional[CustomerExtra]
 
 
 class CustomerDTO(DefaultBaseModel):
     id: CustomerId
     creation_utc: datetime
     name: str
-    extra: CustomerExtraType
+    extra: CustomerExtra
     tags: Sequence[TagId]
 
 
-class CreateCustomerResult(DefaultBaseModel):
-    customer: CustomerDTO
-
-
-class ListCustomersResult(DefaultBaseModel):
-    customers: list[CustomerDTO]
-
-
-class ExtraUpdateDTO(DefaultBaseModel):
-    add: Optional[CustomerExtraType] = None
+class CustomerExtraUpdateParamsDTO(DefaultBaseModel):
+    add: Optional[CustomerExtra] = None
     remove: Optional[Sequence[str]] = None
 
 
-class TagsUpdateDTO(DefaultBaseModel):
+class TagsUpdateParamsDTO(DefaultBaseModel):
     add: Optional[Sequence[TagId]] = None
     remove: Optional[Sequence[TagId]] = None
 
 
-class UpdateCustomerRequest(DefaultBaseModel):
+class CustomerUpdateParamsDTO(DefaultBaseModel):
     name: Optional[str] = None
-    extra: Optional[ExtraUpdateDTO] = None
-    tags: Optional[TagsUpdateDTO] = None
+    extra: Optional[CustomerExtraUpdateParamsDTO] = None
+    tags: Optional[TagsUpdateParamsDTO] = None
 
 
 def create_router(
@@ -60,20 +52,18 @@ def create_router(
         operation_id="create_customer",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_customer(request: CreateCustomerRequest) -> CreateCustomerResult:
+    async def create_customer(request: CustomerCreationParamsDTO) -> CustomerDTO:
         customer = await customer_store.create_customer(
             name=request.name,
             extra=request.extra if request.extra else {},
         )
 
-        return CreateCustomerResult(
-            customer=CustomerDTO(
-                id=customer.id,
-                creation_utc=customer.creation_utc,
-                name=customer.name,
-                extra=customer.extra,
-                tags=customer.tags,
-            )
+        return CustomerDTO(
+            id=customer.id,
+            creation_utc=customer.creation_utc,
+            name=customer.name,
+            extra=customer.extra,
+            tags=customer.tags,
         )
 
     @router.get(
@@ -97,21 +87,19 @@ def create_router(
         operation_id="list_customers",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_customers() -> ListCustomersResult:
+    async def list_customers() -> list[CustomerDTO]:
         customers = await customer_store.list_customers()
 
-        return ListCustomersResult(
-            customers=[
-                CustomerDTO(
-                    id=customer.id,
-                    creation_utc=customer.creation_utc,
-                    name=customer.name,
-                    extra=customer.extra,
-                    tags=customer.tags,
-                )
-                for customer in customers
-            ]
-        )
+        return [
+            CustomerDTO(
+                id=customer.id,
+                creation_utc=customer.creation_utc,
+                name=customer.name,
+                extra=customer.extra,
+                tags=customer.tags,
+            )
+            for customer in customers
+        ]
 
     @router.patch(
         "/{customer_id}",
@@ -119,7 +107,7 @@ def create_router(
         status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_customer(customer_id: CustomerId, request: UpdateCustomerRequest) -> None:
+    async def update_customer(customer_id: CustomerId, request: CustomerUpdateParamsDTO) -> None:
         if request.name:
             params: CustomerUpdateParams = {}
             params["name"] = request.name
@@ -149,9 +137,7 @@ def create_router(
         status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_custoemr(customer_id: CustomerId) -> None:
-        await customer_store.read_customer(customer_id=customer_id)
-
+    async def delete_customer(customer_id: CustomerId) -> None:
         await customer_store.delete_customer(customer_id=customer_id)
 
     return router

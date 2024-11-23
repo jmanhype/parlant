@@ -19,10 +19,8 @@ def test_that_a_tag_can_be_created(client: TestClient) -> None:
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
+    tag = response.json()
 
-    assert "tag" in data
-    tag = data["tag"]
     assert tag["name"] == name
     assert "id" in tag
     assert "creation_utc" in tag
@@ -59,16 +57,11 @@ async def test_that_tags_can_be_listed(
     _ = await tag_store.create_tag(first_name)
     _ = await tag_store.create_tag(second_name)
 
-    list_response = client.get("/tags")
-    assert list_response.status_code == status.HTTP_200_OK
+    tags = client.get("/tags").raise_for_status().json()
 
-    data = list_response.json()
-    assert "tags" in data
-    tag_list = data["tags"]
-
-    assert len(tag_list) == 2
-    assert any(first_name == tag["name"] for tag in tag_list)
-    assert any(second_name == tag["name"] for tag in tag_list)
+    assert len(tags) == 2
+    assert any(first_name == tag["name"] for tag in tags)
+    assert any(second_name == tag["name"] for tag in tags)
 
 
 async def test_that_a_tag_can_be_updated(

@@ -323,9 +323,7 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
         ],
     )
 
-    response_guidelines = (
-        client.get(f"/agents/{agent_id}/guidelines/").raise_for_status().json()["guidelines"]
-    )
+    response_guidelines = client.get(f"/agents/{agent_id}/guidelines/").raise_for_status().json()
 
     assert len(response_guidelines) == 2
     assert any(stored_guidelines[0].id == g["id"] for g in response_guidelines)

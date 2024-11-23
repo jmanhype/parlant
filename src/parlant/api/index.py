@@ -21,6 +21,7 @@ from parlant.api.common import (
 from parlant.core.common import DefaultBaseModel
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.evaluations import (
+    Evaluation,
     EvaluationId,
     EvaluationStatus,
     EvaluationStore,
@@ -159,12 +160,8 @@ class EvaluationCreationParamsDTO(DefaultBaseModel):
     payloads: Sequence[PayloadDTO]
 
 
-class EvaluationCreationResult(DefaultBaseModel):
-    evaluation_id: EvaluationId
-
-
-class EvaluationReadResult(DefaultBaseModel):
-    evaluation_id: EvaluationId
+class EvaluationDTO(DefaultBaseModel):
+    id: EvaluationId
     status: EvaluationStatusDTO
     progress: float
     creation_utc: datetime
@@ -185,7 +182,7 @@ def create_router(
         operation_id="create_evaluation",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_evaluation(params: EvaluationCreationParamsDTO) -> EvaluationCreationResult:
+    async def create_evaluation(params: EvaluationCreationParamsDTO) -> EvaluationDTO:
         try:
             agent = await agent_store.read_agent(agent_id=params.agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
@@ -201,18 +198,21 @@ def create_router(
                 detail=str(exc),
             )
 
-        return EvaluationCreationResult(evaluation_id=evaluation_id)
+        evaluation = await evaluation_store.read_evaluation(evaluation_id)
+        return _evaluation_to_dto(evaluation)
 
     @router.get(
         "/evaluations/{evaluation_id}",
         operation_id="read_evaluation",
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_evaluation(evaluation_id: EvaluationId) -> EvaluationReadResult:
+    async def read_evaluation(evaluation_id: EvaluationId) -> EvaluationDTO:
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
+        return _evaluation_to_dto(evaluation)
 
-        return EvaluationReadResult(
-            evaluation_id=evaluation.id,
+    def _evaluation_to_dto(evaluation: Evaluation) -> EvaluationDTO:
+        return EvaluationDTO(
+            id=evaluation.id,
             status=_evaluation_status_to_dto(evaluation.status),
             progress=evaluation.progress,
             creation_utc=evaluation.creation_utc,

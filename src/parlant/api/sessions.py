@@ -66,14 +66,10 @@ class SessionDTO(DefaultBaseModel):
     consumption_offsets: ConsumptionOffsetsDTO
 
 
-class CreateSessionRequest(DefaultBaseModel):
+class SessionCreationParamsDTO(DefaultBaseModel):
     agent_id: AgentId
     customer_id: Optional[CustomerId] = None
     title: Optional[str] = None
-
-
-class CreateSessionResult(DefaultBaseModel):
-    session: SessionDTO
 
 
 class EventCreationParamsDTO(DefaultBaseModel):
@@ -92,10 +88,6 @@ class EventDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class EventCreationResult(DefaultBaseModel):
-    event: EventDTO
-
-
 class ConsumptionOffsetsUpdateParamsDTO(DefaultBaseModel):
     client: Optional[int] = None
 
@@ -103,15 +95,6 @@ class ConsumptionOffsetsUpdateParamsDTO(DefaultBaseModel):
 class SessionUpdateParamsDTO(DefaultBaseModel):
     consumption_offsets: Optional[ConsumptionOffsetsUpdateParamsDTO] = None
     title: Optional[str] = None
-
-
-class EventListResult(DefaultBaseModel):
-    session_id: SessionId
-    events: list[EventDTO]
-
-
-class SessionListResult(DefaultBaseModel):
-    sessions: list[SessionDTO]
 
 
 class ToolResultDTO(DefaultBaseModel):
@@ -183,7 +166,7 @@ class EventTraceDTO(DefaultBaseModel):
     preparation_iterations: list[PreparationIterationDTO]
 
 
-class EventReadResult(DefaultBaseModel):
+class EventInspectionResult(DefaultBaseModel):
     session_id: SessionId
     event: EventDTO
     trace: Optional[EventTraceDTO]
@@ -300,29 +283,25 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_session(
-        request: CreateSessionRequest,
+        request: SessionCreationParamsDTO,
         allow_greeting: bool = Query(default=True),
-    ) -> CreateSessionResult:
+    ) -> SessionDTO:
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
         session = await application.create_customer_session(
-            customer_id=request.customer_id or CustomerStore.GUEST_USER_ID,
+            customer_id=request.customer_id or CustomerStore.GUEST_ID,
             agent_id=request.agent_id,
             title=request.title,
             allow_greeting=allow_greeting,
         )
 
-        return CreateSessionResult(
-            session=SessionDTO(
-                id=session.id,
-                agent_id=session.agent_id,
-                customer_id=session.customer_id,
-                creation_utc=session.creation_utc,
-                consumption_offsets=ConsumptionOffsetsDTO(
-                    client=session.consumption_offsets["client"]
-                ),
-                title=session.title,
-            )
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            customer_id=session.customer_id,
+            creation_utc=session.creation_utc,
+            consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
+            title=session.title,
         )
 
     @router.get(
@@ -352,27 +331,25 @@ def create_router(
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
         customer_id: Optional[CustomerId] = None,
-    ) -> SessionListResult:
+    ) -> list[SessionDTO]:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
             customer_id=customer_id,
         )
 
-        return SessionListResult(
-            sessions=[
-                SessionDTO(
-                    id=s.id,
-                    agent_id=s.agent_id,
-                    creation_utc=s.creation_utc,
-                    title=s.title,
-                    customer_id=s.customer_id,
-                    consumption_offsets=ConsumptionOffsetsDTO(
-                        client=s.consumption_offsets["client"],
-                    ),
-                )
-                for s in sessions
-            ]
-        )
+        return [
+            SessionDTO(
+                id=s.id,
+                agent_id=s.agent_id,
+                creation_utc=s.creation_utc,
+                title=s.title,
+                customer_id=s.customer_id,
+                consumption_offsets=ConsumptionOffsetsDTO(
+                    client=s.consumption_offsets["client"],
+                ),
+            )
+            for s in sessions
+        ]
 
     @router.delete(
         "/{session_id}",
@@ -447,7 +424,7 @@ def create_router(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResult:
+    ) -> EventDTO:
         if params.kind != EventKindDTO.MESSAGE:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -470,7 +447,7 @@ def create_router(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResult:
+    ) -> EventDTO:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -512,12 +489,12 @@ def create_router(
             trigger_processing=True,
         )
 
-        return EventCreationResult(event=event_to_dto(event))
+        return event_to_dto(event)
 
     async def _add_agent_message(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResult:
+    ) -> EventDTO:
         if params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -544,12 +521,12 @@ def create_router(
             )
         )
 
-        return EventCreationResult(event=event_to_dto(event))
+        return event_to_dto(event)
 
     async def _add_human_agent_message_on_behalf_of_ai_agent(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResult:
+    ) -> EventDTO:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -575,16 +552,14 @@ def create_router(
             trigger_processing=False,
         )
 
-        return EventCreationResult(
-            event=EventDTO(
-                id=event.id,
-                source=EventSourceDTO(event.source),
-                kind=event.kind,
-                offset=event.offset,
-                creation_utc=event.creation_utc,
-                correlation_id=event.correlation_id,
-                data=cast(JSONSerializableDTO, event.data),
-            )
+        return EventDTO(
+            id=event.id,
+            source=EventSourceDTO(event.source),
+            kind=event.kind,
+            offset=event.offset,
+            creation_utc=event.creation_utc,
+            correlation_id=event.correlation_id,
+            data=cast(JSONSerializableDTO, event.data),
         )
 
     @router.get(
@@ -600,18 +575,18 @@ def create_router(
             default=None,
             description="If set, only list events of the specified kinds (separated by commas)",
         ),
-        wait: bool = True,
-    ) -> EventListResult:
+        wait_for_data: int = 60,
+    ) -> list[EventDTO]:
         kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
         assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
 
-        if wait:
+        if wait_for_data > 0:
             if not await session_listener.wait_for_events(
                 session_id=session_id,
                 min_offset=min_offset or 0,
                 kinds=kind_list,
                 correlation_id=correlation_id,
-                timeout=Timeout(60),
+                timeout=Timeout(wait_for_data),
             ):
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -626,21 +601,18 @@ def create_router(
             min_offset=min_offset,
         )
 
-        return EventListResult(
-            session_id=session_id,
-            events=[
-                EventDTO(
-                    id=e.id,
-                    source=EventSourceDTO(e.source),
-                    kind=e.kind,
-                    offset=e.offset,
-                    creation_utc=e.creation_utc,
-                    correlation_id=e.correlation_id,
-                    data=cast(JSONSerializableDTO, e.data),
-                )
-                for e in events
-            ],
-        )
+        return [
+            EventDTO(
+                id=e.id,
+                source=EventSourceDTO(e.source),
+                kind=e.kind,
+                offset=e.offset,
+                creation_utc=e.creation_utc,
+                correlation_id=e.correlation_id,
+                data=cast(JSONSerializableDTO, e.data),
+            )
+            for e in events
+        ]
 
     @router.delete(
         "/{session_id}/events",
@@ -663,13 +635,13 @@ def create_router(
 
     @router.get(
         "/{session_id}/events/{event_id}",
-        operation_id="read_event",
-        **apigen_config(group_name=API_GROUP, method_name="retrieve_event"),
+        operation_id="inspect_event",
+        **apigen_config(group_name=API_GROUP, method_name="inspect_event"),
     )
-    async def read_event(
+    async def inspect_event(
         session_id: SessionId,
         event_id: EventId,
-    ) -> EventReadResult:
+    ) -> EventInspectionResult:
         event = await session_store.read_event(session_id, event_id)
 
         trace: Optional[EventTraceDTO] = None
@@ -691,7 +663,7 @@ def create_router(
                 ],
             )
 
-        return EventReadResult(
+        return EventInspectionResult(
             session_id=session_id,
             event=event_to_dto(event),
             trace=trace,

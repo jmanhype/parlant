@@ -54,7 +54,7 @@ async def test_that_context_variable_can_be_created(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    context_variable = response.json()["context_variable"]
+    context_variable = response.json()
     assert context_variable["name"] == "test_variable"
     assert context_variable["description"] == "test of context variable"
     assert context_variable["freshness_rules"] == freshness_rules
@@ -146,11 +146,7 @@ async def test_that_context_variables_can_be_listed(
         freshness_rules=None,
     )
 
-    variables = (
-        client.get(f"/agents/{agent_id}/context-variables/")
-        .raise_for_status()
-        .json()["context_variables"]
-    )
+    variables = client.get(f"/agents/{agent_id}/context-variables/").raise_for_status().json()
     assert len(variables) == 2
 
     assert first_variable.id == variables[0]["id"]
@@ -227,7 +223,7 @@ async def test_that_context_variable_value_can_be_set(
             json={"data": data},
         )
         .raise_for_status()
-        .json()["context_variable_value"]
+        .json()
     )
 
     assert value["data"] == data
@@ -239,7 +235,7 @@ async def test_that_context_variable_value_can_be_set(
             json={"data": data},
         )
         .raise_for_status()
-        .json()["context_variable_value"]
+        .json()
     )
 
     assert value["data"] == data
@@ -313,7 +309,7 @@ async def test_that_context_variable_value_can_be_deleted(
         json={"data": data},
     )
 
-    variable_value = response.json()["context_variable_value"]
+    variable_value = response.json()
     assert variable_value["data"] == data
     assert "last_modified" in variable_value
 
