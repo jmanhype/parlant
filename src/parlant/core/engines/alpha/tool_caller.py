@@ -235,7 +235,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
 ```json
 {{
     "last_customer_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
-    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the resultcustomerthe user",
+    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "tool_call_evaluations": [
         {{

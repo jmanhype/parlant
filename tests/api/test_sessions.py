@@ -318,7 +318,7 @@ def test_that_a_session_can_be_deleted(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    client.delete(f"/sessions/{session_id}").raise_for_status().json()
+    client.delete(f"/sessions/{session_id}").raise_for_status()
 
     get_response = client.get(f"/sessions/{session_id}")
     assert get_response.status_code == status.HTTP_404_NOT_FOUND
@@ -472,7 +472,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
         json={
             "kind": "message",
             "source": "customer",
-            "content": "Fuck all those guys",
+            "data": "Fuck all those guys",
         },
     )
 
@@ -493,7 +493,7 @@ def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
         json={
             "kind": "message",
             "source": "customer",
-            "content": "Hello there!",
+            "data": "Hello there!",
         },
     )
 
@@ -589,7 +589,7 @@ def test_that_not_waiting_for_a_response_does_in_fact_return_immediately(
             json={
                 "kind": "message",
                 "source": "customer",
-                "content": "Hello there!",
+                "data": "Hello there!",
             },
         )
         .raise_for_status()
@@ -852,11 +852,9 @@ async def test_that_an_agent_message_can_be_regenerated(
     await populate_session_id(container, session_id, session_events)
 
     min_offset_to_delete = 3
-    _ = (
-        client.delete(f"/sessions/{session_id}/events?min_offset={min_offset_to_delete}")
-        .raise_for_status()
-        .json()["event_ids"]
-    )
+    client.delete(
+        f"/sessions/{session_id}/events?min_offset={min_offset_to_delete}"
+    ).raise_for_status()
 
     _ = await create_guideline(
         container=container,
