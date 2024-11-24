@@ -121,9 +121,9 @@ The following is a description of your identity: ###
                     }
 
             source_map: dict[EventSource, str] = {
-                "customer": "human_customer",
+                "customer": "user",
                 "customer_ui": "frontend_application",
-                "human_agent": "human_agent",
+                "human_agent": "human_service_agent",
                 "human_agent_on_behalf_of_ai_agent": "ai_agent",
                 "ai_agent": "ai_agent",
                 "system": "system-provided",
@@ -132,7 +132,7 @@ The following is a description of your identity: ###
             return json.dumps(
                 {
                     "event_kind": e.kind,
-                    "source_kind": source_map[e.source],
+                    "event_source": source_map[e.source],
                     "data": data,
                 }
             )
@@ -144,7 +144,7 @@ The following is a description of your identity: ###
                 name=BuiltInSection.INTERACTION_HISTORY,
                 content=f"""
 The following is a list of events describing a back-and-forth
-interaction between you and a customer: ###
+interaction between you and a user: ###
 {interaction_events}
 ###
 """,
@@ -154,7 +154,7 @@ interaction between you and a customer: ###
             self.add_section(
                 name=BuiltInSection.INTERACTION_HISTORY,
                 content="""
-Your interaction with the customer has just began, and no events have been recorded yet.
+Your interaction with the user has just began, and no events have been recorded yet.
 Proceed with your task accordingly.
 """,
                 status=SectionStatus.PASSIVE,
@@ -172,7 +172,7 @@ Proceed with your task accordingly.
             self.add_section(
                 name=BuiltInSection.CONTEXT_VARIABLES,
                 content=f"""
-The following is information that you're given about the customer and context of the interaction: ###
+The following is information that you're given about the user and context of the interaction: ###
 {context_values}
 ###
 """,
@@ -192,8 +192,8 @@ The following is information that you're given about the customer and context of
                 name=BuiltInSection.TERMINOLOGY,
                 content=f"""
 The following is a glossary of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
-Please be tolerant of possible typos by the customer with regards to these terms,
-and let the customer know if/when you assume they meant a term by their typo: ###
+Please be tolerant of possible typos by the user with regards to these terms,
+and let the user know if/when you assume they meant a term by their typo: ###
 {terms_string}
 ###
 """,  # noqa
