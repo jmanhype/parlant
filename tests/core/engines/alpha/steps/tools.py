@@ -288,6 +288,14 @@ def given_a_tool(
             },
             "required": ["vegetable"],
         },
+        "get_in_stock": {
+            "name": "get_in_stock",
+            "description": "Checks if product typoe is in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+            },
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

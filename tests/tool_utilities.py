@@ -83,3 +83,6 @@ def available_products_by_category(category: ProductCategory) -> ToolResult:
     }
 
     return ToolResult(products_by_category[category])
+
+def get_in_stock() -> ToolResult:
+    return ToolResult(True)
