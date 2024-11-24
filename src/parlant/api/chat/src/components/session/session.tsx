@@ -50,6 +50,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
+        
         const deleteClicked = (e: React.MouseEvent) => {
             closeDialog();
             e.stopPropagation();

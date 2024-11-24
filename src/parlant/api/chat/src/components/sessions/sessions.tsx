@@ -8,19 +8,17 @@ import VirtualScroll from '../virtual-scroll/virtual-scroll';
 export default function Sessions(): ReactElement {
     const [editingTitle, setEditingTitle] = useState<string | null>(null);
     const {sessionId, setSessions, sessions, setAgents} = useSession();
-    const {data, ErrorTemplate, loading, refetch} = useFetch<{sessions: SessionInterface[]}>('sessions');
-    const {data: agentsData} = useFetch<{agents: AgentInterface[]}>('agents');
+    const {data, ErrorTemplate, loading, refetch} = useFetch<SessionInterface[]>('sessions');
+    const {data: agentsData} = useFetch<AgentInterface[]>('agents');
 
     useEffect(() => {
-       if (agentsData?.agents) setAgents(agentsData.agents);
+       if (agentsData) setAgents(agentsData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [agentsData?.agents]);
+    }, [agentsData]);
 
 
     useEffect(() => {
-        if (data?.sessions) {
-            setSessions(data.sessions);
-        }
+        if (data) setSessions(data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 

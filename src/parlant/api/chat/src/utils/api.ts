@@ -6,7 +6,7 @@ const request = async (url: string, options: RequestInit = {}) => {
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    if (options.method === 'PATCH') return;
+    if (options.method === 'PATCH' || options.method === 'DELETE' ) return;
     return await response.json();
   } catch (error) {
     console.error('Fetch error:', error);

@@ -53,9 +53,9 @@ export default function Chat(): ReactElement {
     const [useContentFiltering] = useState(true);
     
     const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
-    const {data: lastMessages, refetch, ErrorTemplate} = useFetch<{events: EventInterface[]}>(
+    const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(
         `sessions/${sessionId}/events`,
-        {min_offset: lastOffset, wait: true},
+        {min_offset: lastOffset},
         [],
         sessionId !== NEW_SESSION_ID,
         !!(sessionId && sessionId !== NEW_SESSION_ID)
@@ -115,12 +115,12 @@ export default function Chat(): ReactElement {
 
     useEffect(() => {
         if (sessionId === NEW_SESSION_ID) return;
-        const lastEvent = lastMessages?.events?.at(-1);
+        const lastEvent = lastMessages?.at(-1);
         if (!lastEvent) return;
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
-        const correlationsMap = groupBy(lastMessages?.events || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
-        const newMessages = lastMessages?.events?.filter(e => e.kind === 'message') || [];
+        const correlationsMap = groupBy(lastMessages || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
+        const newMessages = lastMessages?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         if (newMessages.length && isRegenerating) setIsRegenerating(false);
         
@@ -145,16 +145,16 @@ export default function Chat(): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages]);
 
-    const createSession = async (): Promise<{session: SessionInterface} | undefined> => {
+    const createSession = async (): Promise<SessionInterface | undefined> => {
         if (!newSession) return;
         const {customer_id, title} = newSession;
         return postData('sessions?allow_greeting=true', {customer_id, agent_id: agentId, title} as object)
-            .then((res: {session: SessionInterface}) => {
+            .then((res: SessionInterface) => {
                 if (newSession) {
-                    setSessionId(res.session.id);
+                    setSessionId(res.id);
                     setNewSession(null);
                 }
-                setSessions(sessions => [...sessions, res.session]);
+                setSessions(sessions => [...sessions, res]);
                 return res;
             }).catch(() => {
                 toast.error('Something went wrong');
@@ -165,9 +165,9 @@ export default function Chat(): ReactElement {
     const postMessage = async (content: string): Promise<void> => {
         setPendingMessage(pendingMessage => ({...pendingMessage, data: {message: content}}));
         setMessage('');
-        const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
+        const eventSession = newSession ? (await createSession())?.id : sessionId;
         const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
-        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', content, source: 'customer' }).then(() => {
+        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', data: content, source: 'customer' }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         }).catch(() => toast.error('Something went wrong'));
