@@ -297,34 +297,38 @@ def test_that_consumption_offsets_can_be_updated(
     long_session_id: SessionId,
     consumer_id: str,
 ) -> None:
-    response = client.patch(
-        f"/sessions/{long_session_id}",
-        json={
-            "consumption_offsets": {
-                consumer_id: 1,
-            }
-        },
+    session_dto = (
+        client.patch(
+            f"/sessions/{long_session_id}",
+            json={
+                "consumption_offsets": {
+                    consumer_id: 1,
+                }
+            },
+        )
+        .raise_for_status()
+        .json()
     )
-    assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    data = client.get(f"/sessions/{long_session_id}").raise_for_status().json()
-
-    assert data["consumption_offsets"][consumer_id] == 1
+    assert session_dto["consumption_offsets"][consumer_id] == 1
 
 
 def test_that_title_can_be_updated(
     client: TestClient,
     session_id: SessionId,
 ) -> None:
-    response = client.patch(
-        f"/sessions/{session_id}",
-        json={"title": "new session title"},
+    session_dto = (
+        (
+            client.patch(
+                f"/sessions/{session_id}",
+                json={"title": "new session title"},
+            )
+        )
+        .raise_for_status()
+        .json()
     )
-    assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    data = client.get(f"/sessions/{session_id}").raise_for_status().json()
-
-    assert data["title"] == "new session title"
+    assert session_dto["title"] == "new session title"
 
 
 def test_that_deleting_a_nonexistent_session_returns_404(

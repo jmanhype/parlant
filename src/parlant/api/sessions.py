@@ -398,14 +398,13 @@ def create_router(
 
     @router.patch(
         "/{session_id}",
-        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="update_session",
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_session(
         session_id: SessionId,
         params: SessionUpdateParamsDTO,
-    ) -> None:
+    ) -> SessionDTO:
         async def from_dto(dto: SessionUpdateParamsDTO) -> SessionUpdateParams:
             params: SessionUpdateParams = {}
 
@@ -423,9 +422,20 @@ def create_router(
 
             return params
 
-        await session_store.update_session(
+        session = await session_store.update_session(
             session_id=session_id,
             params=await from_dto(params),
+        )
+
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            creation_utc=session.creation_utc,
+            title=session.title,
+            customer_id=session.customer_id,
+            consumption_offsets=ConsumptionOffsetsDTO(
+                client=session.consumption_offsets["client"],
+            ),
         )
 
     @router.post(
