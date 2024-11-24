@@ -292,8 +292,7 @@ def given_a_tool(
             "name": "get_in_stock",
             "description": "Checks if product typoe is in stock",
             "module_path": "tests.tool_utilities",
-            "parameters": {
-            },
+            "parameters": {},
             "required": [],
         },
     }
