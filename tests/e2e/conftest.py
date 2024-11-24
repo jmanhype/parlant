@@ -3,7 +3,7 @@ import tempfile
 from typing import Iterator
 from pytest import fixture
 
-from tests.e2e.test_utilities import ContextOfTest
+from tests.e2e.test_utilities import API, ContextOfTest
 
 
 @fixture
@@ -13,4 +13,5 @@ def context() -> Iterator[ContextOfTest]:
 
         yield ContextOfTest(
             home_dir=home_dir_path,
+            api=API(),
         )

@@ -2,10 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 import json
 import os
-import time
-import traceback
 import tempfile
-from typing import Any, AsyncIterator, Awaitable, Callable, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable
 from fastapi import FastAPI, Query, Request, Response
 from fastapi.responses import JSONResponse
 import httpx
@@ -118,389 +116,6 @@ async def run_cli_and_get_exit_status(*args: str) -> int:
     return await process.wait()
 
 
-class API:
-    @staticmethod
-    @asynccontextmanager
-    async def make_client() -> AsyncIterator[httpx.AsyncClient]:
-        async with httpx.AsyncClient(
-            base_url=SERVER_ADDRESS,
-            follow_redirects=True,
-            timeout=httpx.Timeout(60),
-        ) as client:
-            yield client
-
-    @staticmethod
-    async def get_first_agent_id() -> str:
-        async with API.make_client() as client:
-            response = await client.get("/agents")
-            agent = response.raise_for_status().json()[0]
-            return str(agent["id"])
-
-    @staticmethod
-    async def create_agent(
-        name: str,
-        description: Optional[str] = None,
-        max_engine_iterations: Optional[int] = None,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.post(
-                "/agents",
-                json={
-                    "name": name,
-                    "description": description,
-                    "max_engine_iterations": max_engine_iterations,
-                },
-            )
-
-            return response.raise_for_status().json()
-
-    @staticmethod
-    async def list_agents() -> Any:
-        async with API.make_client() as client:
-            response = await client.get("/agents")
-            return response.raise_for_status().json()
-
-    @staticmethod
-    async def create_session(
-        agent_id: str,
-        customer_id: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.post(
-                "/sessions",
-                params={"allow_greeting": False},
-                json={
-                    "agent_id": agent_id,
-                    **({"customer_id": customer_id} if customer_id else {}),
-                    "title": title,
-                },
-            )
-
-            return response.raise_for_status().json()
-
-    @staticmethod
-    async def read_session(session_id: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"/sessions/{session_id}",
-            )
-
-            return response.raise_for_status().json()
-
-    @staticmethod
-    async def get_agent_reply(
-        session_id: str,
-        message: str,
-    ) -> Any:
-        return next(iter(await API.get_agent_replies(session_id, message, 1)))
-
-    @staticmethod
-    async def get_agent_replies(
-        session_id: str,
-        message: str,
-        number_of_replies_to_expect: int,
-    ) -> list[Any]:
-        async with API.make_client() as client:
-            try:
-                customer_message_response = await client.post(
-                    f"/sessions/{session_id}/events",
-                    json={
-                        "kind": "message",
-                        "source": "customer",
-                        "data": message,
-                    },
-                )
-                customer_message_response.raise_for_status()
-                customer_message_offset = int(customer_message_response.json()["offset"])
-
-                last_known_offset = customer_message_offset
-
-                replies: list[Any] = []
-                start_time = time.time()
-                timeout = 300
-
-                while len(replies) < number_of_replies_to_expect:
-                    response = await client.get(
-                        f"/sessions/{session_id}/events",
-                        params={
-                            "min_offset": last_known_offset + 1,
-                            "kinds": "message",
-                        },
-                    )
-                    response.raise_for_status()
-                    events = response.json()
-
-                    if message_events := [e for e in events if e["kind"] == "message"]:
-                        replies.append(message_events[0])
-
-                    last_known_offset = events[-1]["offset"]
-
-                    if (time.time() - start_time) >= timeout:
-                        raise TimeoutError()
-
-                return replies
-            except:
-                traceback.print_exc()
-                raise
-
-    @staticmethod
-    async def create_term(
-        agent_id: str,
-        name: str,
-        description: str,
-        synonyms: str = "",
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.post(
-                f"/agents/{agent_id}/terms/",
-                json={
-                    "name": name,
-                    "description": description,
-                    **({"synonyms": synonyms.split(",")} if synonyms else {}),
-                },
-            )
-
-            return response.raise_for_status().json()
-
-    @staticmethod
-    async def list_terms(agent_id: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"/agents/{agent_id}/terms/",
-            )
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def read_term(
-        agent_id: str,
-        term_id: str,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"/agents/{agent_id}/terms/{term_id}",
-            )
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def list_guidelines(agent_id: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"/agents/{agent_id}/guidelines/",
-            )
-
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def read_guideline(
-        agent_id: str,
-        guideline_id: str,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"/agents/{agent_id}/guidelines/{guideline_id}",
-            )
-
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def create_guideline(
-        agent_id: str,
-        condition: str,
-        action: str,
-        coherence_check: Optional[dict[str, Any]] = None,
-        connection_propositions: Optional[dict[str, Any]] = None,
-        operation: str = "add",
-        updated_id: Optional[str] = None,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.post(
-                f"/agents/{agent_id}/guidelines/",
-                json={
-                    "invoices": [
-                        {
-                            "payload": {
-                                "content": {
-                                    "condition": condition,
-                                    "action": action,
-                                },
-                                "operation": operation,
-                                "updated_id": updated_id,
-                                "coherence_check": True,
-                                "connection_proposition": True,
-                            },
-                            "checksum": "checksum_value",
-                            "approved": True if coherence_check is None else False,
-                            "data": {
-                                "coherence_checks": coherence_check if coherence_check else [],
-                                "connection_propositions": connection_propositions
-                                if connection_propositions
-                                else None,
-                            },
-                            "error": None,
-                        }
-                    ]
-                },  # type: ignore
-            )
-
-            response.raise_for_status()
-
-            return response.json()["items"][0]["guideline"]
-
-    @staticmethod
-    async def add_association(
-        agent_id: str,
-        guideline_id: str,
-        service_name: str,
-        tool_name: str,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.patch(
-                f"/agents/{agent_id}/guidelines/{guideline_id}",
-                json={
-                    "tool_associations": {
-                        "add": [
-                            {
-                                "service_name": service_name,
-                                "tool_name": tool_name,
-                            }
-                        ]
-                    }
-                },
-            )
-
-            response.raise_for_status()
-
-        return response.json()["tool_associations"]
-
-    @staticmethod
-    async def create_context_variable(
-        agent_id: str,
-        name: str,
-        description: str,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.post(
-                f"/agents/{agent_id}/context-variables",
-                json={
-                    "name": name,
-                    "description": description,
-                },
-            )
-
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def list_context_variables(agent_id: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(f"/agents/{agent_id}/context-variables/")
-
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def update_context_variable_value(
-        agent_id: str,
-        variable_id: str,
-        key: str,
-        value: Any,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.put(
-                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
-                json={"data": value},
-            )
-            response.raise_for_status()
-
-    @staticmethod
-    async def read_context_variable_value(
-        agent_id: str,
-        variable_id: str,
-        key: str,
-    ) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(
-                f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
-            )
-
-            response.raise_for_status()
-
-            return response.json()
-
-    @staticmethod
-    async def create_openapi_service(
-        service_name: str,
-        url: str,
-    ) -> None:
-        payload = {"kind": "openapi", "openapi": {"source": f"{url}/openapi.json", "url": url}}
-
-        async with API.make_client() as client:
-            response = await client.put(f"/services/{service_name}", json=payload)
-            response.raise_for_status()
-
-    @staticmethod
-    async def create_tag(name: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.post("/tags", json={"name": name})
-        return response.json()
-
-    @staticmethod
-    async def list_tags() -> Any:
-        async with API.make_client() as client:
-            response = await client.get("/tags")
-        return response.json()
-
-    @staticmethod
-    async def read_tag(id: str) -> Any:
-        async with API.make_client() as client:
-            response = await client.get(f"/tags/{id}")
-        return response.json()
-
-    @staticmethod
-    async def create_customer(
-        name: str,
-        extra: Optional[dict[str, Any]] = {},
-    ) -> Any:
-        async with API.make_client() as client:
-            respone = await client.post("/customers", json={"name": name, "extra": extra})
-            respone.raise_for_status()
-
-        return respone.json()
-
-    @staticmethod
-    async def list_customers() -> Any:
-        async with API.make_client() as client:
-            respone = await client.get("/customers")
-            respone.raise_for_status()
-
-        return respone.json()
-
-    @staticmethod
-    async def read_customer(id: str) -> Any:
-        async with API.make_client() as client:
-            respone = await client.get(f"/customers/{id}")
-            respone.raise_for_status()
-
-        return respone.json()
-
-    @staticmethod
-    async def add_customer_tag(id: str, tag_id: str) -> None:
-        async with API.make_client() as client:
-            respone = await client.patch(f"/customers/{id}", json={"tags": {"add": [tag_id]}})
-            respone.raise_for_status()
-
-
 async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
     name = "TestAgent"
     description = "This is a test agent"
@@ -524,7 +139,7 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        agents = await API.list_agents()
+        agents = await context.api.list_agents()
         new_agent = next((a for a in agents if a["name"] == name), None)
         assert new_agent
         assert new_agent["description"] == description
@@ -542,7 +157,7 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        agents = await API.list_agents()
+        agents = await context.api.list_agents()
         new_agent_no_desc = next(
             (a for a in agents if a["name"] == "Test Agent With No Description"), None
         )
@@ -577,7 +192,7 @@ async def test_that_an_agent_can_be_updated(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        agent = (await API.list_agents())[0]
+        agent = (await context.api.list_agents())[0]
         assert agent["name"] == new_name
         assert agent["description"] == new_description
         assert agent["max_engine_iterations"] == new_max_engine_iterations
@@ -591,7 +206,7 @@ async def test_that_an_agent_can_be_deleted(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await API.create_agent(name=name)
+        agent = await context.api.create_agent(name=name)
 
         assert (
             await run_cli_and_get_exit_status(
@@ -602,7 +217,7 @@ async def test_that_an_agent_can_be_deleted(
             == os.EX_OK
         )
 
-        assert not any(a["name"] == name for a in await API.list_agents())
+        assert not any(a["name"] == name for a in await context.api.list_agents())
 
 
 async def test_that_an_agent_can_be_viewed(
@@ -615,7 +230,7 @@ async def test_that_an_agent_can_be_viewed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent = await API.create_agent(
+        agent = await context.api.create_agent(
             name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
@@ -651,14 +266,14 @@ async def test_that_sessions_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        _ = await API.create_session(
+        agent_id = (await context.api.get_first_agent())["id"]
+        _ = await context.api.create_session(
             agent_id=agent_id, customer_id=first_customer, title=first_title
         )
-        _ = await API.create_session(
+        _ = await context.api.create_session(
             agent_id=agent_id, customer_id=first_customer, title=second_title
         )
-        _ = await API.create_session(
+        _ = await context.api.create_session(
             agent_id=agent_id, customer_id=second_customer, title=third_title
         )
 
@@ -701,8 +316,10 @@ async def test_that_session_can_be_updated(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        session_id = (await API.create_session(agent_id=agent_id, title=session_title))["id"]
+        agent_id = (await context.api.get_first_agent())["id"]
+        session_id = (await context.api.create_session(agent_id=agent_id, title=session_title))[
+            "id"
+        ]
 
         assert (
             await run_cli_and_get_exit_status(
@@ -711,7 +328,7 @@ async def test_that_session_can_be_updated(
             == os.EX_OK
         )
 
-        session = await API.read_session(session_id)
+        session = await context.api.read_session(session_id)
         assert session["title"] == "New Title"
 
 
@@ -725,7 +342,7 @@ async def test_that_a_term_can_be_created_with_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "glossary",
@@ -754,7 +371,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "glossary",
@@ -771,7 +388,7 @@ async def test_that_a_term_can_be_created_without_synonyms(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        terms = await API.list_terms(agent_id)
+        terms = await context.api.list_terms(agent_id)
         assert any(t["name"] == term_name for t in terms)
         assert any(t["description"] == description for t in terms)
         assert any(t["synonyms"] == [] for t in terms)
@@ -791,9 +408,9 @@ async def test_that_a_term_can_be_updated(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        term_to_update = await API.create_term(agent_id, name, description, synonyms)
+        term_to_update = await context.api.create_term(agent_id, name, description, synonyms)
 
         process = await run_cli(
             "glossary",
@@ -815,7 +432,7 @@ async def test_that_a_term_can_be_updated(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        updated_term = await API.read_term(agent_id=agent_id, term_id=term_to_update["id"])
+        updated_term = await context.api.read_term(agent_id=agent_id, term_id=term_to_update["id"])
         assert updated_term["name"] == new_name
         assert updated_term["description"] == new_description
         assert updated_term["synonyms"] == [new_synonyms]
@@ -831,9 +448,9 @@ async def test_that_a_term_can_be_deleted(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        term = await API.create_term(agent_id, name, description, synonyms)
+        term = await context.api.create_term(agent_id, name, description, synonyms)
 
         process = await run_cli(
             "glossary",
@@ -849,7 +466,7 @@ async def test_that_a_term_can_be_deleted(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        terms = await API.list_terms(agent_id)
+        terms = await context.api.list_terms(agent_id)
         assert len(terms) == 0
 
 
@@ -862,16 +479,16 @@ async def test_that_terms_are_loaded_on_server_startup(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        term = await API.create_term(agent_id, name, description)
+        term = await context.api.create_term(agent_id, name, description)
 
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        term = await API.read_term(agent_id, term["id"])
+        term = await context.api.read_term(agent_id, term["id"])
         assert term["name"] == name
         assert term["description"] == description
         assert term["synonyms"] == []
@@ -886,7 +503,7 @@ async def test_that_a_guideline_can_be_added(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "guideline",
@@ -903,7 +520,7 @@ async def test_that_a_guideline_can_be_added(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
         assert any(g["condition"] == condition and g["action"] == action for g in guidelines)
 
 
@@ -917,9 +534,9 @@ async def test_that_a_guideline_can_be_updated(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id=agent_id, condition=condition, action=initial_action
         )
 
@@ -940,7 +557,7 @@ async def test_that_a_guideline_can_be_updated(
         assert process.returncode == os.EX_OK
 
         updated_guideline = (
-            await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+            await context.api.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
         )["guideline"]
 
         assert updated_guideline["condition"] == condition
@@ -958,7 +575,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "guideline",
@@ -991,7 +608,7 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 
         assert "Detected potential incoherence with other guidelines" in output
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
 
         assert not any(
             g["condition"] == condition and g["action"] == conflicting_action for g in guidelines
@@ -1010,7 +627,7 @@ async def test_that_adding_connected_guidelines_creates_connections(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "guideline",
@@ -1042,13 +659,13 @@ async def test_that_adding_connected_guidelines_creates_connections(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
 
         assert len(guidelines) == 2
         source = guidelines[0]
         target = guidelines[1]
 
-        source_guideline = await API.read_guideline(agent_id, source["id"])
+        source_guideline = await context.api.read_guideline(agent_id, source["id"])
         source_connections = source_guideline["connections"]
 
         assert len(source_connections) == 1
@@ -1068,9 +685,9 @@ async def test_that_a_guideline_can_be_viewed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id=agent_id, condition=condition, action=action
         )
 
@@ -1104,10 +721,14 @@ async def test_that_guidelines_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        _ = await API.create_guideline(agent_id=agent_id, condition=condition1, action=action1)
-        _ = await API.create_guideline(agent_id=agent_id, condition=condition2, action=action2)
+        _ = await context.api.create_guideline(
+            agent_id=agent_id, condition=condition1, action=action1
+        )
+        _ = await context.api.create_guideline(
+            agent_id=agent_id, condition=condition2, action=action2
+        )
 
         process = await run_cli(
             "guideline",
@@ -1139,7 +760,7 @@ async def test_that_guidelines_can_be_entailed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "guideline",
@@ -1175,7 +796,7 @@ async def test_that_guidelines_can_be_entailed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["condition"] == condition1 and g["action"] == action1
@@ -1198,7 +819,7 @@ async def test_that_guidelines_can_be_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await API.read_guideline(agent_id, first_guideline["id"])
+        guideline = await context.api.read_guideline(agent_id, first_guideline["id"])
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
         assert (
@@ -1220,7 +841,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "guideline",
@@ -1256,7 +877,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
 
         first_guideline = next(
             g for g in guidelines if g["condition"] == condition1 and g["action"] == action1
@@ -1280,7 +901,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         await process.wait()
         assert process.returncode == os.EX_OK
 
-        guideline = await API.read_guideline(agent_id, first_guideline["id"])
+        guideline = await context.api.read_guideline(agent_id, first_guideline["id"])
 
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
@@ -1297,9 +918,9 @@ async def test_that_a_guideline_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id, condition="the customer greets you", action="greet them back with 'Hello'"
         )
 
@@ -1317,7 +938,7 @@ async def test_that_a_guideline_can_be_removed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guidelines = await API.list_guidelines(agent_id)
+        guidelines = await context.api.list_guidelines(agent_id)
         assert len(guidelines) == 0
 
 
@@ -1327,7 +948,7 @@ async def test_that_a_connection_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -1422,7 +1043,7 @@ async def test_that_a_connection_can_be_removed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        guideline = await API.read_guideline(agent_id, first)
+        guideline = await context.api.read_guideline(agent_id, first)
         assert len(guideline["connections"]) == 0
 
 
@@ -1432,9 +1053,9 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id,
             condition="the customer wants to get meeting details",
             action="get meeting event information",
@@ -1476,7 +1097,9 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
                 == os.EX_OK
             )
 
-            guideline = await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+            guideline = await context.api.read_guideline(
+                agent_id=agent_id, guideline_id=guideline["id"]
+            )
 
             assert any(
                 assoc["tool_id"]["service_name"] == service_name
@@ -1491,9 +1114,9 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id,
             condition="the customer wants to get meeting details",
             action="get meeting event information",
@@ -1522,7 +1145,9 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
                 == os.EX_OK
             )
 
-            _ = await API.add_association(agent_id, guideline["id"], service_name, tool_name)
+            _ = await context.api.add_association(
+                agent_id, guideline["id"], service_name, tool_name
+            )
 
             assert (
                 await run_cli_and_get_exit_status(
@@ -1537,7 +1162,9 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
                 == os.EX_OK
             )
 
-            guideline = await API.read_guideline(agent_id=agent_id, guideline_id=guideline["id"])
+            guideline = await context.api.read_guideline(
+                agent_id=agent_id, guideline_id=guideline["id"]
+            )
 
             assert guideline["tool_associations"] == []
 
@@ -1554,9 +1181,9 @@ async def test_that_variables_can_be_listed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        _ = await API.create_context_variable(agent_id, name1, description1)
-        _ = await API.create_context_variable(agent_id, name2, description2)
+        agent_id = (await context.api.get_first_agent())["id"]
+        _ = await context.api.create_context_variable(agent_id, name1, description1)
+        _ = await context.api.create_context_variable(agent_id, name2, description2)
 
         process = await run_cli(
             "variable",
@@ -1586,7 +1213,7 @@ async def test_that_a_variable_can_be_added(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
         process = await run_cli(
             "variable",
@@ -1604,7 +1231,7 @@ async def test_that_a_variable_can_be_added(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        variables = await API.list_context_variables(agent_id)
+        variables = await context.api.list_context_variables(agent_id)
 
         variable = next(
             (v for v in variables if v["name"] == name and v["description"] == description),
@@ -1622,9 +1249,9 @@ async def test_that_a_variable_can_be_removed(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        variable = await API.create_context_variable(agent_id, name, description)
+        variable = await context.api.create_context_variable(agent_id, name, description)
 
         process = await run_cli(
             "variable",
@@ -1640,7 +1267,7 @@ async def test_that_a_variable_can_be_removed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        variables = await API.list_context_variables(agent_id)
+        variables = await context.api.list_context_variables(agent_id)
         assert len(variables) == 0
 
 
@@ -1655,8 +1282,10 @@ async def test_that_a_variable_value_can_be_set_with_json(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = (await context.api.get_first_agent())["id"]
+        variable = await context.api.create_context_variable(
+            agent_id, variable_name, variable_description
+        )
 
         process = await run_cli(
             "variable",
@@ -1674,7 +1303,7 @@ async def test_that_a_variable_value_can_be_set_with_json(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        value = await API.read_context_variable_value(agent_id, variable["id"], key)
+        value = await context.api.read_context_variable_value(agent_id, variable["id"], key)
         assert json.loads(value["data"]) == data
 
 
@@ -1689,8 +1318,10 @@ async def test_that_a_variable_value_can_be_set_with_string(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = (await context.api.get_first_agent())["id"]
+        variable = await context.api.create_context_variable(
+            agent_id, variable_name, variable_description
+        )
 
         process = await run_cli(
             "variable",
@@ -1708,7 +1339,7 @@ async def test_that_a_variable_value_can_be_set_with_string(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        value = await API.read_context_variable_value(agent_id, variable["id"], key)
+        value = await context.api.read_context_variable_value(agent_id, variable["id"], key)
 
         assert value["data"] == data
 
@@ -1727,11 +1358,13 @@ async def test_that_a_variables_values_can_be_retrieved(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
-        variable = await API.create_context_variable(agent_id, variable_name, variable_description)
+        agent_id = (await context.api.get_first_agent())["id"]
+        variable = await context.api.create_context_variable(
+            agent_id, variable_name, variable_description
+        )
 
         for key, data in values.items():
-            await API.update_context_variable_value(agent_id, variable["id"], key, data)
+            await context.api.update_context_variable_value(agent_id, variable["id"], key, data)
 
         process = await run_cli(
             "variable",
@@ -1758,7 +1391,7 @@ async def test_that_a_variables_values_can_be_retrieved(
             "get",
             "--agent-id",
             agent_id,
-            variable_name,
+            variable["id"],
             specific_key,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1777,38 +1410,38 @@ async def test_that_a_message_can_be_inspected(
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        agent_id = await API.get_first_agent_id()
+        agent_id = (await context.api.get_first_agent())["id"]
 
-        guideline = await API.create_guideline(
+        guideline = await context.api.create_guideline(
             agent_id=agent_id,
             condition="the customer talks about cows",
             action="address the customer by his first name and say you like Pepsi",
         )
 
-        term = await API.create_term(
+        term = await context.api.create_term(
             agent_id=agent_id,
             name="Bazoo",
             description="a type of cow",
         )
 
-        variable = await API.create_context_variable(
+        variable = await context.api.create_context_variable(
             agent_id=agent_id,
             name="Customer first name",
             description="",
         )
 
-        customer = await API.create_customer("John Smith")
+        customer = await context.api.create_customer("John Smith")
 
-        await API.update_context_variable_value(
+        await context.api.update_context_variable_value(
             agent_id=agent_id,
             variable_id=variable["id"],
             key=customer["id"],
             value="Johnny",
         )
 
-        session = await API.create_session(agent_id, customer["id"])
+        session = await context.api.create_session(agent_id, customer["id"])
 
-        reply_event = await API.get_agent_reply(session["id"], "Oh do I like bazoos")
+        reply_event = await context.api.get_agent_reply(session["id"], "Oh do I like bazoos")
 
         assert "Johnny" in reply_event["data"]["message"]
         assert "Pepsi" in reply_event["data"]["message"]
@@ -1869,7 +1502,7 @@ async def test_that_an_openapi_service_can_be_added_via_file(
                     == os.EX_OK
                 )
 
-                async with API.make_client() as client:
+                async with context.api.make_client() as client:
                     response = await client.get("/services/")
                     response.raise_for_status()
                     services = response.json()
@@ -1905,7 +1538,7 @@ async def test_that_an_openapi_service_can_be_added_via_url(
                 == os.EX_OK
             )
 
-            async with API.make_client() as client:
+            async with context.api.make_client() as client:
                 response = await client.get("/services/")
                 response.raise_for_status()
                 services = response.json()
@@ -1945,7 +1578,7 @@ async def test_that_a_sdk_service_can_be_added(
                 == os.EX_OK
             )
 
-            async with API.make_client() as client:
+            async with context.api.make_client() as client:
                 response = await client.get("/services/")
                 response.raise_for_status()
                 services = response.json()
@@ -1963,7 +1596,7 @@ async def test_that_a_service_can_be_removed(
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         async with run_openapi_server(rng_app()):
-            await API.create_openapi_service(service_name, OPENAPI_SERVER_URL)
+            await context.api.create_openapi_service(service_name, OPENAPI_SERVER_URL)
 
         process = await run_cli(
             "service",
@@ -1977,7 +1610,7 @@ async def test_that_a_service_can_be_removed(
         assert "Traceback (most recent call last):" not in output_view
         assert process.returncode == os.EX_OK
 
-        async with API.make_client() as client:
+        async with context.api.make_client() as client:
             response = await client.get("/services/")
             response.raise_for_status()
             services = response.json()
@@ -1994,8 +1627,8 @@ async def test_that_services_can_be_listed(
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         async with run_openapi_server(rng_app()):
-            await API.create_openapi_service(service_name_1, OPENAPI_SERVER_URL)
-            await API.create_openapi_service(service_name_2, OPENAPI_SERVER_URL)
+            await context.api.create_openapi_service(service_name_1, OPENAPI_SERVER_URL)
+            await context.api.create_openapi_service(service_name_2, OPENAPI_SERVER_URL)
 
         process = await run_cli(
             "service",
@@ -2023,7 +1656,7 @@ async def test_that_a_service_can_be_viewed(
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         async with run_openapi_server(rng_app()):
-            await API.create_openapi_service(service_name, service_url)
+            await context.api.create_openapi_service(service_name, service_url)
 
         process = await run_cli(
             "service",
@@ -2053,8 +1686,8 @@ async def test_that_customers_can_be_listed(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        await API.create_customer(name="First Customer")
-        await API.create_customer(name="Second Customer")
+        await context.api.create_customer(name="First Customer")
+        await context.api.create_customer(name="Second Customer")
 
         process = await run_cli(
             "customer",
@@ -2083,7 +1716,7 @@ async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
             == os.EX_OK
         )
 
-        customers = await API.list_customers()
+        customers = await context.api.list_customers()
         assert any(c["name"] == "TestCustomer" for c in customers)
 
 
@@ -2091,7 +1724,7 @@ async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+        customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
         process = await run_cli(
             "customer",
@@ -2112,7 +1745,7 @@ async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+        customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
         assert (
             await run_cli_and_get_exit_status(
@@ -2123,7 +1756,7 @@ async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
             == os.EX_OK
         )
 
-        customers = await API.list_customers()
+        customers = await context.api.list_customers()
         assert not any(c["name"] == "TestCustomer" for c in customers)
 
 
@@ -2131,7 +1764,7 @@ async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> Non
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
+        customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
         assert (
             await run_cli_and_get_exit_status(
@@ -2144,7 +1777,7 @@ async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> Non
             == os.EX_OK
         )
 
-        customer = await API.read_customer(id=customer_id)
+        customer = await context.api.read_customer(id=customer_id)
         assert customer["extra"].get("key1") == "value1"
 
 
@@ -2152,9 +1785,9 @@ async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> N
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer", extra={"key1": "value1"}))[
-            "customer"
-        ]["id"]
+        customer_id = (
+            await context.api.create_customer(name="TestCustomer", extra={"key1": "value1"})
+        )["id"]
 
         assert (
             await run_cli_and_get_exit_status(
@@ -2166,7 +1799,7 @@ async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> N
             == os.EX_OK
         )
 
-        customer = await API.read_customer(id=customer_id)
+        customer = await context.api.read_customer(id=customer_id)
         assert "key1" not in customer["extra"]
 
 
@@ -2174,8 +1807,8 @@ async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
-        tag_id = (await API.create_tag(name="TestTag"))["tag"]["id"]
+        customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
+        tag_id = (await context.api.create_tag(name="TestTag"))["tag"]["id"]
 
         assert (
             await run_cli_and_get_exit_status(
@@ -2186,7 +1819,7 @@ async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
             )
             == os.EX_OK
         )
-        customer = await API.read_customer(id=customer_id)
+        customer = await context.api.read_customer(id=customer_id)
         tags = customer["tags"]
         assert tag_id in tags
 
@@ -2195,9 +1828,9 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        customer_id = (await API.create_customer(name="TestCustomer"))["customer"]["id"]
-        tag_id = (await API.create_tag(name="TestTag"))["tag"]["id"]
-        await API.add_customer_tag(customer_id, tag_id)
+        customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
+        tag_id = (await context.api.create_tag(name="TestTag"))["tag"]["id"]
+        await context.api.add_customer_tag(customer_id, tag_id)
 
         assert (
             await run_cli_and_get_exit_status(
@@ -2208,7 +1841,7 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
             )
             == os.EX_OK
         )
-        customer = await API.read_customer(id=customer_id)
+        customer = await context.api.read_customer(id=customer_id)
         tags = customer["tags"]
         assert tag_id not in tags
 
@@ -2228,7 +1861,7 @@ async def test_that_a_tag_can_be_added(context: ContextOfTest) -> None:
             == os.EX_OK
         )
 
-        tags = (await API.list_tags())["tags"]
+        tags = await context.api.list_tags()
         assert any(t["name"] == tag_name for t in tags)
 
 
@@ -2236,8 +1869,8 @@ async def test_that_tags_can_be_listed(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        await API.create_tag("FirstTag")
-        await API.create_tag("SecondTag")
+        await context.api.create_tag("FirstTag")
+        await context.api.create_tag("SecondTag")
 
         process = await run_cli(
             "tag",
@@ -2257,7 +1890,7 @@ async def test_that_a_tag_can_be_viewed(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        tag_id = (await API.create_tag("TestViewTag"))["tag"]["id"]
+        tag_id = (await context.api.create_tag("TestViewTag"))["id"]
 
         process = await run_cli(
             "tag",
@@ -2278,7 +1911,7 @@ async def test_that_a_tag_can_be_updated(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
-        tag_id = (await API.create_tag("TestViewTag"))["tag"]["id"]
+        tag_id = (await context.api.create_tag("TestViewTag"))["id"]
         new_name = "UpdatedTagName"
 
         assert (
@@ -2291,5 +1924,5 @@ async def test_that_a_tag_can_be_updated(context: ContextOfTest) -> None:
             == os.EX_OK
         )
 
-        updated_tag = await API.read_tag(tag_id)
+        updated_tag = await context.api.read_tag(tag_id)
         assert updated_tag["name"] == new_name

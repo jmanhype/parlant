@@ -47,7 +47,6 @@ def test_that_a_term_can_be_created_without_synonyms(
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    assert "term" in response.json()
     data = response.json()
 
     assert data["name"] == name

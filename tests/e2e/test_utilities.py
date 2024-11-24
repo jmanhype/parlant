@@ -1,5 +1,7 @@
-from contextlib import contextmanager
+from __future__ import annotations
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+import traceback
 import httpx
 import logging
 import os
@@ -8,7 +10,7 @@ import signal
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, Optional, TypedDict, cast
+from typing import Any, AsyncIterator, Iterator, Optional, TypedDict, cast
 from typing_extensions import Literal
 
 
@@ -93,6 +95,7 @@ CLI_SERVER_PATH = get_package_path() / "src/parlant/bin/server.py"
 @dataclass(frozen=True)
 class ContextOfTest:
     home_dir: Path
+    api: API
 
 
 def is_server_running(port: int) -> bool:
@@ -167,192 +170,417 @@ def run_server(
             raise caught_exception
 
 
-async def get_first_agent_id() -> str:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        agents_response = await client.get(
-            f"{SERVER_ADDRESS}/agents/",
-        )
-        agents_response.raise_for_status()
+class API:
+    def __init__(self, server_address: str = SERVER_ADDRESS) -> None:
+        self.server_address = server_address
 
-        assert len(agents_response.json()["agents"]) > 0
-        agent = agents_response.json()["agents"][0]
-        return str(agent["id"])
+    @asynccontextmanager
+    async def make_client(
+        self,
+    ) -> AsyncIterator[httpx.AsyncClient]:
+        async with httpx.AsyncClient(
+            base_url=self.server_address,
+            follow_redirects=True,
+            timeout=httpx.Timeout(60),
+        ) as client:
+            yield client
 
+    async def get_first_agent(
+        self,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get("/agents")
+            agent = response.raise_for_status().json()[0]
+            return agent
 
-async def get_term_list(agent_id: str) -> list[_TermDTO]:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
-        )
-        response.raise_for_status()
+    async def create_agent(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        max_engine_iterations: Optional[int] = None,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.post(
+                "/agents",
+                json={
+                    "name": name,
+                    "description": description,
+                    "max_engine_iterations": max_engine_iterations,
+                },
+            )
 
-        return cast(list[_TermDTO], response.json()["terms"])
+            return response.raise_for_status().json()
 
+    async def list_agents(
+        self,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get("/agents")
+            return response.raise_for_status().json()
 
-async def create_term(agent_id: str, term_name: str, description: str) -> _TermDTO:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.post(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/terms/",
-            json={"name": term_name, "description": description},
-        )
-        response.raise_for_status()
+    async def create_session(
+        self,
+        agent_id: str,
+        customer_id: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.post(
+                "/sessions",
+                params={"allow_greeting": False},
+                json={
+                    "agent_id": agent_id,
+                    **({"customer_id": customer_id} if customer_id else {}),
+                    "title": title,
+                },
+            )
 
-        return cast(_TermDTO, response.json()["term"])
+            return response.raise_for_status().json()
 
+    async def read_session(self, session_id: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/sessions/{session_id}",
+            )
 
-async def list_guidelines(agent_id: str) -> list[_GuidelineDTO]:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
-        )
+            return response.raise_for_status().json()
 
-        response.raise_for_status()
+    async def get_agent_reply(
+        self,
+        session_id: str,
+        message: str,
+    ) -> Any:
+        return next(iter(await self.get_agent_replies(session_id, message, 1)))
 
-        return cast(list[_GuidelineDTO], response.json()["guidelines"])
+    async def get_agent_replies(
+        self,
+        session_id: str,
+        message: str,
+        number_of_replies_to_expect: int,
+    ) -> list[Any]:
+        async with self.make_client() as client:
+            try:
+                customer_message_response = await client.post(
+                    f"/sessions/{session_id}/events",
+                    json={
+                        "kind": "message",
+                        "source": "customer",
+                        "data": message,
+                    },
+                )
+                customer_message_response.raise_for_status()
+                customer_message_offset = int(customer_message_response.json()["offset"])
 
+                last_known_offset = customer_message_offset
 
-async def create_guideline(
-    agent_id: str,
-    condition: str,
-    action: str,
-    coherence_check: Optional[dict[str, Any]] = None,
-    connection_propositions: Optional[dict[str, Any]] = None,
-) -> _GuidelineDTO:
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.post(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/guidelines/",
-            json={
-                "invoices": [
-                    {
-                        "payload": {
-                            "kind": "guideline",
-                            "content": {
-                                "condition": condition,
-                                "action": action,
+                replies: list[Any] = []
+                start_time = time.time()
+                timeout = 300
+
+                while len(replies) < number_of_replies_to_expect:
+                    response = await client.get(
+                        f"/sessions/{session_id}/events",
+                        params={
+                            "min_offset": last_known_offset + 1,
+                            "kinds": "message",
+                        },
+                    )
+                    response.raise_for_status()
+                    events = response.json()
+
+                    if message_events := [e for e in events if e["kind"] == "message"]:
+                        replies.append(message_events[0])
+
+                    last_known_offset = events[-1]["offset"]
+
+                    if (time.time() - start_time) >= timeout:
+                        raise TimeoutError()
+
+                return replies
+            except:
+                traceback.print_exc()
+                raise
+
+    async def create_term(
+        self,
+        agent_id: str,
+        name: str,
+        description: str,
+        synonyms: str = "",
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/terms/",
+                json={
+                    "name": name,
+                    "description": description,
+                    **({"synonyms": synonyms.split(",")} if synonyms else {}),
+                },
+            )
+
+            return response.raise_for_status().json()
+
+    async def list_terms(self, agent_id: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/terms/",
+            )
+            response.raise_for_status()
+
+            return response.json()
+
+    async def read_term(
+        self,
+        agent_id: str,
+        term_id: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/terms/{term_id}",
+            )
+            response.raise_for_status()
+
+            return response.json()
+
+    async def list_guidelines(self, agent_id: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/guidelines/",
+            )
+
+            response.raise_for_status()
+
+            return response.json()
+
+    async def read_guideline(
+        self,
+        agent_id: str,
+        guideline_id: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
+            )
+
+            response.raise_for_status()
+
+            return response.json()
+
+    async def create_guideline(
+        self,
+        agent_id: str,
+        condition: str,
+        action: str,
+        coherence_check: Optional[dict[str, Any]] = None,
+        connection_propositions: Optional[dict[str, Any]] = None,
+        operation: str = "add",
+        updated_id: Optional[str] = None,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/guidelines/",
+                json={
+                    "invoices": [
+                        {
+                            "payload": {
+                                "content": {
+                                    "condition": condition,
+                                    "action": action,
+                                },
+                                "operation": operation,
+                                "updated_id": updated_id,
+                                "coherence_check": True,
+                                "connection_proposition": True,
                             },
-                            "operation": "add",
-                            "coherence_check": True,
-                            "connection_proposition": True,
-                        },
-                        "checksum": "checksum_value",
-                        "approved": True if coherence_check is None else False,
-                        "data": {
-                            "coherence_checks": coherence_check if coherence_check else [],
-                            "connection_propositions": connection_propositions
-                            if connection_propositions
-                            else None,
-                        },
-                        "error": None,
+                            "checksum": "checksum_value",
+                            "approved": True if coherence_check is None else False,
+                            "data": {
+                                "coherence_checks": coherence_check if coherence_check else [],
+                                "connection_propositions": connection_propositions
+                                if connection_propositions
+                                else None,
+                            },
+                            "error": None,
+                        }
+                    ]
+                },  # type: ignore
+            )
+
+            response.raise_for_status()
+
+            return response.json()["items"][0]["guideline"]
+
+    async def add_association(
+        self,
+        agent_id: str,
+        guideline_id: str,
+        service_name: str,
+        tool_name: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.patch(
+                f"/agents/{agent_id}/guidelines/{guideline_id}",
+                json={
+                    "tool_associations": {
+                        "add": [
+                            {
+                                "service_name": service_name,
+                                "tool_name": tool_name,
+                            }
+                        ]
                     }
-                ]
-            },
-        )
+                },
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        return cast(_GuidelineDTO, response.json()["items"][0]["guideline"])
+        return response.json()["tool_associations"]
 
+    async def create_context_variable(
+        self,
+        agent_id: str,
+        name: str,
+        description: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.post(
+                f"/agents/{agent_id}/context-variables",
+                json={
+                    "name": name,
+                    "description": description,
+                },
+            )
 
-async def create_context_variable(
-    agent_id: str, name: str, description: str
-) -> _ContextVariableDTO:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.post(
-            f"/agents/{agent_id}/context-variables",
-            json={
-                "name": name,
-                "description": description,
-            },
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return cast(_ContextVariableDTO, response.json()["context_variable"])
+    async def list_context_variables(self, agent_id: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(f"/agents/{agent_id}/context-variables/")
 
+            response.raise_for_status()
 
-async def list_context_variables(agent_id: str) -> list[_ContextVariableDTO]:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(f"/agents/{agent_id}/context-variables/")
+            return response.json()
 
-        response.raise_for_status()
+    async def update_context_variable_value(
+        self,
+        agent_id: str,
+        variable_id: str,
+        key: str,
+        value: Any,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.put(
+                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
+                json={"data": value},
+            )
+            response.raise_for_status()
 
-        return cast(list[_ContextVariableDTO], response.json()["context_variables"])
+    async def read_context_variable_value(
+        self,
+        agent_id: str,
+        variable_id: str,
+        key: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
+            )
 
+            response.raise_for_status()
 
-async def create_context_variable_value(
-    agent_id: str,
-    variable_id: str,
-    key: str,
-    data: Any,
-) -> _ContextVariableValueDTO:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.put(
-            f"/agents/{agent_id}/context-variables/{variable_id}/{key}",
-            json={
-                "data": data,
-            },
-        )
+            return response.json()
 
-        response.raise_for_status()
+    async def create_sdk_service(self, service_name: str, url: str) -> None:
+        payload = {"kind": "sdk", "sdk": {"url": url}}
 
-        return cast(_ContextVariableValueDTO, response.json()["context_variable_value"])
+        async with self.make_client() as client:
+            response = await client.put(f"/services/{service_name}", json=payload)
+            response.raise_for_status()
 
+    async def create_openapi_service(
+        self,
+        service_name: str,
+        url: str,
+    ) -> None:
+        payload = {"kind": "openapi", "openapi": {"source": f"{url}/openapi.json", "url": url}}
 
-async def read_context_variable_value(
-    agent_id: str, variable_id: str, key: str
-) -> _ContextVariableValueDTO:
-    async with httpx.AsyncClient(
-        base_url=SERVER_ADDRESS,
-        follow_redirects=True,
-        timeout=httpx.Timeout(30),
-    ) as client:
-        response = await client.get(
-            f"{SERVER_ADDRESS}/agents/{agent_id}/context-variables/{variable_id}/{key}",
-        )
+        async with self.make_client() as client:
+            response = await client.put(f"/services/{service_name}", json=payload)
+            response.raise_for_status()
 
-        response.raise_for_status()
+    async def list_services(
+        self,
+    ) -> list[_ServiceDTO]:
+        async with self.make_client() as client:
+            response = await client.get("/services")
+            response.raise_for_status()
 
-        return cast(_ContextVariableValueDTO, response.json())
+        return cast(list[_ServiceDTO], response.json())
 
+    async def create_tag(self, name: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.post("/tags", json={"name": name})
+        return response.json()
 
-async def create_sdk_service(service_name: str, url: str) -> None:
-    payload = {"kind": "sdk", "url": url}
+    async def list_tags(
+        self,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get("/tags")
+        return response.json()
 
-    async with httpx.AsyncClient() as client:
-        response = await client.put(f"{SERVER_ADDRESS}/services/{service_name}", json=payload)
-        response.raise_for_status()
+    async def read_tag(self, id: str) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(f"/tags/{id}")
+        return response.json()
 
+    async def create_customer(
+        self,
+        name: str,
+        extra: Optional[dict[str, Any]] = {},
+    ) -> Any:
+        async with self.make_client() as client:
+            respone = await client.post("/customers", json={"name": name, "extra": extra})
+            respone.raise_for_status()
 
-async def list_services() -> list[_ServiceDTO]:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{SERVER_ADDRESS}/services/")
-        response.raise_for_status()
+        return respone.json()
 
-    return cast(list[_ServiceDTO], response.json()["services"])
+    async def list_customers(
+        self,
+    ) -> Any:
+        async with self.make_client() as client:
+            respone = await client.get("/customers")
+            respone.raise_for_status()
+
+        return respone.json()
+
+    async def read_customer(self, id: str) -> Any:
+        async with self.make_client() as client:
+            respone = await client.get(f"/customers/{id}")
+            respone.raise_for_status()
+
+        return respone.json()
+
+    async def add_customer_tag(self, id: str, tag_id: str) -> None:
+        async with self.make_client() as client:
+            respone = await client.patch(f"/customers/{id}", json={"tags": {"add": [tag_id]}})
+            respone.raise_for_status()
+
+    async def create_evaluation(self, agent_id: str, payloads: Any) -> Any:
+        async with self.make_client() as client:
+            evaluation_creation_response = await client.post(
+                "/index/evaluations",
+                json={"agent_id": agent_id, "payloads": payloads},
+            )
+            evaluation_creation_response.raise_for_status()
+            return evaluation_creation_response.json()
+
+    async def read_evaluation(self, evaluation_id: str) -> Any:
+        async with self.make_client() as client:
+            evaluation_response = await client.get(
+                f"/index/evaluations/{evaluation_id}",
+            )
+            evaluation_response.raise_for_status()
+            return evaluation_response.json()
