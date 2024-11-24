@@ -230,7 +230,7 @@ class GuidelineProposer:
                         condition_application_rationale=proposition.condition_application_rationale,
                         guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
                         or "",
-                        guideline_should_reapply=proposition.guideline_should_reapply,
+                        guideline_should_reapply=proposition.guideline_should_reapply or False,
                     )
                 )
 
