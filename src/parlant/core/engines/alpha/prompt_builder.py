@@ -38,7 +38,7 @@ class BuiltInSection(Enum):
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
     TERMINOLOGY = auto()
-    GUIDELINE_CONDITIONS = auto()
+    GUIDELINES = auto()
     GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
     STAGED_EVENTS = auto()
