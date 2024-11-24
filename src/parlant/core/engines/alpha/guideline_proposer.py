@@ -253,7 +253,7 @@ class GuidelineProposer:
             }
             for i, g in enumerate(guidelines, start=1)
         ]
-        guidelines = "\n".join(
+        guidelines_text = "\n".join(
             f"{i}) condition: {g.content.condition}. action: {g.content.action}"
             for i, g in enumerate(guidelines, start=1)
         )
@@ -365,15 +365,15 @@ Is there anything else I can help you with?"}}}},
         builder.add_section(
             name=BuiltInSection.GUIDELINES,
             content=f"""
-- condition List: ###
-{guidelines}
+- Guidelines list: ###
+{guidelines_text}
 ###
 """,
             status=SectionStatus.ACTIVE,
         )
 
         builder.add_section(f"""
-IMPORTANT: Please note there are exactly {len(guidelines)} conditions in the list for you to check.
+IMPORTANT: Please note there are exactly {len(guidelines)} guidelines in the list for you to check.
 
 Expected Output
 ---------------------------
