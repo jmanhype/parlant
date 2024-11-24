@@ -37,11 +37,12 @@ from parlant.core.logging import Logger
 
 # TODO change condition back to predicate. Change user to customer.
 class GuidelinePropositionSchema(DefaultBaseModel):
-    condition_number: int
+    guideline_number: int
     condition: str
     condition_application_rationale: str
     condition_applies: bool
     action: str
+    guideline_is_continuous: Optional[bool] = False
     guideline_previously_applied_rationale: Optional[str] = ""
     guideline_previously_applied: Optional[bool] = False
     guideline_should_reapply: Optional[bool] = False
@@ -60,6 +61,7 @@ class ConditionApplicabilityEvaluation:
     score: int
     condition_application_rationale: str
     guideline_previously_applied_rationale: str
+    guideline_should_reapply: bool
 
 
 @dataclass(frozen=True)
@@ -98,10 +100,11 @@ class GuidelineProposer:
                 total_duration=0.0, batch_count=0, batch_generations=[], batches=[]
             )
 
+        guidelines_dict = {i: g for i, g in enumerate(guidelines, start=1)}
         t_start = time.time()
         batches = self._create_guideline_batches(
-            guidelines,
-            batch_size=self._get_optimal_batch_size(guidelines),
+            guidelines_dict,
+            batch_size=self._get_optimal_batch_size(guidelines_dict),
         )
 
         with self._logger.operation(
@@ -131,9 +134,10 @@ class GuidelineProposer:
                 for evaluation in batch:
                     guideline_propositions.append(
                         GuidelineProposition(
-                            guideline=guidelines[evaluation.guideline_number - 1],
+                            guideline=guidelines_dict[evaluation.guideline_number],
                             score=evaluation.score,
                             rationale=f"""condition application rationale: {evaluation.condition_application_rationale}. guideline previously applied rationale: {evaluation.guideline_previously_applied_rationale}""",
+                            guideline_should_reapply=evaluation.guideline_should_reapply,
                         )
                     )
                 propositions_batches.append(guideline_propositions)
@@ -161,16 +165,16 @@ class GuidelineProposer:
 
     def _create_guideline_batches(
         self,
-        guidelines: Sequence[Guideline],
+        guidelines_dict: Sequence[Guideline],
         batch_size: int,
-    ) -> Sequence[Sequence[Guideline]]:
+    ) -> Sequence[dict[int, Guideline]]:
         batches = []
-        batch_count = math.ceil(len(guidelines) / batch_size)
-
+        guidelines = list(guidelines_dict.items())
+        batch_count = math.ceil(len(guidelines_dict) / batch_size)
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
             end_offset = start_offset + batch_size
-            batch = guidelines[start_offset:end_offset]
+            batch = dict(guidelines[start_offset:end_offset])
             batches.append(batch)
 
         return batches
@@ -183,7 +187,7 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        batch: Sequence[Guideline],
+        guidelines_dict: dict[int, Guideline],
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
@@ -192,10 +196,12 @@ class GuidelineProposer:
             interaction_history=interaction_history,
             staged_events=staged_events,
             terms=terms,
-            guidelines=batch,
+            guidelines=guidelines_dict,
         )
 
-        with self._logger.operation(f"Guideline evaluation batch ({len(batch)} guidelines)"):
+        with self._logger.operation(
+            f"Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
+        ):
             propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
@@ -204,7 +210,7 @@ class GuidelineProposer:
         propositions = []
 
         for proposition in propositions_generation_response.content.checks:
-            guideline = batch[int(proposition.condition_number) - 1]
+            guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
                 f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
@@ -216,13 +222,16 @@ class GuidelineProposer:
             ):
                 propositions.append(
                     ConditionApplicabilityEvaluation(
-                        guideline_number=proposition.condition_number,
-                        condition=batch[int(proposition.condition_number) - 1].content.condition,
-                        action=batch[int(proposition.condition_number) - 1].content.action,
+                        guideline_number=proposition.guideline_number,
+                        condition=guidelines_dict[
+                            int(proposition.guideline_number)
+                        ].content.condition,
+                        action=guidelines_dict[int(proposition.guideline_number)].content.action,
                         score=proposition.applies_score,
                         condition_application_rationale=proposition.condition_application_rationale,
                         guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
                         or "",
+                        guideline_should_reapply=proposition.guideline_should_reapply,
                     )
                 )
 
@@ -236,27 +245,28 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        guidelines: Sequence[Guideline],
+        guidelines: dict[int, Guideline],
     ) -> str:
         assert len(agents) == 1
 
         result_structure = [
             {
-                "condition_number": i,
+                "guideline_number": i,
                 "condition": g.content.condition,
                 "condition_application_rationale": "<Explanation for why the condition is or isn't met>",
                 "condition_applies": "<BOOL>",
                 "action": g.content.action,
+                "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
                 "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied.>",
                 "guideline_previously_applied": "<BOOL: Optional, whether the condition already applied and the action was already taken>",
                 "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
                 "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score means that the condition applies and the action hasn't yet>",
             }
-            for i, g in enumerate(guidelines, start=1)
+            for i, g in guidelines.items()
         ]
         guidelines_text = "\n".join(
             f"{i}) condition: {g.content.condition}. action: {g.content.action}"
-            for i, g in enumerate(guidelines, start=1)
+            for i, g in guidelines.items()
         )
 
         builder = PromptBuilder()
@@ -294,18 +304,16 @@ d. Guideline Application: A guideline should be applied only if:
 
 For each provided guideline, return:
     (1) Whether its condition is fulfilled.
-    (2) Whether its action needs to be applied now or if it has already been performed, making it unnecessary at this time.
+    (2) Whether its action needs to be applied at this time. See the following section for more details.
 
 
-Insights and Clarifications
+Insights Regarding Guideline re-activation
 -------------------
 A condition typically no longer applies if its corresponding action has already been executed. 
-However, there are exceptions where re-application is warranted, such as when the condition describes a recurring user action (e.g., "the user is asking a question") and the condition becomes true again due to repetition.
-In these cases, use your judgment to evaluate whether re-applying the action would result in a natural and beneficial response.
+However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question. 
+Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. You can mark these types of actions down using "guideline_is_continuous" in your output.
 
-Actions indicating continuous behavior (e.g., "do not ask the user for their age") should generally be re-applied whenever their condition is met.
-
-Actions involving singular behavior (e.g., "send the user our address") should be re-applied more conservatively. 
+Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively. 
 Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
     
 
@@ -314,17 +322,14 @@ Examples of Condition Evaluations:
 Example #1:
 - Interaction Events: ###
 [{{"id": "11", "kind": "<message>", "source": "customer",
-[{{"id": "11", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can I purchase a subscription to your software?"}}}},
 {{"id": "23", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Absolutely, I can assist you with that right now."}}}},
-{{"id": "34", "kind": "<message>", "source": "customer",
 {{"id": "34", "kind": "<message>", "source": "customer",
 "data": {{"message": "Please proceed with the subscription for the Pro plan."}}}},
 {{"id": "56", "kind": "<message>", "source": "assistant",
 "data": {{"message": "Your subscription has been successfully activated.
 Is there anything else I can help you with?"}}}},
-{{"id": "78", "kind": "<message>", "source": "customer",
 {{"id": "78", "kind": "<message>", "source": "customer",
 "data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
@@ -336,25 +341,98 @@ Is there anything else I can help you with?"}}}},
 ```json
 {{ "checks": [
     {{
-        "condition_number": 1,
+        "guideline_number": 1,
         "condition": "the client initiates a purchase",
         "condition_application_rationale": "The purchase-related guideline was initiated earlier, but is currently irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
         "condition_applies": false
         "applies_score": 3
     }},
     {{
-        "condition_number": 2,
+        "guideline_number": 2,
         "condition": "the client asks about data security",
         "condition_applies": true
         "condition_application_rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "action": "Refer the customer to our privacy policy page",
         "guideline_previously_applied_rationale": "This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
         "guideline_previously_applied": false,
+        "guideline_is_continuous": false,
         "guideline_should_reapply": false,
         "applies_score": 9
     }}
 ]}}
 ```
+
+###
+
+Example #2:
+- Interaction Events: ###
+[{{"id": "11", "kind": "I'm looking for a job, what do you have available?", "source": "customer",
+[{{"id": "12", "kind": "Hi there! we have plenty of opportunities for you, where are you located?", "source": "assistant",
+"data": {{"message": "I'm looking for anything around the bay area"}}}},
+{{"id": "23", "kind": "That's great. We have a number of positions available over there. What kind of role are you interested in?", "source": "assistant",
+"data": {{"message": "Anything to do with training and maintaining AI agents"}}}},
+
+[{{"id": "11", "kind": "<message>", "source": "customer",
+"data": {{"message": "I'm looking for a job, what do you have available?"}}}},
+{{"id": "23", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Hi there! we have plenty of opportunities for you, where are you located?"}}}},
+{{"id": "34", "kind": "<message>", "source": "customer",
+"data": {{"message": "I'm looking for anything around the bay area"}}}},
+{{"id": "56", "kind": "<message>", "source": "assistant",
+"data": {{"message": "That's great. We have a number of positions available over there. What kind of role are you interested in?"}}}},
+{{"id": "78", "kind": "<message>", "source": "customer",
+"data": {{"message": "Anything to do with training and maintaining AI agents"}}}}]
+
+###
+- Guidelines: ###
+3) condition: the customer indicates that they are looking for a job. action: ask the customer for their location
+4) condition: the customer asks about job openings. action: emphasize that we have plenty of positions relevant to the customer
+6) condition: discussing job opportunities. action: maintain a positive, assuring tone
+
+###
+- **Expected Result**:
+```json
+{{ "checks": [
+    {{
+        "guideline_number": 3,
+        "condition": "the customer indicates that they are looking for a job.",
+        "condition_applies": true
+        "condition_application_rationale": "The current discussion is about the type of job the customer is looking for",
+        "action": "ask the customer for their location",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The assistant asked for the customer's location earlier in the interaction. There is no need to ask for it again, as it is already known.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": false,
+        "applies_score": 3
+    }},
+    {{
+        "guideline_number": 4,
+        "condition": "the customer asks about job openings.",
+        "condition_applies": true
+        "condition_application_rationale": "the customer asked about job openings, and the discussion still revolves around this request",
+        "action": "emphasize that we have plenty of positions relevant to the customer",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The assistant already has emphasized that we have open positions. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": true,
+        "applies_score": 7
+    }},
+    {{
+        "guideline_number": 6,
+        "condition": "discussing job opportunities.",
+        "condition_applies": true
+        "condition_application_rationale": "the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
+        "action": "maintain a positive, assuring tone",
+        "guideline_is_continuous": true,
+        "guideline_previously_applied_rationale": "The assistant's tone is positive already. This action describes a continuous action, so the guideline should be re-applied.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": true,
+        "applies_score": 9
+    }},
+
+]}}
+```
+
 
 """  # noqa
         )
@@ -413,7 +491,7 @@ Expected Output
 # {{
 #     "checks": [
 #         {{
-#             "condition_number": 1,
+#             "guideline_number": 1,
 #             "condition": "the client indicates they are in a hurry",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
@@ -421,7 +499,7 @@ Expected Output
 #             "applies_score": 8
 #         }},
 #         {{
-#             "condition_number": 2,
+#             "guideline_number": 2,
 #             "condition": "a client inquires about pricing plans",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
@@ -429,7 +507,7 @@ Expected Output
 #             "applies_score": 9
 #         }},
 #         {{
-#             "condition_number": 3,
+#             "guideline_number": 3,
 #             "condition": "a client asks for a summary of the features of the three plans.",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
@@ -456,7 +534,7 @@ Expected Output
 # {{
 #     "checks": [
 #         {{
-#             "condition_number": "1",
+#             "guideline_number": "1",
 #             "condition": "the client asks for a recommendation",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
@@ -464,7 +542,7 @@ Expected Output
 #             "applies_score": 9
 #         }},
 #         {{
-#             "condition_number": "2",
+#             "guideline_number": "2",
 #             "condition": "the client asks about movie genres",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
@@ -493,7 +571,7 @@ Expected Output
 # {{
 #     "checks": [
 #         {{
-#             "condition_number": "1",
+#             "guideline_number": "1",
 #             "condition": "the client requests a modification to their order",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
@@ -501,7 +579,7 @@ Expected Output
 #             "applies_score": 3
 #         }},
 #         {{
-#             "condition_number": "2",
+#             "guideline_number": "2",
 #             "condition": "the client asks for the store's location",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
@@ -530,14 +608,14 @@ Expected Output
 # {{
 #     "checks": [
 #         {{
-#             "condition_number": "1",
+#             "guideline_number": "1",
 #             "condition": "the order does not exceed the limit of products",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
 #             "applies_score": 9
 #         }},
 #         {{
-#             "condition_number": "2",
+#             "guideline_number": "2",
 #             "condition": "the client asks about product availability",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
@@ -565,7 +643,7 @@ Expected Output
 # {{
 #     "checks": [
 #         {{
-#             "condition_number": "1",
+#             "guideline_number": "1",
 #             "condition": "the user is currently eating lunch",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
@@ -573,7 +651,7 @@ Expected Output
 #             "applies_score": 1
 #         }},
 #         {{
-#             "condition_number": "2",
+#             "guideline_number": "2",
 #             "condition": "the user agrees with you in the scope of an argument",
 #             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
 #             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,

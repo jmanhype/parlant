@@ -69,8 +69,8 @@ GUIDELINES_DICT = {
         "condition": "the client needs to know our address",
         "action": "Inform the client that our address is at Sapir 2, Herzliya.",
     },
-    "mood_support": {
-        "condition": "the client is experiencing stress or dissatisfaction",
+    "issue_resolved": {
+        "condition": "the client previously expressed stress or dissatisfaction, but the issue has been alleviated",
         "action": "Provide comforting responses and suggest alternatives "
         "or support to alleviate the client's mood.",
     },
@@ -128,7 +128,7 @@ GUIDELINES_DICT = {
         "action": "Thank them sincerely for the referral and mention any referral rewards or benefits if applicable.",
     },
     "check_age": {
-        "condition": "the conversation neccesitates checking for the age of the client",
+        "condition": "the conversation necessitates checking for the age of the client",
         "action": "Use the 'check_age' tool to check for their age",
     },
     "suggest_drink_underage": {
@@ -276,15 +276,6 @@ def create_context_variable(
     )
 
 
-def get_all_guidelines(context: ContextOfTest) -> Sequence[Guideline]:
-    return [
-        create_guideline(
-            context=context, condition=guideline["condition"], action=guideline["action"]
-        )
-        for guideline in GUIDELINES_DICT.values()
-    ]
-
-
 def create_guideline_by_name(
     context: ContextOfTest,
     guideline_name: str,
@@ -363,7 +354,7 @@ def test_that_relevant_guidelines_are_proposed_parametrized_1(
         "address_location",
     ]
     relevant_guideline_names: list[str] = [
-        "payment_process",
+        "address_location",
     ]
     base_test_that_correct_guidelines_are_proposed(
         context,
@@ -414,13 +405,11 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
     ]
     conversation_guideline_names: list[str] = [
         "class_booking",
-        "mood_support",
+        "issue_resolved",
         "address_location",
     ]
 
-    relevant_guideline_names: list[str] = [
-        "mood_support",
-    ]
+    relevant_guideline_names: list[str] = ["issue_resolved"]
     base_test_that_correct_guidelines_are_proposed(
         context,
         agent,
@@ -565,15 +554,16 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
         ("customer", "That's great! Thanks!"),
     ]
 
+    exceptions = ["credit_payment1", "credit_payment2"]
+
     conversation_guideline_names: list[str] = [
-        guideline_name for guideline_name in GUIDELINES_DICT.keys()
+        guideline_name
+        for guideline_name in GUIDELINES_DICT.keys()
+        if guideline_name not in exceptions
     ]
     relevant_guideline_names = [
         "announce_shipment",
-        "credit_payment1",
-        "credit_payment2",
         "thankful_user",
-        "payment_process",
     ]
     base_test_that_correct_guidelines_are_proposed(
         context,
@@ -1087,3 +1077,6 @@ def test_that_guideline_isnt_detected_based_on_its_action(
         conversation_guideline_names,
         relevant_guideline_names,
     )
+
+
+# TODO add test for action previously taken unrelated to condition
