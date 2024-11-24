@@ -151,7 +151,7 @@ class GuidelineProposer:
                 batches=propositions_batches,
             )
 
-    def _get_optimal_batch_size(self, guidelines: Sequence[Guideline]) -> int:
+    def _get_optimal_batch_size(self, guidelines: dict[int, Guideline]) -> int:
         guideline_n = len(guidelines)
 
         if guideline_n <= 10:
@@ -165,7 +165,7 @@ class GuidelineProposer:
 
     def _create_guideline_batches(
         self,
-        guidelines_dict: Sequence[Guideline],
+        guidelines_dict: dict[int, Guideline],
         batch_size: int,
     ) -> Sequence[dict[int, Guideline]]:
         batches = []
