@@ -2753,57 +2753,70 @@ async def async_main() -> None:
     def customer() -> None:
         pass
 
-    @customer.command("list", help="List all customers")
+    @customer.command("list", help="List customers")
     @click.pass_context
-    def list_customers(ctx: click.Context) -> None:
+    def customer_list(ctx: click.Context) -> None:
         Interface.list_customers(ctx)
 
-    @customer.command("add", help="Add a new customer")
-    @click.argument("name")
+    @customer.command("create", help="Create a customer")
+    @click.option("--name", type=str, metavar="NAME", help="Customer name", required=True)
     @click.pass_context
-    def add_customer(ctx: click.Context, name: str) -> None:
+    def customer_create(ctx: click.Context, name: str) -> None:
         Interface.create_customer(ctx, name)
 
-    @customer.command("remove", help="Remove a customer")
-    @click.argument("customer_id", type=str)
+    @customer.command("delete", help="Delete a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
     @click.pass_context
-    def remove_customer(ctx: click.Context, customer_id: str) -> None:
-        Interface.delete_customer(ctx, customer_id)
+    def customer_delete(ctx: click.Context, id: str) -> None:
+        Interface.delete_customer(ctx, id)
 
-    @customer.command("view", help="View a customer's details")
-    @click.argument("customer_id", type=str)
+    @customer.command("view", help="View a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
     @click.pass_context
-    def view_customer(ctx: click.Context, customer_id: str) -> None:
-        Interface.view_customer(ctx, customer_id)
+    def customer_view(ctx: click.Context, id: str) -> None:
+        Interface.view_customer(ctx, id)
 
-    @customer.command("add-extra", help="Add extra information to a customer")
+    @customer.command("set", help="Set extra info for a customer using a key and value")
     @click.argument("customer_id", type=str)
-    @click.argument("key")
-    @click.argument("value")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option(
+        "--key",
+        type=str,
+        metavar="NAME",
+        help="The key of the property (e.g. 'email')",
+        required=True,
+    )
+    @click.option("--value", type=str, metavar="TEXT", help="The key's value")
     @click.pass_context
-    def add_customer_extra(ctx: click.Context, customer_id: str, key: str, value: str) -> None:
-        Interface.add_customer_extra(ctx, customer_id, key, value)
+    def customer_set(ctx: click.Context, id: str, key: str, value: str) -> None:
+        Interface.add_customer_extra(ctx, id, key, value)
 
-    @customer.command("remove-extra", help="Remove extra information from a customer")
-    @click.argument("customer_id", type=str)
-    @click.argument("key")
+    @customer.command("unset", help="Unset extra info for a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option(
+        "--key",
+        type=str,
+        metavar="NAME",
+        help="The key of the property (e.g. 'email')",
+        required=True,
+    )
     @click.pass_context
-    def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
-        Interface.remove_customer_extra(ctx, customer_id, key)
+    def customer_unset(ctx: click.Context, id: str, key: str) -> None:
+        Interface.remove_customer_extra(ctx, id, key)
 
-    @customer.command("add-tag", help="Add a tag to a customer")
-    @click.argument("customer_id", type=str)
-    @click.argument("tag_id", type=str)
+    @customer.command("tag", help="Tag a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option("--tag-id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
-        Interface.add_customer_tag(ctx, customer_id, tag_id)
+    def add_customer_tag(ctx: click.Context, id: str, tag_id: str) -> None:
+        Interface.add_customer_tag(ctx, id, tag_id)
 
-    @customer.command("remove-tag", help="Remove a tag from a customer")
-    @click.argument("customer_id", type=str)
-    @click.argument("tag_id", type=str)
+    @customer.command("untag", help="Untag a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option("--tag-id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
-        Interface.remove_customer_tag(ctx, customer_id, tag_id)
+    def remove_customer_tag(ctx: click.Context, id: str, tag_id: str) -> None:
+        Interface.remove_customer_tag(ctx, id, tag_id)
 
     @cli.group(help="Manage tags")
     def tag() -> None:
