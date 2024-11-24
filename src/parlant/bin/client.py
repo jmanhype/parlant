@@ -1893,9 +1893,9 @@ async def async_main() -> None:
     def agent() -> None:
         pass
 
-    @agent.command("add", help="Add a new agent")
-    @click.argument("name")
-    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @agent.command("create", help="Create an agent")
+    @click.option("--name", type=str, help="Agent name", required=True)
+    @click.option("--description", type=str, help="Agent description", required=False)
     @click.option(
         "--max-engine-iterations",
         type=int,
@@ -1903,7 +1903,7 @@ async def async_main() -> None:
         required=False,
     )
     @click.pass_context
-    def agent_add(
+    def agent_create(
         ctx: click.Context,
         name: str,
         description: Optional[str],
@@ -1916,14 +1916,14 @@ async def async_main() -> None:
             max_engine_iterations=max_engine_iterations,
         )
 
-    @agent.command("remove", help="Remove agent")
-    @click.argument("agent_id")
+    @agent.command("delete", help="Delete an agent")
+    @click.option("--id", type=str, help="Agent ID", required=True)
     @click.pass_context
-    def agent_remove(ctx: click.Context, agent_id: str) -> None:
-        Interface.delete_agent(ctx, agent_id)
+    def agent_remove(ctx: click.Context, id: str) -> None:
+        Interface.delete_agent(ctx, id)
 
-    @agent.command("view", help="View agent information")
-    @click.argument("agent_id")
+    @agent.command("view", help="View an agent")
+    @click.option("--id", type=str, help="Agent ID", required=True)
     @click.pass_context
     def agent_view(ctx: click.Context, agent_id: str) -> None:
         Interface.view_agent(ctx, agent_id)
@@ -1935,21 +1935,19 @@ async def async_main() -> None:
 
     @agent.command("update", help="Update an agent's details")
     @click.option(
-        "-n",
-        "--name",
-        type=str,
-        help="Agent Name",
-        required=False,
-    )
-    @click.option(
-        "-a",
-        "--agent-id",
+        "--id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.option("-d", "--description", type=str, help="Agent description", required=False)
+    @click.option(
+        "--name",
+        type=str,
+        help="Agent Name",
+        required=False,
+    )
+    @click.option("--description", type=str, help="Agent description", required=False)
     @click.option(
         "--max-engine-iterations",
         type=int,
@@ -1959,15 +1957,15 @@ async def async_main() -> None:
     @click.pass_context
     def agent_update(
         ctx: click.Context,
-        agent_id: str,
+        id: str,
         name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
+        id = id if id else Interface.get_default_agent(ctx)
+        assert id
 
-        Interface.update_agent(ctx, agent_id, name, description, max_engine_iterations)
+        Interface.update_agent(ctx, id, name, description, max_engine_iterations)
 
     @cli.group(help="Manage sessions")
     def session() -> None:
