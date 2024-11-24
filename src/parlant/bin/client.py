@@ -1951,8 +1951,8 @@ async def async_main() -> None:
     @agent.command("view", help="View an agent")
     @click.option("--id", type=str, help="Agent ID", required=True)
     @click.pass_context
-    def agent_view(ctx: click.Context, agent_id: str) -> None:
-        Interface.view_agent(ctx, agent_id)
+    def agent_view(ctx: click.Context, id: str) -> None:
+        Interface.view_agent(ctx, id)
 
     @agent.command("list", help="List agents")
     @click.pass_context
@@ -2067,10 +2067,10 @@ async def async_main() -> None:
         Interface.list_sessions(ctx, agent_id, customer_id)
 
     @session.command("view", help="View session content")
-    @click.argument("session_id")
+    @click.option("--id", type=str, metavar="ID", help="Session ID", required=True)
     @click.pass_context
-    def session_view(ctx: click.Context, session_id: str) -> None:
-        Interface.view_session(ctx, session_id)
+    def session_view(ctx: click.Context, sessiidn_id: str) -> None:
+        Interface.view_session(ctx, sessiidn_id)
 
     @session.command("inspect", help="Inspect an event from a session")
     @click.option("--session-id", type=str, help="Session ID", metavar="ID", required=True)
@@ -2252,7 +2252,7 @@ async def async_main() -> None:
         condition: str,
         action: str,
         check: bool,
-        index: bool,
+        connect: bool,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2263,7 +2263,7 @@ async def async_main() -> None:
             condition=condition,
             action=action,
             check=check,
-            index=index,
+            index=connect,
         )
 
     @guideline.command("update", help="Update a guideline")
@@ -2309,7 +2309,7 @@ async def async_main() -> None:
         condition: str,
         action: str,
         check: bool,
-        index: bool,
+        connect: bool,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2321,7 +2321,7 @@ async def async_main() -> None:
             action=action,
             guideline_id=id,
             check=check,
-            index=index,
+            index=connect,
         )
 
     @guideline.command("delete", help="Delete a guideline")
@@ -2466,20 +2466,20 @@ async def async_main() -> None:
     )
     @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
     @click.option(
-        "--service-name",
+        "--service",
         type=str,
         metavar="NAME",
-        help="The name of the service containing the tool",
+        help="The name of the tool service containing the tool",
         required=True,
     )
-    @click.option("--tool-name", type=str, metavar="NAME", help="Tool name", required=True)
+    @click.option("--tool", type=str, metavar="NAME", help="Tool name", required=True)
     @click.pass_context
     def guideline_enable_tool(
         ctx: click.Context,
         agent_id: Optional[str],
         id: str,
-        service_name: str,
-        tool_name: str,
+        service: str,
+        tool: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2488,8 +2488,8 @@ async def async_main() -> None:
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=id,
-            service_name=service_name,
-            tool_name=tool_name,
+            service_name=service,
+            tool_name=tool,
         )
 
     @guideline.command("tool-disable", help="Disallow a guideline to make use of a tool")
@@ -2502,20 +2502,20 @@ async def async_main() -> None:
     )
     @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
     @click.option(
-        "--service-name",
+        "--service",
         type=str,
         metavar="NAME",
-        help="The name of the service containing the tool",
+        help="The name of the tool service containing the tool",
         required=True,
     )
-    @click.option("--tool-name", type=str, metavar="NAME", help="Tool name", required=True)
+    @click.option("--tool", type=str, metavar="NAME", help="Tool name", required=True)
     @click.pass_context
     def guideline_disable_tool(
         ctx: click.Context,
         agent_id: Optional[str],
         id: str,
-        service_name: str,
-        tool_name: str,
+        service: str,
+        tool: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2524,8 +2524,8 @@ async def async_main() -> None:
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=id,
-            service_name=service_name,
-            tool_name=tool_name,
+            service_name=service,
+            tool_name=tool,
         )
 
     @cli.group(help="Manage an agent's context variables")
@@ -2643,7 +2643,9 @@ async def async_main() -> None:
         required=False,
     )
     @click.option("--id", type=str, metavar="ID", help="Variable ID", required=True)
-    @click.option("--key", type=str, metavar="NAME", help="The key (e.g. customer ID or tag)")
+    @click.option(
+        "--key", type=str, metavar="NAME", help="A specific key (e.g. customer ID or tag)"
+    )
     @click.pass_context
     def variable_get(
         ctx: click.Context,
@@ -2691,7 +2693,7 @@ async def async_main() -> None:
         metavar="SOURCE",
         help="For an OpenAPI service, this is the local path or URL to its openapi.json",
     )
-    @click.argument("name", type=str)
+    @click.option("--name", type=str, metavar="NAME", help="Service name", required=True)
     @click.pass_context
     def service_create(
         ctx: click.Context,
@@ -2721,7 +2723,7 @@ async def async_main() -> None:
         metavar="SOURCE",
         help="For an OpenAPI service, this is the local path or URL to its openapi.json",
     )
-    @click.argument("name", type=str)
+    @click.option("--name", type=str, metavar="NAME", help="Service name", required=True)
     @click.pass_context
     def service_update(
         ctx: click.Context,
@@ -2777,7 +2779,6 @@ async def async_main() -> None:
         Interface.view_customer(ctx, id)
 
     @customer.command("set", help="Set extra info for a customer using a key and value")
-    @click.argument("customer_id", type=str)
     @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
     @click.option(
         "--key",
