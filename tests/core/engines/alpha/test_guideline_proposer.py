@@ -81,7 +81,7 @@ GUIDELINES_DICT = {
     },
     "class_cancellation": {
         "condition": "the customer wants to cancel a class or an appointment",
-        "action": "ask for the reason of cancellation, unless it's an emergecy mention the cancellation fee.",
+        "action": "ask for the reason of cancellation, unless it's an emergency mention the cancellation fee.",
     },
     "frustrated_user": {
         "condition": "the customer appears frustrated or upset",
@@ -179,6 +179,11 @@ GUIDELINES_DICT = {
         "condition": "The customer orders a large pizza",
         "action": "Ask what type of crust they would like",
     },
+    "add_to_count": {
+        "condition": "the customer asks you to add 1 to the count",
+        "action": "Search the interaction history for the most recent count, add 1 to it and respond with the new count",
+    },
+    "cow_response": {"condition": "The customer says hello", "action": "respond like a cow would"},
 }
 
 
@@ -1079,4 +1084,55 @@ def test_that_guideline_isnt_detected_based_on_its_action(
     )
 
 
-# TODO add test for action previously taken unrelated to condition
+def test_that_guideline_with_fulfilled_action_regardless_of_condition_can_be_reapplied(
+    context: ContextOfTest,
+    agent: Agent,
+    customer: Customer,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "customer",
+            "The count is on 0! Your turn",
+        ),
+        (
+            "ai_agent",
+            "I choose to add to the count. The count is now 2.",
+        ),
+        (
+            "customer",
+            "add one to the count please",
+        ),
+    ]
+    conversation_guideline_names: list[str] = ["add_to_count"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        agent,
+        customer,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+    )
+
+
+def test_that_guideline_with_initial_response_is_proposed(
+    context: ContextOfTest,
+    agent: Agent,
+    customer: Customer,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "customer",
+            "Hello!",
+        ),
+    ]
+    conversation_guideline_names: list[str] = ["cow_response"]
+    relevant_guideline_names = conversation_guideline_names
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        agent,
+        customer,
+        conversation_context,
+        conversation_guideline_names,
+        relevant_guideline_names,
+    )
