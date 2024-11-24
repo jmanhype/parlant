@@ -35,6 +35,7 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 
 
+# TODO change condition back to predicate. Change user to customer.
 class GuidelinePropositionSchema(DefaultBaseModel):
     condition_number: int
     condition: str
@@ -145,7 +146,7 @@ class GuidelineProposer:
                 batches=propositions_batches,
             )
 
-    def _get_optimal_batch_size(self, guidelines: list[Guideline]) -> int:
+    def _get_optimal_batch_size(self, guidelines: Sequence[Guideline]) -> int:
         guideline_n = len(guidelines)
 
         if guideline_n <= 10:
@@ -219,7 +220,8 @@ class GuidelineProposer:
                         action=batch[int(proposition.condition_number) - 1].content.action,
                         score=proposition.applies_score,
                         condition_application_rationale=proposition.condition_application_rationale,
-                        guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale,
+                        guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
+                        or "",
                     )
                 )
 
