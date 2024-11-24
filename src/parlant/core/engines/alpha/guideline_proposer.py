@@ -126,15 +126,16 @@ class GuidelineProposer:
 
             propositions_batches: list[list[GuidelineProposition]] = []
 
-            for batch in condition_evaluations_batches:  # TODO I was here fixing a bug
+            for batch in condition_evaluations_batches:
                 guideline_propositions = []
                 for evaluation in batch:
-                    guideline_propositions += [
+                    guideline_propositions.append(
                         GuidelineProposition(
-                            guideline=g, score=evaluation.score, rationale=evaluation.rationale
+                            guideline=guidelines[evaluation.guideline_number - 1],
+                            score=evaluation.score,
+                            rationale=f"""condition application rationale: {evaluation.condition_application_rationale}. guideline previously applied rationale: {evaluation.guideline_previously_applied_rationale}""",
                         )
-                        for g in guidelines[evaluation.guideline_number]
-                    ]
+                    )
                 propositions_batches.append(guideline_propositions)
 
             t_end = time.time()
