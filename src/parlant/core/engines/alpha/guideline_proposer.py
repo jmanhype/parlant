@@ -35,7 +35,6 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 
 
-# TODO change condition back to predicate. Change user to customer.
 class GuidelinePropositionSchema(DefaultBaseModel):
     guideline_number: int
     condition: str
@@ -334,24 +333,24 @@ Is there anything else I can help you with?"}}}},
 "data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
 - Guidelines: ###
-1) condition: the client initiates a purchase. action: Open a new cart for the customer
-2) condition: the client asks about data security. action: Refer the customer to our privacy policy page
+1) condition: the customer initiates a purchase. action: Open a new cart for the customer
+2) condition: the customer asks about data security. action: Refer the customer to our privacy policy page
 ###
 - **Expected Result**:
 ```json
 {{ "checks": [
     {{
         "guideline_number": 1,
-        "condition": "the client initiates a purchase",
-        "condition_application_rationale": "The purchase-related guideline was initiated earlier, but is currently irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
+        "condition": "the customer initiates a purchase",
+        "condition_application_rationale": "The purchase-related guideline was initiated earlier, but is currently irrelevant since the customer completed the purchase and the conversation has moved to a new topic.",
         "condition_applies": false
         "applies_score": 3
     }},
     {{
         "guideline_number": 2,
-        "condition": "the client asks about data security",
+        "condition": "the customer asks about data security",
         "condition_applies": true
-        "condition_application_rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
+        "condition_application_rationale": "The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "action": "Refer the customer to our privacy policy page",
         "guideline_previously_applied_rationale": "This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
         "guideline_previously_applied": false,
@@ -469,195 +468,3 @@ Expected Output
         with open("guideline proposition prompt.txt", "w") as f:
             f.write(prompt)
         return prompt
-
-
-# #### Example #2:
-# [{{"id": "112", "kind": "<message>", "source": "user",
-# "data": {{"message": "I need to make this quick.
-# Can you give me a brief overview of your pricing plans?"}}}},
-# {{"id": "223", "kind": "<message>", "source": "assistant",
-# "data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
-# Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}}}},
-# {{"id": "334", "kind": "<message>", "source": "user",
-# "data": {{"message": "Tell me about the Pro plan."}}}},
-# ###
-# - Conditions: ###
-# 1) the client indicates they are in a hurry
-# 2) a client inquires about pricing plans
-# 3) a client asks for a summary of the features of the three plans.
-# ###
-# - **Expected Result**:
-# ```json
-# {{
-#     "checks": [
-#         {{
-#             "guideline_number": 1,
-#             "condition": "the client indicates they are in a hurry",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
-#             "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
-#             "applies_score": 8
-#         }},
-#         {{
-#             "guideline_number": 2,
-#             "condition": "a client inquires about pricing plans",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
-#             "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
-#             "applies_score": 9
-#         }},
-#         {{
-#             "guideline_number": 3,
-#             "condition": "a client asks for a summary of the features of the three plans.",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
-#             "applies_score": 2
-#         }},
-#     ]
-# }}
-# ```
-# ### Example #3:
-# - Interaction Events: ###
-# [{{"id": "13", "kind": "<message>", "source": "user",
-# "data": {{"message": "Can you recommend a good science fiction movie?"}}}},
-# {{"id": "14", "kind": "<message>", "source": "assistant",
-# "data": {{"message": "Sure, I recommend 'Inception'. It's a great science fiction movie."}}}},
-# {{"id": "15", "kind": "<message>", "source": "user",
-# "data": {{"message": "Thanks, I'll check it out."}}}}]
-# ###
-# - Conditions: ###
-# 1) the client asks for a recommendation
-# 2) the client asks about movie genres
-# ###
-# - **Expected Result**:
-# ```json
-# {{
-#     "checks": [
-#         {{
-#             "guideline_number": "1",
-#             "condition": "the client asks for a recommendation",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
-#             "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this condition highly relevant.",
-#             "applies_score": 9
-#         }},
-#         {{
-#             "guideline_number": "2",
-#             "condition": "the client asks about movie genres",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
-#             "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
-#             "applies_score": 3
-#         }}
-#     ]
-# }}
-# ```
-
-# ### Example #4:
-# - Interaction Events: ###
-# [{{"id": "54", "kind": "<message>", "source": "user",
-# "data": {{"message": "Can I add an extra pillow to my bed order?"}}}},
-# {{"id": "66", "kind": "<message>", "source": "assistant",
-# "data": {{"message": "An extra pillow has been added to your order."}}}},
-# {{"id": "72", "kind": "<message>", "source": "user",
-# "data": {{"message": "Thanks, I'll come to pick up the order. Can you tell me the address?"}}}}]
-# ###
-# - Conditions: ###
-# 1) the client requests a modification to their order
-# 2) the client asks for the store's location
-# ###
-# - **Expected Result**:
-# ```json
-# {{
-#     "checks": [
-#         {{
-#             "guideline_number": "1",
-#             "condition": "the client requests a modification to their order",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
-#             "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
-#             "applies_score": 3
-#         }},
-#         {{
-#             "guideline_number": "2",
-#             "condition": "the client asks for the store's location",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": true,
-#             "rationale": "The client asked for the store's location, making this guideline highly relevant.",
-#             "applies_score": 10
-#         }}
-#     ]
-# }}
-# ```
-
-# ### Example #5:
-# - Interaction Events: ###
-# [{{"id": "21", "kind": "<message>", "source": "user",
-# "data": {{"message": "Can I add an extra charger to my laptop order?"}}}},
-# {{"id": "34", "kind": "<message>", "source": "assistant",
-# "data": {{"message": "An extra charger has been added to your order."}}}},
-# {{"id": "53", "kind": "<message>", "source": "user",
-# "data": {{"message": "Do you have any external hard drives available?"}}}}]
-# ###
-# - Conditions: ###
-# 1) the order does not exceed the limit of products
-# 2) the client asks about product availability
-# ###
-# - **Expected Result**:
-# ```json
-# {{
-#     "checks": [
-#         {{
-#             "guideline_number": "1",
-#             "condition": "the order does not exceed the limit of products",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
-#             "applies_score": 9
-#         }},
-#         {{
-#             "guideline_number": "2",
-#             "condition": "the client asks about product availability",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the user if they reach the product limit before adding another item to the cart.",
-#             "applies_score": 10
-#         }}
-#     ]
-# }}
-# ```
-
-# ### Example #6:
-# - Interaction Events: ###
-# [{{"id": "54", "kind": "<message>", "source": "user",
-# "data": {{"message": "I disagree with you about this point."}}}},
-# {{"id": "66", "kind": "<message>", "source": "assistant",
-# "data": {{"message": "But I fully disproved your thesis!"}}}},
-# {{"id": "72", "kind": "<message>", "source": "user",
-# "data": {{"message": "Okay, fine."}}}}]
-# ###
-# - Conditions: ###
-# 1) the user is currently eating lunch
-# 2) the user agrees with you in the scope of an argument
-# ###
-# - **Expected Result**:
-# ```json
-# {{
-#     "checks": [
-#         {{
-#             "guideline_number": "1",
-#             "condition": "the user is currently eating lunch",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
-#             "rationale": "There's nothing to indicate that the user is eating, lunch or otherwise",
-#             "applies_score": 1
-#         }},
-#         {{
-#             "guideline_number": "2",
-#             "condition": "the user agrees with you in the scope of an argument",
-#             "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-#             "is_this_condition_hard_or_tricky_to_confidently_ascertain": false,
-#             "rationale": "The user said 'Okay, fine', but it's possible that they are still in disagreement internally",
-#             "applies_score": 4
-#         }}
-#     ]
-# }}
-# ```

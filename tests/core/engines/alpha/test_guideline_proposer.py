@@ -51,48 +51,48 @@ from tests.test_utilities import SyncAwaiter
 
 GUIDELINES_DICT = {
     "check_drinks_in_stock": {
-        "condition": "a client asks for a drink",
+        "condition": "a customer asks for a drink",
         "action": "check if the drink is available in the following stock: "
         "['Sprite', 'Coke', 'Fanta']",
     },
     "check_toppings_in_stock": {
-        "condition": "a client asks for toppings",
+        "condition": "a customer asks for toppings",
         "action": "check if the toppings are available in the following stock: "
         "['Pepperoni', 'Tomatoes', 'Olives']",
     },
     "payment_process": {
-        "condition": "a client is in the payment process",
+        "condition": "a customer is in the payment process",
         "action": "Follow the payment instructions, "
         "which are: 1. Pay in cash only, 2. Pay only at the location.",
     },
     "address_location": {
-        "condition": "the client needs to know our address",
-        "action": "Inform the client that our address is at Sapir 2, Herzliya.",
+        "condition": "the customer needs to know our address",
+        "action": "Inform the customer that our address is at Sapir 2, Herzliya.",
     },
     "issue_resolved": {
-        "condition": "the client previously expressed stress or dissatisfaction, but the issue has been alleviated",
+        "condition": "the customer previously expressed stress or dissatisfaction, but the issue has been alleviated",
         "action": "Provide comforting responses and suggest alternatives "
-        "or support to alleviate the client's mood.",
+        "or support to alleviate the customer's mood.",
     },
     "class_booking": {
-        "condition": "the client asks about booking a class or an appointment",
+        "condition": "the customer asks about booking a class or an appointment",
         "action": "Provide available times and facilitate the booking process, "
         "ensuring to clarify any necessary details such as class type, date, and requirements.",
     },
     "class_cancellation": {
-        "condition": "the client wants to cancel a class or an appointment",
+        "condition": "the customer wants to cancel a class or an appointment",
         "action": "ask for the reason of cancellation, unless it's an emergecy mention the cancellation fee.",
     },
     "frustrated_user": {
-        "condition": "the client appears frustrated or upset",
-        "action": "Acknowledge the client's concerns, apologize for any inconvenience, and offer a solution or escalate the issue to a supervisor if necessary.",
+        "condition": "the customer appears frustrated or upset",
+        "action": "Acknowledge the customer's concerns, apologize for any inconvenience, and offer a solution or escalate the issue to a supervisor if necessary.",
     },
     "thankful_user": {
-        "condition": "the client expresses gratitude or satisfaction",
+        "condition": "the customer expresses gratitude or satisfaction",
         "action": "Acknowledge their thanks warmly and let them know you appreciate their feedback or kind words.",
     },
     "hesitant_user": {
-        "condition": "the client seems unsure or indecisive about a decision",
+        "condition": "the customer seems unsure or indecisive about a decision",
         "action": "Offer additional information, provide reassurance, and suggest the most suitable option based on their needs.",
     },
     "holiday_season": {
@@ -100,43 +100,43 @@ GUIDELINES_DICT = {
         "action": "Mention any holiday-related offers, adjusted schedules, or greetings to make the interaction festive and accommodating.",
     },
     "previous_issue_resurfaced": {
-        "condition": "the client brings up an issue they previously experienced",
+        "condition": "the customer brings up an issue they previously experienced",
         "action": "Acknowledge the previous issue, apologize for any inconvenience, and take immediate steps to resolve it or escalate if needed.",
     },
     "question_already_answered": {
-        "condition": "the client asks a question that has already been answered",
+        "condition": "the customer asks a question that has already been answered",
         "action": "Politely reiterate the information and ensure they understand or provide additional clarification if needed.",
     },
     "product_out_of_stock": {
-        "condition": "the client asks for a product that is currently unavailable",
+        "condition": "the customer asks for a product that is currently unavailable",
         "action": "Apologize for the inconvenience, inform them of the unavailability, and suggest alternative products or notify them of restocking timelines if available.",
     },
     "technical_issue": {
-        "condition": "the client reports a technical issue with the website or service",
+        "condition": "the customer reports a technical issue with the website or service",
         "action": "Acknowledge the issue, apologize for the inconvenience, and guide them through troubleshooting steps or escalate the issue to the technical team.",
     },
-    "first_time_client": {
-        "condition": "the client mentions it is their first time using the service",
+    "first_time_customer": {
+        "condition": "the customer mentions it is their first time using the service",
         "action": "Welcome them warmly, provide a brief overview of how the service works, and offer any resources to help them get started.",
     },
     "request_for_feedback": {
-        "condition": "the client is asked for feedback about the service or product",
+        "condition": "the customer is asked for feedback about the service or product",
         "action": "Politely request their feedback, emphasizing its value for improvement, and provide simple instructions for submitting their response.",
     },
-    "client_refers_friends": {
-        "condition": "the client mentions referring friends to the service or product",
+    "customer_refers_friends": {
+        "condition": "the customer mentions referring friends to the service or product",
         "action": "Thank them sincerely for the referral and mention any referral rewards or benefits if applicable.",
     },
     "check_age": {
-        "condition": "the conversation necessitates checking for the age of the client",
+        "condition": "the conversation necessitates checking for the age of the customer",
         "action": "Use the 'check_age' tool to check for their age",
     },
     "suggest_drink_underage": {
-        "condition": "an underage client asks for drink recommendations",
+        "condition": "an underage customer asks for drink recommendations",
         "action": "recommend a soda pop",
     },
     "suggest_drink_adult": {
-        "condition": "an adult client asks for drink recommendations",
+        "condition": "an adult customer asks for drink recommendations",
         "action": "recommend either wine or beer",
     },
     "announce_shipment": {
@@ -583,8 +583,8 @@ def test_that_guidelines_are_proposed_based_on_agent_description(
         id=AgentId("123"),
         creation_utc=datetime.now(timezone.utc),
         name="skaetboard-sales-agent",
-        description="You are an agent working for a skateboarding manufacturer. You help clients by discussing and recommending our products."
-        "Your role is only to consult clients, and not to actually sell anything, as we sell our products in-store.",
+        description="You are an agent working for a skateboarding manufacturer. You help customers by discussing and recommending our products."
+        "Your role is only to consult customers, and not to actually sell anything, as we sell our products in-store.",
         max_engine_iterations=3,
     )
     conversation_context: list[tuple[str, str]] = [
