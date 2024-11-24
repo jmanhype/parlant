@@ -48,7 +48,6 @@ torch = "^2.5.1"
 transformers = "^4.46.2"
 types-aiofiles = "^24.1.0.20240626"
 types-jsonschema = "^4.22.0.20240610"
-types-tqdm = "^4.66.0.20240417"
 uvicorn = "^0.32.1"
 
 [tool.poetry.group.dev.dependencies]

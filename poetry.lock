@@ -5945,20 +5945,6 @@ files = [
 urllib3 = ">=2"
 
 [[package]]
-name = "types-tqdm"
-version = "4.67.0.20241119"
-description = "Typing stubs for tqdm"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "types-tqdm-4.67.0.20241119.tar.gz", hash = "sha256:1769e0e94d5e6d8fa814965f9cf3d9928376dd15dabcbcb784bb8769081092b4"},
-    {file = "types_tqdm-4.67.0.20241119-py3-none-any.whl", hash = "sha256:a18d4eb62db0d35c52707ae13d821b5a57970755273ecb56e133ccc0ac7e7c79"},
-]
-
-[package.dependencies]
-types-requests = "*"
-
-[[package]]
 name = "typing-extensions"
 version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -6496,4 +6482,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "496580beb7d9051fb200d5808908f217957a5bdcd15f244e94f2d654c890b06f"
+content-hash = "5d0c03aeb8f12bc86a29c6bf08c7b48a0de5935acd9ec424e9e88f531e35fb84"
