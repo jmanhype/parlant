@@ -2466,7 +2466,7 @@ async def async_main() -> None:
     def guideline_enable_tool(
         ctx: click.Context,
         agent_id: Optional[str],
-        guideline_id: str,
+        id: str,
         service_name: str,
         tool_name: str,
     ) -> None:
@@ -2476,7 +2476,7 @@ async def async_main() -> None:
         Interface.add_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
-            guideline_id=guideline_id,
+            guideline_id=id,
             service_name=service_name,
             tool_name=tool_name,
         )
@@ -2502,7 +2502,7 @@ async def async_main() -> None:
     def guideline_disable_tool(
         ctx: click.Context,
         agent_id: Optional[str],
-        guideline_id: str,
+        id: str,
         service_name: str,
         tool_name: str,
     ) -> None:
@@ -2512,7 +2512,7 @@ async def async_main() -> None:
         Interface.remove_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
-            guideline_id=guideline_id,
+            guideline_id=id,
             service_name=service_name,
             tool_name=tool_name,
         )
@@ -2521,9 +2521,8 @@ async def async_main() -> None:
     def variable() -> None:
         pass
 
-    @variable.command("list", help="List all variables for an agent")
+    @variable.command("list", help="List variables")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
@@ -2543,19 +2542,18 @@ async def async_main() -> None:
             agent_id=agent_id,
         )
 
-    @variable.command("add", help="Add a new variable to an agent")
+    @variable.command("create", help="Create a context variable")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.option("-d", "--description", type=str, help="Variable description", required=False)
-    @click.argument("name", type=str)
+    @click.option("--description", type=str, help="Variable description", required=False)
+    @click.option("--name", type=str, metavar="NAME", help="Variable name", required=True)
     @click.pass_context
-    def variable_add(
+    def variable_create(
         ctx: click.Context,
         agent_id: Optional[str],
         name: str,
@@ -2571,21 +2569,20 @@ async def async_main() -> None:
             description=description or "",
         )
 
-    @variable.command("remove", help="Remove a variable from an agent")
+    @variable.command("delete", help="Delete a context variable")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("variable_id", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Variable ID", required=True)
     @click.pass_context
-    def variable_remove(
+    def variable_delete(
         ctx: click.Context,
         agent_id: Optional[str],
-        variable_id: str,
+        id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2593,26 +2590,25 @@ async def async_main() -> None:
         Interface.delete_variable(
             ctx=ctx,
             agent_id=agent_id,
-            variable_id=variable_id,
+            variable_id=id,
         )
 
-    @variable.command("set", help="Set a variable's value")
+    @variable.command("set", help="Set the value of a key under a context variable")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("variable_id", type=str)
-    @click.argument("key", type=str)
-    @click.argument("value", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Variable ID", required=True)
+    @click.option("--key", type=str, metavar="NAME", help="The key (e.g. customer ID or tag)")
+    @click.option("--value", type=str, metavar="TEXT", help="The key's value")
     @click.pass_context
     def variable_set(
         ctx: click.Context,
         agent_id: Optional[str],
-        variable_id: str,
+        id: str,
         key: str,
         value: str,
     ) -> None:
@@ -2622,27 +2618,26 @@ async def async_main() -> None:
         Interface.set_variable_value(
             ctx=ctx,
             agent_id=agent_id,
-            variable_id=variable_id,
+            variable_id=id,
             key=key,
             value=value,
         )
 
     @variable.command("get", help="Get the value(s) of a variable")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("variable_id", type=str)
-    @click.argument("key", type=str, required=False)
+    @click.option("--id", type=str, metavar="ID", help="Variable ID", required=True)
+    @click.option("--key", type=str, metavar="NAME", help="The key (e.g. customer ID or tag)")
     @click.pass_context
     def variable_get(
         ctx: click.Context,
         agent_id: Optional[str],
-        variable_id: str,
+        id: str,
         key: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
@@ -2652,14 +2647,14 @@ async def async_main() -> None:
             Interface.view_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_id=variable_id,
+                variable_id=id,
                 key=key,
             )
         else:
             Interface.view_variable(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_id=variable_id,
+                variable_id=id,
             )
 
     @cli.group(help="Manage services")
