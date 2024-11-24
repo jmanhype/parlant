@@ -113,18 +113,19 @@ async def test_that_a_customer_can_be_updated_with_a_new_name(
 
     new_name = "Updated Name"
 
-    update_response = client.patch(
-        f"/customers/{customer.id}",
-        json={
-            "name": new_name,
-        },
+    customer_dto = (
+        client.patch(
+            f"/customers/{customer.id}",
+            json={
+                "name": new_name,
+            },
+        )
+        .raise_for_status()
+        .json()
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
-    updated_customer = await customer_store.read_customer(customer.id)
-
-    assert updated_customer.name == new_name
-    assert updated_customer.extra == extra
+    assert customer_dto["name"] == new_name
+    assert customer_dto["extra"] == extra
 
 
 async def test_that_a_customer_can_be_deleted(

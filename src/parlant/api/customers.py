@@ -118,10 +118,12 @@ def create_router(
     @router.patch(
         "/{customer_id}",
         operation_id="update_customer",
-        status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_customer(customer_id: CustomerId, params: CustomerUpdateParamsDTO) -> None:
+    async def update_customer(
+        customer_id: CustomerId,
+        params: CustomerUpdateParamsDTO,
+    ) -> CustomerDTO:
         if params.name:
             _ = await customer_store.update_customer(
                 customer_id=customer_id,
@@ -141,6 +143,16 @@ def create_router(
             if params.tags.remove:
                 for tag_id in params.tags.remove:
                     await customer_store.remove_tag(customer_id, tag_id)
+
+        customer = await customer_store.read_customer(customer_id=customer_id)
+
+        return CustomerDTO(
+            id=customer.id,
+            creation_utc=customer.creation_utc,
+            name=customer.name,
+            extra=customer.extra,
+            tags=customer.tags,
+        )
 
     @router.delete(
         "/{customer_id}",

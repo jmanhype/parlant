@@ -104,10 +104,14 @@ async def test_that_agent_can_be_updated(
     agent_store = container[AgentStore]
     agent = await agent_store.create_agent("test-agent")
 
-    agent_dto = client.patch(
-        f"/agents/{agent.id}",
-        json=patch_request,
-    ).raise_for_status().json()
+    agent_dto = (
+        client.patch(
+            f"/agents/{agent.id}",
+            json=patch_request,
+        )
+        .raise_for_status()
+        .json()
+    )
 
     assert agent_dto["name"] == patch_request.get("name", "test-agent")
     assert agent_dto["description"] == patch_request.get("description")
