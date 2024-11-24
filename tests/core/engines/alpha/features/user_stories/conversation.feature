@@ -17,3 +17,14 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains a farewell
+
+    Scenario: The agent stays consistent with suggested results
+        Given an agent
+        And an empty session
+        And a guideline "suggest_relevant_tags", to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio" when a user asks a question about a product
+        And a user message, "Hi I'm looking for an laptop that suits a software developer. Can you suggest me what tags are relevant for it?"
+        And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'developement'"
+        And a user message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio', which one would you recommend best?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains 'productivity', 'professional', and 'storage'
