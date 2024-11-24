@@ -378,27 +378,32 @@ class API:
     ) -> Any:
         async with self.make_client() as client:
             response = await client.post(
-                f"/agents/{agent_id}/guidelines/",
+                f"/agents/{agent_id}/guidelines",
                 json={
                     "invoices": [
                         {
                             "payload": {
-                                "content": {
-                                    "condition": condition,
-                                    "action": action,
+                                "kind": "guideline",
+                                "guideline": {
+                                    "content": {
+                                        "condition": condition,
+                                        "action": action,
+                                    },
+                                    "operation": operation,
+                                    "updated_id": updated_id,
+                                    "coherence_check": True,
+                                    "connection_proposition": True,
                                 },
-                                "operation": operation,
-                                "updated_id": updated_id,
-                                "coherence_check": True,
-                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True if coherence_check is None else False,
                             "data": {
-                                "coherence_checks": coherence_check if coherence_check else [],
-                                "connection_propositions": connection_propositions
-                                if connection_propositions
-                                else None,
+                                "guideline": {
+                                    "coherence_checks": coherence_check if coherence_check else [],
+                                    "connection_propositions": connection_propositions
+                                    if connection_propositions
+                                    else None,
+                                }
                             },
                             "error": None,
                         }

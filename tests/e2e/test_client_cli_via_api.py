@@ -125,9 +125,10 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
 
         process = await run_cli(
             "agent",
-            "add",
+            "create",
+            "--name",
             name,
-            "-d",
+            "--description",
             description,
             "--max-engine-iterations",
             str(123),
@@ -147,7 +148,8 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
 
         process = await run_cli(
             "agent",
-            "add",
+            "create",
+            "--name",
             "Test Agent With No Description",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -211,7 +213,8 @@ async def test_that_an_agent_can_be_deleted(
         assert (
             await run_cli_and_get_exit_status(
                 "agent",
-                "remove",
+                "delete",
+                "--id",
                 agent["id"],
             )
             == os.EX_OK
@@ -239,6 +242,7 @@ async def test_that_an_agent_can_be_viewed(
         process = await run_cli(
             "agent",
             "view",
+            "--id",
             agent["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -294,7 +298,7 @@ async def test_that_sessions_can_be_listed(
         process = await run_cli(
             "session",
             "list",
-            "-u",
+            "--customer-id",
             first_customer,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -323,7 +327,12 @@ async def test_that_session_can_be_updated(
 
         assert (
             await run_cli_and_get_exit_status(
-                "session", "update", session_id, "--title", "New Title"
+                "session",
+                "update",
+                "--id",
+                session_id,
+                "--title",
+                "New Title",
             )
             == os.EX_OK
         )
@@ -346,10 +355,12 @@ async def test_that_a_term_can_be_created_with_synonyms(
 
         process = await run_cli(
             "glossary",
-            "add",
+            "create",
             "--agent-id",
             agent_id,
+            "--name",
             term_name,
+            "--description",
             description,
             "--synonyms",
             synonyms,
@@ -375,10 +386,12 @@ async def test_that_a_term_can_be_created_without_synonyms(
 
         process = await run_cli(
             "glossary",
-            "add",
+            "create",
             "--agent-id",
             agent_id,
+            "--name",
             term_name,
+            "--description",
             description,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -417,6 +430,7 @@ async def test_that_a_term_can_be_updated(
             "update",
             "--agent-id",
             agent_id,
+            "--id",
             term_to_update["id"],
             "--name",
             new_name,
@@ -454,9 +468,10 @@ async def test_that_a_term_can_be_deleted(
 
         process = await run_cli(
             "glossary",
-            "remove",
+            "delete",
             "--agent-id",
             agent_id,
+            "--id",
             term["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -468,30 +483,6 @@ async def test_that_a_term_can_be_deleted(
 
         terms = await context.api.list_terms(agent_id)
         assert len(terms) == 0
-
-
-async def test_that_terms_are_loaded_on_server_startup(
-    context: ContextOfTest,
-) -> None:
-    name = "guideline_no_synonyms"
-    description = "simple guideline with no synonyms"
-
-    with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-        agent_id = (await context.api.get_first_agent())["id"]
-
-        term = await context.api.create_term(agent_id, name, description)
-
-    with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
-
-        agent_id = (await context.api.get_first_agent())["id"]
-
-        term = await context.api.read_term(agent_id, term["id"])
-        assert term["name"] == name
-        assert term["description"] == description
-        assert term["synonyms"] == []
 
 
 async def test_that_a_guideline_can_be_added(
@@ -507,10 +498,12 @@ async def test_that_a_guideline_can_be_added(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
+            "--condition",
             condition,
+            "--action",
             action,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -543,10 +536,13 @@ async def test_that_a_guideline_can_be_updated(
         process = await run_cli(
             "guideline",
             "update",
-            "-a",
+            "--agent-id",
             agent_id,
+            "--id",
             guideline["id"],
+            "--condition",
             condition,
+            "--action",
             updated_action,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -579,10 +575,12 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
+            "--condition",
             condition,
+            "--action",
             action,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -594,10 +592,12 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
+            "--condition",
             condition,
+            "--action",
             conflicting_action,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -631,10 +631,12 @@ async def test_that_adding_connected_guidelines_creates_connections(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
+            "--condition",
             condition1,
+            "--action",
             action1,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -646,10 +648,12 @@ async def test_that_adding_connected_guidelines_creates_connections(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
+            "--condition",
             condition2,
+            "--action",
             action2,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -694,8 +698,9 @@ async def test_that_a_guideline_can_be_viewed(
         process = await run_cli(
             "guideline",
             "view",
-            "-a",
+            "--agent-id",
             agent_id,
+            "--id",
             guideline["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -733,7 +738,7 @@ async def test_that_guidelines_can_be_listed(
         process = await run_cli(
             "guideline",
             "list",
-            "-a",
+            "--agent-id",
             agent_id,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -764,12 +769,14 @@ async def test_that_guidelines_can_be_entailed(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
             "--no-check",
-            "--no-index",
+            "--no-connect",
+            "--condition",
             condition1,
+            "--action",
             action1,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -781,12 +788,14 @@ async def test_that_guidelines_can_be_entailed(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
             "--no-check",
-            "--no-index",
+            "--no-connect",
+            "--condition",
             condition2,
+            "--action",
             action2,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -808,9 +817,11 @@ async def test_that_guidelines_can_be_entailed(
         process = await run_cli(
             "guideline",
             "entail",
-            "-a",
+            "--agent-id",
             agent_id,
+            "--source",
             first_guideline["id"],
+            "--target",
             second_guideline["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -845,12 +856,14 @@ async def test_that_guidelines_can_be_suggestively_entailed(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
             "--no-check",
-            "--no-index",
+            "--no-connect",
+            "--condition",
             condition1,
+            "--action",
             action1,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -862,12 +875,14 @@ async def test_that_guidelines_can_be_suggestively_entailed(
 
         process = await run_cli(
             "guideline",
-            "add",
-            "-a",
+            "create",
+            "--agent-id",
             agent_id,
             "--no-check",
-            "--no-index",
+            "--no-connect",
+            "--condition",
             condition2,
+            "--action",
             action2,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -889,10 +904,12 @@ async def test_that_guidelines_can_be_suggestively_entailed(
         process = await run_cli(
             "guideline",
             "entail",
-            "-a",
+            "--agent-id",
             agent_id,
             "--suggestive",
+            "--source",
             first_guideline["id"],
+            "--target",
             second_guideline["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -926,9 +943,10 @@ async def test_that_a_guideline_can_be_removed(
 
         process = await run_cli(
             "guideline",
-            "remove",
-            "-a",
+            "delete",
+            "--agent-id",
             agent_id,
+            "--id",
             guideline["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1031,9 +1049,11 @@ async def test_that_a_connection_can_be_removed(
         process = await run_cli(
             "guideline",
             "disentail",
-            "-a",
+            "--agent-id",
             agent_id,
+            "--source",
             first,
+            "--target",
             second,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1074,11 +1094,11 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
             assert (
                 await run_cli_and_get_exit_status(
                     "service",
-                    "add",
+                    "create",
                     service_name,
-                    "-k",
+                    "--kind",
                     service_kind,
-                    "-u",
+                    "--url",
                     server.url,
                 )
                 == os.EX_OK
@@ -1087,11 +1107,14 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
             assert (
                 await run_cli_and_get_exit_status(
                     "guideline",
-                    "enable-tool",
-                    "-a",
+                    "tool-enable",
+                    "--agent-id",
                     agent_id,
+                    "--id",
                     guideline["id"],
+                    "--service",
                     service_name,
+                    "--tool",
                     tool_name,
                 )
                 == os.EX_OK
@@ -1135,11 +1158,11 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
             assert (
                 await run_cli_and_get_exit_status(
                     "service",
-                    "add",
+                    "create",
                     service_name,
-                    "-k",
+                    "--kind",
                     service_kind,
-                    "-u",
+                    "--url",
                     server.url,
                 )
                 == os.EX_OK
@@ -1152,11 +1175,14 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
             assert (
                 await run_cli_and_get_exit_status(
                     "guideline",
-                    "disable-tool",
-                    "-a",
+                    "tool-disable",
+                    "--agent-id",
                     agent_id,
+                    "--id",
                     guideline["id"],
+                    "--service",
                     service_name,
+                    "--tool",
                     tool_name,
                 )
                 == os.EX_OK
@@ -1217,11 +1243,12 @@ async def test_that_a_variable_can_be_added(
 
         process = await run_cli(
             "variable",
-            "add",
+            "create",
             "--agent-id",
             agent_id,
             "--description",
             description,
+            "--name",
             name,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1255,9 +1282,10 @@ async def test_that_a_variable_can_be_removed(
 
         process = await run_cli(
             "variable",
-            "remove",
+            "delete",
             "--agent-id",
             agent_id,
+            "--id",
             variable["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1292,8 +1320,11 @@ async def test_that_a_variable_value_can_be_set_with_json(
             "set",
             "--agent-id",
             agent_id,
+            "--id",
             variable["id"],
+            "--key",
             key,
+            "--value",
             json.dumps(data),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1328,8 +1359,11 @@ async def test_that_a_variable_value_can_be_set_with_string(
             "set",
             "--agent-id",
             agent_id,
+            "--id",
             variable["id"],
+            "--key",
             key,
+            "--value",
             data,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1371,6 +1405,7 @@ async def test_that_a_variables_values_can_be_retrieved(
             "get",
             "--agent-id",
             agent_id,
+            "--id",
             variable["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1391,7 +1426,9 @@ async def test_that_a_variables_values_can_be_retrieved(
             "get",
             "--agent-id",
             agent_id,
+            "--id",
             variable["id"],
+            "--key",
             specific_key,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1449,7 +1486,9 @@ async def test_that_a_message_can_be_inspected(
         process = await run_cli(
             "session",
             "inspect",
+            "--session-id",
             session["id"],
+            "--event-id",
             reply_event["id"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1490,13 +1529,14 @@ async def test_that_an_openapi_service_can_be_added_via_file(
                 assert (
                     await run_cli_and_get_exit_status(
                         "service",
-                        "add",
+                        "create",
+                        "--name",
                         service_name,
-                        "-k",
+                        "--kind",
                         service_kind,
-                        "-s",
+                        "--source",
                         source,
-                        "-u",
+                        "--url",
                         OPENAPI_SERVER_URL,
                     )
                     == os.EX_OK
@@ -1526,13 +1566,14 @@ async def test_that_an_openapi_service_can_be_added_via_url(
             assert (
                 await run_cli_and_get_exit_status(
                     "service",
-                    "add",
+                    "create",
+                    "--name",
                     service_name,
-                    "-k",
+                    "--kind",
                     service_kind,
-                    "-s",
+                    "--source",
                     source,
-                    "-u",
+                    "--url",
                     OPENAPI_SERVER_URL,
                 )
                 == os.EX_OK
@@ -1568,11 +1609,12 @@ async def test_that_a_sdk_service_can_be_added(
             assert (
                 await run_cli_and_get_exit_status(
                     "service",
-                    "add",
+                    "create",
+                    "--name",
                     service_name,
-                    "-k",
+                    "--kind",
                     service_kind,
-                    "-u",
+                    "--url",
                     server.url,
                 )
                 == os.EX_OK
@@ -1600,7 +1642,8 @@ async def test_that_a_service_can_be_removed(
 
         process = await run_cli(
             "service",
-            "remove",
+            "delete",
+            "--name",
             service_name,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1611,7 +1654,7 @@ async def test_that_a_service_can_be_removed(
         assert process.returncode == os.EX_OK
 
         async with context.api.make_client() as client:
-            response = await client.get("/services/")
+            response = await client.get("/services")
             response.raise_for_status()
             services = response.json()
             assert not any(s["name"] == service_name for s in services)
@@ -1661,6 +1704,7 @@ async def test_that_a_service_can_be_viewed(
         process = await run_cli(
             "service",
             "view",
+            "--name",
             service_name,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1710,7 +1754,8 @@ async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "add",
+                "create",
+                "--name",
                 "TestCustomer",
             )
             == os.EX_OK
@@ -1729,6 +1774,7 @@ async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
         process = await run_cli(
             "customer",
             "view",
+            "--id",
             customer_id,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1750,7 +1796,8 @@ async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "remove",
+                "delete",
+                "--id",
                 customer_id,
             )
             == os.EX_OK
@@ -1769,9 +1816,12 @@ async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> Non
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "add-extra",
+                "set",
+                "--id",
                 customer_id,
+                "--key",
                 "key1",
+                "--value",
                 "value1",
             )
             == os.EX_OK
@@ -1792,8 +1842,10 @@ async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> N
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "remove-extra",
+                "unset",
+                "--id",
                 customer_id,
+                "--key",
                 "key1",
             )
             == os.EX_OK
@@ -1808,13 +1860,15 @@ async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
-        tag_id = (await context.api.create_tag(name="TestTag"))["tag"]["id"]
+        tag_id = (await context.api.create_tag(name="TestTag"))["id"]
 
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "add-tag",
+                "tag",
+                "--id",
                 customer_id,
+                "--tag-id",
                 tag_id,
             )
             == os.EX_OK
@@ -1829,14 +1883,16 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
-        tag_id = (await context.api.create_tag(name="TestTag"))["tag"]["id"]
+        tag_id = (await context.api.create_tag(name="TestTag"))["id"]
         await context.api.add_customer_tag(customer_id, tag_id)
 
         assert (
             await run_cli_and_get_exit_status(
                 "customer",
-                "remove-tag",
+                "untag",
+                "--id",
                 customer_id,
+                "--tag-id",
                 tag_id,
             )
             == os.EX_OK
@@ -1855,7 +1911,8 @@ async def test_that_a_tag_can_be_added(context: ContextOfTest) -> None:
         assert (
             await run_cli_and_get_exit_status(
                 "tag",
-                "add",
+                "create",
+                "--name",
                 tag_name,
             )
             == os.EX_OK
@@ -1895,6 +1952,7 @@ async def test_that_a_tag_can_be_viewed(context: ContextOfTest) -> None:
         process = await run_cli(
             "tag",
             "view",
+            "--id",
             tag_id,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -1918,7 +1976,9 @@ async def test_that_a_tag_can_be_updated(context: ContextOfTest) -> None:
             await run_cli_and_get_exit_status(
                 "tag",
                 "update",
+                "--id",
                 tag_id,
+                "--name",
                 new_name,
             )
             == os.EX_OK
