@@ -5,13 +5,14 @@ from fastapi import APIRouter, HTTPException, status
 
 from parlant.api.common import (
     ConnectionKindDTO,
-    GuidelinePayloadDTO,
-    GuidelineInvoiceDataDTO,
+    InvoiceDataDTO,
+    PayloadKindDTO,
     ToolIdDTO,
     apigen_config,
     connection_kind_dto_to_connection_kind,
     connection_kind_to_dto,
 )
+from parlant.api.index import InvoiceDTO
 from parlant.core.agents import AgentId
 from parlant.core.common import DefaultBaseModel
 from parlant.core.evaluations import (
@@ -65,16 +66,8 @@ class GuidelineWithConnectionsAndToolAssociationsDTO(DefaultBaseModel):
     tool_associations: Sequence[GuidelineToolAssociationDTO]
 
 
-class GuidelineInvoiceDTO(DefaultBaseModel):
-    payload: GuidelinePayloadDTO
-    checksum: str
-    approved: bool
-    data: GuidelineInvoiceDataDTO
-    error: Optional[str]
-
-
 class GuidelineCreationParamsDTO(DefaultBaseModel):
-    invoices: Sequence[GuidelineInvoiceDTO]
+    invoices: Sequence[InvoiceDTO]
 
 
 class GuidelineCreationResult(DefaultBaseModel):
@@ -109,25 +102,43 @@ class GuidelineConnection(DefaultBaseModel):
     kind: ConnectionKind
 
 
-def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
+def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
+    if dto.payload.kind != PayloadKindDTO.GUIDELINE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only guideline invoices are supported here",
+        )
+
     if not dto.approved:
-        raise ValueError("Unapproved invoice.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unapproved invoice",
+        )
+
+    if not dto.payload.guideline:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Missing guideline payload",
+        )
 
     payload = GuidelinePayload(
         content=GuidelineContent(
-            condition=dto.payload.content.condition,
-            action=dto.payload.content.action,
+            condition=dto.payload.guideline.content.condition,
+            action=dto.payload.guideline.content.action,
         ),
-        operation=dto.payload.operation.value,
-        coherence_check=dto.payload.coherence_check,
-        connection_proposition=dto.payload.connection_proposition,
-        updated_id=dto.payload.updated_id,
+        operation=dto.payload.guideline.operation.value,
+        coherence_check=dto.payload.guideline.coherence_check,
+        connection_proposition=dto.payload.guideline.connection_proposition,
+        updated_id=dto.payload.guideline.updated_id,
     )
 
     kind = PayloadKind.GUIDELINE
 
     if not dto.data:
-        raise ValueError("Unsupported payload.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Missing invoice data",
+        )
 
     data = _invoice_data_dto_to_invoice_data(dto.data)
 
@@ -142,7 +153,13 @@ def _invoice_dto_to_invoice(dto: GuidelineInvoiceDTO) -> Invoice:
     )
 
 
-def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGuidelineData:
+def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineData:
+    if not dto.guideline:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Missing guideline invoice data",
+        )
+
     try:
         coherence_checks = [
             CoherenceCheck(
@@ -154,10 +171,10 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
                 issue=check.issue,
                 severity=check.severity,
             )
-            for check in dto.coherence_checks
+            for check in dto.guideline.coherence_checks
         ]
 
-        if dto.connection_propositions:
+        if dto.guideline.connection_propositions:
             connection_propositions = [
                 ConnectionProposition(
                     check_kind=prop.check_kind.value,
@@ -169,7 +186,7 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
                     ),
                     connection_kind=connection_kind_dto_to_connection_kind(prop.connection_kind),
                 )
-                for prop in dto.connection_propositions
+                for prop in dto.guideline.connection_propositions
             ]
         else:
             connection_propositions = None
@@ -177,9 +194,11 @@ def _invoice_data_dto_to_invoice_data(dto: GuidelineInvoiceDataDTO) -> InvoiceGu
         return InvoiceGuidelineData(
             coherence_checks=coherence_checks, connection_propositions=connection_propositions
         )
-
     except Exception:
-        raise ValueError(f"Unsupported invoice guideline data: {dto}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid invoice guideline data",
+        )
 
 
 def create_router(
@@ -229,13 +248,7 @@ def create_router(
         agent_id: AgentId,
         params: GuidelineCreationParamsDTO,
     ) -> GuidelineCreationResult:
-        try:
-            invoices = [_invoice_dto_to_invoice(i) for i in params.invoices]
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=str(exc),
-            )
+        invoices = [_invoice_dto_to_invoice(i) for i in params.invoices]
 
         guideline_ids = set(
             await application.create_guidelines(

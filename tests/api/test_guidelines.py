@@ -41,19 +41,24 @@ async def test_that_a_guideline_can_be_created(
         "invoices": [
             {
                 "payload": {
-                    "content": {
-                        "condition": "the customer greets you",
-                        "action": "greet them back with 'Hello'",
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "the customer greets you",
+                            "action": "greet them back with 'Hello'",
+                        },
+                        "operation": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
                 },
                 "checksum": "checksum_value",
                 "approved": True,
                 "data": {
-                    "coherence_checks": [],
-                    "connection_propositions": None,
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": None,
+                    }
                 },
                 "error": None,
             }
@@ -97,28 +102,36 @@ async def test_that_an_unapproved_invoice_is_rejected(
         "invoices": [
             {
                 "payload": {
-                    "content": {
-                        "condition": "the customer says goodbye",
-                        "action": "say 'Goodbye' back",
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "the customer says goodbye",
+                            "action": "say 'Goodbye' back",
+                        },
+                        "operation": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
                 },
                 "checksum": "checksum_value",
                 "approved": False,
-                "data": {"coherence_checks": [], "connection_propositions": []},
+                "data": {
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": [],
+                    },
+                },
                 "error": None,
             }
         ],
     }
 
-    response = client.post("/agents/{agent_id}/guidelines/", json=request_data)
+    response = client.post("/agents/{agent_id}/guidelines", json=request_data)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     response_data = response.json()
     assert "detail" in response_data
-    assert response_data["detail"] == "Unapproved invoice."
+    assert response_data["detail"] == "Unapproved invoice"
 
 
 async def test_that_a_connection_between_two_introduced_guidelines_is_created(
@@ -129,63 +142,73 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
     invoices = [
         {
             "payload": {
-                "content": {
-                    "condition": "the customer asks about nearby restaurants",
-                    "action": "provide a list of restaurants",
+                "kind": "guideline",
+                "guideline": {
+                    "content": {
+                        "condition": "the customer asks about nearby restaurants",
+                        "action": "provide a list of restaurants",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
-                "operation": "add",
-                "coherence_check": True,
-                "connection_proposition": True,
             },
             "checksum": "checksum1",
             "approved": True,
             "data": {
-                "coherence_checks": [],
-                "connection_propositions": [
-                    {
-                        "check_kind": "connection_with_another_evaluated_guideline",
-                        "source": {
-                            "condition": "the customer asks about nearby restaurants",
-                            "action": "provide a list of restaurants",
-                        },
-                        "target": {
-                            "condition": "highlight the best-reviewed restaurant",
-                            "action": "recommend the top choice",
-                        },
-                        "connection_kind": "entails",
-                    }
-                ],
+                "guideline": {
+                    "coherence_checks": [],
+                    "connection_propositions": [
+                        {
+                            "check_kind": "connection_with_another_evaluated_guideline",
+                            "source": {
+                                "condition": "the customer asks about nearby restaurants",
+                                "action": "provide a list of restaurants",
+                            },
+                            "target": {
+                                "condition": "highlight the best-reviewed restaurant",
+                                "action": "recommend the top choice",
+                            },
+                            "connection_kind": "entails",
+                        }
+                    ],
+                }
             },
             "error": None,
         },
         {
             "payload": {
-                "content": {
-                    "condition": "highlight the best-reviewed restaurant",
-                    "action": "recommend the top choice",
+                "kind": "guideline",
+                "guideline": {
+                    "content": {
+                        "condition": "highlight the best-reviewed restaurant",
+                        "action": "recommend the top choice",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
                 },
-                "operation": "add",
-                "coherence_check": True,
-                "connection_proposition": True,
             },
             "checksum": "checksum2",
             "approved": True,
             "data": {
-                "coherence_checks": [],
-                "connection_propositions": [
-                    {
-                        "check_kind": "connection_with_another_evaluated_guideline",
-                        "source": {
-                            "condition": "the customer asks about nearby restaurants",
-                            "action": "provide a list of restaurants",
-                        },
-                        "target": {
-                            "condition": "highlight the best-reviewed restaurant",
-                            "action": "recommend the top choice",
-                        },
-                        "connection_kind": "entails",
-                    }
-                ],
+                "guideline": {
+                    "coherence_checks": [],
+                    "connection_propositions": [
+                        {
+                            "check_kind": "connection_with_another_evaluated_guideline",
+                            "source": {
+                                "condition": "the customer asks about nearby restaurants",
+                                "action": "provide a list of restaurants",
+                            },
+                            "target": {
+                                "condition": "highlight the best-reviewed restaurant",
+                                "action": "recommend the top choice",
+                            },
+                            "connection_kind": "entails",
+                        }
+                    ],
+                }
             },
             "error": None,
         },
@@ -235,32 +258,37 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
 
     invoice = {
         "payload": {
-            "content": {
-                "condition": "provide the current weather update",
-                "action": "include temperature and humidity",
+            "kind": "guideline",
+            "guideline": {
+                "content": {
+                    "condition": "provide the current weather update",
+                    "action": "include temperature and humidity",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
             },
-            "operation": "add",
-            "coherence_check": True,
-            "connection_proposition": True,
         },
         "checksum": "checksum_new",
         "approved": True,
         "data": {
-            "coherence_checks": [],
-            "connection_propositions": [
-                {
-                    "check_kind": "connection_with_existing_guideline",
-                    "source": {
-                        "condition": "the customer asks about the weather",
-                        "action": "provide the current weather update",
-                    },
-                    "target": {
-                        "condition": "provide the current weather update",
-                        "action": "include temperature and humidity",
-                    },
-                    "connection_kind": "entails",
-                }
-            ],
+            "guideline": {
+                "coherence_checks": [],
+                "connection_propositions": [
+                    {
+                        "check_kind": "connection_with_existing_guideline",
+                        "source": {
+                            "condition": "the customer asks about the weather",
+                            "action": "provide the current weather update",
+                        },
+                        "target": {
+                            "condition": "provide the current weather update",
+                            "action": "include temperature and humidity",
+                        },
+                        "connection_kind": "entails",
+                    }
+                ],
+            }
         },
         "error": None,
     }
@@ -750,33 +778,38 @@ async def test_that_an_existing_guideline_can_be_updated(
         "invoices": [
             {
                 "payload": {
-                    "content": {
-                        "condition": "the customer greets you",
-                        "action": new_action,
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "the customer greets you",
+                            "action": new_action,
+                        },
+                        "operation": "update",
+                        "coherence_check": True,
+                        "connection_proposition": True,
+                        "updated_id": existing_guideline.id,
                     },
-                    "operation": "update",
-                    "coherence_check": True,
-                    "connection_proposition": True,
-                    "updated_id": existing_guideline.id,
                 },
                 "checksum": "checksum_new",
                 "approved": True,
                 "data": {
-                    "coherence_checks": [],
-                    "connection_propositions": [
-                        {
-                            "check_kind": "connection_with_existing_guideline",
-                            "source": {
-                                "condition": "the customer greets you",
-                                "action": new_action,
-                            },
-                            "target": {
-                                "condition": connected_guideline_post_update.content.condition,
-                                "action": connected_guideline_post_update.content.action,
-                            },
-                            "connection_kind": "entails",
-                        }
-                    ],
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": [
+                            {
+                                "check_kind": "connection_with_existing_guideline",
+                                "source": {
+                                    "condition": "the customer greets you",
+                                    "action": new_action,
+                                },
+                                "target": {
+                                    "condition": connected_guideline_post_update.content.condition,
+                                    "action": connected_guideline_post_update.content.action,
+                                },
+                                "connection_kind": "entails",
+                            }
+                        ],
+                    },
                 },
                 "error": None,
             }
@@ -824,64 +857,74 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
         "invoices": [
             {
                 "payload": {
-                    "content": {
-                        "condition": "the customer greets you",
-                        "action": new_aciton,
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "the customer greets you",
+                            "action": new_aciton,
+                        },
+                        "operation": "update",
+                        "coherence_check": True,
+                        "connection_proposition": True,
+                        "updated_id": existing_guideline.id,
                     },
-                    "operation": "update",
-                    "coherence_check": True,
-                    "connection_proposition": True,
-                    "updated_id": existing_guideline.id,
                 },
                 "checksum": "checksum_update",
                 "approved": True,
                 "data": {
-                    "coherence_checks": [],
-                    "connection_propositions": [
-                        {
-                            "check_kind": "connection_with_another_evaluated_guideline",
-                            "source": {
-                                "condition": "the customer greets you",
-                                "action": new_aciton,
-                            },
-                            "target": {
-                                "condition": "replying to greeting message",
-                                "action": "ask how they are",
-                            },
-                            "connection_kind": "entails",
-                        }
-                    ],
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": [
+                            {
+                                "check_kind": "connection_with_another_evaluated_guideline",
+                                "source": {
+                                    "condition": "the customer greets you",
+                                    "action": new_aciton,
+                                },
+                                "target": {
+                                    "condition": "replying to greeting message",
+                                    "action": "ask how they are",
+                                },
+                                "connection_kind": "entails",
+                            }
+                        ],
+                    }
                 },
                 "error": None,
             },
             {
                 "payload": {
-                    "content": {
-                        "condition": "replying to greeting message",
-                        "action": "ask how they are",
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "replying to greeting message",
+                            "action": "ask how they are",
+                        },
+                        "operation": "add",
+                        "coherence_check": True,
+                        "connection_proposition": True,
                     },
-                    "operation": "add",
-                    "coherence_check": True,
-                    "connection_proposition": True,
                 },
                 "checksum": "checksum_new_guideline",
                 "approved": True,
                 "data": {
-                    "coherence_checks": [],
-                    "connection_propositions": [
-                        {
-                            "check_kind": "connection_with_another_evaluated_guideline",
-                            "source": {
-                                "condition": "the customer greets you",
-                                "action": new_aciton,
-                            },
-                            "target": {
-                                "condition": "replying to greeting message",
-                                "action": "ask how they are",
-                            },
-                            "connection_kind": "entails",
-                        }
-                    ],
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": [
+                            {
+                                "check_kind": "connection_with_another_evaluated_guideline",
+                                "source": {
+                                    "condition": "the customer greets you",
+                                    "action": new_aciton,
+                                },
+                                "target": {
+                                    "condition": "replying to greeting message",
+                                    "action": "ask how they are",
+                                },
+                                "connection_kind": "entails",
+                            }
+                        ],
+                    }
                 },
                 "error": None,
             },
@@ -947,20 +990,25 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
         "invoices": [
             {
                 "payload": {
-                    "content": {
-                        "condition": "the customer greets you",
-                        "action": new_action,
+                    "kind": "guideline",
+                    "guideline": {
+                        "content": {
+                            "condition": "the customer greets you",
+                            "action": new_action,
+                        },
+                        "operation": "update",
+                        "coherence_check": True,
+                        "connection_proposition": False,
+                        "updated_id": existing_guideline.id,
                     },
-                    "operation": "update",
-                    "coherence_check": True,
-                    "connection_proposition": False,
-                    "updated_id": existing_guideline.id,
                 },
                 "checksum": "checksum_new",
                 "approved": True,
                 "data": {
-                    "coherence_checks": [],
-                    "connection_propositions": None,
+                    "guideline": {
+                        "coherence_checks": [],
+                        "connection_propositions": None,
+                    }
                 },
                 "error": None,
             }

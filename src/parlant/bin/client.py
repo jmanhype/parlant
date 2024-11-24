@@ -30,7 +30,6 @@ from parlant.client.types import (
     GuidelineConnectionAddition,
     GuidelineConnectionUpdateParams,
     GuidelineContent,
-    GuidelineInvoice,
     GuidelinePayload,
     GuidelineToolAssociation,
     GuidelineToolAssociationUpdateParams,
@@ -329,15 +328,7 @@ class Actions:
 
                         guideline_result = client.guidelines.create(
                             agent_id,
-                            invoices=[
-                                GuidelineInvoice(
-                                    payload=invoice.payload.guideline,
-                                    checksum=invoice.checksum,
-                                    approved=invoice.approved,
-                                    data=invoice.data.guideline,
-                                    error=invoice.error,
-                                ),
-                            ],
+                            invoices=[invoice],
                         )
                         return guideline_result.items[0]
 
@@ -410,15 +401,7 @@ class Actions:
 
                         guideline_result = client.guidelines.create(
                             agent_id,
-                            invoices=[
-                                GuidelineInvoice(
-                                    payload=invoice.payload.guideline,
-                                    checksum=invoice.checksum,
-                                    approved=invoice.approved,
-                                    data=invoice.data.guideline,
-                                    error=invoice.error,
-                                ),
-                            ],
+                            invoices=[invoice],
                         )
                         return guideline_result.items[0]
 
