@@ -148,6 +148,12 @@ class Actions:
         )
 
     @staticmethod
+    def delete_session(ctx: click.Context, session_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        client.sessions.delete(session_id)
+
+    @staticmethod
     def update_session(
         ctx: click.Context,
         session_id: str,
@@ -996,6 +1002,15 @@ class Interface:
         session = Actions.create_session(ctx, agent_id, customer_id, title)
         Interface._write_success(f"Added session (id={session.id})")
         Interface._render_sessions([session])
+
+    @staticmethod
+    def delete_session(ctx: click.Context, session_id: str) -> None:
+        try:
+            Actions.delete_session(ctx, session_id=session_id)
+            Interface._write_success(f"Removed session (id={session_id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
 
     @staticmethod
     def update_session(
@@ -1971,19 +1986,24 @@ async def async_main() -> None:
     def session() -> None:
         pass
 
-    @session.command("new", help="Create a new session")
+    @session.command("create", help="Create a session")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.option("-u", "--customer-id", type=str, help="Customer ID", metavar="ID", required=False)
-    @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
+    @click.option(
+        "--customer-id",
+        type=str,
+        help="Customer ID (defaults to the guest customer)",
+        metavar="ID",
+        required=False,
+    )
+    @click.option("--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
-    def session_new(
+    def session_create(
         ctx: click.Context,
         agent_id: str,
         customer_id: Optional[str],
@@ -1994,29 +2014,28 @@ async def async_main() -> None:
 
         Interface.create_session(ctx, agent_id, customer_id, title)
 
+    @session.command("delete", help="Delete a session")
+    @click.option("--id", type=str, metavar="ID", help="Session ID", required=True)
+    @click.pass_context
+    def session_delete(
+        ctx: click.Context,
+        id: str,
+    ) -> None:
+        Interface.delete_session(ctx, id)
+
     @session.command("update", help="Update a session")
-    @click.option(
-        "-c",
-        "--consumption_offsets",
-        type=int,
-        help="Customer Offsets",
-        metavar=int,
-        required=False,
-    )
-    @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
-    @click.argument("session_id")
+    @click.option("--title", type=str, help="Session Title", metavar="TITLE", required=False)
+    @click.option("--id", type=str, metavar="ID", help="Session ID", required=True)
     @click.pass_context
     def session_update(
         ctx: click.Context,
-        session_id: str,
-        consumption_offsets: Optional[int],
+        id: str,
         title: Optional[str],
     ) -> None:
-        Interface.update_session(ctx, session_id, title, consumption_offsets)
+        Interface.update_session(ctx, id, title, None)
 
-    @session.command("list", help="List all sessions")
+    @session.command("list", help="List sessions")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Filter by agent ID",
@@ -2024,7 +2043,6 @@ async def async_main() -> None:
         required=False,
     )
     @click.option(
-        "-u",
         "--customer-id",
         type=str,
         help="Filter by Customer ID",
@@ -2043,44 +2061,36 @@ async def async_main() -> None:
     def session_view(ctx: click.Context, session_id: str) -> None:
         Interface.view_session(ctx, session_id)
 
-    @session.command("inspect", help="Inspect an interaction from a session")
-    @click.argument("session_id")
-    @click.argument("event_id")
+    @session.command("inspect", help="Inspect an event from a session")
+    @click.option("--session-id", type=str, help="Session ID", metavar="ID", required=True)
+    @click.option("--event-id", type=str, help="Event ID", metavar="ID", required=True)
     @click.pass_context
     def session_inspect(ctx: click.Context, session_id: str, event_id: str) -> None:
         Interface.inspect_event(ctx, session_id, event_id)
-
-    @session.command("post", help="Post customer message to session")
-    @click.argument("session_id")
-    @click.argument("message")
-    @click.pass_context
-    def session_post(ctx: click.Context, session_id: str, message: str) -> None:
-        Interface.create_event(ctx, session_id, message)
 
     @cli.group(help="Manage an agent's glossary")
     def glossary() -> None:
         pass
 
-    @glossary.command("add", help="Add a new term to the glossary")
+    @glossary.command("create", help="Create a term")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
-    @click.argument("description", type=str)
+    @click.option("--name", type=str, help="Term name", required=True)
+    @click.option("--description", type=str, help="Term description", required=True)
     @click.option(
-        "-s",
         "--synonyms",
         type=str,
         help="Comma-separated list of synonyms",
+        metavar="LIST",
         required=False,
     )
     @click.pass_context
-    def glossary_add(
+    def glossary_create(
         ctx: click.Context,
         agent_id: str,
         name: str,
@@ -2098,42 +2108,40 @@ async def async_main() -> None:
             (synonyms or "").split(","),
         )
 
-    @glossary.command("update", help="Update an existing term")
+    @glossary.command("update", help="Update a term")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("term_id", type=str)
+    @click.option("--id", type=str, help="Term ID", metavar="ID", required=True)
     @click.option(
-        "-n",
         "--name",
         type=str,
         help="Term name",
+        metavar="NAME",
         required=False,
     )
     @click.option(
-        "-d",
         "--description",
         type=str,
         help="Term description",
         required=False,
     )
     @click.option(
-        "-s",
         "--synonyms",
         type=str,
         help="Comma-separated list of synonyms",
+        metavar="LIST",
         required=False,
     )
     @click.pass_context
     def glossary_update(
         ctx: click.Context,
         agent_id: str,
-        term_id: str,
+        id: str,
         name: Optional[str],
         description: Optional[str],
         synonyms: Optional[str],
@@ -2144,36 +2152,34 @@ async def async_main() -> None:
         Interface.update_term(
             ctx,
             agent_id,
-            term_id,
+            id,
             name,
             description,
             (synonyms or "").split(","),
         )
 
-    @glossary.command("remove", help="Remove a term from the glossary")
+    @glossary.command("delete", help="Delete a term")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("term_id", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Term ID", required=True)
     @click.pass_context
-    def glossary_remove(
+    def glossary_delete(
         ctx: click.Context,
         agent_id: str,
-        term_id: str,
+        id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.delete_term(ctx, agent_id, term_id)
+        Interface.delete_term(ctx, agent_id, id)
 
-    @glossary.command("list", help="List all terms in the glossary")
+    @glossary.command("list", help="List terms")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
