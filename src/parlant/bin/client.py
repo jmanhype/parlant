@@ -2200,11 +2200,20 @@ async def async_main() -> None:
     def guideline() -> None:
         pass
 
-    @guideline.command("add", help="Add a new guideline")
-    @click.argument("condition", type=str)
-    @click.argument("action", type=str)
+    @guideline.command("create", help="Create a guideline")
     @click.option(
-        "-a",
+        "--condition",
+        type=str,
+        help="A statement describing when the guideline should apply",
+        required=True,
+    )
+    @click.option(
+        "--action",
+        type=str,
+        help="The instruction to perform when the guideline applies",
+        required=True,
+    )
+    @click.option(
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
@@ -2216,17 +2225,17 @@ async def async_main() -> None:
         type=bool,
         show_default=True,
         default=True,
-        help="Check for contradictions between existing guidelines",
+        help="Check for contradictions with existing guidelines",
     )
     @click.option(
-        "--index/--no-index",
+        "--connect/--no-connect",
         type=bool,
         show_default=True,
         default=True,
-        help="Determine if guideline connections should be indexed",
+        help="Connect this guideline with causually related guidelines",
     )
     @click.pass_context
-    def guideline_add(
+    def guideline_create(
         ctx: click.Context,
         agent_id: str,
         condition: str,
@@ -2246,12 +2255,21 @@ async def async_main() -> None:
             index=index,
         )
 
-    @guideline.command("update", help="Update an existing guideline")
-    @click.argument("guideline_id", type=str)
-    @click.argument("condition", type=str)
-    @click.argument("action", type=str)
+    @guideline.command("update", help="Update a guideline")
+    @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
     @click.option(
-        "-a",
+        "--condition",
+        type=str,
+        help="A statement describing when the guideline should apply",
+        required=True,
+    )
+    @click.option(
+        "--action",
+        type=str,
+        help="The instruction to perform when the guideline applies",
+        required=True,
+    )
+    @click.option(
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
@@ -2263,20 +2281,20 @@ async def async_main() -> None:
         type=bool,
         show_default=True,
         default=True,
-        help="Check for contradictions between existing guidelines",
+        help="Check for contradictions with existing guidelines",
     )
     @click.option(
-        "--index/--no-index",
+        "--connect/--no-connect",
         type=bool,
         show_default=True,
         default=True,
-        help="Determine if guideline connections should be indexed",
+        help="Connect this guideline with causually related guidelines",
     )
     @click.pass_context
     def guideline_update(
         ctx: click.Context,
         agent_id: str,
-        guideline_id: str,
+        id: str,
         condition: str,
         action: str,
         check: bool,
@@ -2290,26 +2308,25 @@ async def async_main() -> None:
             agent_id=agent_id,
             condition=condition,
             action=action,
-            guideline_id=guideline_id,
+            guideline_id=id,
             check=check,
             index=index,
         )
 
-    @guideline.command("remove", help="Remove a guideline")
+    @guideline.command("delete", help="Delete a guideline")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("guideline_id", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
     @click.pass_context
-    def guideline_remove(
+    def guideline_delete(
         ctx: click.Context,
         agent_id: str,
-        guideline_id: str,
+        id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2317,24 +2334,23 @@ async def async_main() -> None:
         Interface.delete_guideline(
             ctx=ctx,
             agent_id=agent_id,
-            guideline_id=guideline_id,
+            guideline_id=id,
         )
 
-    @guideline.command("view", help="View a guideline and its connections")
+    @guideline.command("view", help="View a guideline")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("guideline_id", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
     @click.pass_context
     def guideline_view(
         ctx: click.Context,
         agent_id: str,
-        guideline_id: str,
+        id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2342,12 +2358,11 @@ async def async_main() -> None:
         Interface.view_guideline(
             ctx=ctx,
             agent_id=agent_id,
-            guideline_id=guideline_id,
+            guideline_id=id,
         )
 
-    @guideline.command("list", help="List all guidelines for an agent")
+    @guideline.command("list", help="List guidelines")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
@@ -2369,7 +2384,6 @@ async def async_main() -> None:
 
     @guideline.command("entail", help="Create an entailment between two guidelines")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
@@ -2377,21 +2391,21 @@ async def async_main() -> None:
         required=False,
     )
     @click.option(
-        "--suggestive/-s",
+        "--suggestive",
         is_flag=True,
         show_default=True,
         default=False,
         help="Make the entailment suggestive rather than definite",
     )
-    @click.argument("source_guideline_id", type=str)
-    @click.argument("target_guideline_id", type=str)
+    @click.option("--source", type=str, metavar="ID", help="Source guideline ID", required=True)
+    @click.option("--target", type=str, metavar="ID", help="Target guideline ID", required=True)
     @click.pass_context
     def guideline_entail(
         ctx: click.Context,
         agent_id: str,
         suggestive: bool,
-        source_guideline_id: str,
-        target_guideline_id: str,
+        source: str,
+        target: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2399,28 +2413,27 @@ async def async_main() -> None:
         Interface.create_entailment(
             ctx=ctx,
             agent_id=agent_id,
-            source_guideline_id=source_guideline_id,
-            target_guideline_id=target_guideline_id,
+            source_guideline_id=source,
+            target_guideline_id=target,
             kind="suggests" if suggestive else "entails",
         )
 
-    @guideline.command("disentail", help="Remove an entailment between two guidelines")
+    @guideline.command("disentail", help="Delete an entailment between two guidelines")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("source_guideline_id", type=str)
-    @click.argument("target_guideline_id", type=str)
+    @click.option("--source", type=str, metavar="ID", help="Source guideline ID", required=True)
+    @click.option("--target", type=str, metavar="ID", help="Target guideline ID", required=True)
     @click.pass_context
     def guideline_disentail(
         ctx: click.Context,
         agent_id: str,
-        source_guideline_id: str,
-        target_guideline_id: str,
+        source: str,
+        target: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
@@ -2428,22 +2441,27 @@ async def async_main() -> None:
         Interface.remove_entailment(
             ctx=ctx,
             agent_id=agent_id,
-            source_guideline_id=source_guideline_id,
-            target_guideline_id=target_guideline_id,
+            source_guideline_id=source,
+            target_guideline_id=target,
         )
 
-    @guideline.command("enable-tool", help="Enable a tool for a guideline")
+    @guideline.command("tool-enable", help="Allow a guideline to make use of a tool")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("guideline_id", type=str)
-    @click.argument("service_name", type=str)
-    @click.argument("tool_name", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
+    @click.option(
+        "--service-name",
+        type=str,
+        metavar="NAME",
+        help="The name of the service containing the tool",
+        required=True,
+    )
+    @click.option("--tool-name", type=str, metavar="NAME", help="Tool name", required=True)
     @click.pass_context
     def guideline_enable_tool(
         ctx: click.Context,
@@ -2463,18 +2481,23 @@ async def async_main() -> None:
             tool_name=tool_name,
         )
 
-    @guideline.command("disable-tool", help="Disable a tool for a guideline")
+    @guideline.command("tool-disable", help="Disallow a guideline to make use of a tool")
     @click.option(
-        "-a",
         "--agent-id",
         type=str,
         help="Agent ID (defaults to the first agent)",
         metavar="ID",
         required=False,
     )
-    @click.argument("guideline_id", type=str)
-    @click.argument("service_name", type=str)
-    @click.argument("tool_name", type=str)
+    @click.option("--id", type=str, metavar="ID", help="Guideline ID", required=True)
+    @click.option(
+        "--service-name",
+        type=str,
+        metavar="NAME",
+        help="The name of the service containing the tool",
+        required=True,
+    )
+    @click.option("--tool-name", type=str, metavar="NAME", help="Tool name", required=True)
     @click.pass_context
     def guideline_disable_tool(
         ctx: click.Context,
