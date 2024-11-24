@@ -5,7 +5,7 @@ from enum import Enum, auto
 from pathlib import Path
 import time
 import traceback
-from typing import Any, Iterator
+from typing import Any, Iterator, override
 import coloredlogs  # type: ignore
 import logging
 import logging.handlers
@@ -68,21 +68,27 @@ class CorrelationalLogger(Logger):
         )
         self._formatter = CustomFormatter()
 
+    @override
     def debug(self, message: str) -> None:
         self.logger.debug(self._add_correlation_id(message))
 
+    @override
     def info(self, message: str) -> None:
         self.logger.info(self._add_correlation_id(message))
 
+    @override
     def warning(self, message: str) -> None:
         self.logger.warning(self._add_correlation_id(message))
 
+    @override
     def error(self, message: str) -> None:
         self.logger.error(self._add_correlation_id(message))
 
+    @override
     def critical(self, message: str) -> None:
         self.logger.critical(self._add_correlation_id(message))
 
+    @override
     @contextmanager
     def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
         t_start = time.time()

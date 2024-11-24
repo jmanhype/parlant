@@ -1,7 +1,7 @@
 import os
 import time
 import google.generativeai as genai  # type: ignore
-from typing import Any, Mapping
+from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
 from vertexai.preview import tokenization  # type: ignore
@@ -30,6 +30,7 @@ class GoogleEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self._tokenizer = tokenization.get_tokenizer_for_model("gemini-1.5-pro")
 
+    @override
     async def estimate_token_count(self, prompt: str) -> int:
         result = self._tokenizer.count_tokens(prompt)
         return int(result.total_tokens)
@@ -51,13 +52,16 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
         self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"google/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> EstimatingTokenizer:
         return self._tokenizer
 
+    @override
     async def generate(
         self,
         prompt: str,
@@ -116,6 +120,7 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
         )
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 1_000_000
 
@@ -128,6 +133,7 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
         )
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 2_000_000
 
@@ -140,13 +146,16 @@ class GoogleEmbedder(Embedder):
         self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"google/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> GoogleEstimatingTokenizer:
         return self._tokenizer
 
+    @override
     async def embed(
         self,
         texts: list[str],
@@ -169,6 +178,7 @@ class GeminiTextEmbedding_004(GoogleEmbedder):
         super().__init__(model_name="models/text-embedding-004")
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 8000
 
@@ -180,6 +190,7 @@ class GoogleService(NLPService):
     ) -> None:
         self._logger = logger
 
+    @override
     async def get_schematic_generator(self, t: type[T]) -> GeminiSchematicGenerator[T]:
         if t == ToolCallInferenceSchema:
             return FallbackSchematicGenerator(
@@ -189,8 +200,10 @@ class GoogleService(NLPService):
             )
         return Gemini_1_5_Pro[t](self._logger)  # type: ignore
 
+    @override
     async def get_embedder(self) -> Embedder:
         return GeminiTextEmbedding_004()
 
+    @override
     async def get_moderation_service(self) -> ModerationService:
         return NoModeration()

@@ -11,7 +11,7 @@ from openapi_parser.parser import (
     Operation,
 )
 from types import TracebackType
-from typing import Any, Awaitable, Callable, Mapping, NamedTuple, Optional, Sequence, cast
+from typing import Any, Awaitable, Callable, Mapping, NamedTuple, Optional, Sequence, cast, override
 
 from parlant.core.tools import (
     Tool,
@@ -176,12 +176,15 @@ class OpenAPIClient(ToolService):
 
         return tools
 
+    @override
     async def list_tools(self) -> Sequence[Tool]:
         return [t.tool for t in self._tools.values()]
 
+    @override
     async def read_tool(self, name: str) -> Tool:
         return self._tools[name].tool
 
+    @override
     async def call_tool(
         self,
         name: str,

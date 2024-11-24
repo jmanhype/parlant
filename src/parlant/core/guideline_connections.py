@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, override
 import networkx  # type: ignore
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
@@ -126,6 +126,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         return self._graph
 
+    @override
     async def create_connection(
         self,
         source: GuidelineId,
@@ -165,6 +166,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         return guideline_connection
 
+    @override
     async def delete_connection(
         self,
         id: GuidelineConnectionId,
@@ -180,6 +182,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         await self._collection.delete_one(filters={"id": {"$eq": id}})
 
+    @override
     async def list_connections(
         self,
         indirect: bool,

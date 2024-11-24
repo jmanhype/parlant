@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 import traceback
-from typing import Mapping, Optional, Sequence, cast
+from typing import Mapping, Optional, Sequence, cast, override
 
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.context_variables import (
@@ -89,6 +89,7 @@ class AlphaEngine(Engine):
         self._tool_event_generator = tool_event_generator
         self._message_event_generator = message_event_generator
 
+    @override
     async def process(
         self,
         context: Context,

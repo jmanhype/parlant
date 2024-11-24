@@ -1,5 +1,6 @@
 from itertools import chain
 import os
+from typing import override
 import httpx
 
 from parlant.core.logging import Logger
@@ -11,6 +12,7 @@ class LakeraGuard(ModerationService):
         self._logger = logger
         self._api_key = os.environ["LAKERA_API_KEY"]
 
+    @override
     async def check(self, content: str) -> ModerationCheck:
         def extract_tags(category: str) -> list[ModerationTag]:
             mapping: dict[str, list[ModerationTag]] = {

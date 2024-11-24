@@ -2,7 +2,7 @@ from __future__ import annotations
 from itertools import chain
 import time
 from openai import AsyncClient
-from typing import Any, Mapping
+from typing import Any, Mapping, override
 import json
 import jsonfinder  # type: ignore
 import os
@@ -32,6 +32,7 @@ class OpenAIEstimatingTokenizer(EstimatingTokenizer):
         self.model_name = model_name
         self.encoding = tiktoken.encoding_for_model(model_name)
 
+    @override
     async def estimate_token_count(self, prompt: str) -> int:
         tokens = self.encoding.encode(prompt)
         return len(tokens)
@@ -54,13 +55,16 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
         self._tokenizer = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
+    @override
     async def generate(
         self,
         prompt: str,
@@ -168,6 +172,7 @@ class GPT_4o(OpenAISchematicGenerator[T]):
         super().__init__(model_name="gpt-4o-2024-11-20", logger=logger)
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 128_000
 
@@ -178,6 +183,7 @@ class GPT_4o_Mini(OpenAISchematicGenerator[T]):
         self._token_estimator = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 128_000
 
@@ -191,13 +197,16 @@ class OpenAIEmbedder(Embedder):
         self._tokenizer = OpenAIEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"openai/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
+    @override
     async def embed(
         self,
         texts: list[str],
@@ -220,6 +229,7 @@ class OpenAITextEmbedding3Large(OpenAIEmbedder):
         super().__init__(model_name="text-embedding-3-large")
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 8192
 
@@ -229,6 +239,7 @@ class OpenAITextEmbedding3Small(OpenAIEmbedder):
         super().__init__(model_name="text-embedding-3-small")
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 8192
 
@@ -240,6 +251,7 @@ class OpenAIModerationService(ModerationService):
 
         self._client = AsyncClient(api_key=os.environ["OPENAI_API_KEY"])
 
+    @override
     async def check(self, content: str) -> ModerationCheck:
         def extract_tags(category: str) -> list[ModerationTag]:
             mapping: dict[str, list[ModerationTag]] = {
@@ -294,6 +306,7 @@ class OpenAIService(NLPService):
     ) -> None:
         self._logger = logger
 
+    @override
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
         if t == ToolCallInferenceSchema:
             return FallbackSchematicGenerator(
@@ -303,8 +316,10 @@ class OpenAIService(NLPService):
             )
         return GPT_4o[t](self._logger)  # type: ignore
 
+    @override
     async def get_embedder(self) -> Embedder:
         return OpenAITextEmbedding3Large()
 
+    @override
     async def get_moderation_service(self) -> ModerationService:
         return OmniModeration(self._logger)

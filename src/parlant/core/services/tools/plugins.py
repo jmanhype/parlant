@@ -21,6 +21,7 @@ from typing import (
     Unpack,
     get_args,
     overload,
+    override,
 )
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -451,6 +452,7 @@ class PluginClient(ToolService):
         await self._http_client.__aexit__(exc_type, exc_value, traceback)
         return False
 
+    @override
     async def list_tools(self) -> Sequence[Tool]:
         response = await self._http_client.get(self._get_url("/tools"))
         content = response.json()
@@ -466,6 +468,7 @@ class PluginClient(ToolService):
             for t in content["tools"]
         ]
 
+    @override
     async def read_tool(self, name: str) -> Tool:
         response = await self._http_client.get(self._get_url(f"/tools/{name}"))
         content = response.json()
@@ -479,6 +482,7 @@ class PluginClient(ToolService):
             consequential=tool["consequential"],
         )
 
+    @override
     async def call_tool(
         self,
         name: str,

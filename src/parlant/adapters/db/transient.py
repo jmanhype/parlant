@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Sequence, cast
+from typing import Optional, Sequence, cast, override
 from typing_extensions import get_type_hints
 from parlant.core.persistence.document_database import (
     BaseDocument,
@@ -20,6 +20,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
         self._collections: dict[str, _TransientDocumentCollection[BaseDocument]] = {}
 
+    @override
     def create_collection(
         self,
         name: str,
@@ -35,6 +36,7 @@ class TransientDocumentDatabase(DocumentDatabase):
 
         return cast(_TransientDocumentCollection[TDocument], self._collections[name])
 
+    @override
     def get_collection(
         self,
         name: str,
@@ -43,6 +45,7 @@ class TransientDocumentDatabase(DocumentDatabase):
             return cast(_TransientDocumentCollection[TDocument], self._collections[name])
         raise ValueError(f'Collection "{name}" does not exist')
 
+    @override
     def get_or_create_collection(
         self,
         name: str,
@@ -59,6 +62,7 @@ class TransientDocumentDatabase(DocumentDatabase):
             schema=schema,
         )
 
+    @override
     def delete_collection(
         self,
         name: str,
@@ -80,6 +84,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
         self._schema = schema
         self._documents = list(data) if data else []
 
+    @override
     async def find(
         self,
         filters: Where,
@@ -93,6 +98,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
 
         return result
 
+    @override
     async def find_one(
         self,
         filters: Where,
@@ -103,6 +109,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
 
         return None
 
+    @override
     async def insert_one(
         self,
         document: TDocument,
@@ -113,6 +120,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
 
         return InsertResult(acknowledged=True)
 
+    @override
     async def update_one(
         self,
         filters: Where,
@@ -147,6 +155,7 @@ class _TransientDocumentCollection(DocumentCollection[TDocument]):
             updated_document=None,
         )
 
+    @override
     async def delete_one(
         self,
         filters: Where,

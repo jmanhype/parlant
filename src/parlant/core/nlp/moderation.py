@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, override
 
 
 ModerationTag: TypeAlias = Literal[
@@ -29,6 +29,7 @@ class ModerationService(ABC):
 
 
 class NoModeration(ModerationService):
+    @override
     async def check(
         self,
         content: str,

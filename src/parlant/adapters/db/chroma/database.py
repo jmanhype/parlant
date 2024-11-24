@@ -5,7 +5,7 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast
+from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast, override
 import chromadb
 
 from parlant.core.common import Version
@@ -183,6 +183,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         self._lock = asyncio.Lock()
         self._chroma_collection = chromadb_collection
 
+    @override
     async def find(
         self,
         filters: Where,
@@ -194,6 +195,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
 
         return []
 
+    @override
     async def find_one(
         self,
         filters: Where,
@@ -205,6 +207,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
 
         return None
 
+    @override
     async def insert_one(
         self,
         document: TDocument,
@@ -223,6 +226,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
 
         return InsertResult(acknowledged=True)
 
+    @override
     async def update_one(
         self,
         filters: Where,
@@ -284,6 +288,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                 updated_document=None,
             )
 
+    @override
     async def delete_one(
         self,
         filters: Where,

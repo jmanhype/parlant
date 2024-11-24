@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 from itertools import chain
-from typing import Optional, Sequence, TypedDict
+from typing import Optional, Sequence, TypedDict, override
 
 from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.core.common import (
@@ -62,6 +62,7 @@ class GlossaryChromaStore(GlossaryStore):
             synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else [],
         )
 
+    @override
     async def create_term(
         self,
         term_set: str,
@@ -90,6 +91,7 @@ class GlossaryChromaStore(GlossaryStore):
 
         return term
 
+    @override
     async def update_term(
         self,
         term_set: str,
@@ -131,6 +133,7 @@ class GlossaryChromaStore(GlossaryStore):
 
         return self._deserialize(term_document=update_result.updated_document)
 
+    @override
     async def read_term(
         self,
         term_set: str,
@@ -144,6 +147,7 @@ class GlossaryChromaStore(GlossaryStore):
 
         return self._deserialize(term_document=term_document)
 
+    @override
     async def list_terms(
         self,
         term_set: str,
@@ -153,6 +157,7 @@ class GlossaryChromaStore(GlossaryStore):
             for d in await self._collection.find(filters={"term_set": {"$eq": term_set}})
         ]
 
+    @override
     async def delete_term(
         self,
         term_set: str,
@@ -191,6 +196,7 @@ class GlossaryChromaStore(GlossaryStore):
             for text in chunks
         ]
 
+    @override
     async def find_relevant_terms(
         self,
         term_set: str,

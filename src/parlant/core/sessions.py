@@ -14,6 +14,7 @@ from typing import (
     TypeAlias,
     TypedDict,
     cast,
+    override,
 )
 
 from parlant.core.async_utils import Timeout
@@ -544,6 +545,7 @@ class SessionDocumentStore(SessionStore):
             ],
         )
 
+    @override
     async def create_session(
         self,
         customer_id: CustomerId,
@@ -570,6 +572,7 @@ class SessionDocumentStore(SessionStore):
 
         return session
 
+    @override
     async def delete_session(
         self,
         session_id: SessionId,
@@ -581,6 +584,7 @@ class SessionDocumentStore(SessionStore):
 
         await self._session_collection.delete_one({"id": {"$eq": session_id}})
 
+    @override
     async def read_session(
         self,
         session_id: SessionId,
@@ -594,6 +598,7 @@ class SessionDocumentStore(SessionStore):
 
         return self._deserialize_session(session_document)
 
+    @override
     async def update_session(
         self,
         session_id: SessionId,
@@ -604,6 +609,7 @@ class SessionDocumentStore(SessionStore):
             params=cast(_SessionDocument, params),
         )
 
+    @override
     async def list_sessions(
         self,
         agent_id: Optional[AgentId] = None,
@@ -619,6 +625,7 @@ class SessionDocumentStore(SessionStore):
             for d in await self._session_collection.find(filters=cast(Where, filters))
         ]
 
+    @override
     async def create_event(
         self,
         session_id: SessionId,
@@ -652,6 +659,7 @@ class SessionDocumentStore(SessionStore):
 
         return event
 
+    @override
     async def read_event(
         self,
         session_id: SessionId,
@@ -667,6 +675,7 @@ class SessionDocumentStore(SessionStore):
 
         raise ItemNotFoundError(item_id=UniqueId(event_id), message="Event not found")
 
+    @override
     async def delete_event(
         self,
         event_id: EventId,
@@ -679,6 +688,7 @@ class SessionDocumentStore(SessionStore):
         if result.matched_count == 0:
             raise ItemNotFoundError(item_id=UniqueId(event_id), message="Event not found")
 
+    @override
     async def list_events(
         self,
         session_id: SessionId,
@@ -713,6 +723,7 @@ class SessionDocumentStore(SessionStore):
 
         return [self._deserialize_event(d) for d in event_documents]
 
+    @override
     async def create_inspection(
         self,
         session_id: SessionId,
@@ -738,6 +749,7 @@ class SessionDocumentStore(SessionStore):
 
         return inspection
 
+    @override
     async def read_inspection(
         self,
         session_id: SessionId,
@@ -783,6 +795,7 @@ class PollingSessionListener(SessionListener):
     def __init__(self, session_store: SessionStore) -> None:
         self._session_store = session_store
 
+    @override
     async def wait_for_events(
         self,
         session_id: SessionId,

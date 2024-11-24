@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, override
 
 from parlant.core.common import JSONSerializable
 from parlant.core.agents import Agent, AgentId, AgentStore
@@ -16,6 +16,7 @@ class EventBuffer(EventEmitter):
         self.agent = emitting_agent
         self.events: list[EmittedEvent] = []
 
+    @override
     async def emit_status_event(
         self,
         correlation_id: str,
@@ -32,6 +33,7 @@ class EventBuffer(EventEmitter):
 
         return event
 
+    @override
     async def emit_message_event(
         self,
         correlation_id: str,
@@ -62,6 +64,7 @@ class EventBuffer(EventEmitter):
 
         return event
 
+    @override
     async def emit_tool_event(
         self,
         correlation_id: str,
@@ -83,6 +86,7 @@ class EventBufferFactory(EventEmitterFactory):
     def __init__(self, agent_store: AgentStore) -> None:
         self._agent_store = agent_store
 
+    @override
     async def create_event_emitter(
         self,
         emitting_agent_id: AgentId,
