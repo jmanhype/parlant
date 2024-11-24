@@ -8,7 +8,7 @@
     "theme_color": "#FBFBFB",
     "icons": [
       {
-        "src": "/parlant-bubble-app-logo.svg",
+        "src": "/chat/parlant-bubble-app-logo.svg",
         "sizes": "any",
         "type": "image/svg+xml"
       }

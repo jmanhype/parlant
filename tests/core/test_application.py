@@ -6,7 +6,7 @@ from pytest import fixture
 from parlant.core.async_utils import Timeout
 from parlant.core.application import Application
 from parlant.core.agents import AgentId, AgentStore
-from parlant.core.end_users import EndUserId, EndUserStore
+from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.guidelines import GuidelineStore
 from parlant.core.sessions import Session, SessionStore
 from parlant.core.tools import ToolResult
@@ -19,18 +19,18 @@ REASONABLE_AMOUNT_OF_TIME = 10
 class ContextOfTest:
     container: Container
     app: Application
-    end_user_id: EndUserId
+    customer_id: CustomerId
 
 
 @fixture
 async def context(
     container: Container,
-    end_user_id: EndUserId,
+    customer_id: CustomerId,
 ) -> ContextOfTest:
     return ContextOfTest(
         container=container,
         app=container[Application],
-        end_user_id=end_user_id,
+        customer_id=customer_id,
     )
 
 
@@ -48,8 +48,8 @@ async def proactive_agent_id(
 ) -> AgentId:
     await container[GuidelineStore].create_guideline(
         guideline_set=agent_id,
-        condition="The user hasn't engaged yet",
-        action="Greet the user",
+        condition="The customer hasn't engaged yet",
+        action="Greet the customer",
     )
 
     return agent_id
@@ -58,30 +58,30 @@ async def proactive_agent_id(
 @fixture
 async def session(
     container: Container,
-    end_user_id: EndUserId,
+    customer_id: CustomerId,
     agent_id: AgentId,
 ) -> Session:
     store = container[SessionStore]
     session = await store.create_session(
-        end_user_id=end_user_id,
+        customer_id=customer_id,
         agent_id=agent_id,
     )
     return session
 
 
 @fixture
-async def end_user_id(container: Container) -> EndUserId:
-    store = container[EndUserStore]
-    user = await store.create_end_user("Larry David", email="larry@seinfeld.com")
-    return user.id
+async def customer_id(container: Container) -> CustomerId:
+    store = container[CustomerStore]
+    customer = await store.create_customer("Larry David", extra={"email": "larry@seinfeld.com"})
+    return customer.id
 
 
-async def test_that_a_new_end_user_session_can_be_created(
+async def test_that_a_new_customer_session_can_be_created(
     context: ContextOfTest,
     agent_id: AgentId,
 ) -> None:
-    created_session = await context.app.create_end_user_session(
-        end_user_id=context.end_user_id,
+    created_session = await context.app.create_customer_session(
+        customer_id=context.customer_id,
         agent_id=agent_id,
     )
 
@@ -92,12 +92,12 @@ async def test_that_a_new_end_user_session_can_be_created(
     assert created_session == session_in_db
 
 
-async def test_that_a_new_user_session_with_a_proactive_agent_contains_a_message(
+async def test_that_a_new_customer_session_with_a_proactive_agent_contains_a_message(
     context: ContextOfTest,
     proactive_agent_id: AgentId,
 ) -> None:
-    session = await context.app.create_end_user_session(
-        end_user_id=context.end_user_id,
+    session = await context.app.create_customer_session(
+        customer_id=context.customer_id,
         agent_id=proactive_agent_id,
         allow_greeting=True,
     )
@@ -164,7 +164,7 @@ async def test_that_a_session_update_is_detected_as_soon_as_a_client_event_is_po
     )
 
 
-async def test_that_when_a_user_quickly_posts_more_than_one_message_then_only_one_message_is_emitted_as_a_reply_to_the_last_message(
+async def test_that_when_a_customer_quickly_posts_more_than_one_message_then_only_one_message_is_emitted_as_a_reply_to_the_last_message(
     context: ContextOfTest,
     session: Session,
 ) -> None:
@@ -208,7 +208,7 @@ async def test_that_a_response_is_not_generated_automatically_after_a_tool_switc
     await create_guideline(
         container=context.container,
         agent_id=session.agent_id,
-        condition="the user expresses dissatisfaction",
+        condition="the customer expresses dissatisfaction",
         action="immediately hand off to a human operator, explaining this just before you sign off",
         tool_function=hand_off_to_human_operator,
     )

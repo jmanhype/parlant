@@ -77,20 +77,8 @@ class GuidelineCreationParamsDTO(DefaultBaseModel):
     invoices: Sequence[GuidelineInvoiceDTO]
 
 
-class GuidelineCreationResponse(DefaultBaseModel):
+class GuidelineCreationResult(DefaultBaseModel):
     items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
-
-
-class DeleteGuidelineRequest(DefaultBaseModel):
-    guideline_id: GuidelineId
-
-
-class GuidelineDeletionResponse(DefaultBaseModel):
-    guideline_id: GuidelineId
-
-
-class GuidelineListResponse(DefaultBaseModel):
-    guidelines: list[GuidelineDTO]
 
 
 class GuidelineConnectionAdditionDTO(DefaultBaseModel):
@@ -240,7 +228,7 @@ def create_router(
     async def create_guidelines(
         agent_id: AgentId,
         params: GuidelineCreationParamsDTO,
-    ) -> GuidelineCreationResponse:
+    ) -> GuidelineCreationResult:
         try:
             invoices = [_invoice_dto_to_invoice(i) for i in params.invoices]
         except ValueError as exc:
@@ -275,7 +263,7 @@ def create_router(
                     )
                 )
 
-        return GuidelineCreationResponse(
+        return GuidelineCreationResult(
             items=[
                 GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(
@@ -373,19 +361,17 @@ def create_router(
         operation_id="list_guidelines",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_guidelines(agent_id: AgentId) -> GuidelineListResponse:
+    async def list_guidelines(agent_id: AgentId) -> list[GuidelineDTO]:
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
 
-        return GuidelineListResponse(
-            guidelines=[
-                GuidelineDTO(
-                    id=guideline.id,
-                    condition=guideline.content.condition,
-                    action=guideline.content.action,
-                )
-                for guideline in guidelines
-            ]
-        )
+        return [
+            GuidelineDTO(
+                id=guideline.id,
+                condition=guideline.content.condition,
+                action=guideline.content.action,
+            )
+            for guideline in guidelines
+        ]
 
     @router.patch(
         "/{agent_id}/guidelines/{guideline_id}",
@@ -524,13 +510,19 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/guidelines/{guideline_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_guideline",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_guideline(
         agent_id: AgentId,
         guideline_id: GuidelineId,
-    ) -> GuidelineDeletionResponse:
+    ) -> None:
+        await guideline_store.read_guideline(
+            guideline_set=agent_id,
+            guideline_id=guideline_id,
+        )
+
         await guideline_store.delete_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -545,7 +537,5 @@ def create_router(
         for associastion in await guideline_tool_association_store.list_associations():
             if associastion.guideline_id == guideline_id:
                 await guideline_tool_association_store.delete_association(associastion.id)
-
-        return GuidelineDeletionResponse(guideline_id=guideline_id)
 
     return router

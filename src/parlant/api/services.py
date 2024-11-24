@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
+from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import Tool, ToolParameter
 from parlant.core.services.tools.openapi import OpenAPIClient
-from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
 from parlant.core.tools import ToolService
 
@@ -41,16 +41,6 @@ class ServiceUpdateParamsDTO(DefaultBaseModel):
     openapi: Optional[OpenAPIServiceParamsDTO] = None
 
 
-class ServiceUpdateResponse(DefaultBaseModel):
-    name: str
-    kind: ToolServiceKindDTO
-    url: str
-
-
-class ServiceDeletionResponse(DefaultBaseModel):
-    name: str
-
-
 EnumValueTypeDTO: TypeAlias = Union[str, int]
 
 
@@ -73,10 +63,6 @@ class ServiceDTO(DefaultBaseModel):
     kind: ToolServiceKindDTO
     url: str
     tools: Optional[list[ToolDTO]] = None
-
-
-class ServiceListResponse(DefaultBaseModel):
-    services: list[ServiceDTO]
 
 
 def _tool_parameters_to_dto(parameters: ToolParameter) -> ToolParameterDTO:
@@ -136,7 +122,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
         operation_id="update_service",
         **apigen_config(group_name=API_GROUP, method_name="create_or_update"),
     )
-    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceUpdateResponse:
+    async def update_service(name: str, params: ServiceUpdateParamsDTO) -> ServiceDTO:
         if params.kind == ToolServiceKindDTO.SDK:
             if not params.sdk:
                 raise HTTPException(
@@ -184,7 +170,7 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
             source=source,
         )
 
-        return ServiceUpdateResponse(
+        return ServiceDTO(
             name=name,
             kind=_get_service_kind(service),
             url=_get_service_url(service),
@@ -192,31 +178,30 @@ def create_router(service_registry: ServiceRegistry) -> APIRouter:
 
     @router.delete(
         "/{name}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_service",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
-    async def delete_service(name: str) -> ServiceDeletionResponse:
-        await service_registry.delete_service(name)
+    async def delete_service(name: str) -> None:
+        await service_registry.read_tool_service(name)
 
-        return ServiceDeletionResponse(name=name)
+        await service_registry.delete_service(name)
 
     @router.get(
         "/",
         operation_id="list_services",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_services() -> ServiceListResponse:
-        return ServiceListResponse(
-            services=[
-                ServiceDTO(
-                    name=name,
-                    kind=_get_service_kind(service),
-                    url=_get_service_url(service),
-                )
-                for name, service in await service_registry.list_tool_services()
-                if type(service) in [OpenAPIClient, PluginClient]
-            ]
-        )
+    async def list_services() -> list[ServiceDTO]:
+        return [
+            ServiceDTO(
+                name=name,
+                kind=_get_service_kind(service),
+                url=_get_service_url(service),
+            )
+            for name, service in await service_registry.list_tool_services()
+            if type(service) in [OpenAPIClient, PluginClient]
+        ]
 
     @router.get(
         "/{name}",

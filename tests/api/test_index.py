@@ -31,7 +31,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
                     "kind": "guideline",
                     "guideline": {
                         "content": {
-                            "condition": "the user greets you",
+                            "condition": "the customer greets you",
                             "action": "greet them back with 'Hello'",
                         },
                         "operation": "add",
@@ -45,7 +45,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
     assert evaluation.id == evaluation_id
@@ -76,7 +76,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": "greet them back with 'Hello'",
                             },
                             "operation": "add",
@@ -88,7 +88,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greeting you",
+                                "condition": "the customer greeting you",
                                 "action": "greet them back with 'Hola'",
                             },
                             "operation": "add",
@@ -100,7 +100,7 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -124,7 +124,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": "greet them back with 'Hello'",
                             },
                             "operation": "add",
@@ -136,7 +136,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -166,7 +166,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": "greet them back with 'Hello'",
                             },
                             "operation": "add",
@@ -178,7 +178,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greeting you",
+                                "condition": "the customer greeting you",
                                 "action": "greet them back with 'Good bye'",
                             },
                             "operation": "add",
@@ -190,7 +190,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -219,7 +219,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user asks about the weather",
+        condition="the customer asks about the weather",
         action="provide the current weather update",
     )
 
@@ -245,7 +245,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -269,7 +269,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     assert (
         invoice["data"]["guideline"]["connection_propositions"][0]["source"]["condition"]
-        == "the user asks about the weather"
+        == "the customer asks about the weather"
     )
     assert (
         invoice["data"]["guideline"]["connection_propositions"][0]["target"]["condition"]
@@ -291,7 +291,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user asks about nearby restaurants",
+                                "condition": "the customer asks about nearby restaurants",
                                 "action": "provide a list of popular restaurants",
                             },
                             "operation": "add",
@@ -315,7 +315,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -340,7 +340,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
 
     assert (
         first_invoice["data"]["guideline"]["connection_propositions"][0]["source"]["condition"]
-        == "the user asks about nearby restaurants"
+        == "the customer asks about nearby restaurants"
     )
     assert (
         first_invoice["data"]["guideline"]["connection_propositions"][0]["target"]["condition"]
@@ -356,7 +356,7 @@ async def test_that_an_evaluation_that_failed_due_to_duplicate_guidelines_payloa
         "kind": "guideline",
         "guideline": {
             "content": {
-                "condition": "the user greets you",
+                "condition": "the customer greets you",
                 "action": "greet them back with 'Hello'",
             },
             "operation": "add",
@@ -392,7 +392,7 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
 
     await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="greet them back with 'Hello'",
     )
 
@@ -400,7 +400,7 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
         "kind": "guideline",
         "guideline": {
             "content": {
-                "condition": "the user greets you",
+                "condition": "the customer greets you",
                 "action": "greet them back with 'Hello'",
             },
             "operation": "add",
@@ -424,7 +424,7 @@ async def test_that_an_evaluation_that_failed_due_to_guideline_duplication_with_
 
     assert (
         data["detail"]
-        == f"Duplicate guideline found against existing guidelines: When the user greets you, then greet them back with 'Hello' in {agent_id} guideline_set"
+        == f"Duplicate guideline found against existing guidelines: When the customer greets you, then greet them back with 'Hello' in {agent_id} guideline_set"
     )
 
 
@@ -450,7 +450,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
             "kind": "guideline",
             "guideline": {
                 "content": {
-                    "condition": "the user greets you",
+                    "condition": "the customer greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 "operation": "add",
@@ -462,7 +462,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
             "kind": "guideline",
             "guideline": {
                 "content": {
-                    "condition": "the user asks about the weather",
+                    "condition": "the customer asks about the weather",
                     "action": "provide a weather update",
                 },
                 "operation": "add",
@@ -475,7 +475,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     first_evaluation_id = (
         client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
@@ -483,7 +483,7 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     second_evaluation_id = (
         client.post("/index/evaluations", json={"agent_id": agent_id, "payloads": payloads})
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
@@ -506,8 +506,8 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
-                                "action": "ignore the user",
+                                "condition": "the customer greets you",
+                                "action": "ignore the customer",
                             },
                             "operation": "add",
                             "coherence_check": False,
@@ -518,7 +518,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": "greet them back with 'Hello'",
                             },
                             "operation": "add",
@@ -530,7 +530,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -564,7 +564,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user asks for help",
+                                "condition": "the customer asks for help",
                                 "action": "provide assistance",
                             },
                             "operation": "add",
@@ -588,7 +588,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -625,7 +625,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user says 'goodbye'",
+                                "condition": "the customer says 'goodbye'",
                                 "action": "say 'farewell'",
                             },
                             "operation": "add",
@@ -637,8 +637,8 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user says 'goodbye'",
-                                "action": "ignore the user",
+                                "condition": "the customer says 'goodbye'",
+                                "action": "ignore the customer",
                             },
                             "operation": "add",
                             "coherence_check": False,
@@ -649,7 +649,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "ignoring the user",
+                                "condition": "ignoring the customer",
                                 "action": "say that your favorite pizza topping is pineapple.",
                             },
                             "operation": "add",
@@ -661,7 +661,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -708,7 +708,7 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
                         "kind": "guideline",
                         "guideline": {
                             "content": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": "greet them back with 'Hello'",
                             },
                             "operation": "update",
@@ -721,7 +721,7 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
             },
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -749,7 +749,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user asks for help",
+        condition="the customer asks for help",
         action="provide assistance",
     )
 
@@ -757,7 +757,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
         "kind": "guideline",
         "guideline": {
             "content": {
-                "condition": "the user asks for help",
+                "condition": "the customer asks for help",
                 "action": "provide updated assistance with additional resources",
             },
             "operation": "update",
@@ -773,7 +773,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -801,13 +801,13 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
 
     _ = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="respond with 'Hello'",
     )
 
     guideline_to_override = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="respond with 'Goodbye'",
     )
 
@@ -815,8 +815,8 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
         "kind": "guideline",
         "guideline": {
             "content": {
-                "condition": "the user greets you",
-                "action": "ignore the user",
+                "condition": "the customer greets you",
+                "action": "ignore the customer",
             },
             "operation": "update",
             "updated_id": guideline_to_override.id,
@@ -831,7 +831,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -859,7 +859,7 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
             "kind": "guideline",
             "guideline": {
                 "content": {
-                    "condition": "the user greets you",
+                    "condition": "the customer greets you",
                     "action": "greet them back with 'Hello'",
                 },
                 "operation": "add",
@@ -871,7 +871,7 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
             "kind": "guideline",
             "guideline": {
                 "content": {
-                    "condition": "the user greeting you",
+                    "condition": "the customer greeting you",
                     "action": "greet them back with 'Good bye'",
                 },
                 "operation": "add",
@@ -887,7 +887,7 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     )
 
     assert response.status_code == status.HTTP_201_CREATED
-    evaluation_id = response.json()["evaluation_id"]
+    evaluation_id = response.json()["id"]
 
     content = get_when_done_or_timeout(
         result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
@@ -903,14 +903,14 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     assert len(invoices) == 2
 
     assert any(
-        i["payload"]["guideline"]["content"]["condition"] == "the user greets you"
+        i["payload"]["guideline"]["content"]["condition"] == "the customer greets you"
         and i["payload"]["guideline"]["content"]["action"] == "greet them back with 'Hello'"
         and not i["approved"]
         for i in invoices
     )
 
     assert any(
-        i["payload"]["guideline"]["content"]["condition"] == "the user greeting you"
+        i["payload"]["guideline"]["content"]["condition"] == "the customer greeting you"
         and i["payload"]["guideline"]["content"]["action"] == "greet them back with 'Good bye'"
         and i["approved"]
         for i in invoices
@@ -926,7 +926,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
             "kind": "guideline",
             "guideline": {
                 "content": {
-                    "condition": "the user asks about the weather",
+                    "condition": "the customer asks about the weather",
                     "action": "provide the current weather update",
                 },
                 "operation": "add",
@@ -954,7 +954,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
             json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(
@@ -971,7 +971,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
     assert len(invoices) == 2
 
     assert any(
-        i["payload"]["guideline"]["content"]["condition"] == "the user asks about the weather"
+        i["payload"]["guideline"]["content"]["condition"] == "the customer asks about the weather"
         and i["payload"]["guideline"]["content"]["action"] == "provide the current weather update"
         and i["approved"]
         and len(i["data"]["guideline"]["connection_propositions"]) > 0
@@ -997,16 +997,16 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="reply with 'Hello'",
     )
 
     updated_guideline_content = {
-        "condition": "the user greets you",
+        "condition": "the customer greets you",
         "action": "reply with 'Howdy!'",
     }
     added_guideline_content = {
-        "condition": "the user greets you",
+        "condition": "the customer greets you",
         "action": "reply with 'Goodbye!'",
     }
 
@@ -1038,7 +1038,7 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
             json={"agent_id": agent_id, "payloads": payloads},
         )
         .raise_for_status()
-        .json()["evaluation_id"]
+        .json()["id"]
     )
 
     content = get_when_done_or_timeout(

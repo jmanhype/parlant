@@ -65,12 +65,14 @@ class ContextVariableValue:
 
 
 class ContextVariableStore(ABC):
+    GLOBAL_KEY = "__default"
+
     @abstractmethod
     async def create_variable(
         self,
         variable_set: str,
         name: str,
-        description: Optional[str],
+        description: Optional[str] = None,
         tool_id: Optional[ToolId] = None,
         freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable: ...
@@ -79,8 +81,8 @@ class ContextVariableStore(ABC):
     async def update_value(
         self,
         variable_set: str,
-        key: str,
         variable_id: ContextVariableId,
+        key: str,
         data: JSONSerializable,
     ) -> ContextVariableValue: ...
 
@@ -89,7 +91,7 @@ class ContextVariableStore(ABC):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> Optional[ContextVariableId]: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_variables(
@@ -110,7 +112,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-    ) -> ContextVariableValue: ...
+    ) -> Optional[ContextVariableValue]: ...
 
     @abstractmethod
     async def delete_value(
@@ -118,7 +120,7 @@ class ContextVariableStore(ABC):
         variable_set: str,
         variable_id: ContextVariableId,
         key: str,
-    ) -> Optional[ContextVariableValueId]: ...
+    ) -> None: ...
 
     @abstractmethod
     async def list_values(
@@ -274,7 +276,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         name: str,
-        description: Optional[str],
+        description: Optional[str] = None,
         tool_id: Optional[ToolId] = None,
         freshness_rules: Optional[FreshnessRules] = None,
     ) -> ContextVariable:
@@ -295,8 +297,8 @@ class ContextVariableDocumentStore(ContextVariableStore):
     async def update_value(
         self,
         variable_set: str,
-        key: str,
         variable_id: ContextVariableId,
+        key: str,
         data: JSONSerializable,
     ) -> ContextVariableValue:
         last_modified = datetime.now(timezone.utc)
@@ -330,7 +332,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         self,
         variable_set: str,
         id: ContextVariableId,
-    ) -> Optional[ContextVariableId]:
+    ) -> None:
         variable_deletion_result = await self._variable_collection.delete_one(
             {
                 "id": {"$eq": id},
@@ -342,12 +344,6 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         for k, _ in await self.list_values(variable_set=variable_set, variable_id=id):
             await self.delete_value(variable_set=variable_set, variable_id=id, key=k)
-
-        return (
-            ContextVariableId(variable_deletion_result.deleted_document["id"])
-            if variable_deletion_result.deleted_document
-            else None
-        )
 
     async def list_variables(
         self,
@@ -382,7 +378,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         key: str,
         variable_id: ContextVariableId,
-    ) -> ContextVariableValue:
+    ) -> Optional[ContextVariableValue]:
         value_document = await self._value_collection.find_one(
             {
                 "variable_set": {"$eq": variable_set},
@@ -390,11 +386,9 @@ class ContextVariableDocumentStore(ContextVariableStore):
                 "key": {"$eq": key},
             }
         )
+
         if not value_document:
-            raise ItemNotFoundError(
-                item_id=UniqueId(variable_id),
-                message=f"variable_set={variable_set}, key={key}",
-            )
+            return None
 
         return self._deserialize_context_variable_value(value_document)
 
@@ -403,19 +397,13 @@ class ContextVariableDocumentStore(ContextVariableStore):
         variable_set: str,
         variable_id: ContextVariableId,
         key: str,
-    ) -> Optional[ContextVariableValueId]:
-        result = await self._value_collection.delete_one(
+    ) -> None:
+        await self._value_collection.delete_one(
             {
                 "variable_set": {"$eq": variable_set},
                 "variable_id": {"$eq": variable_id},
                 "key": {"$eq": key},
             }
-        )
-
-        return (
-            ContextVariableValueId(result.deleted_document["id"])
-            if result.deleted_document
-            else None
         )
 
     async def list_values(

@@ -3,7 +3,7 @@ import json
 from pytest_bdd import given, parsers
 
 from parlant.core.agents import Agent, AgentId
-from parlant.core.end_users import EndUser, EndUserId
+from parlant.core.customers import Customer, CustomerStore
 from parlant.core.sessions import Session, SessionId, SessionStore
 
 from tests.core.engines.alpha.utils import ContextOfTest, step
@@ -14,37 +14,71 @@ def given_an_empty_session(
     context: ContextOfTest,
     agent_id: AgentId,
 ) -> SessionId:
-    store = context.container[SessionStore]
+    session_store = context.container[SessionStore]
+    customer_store = context.container[CustomerStore]
+
     utc_now = datetime.now(timezone.utc)
+
+    customer = context.sync_await(customer_store.create_customer("test_customer"))
     session = context.sync_await(
-        store.create_session(
+        session_store.create_session(
             creation_utc=utc_now,
-            end_user_id=EndUserId("test_user"),
+            customer_id=customer.id,
             agent_id=agent_id,
         )
     )
     return session.id
 
 
-@step(given, "a session with a single user message", target_fixture="session_id")
-def given_a_session_with_a_single_user_message(
+@step(given, parsers.parse('an empty session with "{customer_name}"'), target_fixture="session_id")
+def given_an_empty_session_with_customer(
+    context: ContextOfTest,
+    agent_id: AgentId,
+    customer_name: str,
+) -> SessionId:
+    session_store = context.container[SessionStore]
+    customer_store = context.container[CustomerStore]
+
+    utc_now = datetime.now(timezone.utc)
+
+    customer = next(
+        (
+            customer
+            for customer in context.sync_await(customer_store.list_customers())
+            if customer.name == customer_name
+        ),
+        context.sync_await(customer_store.create_customer(customer_name)),
+    )
+
+    session = context.sync_await(
+        session_store.create_session(
+            creation_utc=utc_now,
+            customer_id=customer.id,
+            agent_id=agent_id,
+        )
+    )
+    return session.id
+
+
+@step(given, "a session with a single customer message", target_fixture="session_id")
+def given_a_session_with_a_single_customer_message(
     context: ContextOfTest,
     new_session: Session,
-    end_user: EndUser,
+    customer: Customer,
 ) -> SessionId:
     store = context.container[SessionStore]
 
     context.sync_await(
         store.create_event(
             session_id=new_session.id,
-            source="end_user",
+            source="customer",
             kind="message",
             correlation_id="test_correlation_id",
             data={
                 "message": "Hey there",
                 "participant": {
-                    "id": end_user.id,
-                    "display_name": end_user.name,
+                    "id": customer.id,
+                    "display_name": customer.name,
                 },
             },
         )
@@ -53,25 +87,25 @@ def given_a_session_with_a_single_user_message(
     return new_session.id
 
 
-@step(given, "a session with a thirsty user", target_fixture="session_id")
-def given_a_session_with_a_thirsty_user(
+@step(given, "a session with a thirsty customer", target_fixture="session_id")
+def given_a_session_with_a_thirsty_customer(
     context: ContextOfTest,
     new_session: Session,
-    end_user: EndUser,
+    customer: Customer,
 ) -> SessionId:
     store = context.container[SessionStore]
 
     context.sync_await(
         store.create_event(
             session_id=new_session.id,
-            source="end_user",
+            source="customer",
             kind="message",
             correlation_id="test_correlation_id",
             data={
                 "message": "I'm thirsty",
                 "participant": {
-                    "id": end_user.id,
-                    "display_name": end_user.name,
+                    "id": customer.id,
+                    "display_name": customer.name,
                 },
             },
         )
@@ -85,13 +119,13 @@ def given_a_session_with_a_few_messages(
     context: ContextOfTest,
     new_session: Session,
     agent: Agent,
-    end_user: EndUser,
+    customer: Customer,
 ) -> SessionId:
     store = context.container[SessionStore]
 
     messages = [
         {
-            "source": "end_user",
+            "source": "customer",
             "message": "hey there",
         },
         {
@@ -99,7 +133,7 @@ def given_a_session_with_a_few_messages(
             "message": "Hi, how can I help you today?",
         },
         {
-            "source": "end_user",
+            "source": "customer",
             "message": "What was the first name of the famous Einstein?",
         },
     ]
@@ -108,15 +142,15 @@ def given_a_session_with_a_few_messages(
         context.sync_await(
             store.create_event(
                 session_id=new_session.id,
-                source=m["source"] == "ai_agent" and "ai_agent" or "end_user",
+                source=m["source"] == "ai_agent" and "ai_agent" or "customer",
                 kind="message",
                 correlation_id="test_correlation_id",
                 data={
                     "message": m["message"],
                     "participant": {
-                        "end_user": {
-                            "id": end_user.id,
-                            "display_name": end_user.name,
+                        "customer": {
+                            "id": customer.id,
+                            "display_name": customer.name,
                         },
                         "ai_agent": {
                             "id": agent.id,

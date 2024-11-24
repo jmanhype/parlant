@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from itertools import chain
 from typing import Mapping, Optional, cast
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from parlant.api.common import JSONSerializableDTO, apigen_config
 from parlant.api.glossary import TermDTO
@@ -11,7 +11,7 @@ from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import ContextVariableId
 from parlant.core.agents import AgentId, AgentStore
-from parlant.core.end_users import EndUserId, EndUserStore
+from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.services.tools.service_registry import ServiceRegistry
@@ -40,8 +40,8 @@ class EventKindDTO(Enum):
 
 
 class EventSourceDTO(Enum):
-    END_USER = "end_user"
-    END_USER_UI = "end_user_ui"
+    CUSTOMER = "customer"
+    CUSTOMER_UI = "customer_ui"
     HUMAN_AGENT = "human_agent"
     HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
     AI_AGENT = "ai_agent"
@@ -60,20 +60,16 @@ class ConsumptionOffsetsDTO(DefaultBaseModel):
 class SessionDTO(DefaultBaseModel):
     id: SessionId
     agent_id: AgentId
-    end_user_id: EndUserId
+    customer_id: CustomerId
     creation_utc: datetime
     title: Optional[str] = None
     consumption_offsets: ConsumptionOffsetsDTO
 
 
-class CreateSessionRequest(DefaultBaseModel):
-    end_user_id: EndUserId
+class SessionCreationParamsDTO(DefaultBaseModel):
     agent_id: AgentId
+    customer_id: Optional[CustomerId] = None
     title: Optional[str] = None
-
-
-class CreateSessionResponse(DefaultBaseModel):
-    session: SessionDTO
 
 
 class EventCreationParamsDTO(DefaultBaseModel):
@@ -92,10 +88,6 @@ class EventDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class EventCreationResponse(DefaultBaseModel):
-    event: EventDTO
-
-
 class ConsumptionOffsetsUpdateParamsDTO(DefaultBaseModel):
     client: Optional[int] = None
 
@@ -103,19 +95,6 @@ class ConsumptionOffsetsUpdateParamsDTO(DefaultBaseModel):
 class SessionUpdateParamsDTO(DefaultBaseModel):
     consumption_offsets: Optional[ConsumptionOffsetsUpdateParamsDTO] = None
     title: Optional[str] = None
-
-
-class EventListResponse(DefaultBaseModel):
-    session_id: SessionId
-    events: list[EventDTO]
-
-
-class SessionListResponse(DefaultBaseModel):
-    sessions: list[SessionDTO]
-
-
-class SessionDeletionResponse(DefaultBaseModel):
-    session_id: SessionId
 
 
 class ToolResultDTO(DefaultBaseModel):
@@ -127,10 +106,6 @@ class ToolCallDTO(DefaultBaseModel):
     tool_id: str
     arguments: Mapping[str, JSONSerializableDTO]
     result: ToolResultDTO
-
-
-class EventDeletionResponse(DefaultBaseModel):
-    event_ids: list[EventId]
 
 
 class GuidelinePropositionDTO(DefaultBaseModel):
@@ -191,7 +166,7 @@ class EventTraceDTO(DefaultBaseModel):
     preparation_iterations: list[PreparationIterationDTO]
 
 
-class EventReadResponse(DefaultBaseModel):
+class EventInspectionResult(DefaultBaseModel):
     session_id: SessionId
     event: EventDTO
     trace: Optional[EventTraceDTO]
@@ -294,7 +269,7 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
 def create_router(
     application: Application,
     agent_store: AgentStore,
-    end_user_store: EndUserStore,
+    customer_store: CustomerStore,
     session_store: SessionStore,
     session_listener: SessionListener,
     service_registry: ServiceRegistry,
@@ -308,29 +283,25 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_session(
-        request: CreateSessionRequest,
+        request: SessionCreationParamsDTO,
         allow_greeting: bool = Query(default=True),
-    ) -> CreateSessionResponse:
+    ) -> SessionDTO:
         _ = await agent_store.read_agent(agent_id=request.agent_id)
 
-        session = await application.create_end_user_session(
-            end_user_id=request.end_user_id,
+        session = await application.create_customer_session(
+            customer_id=request.customer_id or CustomerStore.GUEST_ID,
             agent_id=request.agent_id,
             title=request.title,
             allow_greeting=allow_greeting,
         )
 
-        return CreateSessionResponse(
-            session=SessionDTO(
-                id=session.id,
-                agent_id=session.agent_id,
-                end_user_id=session.end_user_id,
-                creation_utc=session.creation_utc,
-                consumption_offsets=ConsumptionOffsetsDTO(
-                    client=session.consumption_offsets["client"]
-                ),
-                title=session.title,
-            )
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            customer_id=session.customer_id,
+            creation_utc=session.creation_utc,
+            consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
+            title=session.title,
         )
 
     @router.get(
@@ -346,7 +317,7 @@ def create_router(
             agent_id=session.agent_id,
             creation_utc=session.creation_utc,
             title=session.title,
-            end_user_id=session.end_user_id,
+            customer_id=session.customer_id,
             consumption_offsets=ConsumptionOffsetsDTO(
                 client=session.consumption_offsets["client"],
             ),
@@ -359,41 +330,39 @@ def create_router(
     )
     async def list_sessions(
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
-    ) -> SessionListResponse:
+        customer_id: Optional[CustomerId] = None,
+    ) -> list[SessionDTO]:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
 
-        return SessionListResponse(
-            sessions=[
-                SessionDTO(
-                    id=s.id,
-                    agent_id=s.agent_id,
-                    creation_utc=s.creation_utc,
-                    title=s.title,
-                    end_user_id=s.end_user_id,
-                    consumption_offsets=ConsumptionOffsetsDTO(
-                        client=s.consumption_offsets["client"],
-                    ),
-                )
-                for s in sessions
-            ]
-        )
+        return [
+            SessionDTO(
+                id=s.id,
+                agent_id=s.agent_id,
+                creation_utc=s.creation_utc,
+                title=s.title,
+                customer_id=s.customer_id,
+                consumption_offsets=ConsumptionOffsetsDTO(
+                    client=s.consumption_offsets["client"],
+                ),
+            )
+            for s in sessions
+        ]
 
     @router.delete(
         "/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_session",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_session(
         session_id: SessionId,
-    ) -> SessionDeletionResponse:
-        if await session_store.delete_session(session_id):
-            return SessionDeletionResponse(session_id=session_id)
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    ) -> None:
+        await session_store.read_session(session_id)
+
+        await session_store.delete_session(session_id)
 
     @router.delete(
         "/",
@@ -403,11 +372,11 @@ def create_router(
     )
     async def delete_sessions(
         agent_id: Optional[AgentId] = None,
-        end_user_id: Optional[EndUserId] = None,
+        customer_id: Optional[CustomerId] = None,
     ) -> None:
         sessions = await session_store.list_sessions(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
 
         for s in sessions:
@@ -415,13 +384,14 @@ def create_router(
 
     @router.patch(
         "/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="update_session",
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_session(
         session_id: SessionId,
         params: SessionUpdateParamsDTO,
-    ) -> Response:
+    ) -> None:
         async def from_dto(dto: SessionUpdateParamsDTO) -> SessionUpdateParams:
             params: SessionUpdateParams = {}
 
@@ -444,8 +414,6 @@ def create_router(
             params=await from_dto(params),
         )
 
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
-
     @router.post(
         "/{session_id}/events",
         status_code=status.HTTP_201_CREATED,
@@ -456,15 +424,15 @@ def create_router(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResponse:
+    ) -> EventDTO:
         if params.kind != EventKindDTO.MESSAGE:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Only message events can currently be added manually",
             )
 
-        if params.source == EventSourceDTO.END_USER:
-            return await _add_end_user_message(session_id, params, moderation)
+        if params.source == EventSourceDTO.CUSTOMER:
+            return await _add_customer_message(session_id, params, moderation)
         elif params.source == EventSourceDTO.AI_AGENT:
             return await _add_agent_message(session_id, params)
         elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
@@ -472,14 +440,14 @@ def create_router(
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail='Only "end_user" and "human_agent_on_behalf_of_ai_agent" sources are supported for direct posting.',
+                detail='Only "customer" and "human_agent_on_behalf_of_ai_agent" sources are supported for direct posting.',
             )
 
-    async def _add_end_user_message(
+    async def _add_customer_message(
         session_id: SessionId,
         params: EventCreationParamsDTO,
         moderation: Moderation = Moderation.NONE,
-    ) -> EventCreationResponse:
+    ) -> EventDTO:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -498,16 +466,16 @@ def create_router(
         session = await session_store.read_session(session_id)
 
         try:
-            end_user = await end_user_store.read_end_user(session.end_user_id)
-            end_user_display_name = end_user.name
+            customer = await customer_store.read_customer(session.customer_id)
+            customer_display_name = customer.name
         except Exception:
-            end_user_display_name = session.end_user_id
+            customer_display_name = session.customer_id
 
         message_data: MessageEventData = {
             "message": params.data,
             "participant": {
-                "id": session.end_user_id,
-                "display_name": end_user_display_name,
+                "id": session.customer_id,
+                "display_name": customer_display_name,
             },
             "flagged": flagged,
             "tags": list(tags),
@@ -517,16 +485,16 @@ def create_router(
             session_id=session_id,
             kind=params.kind.value,
             data=message_data,
-            source="end_user",
+            source="customer",
             trigger_processing=True,
         )
 
-        return EventCreationResponse(event=event_to_dto(event))
+        return event_to_dto(event)
 
     async def _add_agent_message(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResponse:
+    ) -> EventDTO:
         if params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -553,12 +521,12 @@ def create_router(
             )
         )
 
-        return EventCreationResponse(event=event_to_dto(event))
+        return event_to_dto(event)
 
     async def _add_human_agent_message_on_behalf_of_ai_agent(
         session_id: SessionId,
         params: EventCreationParamsDTO,
-    ) -> EventCreationResponse:
+    ) -> EventDTO:
         if not params.data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -584,16 +552,14 @@ def create_router(
             trigger_processing=False,
         )
 
-        return EventCreationResponse(
-            event=EventDTO(
-                id=event.id,
-                source=EventSourceDTO(event.source),
-                kind=event.kind,
-                offset=event.offset,
-                creation_utc=event.creation_utc,
-                correlation_id=event.correlation_id,
-                data=cast(JSONSerializableDTO, event.data),
-            )
+        return EventDTO(
+            id=event.id,
+            source=EventSourceDTO(event.source),
+            kind=event.kind,
+            offset=event.offset,
+            creation_utc=event.creation_utc,
+            correlation_id=event.correlation_id,
+            data=cast(JSONSerializableDTO, event.data),
         )
 
     @router.get(
@@ -604,21 +570,23 @@ def create_router(
     async def list_events(
         session_id: SessionId,
         min_offset: Optional[int] = None,
+        correlation_id: Optional[str] = None,
         kinds: Optional[str] = Query(
             default=None,
             description="If set, only list events of the specified kinds (separated by commas)",
         ),
-        wait: bool = True,
-    ) -> EventListResponse:
+        wait_for_data: int = 60,
+    ) -> list[EventDTO]:
         kind_list: list[EventKind] = kinds.split(",") if kinds else []  # type: ignore
         assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
 
-        if wait:
+        if wait_for_data > 0:
             if not await session_listener.wait_for_events(
                 session_id=session_id,
                 min_offset=min_offset or 0,
                 kinds=kind_list,
-                timeout=Timeout(60),
+                correlation_id=correlation_id,
+                timeout=Timeout(wait_for_data),
             ):
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -628,54 +596,52 @@ def create_router(
         events = await session_store.list_events(
             session_id=session_id,
             source=None,
+            correlation_id=correlation_id,
             kinds=kind_list,
             min_offset=min_offset,
         )
 
-        return EventListResponse(
-            session_id=session_id,
-            events=[
-                EventDTO(
-                    id=e.id,
-                    source=EventSourceDTO(e.source),
-                    kind=e.kind,
-                    offset=e.offset,
-                    creation_utc=e.creation_utc,
-                    correlation_id=e.correlation_id,
-                    data=cast(JSONSerializableDTO, e.data),
-                )
-                for e in events
-            ],
-        )
+        return [
+            EventDTO(
+                id=e.id,
+                source=EventSourceDTO(e.source),
+                kind=e.kind,
+                offset=e.offset,
+                creation_utc=e.creation_utc,
+                correlation_id=e.correlation_id,
+                data=cast(JSONSerializableDTO, e.data),
+            )
+            for e in events
+        ]
 
     @router.delete(
         "/{session_id}/events",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_events",
         **apigen_config(group_name=API_GROUP, method_name="delete_events"),
     )
     async def delete_events(
         session_id: SessionId,
         min_offset: int,
-    ) -> EventDeletionResponse:
+    ) -> None:
         events = await session_store.list_events(
             session_id=session_id,
             min_offset=min_offset,
             exclude_deleted=True,
         )
 
-        deleted_event_ids = [await session_store.delete_event(e.id) for e in events]
-
-        return EventDeletionResponse(event_ids=[id for id in deleted_event_ids if id is not None])
+        for e in events:
+            await session_store.delete_event(e.id)
 
     @router.get(
         "/{session_id}/events/{event_id}",
-        operation_id="read_event",
-        **apigen_config(group_name=API_GROUP, method_name="retrieve_event"),
+        operation_id="inspect_event",
+        **apigen_config(group_name=API_GROUP, method_name="inspect_event"),
     )
-    async def read_event(
+    async def inspect_event(
         session_id: SessionId,
         event_id: EventId,
-    ) -> EventReadResponse:
+    ) -> EventInspectionResult:
         event = await session_store.read_event(session_id, event_id)
 
         trace: Optional[EventTraceDTO] = None
@@ -697,7 +663,7 @@ def create_router(
                 ],
             )
 
-        return EventReadResponse(
+        return EventInspectionResult(
             session_id=session_id,
             event=event_to_dto(event),
             trace=trace,

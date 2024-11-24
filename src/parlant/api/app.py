@@ -15,11 +15,13 @@ from parlant.api import glossary
 from parlant.api import guidelines
 from parlant.api import context_variables as variables
 from parlant.api import services
+from parlant.api import tags
+from parlant.api import customers
 from parlant.core.context_variables import ContextVariableStore
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentStore
 from parlant.core.common import ItemNotFoundError, generate_id
-from parlant.core.end_users import EndUserStore
+from parlant.core.customers import CustomerStore
 from parlant.core.evaluations import EvaluationStore
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import GuidelineStore
@@ -32,6 +34,7 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.application import Application
+from parlant.core.tags import TagStore
 
 ASGIApplication: TypeAlias = Callable[
     [
@@ -63,7 +66,8 @@ async def create_api_app(container: Container) -> ASGIApplication:
     logger = container[Logger]
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
-    end_user_store = container[EndUserStore]
+    customer_store = container[CustomerStore]
+    tag_store = container[TagStore]
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
@@ -162,7 +166,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
         router=sessions.create_router(
             application=application,
             agent_store=agent_store,
-            end_user_store=end_user_store,
+            customer_store=customer_store,
             session_store=session_store,
             session_listener=session_listener,
             service_registry=service_registry,
@@ -182,6 +186,20 @@ async def create_api_app(container: Container) -> ASGIApplication:
         prefix="/services",
         router=services.create_router(
             service_registry=service_registry,
+        ),
+    )
+
+    api_app.include_router(
+        prefix="/tags",
+        router=tags.create_router(
+            tag_store=tag_store,
+        ),
+    )
+
+    api_app.include_router(
+        prefix="/customers",
+        router=customers.create_router(
+            customer_store=customer_store,
         ),
     )
 

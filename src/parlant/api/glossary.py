@@ -22,22 +22,10 @@ class TermDTO(DefaultBaseModel):
     synonyms: list[str] = []
 
 
-class CreateTermResponse(DefaultBaseModel):
-    term: TermDTO
-
-
-class TermListResponse(DefaultBaseModel):
-    terms: list[TermDTO]
-
-
 class TermUpdateParamsDTO(DefaultBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     synonyms: Optional[list[str]] = None
-
-
-class TermDeletionResponse(DefaultBaseModel):
-    term_id: TermId
 
 
 def create_router(
@@ -51,7 +39,7 @@ def create_router(
         operation_id="create_term",
         **apigen_config(group_name=API_GROUP, method_name="create_term"),
     )
-    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> CreateTermResponse:
+    async def create_term(agent_id: AgentId, params: TermCreationParamsDTO) -> TermDTO:
         term = await glossary_store.create_term(
             term_set=agent_id,
             name=params.name,
@@ -59,13 +47,11 @@ def create_router(
             synonyms=params.synonyms,
         )
 
-        return CreateTermResponse(
-            term=TermDTO(
-                id=term.id,
-                name=term.name,
-                description=term.description,
-                synonyms=term.synonyms,
-            )
+        return TermDTO(
+            id=term.id,
+            name=term.name,
+            description=term.description,
+            synonyms=term.synonyms,
         )
 
     @router.get(
@@ -88,20 +74,18 @@ def create_router(
         operation_id="list_terms",
         **apigen_config(group_name=API_GROUP, method_name="list_terms"),
     )
-    async def list_terms(agent_id: AgentId) -> TermListResponse:
+    async def list_terms(agent_id: AgentId) -> list[TermDTO]:
         terms = await glossary_store.list_terms(term_set=agent_id)
 
-        return TermListResponse(
-            terms=[
-                TermDTO(
-                    id=term.id,
-                    name=term.name,
-                    description=term.description,
-                    synonyms=term.synonyms,
-                )
-                for term in terms
-            ]
-        )
+        return [
+            TermDTO(
+                id=term.id,
+                name=term.name,
+                description=term.description,
+                synonyms=term.synonyms,
+            )
+            for term in terms
+        ]
 
     @router.patch(
         "/{agent_id}/terms/{term_id}",
@@ -140,11 +124,16 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/terms/{term_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_term",
         **apigen_config(group_name=API_GROUP, method_name="delete_term"),
     )
-    async def delete_term(agent_id: str, term_id: TermId) -> TermDeletionResponse:
-        deleted_term_id = await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
-        return TermDeletionResponse(term_id=deleted_term_id)
+    async def delete_term(
+        agent_id: str,
+        term_id: TermId,
+    ) -> None:
+        await glossary_store.read_term(term_set=agent_id, term_id=term_id)
+
+        await glossary_store.delete_term(term_set=agent_id, term_id=term_id)
 
     return router

@@ -26,7 +26,7 @@ const statusIcon = {
 
 export default function Message({event, isContinual, regenerateMessageFn}: Props): ReactElement {
     const {sessionId} = useSession();
-    const isClient = event.source === 'end_user' || event.source === 'end_user_ui';
+    const isClient = event.source === 'customer' || event.source === 'customer_ui';
     const serverStatus = event.serverStatus;
 
     return (

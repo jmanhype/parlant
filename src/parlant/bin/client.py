@@ -6,27 +6,24 @@ import click.shell_completion
 import click_completion  # type: ignore
 from dataclasses import dataclass
 from datetime import datetime
-import os
 import requests
 import rich
+from rich.progress import Progress, BarColumn, TimeElapsedColumn, TaskProgressColumn
 from rich import box
 from rich.table import Table
 from rich.text import Text
-from tqdm import tqdm
 import sys
-from textwrap import wrap
 import time
 from typing import Any, Optional, cast
-from urllib.parse import urljoin
 
 from parlant.client import ParlantClient
 from parlant.client.types import (
     Agent,
     ContextVariable,
-    ContextVariableReadResponse,
+    ContextVariableReadResult,
     ContextVariableValue,
     Event,
-    EventReadResponse,
+    EventInspectionResult,
     FreshnessRules,
     Guideline,
     GuidelineConnection,
@@ -45,6 +42,11 @@ from parlant.client.types import (
     Session,
     Term,
     ToolId,
+    Customer,
+    CustomerExtraUpdateParams,
+    TagsUpdateParams,
+    Tag,
+    ConsumptionOffsetsUpdateParams,
 )
 
 INDENT = "  "
@@ -85,13 +87,19 @@ class Actions:
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.agents.create(
+        return client.agents.create(
             name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
 
-        return response.agent
+    @staticmethod
+    def delete_agent(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.agents.delete(agent_id=agent_id)
 
     @staticmethod
     def view_agent(
@@ -105,13 +113,13 @@ class Actions:
     @staticmethod
     def list_agents(ctx: click.Context) -> list[Agent]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.agents.list()
-        return response.agents
+        return client.agents.list()
 
     @staticmethod
     def update_agent(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str] = None,
         description: Optional[str] = None,
         max_engine_iterations: Optional[int] = None,
     ) -> None:
@@ -119,6 +127,7 @@ class Actions:
 
         client.agents.update(
             agent_id,
+            name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
         )
@@ -127,43 +136,61 @@ class Actions:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: Optional[str] = None,
         title: Optional[str] = None,
     ) -> Session:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.create(
-            end_user_id=end_user_id,
+        return client.sessions.create(
             agent_id=agent_id,
+            customer_id=customer_id,
             allow_greeting=False,
             title=title,
         )
-        return response.session
+
+    @staticmethod
+    def update_session(
+        ctx: click.Context,
+        session_id: str,
+        consumption_offsets: Optional[int] = None,
+        title: Optional[str] = None,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        if consumption_offsets:
+            client.sessions.update(
+                session_id=session_id,
+                consumption_offsets=ConsumptionOffsetsUpdateParams(client=consumption_offsets),
+                title=title,
+            )
+        else:
+            client.sessions.update(
+                session_id=session_id,
+                title=title,
+            )
 
     @staticmethod
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
-        end_user_id: Optional[str],
+        customer_id: Optional[str],
     ) -> list[Session]:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.list(
+        return client.sessions.list(
             agent_id=agent_id,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
         )
-
-        return response.sessions
 
     @staticmethod
     def inspect_event(
         ctx: click.Context,
         session_id: str,
         event_id: str,
-    ) -> EventReadResponse:
+    ) -> EventInspectionResult:
         client = cast(ParlantClient, ctx.obj.client)
 
-        return client.sessions.retrieve_event(
+        return client.sessions.inspect_event(
             session_id=session_id,
             event_id=event_id,
         )
@@ -174,8 +201,7 @@ class Actions:
         session_id: str,
     ) -> list[Event]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.sessions.list_events(session_id=session_id)
-        return response.events
+        return client.sessions.list_events(session_id=session_id)
 
     @staticmethod
     def create_event(
@@ -185,14 +211,12 @@ class Actions:
     ) -> Event:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.sessions.create_event(
+        return client.sessions.create_event(
             session_id,
             kind="message",
-            source="end_user",
+            source="customer",
             data=message,
         )
-
-        return response.event
 
     @staticmethod
     def create_term(
@@ -204,14 +228,12 @@ class Actions:
     ) -> Term:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.glossary.create_term(
+        return client.glossary.create_term(
             agent_id,
             name=name,
             description=description,
             synonyms=synonyms,
         )
-
-        return response.term
 
     @staticmethod
     def update_term(
@@ -233,7 +255,7 @@ class Actions:
         )
 
     @staticmethod
-    def remove_term(
+    def delete_term(
         ctx: click.Context,
         agent_id: str,
         term_id: str,
@@ -247,8 +269,7 @@ class Actions:
         agent_id: str,
     ) -> list[Term]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.glossary.list_terms(agent_id)
-        return response.terms
+        return client.glossary.list_terms(agent_id)
 
     @staticmethod
     def create_guideline(
@@ -262,7 +283,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.evaluations.create(
+        evaluation = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -280,34 +301,33 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = response.evaluation_id
 
-        with tqdm(
-            total=100,
-            desc="Evaluating added guideline impact",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
-        ) as progress_bar:
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            TaskProgressColumn(style="bold blue"),
+            "{task.completed}/{task.total}",
+            TimeElapsedColumn(),
+        ) as progress:
+            progress_task = progress.add_task("Evaluating guideline impact\n", total=100)
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation.id)
 
-                if evaluation_response.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_response.progress)
-                    progress_bar.refresh()
-
+                if evaluation_result.status in ["pending", "running"]:
+                    progress.update(progress_task, completed=int(evaluation_result.progress))
                     continue
 
-                if evaluation_response.status == "completed":
-                    invoice = evaluation_response.invoices[0]
-                    if invoice.approved:
-                        progress_bar.n = 100
-                        progress_bar.refresh()
+                if evaluation_result.status == "completed":
+                    progress.update(progress_task, completed=100)
 
+                    invoice = evaluation_result.invoices[0]
+                    if invoice.approved:
                         assert invoice.data
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
 
-                        guideline_response = client.guidelines.create(
+                        guideline_result = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
@@ -319,7 +339,7 @@ class Actions:
                                 ),
                             ],
                         )
-                        return guideline_response.items[0]
+                        return guideline_result.items[0]
 
                     else:
                         assert invoice.data
@@ -329,8 +349,8 @@ class Actions:
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation_response.status == "failed":
-                    raise ValueError(evaluation_response.error)
+                elif evaluation_result.status == "failed":
+                    raise ValueError(evaluation_result.error)
 
     @staticmethod
     def update_guideline(
@@ -344,7 +364,7 @@ class Actions:
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.evaluations.create(
+        evaluation = client.evaluations.create(
             agent_id=agent_id,
             payloads=[
                 Payload(
@@ -362,34 +382,33 @@ class Actions:
                 ),
             ],
         )
-        evaluation_id = response.evaluation_id
 
-        with tqdm(
-            total=100,
-            desc="Evaluating added guideline impact",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
-        ) as progress_bar:
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            TaskProgressColumn(style="bold blue"),
+            "{task.completed}/{task.total}",
+            TimeElapsedColumn(),
+        ) as progress:
+            progress_task = progress.add_task("Evaluating guideline impact\n", total=100)
+
             while True:
                 time.sleep(0.5)
-                evaluation_response = client.evaluations.retrieve(evaluation_id)
+                evaluation_result = client.evaluations.retrieve(evaluation.id)
 
-                if evaluation_response.status in ["pending", "running"]:
-                    progress_bar.n = int(evaluation_response.progress)
-                    progress_bar.refresh()
-
+                if evaluation_result.status in ["pending", "running"]:
+                    progress.update(progress_task, completed=int(evaluation_result.progress))
                     continue
 
-                if evaluation_response.status == "completed":
-                    invoice = evaluation_response.invoices[0]
+                if evaluation_result.status == "completed":
+                    progress.update(progress_task, completed=100)
+                    invoice = evaluation_result.invoices[0]
                     if invoice.approved:
-                        progress_bar.n = 100
-                        progress_bar.refresh()
-
                         assert invoice.data
                         assert invoice.data.guideline
                         assert invoice.payload.guideline
 
-                        guideline_response = client.guidelines.create(
+                        guideline_result = client.guidelines.create(
                             agent_id,
                             invoices=[
                                 GuidelineInvoice(
@@ -401,7 +420,7 @@ class Actions:
                                 ),
                             ],
                         )
-                        return guideline_response.items[0]
+                        return guideline_result.items[0]
 
                     else:
                         assert invoice.data
@@ -411,11 +430,11 @@ class Actions:
                         )
                         raise CoherenceCheckFailure(contradictions=contradictions)
 
-                elif evaluation_response.status == "failed":
-                    raise ValueError(evaluation_response.error)
+                elif evaluation_result.status == "failed":
+                    raise ValueError(evaluation_result.error)
 
     @staticmethod
-    def remove_guideline(
+    def delete_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -438,8 +457,7 @@ class Actions:
         agent_id: str,
     ) -> list[Guideline]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.guidelines.list(agent_id)
-        return response.guidelines
+        return client.guidelines.list(agent_id)
 
     @staticmethod
     def create_entailment(
@@ -474,8 +492,8 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.guidelines.retrieve(agent_id, source_guideline_id)
-        connections = guideline_response.connections
+        guideline_result = client.guidelines.retrieve(agent_id, source_guideline_id)
+        connections = guideline_result.connections
 
         if connection := next(
             (c for c in connections if target_guideline_id in [c.source.id, c.target.id]),
@@ -494,7 +512,7 @@ class Actions:
         )
 
     @staticmethod
-    def add_association(
+    def add_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -517,7 +535,7 @@ class Actions:
         )
 
     @staticmethod
-    def remove_association(
+    def remove_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -526,8 +544,8 @@ class Actions:
     ) -> str:
         client = cast(ParlantClient, ctx.obj.client)
 
-        guideline_response = client.guidelines.retrieve(agent_id, guideline_id)
-        associations = guideline_response.tool_associations
+        guideline_result = client.guidelines.retrieve(agent_id, guideline_id)
+        associations = guideline_result.tool_associations
 
         if association := next(
             (
@@ -562,21 +580,19 @@ class Actions:
         agent_id: str,
     ) -> list[ContextVariable]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.context_variables.list(agent_id)
-        return response.context_variables
+        return client.context_variables.list(agent_id)
 
     @staticmethod
     def view_variable(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        variable_id: str,
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.list(agent_id)
-        variables = response.context_variables
+        variables = client.context_variables.list(agent_id)
 
-        if variable := next((v for v in variables if v.name == name), None):
+        if variable := next((v for v in variables if v.id == variable_id), None):
             return variable
 
         raise ValueError("A variable called '{name}' was not found under agent '{agent_id}'")
@@ -590,16 +606,14 @@ class Actions:
     ) -> ContextVariable:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.create(
+        return client.context_variables.create(
             agent_id,
             name=name,
             description=description,
         )
 
-        return response.context_variable
-
     @staticmethod
-    def remove_variable(
+    def delete_variable(
         ctx: click.Context,
         agent_id: str,
         variable_id: str,
@@ -617,14 +631,12 @@ class Actions:
     ) -> ContextVariableValue:
         client = cast(ParlantClient, ctx.obj.client)
 
-        response = client.context_variables.set_value(
+        return client.context_variables.set_value(
             agent_id,
             variable_id,
             key,
             data=value,
         )
-
-        return response.context_variable_value
 
     @staticmethod
     def read_variable(
@@ -632,7 +644,7 @@ class Actions:
         agent_id: str,
         variable_id: str,
         include_values: bool,
-    ) -> ContextVariableReadResponse:
+    ) -> ContextVariableReadResult:
         client = cast(ParlantClient, ctx.obj.client)
 
         return client.context_variables.retrieve(
@@ -657,7 +669,7 @@ class Actions:
         )
 
     @staticmethod
-    def add_service(
+    def create_service(
         ctx: click.Context,
         name: str,
         kind: str,
@@ -667,14 +679,14 @@ class Actions:
         client = cast(ParlantClient, ctx.obj.client)
 
         if kind == "sdk":
-            response = client.services.create_or_update(
+            result = client.services.create_or_update(
                 name=name,
                 kind="sdk",
                 sdk=SdkServiceParams(url=url),
             )
 
         elif kind == "openapi":
-            response = client.services.create_or_update(
+            result = client.services.create_or_update(
                 name=name,
                 kind="openapi",
                 openapi=OpenApiServiceParams(url=url, source=source),
@@ -684,13 +696,13 @@ class Actions:
             raise ValueError(f"Unsupported kind: {kind}")
 
         return Service(
-            name=response.name,
-            kind=response.kind,
-            url=response.url,
+            name=result.name,
+            kind=result.kind,
+            url=result.url,
         )
 
     @staticmethod
-    def remove_service(
+    def delete_service(
         ctx: click.Context,
         name: str,
     ) -> None:
@@ -700,8 +712,7 @@ class Actions:
     @staticmethod
     def list_services(ctx: click.Context) -> list[Service]:
         client = cast(ParlantClient, ctx.obj.client)
-        response = client.services.list()
-        return response.services
+        return client.services.list()
 
     @staticmethod
     def view_service(
@@ -710,6 +721,96 @@ class Actions:
     ) -> Service:
         client = cast(ParlantClient, ctx.obj.client)
         return client.services.retrieve(service_name)
+
+    @staticmethod
+    def list_customers(
+        ctx: click.Context,
+    ) -> list[Customer]:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.customers.list()
+
+    @staticmethod
+    def create_customer(
+        ctx: click.Context,
+        name: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.customers.create(name=name, extra={})
+
+    @staticmethod
+    def delete_customer(
+        ctx: click.Context,
+        customer_id: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.delete(customer_id)
+
+    @staticmethod
+    def view_customer(
+        ctx: click.Context,
+        customer_id: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        result = client.customers.retrieve(customer_id=customer_id)
+        return result
+
+    @staticmethod
+    def add_customer_extra(
+        ctx: click.Context,
+        customer_id: str,
+        key: str,
+        value: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(
+            customer_id=customer_id, extra=CustomerExtraUpdateParams(add={key: value})
+        )
+
+    @staticmethod
+    def remove_customer_extra(
+        ctx: click.Context,
+        customer_id: str,
+        key: str,
+    ) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(
+            customer_id=customer_id, extra=CustomerExtraUpdateParams(remove=[key])
+        )
+
+    @staticmethod
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(add=[tag_id]))
+
+    @staticmethod
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(remove=[tag_id]))
+
+    @staticmethod
+    def list_tags(ctx: click.Context) -> list[Tag]:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.tags.list()
+
+    @staticmethod
+    def create_tag(ctx: click.Context, name: str) -> Tag:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.tags.create(name=name)
+
+    @staticmethod
+    def view_tag(ctx: click.Context, tag_id: str) -> Tag:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.tags.retrieve(tag_id=tag_id)
+
+    @staticmethod
+    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.tags.update(tag_id=tag_id, name=name)
+
+    @staticmethod
+    def delete_tag(ctx: click.Context, tag_id: str) -> None:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.tags.delete(tag_id=tag_id)
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -795,6 +896,15 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def delete_agent(ctx: click.Context, agent_id: str) -> None:
+        try:
+            Actions.delete_agent(ctx, agent_id=agent_id)
+            Interface._write_success(f"Removed agent (id={agent_id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def view_agent(ctx: click.Context, agent_id: str) -> None:
         try:
             agent = Actions.view_agent(ctx, agent_id)
@@ -824,11 +934,12 @@ class Interface:
     def update_agent(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
         try:
-            Actions.update_agent(ctx, agent_id, description, max_engine_iterations)
+            Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
             Interface._write_success(f"Updated agent (id={agent_id})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
@@ -841,7 +952,7 @@ class Interface:
                 "ID": s.id,
                 "Title": s.title or "",
                 "Creation Date": reformat_datetime(s.creation_utc),
-                "End User ID": s.end_user_id,
+                "Costumer ID": s.customer_id,
             }
             for s in sessions
         ]
@@ -882,9 +993,9 @@ class Interface:
     def list_sessions(
         ctx: click.Context,
         agent_id: Optional[str],
-        end_user_id: Optional[str],
+        customer_id: Optional[str],
     ) -> None:
-        sessions = Actions.list_sessions(ctx, agent_id, end_user_id)
+        sessions = Actions.list_sessions(ctx, agent_id, customer_id)
 
         if not sessions:
             rich.print("No data available")
@@ -896,12 +1007,22 @@ class Interface:
     def create_session(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: Optional[str] = None,
         title: Optional[str] = None,
     ) -> None:
-        session = Actions.create_session(ctx, agent_id, end_user_id, title)
+        session = Actions.create_session(ctx, agent_id, customer_id, title)
         Interface._write_success(f"Added session (id={session.id})")
         Interface._render_sessions([session])
+
+    @staticmethod
+    def update_session(
+        ctx: click.Context,
+        session_id: str,
+        title: Optional[str] = None,
+        consumption_offsets: Optional[int] = None,
+    ) -> None:
+        Actions.update_session(ctx, session_id, consumption_offsets, title)
+        Interface._write_success(f"Updated session (id={session_id})")
 
     @staticmethod
     def inspect_event(
@@ -975,103 +1096,6 @@ class Interface:
         Interface._write_success(f"Added event (id={event.id})")
 
     @staticmethod
-    def chat(
-        ctx: click.Context,
-        session_id: str,
-    ) -> None:
-        def print_message(message_event: dict[str, Any]) -> None:
-            role = {"end_user": "User", "ai_agent": "Agent"}[message_event["source"]]
-            prefix = Text(
-                f"{role}:".ljust(6),
-                style="bold " + {"User": "blue", "Agent": "green"}[role],
-            )
-
-            message = wrap(
-                message_event["data"]["message"],
-                subsequent_indent=" " * (1 + len(prefix)),
-            )
-
-            rich.print(prefix, os.linesep.join(message))
-
-        rich.print(Text("Press CTRL+C at any time to quit\n", style="bold"))
-
-        response = requests.get(
-            urljoin(ctx.obj.server_address, f"/sessions/{session_id}/events"),
-            params={"wait": False},
-        )
-
-        raise_for_status_with_detail(response)
-
-        message_events = [e for e in response.json()["events"] if e["kind"] == "message"]
-
-        max_number_of_history_events_to_show = 5
-
-        if len(message_events) > max_number_of_history_events_to_show:
-            rich.print(
-                f"(skipping {len(message_events) - max_number_of_history_events_to_show} "
-                "event(s) in history...)\n",
-                flush=True,
-            )
-            message_events = message_events[-max_number_of_history_events_to_show:]
-
-        for m in message_events:
-            print_message(m)
-
-        last_known_offset = message_events[-1]["offset"] if message_events else -1
-
-        while True:
-            try:
-                rich.print(Text("User:  ", style="bold blue"), end="")
-                new_message = input()
-
-                response = requests.post(
-                    urljoin(
-                        ctx.obj.server_address,
-                        f"/sessions/{session_id}/events",
-                    ),
-                    json={
-                        "kind": "message",
-                        "source": "end_user",
-                        "data": new_message,
-                    },
-                )
-
-                raise_for_status_with_detail(response)
-
-                new_event = response.json()["event"]
-
-                last_known_offset = new_event["offset"]
-
-                while True:
-                    response = requests.get(
-                        urljoin(
-                            ctx.obj.server_address,
-                            f"/sessions/{session_id}/events"
-                            f"?min_offset={1 + last_known_offset}&wait=true",
-                        )
-                    )
-
-                    if response.status_code == 504:
-                        # Timeout occurred; try again
-                        continue
-
-                    events = response.json()["events"]
-                    if not events:
-                        continue
-
-                    last_known_offset = events[-1]["offset"]
-
-                    message_events = [e for e in events if e["kind"] == "message"]
-                    if message_events:
-                        for m in message_events:
-                            print_message(m)
-                        break
-
-            except KeyboardInterrupt:
-                rich.print("\nQuitting...", flush=True)
-                return
-
-    @staticmethod
     def create_term(
         ctx: click.Context,
         agent_id: str,
@@ -1117,12 +1141,12 @@ class Interface:
         Interface._print_table([term.__dict__])
 
     @staticmethod
-    def remove_term(
+    def delete_term(
         ctx: click.Context,
         agent_id: str,
         term_id: str,
     ) -> None:
-        Actions.remove_term(ctx, agent_id, term_id)
+        Actions.delete_term(ctx, agent_id, term_id)
 
         Interface._write_success(f"Removed term '{term_id}'")
 
@@ -1293,13 +1317,13 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_guideline(
+    def delete_guideline(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
     ) -> None:
         try:
-            Actions.remove_guideline(ctx, agent_id, guideline_id)
+            Actions.delete_guideline(ctx, agent_id, guideline_id)
 
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
@@ -1406,7 +1430,7 @@ class Interface:
         Interface._print_table(association_items)
 
     @staticmethod
-    def add_association(
+    def add_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1414,7 +1438,7 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association = Actions.add_association(
+            association = Actions.add_guideline_tool_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
@@ -1428,7 +1452,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_association(
+    def remove_guideline_tool_association(
         ctx: click.Context,
         agent_id: str,
         guideline_id: str,
@@ -1436,7 +1460,7 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association_id = Actions.remove_association(
+            association_id = Actions.remove_guideline_tool_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
@@ -1522,12 +1546,10 @@ class Interface:
         Interface._render_variable(variable)
 
     @staticmethod
-    def remove_variable(ctx: click.Context, agent_id: str, name: str) -> None:
+    def delete_variable(ctx: click.Context, agent_id: str, variable_id: str) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, name)
-            Actions.remove_variable(ctx, agent_id, variable.id)
-
-            Interface._write_success(f"Removed variable '{name}'")
+            Actions.delete_variable(ctx, agent_id, variable_id)
+            Interface._write_success(f"Removed variable '{variable_id}'")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1552,12 +1574,12 @@ class Interface:
     def set_variable_value(
         ctx: click.Context,
         agent_id: str,
-        variable_name: str,
+        variable_id: str,
         key: str,
         value: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
@@ -1576,26 +1598,26 @@ class Interface:
     def view_variable(
         ctx: click.Context,
         agent_id: str,
-        name: str,
+        variable_id: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
 
-            read_variable_response = Actions.read_variable(
+            read_variable_result = Actions.read_variable(
                 ctx,
                 agent_id,
                 variable.id,
                 include_values=True,
             )
 
-            Interface._render_variable(read_variable_response.context_variable)
+            Interface._render_variable(read_variable_result.context_variable)
 
-            if not read_variable_response.key_value_pairs:
+            if not read_variable_result.key_value_pairs:
                 rich.print("No values are available")
                 return
 
             pairs: dict[str, ContextVariableValue] = {}
-            for k, v in read_variable_response.key_value_pairs.items():
+            for k, v in read_variable_result.key_value_pairs.items():
                 if v:
                     pairs[k] = v
 
@@ -1609,11 +1631,11 @@ class Interface:
     def view_variable_value(
         ctx: click.Context,
         agent_id: str,
-        variable_name: str,
+        variable_id: str,
         key: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_name)
+            variable = Actions.view_variable(ctx, agent_id, variable_id)
             value = Actions.read_variable_value(ctx, agent_id, variable.id, key)
 
             Interface._render_variable_key_value_pairs({key: value})
@@ -1622,7 +1644,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def add_service(
+    def create_service(
         ctx: click.Context,
         name: str,
         kind: str,
@@ -1630,7 +1652,7 @@ class Interface:
         source: str,
     ) -> None:
         try:
-            result = Actions.add_service(ctx, name, kind, url, source)
+            result = Actions.create_service(ctx, name, kind, url, source)
 
             Interface._write_success(f"Added service '{name}'")
             Interface._print_table([result.dict()])
@@ -1639,12 +1661,12 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def remove_service(
+    def delete_service(
         ctx: click.Context,
         name: str,
     ) -> None:
         try:
-            Actions.remove_service(ctx, name)
+            Actions.delete_service(ctx, name)
 
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
@@ -1704,6 +1726,158 @@ class Interface:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
+    @staticmethod
+    def _render_customer(customers: list[Customer]) -> None:
+        customer_items: list[dict[str, Any]] = [
+            {
+                "ID": customer.id,
+                "Name": customer.name,
+                "Extra": customer.extra,
+            }
+            for customer in customers
+        ]
+
+        Interface._print_table(customer_items)
+
+    @staticmethod
+    def list_customers(ctx: click.Context) -> None:
+        try:
+            customers = Actions.list_customers(ctx)
+            if not customers:
+                rich.print(Text("No customers found", style="bold yellow"))
+                return
+
+            Interface._render_customer(customers)
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def create_customer(ctx: click.Context, name: str) -> None:
+        try:
+            customer = Actions.create_customer(ctx, name)
+            Interface._write_success(f"Added customer (id={customer.id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def delete_customer(ctx: click.Context, customer_id: str) -> None:
+        try:
+            Actions.delete_customer(ctx, customer_id=customer_id)
+            Interface._write_success(f"Removed customer (id={customer_id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def view_customer(ctx: click.Context, customer_id: str) -> None:
+        try:
+            customer = Actions.view_customer(ctx, customer_id)
+            Interface._render_customer([customer])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def add_customer_extra(ctx: click.Context, customer_id: str, key: str, value: str) -> None:
+        try:
+            Actions.add_customer_extra(ctx, customer_id, key, value)
+            Interface._write_success(
+                f"Added extra key '{key}' with value '{value}' to customer {customer_id}"
+            )
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
+        try:
+            Actions.remove_customer_extra(ctx, customer_id, key)
+            Interface._write_success(f"Removed extra key '{key}' from customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        try:
+            Actions.add_customer_tag(ctx, customer_id, tag_id)
+            Interface._write_success(f"Added tag '{tag_id}' to customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        try:
+            Actions.remove_customer_tag(ctx, customer_id, tag_id)
+            Interface._write_success(f"Removed tag '{tag_id}' from customer {customer_id}")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def _render_tag(tags: list[Tag]) -> None:
+        tag_items: list[dict[str, Any]] = [
+            {
+                "ID": tag.id,
+                "Name": tag.name,
+            }
+            for tag in tags
+        ]
+
+        Interface._print_table(tag_items)
+
+    @staticmethod
+    def list_tags(ctx: click.Context) -> None:
+        try:
+            tags = Actions.list_tags(ctx)
+            if not tags:
+                rich.print("No tags found.")
+                return
+
+            Interface._render_tag(tags)
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def create_tag(ctx: click.Context, name: str) -> None:
+        try:
+            tag = Actions.create_tag(ctx, name=name)
+            Interface._write_success(f"Added tag (id={tag.id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def view_tag(ctx: click.Context, tag_id: str) -> None:
+        try:
+            tag = Actions.view_tag(ctx, tag_id=tag_id)
+            Interface._render_tag([tag])
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
+        try:
+            Actions.update_tag(ctx, tag_id=tag_id, name=name)
+            Interface._write_success(f"Updated tag (id={tag_id}, name={name})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def delete_tag(ctx: click.Context, tag_id: str) -> None:
+        try:
+            Actions.delete_tag(ctx, tag_id=tag_id)
+            Interface._write_success(f"Removed tag (id={tag_id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
 
 async def async_main() -> None:
     click_completion.init()  # type: ignore
@@ -1759,6 +1933,12 @@ async def async_main() -> None:
             max_engine_iterations=max_engine_iterations,
         )
 
+    @agent.command("remove", help="Remove agent")
+    @click.argument("agent_id")
+    @click.pass_context
+    def agent_remove(ctx: click.Context, agent_id: str) -> None:
+        Interface.delete_agent(ctx, agent_id)
+
     @agent.command("view", help="View agent information")
     @click.argument("agent_id")
     @click.pass_context
@@ -1771,6 +1951,13 @@ async def async_main() -> None:
         Interface.list_agents(ctx)
 
     @agent.command("update", help="Update an agent's details")
+    @click.option(
+        "-n",
+        "--name",
+        type=str,
+        help="Agent Name",
+        required=False,
+    )
     @click.option(
         "-a",
         "--agent-id",
@@ -1790,27 +1977,14 @@ async def async_main() -> None:
     def agent_update(
         ctx: click.Context,
         agent_id: str,
+        name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.update_agent(ctx, agent_id, description, max_engine_iterations)
-
-    @agent.command(
-        "chat",
-        help="Jump into a chat with an agent\n\n"
-        "If AGENT_ID is omitted, the default agent will be selected.",
-    )
-    @click.argument("agent_id", required=False)
-    @click.pass_context
-    def agent_chat(ctx: click.Context, agent_id: Optional[str]) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-        session = Actions.create_session(ctx, agent_id=agent_id, end_user_id="<unused>")
-
-        Interface.chat(ctx, session.id)
+        Interface.update_agent(ctx, agent_id, name, description, max_engine_iterations)
 
     @cli.group(help="Manage sessions")
     def session() -> None:
@@ -1825,19 +1999,39 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option("-u", "--end-user-id", type=str, help="End User ID", metavar="ID", required=True)
+    @click.option("-u", "--customer-id", type=str, help="Customer ID", metavar="ID", required=False)
     @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
     @click.pass_context
     def session_new(
         ctx: click.Context,
         agent_id: str,
-        end_user_id: str,
+        customer_id: Optional[str],
         title: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.create_session(ctx, agent_id, end_user_id, title)
+        Interface.create_session(ctx, agent_id, customer_id, title)
+
+    @session.command("update", help="Update a session")
+    @click.option(
+        "-c",
+        "--consumption_offsets",
+        type=int,
+        help="Customer Offsets",
+        metavar=int,
+        required=False,
+    )
+    @click.option("-t", "--title", type=str, help="Session Title", metavar="TITLE", required=False)
+    @click.argument("session_id")
+    @click.pass_context
+    def session_update(
+        ctx: click.Context,
+        session_id: str,
+        consumption_offsets: Optional[int],
+        title: Optional[str],
+    ) -> None:
+        Interface.update_session(ctx, session_id, title, consumption_offsets)
 
     @session.command("list", help="List all sessions")
     @click.option(
@@ -1850,17 +2044,17 @@ async def async_main() -> None:
     )
     @click.option(
         "-u",
-        "--end-user-id",
+        "--customer-id",
         type=str,
-        help="Filter by End User ID",
+        help="Filter by Customer ID",
         metavar="ID",
         required=False,
     )
     @click.pass_context
     def session_list(
-        ctx: click.Context, agent_id: Optional[str], end_user_id: Optional[str]
+        ctx: click.Context, agent_id: Optional[str], customer_id: Optional[str]
     ) -> None:
-        Interface.list_sessions(ctx, agent_id, end_user_id)
+        Interface.list_sessions(ctx, agent_id, customer_id)
 
     @session.command("view", help="View session content")
     @click.argument("session_id")
@@ -1875,29 +2069,12 @@ async def async_main() -> None:
     def session_inspect(ctx: click.Context, session_id: str, event_id: str) -> None:
         Interface.inspect_event(ctx, session_id, event_id)
 
-    @session.command("post", help="Post user message to session")
+    @session.command("post", help="Post customer message to session")
     @click.argument("session_id")
     @click.argument("message")
     @click.pass_context
     def session_post(ctx: click.Context, session_id: str, message: str) -> None:
         Interface.create_event(ctx, session_id, message)
-
-    @session.command("chat", help="Enter chat mode within the session")
-    @click.option(
-        "-a",
-        "--agent-id",
-        type=str,
-        help="Agent ID (defaults to the first agent)",
-        metavar="ID",
-        required=False,
-    )
-    @click.argument("session_id")
-    @click.pass_context
-    def session_chat(ctx: click.Context, agent_id: str, session_id: str) -> None:
-        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
-        assert agent_id
-
-        Interface.chat(ctx, session_id)
 
     @cli.group(help="Manage an agent's glossary")
     def glossary() -> None:
@@ -2011,7 +2188,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_term(ctx, agent_id, term_id)
+        Interface.delete_term(ctx, agent_id, term_id)
 
     @glossary.command("list", help="List all terms in the glossary")
     @click.option(
@@ -2150,7 +2327,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_guideline(
+        Interface.delete_guideline(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2291,7 +2468,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.add_association(
+        Interface.add_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2322,7 +2499,7 @@ async def async_main() -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_association(
+        Interface.remove_guideline_tool_association(
             ctx=ctx,
             agent_id=agent_id,
             guideline_id=guideline_id,
@@ -2393,20 +2570,20 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.pass_context
     def variable_remove(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
 
-        Interface.remove_variable(
+        Interface.delete_variable(
             ctx=ctx,
             agent_id=agent_id,
-            name=name,
+            variable_id=variable_id,
         )
 
     @variable.command("set", help="Set a variable's value")
@@ -2418,14 +2595,14 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.argument("key", type=str)
     @click.argument("value", type=str)
     @click.pass_context
     def variable_set(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
         key: str,
         value: str,
     ) -> None:
@@ -2435,7 +2612,7 @@ async def async_main() -> None:
         Interface.set_variable_value(
             ctx=ctx,
             agent_id=agent_id,
-            variable_name=name,
+            variable_id=variable_id,
             key=key,
             value=value,
         )
@@ -2449,13 +2626,13 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.argument("name", type=str)
+    @click.argument("variable_id", type=str)
     @click.argument("key", type=str, required=False)
     @click.pass_context
     def variable_get(
         ctx: click.Context,
         agent_id: Optional[str],
-        name: str,
+        variable_id: str,
         key: Optional[str],
     ) -> None:
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
@@ -2465,14 +2642,14 @@ async def async_main() -> None:
             Interface.view_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_name=name,
+                variable_id=variable_id,
                 key=key,
             )
         else:
             Interface.view_variable(
                 ctx=ctx,
                 agent_id=agent_id,
-                name=name,
+                variable_id=variable_id,
             )
 
     @cli.group(help="Manage services")
@@ -2510,13 +2687,13 @@ async def async_main() -> None:
         url: str,
         source: str,
     ) -> None:
-        Interface.add_service(ctx, name, kind, url, source)
+        Interface.create_service(ctx, name, kind, url, source)
 
     @service.command("remove", help="Remove a service")
     @click.argument("name", type=str)
     @click.pass_context
     def service_remove(ctx: click.Context, name: str) -> None:
-        Interface.remove_service(ctx, name)
+        Interface.delete_service(ctx, name)
 
     @service.command("list", help="List all services")
     @click.pass_context
@@ -2528,6 +2705,96 @@ async def async_main() -> None:
     @click.pass_context
     def service_view(ctx: click.Context, name: str) -> None:
         Interface.view_service(ctx, name)
+
+    @cli.group(help="Manage customers")
+    def customer() -> None:
+        pass
+
+    @customer.command("list", help="List all customers")
+    @click.pass_context
+    def list_customers(ctx: click.Context) -> None:
+        Interface.list_customers(ctx)
+
+    @customer.command("add", help="Add a new customer")
+    @click.argument("name")
+    @click.pass_context
+    def add_customer(ctx: click.Context, name: str) -> None:
+        Interface.create_customer(ctx, name)
+
+    @customer.command("remove", help="Remove a customer")
+    @click.argument("customer_id", type=str)
+    @click.pass_context
+    def remove_customer(ctx: click.Context, customer_id: str) -> None:
+        Interface.delete_customer(ctx, customer_id)
+
+    @customer.command("view", help="View a customer's details")
+    @click.argument("customer_id", type=str)
+    @click.pass_context
+    def view_customer(ctx: click.Context, customer_id: str) -> None:
+        Interface.view_customer(ctx, customer_id)
+
+    @customer.command("add-extra", help="Add extra information to a customer")
+    @click.argument("customer_id", type=str)
+    @click.argument("key")
+    @click.argument("value")
+    @click.pass_context
+    def add_customer_extra(ctx: click.Context, customer_id: str, key: str, value: str) -> None:
+        Interface.add_customer_extra(ctx, customer_id, key, value)
+
+    @customer.command("remove-extra", help="Remove extra information from a customer")
+    @click.argument("customer_id", type=str)
+    @click.argument("key")
+    @click.pass_context
+    def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
+        Interface.remove_customer_extra(ctx, customer_id, key)
+
+    @customer.command("add-tag", help="Add a tag to a customer")
+    @click.argument("customer_id", type=str)
+    @click.argument("tag_id", type=str)
+    @click.pass_context
+    def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        Interface.add_customer_tag(ctx, customer_id, tag_id)
+
+    @customer.command("remove-tag", help="Remove a tag from a customer")
+    @click.argument("customer_id", type=str)
+    @click.argument("tag_id", type=str)
+    @click.pass_context
+    def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
+        Interface.remove_customer_tag(ctx, customer_id, tag_id)
+
+    @cli.group(help="Manage tags")
+    def tag() -> None:
+        """Group of commands to manage tags."""
+
+    @tag.command("list", help="List all tags")
+    @click.pass_context
+    def list_tags(ctx: click.Context) -> None:
+        Interface.list_tags(ctx)
+
+    @tag.command("add", help="Add a new tag")
+    @click.argument("name", type=str)
+    @click.pass_context
+    def add_tag(ctx: click.Context, name: str) -> None:
+        Interface.create_tag(ctx, name)
+
+    @tag.command("view", help="View details of a tag")
+    @click.argument("tag_id", type=str)
+    @click.pass_context
+    def view_tag(ctx: click.Context, tag_id: str) -> None:
+        Interface.view_tag(ctx, tag_id)
+
+    @tag.command("update", help="Update a tag's details")
+    @click.argument("tag_id", type=str)
+    @click.argument("name", type=str)
+    @click.pass_context
+    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
+        Interface.update_tag(ctx, tag_id, name)
+
+    @tag.command("remove", help="Remove a tag")
+    @click.argument("tag_id", type=str)
+    @click.pass_context
+    def remove_tag(ctx: click.Context, tag_id: str) -> None:
+        Interface.delete_tag(ctx, tag_id)
 
     cli()
 

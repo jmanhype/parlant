@@ -11,6 +11,7 @@ load_steps(
     "sessions",
     "terms",
     "tools",
+    "customers",
 )
 
 scenarios(
@@ -25,6 +26,7 @@ scenarios(
             "supervision",
             "glossary",
             "tools",
+            "context_variables",
         )
     )
 )

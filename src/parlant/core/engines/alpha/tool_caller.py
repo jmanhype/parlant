@@ -5,6 +5,7 @@ import json
 import traceback
 from typing import Any, Mapping, NewType, Optional, Sequence
 
+from parlant.core.customers import Customer
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
@@ -34,9 +35,9 @@ class ToolCallEvaluation(DefaultBaseModel):
 
 
 class ToolCallInferenceSchema(DefaultBaseModel):
-    last_user_message: Optional[str] = None
-    most_recent_user_inquiry_or_need: Optional[str] = None
-    most_recent_user_inquiry_or_need_was_already_resolved: Optional[bool] = False
+    last_customer_message: Optional[str] = None
+    most_recent_customer_inquiry_or_need: Optional[str] = None
+    most_recent_customer_inquiry_or_need_was_already_resolved: Optional[bool] = False
     tool_call_evaluations: list[ToolCallEvaluation]
 
 
@@ -68,6 +69,7 @@ class ToolCaller:
     async def infer_tool_calls(
         self,
         agents: Sequence[Agent],
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -88,6 +90,7 @@ class ToolCaller:
 
         inference_prompt = self._format_tool_call_inference_prompt(
             agents,
+            customer,
             context_variables,
             interaction_history,
             terms,
@@ -134,6 +137,7 @@ class ToolCaller:
     def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
+        customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
@@ -162,13 +166,13 @@ class ToolCaller:
 
 GENERAL INSTRUCTIONS
 -----------------
-You are part of a system of AI agents which interact with a user on the behalf of a business.
+You are part of a system of AI agents which interact with a customer on the behalf of a business.
 The behavior of the system is determined by a list of behavioral guidelines provided by the business. 
 Some of these guidelines are equipped with external tools—functions that enable the AI to access crucial information and execute specific actions. 
 Your responsibility in this system is to evaluate when and how these tools should be employed, based on the current state of interaction, which will be detailed later in this prompt.
 
-This evaluation and execution process occurs iteratively, preceding each response generated to the user. 
-Consequently, some tool calls may have already been initiated and executed following the user's most recent message. 
+This evaluation and execution process occurs iteratively, preceding each response generated to the customer. 
+Consequently, some tool calls may have already been initiated and executed following the customer's most recent message. 
 Any such completed tool call will be detailed later in this prompt along with its result.
 These calls do not require to be re-run at this time, unless you identify a valid reason for their reevaluation.
 
@@ -181,13 +185,13 @@ These calls do not require to be re-run at this time, unless you identify a vali
 -----------------
 TASK DESCRIPTION
 -----------------
-Your task is to review the available tools and, based on your most recent interaction with the user, decide whether to use each one. 
+Your task is to review the available tools and, based on your most recent interaction with the customer, decide whether to use each one. 
 For each tool, assign a score from 1 to 10 to indicate its usefulness at this time, where a higher score indicates that the tool call should execute. 
 For any tool with a score of 5 or higher, provide the arguments for activation, following the format in its description.
 
 While doing so, take the following instructions into account:
 
-1. You may suggest tools that don’t directly address the user’s latest interaction but can advance the conversation to a more useful state based on function definitions.
+1. You may suggest tools that don’t directly address the customer’s latest interaction but can advance the conversation to a more useful state based on function definitions.
 2. Each tool may be called multiple times with different arguments.
 3. Avoid calling a tool with the same arguments more than once, unless clearly justified by the interaction.
 4. Ensure each tool call relies only on the immediate context and staged calls, without requiring other tools not yet invoked, to avoid dependencies.
@@ -198,9 +202,9 @@ While doing so, take the following instructions into account:
 Produce a valid JSON object according to the following general format:
 ```json
 {{
-    "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
-    "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
-    "most_recent_user_inquiry_or_need_was_already_resolved": <BOOL>,
+    "last_customer_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
+    "most_recent_customer_inquiry_or_need": "<customer's inquiry or need>",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": <BOOL>,
     "tool_call_evaluations": [
         {{
             "name": "<TOOL NAME>",
@@ -226,20 +230,20 @@ EXAMPLES
 ###
 Example 1:
 
-Context - the id of the user is 12345, and check_balance(12345) is the only staged tool call
+Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call
 ###
 ```json
 {{
-    "last_user_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
-    "most_recent_user_inquiry_or_need": "Checking the user's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the user",
-    "most_recent_user_inquiry_or_need_was_already_resolved": false,
+    "last_customer_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
+    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "tool_call_evaluations": [
         {{
             "name": "check_balance",
             "rationale": "We need the client's current balance to respond to their question",
             "applicability_score": 9,
             "arguments": {{
-                "user_id": "12345",
+                "customer_id": "12345",
             }},
             "same_call_is_already_staged": true,
             "should_run": false,
@@ -253,7 +257,7 @@ Context - the id of the user is 12345, and check_balance(12345) is the only stag
         }},
         {{
             "name": "check_ride_price",
-            "rationale": "We need to know the price of a ride from New York to Newark to respond to the user",
+            "rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
             "applicability_score": 9,
             "arguments": {{
                 "origin": "New York",
@@ -280,9 +284,9 @@ check_stock(): returns all menu items that are currently in stock
 ###
 ```json
 {{
-    "last_user_message": "Which pizza has more calories, the classic margherita or the deep dish?",
-    "most_recent_user_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
-    "most_recent_user_inquiry_or_need_was_already_resolved": false,
+    "last_customer_message": "Which pizza has more calories, the classic margherita or the deep dish?",
+    "most_recent_customer_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "tool_call_evaluations": [
         {{
             "name": "check_calories",
@@ -387,9 +391,9 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
         return f"""
 ```json
 {{
-    "last_user_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
-    "most_recent_user_inquiry_or_need": "<the user's inquiry or need>",
-    "most_recent_user_inquiry_or_need_was_already_resolved": <BOOL>,
+    "last_customer_message": "<REPEAT THE LAST USER MESSAGE IN THE INTERACTION>",
+    "most_recent_customer_inquiry_or_need": "<customer's inquiry or need>",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": <BOOL>,
     "tool_call_evaluations": [{tool_call_evaluation_format}]
 }}
 ```
@@ -425,7 +429,7 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
         return f"""
 GUIDELINES
 ---------------------
-The following guidelines have been identified as relevant to the current state of interaction with the user. 
+The following guidelines have been identified as relevant to the current state of interaction with the customer. 
 Some guidelines have tools associated with them, which you may decide to apply as needed. Use these guidelines to understand the context for each tool.
 
 Guidelines: 

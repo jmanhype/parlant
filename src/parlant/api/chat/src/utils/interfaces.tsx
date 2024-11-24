@@ -4,7 +4,7 @@ export interface AgentInterface {
 };
 
 export type ServerStatus = 'pending' | 'error' | 'accepted' | 'acknowledged' | 'processing' | 'typing' | 'ready';
-type eventSource = 'end_user' | 'end_user_ui' | 'human_agent' | 'human_agent_on_behalf_of_ai_agent' | 'ai_agent';
+type eventSource = 'customer' | 'customer_ui' | 'human_agent' | 'human_agent_on_behalf_of_ai_agent' | 'ai_agent' | 'system';
 
 export interface EventInterface {
     id?: string;
@@ -23,7 +23,7 @@ export interface EventInterface {
 export interface SessionInterface {
     id: string;
     title: string;
-    end_user_id: string;
+    customer_id: string;
     agent_id: string;
     creation_utc: string;
 };

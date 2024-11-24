@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, status
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
@@ -23,15 +23,8 @@ class AgentCreationParamsDTO(DefaultBaseModel):
     max_engine_iterations: Optional[int] = None
 
 
-class AgentCreationResponse(DefaultBaseModel):
-    agent: AgentDTO
-
-
-class AgentListResponse(DefaultBaseModel):
-    agents: list[AgentDTO]
-
-
 class AgentUpdateParamsDTO(DefaultBaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
     max_engine_iterations: Optional[int] = None
 
@@ -49,21 +42,19 @@ def create_router(
     )
     async def create_agent(
         params: AgentCreationParamsDTO,
-    ) -> AgentCreationResponse:
+    ) -> AgentDTO:
         agent = await agent_store.create_agent(
             name=params and params.name or "Unnamed Agent",
             description=params and params.description or None,
             max_engine_iterations=params and params.max_engine_iterations or None,
         )
 
-        return AgentCreationResponse(
-            agent=AgentDTO(
-                id=agent.id,
-                name=agent.name,
-                description=agent.description,
-                creation_utc=agent.creation_utc,
-                max_engine_iterations=agent.max_engine_iterations,
-            )
+        return AgentDTO(
+            id=agent.id,
+            name=agent.name,
+            description=agent.description,
+            creation_utc=agent.creation_utc,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     @router.get(
@@ -71,21 +62,19 @@ def create_router(
         operation_id="list_agents",
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_agents() -> AgentListResponse:
+    async def list_agents() -> list[AgentDTO]:
         agents = await agent_store.list_agents()
 
-        return AgentListResponse(
-            agents=[
-                AgentDTO(
-                    id=a.id,
-                    name=a.name,
-                    description=a.description,
-                    creation_utc=a.creation_utc,
-                    max_engine_iterations=a.max_engine_iterations,
-                )
-                for a in agents
-            ]
-        )
+        return [
+            AgentDTO(
+                id=a.id,
+                name=a.name,
+                description=a.description,
+                creation_utc=a.creation_utc,
+                max_engine_iterations=a.max_engine_iterations,
+            )
+            for a in agents
+        ]
 
     @router.get(
         "/{agent_id}",
@@ -106,14 +95,18 @@ def create_router(
     @router.patch(
         "/{agent_id}",
         operation_id="update_agent",
+        status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_agent(
         agent_id: AgentId,
         params: AgentUpdateParamsDTO,
-    ) -> Response:
+    ) -> None:
         def from_dto(dto: AgentUpdateParamsDTO) -> AgentUpdateParams:
             params: AgentUpdateParams = {}
+
+            if dto.name:
+                params["name"] = dto.name
 
             if dto.description:
                 params["description"] = dto.description
@@ -128,6 +121,17 @@ def create_router(
             params=from_dto(params),
         )
 
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete(
+        "/{agent_id}",
+        operation_id="delete_agent",
+        status_code=status.HTTP_204_NO_CONTENT,
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
+    )
+    async def delete_agent(
+        agent_id: AgentId,
+    ) -> None:
+        await agent_store.read_agent(agent_id=agent_id)
+
+        await agent_store.delete_agent(agent_id=agent_id)
 
     return router

@@ -45,7 +45,7 @@ const ChatHeader = (): ReactNode => {
                     </div>
                 </div>
                 <div className='flex items-center'>
-                    <img src="parlant-bubble-app-logo.svg" alt="logo" aria-hidden height={17.9} width={20.89} className='ms-[24px] me-[6px] max-mobile:ms-0'/>
+                    <img src="/chat/parlant-bubble-app-logo.svg" alt="logo" aria-hidden height={17.9} width={20.89} className='ms-[24px] me-[6px] max-mobile:ms-0'/>
                     <p className='text-[19.4px] font-bold'>Parlant</p>
                 </div>
                 <div className='group me-[24px]'>

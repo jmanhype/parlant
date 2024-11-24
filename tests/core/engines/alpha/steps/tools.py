@@ -193,7 +193,7 @@ def given_a_tool(
             "description": "Get answers to questions by consulting documentation",
             "module_path": "tests.tool_utilities",
             "parameters": {
-                "user_query": {"type": "string", "description": "The query from the user"}
+                "user_query": {"type": "string", "description": "The query from the customer"}
             },
             "required": ["user_query"],
         },
@@ -287,6 +287,28 @@ def given_a_tool(
                 },
             },
             "required": ["vegetable"],
+        },
+        "recommend_drink": {
+            "name": "recommend_drink",
+            "description": "Recommends a drink based on the user's age",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "user_is_adult": {
+                    "type": "boolean",
+                },
+            },
+            "required": ["user_is_adult"],
+        },
+        "check_username_validity": {
+            "name": "check_username_validity",
+            "description": "Checks if the user's name is valid for our service",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "name": {
+                    "type": "string",
+                },
+            },
+            "required": ["name"],
         },
     }
 

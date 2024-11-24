@@ -229,16 +229,16 @@ Condition Entailment Test Results:
 
         builder.add_section(
             f"""
-In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a customer.
 
 Each guideline is composed of two parts:
 - "when": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
           condition to understand if we should have this guideline participate in generating
-          the next reply to the user.
+          the next reply to the customer.
 - "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.
-          Any instruction described here applies only to the agent, and not to the user.
+          Any instruction described here applies only to the agent, and not to the customer.
 
 
 Your task is to evaluate whether pairs of guidelines have entailing 'when' statements.
@@ -281,7 +281,7 @@ Test guideline: ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
-{{"id": 2, "when": "a customer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 2, "when": "a customer orders any item", "then": "refer the customer to our electronic store"}}
 {{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
 {{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
 {{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
@@ -357,12 +357,12 @@ Example 2:
 Input:
 
 Test guideline: ###
-{{"when": "offering products to the user", "then": "mention the price of the suggested product"}}
+{{"when": "offering products to the customer", "then": "mention the price of the suggested product"}}
 ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "suggesting a TV", "then": "mention the size of the screen"}}
-{{"id": 2, "when": "the user asks for recommendations", "then": "recommend items from the sales department"}}
+{{"id": 2, "when": "the customer asks for recommendations", "then": "recommend items from the sales department"}}
 {{"id": 3, "when": "recommending a TV warranty plan", "then": "encourage the use to get an upgraded warranty"}}
 {{"id": 4, "when": "discussing store items", "then": "check the stock for their availability"}}
 
@@ -374,45 +374,45 @@ Expected Output:
     "condition_entailments": [
         {{
             "compared_guideline_id": 1,
-            "origin_guideline_when": "offering products to the user",
+            "origin_guideline_when": "offering products to the customer",
             "compared_guideline_when": "suggesting a TV",
             "origin_entails_compared_rationale": "offering products does not entail suggesting a tv, as another type of product could be offered",
             "origin_when_entails_compared_when": false,
             "origin_entails_compared_severity": 3,
-            "compared_entails_origin_rationale": "by suggesting a TV, a product is offered to the user,
+            "compared_entails_origin_rationale": "by suggesting a TV, a product is offered to the customer,
             "compared_when_entails_origin_when": true,
             "compared_entails_origin_severity": 9,
         }},
         {{
             "compared_guideline_id": 2,
-            "origin_guideline_when": "offering products to the user",
-            "compared_guideline_when": "the user asks for recommendations",
-            "origin_entails_compared_rationale": "offering products to the user does not entail them asking for recommendations, since the agent might be offering items for a different reason",
+            "origin_guideline_when": "offering products to the customer",
+            "compared_guideline_when": "the customer asks for recommendations",
+            "origin_entails_compared_rationale": "offering products to the customer does not entail them asking for recommendations, since the agent might be offering items for a different reason",
             "origin_when_entails_compared_when": 4,
             "origin_entails_compared_severity": false,
-            "compared_entails_origin_rationale": "the user asking for recommendations does not entail that a product is offered to them. They could be asking out of their own accord",
+            "compared_entails_origin_rationale": "the customer asking for recommendations does not entail that a product is offered to them. They could be asking out of their own accord",
             "compared_when_entails_origin_when": false,
             "compared_entails_origin_severity": 3,
         }},
         {{
             "compared_guideline_id": 3,
-            "origin_guideline_when": "offering products to the user",
+            "origin_guideline_when": "offering products to the customer",
             "compared_guideline_when": "recommending a TV warranty plan",
             "origin_entails_compared_rationale": "offering product does not entail recommending a TV warranty, as the product might not be a TV warranty",
             "origin_when_entails_compared_when": false,
             "origin_entails_compared_severity": 3,
-            "compared_entails_origin_rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the user, so recommending a TV warranty plan entails offering a product",
+            "compared_entails_origin_rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the customer, so recommending a TV warranty plan entails offering a product",
             "compared_when_entails_origin_when": true,
             "compared_entails_origin_severity": 8,
         }},
         {{
             "compared_guideline_id": 4,
-            "origin_guideline_when": "offering products to the user",
+            "origin_guideline_when": "offering products to the customer",
             "compared_guideline_when": "discussing store items",
             "origin_entails_compared_rationale": "discussing store items does not entail offering products, since a different kind of discussion might be occurring",
             "origin_when_entails_compared_when": 3,
             "origin_entails_compared_severity": false,
-            "compared_entails_origin_rationale": "offering a product to the user entails the discussion of a store item, as it's fair to assume that product is a store item",
+            "compared_entails_origin_rationale": "offering a product to the customer entails the discussion of a store item, as it's fair to assume that product is a store item",
             "compared_when_entails_origin_when": true,
             "compared_entails_origin_severity": 7,
         }},
@@ -501,16 +501,16 @@ Action Contradiction Test Results:
 
         builder.add_section(
             f"""
-In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a customer.
 
 Each guideline is composed of two parts:
 - "when": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
           condition to understand if we should have this guideline participate in generating
-          the next reply to the user.
+          the next reply to the customer.
 - "then": This is a natural-language instruction that should be followed by the agent
           whenever the "when" part of the guideline applies to the conversation in its particular state.
-          Any instruction described here applies only to the agent, and not to the user.
+          Any instruction described here applies only to the agent, and not to the customer.
 
 To ensure consistency, it is crucial to avoid scenarios where multiple guidelines with conflicting 'then' statements are applied.
 {self.get_task_description()}
@@ -550,7 +550,7 @@ Test guideline: ###
 
 Comparison candidates: ###
 {{"id": 1, "when": "a customer orders a TV", "then": "wait for the manager's approval before shipping"}}
-{{"id": 2, "when": "a customer orders any item", "then": "refer the user to our electronic store"}}
+{{"id": 2, "when": "a customer orders any item", "then": "refer the customer to our electronic store"}}
 {{"id": 3, "when": "a customer orders a chair", "then": "reply that the product can only be delivered in-store"}}
 {{"id": 4, "when": "a customer asks which discounts we offer on electrical appliances", "then": "reply that we offer free shipping for items over 100$"}}
 {{"id": 5, "when": "a customer greets you", "then": "greet them back"}}
@@ -572,8 +572,8 @@ Expected Output:
         {{
             "compared_guideline_id": 2,
             "origin_guideline_then": "ship the item immediately",
-            "compared_guideline_then": "refer the user to our electronic store",
-            "rationale": "the agent can both ship the item immediately and refer the user to the electronic store at the same time, the actions are not contradictory",
+            "compared_guideline_then": "refer the customer to our electronic store",
+            "rationale": "the agent can both ship the item immediately and refer the customer to the electronic store at the same time, the actions are not contradictory",
             "thens_contradiction": false,
             "severity": 2
         }},
@@ -611,14 +611,14 @@ Example 2:
 Input:
 
 Test guideline: ###
-{{"when": "the user mentions health issues", "then": "register them to the 5km race"}}
+{{"when": "the customer mentions health issues", "then": "register them to the 5km race"}}
 ###
 
 Comparison candidates: ###
-{{"id": 1, "when": "the user asks about registering available races", "then": "Reply that you can register them either to the 5km or the 10km race"}}
-{{"id": 2, "when": "the user wishes to register to a race without being verified", "then": "Inform them that they cannot register to races without verification"}}
-{{"id": 3, "when": "the user wants to register races over 10km", "then": "suggest either a half or a full marathon"}}
-{{"id": 4, "when": "the user wants to register to the 10km race", "then": "register them as long as there are available slots"}}
+{{"id": 1, "when": "the customer asks about registering available races", "then": "Reply that you can register them either to the 5km or the 10km race"}}
+{{"id": 2, "when": "the customer wishes to register to a race without being verified", "then": "Inform them that they cannot register to races without verification"}}
+{{"id": 3, "when": "the customer wants to register races over 10km", "then": "suggest either a half or a full marathon"}}
+{{"id": 4, "when": "the customer wants to register to the 10km race", "then": "register them as long as there are available slots"}}
 ###
 
 Expected Output:
@@ -629,7 +629,7 @@ Expected Output:
             "compared_guideline_id": 1,
             "origin_guideline_then": "register them to the 5km race",
             "compared_guideline_then": "Reply that you can register them either to the 5km or the 10km race",
-            "rationale": "allowing the user to select from the multiple options for races, while already registering them to the 5km race is contradictory, as it ascribes an action that doesn't align with the agent's response",
+            "rationale": "allowing the customer to select from the multiple options for races, while already registering them to the 5km race is contradictory, as it ascribes an action that doesn't align with the agent's response",
             "thens_contradiction": true,
             "severity": 7
         }},
@@ -637,7 +637,7 @@ Expected Output:
             "compared_guideline_id": 2,
             "origin_guideline_then": "register them to the 5km race",
             "compared_guideline_then": "Inform them that they cannot register to races without verification",
-            "rationale": "Informing the user that they cannot register to races while registering them to a race is contradictory - the action does not align with the agent's response",
+            "rationale": "Informing the customer that they cannot register to races while registering them to a race is contradictory - the action does not align with the agent's response",
             "thens_contradiction": true,
             "severity": 8
         }},
@@ -645,7 +645,7 @@ Expected Output:
             "compared_guideline_id": 3,
             "origin_guideline_then": "register them to the 5km race",
             "compared_guideline_then": "suggest either a half or a full marathon",
-            "rationale": "Suggesting a half or a full marathon after the user asked about over 10km runs, while also registering them to the 5km run, is contradictory.",
+            "rationale": "Suggesting a half or a full marathon after the customer asked about over 10km runs, while also registering them to the 5km run, is contradictory.",
             "thens_contradiction": true,
             "severity": 7
         }},
@@ -654,7 +654,7 @@ Expected Output:
             "compared_guideline_id": 4,
             "origin_guideline_then": "register them to the 5km race",
             "compared_guideline_then": "register them as long as there are available slots",
-            "rationale": "the guidelines dictate registering the user to two separate races. While this is not inherently contradictory, it can lead to confusing or undefined behavior",
+            "rationale": "the guidelines dictate registering the customer to two separate races. While this is not inherently contradictory, it can lead to confusing or undefined behavior",
             "thens_contradiction": true,
             "severity": 8
         }},
@@ -690,6 +690,6 @@ Two 'then' statements are considered contradictory if:
 
 1. Applying both results in an actions which cannot be applied together trivially. This could either describe directly contradictory actions, or actions that interact in an unexpected way.
 2. Applying both leads to a confusing or paradoxical response.
-3. Applying both would result in the agent taking an action that does not align with the response it should provide to the user.
+3. Applying both would result in the agent taking an action that does not align with the response it should provide to the customer.
 While your evaluation should focus on the 'then' statements, remember that each 'then' statement is contextualized by its corresponding 'when' statement. Analyze each 'then' statement within the context provided by its "when" condition. Please be lenient with any misspellings or grammatical errors.
 """

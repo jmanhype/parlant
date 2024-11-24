@@ -4,7 +4,7 @@ from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId, AgentStore
 
-from parlant.core.end_users import EndUser, EndUserId, EndUserStore
+from parlant.core.customers import Customer, CustomerId, CustomerStore
 from parlant.core.sessions import Session, SessionStore
 from tests.core.engines.alpha.utils import ContextOfTest
 from tests.test_utilities import SyncAwaiter
@@ -39,34 +39,34 @@ def agent_id(agent: Agent) -> AgentId:
 
 
 @fixture
-def end_user(context: ContextOfTest) -> EndUser:
-    store = context.container[EndUserStore]
-    user = context.sync_await(
-        store.create_end_user(
-            name="Test User",
-            email="test@user.com",
+def customer(context: ContextOfTest) -> Customer:
+    store = context.container[CustomerStore]
+    customer = context.sync_await(
+        store.create_customer(
+            name="Test Customer",
+            extra={"email": "test@customer.com"},
         ),
     )
-    return user
+    return customer
 
 
 @fixture
-def end_user_id(end_user: EndUser) -> EndUserId:
-    return end_user.id
+def customer_id(customer: Customer) -> CustomerId:
+    return customer.id
 
 
 @fixture
 def new_session(
     context: ContextOfTest,
     agent_id: AgentId,
-    end_user_id: EndUserId,
+    customer_id: CustomerId,
 ) -> Session:
     store = context.container[SessionStore]
     utc_now = datetime.now(timezone.utc)
     return context.sync_await(
         store.create_session(
             creation_utc=utc_now,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=agent_id,
         )
     )

@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, status
 from typing import Optional, cast
 
 from fastapi import APIRouter
@@ -53,16 +53,8 @@ class ContextVariableCreationParamsDTO(DefaultBaseModel):
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
-class ContextVariableCreationResponse(DefaultBaseModel):
-    context_variable: ContextVariableDTO
-
-
-class ContextVariableDeletionResponse(DefaultBaseModel):
+class ContextVariableDeletionResult(DefaultBaseModel):
     context_variable_id: ContextVariableId
-
-
-class ContextVariableListResponse(DefaultBaseModel):
-    context_variables: list[ContextVariableDTO]
 
 
 class ContextVariableValueDTO(DefaultBaseModel):
@@ -75,17 +67,9 @@ class ContextVariableValueUpdateParamsDTO(DefaultBaseModel):
     data: JSONSerializableDTO
 
 
-class ContextVariableValueUpdateResponse(DefaultBaseModel):
-    context_variable_value: ContextVariableValueDTO
-
-
-class ContextVariableReadResponse(DefaultBaseModel):
+class ContextVariableReadResult(DefaultBaseModel):
     context_variable: ContextVariableDTO
     key_value_pairs: Optional[dict[str, ContextVariableValueDTO]]
-
-
-class ContextVariableValueDeletionResponse(DefaultBaseModel):
-    context_variable_value_id: ContextVariableValueId
 
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
@@ -127,7 +111,7 @@ def create_router(
     async def create_variable(
         agent_id: AgentId,
         params: ContextVariableCreationParamsDTO,
-    ) -> ContextVariableCreationResponse:
+    ) -> ContextVariableDTO:
         if params.tool_id:
             service = await service_registry.read_tool_service(params.tool_id.service_name)
             _ = await service.read_tool(params.tool_id.tool_name)
@@ -144,20 +128,18 @@ def create_router(
             else None,
         )
 
-        return ContextVariableCreationResponse(
-            context_variable=ContextVariableDTO(
-                id=variable.id,
-                name=variable.name,
-                description=variable.description,
-                tool_id=ToolIdDTO(
-                    service_name=variable.tool_id.service_name, tool_name=variable.tool_id.tool_name
-                )
-                if variable.tool_id
-                else None,
-                freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
-                if variable.freshness_rules
-                else None,
+        return ContextVariableDTO(
+            id=variable.id,
+            name=variable.name,
+            description=variable.description,
+            tool_id=ToolIdDTO(
+                service_name=variable.tool_id.service_name, tool_name=variable.tool_id.tool_name
             )
+            if variable.tool_id
+            else None,
+            freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
+            if variable.freshness_rules
+            else None,
         )
 
     @router.delete(
@@ -168,27 +150,23 @@ def create_router(
     )
     async def delete_all_variables(
         agent_id: AgentId,
-    ) -> Response:
+    ) -> None:
         for v in await context_variable_store.list_variables(variable_set=agent_id):
             await context_variable_store.delete_variable(variable_set=agent_id, id=v.id)
 
-        return Response(content=None, status_code=status.HTTP_204_NO_CONTENT)
-
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_variable",
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_variable(
         agent_id: AgentId,
         variable_id: ContextVariableId,
-    ) -> ContextVariableDeletionResponse:
-        _ = await context_variable_store.delete_variable(
-            variable_set=agent_id,
-            id=variable_id,
-        )
+    ) -> None:
+        await context_variable_store.read_variable(variable_set=agent_id, id=variable_id)
 
-        return ContextVariableDeletionResponse(context_variable_id=variable_id)
+        await context_variable_store.delete_variable(variable_set=agent_id, id=variable_id)
 
     @router.get(
         "/{agent_id}/context-variables",
@@ -197,28 +175,26 @@ def create_router(
     )
     async def list_variables(
         agent_id: AgentId,
-    ) -> ContextVariableListResponse:
+    ) -> list[ContextVariableDTO]:
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 
-        return ContextVariableListResponse(
-            context_variables=[
-                ContextVariableDTO(
-                    id=variable.id,
-                    name=variable.name,
-                    description=variable.description,
-                    tool_id=ToolIdDTO(
-                        service_name=variable.tool_id.service_name,
-                        tool_name=variable.tool_id.tool_name,
-                    )
-                    if variable.tool_id
-                    else None,
-                    freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
-                    if variable.freshness_rules
-                    else None,
+        return [
+            ContextVariableDTO(
+                id=variable.id,
+                name=variable.name,
+                description=variable.description,
+                tool_id=ToolIdDTO(
+                    service_name=variable.tool_id.service_name,
+                    tool_name=variable.tool_id.tool_name,
                 )
-                for variable in variables
-            ]
-        )
+                if variable.tool_id
+                else None,
+                freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
+                if variable.freshness_rules
+                else None,
+            )
+            for variable in variables
+        ]
 
     @router.put(
         "/{agent_id}/context-variables/{variable_id}/{key}",
@@ -230,7 +206,7 @@ def create_router(
         variable_id: ContextVariableId,
         key: str,
         params: ContextVariableValueUpdateParamsDTO,
-    ) -> ContextVariableValueUpdateResponse:
+    ) -> ContextVariableValueDTO:
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -243,12 +219,10 @@ def create_router(
             data=params.data,
         )
 
-        return ContextVariableValueUpdateResponse(
-            context_variable_value=ContextVariableValueDTO(
-                id=variable_value.id,
-                last_modified=variable_value.last_modified,
-                data=cast(JSONSerializableDTO, variable_value.data),
-            )
+        return ContextVariableValueDTO(
+            id=variable_value.id,
+            last_modified=variable_value.last_modified,
+            data=cast(JSONSerializableDTO, variable_value.data),
         )
 
     @router.get(
@@ -272,11 +246,14 @@ def create_router(
             variable_id=variable_id,
         )
 
-        return ContextVariableValueDTO(
-            id=variable_value.id,
-            last_modified=variable_value.last_modified,
-            data=cast(JSONSerializableDTO, variable_value.data),
-        )
+        if variable_value is not None:
+            return ContextVariableValueDTO(
+                id=variable_value.id,
+                last_modified=variable_value.last_modified,
+                data=cast(JSONSerializableDTO, variable_value.data),
+            )
+
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     @router.get(
         "/{agent_id}/context-variables/{variable_id}",
@@ -287,7 +264,7 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         include_values: bool = True,
-    ) -> ContextVariableReadResponse:
+    ) -> ContextVariableReadResult:
         variable = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -309,7 +286,7 @@ def create_router(
         )
 
         if not include_values:
-            return ContextVariableReadResponse(
+            return ContextVariableReadResult(
                 context_variable=variable_dto,
                 key_value_pairs=None,
             )
@@ -319,7 +296,7 @@ def create_router(
             variable_id=variable_id,
         )
 
-        return ContextVariableReadResponse(
+        return ContextVariableReadResult(
             context_variable=variable_dto,
             key_value_pairs={
                 key: ContextVariableValueDTO(
@@ -333,6 +310,7 @@ def create_router(
 
     @router.delete(
         "/{agent_id}/context-variables/{variable_id}/{key}",
+        status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_value",
         **apigen_config(group_name=API_GROUP, method_name="delete_value"),
     )
@@ -340,21 +318,22 @@ def create_router(
         agent_id: AgentId,
         variable_id: ContextVariableId,
         key: str,
-    ) -> ContextVariableValueDeletionResponse:
-        _ = await context_variable_store.read_variable(
+    ) -> None:
+        await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
         )
 
-        if deleted_variable_value_id := await context_variable_store.delete_value(
+        await context_variable_store.read_value(
             variable_set=agent_id,
             variable_id=variable_id,
             key=key,
-        ):
-            return ContextVariableValueDeletionResponse(
-                context_variable_value_id=deleted_variable_value_id
-            )
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        )
+
+        await context_variable_store.delete_value(
+            variable_set=agent_id,
+            variable_id=variable_id,
+            key=key,
+        )
 
     return router

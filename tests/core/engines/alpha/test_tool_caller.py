@@ -6,6 +6,7 @@ from pytest import fixture
 
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
+from parlant.core.customers import Customer, CustomerStore, CustomerId
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCaller
 from parlant.core.guidelines import Guideline, GuidelineId, GuidelineContent
@@ -31,6 +32,11 @@ def tool_caller(container: Container) -> ToolCaller:
         container[ServiceRegistry],
         container[SchematicGenerator[ToolCallInferenceSchema]],
     )
+
+
+@fixture
+async def customer(container: Container, customer_id: CustomerId) -> Customer:
+    return await container[CustomerStore].read_customer(customer_id)
 
 
 def create_interaction_history(conversation_context: list[tuple[str, str]]) -> list[Event]:
@@ -80,6 +86,7 @@ async def create_local_tool(
 
 
 async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_parameter(
+    customer: Customer,
     local_tool_service: LocalToolService,
     tool_caller: ToolCaller,
     agent: Agent,
@@ -97,33 +104,34 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
     )
 
     conversation_context = [
-        ("end_user", "Are you selling computers products?"),
+        ("customer", "Are you selling computers products?"),
         ("ai_agent", "Yes"),
-        ("end_user", "What available keyboards do you have?"),
+        ("customer", "What available keyboards do you have?"),
     ]
 
     interaction_history = create_interaction_history(conversation_context)
 
     ordinary_guideline_propositions = [
         create_guideline_proposition(
-            condition="user asking a question",
+            condition="customer asking a question",
             action="response in concise and breif answer",
             score=9,
-            rationale="user ask a question of what available keyboard do we have",
+            rationale="customer ask a question of what available keyboard do we have",
         )
     ]
 
     tool_enabled_guideline_propositions = {
         create_guideline_proposition(
             condition="get all products by a specific category",
-            action="a user asks for the availability of products from a certain category",
+            action="a customer asks for the availability of products from a certain category",
             score=9,
-            rationale="user asks for keyboards availability",
+            rationale="customer asks for keyboards availability",
         ): [ToolId(service_name="local", tool_name=tool.name)]
     }
 
     _, tool_calls = await tool_caller.infer_tool_calls(
         agents=[agent],
+        customer=customer,
         context_variables=[],
         interaction_history=interaction_history,
         terms=[],
@@ -141,6 +149,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
 
 async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
     container: Container,
+    customer: Customer,
     tool_caller: ToolCaller,
     agent: Agent,
 ) -> None:
@@ -162,28 +171,28 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
         return ToolResult(products_by_category[category])
 
     conversation_context = [
-        ("end_user", "Are you selling computers products?"),
+        ("customer", "Are you selling computers products?"),
         ("ai_agent", "Yes"),
-        ("end_user", "What available keyboards do you have?"),
+        ("customer", "What available keyboards do you have?"),
     ]
 
     interaction_history = create_interaction_history(conversation_context)
 
     ordinary_guideline_propositions = [
         create_guideline_proposition(
-            condition="user asking a question",
+            condition="customer asking a question",
             action="response in concise and breif answer",
             score=9,
-            rationale="user ask a question of what available keyboard do we have",
+            rationale="customer ask a question of what available keyboard do we have",
         )
     ]
 
     tool_enabled_guideline_propositions = {
         create_guideline_proposition(
             condition="get all products by a specific category",
-            action="a user asks for the availability of products from a certain category",
+            action="a customer asks for the availability of products from a certain category",
             score=9,
-            rationale="user asks for keyboards availability",
+            rationale="customer asks for keyboards availability",
         ): [ToolId(service_name="my_sdk_service", tool_name="available_products_by_category")]
     }
 
@@ -196,6 +205,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
 
         _, tool_calls = await tool_caller.infer_tool_calls(
             agents=[agent],
+            customer=customer,
             context_variables=[],
             interaction_history=interaction_history,
             terms=[],

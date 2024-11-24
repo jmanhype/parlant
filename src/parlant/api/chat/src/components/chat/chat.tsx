@@ -15,7 +15,7 @@ import { useQuestionDialog } from '@/hooks/useQuestionDialog';
 
 const emptyPendingMessage: EventInterface = {
     kind: 'message',
-    source: 'end_user',
+    source: 'customer',
     creation_utc: new Date(),
     serverStatus: 'pending',
     offset: 0,
@@ -127,7 +127,7 @@ export default function Chat(): ReactElement {
         if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         setMessages(messages => {
             const last = messages.at(-1);
-           if (last?.source === 'end_user' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
+           if (last?.source === 'customer' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
            return [...messages, ...withStatusMessages] as EventInterface[];
         });
 
@@ -147,8 +147,8 @@ export default function Chat(): ReactElement {
 
     const createSession = async (): Promise<{session: SessionInterface} | undefined> => {
         if (!newSession) return;
-        const {end_user_id, title} = newSession;
-        return postData('sessions?allow_greeting=true', {end_user_id, agent_id: agentId, title} as object)
+        const {customer_id, title} = newSession;
+        return postData('sessions?allow_greeting=true', {customer_id, agent_id: agentId, title} as object)
             .then((res: {session: SessionInterface}) => {
                 if (newSession) {
                     setSessionId(res.session.id);
@@ -167,7 +167,7 @@ export default function Chat(): ReactElement {
         setMessage('');
         const eventSession = newSession ? (await createSession())?.session?.id : sessionId;
         const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
-        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', data: content, source: 'end_user' }).then(() => {
+        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', content, source: 'customer' }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         }).catch(() => toast.error('Something went wrong'));

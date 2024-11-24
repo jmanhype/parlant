@@ -121,9 +121,9 @@ The following is a description of your identity: ###
                     }
 
             source_map: dict[EventSource, str] = {
-                "end_user": "human_user",
-                "end_user_ui": "frontend_application",
-                "human_agent": "human_agent",
+                "customer": "user",
+                "customer_ui": "frontend_application",
+                "human_agent": "human_service_agent",
                 "human_agent_on_behalf_of_ai_agent": "ai_agent",
                 "ai_agent": "ai_agent",
                 "system": "system-provided",
@@ -132,7 +132,7 @@ The following is a description of your identity: ###
             return json.dumps(
                 {
                     "event_kind": e.kind,
-                    "source_kind": source_map[e.source],
+                    "event_source": source_map[e.source],
                     "data": data,
                 }
             )

@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 from fastapi import status
 from lagom import Container
+from pytest import raises
 
 from parlant.core.agents import AgentId
+from parlant.core.common import ItemNotFoundError
 from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore
@@ -40,7 +42,7 @@ async def test_that_a_guideline_can_be_created(
             {
                 "payload": {
                     "content": {
-                        "condition": "the user greets you",
+                        "condition": "the customer greets you",
                         "action": "greet them back with 'Hello'",
                     },
                     "operation": "add",
@@ -63,7 +65,7 @@ async def test_that_a_guideline_can_be_created(
     items = response.json()["items"]
 
     assert len(items) == 1
-    assert items[0]["guideline"]["condition"] == "the user greets you"
+    assert items[0]["guideline"]["condition"] == "the customer greets you"
     assert items[0]["guideline"]["action"] == "greet them back with 'Hello'"
 
 
@@ -76,16 +78,16 @@ async def test_that_a_guideline_can_be_deleted(
 
     guideline_to_delete = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user wants to unsubscribe",
+        condition="the customer wants to unsubscribe",
         action="ask for confirmation",
     )
 
-    content = (
-        client.delete(f"/agents/{agent_id}/guidelines/{guideline_to_delete.id}")
-        .raise_for_status()
-        .json()
-    )
-    assert content["guideline_id"] == guideline_to_delete.id
+    client.delete(f"/agents/{agent_id}/guidelines/{guideline_to_delete.id}").raise_for_status()
+
+    with raises(ItemNotFoundError):
+        await guideline_store.read_guideline(
+            guideline_set=agent_id, guideline_id=guideline_to_delete.id
+        )
 
 
 async def test_that_an_unapproved_invoice_is_rejected(
@@ -96,7 +98,7 @@ async def test_that_an_unapproved_invoice_is_rejected(
             {
                 "payload": {
                     "content": {
-                        "condition": "the user says goodbye",
+                        "condition": "the customer says goodbye",
                         "action": "say 'Goodbye' back",
                     },
                     "operation": "add",
@@ -128,7 +130,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         {
             "payload": {
                 "content": {
-                    "condition": "the user asks about nearby restaurants",
+                    "condition": "the customer asks about nearby restaurants",
                     "action": "provide a list of restaurants",
                 },
                 "operation": "add",
@@ -143,7 +145,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                     {
                         "check_kind": "connection_with_another_evaluated_guideline",
                         "source": {
-                            "condition": "the user asks about nearby restaurants",
+                            "condition": "the customer asks about nearby restaurants",
                             "action": "provide a list of restaurants",
                         },
                         "target": {
@@ -174,7 +176,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                     {
                         "check_kind": "connection_with_another_evaluated_guideline",
                         "source": {
-                            "condition": "the user asks about nearby restaurants",
+                            "condition": "the customer asks about nearby restaurants",
                             "action": "provide a list of restaurants",
                         },
                         "target": {
@@ -204,7 +206,7 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
         (
             i
             for i in items
-            if i["guideline"]["condition"] == "the user asks about nearby restaurants"
+            if i["guideline"]["condition"] == "the customer asks about nearby restaurants"
         ),
         None,
     )
@@ -227,7 +229,7 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user asks about the weather",
+        condition="the customer asks about the weather",
         action="provide the current weather update",
     )
 
@@ -249,7 +251,7 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
                 {
                     "check_kind": "connection_with_existing_guideline",
                     "source": {
-                        "condition": "the user asks about the weather",
+                        "condition": "the customer asks about the weather",
                         "action": "provide the current weather update",
                     },
                     "target": {
@@ -293,7 +295,7 @@ async def test_that_a_guideline_can_be_read_by_id(
 
     stored_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user asks about the weather",
+        condition="the customer asks about the weather",
         action="provide the current weather update",
     )
 
@@ -302,7 +304,7 @@ async def test_that_a_guideline_can_be_read_by_id(
     )
 
     assert item["guideline"]["id"] == stored_guideline.id
-    assert item["guideline"]["condition"] == "the user asks about the weather"
+    assert item["guideline"]["condition"] == "the customer asks about the weather"
     assert item["guideline"]["action"] == "provide the current weather update"
     assert len(item["connections"]) == 0
 
@@ -321,9 +323,7 @@ async def test_that_guidelines_can_be_listed_for_an_agent(
         ],
     )
 
-    response_guidelines = (
-        client.get(f"/agents/{agent_id}/guidelines/").raise_for_status().json()["guidelines"]
-    )
+    response_guidelines = client.get(f"/agents/{agent_id}/guidelines/").raise_for_status().json()
 
     assert len(response_guidelines) == 2
     assert any(stored_guidelines[0].id == g["id"] for g in response_guidelines)
@@ -548,7 +548,7 @@ async def test_that_a_tool_association_can_be_added(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user wants to get meeting details",
+        condition="the customer wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -626,7 +626,7 @@ async def test_that_a_tool_association_can_be_removed(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user wants to get meeting details",
+        condition="the customer wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -695,7 +695,7 @@ async def test_that_guideline_deletion_removes_tool_associations(
 
     guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user wants to get meeting details",
+        condition="the customer wants to get meeting details",
         action="get meeting event information",
     )
 
@@ -707,8 +707,7 @@ async def test_that_guideline_deletion_removes_tool_associations(
         tool_id=ToolId(service_name=service_name, tool_name=tool_name),
     )
 
-    response = client.delete(f"/agents/{agent_id}/guidelines/{guideline.id}")
-    assert response.status_code == status.HTTP_200_OK
+    client.delete(f"/agents/{agent_id}/guidelines/{guideline.id}")
 
     associations_after = await association_store.list_associations()
     assert not any(assoc.guideline_id == guideline.id for assoc in associations_after)
@@ -724,7 +723,7 @@ async def test_that_an_existing_guideline_can_be_updated(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="reply with 'Hello'",
     )
     connected_guideline = await guideline_store.create_guideline(
@@ -752,7 +751,7 @@ async def test_that_an_existing_guideline_can_be_updated(
             {
                 "payload": {
                     "content": {
-                        "condition": "the user greets you",
+                        "condition": "the customer greets you",
                         "action": new_action,
                     },
                     "operation": "update",
@@ -768,7 +767,7 @@ async def test_that_an_existing_guideline_can_be_updated(
                         {
                             "check_kind": "connection_with_existing_guideline",
                             "source": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": new_action,
                             },
                             "target": {
@@ -793,7 +792,7 @@ async def test_that_an_existing_guideline_can_be_updated(
     assert len(items) == 1
     updated_guideline = items[0]["guideline"]
     assert updated_guideline["id"] == existing_guideline.id
-    assert updated_guideline["condition"] == "the user greets you"
+    assert updated_guideline["condition"] == "the customer greets you"
     assert updated_guideline["action"] == new_action
 
     updated_connections = await connection_store.list_connections(
@@ -815,7 +814,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="reply with 'Hello'",
     )
 
@@ -826,7 +825,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
             {
                 "payload": {
                     "content": {
-                        "condition": "the user greets you",
+                        "condition": "the customer greets you",
                         "action": new_aciton,
                     },
                     "operation": "update",
@@ -842,7 +841,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                         {
                             "check_kind": "connection_with_another_evaluated_guideline",
                             "source": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": new_aciton,
                             },
                             "target": {
@@ -873,7 +872,7 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                         {
                             "check_kind": "connection_with_another_evaluated_guideline",
                             "source": {
-                                "condition": "the user greets you",
+                                "condition": "the customer greets you",
                                 "action": new_aciton,
                             },
                             "target": {
@@ -927,7 +926,7 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
 
     existing_guideline = await guideline_store.create_guideline(
         guideline_set=agent_id,
-        condition="the user greets you",
+        condition="the customer greets you",
         action="reply with 'Hello'",
     )
     connected_guideline = await guideline_store.create_guideline(
@@ -949,7 +948,7 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
             {
                 "payload": {
                     "content": {
-                        "condition": "the user greets you",
+                        "condition": "the customer greets you",
                         "action": new_action,
                     },
                     "operation": "update",
@@ -977,7 +976,7 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
     assert len(items) == 1
     updated_guideline = items[0]["guideline"]
     assert updated_guideline["id"] == existing_guideline.id
-    assert updated_guideline["condition"] == "the user greets you"
+    assert updated_guideline["condition"] == "the customer greets you"
     assert updated_guideline["action"] == new_action
 
     updated_connections = await connection_store.list_connections(

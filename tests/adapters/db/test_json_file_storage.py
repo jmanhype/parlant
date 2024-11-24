@@ -11,7 +11,7 @@ from parlant.core.agents import AgentDocumentStore, AgentId, AgentStore
 from parlant.core.context_variables import (
     ContextVariableDocumentStore,
 )
-from parlant.core.end_users import EndUserDocumentStore, EndUserId
+from parlant.core.customers import CustomerDocumentStore, CustomerId
 from parlant.core.evaluations import (
     EvaluationDocumentStore,
     GuidelinePayload,
@@ -107,11 +107,11 @@ async def test_session_creation(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as session_db:
         session_store = SessionDocumentStore(session_db)
-        end_user_id = EndUserId("test_user")
+        customer_id = CustomerId("test_customer")
         utc_now = datetime.now(timezone.utc)
         session = await session_store.create_session(
             creation_utc=utc_now,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=context.agent_id,
         )
 
@@ -121,7 +121,7 @@ async def test_session_creation(
     assert len(sessions_from_json["sessions"]) == 1
     json_session = sessions_from_json["sessions"][0]
     assert json_session["id"] == session.id
-    assert json_session["end_user_id"] == end_user_id
+    assert json_session["customer_id"] == customer_id
     assert json_session["agent_id"] == context.agent_id
     assert json_session["consumption_offsets"] == {
         "client": 0,
@@ -134,17 +134,17 @@ async def test_event_creation(
 ) -> None:
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as session_db:
         session_store = SessionDocumentStore(session_db)
-        end_user_id = EndUserId("test_user")
+        customer_id = CustomerId("test_customer")
         utc_now = datetime.now(timezone.utc)
         session = await session_store.create_session(
             creation_utc=utc_now,
-            end_user_id=end_user_id,
+            customer_id=customer_id,
             agent_id=context.agent_id,
         )
 
         event = await session_store.create_event(
             session_id=session.id,
-            source="end_user",
+            source="customer",
             kind="message",
             correlation_id="test_correlation_id",
             data={"message": "Hello, world!"},
@@ -232,43 +232,43 @@ async def test_guideline_retrieval(
         assert loaded_guideline.content.action == "Test content for loading guideline"
 
 
-async def test_end_user_creation(
+async def test_customer_creation(
     context: _TestContext,
     new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as end_user_db:
-        end_user_store = EndUserDocumentStore(end_user_db)
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as customer_db:
+        customer_store = CustomerDocumentStore(customer_db)
         name = "Jane Doe"
-        email = "jane.doe@example.com"
-        created_user = await end_user_store.create_end_user(
+        extra = {"email": "jane.doe@example.com"}
+        created_customer = await customer_store.create_customer(
             name=name,
-            email=email,
+            extra=extra,
         )
 
     with open(new_file, "r") as file:
         data = json.load(file)
 
-    assert len(data["end_users"]) == 1
-    json_end_user = data["end_users"][0]
-    assert json_end_user["name"] == name
-    assert json_end_user["email"] == email
-    assert datetime.fromisoformat(json_end_user["creation_utc"]) == created_user.creation_utc
+    assert len(data["customers"]) == 1
+    json_customer = data["customers"][0]
+    assert json_customer["name"] == name
+    assert json_customer["extra"] == extra
+    assert datetime.fromisoformat(json_customer["creation_utc"]) == created_customer.creation_utc
 
 
-async def test_end_user_retrieval(
+async def test_customer_retrieval(
     context: _TestContext,
     new_file: Path,
 ) -> None:
-    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as end_user_db:
-        end_user_store = EndUserDocumentStore(end_user_db)
+    async with JSONFileDocumentDatabase(context.container[Logger], new_file) as customer_db:
+        customer_store = CustomerDocumentStore(customer_db)
         name = "John Doe"
-        email = "john.doe@example.com"
+        extra = {"email": "john.doe@example.com"}
 
-        created_user = await end_user_store.create_end_user(name=name, email=email)
+        created_customer = await customer_store.create_customer(name=name, extra=extra)
 
-        retrieved_user = await end_user_store.read_end_user(created_user.id)
+        retrieved_customer = await customer_store.read_customer(created_customer.id)
 
-        assert created_user == retrieved_user
+        assert created_customer == retrieved_customer
 
 
 async def test_context_variable_creation(
@@ -307,7 +307,7 @@ async def test_context_variable_value_update_and_retrieval(
     async with JSONFileDocumentDatabase(context.container[Logger], new_file) as context_variable_db:
         context_variable_store = ContextVariableDocumentStore(context_variable_db)
         tool_id = ToolId("local", "test_tool")
-        end_user_id = EndUserId("test_user")
+        customer_id = CustomerId("test_customer")
         variable = await context_variable_store.create_variable(
             variable_set=context.agent_id,
             name="Sample Variable",
@@ -318,15 +318,17 @@ async def test_context_variable_value_update_and_retrieval(
 
         await context_variable_store.update_value(
             variable_set=context.agent_id,
-            key=end_user_id,
+            key=customer_id,
             variable_id=variable.id,
             data={"key": "value"},
         )
         value = await context_variable_store.read_value(
             variable_set=context.agent_id,
-            key=end_user_id,
+            key=customer_id,
             variable_id=variable.id,
         )
+
+    assert value
 
     with open(new_file) as f:
         values_from_json = json.load(f)
