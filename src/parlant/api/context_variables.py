@@ -24,6 +24,7 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import (
     ContextVariableId,
     ContextVariableStore,
+    ContextVariableUpdateParams,
     ContextVariableValueId,
     FreshnessRules,
 )
@@ -62,6 +63,13 @@ class ContextVariableDTO(DefaultBaseModel):
 
 class ContextVariableCreationParamsDTO(DefaultBaseModel):
     name: str
+    description: Optional[str] = None
+    tool_id: Optional[ToolIdDTO] = None
+    freshness_rules: Optional[FreshnessRulesDTO] = None
+
+
+class ContextVariableUpdateParamsDTO(DefaultBaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
     tool_id: Optional[ToolIdDTO] = None
     freshness_rules: Optional[FreshnessRulesDTO] = None
@@ -140,6 +148,54 @@ def create_router(
             freshness_rules=_freshness_ruless_dto_to_freshness_rules(params.freshness_rules)
             if params.freshness_rules
             else None,
+        )
+
+        return ContextVariableDTO(
+            id=variable.id,
+            name=variable.name,
+            description=variable.description,
+            tool_id=ToolIdDTO(
+                service_name=variable.tool_id.service_name, tool_name=variable.tool_id.tool_name
+            )
+            if variable.tool_id
+            else None,
+            freshness_rules=_freshness_ruless_to_dto(variable.freshness_rules)
+            if variable.freshness_rules
+            else None,
+        )
+
+    @router.patch(
+        "/{agent_id}/context-variables/{variable_id}",
+        operation_id="update_variable",
+        **apigen_config(group_name=API_GROUP, method_name="update"),
+    )
+    async def update_variable(
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+        request: ContextVariableUpdateParamsDTO,
+    ) -> ContextVariableDTO:
+        params: ContextVariableUpdateParams = {}
+        if request.name:
+            params["name"] = request.name
+
+        if request.description:
+            params["description"] = request.description
+
+        if request.tool_id:
+            service = await service_registry.read_tool_service(request.tool_id.service_name)
+            _ = await service.read_tool(request.tool_id.tool_name)
+
+            params["tool_id"] = ToolId(
+                service_name=request.tool_id.service_name, tool_name=request.tool_id.tool_name
+            )
+
+        if request.freshness_rules:
+            params["freshness_rules"] = _freshness_ruless_dto_to_freshness_rules(
+                request.freshness_rules
+            )
+
+        variable = await context_variable_store.update_variable(
+            variable_set=agent_id, id=variable_id, params=params
         )
 
         return ContextVariableDTO(

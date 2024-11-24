@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Literal, NewType, Optional, Sequence, TypedDict, override
+from typing import Literal, NewType, Optional, Sequence, TypedDict, cast, override
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
@@ -78,6 +78,13 @@ class ContextVariableValue:
     data: JSONSerializable
 
 
+class ContextVariableUpdateParams(TypedDict, total=False):
+    name: str
+    description: Optional[str]
+    tool_id: Optional[ToolId]
+    freshness_rules: Optional[FreshnessRules]
+
+
 class ContextVariableStore(ABC):
     GLOBAL_KEY = "__default"
 
@@ -92,13 +99,12 @@ class ContextVariableStore(ABC):
     ) -> ContextVariable: ...
 
     @abstractmethod
-    async def update_value(
+    async def update_variable(
         self,
         variable_set: str,
-        variable_id: ContextVariableId,
-        key: str,
-        data: JSONSerializable,
-    ) -> ContextVariableValue: ...
+        id: ContextVariableId,
+        params: ContextVariableUpdateParams,
+    ) -> ContextVariable: ...
 
     @abstractmethod
     async def delete_variable(
@@ -119,6 +125,15 @@ class ContextVariableStore(ABC):
         variable_set: str,
         id: ContextVariableId,
     ) -> ContextVariable: ...
+
+    @abstractmethod
+    async def update_value(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+        key: str,
+        data: JSONSerializable,
+    ) -> ContextVariableValue: ...
 
     @abstractmethod
     async def read_value(
@@ -310,39 +325,48 @@ class ContextVariableDocumentStore(ContextVariableStore):
         return context_variable
 
     @override
-    async def update_value(
+    async def update_variable(
         self,
         variable_set: str,
-        variable_id: ContextVariableId,
-        key: str,
-        data: JSONSerializable,
-    ) -> ContextVariableValue:
-        last_modified = datetime.now(timezone.utc)
-
-        value = ContextVariableValue(
-            id=ContextVariableValueId(generate_id()),
-            last_modified=last_modified,
-            data=data,
+        id: ContextVariableId,
+        params: ContextVariableUpdateParams,
+    ) -> ContextVariable:
+        variable_document = await self._variable_collection.find_one(
+            filters={
+                "id": {"$eq": id},
+                "variable_set": {"$eq": variable_set},
+            }
         )
 
-        result = await self._value_collection.update_one(
-            {
-                "variable_set": {"$eq": variable_set},
-                "variable_id": {"$eq": variable_id},
-                "key": {"$eq": key},
-            },
-            self._serialize_context_variable_value(
-                context_variable_value=value,
-                variable_set=variable_set,
-                variable_id=variable_id,
-                key=key,
+        if not variable_document:
+            raise ItemNotFoundError(item_id=UniqueId(id), message=f"variable_set={variable_set}")
+
+        update_params = {
+            **({"name": params["name"]} if "name" in params else {}),
+            **({"description": params["description"]} if "description" in params else {}),
+            **(
+                {"tool_id": params["tool_id"].to_string()}
+                if "tool_id" in params and params["tool_id"]
+                else {}
             ),
-            upsert=True,
+            **(
+                {"freshness_rules": self._serialize_freshness_rules(params["freshness_rules"])}
+                if "freshness_rules" in params and params["freshness_rules"]
+                else {}
+            ),
+        }
+
+        result = await self._variable_collection.update_one(
+            filters={
+                "id": {"$eq": id},
+                "variable_set": {"$eq": variable_set},
+            },
+            params=cast(_ContextVariableDocument, update_params),
         )
 
         assert result.updated_document
 
-        return value
+        return self._deserialize_context_variable(context_variable_document=result.updated_document)
 
     @override
     async def delete_variable(
@@ -391,6 +415,41 @@ class ContextVariableDocumentStore(ContextVariableStore):
             )
 
         return self._deserialize_context_variable(variable_document)
+
+    @override
+    async def update_value(
+        self,
+        variable_set: str,
+        variable_id: ContextVariableId,
+        key: str,
+        data: JSONSerializable,
+    ) -> ContextVariableValue:
+        last_modified = datetime.now(timezone.utc)
+
+        value = ContextVariableValue(
+            id=ContextVariableValueId(generate_id()),
+            last_modified=last_modified,
+            data=data,
+        )
+
+        result = await self._value_collection.update_one(
+            {
+                "variable_set": {"$eq": variable_set},
+                "variable_id": {"$eq": variable_id},
+                "key": {"$eq": key},
+            },
+            self._serialize_context_variable_value(
+                context_variable_value=value,
+                variable_set=variable_set,
+                variable_id=variable_id,
+                key=key,
+            ),
+            upsert=True,
+        )
+
+        assert result.updated_document
+
+        return value
 
     @override
     async def read_value(
