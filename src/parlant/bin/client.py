@@ -2808,49 +2808,49 @@ async def async_main() -> None:
     @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
     @click.option("--tag-id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def add_customer_tag(ctx: click.Context, id: str, tag_id: str) -> None:
+    def customer_tag(ctx: click.Context, id: str, tag_id: str) -> None:
         Interface.add_customer_tag(ctx, id, tag_id)
 
     @customer.command("untag", help="Untag a customer")
     @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
     @click.option("--tag-id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def remove_customer_tag(ctx: click.Context, id: str, tag_id: str) -> None:
+    def customer_untag(ctx: click.Context, id: str, tag_id: str) -> None:
         Interface.remove_customer_tag(ctx, id, tag_id)
 
     @cli.group(help="Manage tags")
     def tag() -> None:
         """Group of commands to manage tags."""
 
-    @tag.command("list", help="List all tags")
+    @tag.command("list", help="List tags")
     @click.pass_context
-    def list_tags(ctx: click.Context) -> None:
+    def tag_list(ctx: click.Context) -> None:
         Interface.list_tags(ctx)
 
-    @tag.command("add", help="Add a new tag")
-    @click.argument("name", type=str)
+    @tag.command("create", help="Create a tag")
+    @click.option("--name", type=str, metavar="NAME", help="Tag name", required=True)
     @click.pass_context
-    def add_tag(ctx: click.Context, name: str) -> None:
+    def tag_create(ctx: click.Context, name: str) -> None:
         Interface.create_tag(ctx, name)
 
-    @tag.command("view", help="View details of a tag")
-    @click.argument("tag_id", type=str)
+    @tag.command("view", help="View a tag")
+    @click.option("--id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def view_tag(ctx: click.Context, tag_id: str) -> None:
-        Interface.view_tag(ctx, tag_id)
+    def tag_view(ctx: click.Context, id: str) -> None:
+        Interface.view_tag(ctx, id)
 
-    @tag.command("update", help="Update a tag's details")
-    @click.argument("tag_id", type=str)
-    @click.argument("name", type=str)
+    @tag.command("update", help="Update a tag")
+    @click.option("--id", type=str, metavar="ID", help="Tag ID", required=True)
+    @click.option("--name", type=str, metavar="NAME", help="Tag name", required=True)
     @click.pass_context
-    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
-        Interface.update_tag(ctx, tag_id, name)
+    def tag_update(ctx: click.Context, id: str, name: str) -> None:
+        Interface.update_tag(ctx, id, name)
 
-    @tag.command("remove", help="Remove a tag")
-    @click.argument("tag_id", type=str)
+    @tag.command("delete", help="Delete a tag")
+    @click.option("--id", type=str, metavar="ID", help="Tag ID", required=True)
     @click.pass_context
-    def remove_tag(ctx: click.Context, tag_id: str) -> None:
-        Interface.delete_tag(ctx, tag_id)
+    def tag_delete(ctx: click.Context, id: str) -> None:
+        Interface.delete_tag(ctx, id)
 
     cli()
 
