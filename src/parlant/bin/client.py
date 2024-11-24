@@ -658,7 +658,7 @@ class Actions:
         )
 
     @staticmethod
-    def create_service(
+    def create_or_update_service(
         ctx: click.Context,
         name: str,
         kind: str,
@@ -1648,9 +1648,20 @@ class Interface:
         kind: str,
         url: str,
         source: str,
+        update: bool,
     ) -> None:
         try:
-            result = Actions.create_service(ctx, name, kind, url, source)
+            existing_services = Actions.list_services(ctx)
+
+            if (
+                not update
+                and next((s for s in existing_services if s.name == name), None) is not None
+            ):
+                Interface._write_error(f"Error: Service '{name}' already exists")
+                set_exit_status(1)
+                return
+
+            result = Actions.create_or_update_service(ctx, name, kind, url, source)
 
             Interface._write_success(f"Added service '{name}'")
             Interface._print_table([result.dict()])
@@ -2661,23 +2672,20 @@ async def async_main() -> None:
     def service() -> None:
         pass
 
-    @service.command("add", help="Add a new service")
+    @service.command("create", help="Create a service")
     @click.option(
-        "-k",
         "--kind",
-        type=click.Choice(["sdk", "openapi"], case_sensitive=False),
+        type=click.Choice(["sdk", "openapi"]),
         required=True,
         help="Service kind",
     )
     @click.option(
-        "-u",
         "--url",
         metavar="URL",
         required=True,
-        help="Service root URL",
+        help="Service URL",
     )
     @click.option(
-        "-s",
         "--source",
         required=False,
         metavar="SOURCE",
@@ -2685,28 +2693,58 @@ async def async_main() -> None:
     )
     @click.argument("name", type=str)
     @click.pass_context
-    def service_add(
+    def service_create(
         ctx: click.Context,
         name: str,
         kind: str,
         url: str,
         source: str,
     ) -> None:
-        Interface.create_service(ctx, name, kind, url, source)
+        Interface.create_service(ctx, name, kind, url, source, False)
 
-    @service.command("remove", help="Remove a service")
+    @service.command("update", help="Update a service")
+    @click.option(
+        "--kind",
+        type=click.Choice(["sdk", "openapi"]),
+        required=True,
+        help="Service kind",
+    )
+    @click.option(
+        "--url",
+        metavar="URL",
+        required=True,
+        help="Service URL",
+    )
+    @click.option(
+        "--source",
+        required=False,
+        metavar="SOURCE",
+        help="For an OpenAPI service, this is the local path or URL to its openapi.json",
+    )
     @click.argument("name", type=str)
     @click.pass_context
-    def service_remove(ctx: click.Context, name: str) -> None:
+    def service_update(
+        ctx: click.Context,
+        name: str,
+        kind: str,
+        url: str,
+        source: str,
+    ) -> None:
+        Interface.create_service(ctx, name, kind, url, source, True)
+
+    @service.command("delete", help="Delete a service")
+    @click.option("--name", type=str, metavar="NAME", help="Service name", required=True)
+    @click.pass_context
+    def service_delete(ctx: click.Context, name: str) -> None:
         Interface.delete_service(ctx, name)
 
-    @service.command("list", help="List all services")
+    @service.command("list", help="List services")
     @click.pass_context
     def service_list(ctx: click.Context) -> None:
         Interface.list_services(ctx)
 
-    @service.command("view", help="View a specific service and its tools")
-    @click.argument("name", type=str)
+    @service.command("view", help="View a service and its tools")
+    @click.option("--name", type=str, metavar="NAME", help="Service name", required=True)
     @click.pass_context
     def service_view(ctx: click.Context, name: str) -> None:
         Interface.view_service(ctx, name)
