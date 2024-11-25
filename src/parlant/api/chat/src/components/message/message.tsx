@@ -39,7 +39,7 @@ export default function Message({event, isContinual, regenerateMessageFn}: Props
                     </div>
                 }
                 <div tabIndex={0} data-testid="message" className={(isClient ? 'bg-white text-black rounded-br-none rounded-tr-[22px]' : 'bg-transparent border-[1.3px] border-muted border-solid rounded-bl-none rounded-tl-[22px]') + (isClient && serverStatus === 'error' ? ' !bg-[#FDF2F1]' : '') + (isContinual ? ' !rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]' : '') + ' rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative'}>
-                    <div style={{wordBreak: 'break-word'}} className="relative font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]">
+                    <div className="markdown relative max-w-full [word-break:break-word] font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]">
                         <Markdown className={styles.markdown}>{event?.data?.message}</Markdown>
                     </div>
                     <div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>

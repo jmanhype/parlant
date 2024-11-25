@@ -177,7 +177,7 @@ export default function Chat(): ReactElement {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             submitButtonRef?.current?.click();
-        }
+        } else if (e.key === 'Enter' && e.shiftKey) e.preventDefault();
     };
 
     const isSameDay = (dateA: string | Date, dateB: string | Date): boolean => {
