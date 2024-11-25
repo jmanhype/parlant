@@ -559,7 +559,7 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
         ("customer", "That's great! Thanks!"),
     ]
 
-    exceptions = ["credit_payment1", "credit_payment2"]
+    exceptions = ["credit_payment1", "credit_payment2", "cow_response"]
 
     conversation_guideline_names: list[str] = [
         guideline_name

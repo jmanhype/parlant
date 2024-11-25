@@ -40,7 +40,7 @@ class GuidelinePropositionSchema(DefaultBaseModel):
     condition: str
     condition_application_rationale: str
     condition_applies: bool
-    action: str
+    action: Optional[str] = ""
     guideline_is_continuous: Optional[bool] = False
     guideline_previously_applied_rationale: Optional[str] = ""
     guideline_previously_applied: Optional[bool] = False
@@ -259,12 +259,12 @@ class GuidelineProposer:
                 "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied.>",
                 "guideline_previously_applied": "<BOOL: Optional, whether the condition already applied and the action was already taken>",
                 "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
-                "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score means that the condition applies and the action hasn't yet>",
+                "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score indicates that the guideline should be active>",
             }
             for i, g in guidelines.items()
         ]
         guidelines_text = "\n".join(
-            f"{i}) condition: {g.content.condition}. action: {g.content.action}"
+            f"{i}) Cndition: {g.content.condition}. Action: {g.content.action}"
             for i, g in guidelines.items()
         )
 
