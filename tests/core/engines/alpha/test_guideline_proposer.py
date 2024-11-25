@@ -83,15 +83,15 @@ GUIDELINES_DICT = {
         "condition": "the customer wants to cancel a class or an appointment",
         "action": "ask for the reason of cancellation, unless it's an emergency mention the cancellation fee.",
     },
-    "frustrated_user": {
+    "frustrated_customer": {
         "condition": "the customer appears frustrated or upset",
         "action": "Acknowledge the customer's concerns, apologize for any inconvenience, and offer a solution or escalate the issue to a supervisor if necessary.",
     },
-    "thankful_user": {
+    "thankful_customer": {
         "condition": "the customer expresses gratitude or satisfaction",
         "action": "Acknowledge their thanks warmly and let them know you appreciate their feedback or kind words.",
     },
-    "hesitant_user": {
+    "hesitant_customer": {
         "condition": "the customer seems unsure or indecisive about a decision",
         "action": "Offer additional information, provide reassurance, and suggest the most suitable option based on their needs.",
     },
@@ -140,23 +140,23 @@ GUIDELINES_DICT = {
         "action": "recommend either wine or beer",
     },
     "announce_shipment": {
-        "condition": "the agent just confirmed that the order will be shipped to the user",
+        "condition": "the agent just confirmed that the order will be shipped to the customer",
         "action": "provide the package's tracking information",
     },
     "tree_allergies": {
-        "condition": "recommending routes to a user with tree allergies",
-        "action": "warn the user about allergy inducing trees along the route",
+        "condition": "recommending routes to a customer with tree allergies",
+        "action": "warn the customer about allergy inducing trees along the route",
     },
     "credit_payment1": {
-        "condition": "the user requests a credit card payment",
-        "action": "guide the user through the payment process",
+        "condition": "the customer requests a credit card payment",
+        "action": "guide the customer through the payment process",
     },
     "credit_payment2": {
-        "condition": "the user wants to pay with a credit card",
+        "condition": "the customer wants to pay with a credit card",
         "action": "refuse payment as we only perform in-store purchases",
     },
     "cant_perform_request": {
-        "condition": "the user wants to agent to perform an action that the agent is not designed for",
+        "condition": "the customer wants to agent to perform an action that the agent is not designed for",
         "action": "forward the request to a supervisor",
     },
     "announce_deals": {
@@ -568,7 +568,7 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
     ]
     relevant_guideline_names = [
         "announce_shipment",
-        "thankful_user",
+        "thankful_customer",
     ]
     base_test_that_correct_guidelines_are_proposed(
         context,
@@ -931,7 +931,7 @@ def test_that_guideline_with_already_addressed_condition_but_unaddressed_action_
         ),
         ("customer", "What the heck! I'm never ordering from you guys again"),
     ]
-    conversation_guideline_names: list[str] = ["frustrated_user"]
+    conversation_guideline_names: list[str] = ["frustrated_customer"]
     relevant_guideline_names = conversation_guideline_names
     base_test_that_correct_guidelines_are_proposed(
         context,

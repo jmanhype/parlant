@@ -256,7 +256,7 @@ class GuidelineProposer:
                 "condition_applies": "<BOOL>",
                 "action": g.content.action,
                 "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
-                "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied.>",
+                "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
                 "guideline_previously_applied": "<BOOL: Optional, whether the condition already applied and the action was already taken>",
                 "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
                 "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score indicates that the guideline should be active>",
@@ -264,17 +264,17 @@ class GuidelineProposer:
             for i, g in guidelines.items()
         ]
         guidelines_text = "\n".join(
-            f"{i}) Cndition: {g.content.condition}. Action: {g.content.action}"
+            f"{i}) Condition: {g.content.condition}. Action: {g.content.action}"
             for i, g in guidelines.items()
         )
 
         builder = PromptBuilder()
 
         builder.add_section(
-            """
+            f"""
 GENERAL INSTRUCTIONS
 -----------------
-In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user.
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user / customer.
 Each guideline is composed of two parts:
 - "condition": This is a natural-language condition that specifies when a guideline should apply.
           We look at each conversation at any particular state, and we test against this
@@ -343,13 +343,13 @@ Is there anything else I can help you with?"}}}},
         "guideline_number": 1,
         "condition": "the customer initiates a purchase",
         "condition_application_rationale": "The purchase-related guideline was initiated earlier, but is currently irrelevant since the customer completed the purchase and the conversation has moved to a new topic.",
-        "condition_applies": false
+        "condition_applies": false,
         "applies_score": 3
     }},
     {{
         "guideline_number": 2,
         "condition": "the customer asks about data security",
-        "condition_applies": true
+        "condition_applies": true,
         "condition_application_rationale": "The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
         "action": "Refer the customer to our privacy policy page",
         "guideline_previously_applied_rationale": "This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
@@ -365,12 +365,6 @@ Is there anything else I can help you with?"}}}},
 
 Example #2:
 - Interaction Events: ###
-[{{"id": "11", "kind": "I'm looking for a job, what do you have available?", "source": "customer",
-[{{"id": "12", "kind": "Hi there! we have plenty of opportunities for you, where are you located?", "source": "assistant",
-"data": {{"message": "I'm looking for anything around the bay area"}}}},
-{{"id": "23", "kind": "That's great. We have a number of positions available over there. What kind of role are you interested in?", "source": "assistant",
-"data": {{"message": "Anything to do with training and maintaining AI agents"}}}},
-
 [{{"id": "11", "kind": "<message>", "source": "customer",
 "data": {{"message": "I'm looking for a job, what do you have available?"}}}},
 {{"id": "23", "kind": "<message>", "source": "assistant",
@@ -395,7 +389,7 @@ Example #2:
     {{
         "guideline_number": 3,
         "condition": "the customer indicates that they are looking for a job.",
-        "condition_applies": true
+        "condition_applies": true,
         "condition_application_rationale": "The current discussion is about the type of job the customer is looking for",
         "action": "ask the customer for their location",
         "guideline_is_continuous": false,
@@ -407,7 +401,7 @@ Example #2:
     {{
         "guideline_number": 4,
         "condition": "the customer asks about job openings.",
-        "condition_applies": true
+        "condition_applies": true,
         "condition_application_rationale": "the customer asked about job openings, and the discussion still revolves around this request",
         "action": "emphasize that we have plenty of positions relevant to the customer",
         "guideline_is_continuous": false,
@@ -419,7 +413,7 @@ Example #2:
     {{
         "guideline_number": 6,
         "condition": "discussing job opportunities.",
-        "condition_applies": true
+        "condition_applies": true,
         "condition_application_rationale": "the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
         "action": "maintain a positive, assuring tone",
         "guideline_is_continuous": true,
@@ -428,10 +422,9 @@ Example #2:
         "guideline_should_reapply": true,
         "applies_score": 9
     }},
-
-]}}
+    ]
+}}
 ```
-
 
 """  # noqa
         )
