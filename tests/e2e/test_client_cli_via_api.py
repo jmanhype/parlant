@@ -1823,6 +1823,28 @@ async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
         assert any(c["name"] == "TestCustomer" for c in customers)
 
 
+async def test_that_a_customer_can_be_updated(context: ContextOfTest) -> None:
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        customer = await context.api.create_customer("TestCustomer")
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "customer",
+                "update",
+                "--id",
+                customer["id"],
+                "--name",
+                "UpdatedTestCustomer",
+            )
+            == os.EX_OK
+        )
+
+        updated_customer = await context.api.read_customer(customer["id"])
+        assert updated_customer["name"] == "UpdatedTestCustomer"
+
+
 async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
     with run_server(context):
         await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)

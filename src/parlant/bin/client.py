@@ -749,6 +749,15 @@ class Actions:
         return client.customers.create(name=name, extra={})
 
     @staticmethod
+    def update_customer(
+        ctx: click.Context,
+        customer_id: str,
+        name: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.customers.update(customer_id=customer_id, name=name)
+
+    @staticmethod
     def delete_customer(
         ctx: click.Context,
         customer_id: str,
@@ -1803,6 +1812,15 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def update_customer(ctx: click.Context, customer_id: str, name: str) -> None:
+        try:
+            Actions.update_customer(ctx, customer_id=customer_id, name=name)
+            Interface._write_success(f"Updated customer (id={customer_id}, name={name})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def delete_customer(ctx: click.Context, customer_id: str) -> None:
         try:
             Actions.delete_customer(ctx, customer_id=customer_id)
@@ -2827,6 +2845,13 @@ async def async_main() -> None:
     @click.pass_context
     def customer_create(ctx: click.Context, name: str) -> None:
         Interface.create_customer(ctx, name)
+
+    @customer.command("update", help="Update a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option("--name", type=str, metavar="NAME", help="Customer name", required=True)
+    @click.pass_context
+    def customer_update(ctx: click.Context, id: str, name: str) -> None:
+        Interface.update_customer(ctx, id, name)
 
     @customer.command("delete", help="Delete a customer")
     @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
