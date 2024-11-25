@@ -16,6 +16,6 @@ load_steps(
 scenarios(
     *(
         f"core/engines/alpha/features/user_stories/{feature}.feature"
-        for feature in ("conversation","supervision")
+        for feature in ("conversation", "supervision")
     )
 )

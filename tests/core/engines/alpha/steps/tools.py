@@ -384,7 +384,7 @@ def given_a_tool(
                         "miscellaneous",
                     ],
                     "description": "Product general tags",
-                }
+                },
             },
             "required": ["category", "tags"],
         },
