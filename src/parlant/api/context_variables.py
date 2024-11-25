@@ -75,10 +75,6 @@ class ContextVariableUpdateParamsDTO(DefaultBaseModel):
     freshness_rules: Optional[FreshnessRulesDTO] = None
 
 
-class ContextVariableDeletionResult(DefaultBaseModel):
-    context_variable_id: ContextVariableId
-
-
 class ContextVariableValueDTO(DefaultBaseModel):
     id: ContextVariableValueId
     last_modified: datetime
@@ -170,32 +166,33 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_variable(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
-        request: ContextVariableUpdateParamsDTO,
+        agent_id: AgentId, variable_id: ContextVariableId, params: ContextVariableUpdateParamsDTO
     ) -> ContextVariableDTO:
-        params: ContextVariableUpdateParams = {}
-        if request.name:
-            params["name"] = request.name
+        async def from_dto(dto: ContextVariableUpdateParamsDTO) -> ContextVariableUpdateParams:
+            params: ContextVariableUpdateParams = {}
 
-        if request.description:
-            params["description"] = request.description
+            if dto.name:
+                params["name"] = dto.name
 
-        if request.tool_id:
-            service = await service_registry.read_tool_service(request.tool_id.service_name)
-            _ = await service.read_tool(request.tool_id.tool_name)
+            if dto.description:
+                params["description"] = dto.description
 
-            params["tool_id"] = ToolId(
-                service_name=request.tool_id.service_name, tool_name=request.tool_id.tool_name
-            )
+            if dto.tool_id:
+                params["tool_id"] = ToolId(
+                    service_name=dto.tool_id.service_name, tool_name=dto.tool_id.tool_name
+                )
 
-        if request.freshness_rules:
-            params["freshness_rules"] = _freshness_ruless_dto_to_freshness_rules(
-                request.freshness_rules
-            )
+            if dto.freshness_rules:
+                params["freshness_rules"] = _freshness_ruless_dto_to_freshness_rules(
+                    dto.freshness_rules
+                )
+
+            return params
 
         variable = await context_variable_store.update_variable(
-            variable_set=agent_id, id=variable_id, params=params
+            variable_set=agent_id,
+            id=variable_id,
+            params=await from_dto(params),
         )
 
         return ContextVariableDTO(
@@ -203,7 +200,8 @@ def create_router(
             name=variable.name,
             description=variable.description,
             tool_id=ToolIdDTO(
-                service_name=variable.tool_id.service_name, tool_name=variable.tool_id.tool_name
+                service_name=variable.tool_id.service_name,
+                tool_name=variable.tool_id.tool_name,
             )
             if variable.tool_id
             else None,
