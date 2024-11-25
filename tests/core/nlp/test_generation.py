@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Mapping, cast
 from lagom import Container
 from unittest.mock import AsyncMock
 
@@ -26,10 +27,15 @@ from parlant.core.nlp.generation import (
     SchematicGenerator,
     UsageInfo,
 )
+from parlant.core.nlp.policies import retry
 
 
 class DummySchema(DefaultBaseModel):
     result: str
+
+
+class CustomException(Exception):
+    pass
 
 
 async def test_that_fallback_generation_uses_the_first_working_generator(
@@ -112,14 +118,135 @@ async def test_that_fallback_generation_raises_an_error_when_all_generators_fail
     mock_second_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
     mock_second_generator.generate.side_effect = Exception("Failure")
 
-    fallback_generator: SchematicGenerator[DummySchema] = FallbackSchematicGenerator(
+    dummy_generator: SchematicGenerator[DummySchema] = FallbackSchematicGenerator(
         mock_first_generator,
         mock_second_generator,
         logger=container[Logger],
     )
 
     with raises(Exception):
-        await fallback_generator.generate("test prompt")
+        await dummy_generator.generate("test prompt")
 
     mock_first_generator.generate.assert_awaited_once_with(prompt="test prompt", hints={})
     mock_second_generator.generate.assert_awaited_once_with(prompt="test prompt", hints={})
+
+
+async def test_that_retry_succeeds_on_first_attempt(
+    container: Container,
+) -> None:
+    mock_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
+    mock_generator.generate.return_value = SchematicGenerationResult(
+        content=DummySchema(result="Success"),
+        info=GenerationInfo(
+            schema_name="DummySchema",
+            model="not-real-model",
+            duration=1,
+            usage=UsageInfo(input_tokens=1, output_tokens=1),
+        ),
+    )
+
+    @retry(CustomException)
+    async def generate(
+        prompt: str, hints: Mapping[str, Any]
+    ) -> SchematicGenerationResult[DummySchema]:
+        return cast(
+            SchematicGenerationResult[DummySchema],
+            await mock_generator.generate(prompt=prompt, hints=hints),
+        )
+
+    result = await generate(prompt="test prompt", hints={"a": 1})
+
+    mock_generator.generate.assert_awaited_once_with(prompt="test prompt", hints={"a": 1})
+    assert result.content.result == "Success"
+
+
+async def test_that_retry_succeeds_after_failures(
+    container: Container,
+) -> None:
+    mock_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
+    success_result = SchematicGenerationResult(
+        content=DummySchema(result="Success"),
+        info=GenerationInfo(
+            schema_name="DummySchema",
+            model="not-real-model",
+            duration=1,
+            usage=UsageInfo(input_tokens=1, output_tokens=1),
+        ),
+    )
+
+    mock_generator.generate.side_effect = [
+        CustomException("First failure"),
+        CustomException("Second failure"),
+        success_result,
+    ]
+
+    @retry(CustomException)
+    async def generate(
+        prompt: str, hints: Mapping[str, Any]
+    ) -> SchematicGenerationResult[DummySchema]:
+        return cast(
+            SchematicGenerationResult[DummySchema],
+            await mock_generator.generate(prompt=prompt, hints=hints),
+        )
+
+    result = await generate(prompt="test prompt", hints={"a": 1})
+
+    assert mock_generator.generate.await_count == 3
+    mock_generator.generate.assert_awaited_with(prompt="test prompt", hints={"a": 1})
+    assert result.content.result == "Success"
+
+
+async def test_that_retry_handles_multiple_exception_types(container: Container) -> None:
+    class AnotherException(Exception):
+        pass
+
+    mock_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
+    success_result = SchematicGenerationResult(
+        content=DummySchema(result="Success"),
+        info=GenerationInfo(
+            schema_name="DummySchema",
+            model="not-real-model",
+            duration=1,
+            usage=UsageInfo(input_tokens=1, output_tokens=1),
+        ),
+    )
+
+    mock_generator.generate.side_effect = [
+        CustomException("First error"),
+        AnotherException("Second error"),
+        success_result,
+    ]
+
+    @retry((CustomException, AnotherException), max_attempts=3)
+    async def generate(
+        prompt: str, hints: Mapping[str, Any] = {}
+    ) -> SchematicGenerationResult[DummySchema]:
+        return cast(
+            SchematicGenerationResult[DummySchema], await mock_generator.generate(prompt, hints)
+        )
+
+    result = await generate(prompt="test prompt")
+
+    assert mock_generator.generate.await_count == 3
+    assert result.content.result == "Success"
+
+
+async def test_that_retry_doesnt_catch_unspecified_exceptions(container: Container) -> None:
+    class UnexpectedException(Exception):
+        pass
+
+    mock_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
+    mock_generator.generate.side_effect = UnexpectedException("Unexpected error")
+
+    @retry(CustomException, max_attempts=3)
+    async def generate(
+        prompt: str, hints: Mapping[str, Any] = {}
+    ) -> SchematicGenerationResult[DummySchema]:
+        return cast(
+            SchematicGenerationResult[DummySchema], await mock_generator.generate(prompt, hints)
+        )
+
+    with raises(UnexpectedException):
+        await generate(prompt="test prompt")
+
+    mock_generator.generate.assert_awaited_once()

@@ -15,7 +15,15 @@
 from __future__ import annotations
 from itertools import chain
 import time
-from openai import AsyncClient
+from anthropic import RateLimitError
+from openai import (
+    APIConnectionError,
+    APIResponseValidationError,
+    APITimeoutError,
+    AsyncClient,
+    ConflictError,
+    InternalServerError,
+)
 from typing import Any, Mapping, override
 import json
 import jsonfinder  # type: ignore
@@ -27,6 +35,7 @@ import tiktoken
 from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.logging import Logger
+from parlant.core.nlp.policies import retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
@@ -78,6 +87,16 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
     def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
+    @retry(
+        exceptions=(
+            APIConnectionError,
+            APITimeoutError,
+            ConflictError,
+            RateLimitError,
+            APIResponseValidationError,
+        ),
+    )
+    @retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0))
     @override
     async def generate(
         self,

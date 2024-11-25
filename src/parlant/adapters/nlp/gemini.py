@@ -15,6 +15,7 @@
 import os
 import time
 import google.generativeai as genai  # type: ignore
+from google.api_core.exceptions import NotFound, TooManyRequests, ResourceExhausted, ServerError
 from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
@@ -22,6 +23,7 @@ from vertexai.preview import tokenization  # type: ignore
 
 from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.nlp.policies import retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
 from parlant.core.nlp.service import NLPService
@@ -75,6 +77,14 @@ class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
     def tokenizer(self) -> EstimatingTokenizer:
         return self._tokenizer
 
+    @retry(
+        exceptions=(
+            NotFound,
+            TooManyRequests,
+            ResourceExhausted,
+        ),
+    )
+    @retry(ServerError, max_attempts=2, wait_times=(1.0, 5.0))
     @override
     async def generate(
         self,

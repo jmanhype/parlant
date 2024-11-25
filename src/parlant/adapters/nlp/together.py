@@ -15,6 +15,13 @@
 import time
 from pydantic import ValidationError
 from together import AsyncTogether  # type: ignore
+from together.error import (  # type: ignore
+    RateLimitError,
+    Timeout,
+    APIConnectionError,
+    APIError,
+    ServiceUnavailableError,
+)
 from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 import os
@@ -35,6 +42,7 @@ from parlant.core.nlp.generation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.policies import retry
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 
@@ -61,6 +69,15 @@ class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
         self._logger = logger
         self._client = AsyncTogether(api_key=os.environ.get("TOGETHER_API_KEY"))
 
+    @retry(
+        exceptions=(
+            RateLimitError,
+            Timeout,
+            APIConnectionError,
+            APIError,
+        )
+    )
+    @retry(ServiceUnavailableError, max_attempts=2, wait_times=(1.0, 5.0))
     @override
     async def generate(
         self,
