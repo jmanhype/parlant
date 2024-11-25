@@ -1293,6 +1293,38 @@ async def test_that_a_variable_can_be_added(
         assert variable is not None, "Variable was not added"
 
 
+async def test_that_a_variable_can_be_updated(
+    context: ContextOfTest,
+) -> None:
+    name = "test_variable_cli"
+    description = "Variable added via CLI"
+    new_description = "Variable updated via CLI"
+
+    with run_server(context):
+        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+
+        agent_id = (await context.api.get_first_agent())["id"]
+        variable = await context.api.create_context_variable(agent_id, name, description)
+
+        assert (
+            await run_cli_and_get_exit_status(
+                "variable",
+                "update",
+                "--agent-id",
+                agent_id,
+                "--id",
+                variable["id"],
+                "--description",
+                new_description,
+            )
+            == os.EX_OK
+        )
+
+        updated_variable = await context.api.read_context_variable(agent_id, variable["id"])
+        assert updated_variable["context_variable"]["name"] == name
+        assert updated_variable["context_variable"]["description"] == new_description
+
+
 async def test_that_a_variable_can_be_removed(
     context: ContextOfTest,
 ) -> None:

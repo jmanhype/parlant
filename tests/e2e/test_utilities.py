@@ -496,6 +496,20 @@ class API:
             )
             response.raise_for_status()
 
+    async def read_context_variable(
+        self,
+        agent_id: str,
+        variable_id: str,
+    ) -> Any:
+        async with self.make_client() as client:
+            response = await client.get(
+                f"/agents/{agent_id}/context-variables/{variable_id}",
+            )
+
+            response.raise_for_status()
+
+            return response.json()
+
     async def read_context_variable_value(
         self,
         agent_id: str,
