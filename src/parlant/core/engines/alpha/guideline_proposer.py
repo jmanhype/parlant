@@ -458,6 +458,4 @@ Expected Output
     ```""")
 
         prompt = builder.build()
-        with open("guideline proposition prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
