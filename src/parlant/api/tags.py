@@ -3,7 +3,7 @@ from fastapi import APIRouter, status
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
-from parlant.core.tags import TagId, TagStore, TagUpdateParams
+from parlant.core.tags import TagId, TagStore
 
 API_GROUP = "tags"
 
@@ -33,9 +33,9 @@ def create_router(
         operation_id="create_tag",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_tag(request: TagCreationParamsDTO) -> TagDTO:
+    async def create_tag(params: TagCreationParamsDTO) -> TagDTO:
         tag = await tag_store.create_tag(
-            name=request.name,
+            name=params.name,
         )
 
         return TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
@@ -66,12 +66,10 @@ def create_router(
         status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_tag(tag_id: TagId, request: TagUpdateParamsDTO) -> None:
-        params: TagUpdateParams = {"name": request.name}
-
+    async def update_tag(tag_id: TagId, params: TagUpdateParamsDTO) -> None:
         await tag_store.update_tag(
             tag_id=tag_id,
-            params=params,
+            params={"name": params.name},
         )
 
     @router.delete(

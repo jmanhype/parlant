@@ -4,7 +4,7 @@ from typing import Mapping, Optional, Sequence, TypeAlias
 
 from parlant.api.common import apigen_config
 from parlant.core.common import DefaultBaseModel
-from parlant.core.customers import CustomerId, CustomerStore, CustomerUpdateParams
+from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.tags import TagId
 
 API_GROUP = "customers"
@@ -52,10 +52,10 @@ def create_router(
         operation_id="create_customer",
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_customer(request: CustomerCreationParamsDTO) -> CustomerDTO:
+    async def create_customer(params: CustomerCreationParamsDTO) -> CustomerDTO:
         customer = await customer_store.create_customer(
-            name=request.name,
-            extra=request.extra if request.extra else {},
+            name=params.name,
+            extra=params.extra if params.extra else {},
         )
 
         return CustomerDTO(
@@ -107,28 +107,25 @@ def create_router(
         status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
-    async def update_customer(customer_id: CustomerId, request: CustomerUpdateParamsDTO) -> None:
-        if request.name:
-            params: CustomerUpdateParams = {}
-            params["name"] = request.name
-
+    async def update_customer(customer_id: CustomerId, params: CustomerUpdateParamsDTO) -> None:
+        if params.name:
             _ = await customer_store.update_customer(
                 customer_id=customer_id,
-                params=params,
+                params={"name": params.name},
             )
 
-        if request.extra:
-            if request.extra.add:
-                await customer_store.add_extra(customer_id, request.extra.add)
-            if request.extra.remove:
-                await customer_store.remove_extra(customer_id, request.extra.remove)
+        if params.extra:
+            if params.extra.add:
+                await customer_store.add_extra(customer_id, params.extra.add)
+            if params.extra.remove:
+                await customer_store.remove_extra(customer_id, params.extra.remove)
 
-        if request.tags:
-            if request.tags.add:
-                for tag_id in request.tags.add:
+        if params.tags:
+            if params.tags.add:
+                for tag_id in params.tags.add:
                     await customer_store.add_tag(customer_id, tag_id)
-            if request.tags.remove:
-                for tag_id in request.tags.remove:
+            if params.tags.remove:
+                for tag_id in params.tags.remove:
                     await customer_store.remove_tag(customer_id, tag_id)
 
     @router.delete(

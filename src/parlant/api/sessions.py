@@ -283,15 +283,15 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_session(
-        request: SessionCreationParamsDTO,
+        params: SessionCreationParamsDTO,
         allow_greeting: bool = Query(default=True),
     ) -> SessionDTO:
-        _ = await agent_store.read_agent(agent_id=request.agent_id)
+        _ = await agent_store.read_agent(agent_id=params.agent_id)
 
         session = await application.create_customer_session(
-            customer_id=request.customer_id or CustomerStore.GUEST_ID,
-            agent_id=request.agent_id,
-            title=request.title,
+            customer_id=params.customer_id or CustomerStore.GUEST_ID,
+            agent_id=params.agent_id,
+            title=params.title,
             allow_greeting=allow_greeting,
         )
 
