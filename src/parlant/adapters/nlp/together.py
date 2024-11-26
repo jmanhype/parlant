@@ -212,6 +212,19 @@ class TogetherAIEmbedder(Embedder):
         self.model_name = model_name
         self._client = AsyncTogether(api_key=os.environ.get("TOGETHER_API_KEY"))
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    RateLimitError,
+                    Timeout,
+                    APIConnectionError,
+                    APIError,
+                )
+            ),
+            retry(ServiceUnavailableError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
+    )
     @override
     async def embed(
         self,

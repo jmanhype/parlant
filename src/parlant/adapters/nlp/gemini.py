@@ -183,6 +183,18 @@ class GoogleEmbedder(Embedder):
     def tokenizer(self) -> GoogleEstimatingTokenizer:
         return self._tokenizer
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    NotFound,
+                    TooManyRequests,
+                    ResourceExhausted,
+                )
+            ),
+            retry(ServerError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
+    )
     @override
     async def embed(
         self,

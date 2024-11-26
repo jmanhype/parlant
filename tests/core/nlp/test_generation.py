@@ -264,8 +264,8 @@ async def test_stacked_retry_decorators_exceed_max_attempts(container: Container
     mock_embedder.side_effect = [
         SecondException("First failure"),
         FirstException("Second failure"),
-        FirstException("Fourth failure"),
-        SecondException("Third failure"),
+        FirstException("Third failure"),
+        SecondException("Fourth failure"),
         FirstException("Fifth failure"),
         success_result,
     ]

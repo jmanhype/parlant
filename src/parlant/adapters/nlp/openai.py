@@ -243,6 +243,20 @@ class OpenAIEmbedder(Embedder):
     def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    APIConnectionError,
+                    APITimeoutError,
+                    ConflictError,
+                    RateLimitError,
+                    APIResponseValidationError,
+                ),
+            ),
+            retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
+    )
     @override
     async def embed(
         self,
