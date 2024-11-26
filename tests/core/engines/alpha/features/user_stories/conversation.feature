@@ -1,6 +1,7 @@
 Feature: Conversation
     Background:
         Given the alpha engine
+        And an empty session
 
     Scenario: The agent says goodbye back when the customer says goodbye
         Given an agent
@@ -68,9 +69,9 @@ Feature: Conversation
         Given an agent
         And an empty session
         And a guideline "recommend_products", to recommend 3 most suitable products when the user mentions product usage.
-        And the tool "get_products_by_tags"
+#        And the tool "get_products_by_tags"
         And an association between "recommend_products" and "get_products_by_tags"
-        And a user message, "Hey there! i'm looking to buy a notebook but not sure which one to chose. Its mainly for work as I'm a software developer. can you help me out?"
+        And a customer message, "Hey there! i'm looking to buy a notebook but not sure which one to chose. Its mainly for work as I'm a software developer. can you help me out?"
         When processing is triggered
         Then a single message event is emitted
         And the message contains no reaffermation of the users request
@@ -89,15 +90,38 @@ Feature: Conversation
     Scenario: The agent handles frustration accordingly
         Given an agent
         And an empty session
-        And a guideline to try and calm the user and provide a one time 20% off everything on the store when a user expresses frustration
+        And a guideline to try and calm the user and provide a one time 20% off everything on the store when a customer expresses frustration
         And a guideline to ask what is troubling the user when the user expresses frustration without specific reason
-        And a guideline to acknoledge apology only once when a user apologizes repeatedly
-        And a guideline to shift conversation back to problem-solving when a user apologizes and asks for help
-        And a user message, "hey"
+        And a guideline to acknoledge apology only once when a customer apologizes repeatedly
+        And a guideline to shift conversation back to problem-solving when a customer apologizes and asks for help
+        And a customer message, "hey"
         And an agent message, "Hello! How's it going?"
-        And a user message, "im good i just wanted to say I’m really sorry for the trouble I caused"
+        And a customer message, "im good i just wanted to say I’m really sorry for the trouble I caused"
         And an agent message, "No worries at all! We all have those moments. Is there anything else on your mind or anything I can help with?"
-        And a user message, "Sorry again if I’m bothering you. I just don’t know what to do with this issue I have."
+        And a customer message, "Sorry again if I’m bothering you. I just don’t know what to do with this issue I have."
         When processing is triggered
         Then a single message event is emitted
         And the message contains no mention to 20% off
+
+    Scenario: The agent follows a guideline without necessarily adhering to it literally every time
+        Given an agent
+        And an empty session
+        And a guideline to be empathetic and inquire about the user's problem when a customer is frustrated with the service
+        And a guideline to offer 20% off all products on their next purchase when a customer is frustrated with the service
+        And a customer message, "I'm really unhappy with the service I've been getting!"
+        And an agent message, "Hi there, I'm sorry to have caused you any frustration. First, as a token of our appreciation for your business, I'd like to offer you a 20% off all of our products on your next purchase."
+        And a customer message, "I am extremely frustrated that I didn't get my item yet!"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no direct offer of a 20% discount
+
+    Scenario: The agent stays consistent with suggested results
+        Given an agent
+        And an empty session
+        And a guideline "suggest_relevant_tags", to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio" when a user asks a question about a product
+        And a user message, "Hi I'm looking for an laptop that suits a software developer. Can you suggest me what tags are relevant for it?"
+        And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'developement'"
+        And a user message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio', which one would you recommend best?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains 'productivity', 'professional', and 'storage'
