@@ -978,63 +978,73 @@ async def test_that_a_connection_can_be_removed(
                     "invoices": [
                         {
                             "payload": {
-                                "content": {
-                                    "condition": "the customer greets you",
-                                    "action": "greet them back with 'Hello'",
+                                "kind": "guideline",
+                                "guideline": {
+                                    "content": {
+                                        "condition": "the customer greets you",
+                                        "action": "greet them back with 'Hello'",
+                                    },
+                                    "operation": "add",
+                                    "coherence_check": True,
+                                    "connection_proposition": True,
                                 },
-                                "operation": "add",
-                                "coherence_check": True,
-                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
                             "data": {
-                                "coherence_checks": [],
-                                "connection_propositions": [
-                                    {
-                                        "check_kind": "connection_with_another_evaluated_guideline",
-                                        "source": {
-                                            "condition": "the customer greets you",
-                                            "action": "greet them back with 'Hello'",
-                                        },
-                                        "target": {
-                                            "condition": "greeting the customer",
-                                            "action": "ask for his health condition",
-                                        },
-                                        "connection_kind": "entails",
-                                    }
-                                ],
+                                "guideline": {
+                                    "coherence_checks": [],
+                                    "connection_propositions": [
+                                        {
+                                            "check_kind": "connection_with_another_evaluated_guideline",
+                                            "source": {
+                                                "condition": "the customer greets you",
+                                                "action": "greet them back with 'Hello'",
+                                            },
+                                            "target": {
+                                                "condition": "greeting the customer",
+                                                "action": "ask for his health condition",
+                                            },
+                                            "connection_kind": "entails",
+                                        }
+                                    ],
+                                },
                             },
                             "error": None,
                         },
                         {
                             "payload": {
-                                "content": {
-                                    "condition": "greeting the customer",
-                                    "action": "ask for his health condition",
+                                "kind": "guideline",
+                                "guideline": {
+                                    "content": {
+                                        "condition": "greeting the customer",
+                                        "action": "ask for his health condition",
+                                    },
+                                    "operation": "add",
+                                    "coherence_check": True,
+                                    "connection_proposition": True,
                                 },
-                                "operation": "add",
-                                "coherence_check": True,
-                                "connection_proposition": True,
                             },
                             "checksum": "checksum_value",
                             "approved": True,
                             "data": {
-                                "coherence_checks": [],
-                                "connection_propositions": [
-                                    {
-                                        "check_kind": "connection_with_another_evaluated_guideline",
-                                        "source": {
-                                            "condition": "the customer greets you",
-                                            "action": "greet them back with 'Hello'",
-                                        },
-                                        "target": {
-                                            "condition": "greeting the customer",
-                                            "action": "ask for his health condition",
-                                        },
-                                        "connection_kind": "entails",
-                                    }
-                                ],
+                                "guideline": {
+                                    "coherence_checks": [],
+                                    "connection_propositions": [
+                                        {
+                                            "check_kind": "connection_with_another_evaluated_guideline",
+                                            "source": {
+                                                "condition": "the customer greets you",
+                                                "action": "greet them back with 'Hello'",
+                                            },
+                                            "target": {
+                                                "condition": "greeting the customer",
+                                                "action": "ask for his health condition",
+                                            },
+                                            "connection_kind": "entails",
+                                        }
+                                    ],
+                                },
                             },
                             "error": None,
                         },
@@ -1095,6 +1105,7 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
                 await run_cli_and_get_exit_status(
                     "service",
                     "create",
+                    "--name",
                     service_name,
                     "--kind",
                     service_kind,
@@ -1159,6 +1170,7 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
                 await run_cli_and_get_exit_status(
                     "service",
                     "create",
+                    "--name",
                     service_name,
                     "--kind",
                     service_kind,
