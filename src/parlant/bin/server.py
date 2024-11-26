@@ -357,9 +357,10 @@ def main() -> None:
     )
     @click.option(
         "--nlp-service",
-        type=click.Choice(["openai", "gemini", "anthropic", "together"]),
+        type=click.Choice(["openai", "gemini", "anthropic", "together", "cerebras"]),
         default=DEFAULT_NLP_SERVICE,
-        help="NLP provider",
+        help="NLP service provider",
+        show_default=True,
     )
     @click.option(
         "--log-level",

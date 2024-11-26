@@ -11,6 +11,7 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
+from parlant.adapters.nlp.cerebras import CerebrasService
 from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.nlp.anthropic import AnthropicService
@@ -130,6 +131,7 @@ async def container() -> AsyncIterator[Container]:
                 correlator=container[ContextualCorrelator],
                 nlp_services={
                     "openai": OpenAIService(container[Logger]),
+                    "cerebras": CerebrasService(container[Logger]),
                     "gemini": GoogleService(container[Logger]),
                     "anthropic": AnthropicService(container[Logger]),
                     "together": TogetherService(container[Logger]),

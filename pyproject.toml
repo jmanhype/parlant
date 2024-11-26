@@ -49,6 +49,7 @@ transformers = "^4.46.2"
 types-aiofiles = "^24.1.0.20240626"
 types-jsonschema = "^4.22.0.20240610"
 uvicorn = "^0.32.1"
+cerebras-cloud-sdk = "^1.12.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.26.0"
