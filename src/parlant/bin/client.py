@@ -331,7 +331,10 @@ class Actions:
             progress_task = progress.add_task("Evaluating guideline impact\n", total=100)
             while True:
                 time.sleep(0.5)
-                evaluation_result = client.evaluations.retrieve(evaluation.id)
+                evaluation_result = client.evaluations.retrieve(
+                    evaluation.id,
+                    wait_for_completion=0,
+                )
 
                 if evaluation_result.status in ["pending", "running"]:
                     progress.update(progress_task, completed=int(evaluation_result.progress))
@@ -405,7 +408,10 @@ class Actions:
 
             while True:
                 time.sleep(0.5)
-                evaluation_result = client.evaluations.retrieve(evaluation.id)
+                evaluation_result = client.evaluations.retrieve(
+                    evaluation.id,
+                    wait_for_completion=0,
+                )
 
                 if evaluation_result.status in ["pending", "running"]:
                     progress.update(progress_task, completed=int(evaluation_result.progress))

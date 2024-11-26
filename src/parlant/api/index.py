@@ -32,11 +32,13 @@ from parlant.api.common import (
     apigen_config,
     connection_kind_to_dto,
 )
+from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.evaluations import (
     Evaluation,
     EvaluationId,
+    EvaluationListener,
     EvaluationStatus,
     EvaluationStore,
     GuidelinePayload,
@@ -186,6 +188,7 @@ class EvaluationDTO(DefaultBaseModel):
 def create_router(
     evaluation_service: BehavioralChangeEvaluator,
     evaluation_store: EvaluationStore,
+    evaluation_listener: EvaluationListener,
     agent_store: AgentStore,
 ) -> APIRouter:
     router = APIRouter()
@@ -220,7 +223,20 @@ def create_router(
         operation_id="read_evaluation",
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_evaluation(evaluation_id: EvaluationId) -> EvaluationDTO:
+    async def read_evaluation(
+        evaluation_id: EvaluationId,
+        wait_for_completion: int = 60,
+    ) -> EvaluationDTO:
+        if wait_for_completion > 0:
+            if not await evaluation_listener.wait_for_completion(
+                evaluation_id=evaluation_id,
+                timeout=Timeout(wait_for_completion),
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Request timed out",
+                )
+
         evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
         return _evaluation_to_dto(evaluation)
 

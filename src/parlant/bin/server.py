@@ -39,6 +39,8 @@ from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
 from parlant.core.evaluations import (
+    EvaluationListener,
+    PollingEvaluationListener,
     EvaluationDocumentStore,
     EvaluationStatus,
     EvaluationStore,
@@ -228,6 +230,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[SessionListener] = PollingSessionListener
 
     c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
+    c[EvaluationListener] = PollingEvaluationListener
 
     c[EventEmitterFactory] = Singleton(EventPublisherFactory)
 

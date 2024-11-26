@@ -20,13 +20,9 @@ from lagom import Container
 from parlant.core.agents import AgentId
 from parlant.core.evaluations import EvaluationStore
 from parlant.core.guidelines import GuidelineStore
-
 from tests.core.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
-    TEST_WAIT_TIMEOUT,
-    TIME_TO_WAIT_PER_PAYLOAD,
 )
-from tests.test_utilities import get_when_done_or_timeout
 
 
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(
@@ -63,8 +59,6 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 
     evaluation = await evaluation_store.read_evaluation(evaluation_id=evaluation_id)
     assert evaluation.id == evaluation_id
-
-    await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
 
     content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
@@ -119,7 +113,11 @@ async def test_that_an_evaluation_can_be_fetched_with_running_status(
 
     await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
-    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
+    content = (
+        client.get(f"/index/evaluations/{evaluation_id}", params={"wait_for_completion": 0})
+        .raise_for_status()
+        .json()
+    )
 
     assert content["status"] == "running"
 
@@ -152,8 +150,6 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
         .raise_for_status()
         .json()["id"]
     )
-
-    await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
@@ -207,13 +203,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_completed_status_contain
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
     assert len(content["invoices"]) == 2
@@ -262,13 +252,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -332,13 +316,7 @@ async def test_that_an_evaluation_can_be_fetched_with_a_detailed_approved_invoic
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -547,13 +525,7 @@ async def test_that_evaluation_task_with_payload_containing_contradictions_is_ap
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -605,13 +577,7 @@ async def test_that_evaluation_task_skips_proposing_guideline_connections_when_i
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -678,13 +644,7 @@ async def test_that_evaluation_task_with_contradictions_is_approved_and_skips_in
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -738,13 +698,7 @@ async def test_that_evaluation_fails_when_updated_id_does_not_exist(
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "failed"
 
@@ -789,13 +743,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_approve
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["id"]
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -847,13 +795,7 @@ async def test_that_evaluation_task_with_update_of_existing_guideline_is_unappro
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["id"]
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -903,13 +845,7 @@ async def test_that_evaluation_task_with_conflicting_guidelines_approves_only_pa
     assert response.status_code == status.HTTP_201_CREATED
     evaluation_id = response.json()["id"]
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -971,13 +907,7 @@ async def test_that_evaluation_task_with_connected_guidelines_only_includes_deta
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
@@ -1055,13 +985,7 @@ async def test_that_evaluation_task_with_conflicting_updated_and_added_guideline
         .json()["id"]
     )
 
-    content = get_when_done_or_timeout(
-        result_getter=lambda: client.get(f"/index/evaluations/{evaluation_id}")
-        .raise_for_status()
-        .json(),
-        done_condition=lambda content: content["status"] in ["completed", "failed"],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    content = client.get(f"/index/evaluations/{evaluation_id}").raise_for_status().json()
 
     assert content["status"] == "completed"
 
