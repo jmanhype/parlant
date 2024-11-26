@@ -20,6 +20,7 @@ from pytest import raises
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
+from parlant.core.nlp.embedding import EmbeddingResult
 from parlant.core.nlp.generation import (
     FallbackSchematicGenerator,
     GenerationInfo,
@@ -27,14 +28,18 @@ from parlant.core.nlp.generation import (
     SchematicGenerator,
     UsageInfo,
 )
-from parlant.core.nlp.policies import retry
+from parlant.core.nlp.policies import policy, retry
 
 
 class DummySchema(DefaultBaseModel):
     result: str
 
 
-class CustomException(Exception):
+class FirstException(Exception):
+    pass
+
+
+class SecondException(Exception):
     pass
 
 
@@ -145,7 +150,7 @@ async def test_that_retry_succeeds_on_first_attempt(
         ),
     )
 
-    @retry(CustomException)
+    @policy([retry(exceptions=(FirstException))])
     async def generate(
         prompt: str, hints: Mapping[str, Any]
     ) -> SchematicGenerationResult[DummySchema]:
@@ -175,12 +180,12 @@ async def test_that_retry_succeeds_after_failures(
     )
 
     mock_generator.generate.side_effect = [
-        CustomException("First failure"),
-        CustomException("Second failure"),
+        FirstException("First failure"),
+        FirstException("Second failure"),
         success_result,
     ]
 
-    @retry(CustomException)
+    @policy([retry(exceptions=(FirstException))])
     async def generate(
         prompt: str, hints: Mapping[str, Any]
     ) -> SchematicGenerationResult[DummySchema]:
@@ -212,12 +217,12 @@ async def test_that_retry_handles_multiple_exception_types(container: Container)
     )
 
     mock_generator.generate.side_effect = [
-        CustomException("First error"),
+        FirstException("First error"),
         AnotherException("Second error"),
         success_result,
     ]
 
-    @retry((CustomException, AnotherException), max_attempts=3)
+    @policy([retry(exceptions=(FirstException, AnotherException), max_attempts=3)])
     async def generate(
         prompt: str, hints: Mapping[str, Any] = {}
     ) -> SchematicGenerationResult[DummySchema]:
@@ -238,7 +243,7 @@ async def test_that_retry_doesnt_catch_unspecified_exceptions(container: Contain
     mock_generator = AsyncMock(spec=SchematicGenerator[DummySchema])
     mock_generator.generate.side_effect = UnexpectedException("Unexpected error")
 
-    @retry(CustomException, max_attempts=3)
+    @policy([retry(exceptions=(FirstException), max_attempts=3)])
     async def generate(
         prompt: str, hints: Mapping[str, Any] = {}
     ) -> SchematicGenerationResult[DummySchema]:
@@ -250,3 +255,27 @@ async def test_that_retry_doesnt_catch_unspecified_exceptions(container: Contain
         await generate(prompt="test prompt")
 
     mock_generator.generate.assert_awaited_once()
+
+
+async def test_stacked_retry_decorators_exceed_max_attempts(container: Container) -> None:
+    mock_embedder = AsyncMock(spec=EmbeddingResult)
+    success_result = EmbeddingResult(vectors=[[0.1, 0.2, 0.3]])
+
+    mock_embedder.side_effect = [
+        SecondException("First failure"),
+        FirstException("Second failure"),
+        FirstException("Fourth failure"),
+        SecondException("Third failure"),
+        FirstException("Fifth failure"),
+        success_result,
+    ]
+
+    @policy([retry(SecondException, max_attempts=3), retry(FirstException, max_attempts=3)])
+    async def embed(text: str) -> EmbeddingResult:
+        return cast(EmbeddingResult, await mock_embedder(text=text))
+
+    with raises(FirstException) as exc_info:
+        await embed(text="test text")
+
+    assert mock_embedder.await_count == 5
+    assert str(exc_info.value) == "Fifth failure"

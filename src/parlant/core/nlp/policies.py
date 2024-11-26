@@ -1,76 +1,74 @@
-from typing import (
-    Any,
-    Coroutine,
-    ParamSpec,
-    Type,
-    TypeVar,
-    Callable,
-    Union,
-    Optional,
-)
+from abc import ABC, abstractmethod
 import asyncio
-from dataclasses import dataclass
+from typing import Any, Coroutine, Callable, Optional, ParamSpec, TypeVar, Union
 
-from parlant.core.nlp.generation import T, SchematicGenerationResult
-
-ExceptionType = TypeVar("ExceptionType", bound=Exception)
 P = ParamSpec("P")
+R = TypeVar("R")
 
 
-@dataclass
-class RetryConfig:
-    max_attempts: int = 5
-    wait_times: tuple[float, ...] = (1.0, 2.0, 10.0, 30.0)
+class Policy(ABC):
+    @abstractmethod
+    async def apply(
+        self, func: Callable[P, Coroutine[Any, Any, R]], *args: P.args, **kwargs: P.kwargs
+    ) -> R:
+        pass
 
-    def get_wait_time(self, attempt: int) -> float:
-        if attempt <= 0:
-            return 0
-        if attempt > len(self.wait_times):
-            return self.wait_times[-1]
-        return self.wait_times[attempt - 1]
+
+class RetryPolicy(Policy):
+    def __init__(
+        self,
+        exceptions: Union[type[Exception], tuple[type[Exception], ...]],
+        max_attempts: int = 3,
+        wait_times: Optional[tuple[float, ...]] = None,
+    ):
+        if not isinstance(exceptions, tuple):
+            exceptions = (exceptions,)
+        self.exceptions = exceptions
+        self.max_attempts = max_attempts
+        self.wait_times = wait_times if wait_times is not None else (1.0, 2.0, 5.0)
+
+        self._attempts = 0
+
+    async def apply(
+        self, func: Callable[P, Coroutine[Any, Any, R]], *args: P.args, **kwargs: P.kwargs
+    ) -> R:
+        while True:
+            try:
+                return await func(*args, **kwargs)
+            except self.exceptions as e:
+                self._attempts += 1
+                if self._attempts >= self.max_attempts:
+                    raise e
+                wait_time = self.wait_times[min(self._attempts - 1, len(self.wait_times) - 1)]
+                await asyncio.sleep(wait_time)
 
 
 def retry(
-    exceptions: Union[Type[Exception], tuple[Type[Exception], ...]],
-    max_attempts: Optional[int] = None,
+    exceptions: Union[type[Exception], tuple[type[Exception], ...]],
+    max_attempts: int = 3,
     wait_times: Optional[tuple[float, ...]] = None,
-) -> Callable[
-    [Callable[P, Coroutine[Any, Any, SchematicGenerationResult[T]]]],
-    Callable[P, Coroutine[Any, Any, SchematicGenerationResult[T]]],
-]:
-    if not isinstance(exceptions, tuple):
-        exceptions = (exceptions,)
+) -> RetryPolicy:
+    return RetryPolicy(exceptions, max_attempts, wait_times)
 
-    config = RetryConfig()
-    if max_attempts is not None:
-        config.max_attempts = max_attempts
-    if wait_times is not None:
-        config.wait_times = wait_times
 
+def policy(
+    policies: Union[Policy, list[Policy]],
+) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
     def decorator(
-        func: Callable[P, Coroutine[Any, Any, SchematicGenerationResult[T]]],
-    ) -> Callable[P, Coroutine[Any, Any, SchematicGenerationResult[T]]]:
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> SchematicGenerationResult[T]:
-            last_exception = None
-
-            for attempt in range(1, config.max_attempts + 1):
-                try:
-                    return await func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-
-                    if attempt == config.max_attempts:
-                        raise last_exception
-
-                    wait_time = config.get_wait_time(attempt)
-                    await asyncio.sleep(wait_time)
-
-            raise (
-                last_exception
-                if last_exception
-                else RuntimeError("Unexpected error in retry logic")
-            )
-
-        return wrapper
+        func: Callable[..., Coroutine[Any, Any, R]],
+    ) -> Callable[..., Coroutine[Any, Any, R]]:
+        applied_policies = policies if isinstance(policies, list) else [policies]
+        for policy_obj in reversed(applied_policies):
+            func = make_wrapped_func(policy_obj, func)
+        return func
 
     return decorator
+
+
+def make_wrapped_func(
+    policy_obj: Policy, func: Callable[..., Coroutine[Any, Any, R]]
+) -> Callable[..., Coroutine[Any, Any, R]]:
+    async def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        return await policy_obj.apply(func, *args, **kwargs)
+
+    return wrapped_func

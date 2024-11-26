@@ -35,7 +35,7 @@ import tiktoken
 from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.logging import Logger
-from parlant.core.nlp.policies import retry
+from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
@@ -87,16 +87,20 @@ class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
     def tokenizer(self) -> OpenAIEstimatingTokenizer:
         return self._tokenizer
 
-    @retry(
-        exceptions=(
-            APIConnectionError,
-            APITimeoutError,
-            ConflictError,
-            RateLimitError,
-            APIResponseValidationError,
-        ),
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    APIConnectionError,
+                    APITimeoutError,
+                    ConflictError,
+                    RateLimitError,
+                    APIResponseValidationError,
+                ),
+            ),
+            retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
     )
-    @retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0))
     @override
     async def generate(
         self,
