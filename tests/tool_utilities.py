@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import enum
+from supabase import create_client
+import os
 
 from parlant.core.tools import ToolResult
 

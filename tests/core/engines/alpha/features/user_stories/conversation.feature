@@ -64,7 +64,6 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains telling the user that the relevant topic is Mobileye
-<<<<<<< HEAD
     Scenario: The agent doesn't expose thought process
         Given an agent
         And an empty session
@@ -75,7 +74,7 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains no reaffermation of the users request
-=======
+
     Scenario: the agent does not get stuck in apology loop when facing frustrated customer
         Given a customer message, "what is the difference between 1 and 2"
         And an agent message, "The difference between 1 and 2 is 1."
@@ -87,7 +86,7 @@ Feature: Conversation
         When messages are emitted
         Then the message contains content which is not an acknoledgment of the customer's frustration followed by a question asking the customer to clarify themselves
 
-Scenario: The agent handles frustration accordingly
+    Scenario: The agent handles frustration accordingly
         Given an agent
         And an empty session
         And a guideline to try and calm the user and provide a one time 20% off everything on the store when a user expresses frustration
@@ -102,21 +101,3 @@ Scenario: The agent handles frustration accordingly
         When processing is triggered
         Then a single message event is emitted
         And the message contains no mention to 20% off
-
-    
-        Given an agent
-        And an empty session
-        And a guideline to try and calm the user and provide a one time 20% off everything on the store when a user expresses frustration
-        And a guideline to ask what is troubling the user when the user expresses frustration without specific reason
-        And a guideline to acknoledge apology only once when a user apologizes repeatedly
-        And a guideline to shift conversation back to problem-solving when a user apologizes and asks for help
-        And a user message, "hey"
-        And an agent message, "Hello! How's it going?"
-        And a user message, "im good i just wanted to say I’m really sorry for the trouble I caused"
-        And an agent message, "No worries at all! We all have those moments. Is there anything else on your mind or anything I can help with?"
-        And a user message, "Sorry again if I’m bothering you. I just don’t know what to do with this issue I have."
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains no mention to 20% off
-
->>>>>>> 71b6ddd8 (added user stories)
