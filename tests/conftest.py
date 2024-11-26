@@ -11,11 +11,7 @@ from lagom import Container, Singleton
 from pytest import fixture, Config
 
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
-from parlant.adapters.nlp.cerebras import CerebrasService
-from parlant.adapters.nlp.google import GoogleService
 from parlant.adapters.nlp.openai import OpenAIService
-from parlant.adapters.nlp.anthropic import AnthropicService
-from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -129,17 +125,11 @@ async def container() -> AsyncIterator[Container]:
                 database=container[DocumentDatabase],
                 event_emitter_factory=container[EventEmitterFactory],
                 correlator=container[ContextualCorrelator],
-                nlp_services={
-                    "openai": OpenAIService(container[Logger]),
-                    "cerebras": CerebrasService(container[Logger]),
-                    "gemini": GoogleService(container[Logger]),
-                    "anthropic": AnthropicService(container[Logger]),
-                    "together": TogetherService(container[Logger]),
-                },
+                nlp_services={"default": OpenAIService(container[Logger])},
             )
         )
 
-        container[NLPService] = await container[ServiceRegistry].read_nlp_service("openai")
+        container[NLPService] = await container[ServiceRegistry].read_nlp_service("default")
 
         container[GlossaryStore] = GlossaryChromaStore(
             ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),

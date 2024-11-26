@@ -183,12 +183,13 @@ class GeminiTextEmbedding_004(GoogleEmbedder):
         return 8000
 
 
-class GoogleService(NLPService):
+class GeminiService(NLPService):
     def __init__(
         self,
         logger: Logger,
     ) -> None:
         self._logger = logger
+        self._logger.info("Initialized GeminiService")
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> GeminiSchematicGenerator[T]:

@@ -30,6 +30,9 @@ class CustomFormatter(logging.Formatter, ABC):
 
 class Logger(ABC):
     @abstractmethod
+    def set_level(self, log_level: LogLevel) -> None: ...
+
+    @abstractmethod
     def debug(self, message: str) -> None: ...
 
     @abstractmethod
@@ -57,6 +60,11 @@ class CorrelationalLogger(Logger):
     ) -> None:
         self._correlator = correlator
         self.logger = logging.getLogger("parlant")
+        self._formatter = CustomFormatter()
+        self.set_level(log_level)
+
+    @override
+    def set_level(self, log_level: LogLevel) -> None:
         self.logger.setLevel(
             {
                 LogLevel.DEBUG: logging.DEBUG,
@@ -66,7 +74,6 @@ class CorrelationalLogger(Logger):
                 LogLevel.CRITICAL: logging.CRITICAL,
             }[log_level]
         )
-        self._formatter = CustomFormatter()
 
     @override
     def debug(self, message: str) -> None:

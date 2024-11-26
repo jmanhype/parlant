@@ -221,6 +221,7 @@ class TogetherService(NLPService):
         logger: Logger,
     ) -> None:
         self._logger = logger
+        self._logger.info("Initialized TogetherService")
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:

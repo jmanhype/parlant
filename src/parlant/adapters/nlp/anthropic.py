@@ -122,6 +122,7 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
 class AnthropicService(NLPService):
     def __init__(self, logger: Logger) -> None:
         self._logger = logger
+        self._logger.info("Initialized AnthropicService")
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> AnthropicAISchematicGenerator[T]:

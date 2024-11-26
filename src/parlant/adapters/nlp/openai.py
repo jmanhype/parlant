@@ -305,6 +305,7 @@ class OpenAIService(NLPService):
         logger: Logger,
     ) -> None:
         self._logger = logger
+        self._logger.info("Initialized OpenAIService")
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:

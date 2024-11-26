@@ -5,20 +5,17 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
 import os
 from lagom import Container, Singleton
-from typing import AsyncIterator
+from typing import AsyncIterator, Callable
 import click
 import click_completion
 from pathlib import Path
 import sys
 import uvicorn
 
+from parlant.core.nlp.service import NLPService
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.version import VERSION
 from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
-from parlant.adapters.nlp.anthropic import AnthropicService
-from parlant.adapters.nlp.google import GoogleService
-from parlant.adapters.nlp.openai import OpenAIService
-from parlant.adapters.nlp.together import TogetherService
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -121,6 +118,36 @@ class CLIParams:
     log_level: str
 
 
+def load_anthropic() -> NLPService:
+    from parlant.adapters.nlp.anthropic import AnthropicService
+
+    return AnthropicService(LOGGER)
+
+
+def load_cerebras() -> NLPService:
+    from parlant.adapters.nlp.cerebras import CerebrasService
+
+    return CerebrasService(LOGGER)
+
+
+def load_gemini() -> NLPService:
+    from parlant.adapters.nlp.gemini import GeminiService
+
+    return GeminiService(LOGGER)
+
+
+def load_openai() -> NLPService:
+    from parlant.adapters.nlp.openai import OpenAIService
+
+    return OpenAIService(LOGGER)
+
+
+def load_together() -> NLPService:
+    from parlant.adapters.nlp.together import TogetherService
+
+    return TogetherService(LOGGER)
+
+
 async def create_agent_if_absent(agent_store: AgentStore) -> None:
     agents = await agent_store.list_agents()
     if not agents:
@@ -186,17 +213,20 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
 
+    nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
+        "openai": load_openai,
+        "gemini": load_gemini,
+        "cerebras": load_cerebras,
+        "anthropic": load_anthropic,
+        "together": load_together,
+    }
+
     c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
         ServiceDocumentRegistry(
             database=services_db,
             event_emitter_factory=c[EventEmitterFactory],
             correlator=c[ContextualCorrelator],
-            nlp_services={
-                "openai": OpenAIService(LOGGER),
-                "gemini": GoogleService(LOGGER),
-                "anthropic": AnthropicService(LOGGER),
-                "together": TogetherService(LOGGER),
-            },
+            nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
         )
     )
 
@@ -324,10 +354,7 @@ async def serve_app(
 
 
 async def start_server(params: CLIParams) -> None:
-    global LOGGER
-    LOGGER = FileLogger(
-        PARLANT_HOME_DIR / "parlant.log",
-        CORRELATOR,
+    LOGGER.set_level(
         {
             "info": LogLevel.INFO,
             "debug": LogLevel.DEBUG,
