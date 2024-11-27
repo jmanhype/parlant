@@ -1,10 +1,9 @@
 <div align="center">
   <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/daa1993d0fb20c9a6ffd33b1758752f892d482e7/logo.png" width="350" />
   <p>A better way to iterate and hone the outputs of AI chat agents so that your customers actually engage with them</p>
-  <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[Documentation](https://www.parlant.io/docs/quickstart/introduction) | [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Why Use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
