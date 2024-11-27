@@ -15,4 +15,5 @@ logs
 .parlant-cache/
 ./dist/
 scripts/sdks/
+scripts/fern/openapi
 fern.generate.log

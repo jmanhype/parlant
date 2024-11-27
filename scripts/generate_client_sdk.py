@@ -65,8 +65,12 @@ if __name__ == "__main__":
         f"Ensure that parlant-server is running on port {port} and then press any key to continue..."
     )
 
+    output_openapi_json = DIR_FERN / "openapi/parlant.openapi.json"
+    output_openapi_json.parent.mkdir(exist_ok=True)
+    output_openapi_json.touch()
+
     status, output = subprocess.getstatusoutput(
-        f"curl -m 3 -o {DIR_FERN}/openapi/parlant.openapi.json http://localhost:{port}/openapi.json"
+        f"curl -m 3 -o {output_openapi_json} http://localhost:{port}/openapi.json"
     )
 
     if status != 0:
