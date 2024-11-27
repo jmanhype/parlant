@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://parlant.io/logo.png" alt="Project Logo" width="300">
-  <p>A better way to iterate and hone outputs for usable AI agents that customers actually engage with</p>
+  <p>A better way to iterate and hone AI agent behavior so that customers actually engage with them</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
@@ -12,7 +12,7 @@ But these prototypes are usually not production-ready. Once the prototype is fun
 Parlant bridges this gap by making it easy and fast for developers to adjust the behavior AI agents based on feedback from customers and business stakeholders.
 
 ## Key Features
-**Work with any major LLM provider:**
+**Works out-of-the-box with all major LLM providers:**
 - [OpenAI](https://platform.openai.com/docs/overview) (also via [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/))
 - [Gemini](https://ai.google.dev/)
 - [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
