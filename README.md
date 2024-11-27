@@ -12,10 +12,10 @@ But these prototypes are usually not production-ready. Once the prototype is fun
 Parlant bridges this gap by making it easy and fast for developers to adjust the behavior AI agents based on feedback from customers and business stakeholders.
 
 ## Key Features
-Work with any major LLM provider:
+**Work with any major LLM provider:**
 - [OpenAI](https://platform.openai.com/docs/overview) (also via [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/))
 - [Gemini](https://ai.google.dev/)
-- [Meta Llama 3](https://www.llama.com/) (via [Together](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
+- [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
 ### Reliable Behavior Control
