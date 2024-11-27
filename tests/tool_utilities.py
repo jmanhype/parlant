@@ -191,3 +191,7 @@ def recommend_drink(user_is_adult: bool) -> ToolResult:
 
 def check_username_validity(name: str) -> ToolResult:
     return ToolResult(name != "Dukie")
+
+
+def get_available_soups() -> ToolResult:
+    return ToolResult("['Tomato', 'Turpolance', 'Pumpkin', 'Turkey Soup', 'Tom Yum', 'Onion']")

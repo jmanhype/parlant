@@ -69,7 +69,7 @@ Feature: Conversation
         Given an agent
         And an empty session
         And a guideline "recommend_products", to recommend 3 most suitable products when the user mentions product usage.
-#        And the tool "get_products_by_tags"
+        And the tool "get_products_by_tags"
         And an association between "recommend_products" and "get_products_by_tags"
         And a customer message, "Hey there! i'm looking to buy a notebook but not sure which one to chose. Its mainly for work as I'm a software developer. can you help me out?"
         When processing is triggered

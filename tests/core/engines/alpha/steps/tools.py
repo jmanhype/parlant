@@ -379,6 +379,13 @@ def given_a_tool(
             },
             "required": ["name"],
         },
+        "get_available_soups": {
+            "name": "get_available_soups",
+            "description": "Checks which soups are currently in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

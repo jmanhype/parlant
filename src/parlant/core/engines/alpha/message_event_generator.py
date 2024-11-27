@@ -191,8 +191,14 @@ class MessageEventGenerator:
 
         builder.add_section(
             """
-You are an AI agent who is interacting with a customer. The current state of this interaction will be provided to you later in this message.
-You must generate your reply message to the current (latest) state of the interaction.
+GENERAL INSTRUCTIONS
+-----------------
+You are an AI agent who is part of a system that interacts with a customer, also referred to as 'the user'. The current state of this interaction will be provided to you later in this message.
+You role is to generate a reply message to the current (latest) state of the interaction, based on provided guidelines and background information.
+
+The guidelines and information you need to generate your reply were already filtered, and will be provided to you later in this prompt. 
+When generating your response, adhere to these guidelines even if you believe that they are not currently warranted.  
+
 """
         )
 
@@ -200,7 +206,9 @@ You must generate your reply message to the current (latest) state of the intera
         builder.add_section(
             """
 Task Description:
-Continue the provided interaction in a natural and human-like manner. Your task is to produce a response to the latest state of the interaction.
+-----------------
+Continue the provided interaction in a natural and human-like manner. 
+Your task is to produce a response to the latest state of the interaction.
 Always abide by the following general principles (note these are not the "guidelines", these are "principles"):
 Principle #1) GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary.
 Principle #2) AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the customer to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the customer instead of maintaining the loop.
@@ -470,6 +478,8 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
+        with open("message prompt.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
     def _get_output_format(

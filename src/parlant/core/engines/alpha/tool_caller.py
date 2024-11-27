@@ -384,8 +384,10 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
 ###
         """
         )
-
-        return builder.build()
+        prompt = builder.build()
+        with open("tool call prompt.txt", "w") as f:
+            f.write(prompt)
+        return prompt
 
     def _get_output_format(self, id_tool_pairs: Sequence[tuple[ToolId, Tool]]) -> str:
         tool_call_evaluation_format = "\n".join(
