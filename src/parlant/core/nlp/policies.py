@@ -61,17 +61,17 @@ def policy(
         func: Callable[..., Coroutine[Any, Any, R]],
     ) -> Callable[..., Coroutine[Any, Any, R]]:
         applied_policies = policies if isinstance(policies, list) else [policies]
-        for policy_obj in reversed(applied_policies):
-            func = make_wrapped_func(policy_obj, func)
+        for policy in reversed(applied_policies):
+            func = make_wrapped_func(policy, func)
         return func
 
     return decorator
 
 
 def make_wrapped_func(
-    policy_obj: Policy, func: Callable[..., Coroutine[Any, Any, R]]
+    policy: Policy, func: Callable[..., Coroutine[Any, Any, R]]
 ) -> Callable[..., Coroutine[Any, Any, R]]:
     async def wrapped_func(*args: Any, **kwargs: Any) -> Any:
-        return await policy_obj.apply(func, *args, **kwargs)
+        return await policy.apply(func, *args, **kwargs)
 
     return wrapped_func
