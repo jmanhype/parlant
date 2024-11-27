@@ -36,8 +36,7 @@ Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Toge
 
 ## Real-World Impact
 
-### [Revenued](https://www.revenued.com)
-A business capital provider, could get into trouble if their AI agents make false claims or make statements that imply discrimination in lending.
+[Revenued](https://www.revenued.com), A business capital provider, could get into trouble if their AI agents make false claims or make statements that imply discrimination in lending.
 
 With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
 
