@@ -9,7 +9,7 @@ Building conversational AI agents is relatively simple for most developers—at 
 
 But these prototypes are usually not production-ready. Once the prototype is functional, it has to be tuned so that its behavior actually provides customers with the experience they expect.
 
-Parlant bridges this gap by making it easy and fast for developers to adjust AI agents' behavior based on feedback from customers and business stakeholders.
+Parlant bridges this gap by making it easy and fast for developers to adjust the behavior AI agents based on feedback from customers and business stakeholders.
 
 ## Key Features
 Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Together AI, Cerebras, Azure, and AWS Bedrock
