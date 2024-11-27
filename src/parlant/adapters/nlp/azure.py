@@ -177,7 +177,7 @@ class GPT_4o(AzureSchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class GPT_4o_Mini(AzureSchematicGenerator[T]):
@@ -192,7 +192,7 @@ class GPT_4o_Mini(AzureSchematicGenerator[T]):
 
     @property
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class AzureEmbedder(Embedder):
