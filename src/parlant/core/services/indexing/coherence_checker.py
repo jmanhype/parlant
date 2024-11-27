@@ -19,7 +19,6 @@ from itertools import chain
 import json
 from typing import Optional, Sequence
 from more_itertools import chunked
-from tenacity import retry, stop_after_attempt, wait_fixed
 from dataclasses import dataclass
 
 from parlant.core import async_utils
@@ -32,8 +31,7 @@ from parlant.core.glossary import GlossaryStore
 from parlant.core.agents import Agent
 from parlant.core.services.indexing.common import ProgressReport
 
-LLM_RETRY_WAIT_TIME_SECONDS = 5.0
-LLM_MAX_RETRIES = 100
+
 EVALUATION_BATCH_SIZE = 5
 CRITICAL_INCOHERENCE_THRESHOLD = 6
 ACTION_CONTRADICTION_SEVERITY_THRESHOLD = 6
@@ -201,7 +199,6 @@ class ConditionsEntailmentChecker:
         self._schematic_generator = schematic_generator
         self._glossary_store = glossary_store
 
-    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(
         self,
         agent: Agent,
@@ -474,7 +471,6 @@ class ActionsContradictionChecker:
         self._schematic_generator = schematic_generator
         self._glossary_store = glossary_store
 
-    @retry(wait=wait_fixed(LLM_RETRY_WAIT_TIME_SECONDS), stop=stop_after_attempt(LLM_MAX_RETRIES))
     async def evaluate(
         self,
         agent: Agent,

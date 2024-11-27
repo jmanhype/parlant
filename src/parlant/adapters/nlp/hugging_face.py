@@ -17,7 +17,14 @@ import os
 from typing import Any, override
 import torch  # type: ignore
 from transformers import AutoModel, AutoTokenizer  # type: ignore
+from huggingface_hub.errors import (  # type: ignore
+    InferenceTimeoutError,
+    InferenceEndpointError,
+    InferenceEndpointTimeoutError,
+    TextGenerationError,
+)
 
+from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
@@ -82,6 +89,19 @@ class HuggingFaceEmbedder(Embedder):
     def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._tokenizer
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    InferenceTimeoutError,
+                    InferenceEndpointError,
+                    InferenceEndpointTimeoutError,
+                ),
+                max_attempts=2,
+            ),
+            retry(exceptions=(TextGenerationError), max_attempts=3),
+        ]
+    )
     @override
     async def embed(
         self,

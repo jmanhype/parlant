@@ -14,7 +14,14 @@
 
 import time
 from pydantic import ValidationError
-from anthropic import AsyncAnthropic  # type: ignore
+from anthropic import (
+    APIConnectionError,
+    APIResponseValidationError,
+    APITimeoutError,
+    AsyncAnthropic,
+    InternalServerError,
+    RateLimitError,
+)  # type: ignore
 from typing import Any, Mapping, override
 import jsonfinder  # type: ignore
 import os
@@ -32,6 +39,7 @@ from parlant.core.nlp.generation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService, NoModeration
+from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 
@@ -71,6 +79,19 @@ class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
     def tokenizer(self) -> AnthropicEstimatingTokenizer:
         return self._estimating_tokenizer
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    APIConnectionError,
+                    APITimeoutError,
+                    RateLimitError,
+                    APIResponseValidationError,
+                )
+            ),
+            retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
+    )
     @override
     async def generate(
         self,
