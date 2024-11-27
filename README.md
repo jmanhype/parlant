@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://parlant.io/logo.png" alt="Project Logo" width="300">
+  ![Project Logo](./logo.png)
   <p>A better way to iterate and hone AI agent behavior so that customers actually engage with them</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
