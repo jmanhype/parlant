@@ -4,7 +4,7 @@
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
-## Why use Parlant?
+## Why Use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 
 But these prototypes are usually not production-ready. Once the prototype is functional, it has to be tuned so that its behavior actually provides customers with the experience they expect.
