@@ -5,7 +5,6 @@ from typing import Any, Mapping
 import json
 import jsonfinder  # type: ignore
 import os
-
 from pydantic import ValidationError
 import tiktoken
 
