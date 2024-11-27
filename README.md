@@ -7,9 +7,9 @@
 ## Why Use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 
-But these prototypes are usually not production-ready. Once the prototype is functional, it has to be tuned so that its behavior actually provides customers with the experience they expect.
+But these prototypes are rarely production-ready. Once the prototype is functional, it has to be tuned continually so that its behavior actually provides customers with the experience they expect, and that business stakeholders are satisfied with the service it provides. With DYI prompt-engineering systems, this is a lot of work.
 
-Parlant bridges this gap by making it easy and fast for developers to adjust the behavior AI agents based on feedback from customers and business stakeholders.
+Parlant bridges this gap by making it easy, fast, and reliable for developers to adjust the behavior of AI agents based on feedback from customers and business stakeholders.
 
 ## Key Features
 **Works out-of-the-box with all major LLM providers:**
