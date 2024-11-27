@@ -535,8 +535,8 @@ class EvaluationListener(ABC):
 
 
 class PollingEvaluationListener(EvaluationListener):
-    def __init__(self, evaluaition_store: EvaluationStore) -> None:
-        self._evaluaition_store = evaluaition_store
+    def __init__(self, evaluation_store: EvaluationStore) -> None:
+        self._evaluation_store = evaluation_store
 
     @override
     async def wait_for_completion(
@@ -545,9 +545,10 @@ class PollingEvaluationListener(EvaluationListener):
         timeout: Timeout = Timeout.infinite(),
     ) -> bool:
         while True:
-            evaluation = await self._evaluaition_store.read_evaluation(
+            evaluation = await self._evaluation_store.read_evaluation(
                 evaluation_id,
             )
+
             if evaluation.status in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED]:
                 return True
             elif timeout.expired():
