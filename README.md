@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://parlant.io/logo.png" alt="Project Logo" width="250">
   <p>A better way to iterate and hone outputs for agents that customers actually engage with</p>
-  <a href="https://www.parlant.io" target="_blank">🔗 Visit the Website</a>
+  <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
 ---
@@ -14,7 +14,7 @@ But these prototypes are usually not production-ready. Once the prototype is fun
 Parlant bridges this gap by making it easy and fast for developers to adjust AI agents' behavior based on feedback from customers and business stakeholders.
 
 ## Key Features
-- **LLM Provider Agnostic**: Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Together AI, Cerebras, Azure, and AWS Bedrock
+Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Together AI, Cerebras, Azure, and AWS Bedrock
 
 ### Reliable Behavior Control
 - **Guidelines**: Define clear rules for how your agent should respond in specific situations, like ensuring premium features are only offered to eligible customers
@@ -37,7 +37,9 @@ Parlant bridges this gap by making it easy and fast for developers to adjust AI 
 ## Real-World Impact
 
 ### [Revenued](https://www.revenued.com)
-A business capital provider, could get into trouble if their AI agents make false claims or make statements that imply discrimination in lending. With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
+A business capital provider, could get into trouble if their AI agents make false claims or make statements that imply discrimination in lending.
+
+With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
 
 ## Getting Started
 
