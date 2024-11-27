@@ -135,8 +135,8 @@ class GuidelineProposer:
                         GuidelineProposition(
                             guideline=guidelines_dict[evaluation.guideline_number],
                             score=evaluation.score,
-                            rationale=f"""condition application rationale: {evaluation.condition_application_rationale}. guideline previously applied rationale: {evaluation.guideline_previously_applied_rationale}""",
-                            guideline_should_reapply=evaluation.guideline_should_reapply,
+                            rationale=f'''Condition Application: "{evaluation.condition_application_rationale}"; Guideline Previously Applied: "{evaluation.guideline_previously_applied_rationale}"''',
+                            should_reapply=evaluation.guideline_should_reapply,
                         )
                     )
                 propositions_batches.append(guideline_propositions)
@@ -287,8 +287,8 @@ Each guideline is composed of two parts:
 
 Task Description
 ----------------
-Your task is to evaluate the relevance and applicability of a set of provided 'when' conditions to the most recent state of an interaction between yourself (an AI assistant) and a user. 
-These conditions, along with the interaction details, will be provided later in this message. 
+Your task is to evaluate the relevance and applicability of a set of provided 'when' conditions to the most recent state of an interaction between yourself (an AI assistant) and a user.
+These conditions, along with the interaction details, will be provided later in this message.
 For each condition that is met, determine whether its corresponding action should be taken by the agent or if it has already been addressed previously.
 
 
@@ -308,13 +308,13 @@ For each provided guideline, return:
 
 Insights Regarding Guideline re-activation
 -------------------
-A condition typically no longer applies if its corresponding action has already been executed. 
-However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question. 
+A condition typically no longer applies if its corresponding action has already been executed.
+However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question.
 Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. You can mark these types of actions down using "guideline_is_continuous" in your output.
 
-Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively. 
+Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
 Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
-    
+
 
 Examples of Condition Evaluations:
 -------------------
