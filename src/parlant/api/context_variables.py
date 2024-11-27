@@ -168,7 +168,7 @@ def create_router(
     async def update_variable(
         agent_id: AgentId, variable_id: ContextVariableId, params: ContextVariableUpdateParamsDTO
     ) -> ContextVariableDTO:
-        async def from_dto(dto: ContextVariableUpdateParamsDTO) -> ContextVariableUpdateParams:
+        def from_dto(dto: ContextVariableUpdateParamsDTO) -> ContextVariableUpdateParams:
             params: ContextVariableUpdateParams = {}
 
             if dto.name:
@@ -192,7 +192,7 @@ def create_router(
         variable = await context_variable_store.update_variable(
             variable_set=agent_id,
             id=variable_id,
-            params=await from_dto(params),
+            params=from_dto(params),
         )
 
         return ContextVariableDTO(
