@@ -1,38 +1,43 @@
-<div style="text-align: center">
-  <img src="https://parlant.io/logo.png" alt="Project Logo" width="150">
-  <h1>Parlant</h1>
+<div align="center">
+  <img src="https://parlant.io/logo.png" alt="Project Logo" width="250">
   <p>A better way to iterate and hone outputs for agents that customers actually engage with</p>
+  <a href="https://www.parlant.io" target="_blank">🔗 Visit the Website</a>
 </div>
 
 ---
 
-Parlant is an API that allows developers to quickly iterate on the behavior of their GenAI chat agents.
-
-It is ideal for situations where developers need to tune, iterate on and predictably control their AI agent's behavior.
-
 ## Why use Parlant?
+Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 
-Building conversational AI agents is relatively simple for most developers — at least, it is relatively simple to build an initial protoype.
+But these prototypes are usually not production-ready. Once the prototype is functional, it has to be tuned so that its behavior actually provides customers with the experience they expect.
 
-But these prototypes are usually not production-ready. Once the prototype is functional, it has to be tuned so that it's behavior is actually provides customers with the experience they expect.
+Parlant bridges this gap by making it easy and fast for developers to adjust AI agents' behavior based on feedback from customers and business stakeholders.
 
-Parlant makes it easy and fast for developers to adjust the AI agents' behavior based on feedback from customers and business stakeholders.
+## Key Features
+- **LLM Provider Agnostic**: Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Together AI, Cerebras, Azure, and AWS Bedrock
 
-### Instant feedback
+### Reliable Behavior Control
+- **Guidelines**: Define clear rules for how your agent should respond in specific situations, like ensuring premium features are only offered to eligible customers
+- **Coherence Checks**: Automatically detect when new guidelines might conflict with existing ones, preventing confusion in your agent's behavior
+- **Dynamic Context**: Adapt your agent's responses based on user attributes like subscription tier or account status
+- **Guided Tool Integration**: Control exactly when, why, and how your agent accesses your business APIs, ensuring appropriate use of backend services
 
-Quickly change the guidelines, glossaries, context variables and API usage instructions, and the generation enginge will immediately apply the changes.
+### Developer Experience
+- **Instant Feedback**: Changes to guidelines, glossary, or tools take effect immediately—no retraining or redeployment needed
+- **Version Control**: Track all behavioral changes in Git, making it easy to review and roll back modifications to your agent's responses
+- **Clear Separation**: Keep your business logic in tool code while managing conversational behavior through guidelines
+- **Type Safety**: Type-safe, native client SDKs for reliable development and clear interfaces
 
-### No breaking prompts
+### Production Benefits
+- **Safe Updates**: Modify your agent's behavior without risking existing, tested functionality—each change is evaluated for conflicts before being applied
+- **Consistent Scaling**: Your agent maintains reliable, predictable behavior regardless of conversation complexity
+- **Explainable Actions**: Understand and troubleshoot exactly why your agent chose specific responses through clear guideline tracing
+- **Quality Assurance**: Integrated chat UI makes it easy to iterate on and verify behavioral changes before deployment
 
-With prompt engineering, each change you make risks interacting with the existing agent's behavior in unpredictable ways, including breaking existing, tested behaviors. With Parlant, this risk is eliminated.
+## Real-World Impact
 
-### Predictable at scale
-
-Prompt engineering also often ends up creating unpredictable AI agent behavior at scale. With Parlant, you can ensure the AI agent will behave consistently, regardless of the load.
-
-### How companies are using Parlant
-
-[Revenued] (https://www.revenued.com), a business lender, could get into legal trouble if their chatbots make false claims or make statements that imply discrimination in lending. With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the chatbot isn't making problematic promises or statements to customers.
+### [Revenued](https://www.revenued.com)
+A business capital provider, could get into trouble if their AI agents make false claims or make statements that imply discrimination in lending. With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
 
 ## Getting Started
 
