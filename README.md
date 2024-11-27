@@ -12,7 +12,11 @@ But these prototypes are usually not production-ready. Once the prototype is fun
 Parlant bridges this gap by making it easy and fast for developers to adjust the behavior AI agents based on feedback from customers and business stakeholders.
 
 ## Key Features
-Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Together AI, Cerebras, Azure, and AWS Bedrock
+Work with any major LLM provider:
+- [OpenAI](https://platform.openai.com/docs/overview) (also via [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/))
+- [Gemini](https://ai.google.dev/)
+- [Meta Llama 3](https://www.llama.com/) (via [Together](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
+- [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
 ### Reliable Behavior Control
 - **Guidelines**: Define clear rules for how your agent should respond in specific situations, like ensuring premium features are only offered to eligible customers
@@ -24,13 +28,13 @@ Work with any major LLM provider including OpenAI, Gemini, Meta, Anthropic, Toge
 - **Instant Feedback**: Changes to guidelines, glossary, or tools take effect immediately—no retraining or redeployment needed
 - **Version Control**: Track all behavioral changes in Git, making it easy to review and roll back modifications to your agent's responses
 - **Clear Separation**: Keep your business logic in tool code while managing conversational behavior through guidelines
-- **Type Safety**: Type-safe, native client SDKs for reliable development and clear interfaces
+- **Type Safety**: Strongly-typed, native client SDKs for reliable development and clear interfaces
 
 ### Production Benefits
 - **Safe Updates**: Modify your agent's behavior without risking existing, tested functionality—each change is evaluated for conflicts before being applied
 - **Consistent Scaling**: Your agent maintains reliable, predictable behavior regardless of conversation complexity
 - **Explainable Actions**: Understand and troubleshoot exactly why your agent chose specific responses through clear guideline tracing
-- **Quality Assurance**: Integrated chat UI makes it easy to iterate on and verify behavioral changes before deployment
+- **Quality Assurance**: Integrated Chat UI makes it easy to iterate on and verify behavioral changes before deployment
 
 ## Real-World Impact
 
