@@ -174,7 +174,7 @@ class GPT_4o(OpenAISchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class GPT_4o_Mini(OpenAISchematicGenerator[T]):
@@ -185,7 +185,7 @@ class GPT_4o_Mini(OpenAISchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class OpenAIEmbedder(Embedder):

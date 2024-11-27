@@ -116,7 +116,7 @@ class Claude_Sonnet_3_5(AnthropicAISchematicGenerator[T]):
     @override
     @property
     def max_tokens(self) -> int:
-        return 200_000
+        return 200 * 1024
 
 
 class AnthropicService(NLPService):

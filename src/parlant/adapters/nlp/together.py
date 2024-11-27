@@ -114,7 +114,7 @@ class Llama3_1_8B(TogetherAISchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
     @property
     @override
@@ -144,7 +144,7 @@ class Llama3_1_70B(TogetherAISchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class Llama3_1_405B(TogetherAISchematicGenerator[T]):
@@ -169,7 +169,7 @@ class Llama3_1_405B(TogetherAISchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 128_000
+        return 128 * 1024
 
 
 class TogetherAIEmbedder(Embedder):
@@ -207,7 +207,7 @@ class M2Bert32K(TogetherAIEmbedder):
     @property
     @override
     def max_tokens(self) -> int:
-        return 32768
+        return 32 * 1024
 
     @property
     @override

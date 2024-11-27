@@ -122,7 +122,7 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 1_000_000
+        return 1024 * 1024
 
 
 class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
@@ -135,7 +135,7 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
     @property
     @override
     def max_tokens(self) -> int:
-        return 2_000_000
+        return 2 * 1024 * 1024
 
 
 class GoogleEmbedder(Embedder):
