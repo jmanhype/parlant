@@ -25,6 +25,10 @@ With prompt engineering, each change you make risks interacting with the existin
 
 Prompt engineering also often ends up creating unpredictable AI agent behavior at scale. With Parlant, you can ensure the AI agent will behave consistently, regardless of the load. 
 
+### How companies are using Parlant 
+
+[Revenued] (https://www.revenued.com), a business lender, could get into legal trouble if their chatbots make false claims or make statements that imply discrimination in lending. With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the chatbot isn't making problematic promises or statements to customers. 
+
 ## Getting Started 
 
 
