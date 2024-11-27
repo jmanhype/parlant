@@ -9,7 +9,10 @@ R = TypeVar("R")
 class Policy(ABC):
     @abstractmethod
     async def apply(
-        self, func: Callable[P, Coroutine[Any, Any, R]], *args: P.args, **kwargs: P.kwargs
+        self,
+        func: Callable[P, Coroutine[Any, Any, R]],
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> R:
         pass
 
