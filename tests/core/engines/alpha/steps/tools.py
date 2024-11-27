@@ -357,28 +357,6 @@ def given_a_tool(
             },
             "required": ["category", "tags"],
         },
-        "recommend_drink": {
-            "name": "recommend_drink",
-            "description": "Recommends a drink based on the user's age",
-            "module_path": "tests.tool_utilities",
-            "parameters": {
-                "user_is_adult": {
-                    "type": "boolean",
-                },
-            },
-            "required": ["user_is_adult"],
-        },
-        "check_username_validity": {
-            "name": "check_username_validity",
-            "description": "Checks if the user's name is valid for our service",
-            "module_path": "tests.tool_utilities",
-            "parameters": {
-                "name": {
-                    "type": "string",
-                },
-            },
-            "required": ["name"],
-        },
         "get_available_soups": {
             "name": "get_available_soups",
             "description": "Checks which soups are currently in stock",

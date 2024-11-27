@@ -194,36 +194,6 @@ The following is information that you're given about the user and context of the
 
         return self
 
-    def add_user_name_and_tags(
-        self,
-        user: EndUser,
-        user_tags: Sequence[EndUserTag],
-    ) -> PromptBuilder:
-        content = ""
-        if user.name or user_tags:
-            content += """
-The following information applies to the user you are interacting with:
-"""
-            if user.name:
-                content += f"""
-    - The name of the user is {user.name}. 
-"""
-            if user_tags:
-                tags_text = ", ".join([tag.label for tag in user_tags])
-                content += f"""
-    - This user has the following tags (separated by commas): {tags_text}
-"""
-        else:
-            content += """
-Normally, you would receive the user's name and any special tags that apply to them. However, in this case, no name or tags are available.
-"""
-        self.add_section(
-            name=BuiltInSection.USER_INFORMATION,
-            content=content,
-            status=SectionStatus.ACTIVE if (user.name or user_tags) else SectionStatus.PASSIVE,
-        )
-        return self
-
     def add_glossary(
         self,
         terms: Sequence[Term],
@@ -241,75 +211,6 @@ and let the user know if/when you assume they meant a term by their typo: ###
 ###
 """,  # noqa
                 status=SectionStatus.ACTIVE,
-            )
-
-        return self
-
-    def add_guideline_propositions(
-        self,
-        ordinary: Sequence[GuidelineProposition],
-        tool_enabled: Mapping[GuidelineProposition, Sequence[ToolId]],
-        include_priority: bool = True,
-        include_tool_associations: bool = False,
-    ) -> PromptBuilder:
-        all_propositions = list(chain(ordinary, tool_enabled))
-
-        if all_propositions:
-            guidelines = []
-
-            for i, p in enumerate(all_propositions, start=1):
-                guideline = f"Guideline #{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
-
-                if include_priority:
-                    guideline += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
-
-                if include_tool_associations:
-                    if p in tool_enabled:
-                        service_tool_names = ", ".join(
-                            [f"{t_id.service_name}:{t_id.tool_name}" for t_id in tool_enabled[p]]
-                        )
-                        guideline += f"\n    [Associated Tools: {service_tool_names}]"
-
-                guidelines.append(guideline)
-
-            guideline_list = "\n".join(guidelines)
-
-            section_preface = """
-In formulating your reply, you are required to follow these behavioral guidelines,
-which are applicable to the latest state of the interaction.
-"""
-
-            if include_priority:
-                section_preface += """
-Each guideline is accompanied by a priority score indicating its significance,
-and a rationale explaining why it is applicable.
-""".strip()
-
-            if include_tool_associations:
-                section_preface += """
-Note also that each guideline may be associated with one or more tools that it can utilize to achieve its goal, as needed. If a guideline has associated tool(s), use your judgement, as well as the nature of that guideline and the other guidelines provided, to decide whether any tools should be utilized.
-""".strip()  # noqa
-
-            self.add_section(
-                name=BuiltInSection.GUIDELINE_PROPOSITIONS,
-                content=f"""
-{section_preface}
-
-Guidelines: ###
-{guideline_list}
-###
-""",
-                status=SectionStatus.ACTIVE,
-            )
-        else:
-            self.add_section(
-                name=BuiltInSection.GUIDELINE_PROPOSITIONS,
-                content="""
-In formulating your reply, you are normally required to follow a number of behavioral guidelines.
-However, in this case, no special behavioral guidelines were provided. Therefore,
-you don't need to specifically double-check (when generating revisions) if you followed or broke any guidelines.
-""",
-                status=SectionStatus.PASSIVE,
             )
 
         return self
