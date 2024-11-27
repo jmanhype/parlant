@@ -172,11 +172,12 @@ async def create_context_variable(
     container: Container,
     agent_id: AgentId,
     name: str,
+    description: str = "",
 ) -> ContextVariable:
     return await container[ContextVariableStore].create_variable(
         variable_set=agent_id,
         name=name,
-        description="",
+        description=description,
         tool_id=None,
         freshness_rules=None,
     )

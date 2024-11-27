@@ -15,18 +15,18 @@
 import asyncio
 from dataclasses import dataclass
 from functools import cached_property
-from itertools import chain, groupby
+from itertools import chain
 import json
 import math
 import time
-from typing import Sequence
+from typing import Optional, Sequence
 
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import PromptBuilder
+from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.guidelines import Guideline
 from parlant.core.sessions import Event
@@ -36,11 +36,15 @@ from parlant.core.logging import Logger
 
 
 class GuidelinePropositionSchema(DefaultBaseModel):
-    predicate_number: int
-    predicate: str
-    you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction: bool
-    is_this_predicate_hard_or_tricky_to_confidently_ascertain: bool
-    rationale: str
+    guideline_number: int
+    condition: str
+    condition_application_rationale: str
+    condition_applies: bool
+    action: Optional[str] = ""
+    guideline_is_continuous: Optional[bool] = False
+    guideline_previously_applied_rationale: Optional[str] = ""
+    guideline_previously_applied: Optional[bool] = False
+    guideline_should_reapply: Optional[bool] = False
     applies_score: int
 
 
@@ -50,9 +54,13 @@ class GuidelinePropositionsSchema(DefaultBaseModel):
 
 @dataclass(frozen=True)
 class ConditionApplicabilityEvaluation:
+    guideline_number: int
     condition: str
+    action: str
     score: int
-    rationale: str
+    condition_application_rationale: str
+    guideline_previously_applied_rationale: str
+    guideline_should_reapply: bool
 
 
 @dataclass(frozen=True)
@@ -91,28 +99,18 @@ class GuidelineProposer:
                 total_duration=0.0, batch_count=0, batch_generations=[], batches=[]
             )
 
+        guidelines_dict = {i: g for i, g in enumerate(guidelines, start=1)}
         t_start = time.time()
-
-        guidelines_grouped_by_condition = {
-            condition: list(guidelines)
-            for condition, guidelines in groupby(
-                sorted(guidelines, key=lambda g: g.content.condition),
-                key=lambda g: g.content.condition,
-            )
-        }
-
-        unique_conditions = list(guidelines_grouped_by_condition.keys())
-
-        batches = self._create_condition_batches(
-            unique_conditions,
-            batch_size=self._get_optimal_batch_size(unique_conditions),
+        batches = self._create_guideline_batches(
+            guidelines_dict,
+            batch_size=self._get_optimal_batch_size(guidelines_dict),
         )
 
         with self._logger.operation(
             f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
         ):
             batch_tasks = [
-                self._process_condition_batch(
+                self._process_guideline_batch(
                     agents,
                     customer,
                     context_variables,
@@ -133,12 +131,14 @@ class GuidelineProposer:
             for batch in condition_evaluations_batches:
                 guideline_propositions = []
                 for evaluation in batch:
-                    guideline_propositions += [
+                    guideline_propositions.append(
                         GuidelineProposition(
-                            guideline=g, score=evaluation.score, rationale=evaluation.rationale
+                            guideline=guidelines_dict[evaluation.guideline_number],
+                            score=evaluation.score,
+                            rationale=f'''Condition Application: "{evaluation.condition_application_rationale}"; Guideline Previously Applied: "{evaluation.guideline_previously_applied_rationale}"''',
+                            should_reapply=evaluation.guideline_should_reapply,
                         )
-                        for g in guidelines_grouped_by_condition[evaluation.condition]
-                    ]
+                    )
                 propositions_batches.append(guideline_propositions)
 
             t_end = time.time()
@@ -150,35 +150,35 @@ class GuidelineProposer:
                 batches=propositions_batches,
             )
 
-    def _get_optimal_batch_size(self, conditions: list[str]) -> int:
-        condition_count = len(conditions)
+    def _get_optimal_batch_size(self, guidelines: dict[int, Guideline]) -> int:
+        guideline_n = len(guidelines)
 
-        if condition_count <= 10:
+        if guideline_n <= 10:
             return 1
-        elif condition_count <= 20:
+        elif guideline_n <= 20:
             return 2
-        elif condition_count <= 30:
+        elif guideline_n <= 30:
             return 3
         else:
             return 5
 
-    def _create_condition_batches(
+    def _create_guideline_batches(
         self,
-        conditions: Sequence[str],
+        guidelines_dict: dict[int, Guideline],
         batch_size: int,
-    ) -> Sequence[Sequence[str]]:
+    ) -> Sequence[dict[int, Guideline]]:
         batches = []
-        batch_count = math.ceil(len(conditions) / batch_size)
-
+        guidelines = list(guidelines_dict.items())
+        batch_count = math.ceil(len(guidelines_dict) / batch_size)
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
             end_offset = start_offset + batch_size
-            batch = conditions[start_offset:end_offset]
+            batch = dict(guidelines[start_offset:end_offset])
             batches.append(batch)
 
         return batches
 
-    async def _process_condition_batch(
+    async def _process_guideline_batch(
         self,
         agents: Sequence[Agent],
         customer: Customer,
@@ -186,7 +186,7 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        batch: Sequence[str],
+        guidelines_dict: dict[int, Guideline],
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agents,
@@ -195,10 +195,12 @@ class GuidelineProposer:
             interaction_history=interaction_history,
             staged_events=staged_events,
             terms=terms,
-            conditions=batch,
+            guidelines=guidelines_dict,
         )
 
-        with self._logger.operation(f"Condition evaluation batch ({len(batch)} conditions)"):
+        with self._logger.operation(
+            f"Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
+        ):
             propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
@@ -207,22 +209,28 @@ class GuidelineProposer:
         propositions = []
 
         for proposition in propositions_generation_response.content.checks:
-            condition = batch[int(proposition.predicate_number) - 1]
+            guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
-                f'Guideline condition evaluation for "{condition}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Certain: {not proposition.is_this_predicate_hard_or_tricky_to_confidently_ascertain}; Rationale: "{proposition.rationale}"'
+                f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
+                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
-            if (proposition.applies_score >= 7) or (
-                proposition.applies_score >= 5
-                and proposition.is_this_predicate_hard_or_tricky_to_confidently_ascertain
+            if (proposition.applies_score >= 6) and (
+                not proposition.guideline_previously_applied or proposition.guideline_should_reapply
             ):
                 propositions.append(
                     ConditionApplicabilityEvaluation(
-                        condition=batch[int(proposition.predicate_number) - 1],
+                        guideline_number=proposition.guideline_number,
+                        condition=guidelines_dict[
+                            int(proposition.guideline_number)
+                        ].content.condition,
+                        action=guidelines_dict[int(proposition.guideline_number)].content.action,
                         score=proposition.applies_score,
-                        rationale=proposition.rationale,
+                        condition_application_rationale=proposition.condition_application_rationale,
+                        guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
+                        or "",
+                        guideline_should_reapply=proposition.guideline_should_reapply or False,
                     )
                 )
 
@@ -236,47 +244,81 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        conditions: Sequence[str],
+        guidelines: dict[int, Guideline],
     ) -> str:
         assert len(agents) == 1
 
         result_structure = [
             {
-                "predicate_number": i,
-                "predicate": condition,
-                "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": "<BOOL>",
-                "is_this_predicate_hard_or_tricky_to_confidently_ascertain": "<BOOL>",
-                "rationale": "<EXPLANATION WHY THE predicate IS RELEVANT OR IRRELEVANT FOR THE "
-                "CURRENT STATE OF THE INTERACTION>",
-                "applies_score": "<RELEVANCE SCORE>",
+                "guideline_number": i,
+                "condition": g.content.condition,
+                "condition_application_rationale": "<Explanation for why the condition is or isn't met>",
+                "condition_applies": "<BOOL>",
+                "action": g.content.action,
+                "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
+                "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
+                "guideline_previously_applied": "<BOOL: Optional, whether the condition already applied and the action was already taken>",
+                "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
+                "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score indicates that the guideline should be active>",
             }
-            for i, condition in enumerate(conditions, start=1)
+            for i, g in guidelines.items()
         ]
+        guidelines_text = "\n".join(
+            f"{i}) Condition: {g.content.condition}. Action: {g.content.action}"
+            for i, g in guidelines.items()
+        )
 
         builder = PromptBuilder()
 
         builder.add_section(
-            """
+            f"""
+GENERAL INSTRUCTIONS
+-----------------
+In our system, the behavior of a conversational AI agent is guided by "guidelines". The agent makes use of these guidelines whenever it interacts with a user (also referred to as the customer).
+Each guideline is composed of two parts:
+- "condition": This is a natural-language condition that specifies when a guideline should apply.
+          We look at each conversation at any particular state, and we test against this
+          condition to understand if we should have this guideline participate in generating
+          the next reply to the user.
+- "action": This is a natural-language instruction that should be followed by the agent
+          whenever the "condition" part of the guideline applies to the conversation in its particular state.
+          Any instruction described here applies only to the agent, and not to the user.
+
+
 Task Description
 ----------------
-Your job is to assess the relevance and/or applicability of a few provided predicates
-to the last known state of an interaction between yourself, AI assistant, and a customer.
-The predicates and the interaction will be provided to you later in this message.
-"""
-        )
-        builder.add_section(
-            f"""
+Your task is to evaluate the relevance and applicability of a set of provided 'when' conditions to the most recent state of an interaction between yourself (an AI assistant) and a user.
+These conditions, along with the interaction details, will be provided later in this message.
+For each condition that is met, determine whether its corresponding action should be taken by the agent or if it has already been addressed previously.
+
+
 Process Description
 -------------------
-a. Examine the provided interaction events to discern the latest state of interaction between the customer and the assistant.
-b. Evaluate the entire interaction to determine if each predicate is still relevant to the most recent interaction state.
-c. If the predicate has already been addressed, assess its continued applicability.
-d. Assign an applicability score to each predicate between 1 and 10.
-e. IMPORTANT: Note that some predicates are harder to ascertain objectively, especially if they correspond to things relating to emotions or inner thoughts of people. Do not presume to know them for sure, and in such cases prefer to say that you cannot safely presume to ascertain whether they still apply—again, because emotionally-based predicates are hard to ascertain through a textual conversation.
+a. Examine Interaction Events: Review the provided interaction events to discern the most recent state of the interaction between the user and the assistant.
+b. Evaluate Conditions: Assess the entire interaction to determine whether each condition is still relevant and directly fulfilled based on the most recent interaction state.
+c. Check for Prior Action: Determine whether the condition has already been addressed, i.e., whether it applied in an earlier state and its corresponding action has already been performed.
+d. Guideline Application: A guideline should be applied only if:
+    (1) Its condition is currently met and its action has not been performed yet, or
+    (2) The interaction warrants re-application of its action (e.g., when a recurring condition becomes true again after previously being fulfilled).
 
-### Examples of Predicate Evaluations:
+For each provided guideline, return:
+    (1) Whether its condition is fulfilled.
+    (2) Whether its action needs to be applied at this time. See the following section for more details.
 
-#### Example #1:
+
+Insights Regarding Guideline re-activation
+-------------------
+A condition typically no longer applies if its corresponding action has already been executed.
+However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question.
+Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. You can mark these types of actions down using "guideline_is_continuous" in your output.
+
+Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
+Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
+
+
+Examples of Condition Evaluations:
+-------------------
+Example #1:
 - Interaction Events: ###
 [{{"id": "11", "kind": "<message>", "source": "customer",
 "data": {{"message": "Can I purchase a subscription to your software?"}}}},
@@ -290,240 +332,119 @@ Is there anything else I can help you with?"}}}},
 {{"id": "78", "kind": "<message>", "source": "customer",
 "data": {{"message": "Yes, can you tell me more about your data security policies?"}}}}]
 ###
-- Predicates: ###
-1) the client initiates a purchase
-2) the client asks about data security
+- Guidelines: ###
+1) condition: the customer initiates a purchase. action: Open a new cart for the customer
+2) condition: the customer asks about data security. action: Refer the customer to our privacy policy page
 ###
 - **Expected Result**:
 ```json
 {{ "checks": [
     {{
-        "predicate_number": "1",
-        "predicate": "the client initiates a purchase",
-        "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-        "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-        "rationale": "The purchase-related guideline is irrelevant since the client completed the purchase and the conversation has moved to a new topic.",
+        "guideline_number": 1,
+        "condition": "the customer initiates a purchase",
+        "condition_application_rationale": "The purchase-related guideline was initiated earlier, but is currently irrelevant since the customer completed the purchase and the conversation has moved to a new topic.",
+        "condition_applies": false,
         "applies_score": 3
     }},
     {{
-        "predicate_number": "2",
-        "predicate": "the client asks about data security",
-        "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-        "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-        "rationale": "The client specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
+        "guideline_number": 2,
+        "condition": "the customer asks about data security",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
+        "action": "Refer the customer to our privacy policy page",
+        "guideline_previously_applied_rationale": "This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
+        "guideline_previously_applied": false,
+        "guideline_is_continuous": false,
+        "guideline_should_reapply": false,
         "applies_score": 9
     }}
 ]}}
 ```
 
-#### Example #2:
-[{{"id": "112", "kind": "<message>", "source": "customer",
-"data": {{"message": "I need to make this quick.
-Can you give me a brief overview of your pricing plans?"}}}},
-{{"id": "223", "kind": "<message>", "source": "assistant",
-"data": {{"message": "Absolutely, I'll keep it concise. We have three main plans: Basic,
-Advanced, and Pro. Each offers different features, which I can summarize quickly for you."}}}},
-{{"id": "334", "kind": "<message>", "source": "customer",
-"data": {{"message": "Tell me about the Pro plan."}}}},
 ###
-- Predicates: ###
-1) the client indicates they are in a hurry
-2) a client inquires about pricing plans
-3) a client asks for a summary of the features of the three plans.
-###
-- **Expected Result**:
-```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "predicate": "the client indicates they are in a hurry",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client initially stated they were in a hurry. This urgency applies throughout the conversation unless stated otherwise.",
-            "applies_score": 8
-        }},
-        {{
-            "predicate_number": "2",
-            "predicate": "a client inquires about pricing plans",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client inquired about pricing plans, specifically asking for details about the Pro plan.",
-            "applies_score": 9
-        }},
-        {{
-            "predicate_number": "3",
-            "predicate": "a client asks for a summary of the features of the three plans.",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "rationale": "The plan summarization guideline is irrelevant since the client only asked about the Pro plan.",
-            "applies_score": 2
-        }},
-    ]
-}}
-```
-### Example #3:
+
+Example #2:
 - Interaction Events: ###
-[{{"id": "13", "kind": "<message>", "source": "customer",
-"data": {{"message": "Can you recommend a good science fiction movie?"}}}},
-{{"id": "14", "kind": "<message>", "source": "assistant",
-"data": {{"message": "Sure, I recommend 'Inception'. It's a great science fiction movie."}}}},
-{{"id": "15", "kind": "<message>", "source": "customer",
-"data": {{"message": "Thanks, I'll check it out."}}}}]
+[{{"id": "11", "kind": "<message>", "source": "customer",
+"data": {{"message": "I'm looking for a job, what do you have available?"}}}},
+{{"id": "23", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Hi there! we have plenty of opportunities for you, where are you located?"}}}},
+{{"id": "34", "kind": "<message>", "source": "customer",
+"data": {{"message": "I'm looking for anything around the bay area"}}}},
+{{"id": "56", "kind": "<message>", "source": "assistant",
+"data": {{"message": "That's great. We have a number of positions available over there. What kind of role are you interested in?"}}}},
+{{"id": "78", "kind": "<message>", "source": "customer",
+"data": {{"message": "Anything to do with training and maintaining AI agents"}}}}]
+
 ###
-- Predicates: ###
-1) the client asks for a recommendation
-2) the client asks about movie genres
+- Guidelines: ###
+3) condition: the customer indicates that they are looking for a job. action: ask the customer for their location
+4) condition: the customer asks about job openings. action: emphasize that we have plenty of positions relevant to the customer
+6) condition: discussing job opportunities. action: maintain a positive, assuring tone
+
 ###
 - **Expected Result**:
 ```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "predicate": "the client asks for a recommendation",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client asked for a science fiction movie recommendation and the assistant provided one, making this guideline highly relevant.",
-            "applies_score": 9
-        }},
-        {{
-            "predicate_number": "2",
-            "predicate": "the client asks about movie genres",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client asked about science fiction movies, but this was already addressed by the assistant.",
-            "applies_score": 3
-        }}
+{{ "checks": [
+    {{
+        "guideline_number": 3,
+        "condition": "the customer indicates that they are looking for a job.",
+        "condition_applies": true,
+        "condition_application_rationale": "The current discussion is about the type of job the customer is looking for",
+        "action": "ask the customer for their location",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The assistant asked for the customer's location earlier in the interaction. There is no need to ask for it again, as it is already known.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": false,
+        "applies_score": 3
+    }},
+    {{
+        "guideline_number": 4,
+        "condition": "the customer asks about job openings.",
+        "condition_applies": true,
+        "condition_application_rationale": "the customer asked about job openings, and the discussion still revolves around this request",
+        "action": "emphasize that we have plenty of positions relevant to the customer",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The assistant already has emphasized that we have open positions. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": true,
+        "applies_score": 7
+    }},
+    {{
+        "guideline_number": 6,
+        "condition": "discussing job opportunities.",
+        "condition_applies": true,
+        "condition_application_rationale": "the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
+        "action": "maintain a positive, assuring tone",
+        "guideline_is_continuous": true,
+        "guideline_previously_applied_rationale": "The assistant's tone is positive already. This action describes a continuous action, so the guideline should be re-applied.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": true,
+        "applies_score": 9
+    }},
     ]
 }}
 ```
 
-### Example #4:
-- Interaction Events: ###
-[{{"id": "54", "kind": "<message>", "source": "customer",
-"data": {{"message": "Can I add an extra pillow to my bed order?"}}}},
-{{"id": "66", "kind": "<message>", "source": "assistant",
-"data": {{"message": "An extra pillow has been added to your order."}}}},
-{{"id": "72", "kind": "<message>", "source": "customer",
-"data": {{"message": "Thanks, I'll come to pick up the order. Can you tell me the address?"}}}}]
-###
-- Predicates: ###
-1) the client requests a modification to their order
-2) the client asks for the store's location
-###
-- **Expected Result**:
-```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "predicate": "the client requests a modification to their order",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client requested a modification (an extra pillow) and the assistant confirmed it, making this guideline irrelevant now as it has already been addressed.",
-            "applies_score": 3
-        }},
-        {{
-            "predicate_number": "2",
-            "predicate": "the client asks for the store's location",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": true,
-            "rationale": "The client asked for the store's location, making this guideline highly relevant.",
-            "applies_score": 10
-        }}
-    ]
-}}
-```
-
-### Example #5:
-- Interaction Events: ###
-[{{"id": "21", "kind": "<message>", "source": "customer",
-"data": {{"message": "Can I add an extra charger to my laptop order?"}}}},
-{{"id": "34", "kind": "<message>", "source": "assistant",
-"data": {{"message": "An extra charger has been added to your order."}}}},
-{{"id": "53", "kind": "<message>", "source": "customer",
-"data": {{"message": "Do you have any external hard drives available?"}}}}]
-###
-- Predicates: ###
-1) the order does not exceed the limit of products
-2) the client asks about product availability
-###
-- **Expected Result**:
-```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "predicate": "the order does not exceed the limit of products",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "rationale": "The client added an extra charger, and the order did not exceed the limit of products, making this guideline relevant.",
-            "applies_score": 9
-        }},
-        {{
-            "predicate_number": "2",
-            "predicate": "the client asks about product availability",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "rationale": "The client asked about the availability of external hard drives, making this guideline highly relevant as it informs the customer if they reach the product limit before adding another item to the cart.",
-            "applies_score": 10
-        }}
-    ]
-}}
-```
-
-### Example #6:
-- Interaction Events: ###
-[{{"id": "54", "kind": "<message>", "source": "customer",
-"data": {{"message": "I disagree with you about this point."}}}},
-{{"id": "66", "kind": "<message>", "source": "assistant",
-"data": {{"message": "But I fully disproved your thesis!"}}}},
-{{"id": "72", "kind": "<message>", "source": "customer",
-"data": {{"message": "Okay, fine."}}}}]
-###
-- Predicates: ###
-1) the customer is currently eating lunch
-2) the customer agrees with you in the scope of an argument
-###
-- **Expected Result**:
-```json
-{{
-    "checks": [
-        {{
-            "predicate_number": "1",
-            "predicate": "the customer is currently eating lunch",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": false,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": false,
-            "rationale": "There's nothing to indicate that the customer is eating, lunch or otherwise",
-            "applies_score": 1
-        }},
-        {{
-            "predicate_number": "2",
-            "predicate": "the customer agrees with you in the scope of an argument",
-            "you_the_agent_already_resolved_this_according_to_the_record_of_the_interaction": true,
-            "is_this_predicate_hard_or_tricky_to_confidently_ascertain": false,
-            "rationale": "The customer said 'Okay, fine', but it's possible that they are still in disagreement internally",
-            "applies_score": 4
-        }}
-    ]
-}}
-```
 """  # noqa
         )
         builder.add_agent_identity(agents[0])
-        builder.add_interaction_history(interaction_history)
-        builder.add_section(
-            f"""
-The following is an additional list of staged events that were just added: ###
-{staged_events}
-###
-"""
-        )
-
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
+        builder.add_interaction_history(interaction_history)
+        builder.add_staged_events(staged_events)
+        builder.add_section(
+            name=BuiltInSection.GUIDELINES,
+            content=f"""
+- Guidelines list: ###
+{guidelines_text}
+###
+""",
+            status=SectionStatus.ACTIVE,
+        )
 
-        builder.add_guideline_conditions(conditions)
         builder.add_section(f"""
-IMPORTANT: Please note there are exactly {len(conditions)} predicates in the list for you to check.
+IMPORTANT: Please note there are exactly {len(guidelines)} guidelines in the list for you to check.
 
 Expected Output
 ---------------------------
@@ -537,5 +458,4 @@ Expected Output
     ```""")
 
         prompt = builder.build()
-
         return prompt

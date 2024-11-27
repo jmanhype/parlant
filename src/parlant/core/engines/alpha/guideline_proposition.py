@@ -24,3 +24,4 @@ class GuidelineProposition:
     guideline: Guideline
     score: int
     rationale: str
+    should_reapply: bool = False
