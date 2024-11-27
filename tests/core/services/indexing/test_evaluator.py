@@ -17,6 +17,7 @@ import asyncio
 from lagom import Container
 from parlant.core.agents import Agent
 from parlant.core.evaluations import (
+    EvaluationListener,
     EvaluationStatus,
     EvaluationStore,
     GuidelinePayload,
@@ -30,10 +31,6 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from pytest import raises
 
-from tests.test_utilities import get_when_async_done_or_timeout
-
-TIME_TO_WAIT_PER_PAYLOAD = 10
-TEST_WAIT_TIMEOUT = 30
 AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
 
 
@@ -73,6 +70,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
@@ -92,12 +90,9 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -117,6 +112,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
@@ -142,12 +138,9 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -167,6 +160,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
@@ -192,12 +186,9 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -217,6 +208,7 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
@@ -248,12 +240,9 @@ async def test_that_an_evaluation_of_incoherent_proposed_guidelines_completes_wi
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -275,6 +264,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
@@ -306,12 +296,9 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
     assert len(evaluation.invoices) == 2
@@ -415,7 +402,7 @@ async def test_that_an_evaluation_validation_failed_due_to_guidelines_duplicatio
                 ]
             ],
         )
-        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+        await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     assert str(exc.value) == "Duplicate guideline found among the provided guidelines."
 
@@ -451,7 +438,7 @@ async def test_that_an_evaluation_validation_failed_due_to_duplicate_guidelines_
                 )
             ],
         )
-        await asyncio.sleep(TIME_TO_WAIT_PER_PAYLOAD)
+        await asyncio.sleep(AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING)
 
     assert (
         str(exc.value)
@@ -466,6 +453,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
     guideline_store = container[GuidelineStore]
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     await guideline_store.create_guideline(
         guideline_set=agent.id,
@@ -491,12 +479,9 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 
@@ -526,6 +511,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
 
     evaluation_id = await evaluation_service.create_evaluation_task(
         agent=agent,
@@ -557,12 +543,9 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
         ],
     )
 
-    evaluation = await get_when_async_done_or_timeout(
-        result_getter=lambda: evaluation_store.read_evaluation(evaluation_id),
-        done_condition=lambda evaluation: evaluation.status
-        in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED],
-        timeout=TEST_WAIT_TIMEOUT,
-    )
+    assert await evaluation_listener.wait_for_completion(evaluation_id)
+
+    evaluation = await evaluation_store.read_evaluation(evaluation_id)
 
     assert evaluation.status == EvaluationStatus.COMPLETED
 

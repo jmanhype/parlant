@@ -31,6 +31,7 @@ from typing import (
 from typing_extensions import Literal
 
 from parlant.core.agents import AgentId
+from parlant.core.async_utils import Timeout
 from parlant.core.common import (
     ItemNotFoundError,
     JSONSerializable,
@@ -522,3 +523,35 @@ class EvaluationDocumentStore(EvaluationStore):
             self._deserialize_evaluation(evaluation_document=e)
             for e in await self._evaluation_collection.find(filters={})
         ]
+
+
+class EvaluationListener(ABC):
+    @abstractmethod
+    async def wait_for_completion(
+        self,
+        evaluation_id: EvaluationId,
+        timeout: Timeout = Timeout.infinite(),
+    ) -> bool: ...
+
+
+class PollingEvaluationListener(EvaluationListener):
+    def __init__(self, evaluation_store: EvaluationStore) -> None:
+        self._evaluation_store = evaluation_store
+
+    @override
+    async def wait_for_completion(
+        self,
+        evaluation_id: EvaluationId,
+        timeout: Timeout = Timeout.infinite(),
+    ) -> bool:
+        while True:
+            evaluation = await self._evaluation_store.read_evaluation(
+                evaluation_id,
+            )
+
+            if evaluation.status in [EvaluationStatus.COMPLETED, EvaluationStatus.FAILED]:
+                return True
+            elif timeout.expired():
+                return False
+            else:
+                await timeout.wait_up_to(1)

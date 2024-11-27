@@ -33,7 +33,12 @@ from parlant.core.context_variables import ContextVariableDocumentStore, Context
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
-from parlant.core.evaluations import EvaluationDocumentStore, EvaluationStore
+from parlant.core.evaluations import (
+    EvaluationListener,
+    PollingEvaluationListener,
+    EvaluationDocumentStore,
+    EvaluationStore,
+)
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.guideline_connections import (
@@ -123,6 +128,7 @@ async def container() -> AsyncIterator[Container]:
     container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
     container[SessionListener] = PollingSessionListener
     container[EvaluationStore] = Singleton(EvaluationDocumentStore)
+    container[EvaluationListener] = PollingEvaluationListener
     container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
     container[EventEmitterFactory] = Singleton(EventPublisherFactory)
 

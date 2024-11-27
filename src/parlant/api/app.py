@@ -36,7 +36,7 @@ from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentStore
 from parlant.core.common import ItemNotFoundError, generate_id
 from parlant.core.customers import CustomerStore
-from parlant.core.evaluations import EvaluationStore
+from parlant.core.evaluations import EvaluationStore, EvaluationListener
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import GuidelineStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
@@ -85,6 +85,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
     session_store = container[SessionStore]
     session_listener = container[SessionListener]
     evaluation_store = container[EvaluationStore]
+    evaluation_listener = container[EvaluationListener]
     evaluation_service = container[BehavioralChangeEvaluator]
     glossary_store = container[GlossaryStore]
     guideline_store = container[GuidelineStore]
@@ -192,6 +193,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
         router=index.create_router(
             evaluation_service=evaluation_service,
             evaluation_store=evaluation_store,
+            evaluation_listener=evaluation_listener,
             agent_store=agent_store,
         ),
     )
