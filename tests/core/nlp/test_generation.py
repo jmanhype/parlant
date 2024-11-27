@@ -257,7 +257,7 @@ async def test_that_retry_doesnt_catch_unspecified_exceptions(container: Contain
     mock_generator.generate.assert_awaited_once()
 
 
-async def test_stacked_retry_decorators_exceed_max_attempts(container: Container) -> None:
+async def test_that_stacked_retry_decorators_exceed_max_attempts(container: Container) -> None:
     mock_embedder = AsyncMock(spec=EmbeddingResult)
     success_result = EmbeddingResult(vectors=[[0.1, 0.2, 0.3]])
 
