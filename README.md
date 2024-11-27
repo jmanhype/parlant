@@ -1,4 +1,4 @@
-<div>
+<div align="center">
   <img src="https://parlant.io/logo.png" alt="Project Logo" width="300">
   <p>A better way to iterate and hone outputs for usable AI agents that customers actually engage with</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
