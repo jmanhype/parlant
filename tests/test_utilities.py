@@ -20,7 +20,7 @@ from parlant.core.customers import Customer, CustomerId, CustomerStore
 from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
-from parlant.core.logging import Logger
+from parlant.core.logging import LogLevel, Logger
 from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
 
@@ -42,6 +42,17 @@ class SyncAwaiter:
 class _TestLogger(Logger):
     def __init__(self) -> None:
         self.logger = logging.getLogger("TestLogger")
+
+    def set_level(self, log_level: LogLevel) -> None:
+        self.logger.setLevel(
+            {
+                LogLevel.DEBUG: logging.DEBUG,
+                LogLevel.INFO: logging.INFO,
+                LogLevel.WARNING: logging.WARNING,
+                LogLevel.ERROR: logging.ERROR,
+                LogLevel.CRITICAL: logging.CRITICAL,
+            }[log_level]
+        )
 
     def debug(self, message: str) -> None:
         self.logger.debug(message)
