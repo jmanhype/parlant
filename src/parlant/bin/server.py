@@ -138,6 +138,12 @@ def load_anthropic() -> NLPService:
     return AnthropicService(LOGGER)
 
 
+def load_azure() -> NLPService:
+    from parlant.adapters.nlp.azure import AzureService
+
+    return AzureService(LOGGER)
+
+
 def load_cerebras() -> NLPService:
     from parlant.adapters.nlp.cerebras import CerebrasService
 
@@ -232,6 +238,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         "gemini": load_gemini,
         "cerebras": load_cerebras,
         "anthropic": load_anthropic,
+        "azure": load_azure,
         "together": load_together,
     }
 
@@ -398,7 +405,16 @@ def main() -> None:
     )
     @click.option(
         "--nlp-service",
-        type=click.Choice(["openai", "gemini", "anthropic", "together", "cerebras"]),
+        type=click.Choice(
+            [
+                "anthropic",
+                "azure",
+                "cerebras",
+                "gemini",
+                "openai",
+                "together",
+            ]
+        ),
         default=DEFAULT_NLP_SERVICE,
         help="NLP service provider",
         show_default=True,
