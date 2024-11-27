@@ -1,6 +1,6 @@
 <div align="center">
   <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/daa1993d0fb20c9a6ffd33b1758752f892d482e7/logo.png" width="350" />
-  <p>A better way to iterate and hone the outputs of AI chat agents<br>so that your customers actually engage with them</p>
+  <p>A better way to iterate and hone the outputs of AI chat agents so that your customers actually engage with them</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
