@@ -140,6 +140,12 @@ def load_anthropic() -> NLPService:
     return AnthropicService(LOGGER)
 
 
+def load_aws() -> NLPService:
+    from parlant.adapters.nlp.aws import BedrockService
+
+    return BedrockService(LOGGER)
+
+
 def load_azure() -> NLPService:
     from parlant.adapters.nlp.azure import AzureService
 
@@ -237,11 +243,12 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
 
     nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
-        "openai": load_openai,
-        "gemini": load_gemini,
-        "cerebras": load_cerebras,
         "anthropic": load_anthropic,
+        "aws": load_aws,
         "azure": load_azure,
+        "cerebras": load_cerebras,
+        "gemini": load_gemini,
+        "openai": load_openai,
         "together": load_together,
     }
 
@@ -411,6 +418,7 @@ def main() -> None:
         type=click.Choice(
             [
                 "anthropic",
+                "aws",
                 "azure",
                 "cerebras",
                 "gemini",
