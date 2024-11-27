@@ -74,6 +74,50 @@ async def test_that_context_variable_can_be_created(
     assert context_variable["freshness_rules"] == freshness_rules
 
 
+async def test_that_context_variable_can_be_updated(
+    container: Container,
+    client: TestClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    context_variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+    )
+
+    new_name = "updated_test_variable"
+    new_description = "updated test of variable"
+    freshness_rules = {
+        "months": [5],
+        "days_of_month": [14],
+        "days_of_week": ["Thursday"],
+        "hours": [18],
+        "minutes": None,
+        "seconds": None,
+    }
+
+    context_variable_dto = (
+        client.patch(
+            f"/agents/{agent_id}/context-variables/{context_variable.id}",
+            json={
+                "name": new_name,
+                "description": new_description,
+                "freshness_rules": freshness_rules,
+            },
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert context_variable_dto["name"] == new_name
+    assert context_variable_dto["description"] == new_description
+    assert context_variable_dto["freshness_rules"] == freshness_rules
+
+
 async def test_that_all_context_variables_can_be_deleted(
     client: TestClient,
     container: Container,

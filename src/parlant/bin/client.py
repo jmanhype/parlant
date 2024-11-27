@@ -135,10 +135,10 @@ class Actions:
         name: Optional[str] = None,
         description: Optional[str] = None,
         max_engine_iterations: Optional[int] = None,
-    ) -> None:
+    ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
-        client.agents.update(
+        return client.agents.update(
             agent_id,
             name=name,
             description=description,
@@ -592,21 +592,6 @@ class Actions:
         return client.context_variables.list(agent_id)
 
     @staticmethod
-    def view_variable(
-        ctx: click.Context,
-        agent_id: str,
-        variable_id: str,
-    ) -> ContextVariable:
-        client = cast(ParlantClient, ctx.obj.client)
-
-        variables = client.context_variables.list(agent_id)
-
-        if variable := next((v for v in variables if v.id == variable_id), None):
-            return variable
-
-        raise ValueError("A variable called '{name}' was not found under agent '{agent_id}'")
-
-    @staticmethod
     def create_variable(
         ctx: click.Context,
         agent_id: str,
@@ -617,6 +602,23 @@ class Actions:
 
         return client.context_variables.create(
             agent_id,
+            name=name,
+            description=description,
+        )
+
+    @staticmethod
+    def update_variable(
+        ctx: click.Context,
+        agent_id: str,
+        variable_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> ContextVariable:
+        client = cast(ParlantClient, ctx.obj.client)
+
+        return client.context_variables.update(
+            agent_id,
+            variable_id,
             name=name,
             description=description,
         )
@@ -648,7 +650,7 @@ class Actions:
         )
 
     @staticmethod
-    def read_variable(
+    def view_variable(
         ctx: click.Context,
         agent_id: str,
         variable_id: str,
@@ -663,7 +665,7 @@ class Actions:
         )
 
     @staticmethod
-    def read_variable_value(
+    def view_variable_value(
         ctx: click.Context,
         agent_id: str,
         variable_id: str,
@@ -745,6 +747,15 @@ class Actions:
     ) -> Customer:
         client = cast(ParlantClient, ctx.obj.client)
         return client.customers.create(name=name, extra={})
+
+    @staticmethod
+    def update_customer(
+        ctx: click.Context,
+        customer_id: str,
+        name: str,
+    ) -> Customer:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.customers.update(customer_id=customer_id, name=name)
 
     @staticmethod
     def delete_customer(
@@ -948,8 +959,9 @@ class Interface:
         max_engine_iterations: Optional[int],
     ) -> None:
         try:
-            Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
+            agent = Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
             Interface._write_success(f"Updated agent (id={agent_id})")
+            Interface._render_agents([agent])
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1564,6 +1576,19 @@ class Interface:
         Interface._render_variable(variable)
 
     @staticmethod
+    def update_variable(
+        ctx: click.Context,
+        agent_id: str,
+        variable_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> None:
+        variable = Actions.update_variable(ctx, agent_id, variable_id, name, description)
+
+        Interface._write_success(f"Updated variable (id={variable.id})")
+        Interface._render_variable(variable)
+
+    @staticmethod
     def delete_variable(ctx: click.Context, agent_id: str, variable_id: str) -> None:
         try:
             Actions.delete_variable(ctx, agent_id, variable_id)
@@ -1597,11 +1622,10 @@ class Interface:
         value: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_id)
             cv_value = Actions.set_variable_value(
                 ctx=ctx,
                 agent_id=agent_id,
-                variable_id=variable.id,
+                variable_id=variable_id,
                 key=key,
                 value=value,
             )
@@ -1619,12 +1643,10 @@ class Interface:
         variable_id: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_id)
-
-            read_variable_result = Actions.read_variable(
+            read_variable_result = Actions.view_variable(
                 ctx,
                 agent_id,
-                variable.id,
+                variable_id,
                 include_values=True,
             )
 
@@ -1653,8 +1675,7 @@ class Interface:
         key: str,
     ) -> None:
         try:
-            variable = Actions.view_variable(ctx, agent_id, variable_id)
-            value = Actions.read_variable_value(ctx, agent_id, variable.id, key)
+            value = Actions.view_variable_value(ctx, agent_id, variable_id, key)
 
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
@@ -1786,6 +1807,15 @@ class Interface:
         try:
             customer = Actions.create_customer(ctx, name)
             Interface._write_success(f"Added customer (id={customer.id})")
+        except Exception as e:
+            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def update_customer(ctx: click.Context, customer_id: str, name: str) -> None:
+        try:
+            Actions.update_customer(ctx, customer_id=customer_id, name=name)
+            Interface._write_success(f"Updated customer (id={customer_id}, name={name})")
         except Exception as e:
             Interface._write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -2600,6 +2630,36 @@ async def async_main() -> None:
             description=description or "",
         )
 
+    @variable.command("update", help="Update a context variable")
+    @click.option(
+        "--agent-id",
+        type=str,
+        help="Agent ID (defaults to the first agent)",
+        metavar="ID",
+        required=False,
+    )
+    @click.option("--id", type=str, metavar="ID", help="Variable ID", required=True)
+    @click.option("--description", type=str, help="Variable description", required=False)
+    @click.option("--name", type=str, metavar="NAME", help="Variable name", required=False)
+    @click.pass_context
+    def variable_update(
+        ctx: click.Context,
+        agent_id: Optional[str],
+        id: str,
+        name: Optional[str],
+        description: Optional[str],
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.update_variable(
+            ctx=ctx,
+            agent_id=agent_id,
+            variable_id=id,
+            name=name,
+            description=description or "",
+        )
+
     @variable.command("delete", help="Delete a context variable")
     @click.option(
         "--agent-id",
@@ -2785,6 +2845,13 @@ async def async_main() -> None:
     @click.pass_context
     def customer_create(ctx: click.Context, name: str) -> None:
         Interface.create_customer(ctx, name)
+
+    @customer.command("update", help="Update a customer")
+    @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)
+    @click.option("--name", type=str, metavar="NAME", help="Customer name", required=True)
+    @click.pass_context
+    def customer_update(ctx: click.Context, id: str, name: str) -> None:
+        Interface.update_customer(ctx, id, name)
 
     @customer.command("delete", help="Delete a customer")
     @click.option("--id", type=str, metavar="ID", help="Customer ID", required=True)

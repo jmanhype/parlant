@@ -250,7 +250,7 @@ class SessionStore(ABC):
         self,
         session_id: SessionId,
         params: SessionUpdateParams,
-    ) -> None: ...
+    ) -> Session: ...
 
     @abstractmethod
     async def list_sessions(
@@ -617,11 +617,22 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
         params: SessionUpdateParams,
-    ) -> None:
-        await self._session_collection.update_one(
+    ) -> Session:
+        session_document = await self._session_collection.find_one(
+            filters={"id": {"$eq": session_id}}
+        )
+
+        if not session_document:
+            raise ItemNotFoundError(item_id=UniqueId(session_id), message="Session not found")
+
+        result = await self._session_collection.update_one(
             filters={"id": {"$eq": session_id}},
             params=cast(_SessionDocument, params),
         )
+
+        assert result.updated_document
+
+        return self._deserialize_session(session_document=result.updated_document)
 
     @override
     async def list_sessions(

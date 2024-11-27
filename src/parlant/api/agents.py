@@ -109,13 +109,12 @@ def create_router(
     @router.patch(
         "/{agent_id}",
         operation_id="update_agent",
-        status_code=status.HTTP_204_NO_CONTENT,
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_agent(
         agent_id: AgentId,
         params: AgentUpdateParamsDTO,
-    ) -> None:
+    ) -> AgentDTO:
         def from_dto(dto: AgentUpdateParamsDTO) -> AgentUpdateParams:
             params: AgentUpdateParams = {}
 
@@ -130,9 +129,16 @@ def create_router(
 
             return params
 
-        await agent_store.update_agent(
+        agent = await agent_store.update_agent(
             agent_id=agent_id,
             params=from_dto(params),
+        )
+        return AgentDTO(
+            id=agent.id,
+            name=agent.name,
+            description=agent.description,
+            creation_utc=agent.creation_utc,
+            max_engine_iterations=agent.max_engine_iterations,
         )
 
     @router.delete(

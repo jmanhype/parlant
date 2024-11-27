@@ -67,7 +67,7 @@ class AgentStore(ABC):
         self,
         agent_id: AgentId,
         params: AgentUpdateParams,
-    ) -> None: ...
+    ) -> Agent: ...
 
     @abstractmethod
     async def delete_agent(
@@ -163,11 +163,24 @@ class AgentDocumentStore(AgentStore):
         self,
         agent_id: AgentId,
         params: AgentUpdateParams,
-    ) -> None:
-        await self._collection.update_one(
+    ) -> Agent:
+        agent_document = await self._collection.find_one(
+            filters={
+                "id": {"$eq": agent_id},
+            }
+        )
+
+        if not agent_document:
+            raise ItemNotFoundError(item_id=UniqueId(agent_id))
+
+        result = await self._collection.update_one(
             filters={"id": {"$eq": agent_id}},
             params=cast(_AgentDocument, params),
         )
+
+        assert result.updated_document
+
+        return self._deserialize(agent_document=result.updated_document)
 
     @override
     async def delete_agent(
