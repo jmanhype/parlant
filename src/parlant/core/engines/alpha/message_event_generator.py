@@ -24,9 +24,7 @@ from parlant.core.customers import Customer
 from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import (
-    PromptBuilder,
-)
+from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.emissions import EmittedEvent, EventEmitter
 from parlant.core.sessions import Event
@@ -45,7 +43,7 @@ class Revision(DefaultBaseModel):
     guidelines_broken_due_to_missing_data: Optional[bool] = False
     missing_data_rationale: Optional[str] = None
     guidelines_broken_only_due_to_prioritization: Optional[bool] = False
-    prioritization_rationale: Optional[str] = None  # Not explained in prompt - fix when revisiting
+    prioritization_rationale: Optional[str] = None
 
 
 class GuidelineEvaluation(DefaultBaseModel):
@@ -175,6 +173,46 @@ class MessageEventGenerator:
 
             raise MessageGenerationError() from last_generation_exception
 
+    def get_guideline_propositions_text(
+        self,
+        ordinary: Sequence[GuidelineProposition],
+        tool_enabled: Mapping[GuidelineProposition, Sequence[ToolId]],
+    ) -> str:
+        all_propositions = list(chain(ordinary, tool_enabled))
+
+        if not all_propositions:
+            return """
+In formulating your reply, you are normally required to follow a number of behavioral guidelines.
+However, in this case, no special behavioral guidelines were provided. Therefore, when generating revisions,
+you don't need to specifically double-check if you followed or broke any guidelines.
+"""
+        guidelines = []
+
+        for i, p in enumerate(all_propositions, start=1):
+            guideline = f"Guideline #{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
+
+            guideline += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
+            guidelines.append(guideline)
+
+        guideline_list = "\n".join(guidelines)
+
+        return f"""
+In formulating your reply, you are required to adhere to the following behavioral guidelines,
+which were determined applicable to the latest state of the interaction.
+Each guideline is accompanied by a priority score indicating its significance,
+and a rationale explaining why it applies.
+
+There are a few instances in which you may choose not to adhere to a guideline if it either:
+    1. Contradicts a previous request made by the customer.
+    2. Contradicts another guideline of higher or equal priority.
+    3. It's absolutely inappropriate given the state of the conversation.
+In all other circumstances, adhere to all of the guidelines, including cases where you deem that the guideline's predicate or rational do not currently apply. 
+
+Guidelines: ###
+{guideline_list}
+###
+"""
+
     def _format_prompt(
         self,
         agents: Sequence[Agent],
@@ -196,8 +234,7 @@ GENERAL INSTRUCTIONS
 You are an AI agent who is part of a system that interacts with a customer, also referred to as 'the user'. The current state of this interaction will be provided to you later in this message.
 You role is to generate a reply message to the current (latest) state of the interaction, based on provided guidelines and background information.
 
-The guidelines and information you need to generate your reply were already filtered, and will be provided to you later in this prompt. 
-When generating your response, adhere to these guidelines even if you believe that they are not currently warranted.  
+Later in this prompt, you'll be provided with behavioral guidelines and other contextual information you must take into account when generating your response. 
 
 """
         )
@@ -205,7 +242,7 @@ When generating your response, adhere to these guidelines even if you believe th
         builder.add_agent_identity(agents[0])
         builder.add_section(
             """
-Task Description:
+TASK DESCRIPTION:
 -----------------
 Continue the provided interaction in a natural and human-like manner. 
 Your task is to produce a response to the latest state of the interaction.
@@ -213,6 +250,7 @@ Always abide by the following general principles (note these are not the "guidel
 Principle #1) GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary.
 Principle #2) AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the customer to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the customer instead of maintaining the loop.
 Principle #3) DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the customer requests information you're unsure about, state that this information is not available to you.
+Principle #4) OUTPUT FORMAT: In your generated reply to the user, use markdown format when applicable. 
 """
         )
         if not interaction_history or all(
@@ -269,6 +307,8 @@ DO NOT PRODUCE MORE THAN 5 REVISIONS. IF YOU REACH the 5th REVISION, STOP THERE.
 
 Examine the following examples to understand your expected behavior:
 
+EXAMPLES
+-----------------
 ###
 
 Example 1: A reply that took critique in a few revisions to get right: ###
@@ -457,18 +497,17 @@ Example 4: Avoiding repetitive responses. Given that the previous response by th
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
-        builder.add_user_name_and_tags(*user_tags_pair)
-        builder.add_guideline_propositions(
-            ordinary_guideline_propositions,
-            tool_enabled_guideline_propositions,
+        builder.add_section(
+            self.get_guideline_propositions_text(
+                ordinary_guideline_propositions,
+                tool_enabled_guideline_propositions,
+            ),
+            name=BuiltInSection.GUIDELINE_DESCRIPTIONS,
+            status=SectionStatus.ACTIVE
+            if ordinary_guideline_propositions or tool_enabled_guideline_propositions
+            else SectionStatus.PASSIVE,
         )
         builder.add_interaction_history(interaction_history)
-        if ordinary_guideline_propositions or tool_enabled_guideline_propositions:
-            builder.add_section(
-                """
-If a given guideline contradicts a previous request made by the customer, or if it's absolutely inappropriate given the state of the conversation, ignore the guideline while specifying why you broke it in your response.
-        """
-            )
         builder.add_staged_events(staged_events)
         builder.add_section(
             f"""
@@ -525,8 +564,12 @@ Produce a valid JSON object in the following format: ###
                 "content": <response chosen after revision 1>,
                 "guidelines_followed": <list of guidelines that were followed>,
                 "guidelines_broken": <list of guidelines that were broken>,
-                "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>
-                "followed_all_guidelines": <BOOL>
+                "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
+                "followed_all_guidelines": <BOOL>,
+                "guidelines_broken_due_to_missing_data": <BOOL, optional. Necessary only if guidelines_broken_only_due_to_prioritization is true>,
+                "missing_data_rationale": <STR, optional. Necessary only if guidelines_broken_due_to_missing_data is true>,
+                "guidelines_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_guidelines is true>,
+                "prioritization_rationale": <STR, optional. Necessary only if guidelines_broken_only_due_to_prioritization is true>,
             }},
             ...
             ]

@@ -14,16 +14,14 @@
 
 from __future__ import annotations
 from enum import Enum, auto
-from itertools import chain
 import json
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Optional, Sequence, cast
 
 from parlant.core.tools import Tool
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.sessions import Event, EventSource, MessageEventData
-from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.utils import (
     context_variables_to_json,
@@ -38,6 +36,7 @@ class BuiltInSection(Enum):
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
     TERMINOLOGY = auto()
+    GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
     GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
