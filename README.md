@@ -2,7 +2,7 @@
 
 <div align="center">
   <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/daa1993d0fb20c9a6ffd33b1758752f892d482e7/logo.png" width="350" />
-  <p>A better way to iterate and hone the outputs of AI chat agents so that your customers actually engage with them</p>
+  <p>A systematic API to iterate on your agent’s outputs for better customer engagement</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
