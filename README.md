@@ -25,7 +25,7 @@ Parlant bridges this gap in a way that makes it easy and fast for developers to 
 - **Guided Tool Integration**: Control exactly when, why, and how your agent accesses your business APIs, ensuring appropriate use of backend services
 
 ### A better developer experience
-- **Instant Feedback**: Changes to guidelines, glossary, or tools take effect immediately—no retraining or redeployment needed
+- **Instant Feedback**: Changes to guidelines, glossary, or tools take effect immediately—no model retraining or redeployment needed
 - **Version Control**: Track all behavioral changes in Git, making it easy to review and roll back modifications to your agent's responses
 - **Clear Separation**: Keep your business logic in tool code while managing conversational behavior through guidelines
 - **Type Safety**: Strongly-typed, native client SDKs for reliable development and clear interfaces
