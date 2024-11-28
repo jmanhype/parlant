@@ -25,7 +25,8 @@ from openapi_parser.parser import (
     Operation,
 )
 from types import TracebackType
-from typing import Any, Awaitable, Callable, Mapping, NamedTuple, Optional, Sequence, cast, override
+from typing import Any, Awaitable, Callable, Mapping, NamedTuple, Optional, Sequence, cast
+from typing_extensions import override
 
 from parlant.core.tools import (
     Tool,

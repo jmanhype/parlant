@@ -14,7 +14,7 @@
 
 from itertools import chain
 import os
-from typing import override
+from typing_extensions import override
 import httpx
 
 from parlant.core.logging import Logger

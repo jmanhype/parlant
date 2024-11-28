@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Optional, Sequence, cast, override
+from typing import Optional, Sequence, cast
+from typing_extensions import override
 from typing_extensions import get_type_hints
 from parlant.core.persistence.document_database import (
     BaseDocument,

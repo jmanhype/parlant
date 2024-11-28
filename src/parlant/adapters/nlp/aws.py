@@ -15,7 +15,8 @@
 import time
 from anthropic import AsyncAnthropicBedrock
 from pydantic import ValidationError
-from typing import Any, Mapping, override
+from typing import Any, Mapping
+from typing_extensions import override
 import jsonfinder  # type: ignore
 import os
 import tiktoken

@@ -32,11 +32,10 @@ from typing import (
     Sequence,
     TypedDict,
     Union,
-    Unpack,
     get_args,
     overload,
-    override,
 )
+from typing_extensions import Unpack, override
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import httpx
@@ -554,7 +553,7 @@ class PluginClient(ToolService):
                     elif "error" in chunk_dict:
                         raise ToolExecutionError(
                             tool_name=name,
-                            message=f"url='{self.url}', arguments='{arguments}', error: {chunk_dict["error"]}",
+                            message=f"url='{self.url}', arguments='{arguments}', error: {chunk_dict['error']}",
                         )
                     else:
                         raise ToolResultError(

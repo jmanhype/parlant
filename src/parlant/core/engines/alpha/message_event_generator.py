@@ -108,12 +108,12 @@ class MessageEventGenerator:
                 return []
 
             self._logger.debug(
-                f'Guidelines applied: {json.dumps([{
+                f"""Guidelines applied: {json.dumps([{
                     "condition": p.guideline.content.condition,
                     "action": p.guideline.content.action,
                     "rationale": p.rationale,
                     "score": p.score}
-                for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}'
+                for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}"""
             )
 
             prompt = self._format_prompt(
@@ -539,12 +539,12 @@ Produce a valid JSON object in the following format: ###
         if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
             self._logger.debug(
                 "MessageEventGenerator guideline evaluations: "
-                f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
+                f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
             )
 
         self._logger.debug(
             "MessageEventGenerator revisions: "
-            f"{json.dumps([r.model_dump(mode="json") for r in message_event_response.content.revisions], indent=2)}"
+            f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
 
         if first_correct_revision := next(

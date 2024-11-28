@@ -19,7 +19,8 @@ from enum import Enum, auto
 from pathlib import Path
 import time
 import traceback
-from typing import Any, Iterator, override
+from typing import Any, Iterator
+from typing_extensions import override
 import coloredlogs  # type: ignore
 import logging
 import logging.handlers

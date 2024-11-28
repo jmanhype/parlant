@@ -15,7 +15,8 @@
 import time
 from pydantic import ValidationError
 from cerebras.cloud.sdk import AsyncCerebras
-from typing import Any, Mapping, override
+from typing import Any, Mapping
+from typing_extensions import override
 import jsonfinder  # type: ignore
 import os
 import tiktoken

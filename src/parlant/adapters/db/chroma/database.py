@@ -19,7 +19,8 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast, override
+from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast
+from typing_extensions import override
 import chromadb
 
 from parlant.core.common import Version
@@ -348,7 +349,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
         if not docs["metadatas"]:
             return []
 
-        self._logger.debug(f"Similar documents found: {json.dumps(docs["metadatas"][0], indent=2)}")
+        self._logger.debug(f"Similar documents found: {json.dumps(docs['metadatas'][0], indent=2)}")
 
         assert docs["distances"]
         return [

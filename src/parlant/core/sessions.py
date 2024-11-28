@@ -22,14 +22,12 @@ from typing import (
     Literal,
     Mapping,
     NewType,
-    NotRequired,
     Optional,
     Sequence,
     TypeAlias,
-    TypedDict,
     cast,
-    override,
 )
+from typing_extensions import override, TypedDict, NotRequired
 
 from parlant.core.async_utils import Timeout
 from parlant.core.common import (

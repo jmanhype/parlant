@@ -184,7 +184,7 @@ def test_that_a_term_can_be_updated(
     updated_synonyms = ["instruction"]
 
     update_response = client.patch(
-        f"/agents/{agent_id}/terms/{term["id"]}",
+        f"/agents/{agent_id}/terms/{term['id']}",
         json={
             "name": updated_name,
             "description": updated_description,

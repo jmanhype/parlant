@@ -15,7 +15,8 @@
 import asyncio
 from datetime import datetime, timezone
 from itertools import chain
-from typing import Optional, Sequence, TypedDict, override
+from typing import Optional, Sequence
+from typing_extensions import override, TypedDict
 
 from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.core.common import (

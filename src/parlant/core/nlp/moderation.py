@@ -14,7 +14,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, TypeAlias, override
+from typing import Literal, TypeAlias
+from typing_extensions import override
 
 
 ModerationTag: TypeAlias = Literal[

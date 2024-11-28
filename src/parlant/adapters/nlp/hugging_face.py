@@ -14,7 +14,8 @@
 
 from collections.abc import Mapping
 import os
-from typing import Any, override
+from typing import Any
+from typing_extensions import override
 import torch  # type: ignore
 from transformers import AutoModel, AutoTokenizer  # type: ignore
 from huggingface_hub.errors import (  # type: ignore

@@ -15,7 +15,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence, TypedDict, override
+from typing import NewType, Optional, Sequence
+from typing_extensions import override, TypedDict
 
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.guidelines import GuidelineId
