@@ -198,15 +198,15 @@ you don't need to specifically double-check if you followed or broke any guideli
 
         return f"""
 In formulating your reply, you are required to adhere to the following behavioral guidelines,
-which were determined applicable to the latest state of the interaction.
+which were determined to be applicable to the latest state of the interaction.
 Each guideline is accompanied by a priority score indicating its significance,
 and a rationale explaining why it applies.
 
-There are a few instances in which you may choose not to adhere to a guideline if it either:
+As a reminder, the only situations where you may choose not to adhere to a guideline are:
     1. Contradicts a previous request made by the customer.
     2. Contradicts another guideline of higher or equal priority.
     3. It's absolutely inappropriate given the state of the conversation.
-In all other circumstances, adhere to all of the guidelines, including cases where you deem that the guideline's predicate or rational do not currently apply. 
+In all other circumstances, adhere to all of the guidelines, even if the predicate or rationale does not seem applicable.
 
 Guidelines: ###
 {guideline_list}
@@ -285,10 +285,12 @@ to each and every one of the provided guidelines based on the most recent state 
 
 Mind the priority scores assigned to each guideline, acknowledging that in some cases,
 adherence to a higher-priority guideline may necessitate deviation from another.
-Use your best judgment in applying prioritization.
+
 Note too that it is permissible for the final revision to break rules IF AND ONLY IF
 all of the broken rules were broken due to conscious prioritization of guidelines,
 due to either (1) conflicting with another guideline, (2) contradicting a customer's request or (3) lack of necessary context or data.
+In all other cases, including those in which you do not believe that a guideline's predicate or rationale applies - you must still adhere to that guideline.
+
 If you do not fulfill a guideline, you must clearly justify your reasoning for doing so in your reply.
 
 Continuously critique each revision to refine the reply.
