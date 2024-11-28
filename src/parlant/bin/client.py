@@ -2119,8 +2119,8 @@ async def async_main() -> None:
     @session.command("view", help="View session content")
     @click.option("--id", type=str, metavar="ID", help="Session ID", required=True)
     @click.pass_context
-    def session_view(ctx: click.Context, sessiidn_id: str) -> None:
-        Interface.view_session(ctx, sessiidn_id)
+    def session_view(ctx: click.Context, id: str) -> None:
+        Interface.view_session(ctx, id)
 
     @session.command("inspect", help="Inspect an event from a session")
     @click.option("--session-id", type=str, help="Session ID", metavar="ID", required=True)
