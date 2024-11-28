@@ -1,7 +1,7 @@
 
 <div align="center">
-  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-dark.png#gh-dark-mode-only" width="350" />
-  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-light.png#gh-light-mode-only" width="350" />
+  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-dark.png#gh-dark-mode-only" width="350" style="margin: 1em;" />
+  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-light.png#gh-light-mode-only" width="350" style="margin: 1em;" />
   <p>A feedback-driven approach to building and guiding customer-facing agents</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
   <p>
