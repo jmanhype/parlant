@@ -324,6 +324,13 @@ def given_a_tool(
             },
             "required": ["name"],
         },
+        "check_in_stock": {
+            "name": "check_in_stock",
+            "description": "Check if the products in stock",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))
