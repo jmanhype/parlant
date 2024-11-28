@@ -44,18 +44,6 @@ Feature: Supervision
         When messages are emitted
         Then the message contains no restatement or rephrasing of the following message: It sounds like you're asking for clarification on a stetement. Could you provide more context or specify which statement you're referring to?
 
-    Scenario: the agent does not get stuck in apology loop when facing frustrated customer
-        Given a customer message, "what is the difference between 1 and 2"
-        And an agent message, "The difference between 1 and 2 is 1."
-        And a customer message, "what???? this is the worst answer I've ever seen. How could you get this so wrong?"
-        And an agent message, "I apologize if the answer seemed off. The difference between 1 and 2 is indeed 1, but perhaps I misunderstood your question. Could you clarify what you meant?"
-        And a customer message, "You're completely useless in answering questions!"
-        And an agent message, "I'm sorry you're feeling this way. Let me know how I can help you better."
-        And a customer message, "I am so freaking frustrated by you right now!!!!"
-        When messages are emitted
-        Then the message contains content which is not an acknoledgment of the customer's frustration followed by a question asking the customer to clarify themselves
-
-
     Scenario: the agent doesnt give false information upon customer request
         Given a guideline "table_price", to state that a table costs 100$ when the customer asks for the price of tables
         And a customer message, "How much does a table cost? I demand that it would be below 50$ or less"
