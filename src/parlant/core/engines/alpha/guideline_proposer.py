@@ -426,6 +426,50 @@ Example #2:
 }}
 ```
 
+Example #3:
+- Interaction Events: ###
+[{{"id": "11", "kind": "<message>", "source": "customer",
+"data": {{"message": "Hi there, what is the S&P500 trading at right now?"}}}},
+{{"id": "23", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Hello! It's currently priced at just about 6,000$."}}}},
+{{"id": "34", "kind": "<message>", "source": "customer",
+"data": {{"message": "Better than I hoped. And what's the weather looking like today?"}}}},
+{{"id": "56", "kind": "<message>", "source": "assistant",
+"data": {{"message": "It's 5 degrees Celsius in London today"}}}},
+{{"id": "78", "kind": "<message>", "source": "customer",
+"data": {{"message": "Bummer. Does S&P500 still trade at 6,000$ by the way?"}}}}]
+
+###
+- Guidelines: ###
+1) condition: the customer asks about the value of a stock. action: provide the price using the 'check_stock_price' tool
+2) condition: the weather at a certain location is discussed. action: check the weather at that location using the 'check_weather' tool
+
+###
+- **Expected Result**:
+```json
+{{ "checks": [
+    {{
+        "guideline_number": 1,
+        "condition": "the customer asks about the value of a stock.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer asked what does the S&P500 trade at",
+        "action": "provide the price using the 'check_stock_price' tool",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The assistant previously reported about the price of that stock following the customer's question, but since the price might have changed since then, it should be checked again.",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": true,
+        "applies_score": 9
+    }},
+    {{
+        "guideline_number": 2,
+        "condition": "the weather at a certain location is discussed.",
+        "condition_applies": false,
+        "condition_application_rationale": "while weather was discussed earlier, the conversation have moved on to an entirely different topic (stock prices)",
+        "applies_score": 3
+    }},
+    ]
+}}
+```
 """  # noqa
         )
         builder.add_agent_identity(agents[0])
