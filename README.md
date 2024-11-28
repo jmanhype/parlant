@@ -2,7 +2,7 @@
 
 <div align="center">
   <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/daa1993d0fb20c9a6ffd33b1758752f892d482e7/logo.png" width="350" />
-  <p>A feedback-driven approach to building and improving customer-facing agents</p>
+  <p>A feedback-driven approach to building and guiding customer-facing agents</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
 </div>
 
