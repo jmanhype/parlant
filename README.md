@@ -1,17 +1,20 @@
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 <div align="center">
-  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/daa1993d0fb20c9a6ffd33b1758752f892d482e7/logo.png" width="350" />
+  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-dark.png#gh-dark-mode-only" width="350" />
+  <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/5dd3608b81bd3a1d9de954f8f971319955c54ddb/logo-light.png#gh-light-mode-only" width="350" />
   <p>A feedback-driven approach to building and guiding customer-facing agents</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
+  <p>
+    <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Apache 2 License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
+  </p>
 </div>
 
 ## Why use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 
-But these prototypes are rarely production-ready. Once the prototype is functional, it has to be tuned continually so that its behavior actually provides customers with the experience they expect, and that business stakeholders are satisfied with the service it provides. With DIY prompt-engineering, reliably incorporating feedback from stakeholders is a lot of work, and quite fragile.
+But these prototypes are almost never ready to meet customers. Once the prototype is functional, it has to be continually tuned so that its behavior actually provides customers with a good experience that business stakeholders are happy with. With DIY prompt-engineering, reliably incorporating feedback from stakeholders is a lot of work, and simple implementations tend to be fragile and inconsistent.
 
-Parlant bridges this gap by making it easy and fast for developers to reliably adjust the behavior of AI agents based on feedback from customers and business stakeholders.
+Parlant bridges this gap in a way that makes it easy and fast for developers to reliably adjust the behavior of AI agents based on feedback from customers and business stakeholders.
 
 ## Key benefits
 
