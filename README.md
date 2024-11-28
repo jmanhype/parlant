@@ -42,7 +42,7 @@ Parlant bridges this gap in a way that makes it easy and fast for developers to 
 
 With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
 
-### Works with all major LLM providers
+## Works with all major LLM providers
 - [OpenAI](https://platform.openai.com/docs/overview) (also via [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/))
 - [Gemini](https://ai.google.dev/)
 - [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
