@@ -121,3 +121,15 @@ Feature: Supervision
         When processing is triggered
         Then a single message event is emitted
         And the message contains that its first word is hello, and a recommendation for turpolance soup, also known as carrots and sweet potato soup
+
+
+    Scenario: The agent prioritizes guideline from conversation
+        Given the alpha engine
+        And an agent
+        And a guideline "recommend_three_items", to recommend three items from "Sony WH-1000XM5, Dyson V15 Detect, Kindle Paperwhite (2024 Edition), Lego Botanical Collection, Le Creuset Dutch Oven,  Apple Watch Series 9, Fujifilm Instax Mini 12, Yeti Rambler Tumbler, Philips Hue Smart Bulbs, Theragun Mini, Bose SoundLink Flex, Hydro Flask Water Bottle, Samsung Galaxy Tab S9,  Osprey Daylite Backpack, Nintendo Switch OLED" when a user asks for recommendation for usage 
+        And a customer message, "Hi there, i'm looking for something that best suit a gamer what do you have for me?"
+        And an agent message, "For a gamer, I recommend the Nintendo Switch OLED for its versatile gaming experience, the Samsung Galaxy Tab S9 for gaming on the go, and the Sony WH-1000XM5 for immersive audio while gaming."
+        And a customer message, "But i want only the one with the best screen quality and long battery life"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains only one result
