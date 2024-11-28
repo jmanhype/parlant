@@ -1,6 +1,6 @@
 
 <div align="center">
-<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/6b9fb0f642b4054cbeb8490659f9cb963787e933/logo.png" width="150" />
+<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/6b9fb0f642b4054cbeb8490659f9cb963787e933/logo.png" width="125" />
   <h3>Parlant</h3>
   <p>A feedback-driven approach to building and guiding customer-facing agents</p>
   <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
