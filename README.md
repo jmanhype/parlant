@@ -30,7 +30,7 @@ Parlant bridges this gap in a way that makes it easy and fast for developers to 
 - **Clear Separation**: Keep your business logic in tool code while managing conversational behavior through guidelines
 - **Type Safety**: Strongly-typed, native client SDKs for reliable development and clear interfaces
 
-### A genuinely production-ready feedback cycle
+### Genuinely ready for production
 - **Safe Updates**: Modify your agent's behavior without risking existing, tested functionality—each change is evaluated for conflicts before being applied
 - **Consistent Scaling**: Your agent maintains reliable, predictable behavior regardless of conversation complexity
 - **Explainable Actions**: Understand and troubleshoot exactly why your agent chose specific responses through clear guideline tracing
