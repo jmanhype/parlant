@@ -20,6 +20,7 @@ from dataclasses import dataclass
 import os
 from lagom import Container, Singleton
 from typing import AsyncIterator, Callable
+from typing_extensions import NoReturn
 import click
 import click_completion
 from pathlib import Path
@@ -384,6 +385,16 @@ async def serve_app(
         sys.exit(1)
 
 
+def die(message: str) -> NoReturn:
+    print(message, file=sys.stderr)
+    sys.exit(1)
+
+
+def require_env_keys(keys: list[str]) -> None:
+    if missing_keys := [k for k in keys if not os.environ.get(k)]:
+        die(f"The following environment variables are missing:\n{', '.join(missing_keys)}")
+
+
 async def start_server(params: CLIParams) -> None:
     LOGGER.set_level(
         {
@@ -414,21 +425,46 @@ def main() -> None:
         help="Server port",
     )
     @click.option(
-        "--nlp-service",
-        type=click.Choice(
-            [
-                "anthropic",
-                "aws",
-                "azure",
-                "cerebras",
-                "gemini",
-                "openai",
-                "together",
-            ]
-        ),
-        default=DEFAULT_NLP_SERVICE,
-        help="NLP service provider",
-        show_default=True,
+        "--openai",
+        is_flag=True,
+        help="Run with OpenAI. The environment variable OPENAI_API_KEY must be set",
+        default=True,
+    )
+    @click.option(
+        "--aws",
+        is_flag=True,
+        help="Run with AWS Bedrock. The following environment variables must be set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION",
+        default=False,
+    )
+    @click.option(
+        "--azure",
+        is_flag=True,
+        help="Run with Azure OpenAI. The following environment variables must be set: AZURE_API_KEY, AZURE_ENDPOINT",
+        default=False,
+    )
+    @click.option(
+        "--gemini",
+        is_flag=True,
+        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--anthropic",
+        is_flag=True,
+        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--cerebras",
+        is_flag=True,
+        help="Run with Cerebras. The environment variable CEREBRAS_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--together",
+        is_flag=True,
+        help="Run with Together AI. The environment variable TOGETHER_API_KEY must be set",
+        default=False,
     )
     @click.option(
         "--log-level",
@@ -437,7 +473,48 @@ def main() -> None:
         help="Log level",
     )
     @click.pass_context
-    def cli(ctx: click.Context, port: int, nlp_service: str, log_level: str) -> None:
+    def cli(
+        ctx: click.Context,
+        port: int,
+        openai: bool,
+        aws: bool,
+        azure: bool,
+        gemini: bool,
+        anthropic: bool,
+        cerebras: bool,
+        together: bool,
+        log_level: str,
+    ) -> None:
+        if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
+            print("error: only one NLP service profile can be selected")
+            sys.exit(1)
+
+        non_default_service_selected = any((aws, azure, gemini, anthropic, cerebras, together))
+
+        if not non_default_service_selected:
+            nlp_service = "openai"
+            require_env_keys(["OPENAI_API_KEY"])
+        elif aws:
+            nlp_service = "aws"
+            require_env_keys(["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"])
+        elif azure:
+            nlp_service = "azure"
+            require_env_keys(["AZURE_API_KEY", "AZURE_ENDPOINT"])
+        elif gemini:
+            nlp_service = "gemini"
+            require_env_keys(["GEMINI_API_KEY"])
+        elif anthropic:
+            nlp_service = "anthropic"
+            require_env_keys(["ANTHROPIC_API_KEY"])
+        elif cerebras:
+            nlp_service = "cerebras"
+            require_env_keys(["CEREBRAS_API_KEY"])
+        elif together:
+            nlp_service = "together"
+            require_env_keys(["TOGETHER_API_KEY"])
+        else:
+            assert False, "Should never get here"
+
         ctx.obj = CLIParams(
             port=port,
             nlp_service=nlp_service,
