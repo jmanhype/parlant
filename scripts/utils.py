@@ -29,6 +29,7 @@ class Package:
     publish: bool
 
     def run_cmd(self, cmd: str) -> tuple[int, str]:
+        print(f"Running command: {self.cmd_prefix} {cmd}")
         return subprocess.getstatusoutput(f"{self.cmd_prefix} {cmd}")
 
 
@@ -47,13 +48,6 @@ def get_packages() -> list[Package]:
     root = get_repo_root()
 
     return [
-        Package(
-            name="scripts",
-            path=root / "scripts",
-            cmd_prefix="",
-            uses_poetry=False,
-            publish=False,
-        ),
         Package(
             name="parlant",
             path=root / ".",
