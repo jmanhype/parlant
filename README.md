@@ -68,7 +68,7 @@ With Parlant, they've been able to quickly integrate feedback from customer serv
 - [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
-## Getting Started
+## Getting started
 Visit our [documentation portal](https://parlant.io/quickstart/installation) to start building with Parlant.
 
 Need help? Join our [Discord community](https://discord.gg/QXKvkqph) and don't be shy! We're happy to answer questions and help you get up and running.
