@@ -17,15 +17,11 @@
     <a href="https://discord.gg/QXKvkqph"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007?style=flat&logo=discord&logoColor=white&label=discord">
 </a>
   </p>
+  <img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
 </div>
 
-```bash
-$ pip install parlant
-$ parlant-server
-$ # Open http://localhost:8000 and play
-```
-
-<img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
+## What is Parlant?
+With Parlant's API, you can easily create and serve guided AI conversations to your customers, and continuously improve them with feedback from customers and business experts.
 
 ## Why use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
@@ -69,7 +65,13 @@ With Parlant, they've been able to quickly integrate feedback from customer serv
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
 ## Getting started
-Visit our [documentation portal](https://parlant.io/quickstart/installation) to start building with Parlant.
+```bash
+$ pip install parlant
+$ parlant-server
+$ # Open http://localhost:8000 and play
+```
+
+To start building with Parlant, visit our [documentation portal](https://parlant.io/quickstart/installation).
 
 Need help? Join our [Discord community](https://discord.gg/QXKvkqph) and don't be shy! We're happy to answer questions and help you get up and running.
 
