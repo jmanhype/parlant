@@ -507,6 +507,27 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
     assert "harassment" in event["data"].get("tags", [])
 
 
+def test_that_expressing_frustration_does_not_cause_a_message_to_be_flagged(
+    client: TestClient,
+    session_id: SessionId,
+) -> None:
+    response = client.post(
+        f"/sessions/{session_id}/events",
+        params={"moderation": "auto"},
+        json={
+            "kind": "message",
+            "source": "customer",
+            "data": "Fuck this shit",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    event = response.json()
+
+    assert not event["data"].get("flagged", True)
+
+
 def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
     client: TestClient,
     session_id: SessionId,
