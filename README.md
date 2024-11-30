@@ -12,7 +12,7 @@
 ```bash
 $ pip install parlant
 $ parlant-server
-$ # Head over to http://localhost:8000 and play
+$ # Open http://localhost:8000 and play
 ```
 
 ## Why use Parlant?
