@@ -18,23 +18,23 @@ Parlant bridges this gap in a way that makes it easy and fast for developers to 
 
 ## Key benefits
 
-### Reliable behavior control
-- **Guidelines**: Reliably and predictably control how your agent responds to specific situations, like ensuring premium features are only offered to eligible customers, or that it doesn't over-promise things in attempt to satisfy a customer
-- **Coherence Checks**: Automatically detect when new guidelines might conflict with existing ones, preventing confusion in your agent's behavior
-- **Dynamic Context**: Adapt your agent's responses based on user attributes like subscription tier or account status
-- **Guided Tool Integration**: Control exactly when, why, and how your agent accesses your business APIs, ensuring appropriate use of backend services
+### Control that actually works
+* **Guidelines**: Control responses by writing contextual rules - like "offer limited time coupons if it's a holiday" or "make it very clear we don't offer loans if a customer asks about it". By using condition/action definitions, you define exactly when and how your agent should respond
+* **Glossary**: Teach your agent your business-specific terminology so that both you and customers can speak to it naturally in your language
+* **Coherence checks**: Catch conflicts by having Parlant evaluate new guidelines against existing ones before they're applied
+* **Dynamic context**: Make your agent context-aware by setting user-specific variables like customer account or subscription tier. These shape how your agent responds to each user
+* **Guided tool use**: Control API access by linking tools to specific guidelines. This way, your agent only calls APIs when appropriate and with clear intent
 
-### A better developer experience
-- **Instant Feedback**: Changes to guidelines, glossary, or tools take effect immediately—no model retraining or redeployment needed
-- **Version Control**: Track all behavioral changes in Git, making it easy to review and roll back modifications to your agent's responses
-- **Clear Separation**: Keep your business logic in tool code while managing conversational behavior through guidelines
-- **Type Safety**: Strongly-typed, native client SDKs for reliable development and clear interfaces
+### Developer friendly
+* **See changes instantly**: Modify behavior on the fly by updating guidelines directly, no retraining or redeployment needed
+* **Track changes in Git**: Manage agent behavior like code by storing configuration as JSON in your repo. Review, rollback, branch, and merge just like any other code
+* **Clean architecture**: Separate concerns by keeping business logic in tools and conversation patterns in guidelines. Each piece does what it does best
+* **Type safety**: Build rapidly using native TypeScript/JavaScript SDKs with proper type definitions
 
-### Actually ready for production
-- **Safe Updates**: Modify your agent's behavior without risking existing, tested functionality—each change is evaluated for conflicts before being applied
-- **Consistent Scaling**: Your agent maintains reliable, predictable behavior regardless of conversation complexity
-- **Explainable Actions**: Understand and troubleshoot exactly why your agent chose specific responses through clear guideline tracing
-- **Quality Assurance**: Integrated Chat UI makes it easy to iterate on and verify behavioral changes before deployment
+### Deploy with confidence
+* **Reliable at scale**: Parlant filters and selects guidelines per context, allowing you to scale your agent's complexity and use-cases while maintaining consistent, focused behavior
+* **Debug with ease**: Troubleshoot effectively by tracing which guidelines were applied and why for any given response
+* **Test before deploy**: Validate changes using the built-in chat UI to test new behaviors before they reach customers
 
 ## Real-world impact
 
