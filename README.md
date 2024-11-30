@@ -3,9 +3,17 @@
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/70757094103f6cc50e311edaeb0729e960fbcb56/logo.png" width="125" />
   <h3>Parlant</h3>
   <p>A feedback-driven approach to building and guiding customer-facing agents</p>
-  <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Documentation</a>
   <p>
+    <a href="https://www.parlant.io/docs/about" target="_blank">About</a> |
+    <a href="https://www.parlant.io/docs/introduction" target="_blank">Introduction</a> |
+    <a href="https://www.parlant.io/docs/quickstart/installation" target="_blank">Installation</a> |
+    <a href="https://www.parlant.io/docs/quickstart/tutorial" target="_blank">Tutorial</a>
+  </p>
+  <p>
+    <a href="https://pypi.org/project/parlant/" alt="Parlant on PyPi"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/parlant"></a>
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/emcie-co/parlant">
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Apache 2 License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
+    <a href="https://discord.gg/QXKvkqph"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007"></a>
   </p>
 </div>
 
