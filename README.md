@@ -21,7 +21,7 @@
 </div>
 
 ## What is Parlant?
-With Parlant's API, you can easily create and serve guided AI conversations to your customers, and continuously improve them with feedback from customers and business experts.
+With Parlant's API, you can easily create and serve guided Conversational AI to your customers, and continuously improve them with feedback from customers and business experts.
 
 ## Why use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
