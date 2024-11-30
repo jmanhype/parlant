@@ -9,6 +9,12 @@
   </p>
 </div>
 
+```bash
+$ pip install parlant
+$ parlant-server
+$ # Head over to http://localhost:8000 and play
+```
+
 ## Why use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 
