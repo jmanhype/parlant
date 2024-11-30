@@ -850,11 +850,11 @@ def raise_for_status_with_detail(response: requests.Response) -> None:
     if 400 <= response.status_code < 500:
         http_error_msg = (
             f"{response.status_code} Client Error: {reason} for url: {response.url}"
-        ) + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
+        ) + (f": {response.json()['detail']}" if "detail" in response.json() else "")
     elif 500 <= response.status_code < 600:
         http_error_msg = (
             f"{response.status_code} Server Error: {reason} for url: {response.url}"
-            + (f": {response.json()["detail"]}" if "detail" in response.json() else "")
+            + (f": {response.json()['detail']}" if "detail" in response.json() else "")
         )
 
     if http_error_msg:
@@ -1953,7 +1953,7 @@ async def async_main() -> None:
         type=str,
         help="Server address",
         metavar="ADDRESS[:PORT]",
-        default="http://localhost:8000",
+        default="http://localhost:8800",
     )
     @click.pass_context
     def cli(ctx: click.Context, server: str) -> None:

@@ -24,7 +24,8 @@ from openai import (
     ConflictError,
     InternalServerError,
 )
-from typing import Any, Mapping, override
+from typing import Any, Mapping
+from typing_extensions import override
 import json
 import jsonfinder  # type: ignore
 import os

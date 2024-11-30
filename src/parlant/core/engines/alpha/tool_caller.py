@@ -486,7 +486,7 @@ Guidelines:
         )
 
         self._logger.debug(
-            f"Tool call request results: {json.dumps([t.model_dump(mode="json") for t in inference.content.tool_call_evaluations], indent=2),}"
+            f"Tool call request results: {json.dumps([t.model_dump(mode='json') for t in inference.content.tool_call_evaluations], indent=2),}"
         )
         return inference.info, inference.content.tool_call_evaluations
 

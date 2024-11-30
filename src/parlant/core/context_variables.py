@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Literal, NewType, Optional, Sequence, TypedDict, cast, override
+from typing import Literal, NewType, Optional, Sequence, cast
+from typing_extensions import TypedDict, override
 from datetime import datetime, timezone
 from dataclasses import dataclass
 

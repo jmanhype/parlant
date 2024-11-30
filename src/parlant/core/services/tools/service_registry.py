@@ -15,7 +15,9 @@
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
 from types import TracebackType
-from typing import Mapping, Optional, Self, Sequence, TypedDict, cast, override
+from typing import Mapping, Optional, Sequence, cast
+from typing_extensions import override, TypedDict, Self
+
 import aiofiles
 import httpx
 from typing_extensions import Literal

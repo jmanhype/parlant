@@ -13,7 +13,7 @@ cache/
 .venv
 logs
 .parlant-cache/
-./dist/
+/dist/
 scripts/sdks/
 scripts/fern/openapi
 fern.generate.log

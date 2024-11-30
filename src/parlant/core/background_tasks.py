@@ -14,7 +14,8 @@
 
 import asyncio
 import traceback
-from typing import Any, Coroutine, Optional, Self, TypeAlias
+from typing import Any, Coroutine, Optional, TypeAlias
+from typing_extensions import Self
 
 from parlant.core.logging import Logger
 

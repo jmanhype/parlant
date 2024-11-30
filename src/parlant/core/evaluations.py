@@ -24,11 +24,9 @@ from typing import (
     Optional,
     Sequence,
     TypeAlias,
-    TypedDict,
     Union,
-    override,
 )
-from typing_extensions import Literal
+from typing_extensions import Literal, override, TypedDict
 
 from parlant.core.agents import AgentId
 from parlant.core.async_utils import Timeout

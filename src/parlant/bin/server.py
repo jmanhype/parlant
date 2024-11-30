@@ -100,7 +100,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
 from parlant.core.logging import FileLogger, LogLevel, Logger
 from parlant.core.application import Application
 
-DEFAULT_PORT = 8000
+DEFAULT_PORT = 8800
 SERVER_ADDRESS = "https://localhost"
 
 DEFAULT_NLP_SERVICE = "openai"

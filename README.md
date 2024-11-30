@@ -24,6 +24,8 @@ $ parlant-server
 $ # Open http://localhost:8000 and play
 ```
 
+<img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
+
 ## Why use Parlant?
 Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
 

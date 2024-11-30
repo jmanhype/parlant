@@ -18,7 +18,8 @@ import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, cast, override
+from typing import Any, Mapping, Optional, Sequence, cast
+from typing_extensions import override
 import aiofiles
 
 from parlant.core.persistence.document_database import (

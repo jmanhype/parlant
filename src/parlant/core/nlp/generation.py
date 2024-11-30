@@ -15,7 +15,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args, override
+from typing import Any, Generic, Mapping, Optional, TypeVar, cast, get_args
+from typing_extensions import override
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger

@@ -24,14 +24,12 @@ from typing import (
     Literal,
     Mapping,
     NamedTuple,
-    NotRequired,
     Optional,
     Sequence,
     TypeAlias,
-    TypedDict,
     Union,
-    override,
 )
+from typing_extensions import override, TypedDict, NotRequired
 
 from parlant.core.common import JSONSerializable
 

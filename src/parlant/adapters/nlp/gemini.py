@@ -16,7 +16,8 @@ import os
 import time
 import google.generativeai as genai  # type: ignore
 from google.api_core.exceptions import NotFound, TooManyRequests, ResourceExhausted, ServerError
-from typing import Any, Mapping, override
+from typing import Any, Mapping
+from typing_extensions import override
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
 from vertexai.preview import tokenization  # type: ignore

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import NewType, Optional, Sequence, TypedDict, override
+from typing import NewType, Optional, Sequence
+from typing_extensions import override, TypedDict
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone

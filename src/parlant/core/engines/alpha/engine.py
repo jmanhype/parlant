@@ -17,7 +17,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 import traceback
-from typing import Mapping, Optional, Sequence, cast, override
+from typing import Mapping, Optional, Sequence, cast
+from typing_extensions import override
 
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.context_variables import (

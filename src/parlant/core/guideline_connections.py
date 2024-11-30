@@ -16,7 +16,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import NewType, Optional, Sequence, TypedDict, override
+from typing import NewType, Optional, Sequence
+from typing_extensions import override, TypedDict
+
 import networkx  # type: ignore
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id

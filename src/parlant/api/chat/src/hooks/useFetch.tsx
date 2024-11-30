@@ -28,7 +28,7 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
   const [error, setError] = useState<null | {message: string}>(null);
   const [refetchData, setRefetchData] = useState(false);
   const params = body ? objToUrlParams(body) : '';
-  
+
   useEffect(() => {
     if (error && error.message !== TIMEOUT_ERROR_MESSAGE) throw new Error(`Failed to fetch "${url}"`);
 }, [error, url]);
@@ -57,7 +57,7 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:8000/${url}${params}`, { signal })
+    fetch(`http://localhost:8800/${url}${params}`, { signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Error: ${response.statusText}`);
         const result = await response.json();

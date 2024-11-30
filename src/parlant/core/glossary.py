@@ -32,7 +32,7 @@ class Term:
     def __repr__(self) -> str:
         term_string = f"Name: '{self.name}', Description: {self.description}"
         if self.synonyms:
-            term_string += f", Synonyms: {", ".join(self.synonyms)}"
+            term_string += f", Synonyms: {', '.join(self.synonyms)}"
         return term_string
 
     def __hash__(self) -> int:
