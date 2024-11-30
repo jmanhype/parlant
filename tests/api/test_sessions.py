@@ -504,7 +504,7 @@ def test_that_posting_problematic_messages_with_moderation_enabled_causes_them_t
     event = response.json()
 
     assert event["data"].get("flagged")
-    assert "harassment" in event["data"].get("tags")
+    assert "harassment" in event["data"].get("tags", [])
 
 
 def test_that_posting_a_customer_message_elicits_a_response_from_the_agent(
