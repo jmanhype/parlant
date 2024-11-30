@@ -4,6 +4,7 @@
   <h3>Parlant</h3>
   <p>A feedback-driven approach to building and guiding customer-facing AI agents</p>
   <p>
+    <a href="https://www.parlant.io/" target="_blank">Homepage</a> |
     <a href="https://www.parlant.io/docs/about" target="_blank">About</a> |
     <a href="https://www.parlant.io/docs/introduction" target="_blank">Introduction</a> |
     <a href="https://www.parlant.io/docs/quickstart/installation" target="_blank">Installation</a> |
@@ -68,5 +69,11 @@ With Parlant, they've been able to quickly integrate feedback from customer serv
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
 ## Getting Started
+Visit our [documentation portal](https://parlant.io/quickstart/installation) to start building with Parlant.
 
+Need help? Join our [Discord community](https://discord.gg/QXKvkqph) and don't be shy! We're happy to answer questions and help you get up and running.
 
+## Contributing
+We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines (no pun intended) will be available soon! 
+
+Want to get involved? Join us on [Discord](https://discord.gg/QXKvkqph) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
