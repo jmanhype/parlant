@@ -13,7 +13,8 @@
     <a href="https://pypi.org/project/parlant/" alt="Parlant on PyPi"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/parlant"></a>
     <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/emcie-co/parlant">
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Apache 2 License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
-    <a href="https://discord.gg/QXKvkqph"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007"></a>
+    <a href="https://discord.gg/QXKvkqph"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007?style=flat&logo=discord&logoColor=white&label=discord">
+</a>
   </p>
 </div>
 
@@ -36,7 +37,7 @@ Parlant bridges this gap in a way that makes it easy and fast for developers to 
 
 ### Control that actually works
 * **Guidelines**: Control responses by writing contextual rules - like "offer limited time coupons if it's a holiday" or "make it very clear we don't offer loans if a customer asks about it". By using condition/action definitions, you define exactly when and how your agent should respond
-* **Glossary**: Teach your agent your business-specific terminology so that both you and customers can speak to it naturally in your language
+* **Glossary**: Teach your agent your business-specific terminology so that both you and your customers can speak to it naturally in your language
 * **Coherence checks**: Catch conflicts by having Parlant evaluate new guidelines against existing ones before they're applied
 * **Dynamic context**: Make your agent context-aware by setting user-specific variables like customer account or subscription tier. These shape how your agent responds to each user
 * **Guided tool use**: Control API access by linking tools to specific guidelines. This way, your agent only calls APIs when appropriate and with clear intent
