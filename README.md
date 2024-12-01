@@ -76,6 +76,6 @@ To start building with Parlant, visit our [documentation portal](https://parlant
 Need help? Send us a message on [Discord](https://discord.gg/QXKvkqph). We're happy to answer questions and help you get up and running!
 
 ## Contributing
-We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines (no pun intended) will be available soon! 
+We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines will be available soon! 
 
 Want to get involved? Join us on [Discord](https://discord.gg/QXKvkqph) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
