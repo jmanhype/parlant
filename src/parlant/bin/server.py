@@ -105,7 +105,7 @@ SERVER_ADDRESS = "https://localhost"
 
 DEFAULT_NLP_SERVICE = "openai"
 
-PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", ".parlant-cache"))
+PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", "runtime-data"))
 PARLANT_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 EXIT_STACK: AsyncExitStack

@@ -12,7 +12,7 @@ cache/
 .vscode
 .venv
 logs
-.parlant-cache/
+/runtime-data/
 /dist/
 scripts/sdks/
 scripts/fern/openapi
