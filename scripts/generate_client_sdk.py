@@ -55,7 +55,7 @@ def replace_in_files(rootdir: Path, search: str, replace: str) -> None:
 
 
 if __name__ == "__main__":
-    DEFAULT_PORT = 8000
+    DEFAULT_PORT = 8800
     port = DEFAULT_PORT
     if len(sys.argv) >= 2:
         port = int(sys.argv[1])

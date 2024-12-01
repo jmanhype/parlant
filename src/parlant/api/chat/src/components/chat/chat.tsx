@@ -41,7 +41,7 @@ export default function Chat(): ReactElement {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const submitButtonRef = useRef<HTMLButtonElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    
+
     const [message, setMessage] = useState('');
     const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage);
     const [lastOffset, setLastOffset] = useState(0);
@@ -51,7 +51,7 @@ export default function Chat(): ReactElement {
     const [isFirstScroll, setIsFirstScroll] = useState(true);
     const {openQuestionDialog, closeQuestionDialog} = useQuestionDialog();
     const [useContentFiltering] = useState(true);
-    
+
     const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions} = useSession();
     const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(
         `sessions/${sessionId}/events`,
@@ -76,7 +76,7 @@ export default function Chat(): ReactElement {
             closeQuestionDialog();
             regenerateMessage(index, sessionId, offset);
         };
-    
+
         const question = 'Regenerating this message would cause all of the following messages in the session to disappear.';
         openQuestionDialog('Are you sure?', question, [{text: 'Regenerate Anyway', onClick: onApproved, isMainAction: true}]);
     };
@@ -123,7 +123,7 @@ export default function Chat(): ReactElement {
         const newMessages = lastMessages?.filter(e => e.kind === 'message') || [];
         const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
         if (newMessages.length && isRegenerating) setIsRegenerating(false);
-        
+
         if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
         setMessages(messages => {
             const last = messages.at(-1);
@@ -132,7 +132,7 @@ export default function Chat(): ReactElement {
         });
 
         const lastEventStatus = lastEvent?.data?.status;
-        
+
         setShowTyping(lastEventStatus === 'typing');
         if (lastEventStatus === 'error') {
             if (isRegenerating) {
@@ -141,7 +141,7 @@ export default function Chat(): ReactElement {
             }
         }
         refetch();
-    
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastMessages]);
 
@@ -167,7 +167,7 @@ export default function Chat(): ReactElement {
         setMessage('');
         const eventSession = newSession ? (await createSession())?.id : sessionId;
         const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
-        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', data: content, source: 'customer' }).then(() => {
+        postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, { kind: 'message', message: content, source: 'customer' }).then(() => {
             setPendingMessage(pendingMessage => ({...pendingMessage, serverStatus: 'accepted'}));
             refetch();
         }).catch(() => toast.error('Something went wrong'));
