@@ -705,7 +705,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
             f"/sessions/{session_id}/events",
             params={
                 "min_offset": event.offset + 1,
-                "kinds": "message",
+                "kinds": "message,tool",
             },
         )
         .raise_for_status()
