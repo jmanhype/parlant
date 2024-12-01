@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
+import dateutil
+import dateutil.parser
 from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
@@ -56,7 +57,7 @@ async def test_that_a_tag_can_be_read(
     data = read_response.json()
     assert data["id"] == tag.id
     assert data["name"] == name
-    assert datetime.fromisoformat(data["creation_utc"]) == tag.creation_utc
+    assert dateutil.parser.parse(data["creation_utc"]) == tag.creation_utc
 
 
 async def test_that_tags_can_be_listed(

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
+import dateutil
 from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
@@ -62,7 +62,7 @@ async def test_that_a_customer_can_be_read(
     assert data["id"] == customer.id
     assert data["name"] == name
     assert data["extra"] == extra
-    assert datetime.fromisoformat(data["creation_utc"]) == customer.creation_utc
+    assert dateutil.parser.parse(data["creation_utc"]) == customer.creation_utc
 
 
 async def test_that_customers_can_be_listed(
