@@ -32,25 +32,26 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.tools import ToolId
 
+# TODO try to remove produce_reply rationale
+
 
 class Revision(DefaultBaseModel):
     revision_number: int
     content: str
-    guidelines_followed: Optional[list[str]] = []
-    guidelines_broken: Optional[list[str]] = []
+    instructions_followed: Optional[list[str]] = []
+    instructions_broken: Optional[list[str]] = []
     is_repeat_message: Optional[bool] = False
-    followed_all_guidelines: Optional[bool] = False
-    guidelines_broken_due_to_missing_data: Optional[bool] = False
+    followed_all_instructions: Optional[bool] = False
+    instructions_broken_due_to_missing_data: Optional[bool] = False
     missing_data_rationale: Optional[str] = None
-    guidelines_broken_only_due_to_prioritization: Optional[bool] = False
+    instructions_broken_only_due_to_prioritization: Optional[bool] = False
     prioritization_rationale: Optional[str] = None
 
 
-class GuidelineEvaluation(DefaultBaseModel):
+class InstructionEvaluation(DefaultBaseModel):
     number: int
     instruction: str
     evaluation: str
-    adds_value: str
     data_available: str
 
 
@@ -63,8 +64,9 @@ class MessageEventSchema(DefaultBaseModel):
     last_message_of_customer: Optional[str]
     produced_reply: Optional[bool] = True
     rationale: str
+    instructions: list[str]
     revisions: list[Revision]
-    evaluations_for_each_of_the_provided_guidelines: Optional[list[GuidelineEvaluation]] = None
+    evaluation_for_each_instruction: Optional[list[InstructionEvaluation]] = None
 
 
 class MessageEventGenerator:
@@ -264,6 +266,7 @@ If you decide not to emit a message, output the following:
 {{
     “last_message_of_customer”: None,
     "produced_reply": false,
+    "instructions": <A list of all guidelines, plus up to 3 original insights to adhere to>, 
     "rationale": "<a few words to justify why a reply was NOT produced here>",
     "revisions": []
 }}
@@ -280,34 +283,36 @@ In all other cases, even if the customer is indicating that the conversation is 
 
         builder.add_section(
             f"""
-Propose incremental revisions to your reply, ensuring that your proposals adhere
-to each and every one of the provided guidelines based on the most recent state of interaction.
 
-Mind the priority scores assigned to each guideline, acknowledging that in some cases,
-adherence to a higher-priority guideline may necessitate deviation from another.
+REVISION MECHANISM
+-----------------
+To craft an optimal response, you must produce incremental revisions of your reply, ensuring alignment with all provided guidelines based on the latest interaction state. 
+Each critique during the revision process should be unique to avoid redundancy.
 
-Note too that it is permissible for the final revision to break rules IF AND ONLY IF
-all of the broken rules were broken due to conscious prioritization of guidelines,
-due to either (1) conflicting with another guideline, (2) contradicting a customer's request or (3) lack of necessary context or data.
-In all other cases, including those in which you do not believe that a guideline's predicate or rationale applies - you must still adhere to that guideline.
+Your final reply must comply with the outlined guidelines and the instructions in this prompt. 
+Pay close attention to priority scores assigned to guidelines; in cases of conflict, higher-priority guidelines may override lower-priority ones.
 
-If you do not fulfill a guideline, you must clearly justify your reasoning for doing so in your reply.
+It is acceptable to deviate from rules only if the deviation arises from deliberate prioritization due to:
+    - Conflicts with a higher-priority guideline
+    - Contradictions with a user request
+    - Insufficient context or data.
 
-Continuously critique each revision to refine the reply.
-Ensure each critique is unique to prevent redundancy in the revision process.
+In all other situations, even if a guideline seems inapplicable, you must still follow it. If a guideline cannot be fulfilled, you must explicitly justify why in your response.
 
-Your final output should be a JSON object documenting the entire message development process.
-This document should detail how each guideline was adhered to,
-instances where one guideline was prioritized over another,
-situations where guidelines could not be followed due to lack of context or data,
-and the rationale for each decision made during the revision process.
-Additionally, mark whether your suggested response is repeating your previous message.
-if your suggested response is repetitive, further revisions are needed, until the suggested response is sufficiently unique.
-The exact format of this output will be provided to you at the end of this prompt.
+Before drafting replies and revisions, identify up to three key insights based on this prompt and the ongoing conversation. 
+These insights should include relevant user requests, applicable principles from this prompt, or conclusions drawn from the interaction. 
+When revising, indicate whether each guideline and insight is satisfied in the suggested reply.
+The combination of the behavioral guidelines and your original insights is referred to as your "instructions".
 
-DO NOT PRODUCE MORE THAN 5 REVISIONS. IF YOU REACH the 5th REVISION, STOP THERE.
+The final output must be a JSON document detailing the message development process, including:
+    - Insights to abide by,
+    - If and how each instruction (guidelines and insights) was adhered to,
+    - Instances where one instruction was prioritized over another,
+    - Situations where instructions were unmet due to insufficient context or data,
+    - Justifications for all decisions made during the revision process.
+    - A marking for whether the suggested response repeats previous messages. If the response is repetitive, continue revising until it is sufficiently unique.
 
-Examine the following examples to understand your expected behavior:
+Do not exceed 5 revisions. If you reach the 5th revision, stop there.
 
 EXAMPLES
 -----------------
@@ -317,88 +322,79 @@ Example 1: A reply that took critique in a few revisions to get right: ###
 {{
     “last_message_of_customer”: “<customer’s last message in the interaction>”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "evaluations_for_each_of_the_provided_guidelines": [
+    "instructions": ["When <x>, do this...", "When <y>, Say this...", "When <z>, Say that..."]
+    "evaluation_for_each_instruction": [
         {{
             "number": 1,
             "instruction": "Do this [...]",
             "evaluation": "in this situation, I am instructed to do [...]",
-            "adds_value": "I didn't do it yet, so I should do it now",
             "data_available": "no particular data is needed for this"
         }},
         {{
             "number": 2,
             "instruction": "Say this [...]",
             "evaluation": "in this situation, I am instructed to say [...]",
-            "adds_value": "I didn't say it yet, so I should say it now",
             "data_available": "no particular data is needed for this"
         }},
         {{
             "number": 3,
             "instruction": "Say that [...]",
             "evaluation": "in this situation, I am instructed to say [...]",
-            "adds_value": "I didn't say it yet, so I should say it now",
             "data_available": "no particular data is needed for this"
         }},
-        {{
-            "number": 4,
-            "instruction": "Do that [...]",
-            "evaluation": "in this situation, I am instructed to do [...]",
-            "adds_value": "I didn't do it yet, so I should do it now",
-            "data_available": "no particular data is needed for this"
-        }}
     ],
     "revisions": [
         {{
             "revision_number": 1,
             "content": "some proposed message content",
-            "guidelines_followed": [
+            "instructions_followed": [
                 "#1; correctly did...",
                 "#3; correctly said..."
             ],
-            "guidelines_broken": [
+            "instructions_broken": [
                 "#2; didn't say...",
-                "#4; didn't do..."
             ],
             "is_repeat_message": false,
-            "followed_all_guidelines": false,
-            "guidelines_broken_due_to_missing_data": false,
-            "guidelines_broken_only_due_to_prioritization": false
+            "followed_all_instructions": false,
+            "instructions_broken_due_to_missing_data": false,
+            "instructions_broken_only_due_to_prioritization": false
         }},
         ...,
         {{
             "revision_number": 2,
-            "content": "final verified message content",
-            "guidelines_followed": [
+            "content": <final verified message content>,
+            "instructions_followed": [
                 "#1; correctly did...",
                 "#2; correctly said...",
                 "#3; correctly said...",
-                "#5; correctly did..."
             ],
-            "guidelines_broken": [],
+            "instructions_broken": [],
             "is_repeat_message": false,
-            "followed_all_guidelines": true
+            "followed_all_instructions": true
         }},
     ]
 }}
 ###
 
-Example 2: A reply where one guideline was prioritized over another: ###
+Example 2: A reply where one instruction was prioritized over another: ###
 {{
     “last_message_of_customer”: “<customer’s last message in the interaction>”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "evaluations_for_each_of_the_provided_guidelines": [
+    "instructions": [
+        "When the customer chooses and orders a burger, then provide it",
+        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
+    ],
+    "evaluation_for_each_instruction": [
         {{
             "number": 1,
             "instruction": "When the customer chooses and orders a burger, then provide it",
-            "evaluation": "The customer asked for a burger with cheese, so I need to provide it to him.",
-            "adds_value": "I didn't provide the burger yet, so I should do so now.",
+            "evaluation": "This guideline currently applies, so I need to provide the customer with a burger.",
             "data_available": "The burger choice is available in the interaction"
         }},
         {{
             "number": 2,
             "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
             "evaluation": "The customer chose cheese on the burger, but all of the cheese we currently have is expired",
-            "adds_value": "I must reject the order, otherwise the customer might eat bad cheese",
             "data_available": "The relevant stock availability is given in the tool calls' data"
         }}
     ],
@@ -406,17 +402,17 @@ Example 2: A reply where one guideline was prioritized over another: ###
         {{
             "revision_number": 1,
             "content": "I'd be happy to prepare your burger as soon as we restock the requested toppings.",
-            "guidelines_followed": [
+            "instructions_followed": [
                 "#2; upheld food quality and did not go on to preparing the burger without fresh toppings."
             ],
-            "guidelines_broken": [
+            "instructions_broken": [
                 "#1; did not provide the burger with requested toppings immediately due to the unavailability of fresh ingredients."
             ],
             "is_repeat_message": false,
-            "followed_all_guidelines": false,
-            "guidelines_broken_only_due_to_prioritization": true,
+            "followed_all_instructions": false,
+            "instructions_broken_only_due_to_prioritization": true,
             "prioritization_rationale": "Given the higher priority score of guideline 2, maintaining food quality standards before serving the burger is prioritized over immediate service.",
-            "guidelines_broken_due_to_missing_data": false
+            "instructions_broken_due_to_missing_data": false
         }}
     ]
 }}
@@ -425,72 +421,141 @@ Example 2: A reply where one guideline was prioritized over another: ###
 
 Example 3: Non-Adherence Due to Missing Data: ###
 {{
-    “last_message_of_customer”: “<customer’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "evaluations_for_each_of_the_provided_guidelines": [
+    “last_message_of_customer”: “Hi there, can I get something to drink? What do you have on tap?”,
+    "rationale": "The user has not asked me to end the conversation, ",
+    "instructions": [
+        "When the customer asks for a drink, check the menu and offer what's on it",
+        "Do not state factual information that you do not know or are not sure about."
+    ],
+    "evaluation_for_each_instruction": [
         {{
             "number": 1,
             "instruction": "When the customer asks for a drink, check the menu and offer what's on it"
             "evaluation": "The customer did ask for a drink, so I should check the menu to see what's available.",
-            "adds_value": "The customer doesn't know what drinks we have yet, so I should tell him.",
             "data_available": "No, I don't have the menu info in the interaction or tool calls"
-        }}
+        }},
+        {{
+            "number": 2,
+            "instruction": "Do not state factual information that you do not know or are not sure about"
+            "evaluation": "There's no information about what we have on tap, so I should not offer any specific option.",
+            "data_available": "No, the list of available drinks is not available to me".
+        }},
     ],
     "revisions": [
         {{
             "revision_number": 1,
-            "content": "I'm sorry, I am unable to provide this information at this time.",
-            "guidelines_followed": [
+            "content": "I'm sorry, but I'm having trouble accessing our menu at the moment. Can I ",
+            "instructions_followed": [
+                "#2; Do not state factual information that you do not know or are not sure about"
             ],
-            "guidelines_broken": [
-                "#1; Lacking menu data in the context prevented me from providing the client with drink information."
+            "instructions_broken": [
+                "#1; Lacking menu data in the context prevented me from providing the client with drink information.",
             ],
             "is_repeat_message": false,
-            "followed_all_guidelines": false,
+            "followed_all_instructions": false,
             "missing_data_rationale": "Menu data was missing",
-            "guidelines_broken_due_to_missing_data": true,
-            "guidelines_broken_only_due_to_prioritization": false
+            "instructions_broken_due_to_missing_data": true,
+            "instructions_broken_only_due_to_prioritization": false
         }}
     ]
 }}
+
 ###
 
 
-Example 4: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
+Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights. ###
+{{
+    “last_message_of_customer”: I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?”,
+    "rationale": "I need to produce a reply to the customer's question",
+    "instructions": [
+        "When asked anything about plane tickets, suggest completing the order on our android app", 
+        "In your generated reply to the user, use markdown format when applicable.",
+        "The customer does not have an android device and does not want to buy anything",
+
+    ],
+    "evaluation_for_each_instruction": [
+        {{
+            "number": 1,
+            "instruction": "When asked anything about plane tickets, suggest completing the order on our website"
+            "evaluation": "I should suggest completing the order on our website",
+            "data_available": "Yes, I know that the name of our android app is BestPlaneTickets"
+        }},
+        {{
+            "number": 2,
+            "instruction": "In your generated reply to the user, use markdown format when applicable"
+            "evaluation": "I need to output a message in markdown format",
+            "data_available": "Not needed".
+        }},
+        {{
+            "number": 3,
+            "instruction": "The customer does not have an android device and does not want to buy anything"
+            "evaluation": "A guideline should not override a user's request, so I should suggesting buying products or anything requiring an android device",
+            "data_available": "Not needed".
+        }},
+    ],
+    "revisions": [
+        {{
+            "revision_number": 1,
+            "content": 
+"| Option | Departure Airport | Departure Time | Arrival Airport |
+|--------|-------------------|----------------|-----------------|
+| 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
+| 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |",
+            "instructions_followed": [
+                "#2; In your generated reply to the user, use markdown format when applicable.",
+                "#3; The customer does not have an android device and does not want to buy anything",
+            ],
+            "instructions_broken": [
+                "#1; When asked anything about plane tickets, suggest completing the order on our android app.",
+            ],
+            "is_repeat_message": false,
+            "followed_all_instructions": false,
+            "instructions_broken_due_to_missing_data": false,
+            "instructions_broken_only_due_to_prioritization": true,
+            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and user requests take precedent over guidelines, so I instruction #1.",
+        }}
+    ]
+}}
+
+
+###
+
+
+Example 5: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
 {{
     “last_message_of_customer”: “This is not what I was asking for”,
     "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "evaluations_for_each_of_the_provided_guidelines": [],
+    "evaluation_for_each_instruction": [],
     "revisions": [
         {{
             "revision_number": 1,
             "content": "I apologize for the confusion. Could you please explain what I'm missing?",
-            "guidelines_followed": [
+            "instructions_followed": [
             ],
-            "guidelines_broken": [
+            "instructions_broken": [
             ],
             "is_repeat_message": true,
-            "followed_all_guidelines": true,
+            "followed_all_instructions": true,
         }},
         {{
             "revision_number": 2,
             "content": "I see. What am I missing?",
-            "guidelines_followed": [
+            "instructions_followed": [
             ],
-            "guidelines_broken": [
+            "instructions_broken": [
             ],
             "is_repeat_message": true,
-            "followed_all_guidelines": true,
+            "followed_all_instructions": true,
         }},
         {{
             "revision_number": 3,
             "content": "It seems like I'm failing to assist you with your issue. I suggest emailing our support team for further assistance.",
-            "guidelines_followed": [
+            "instructions_followed": [
             ],
-            "guidelines_broken": [
+            "instructions_broken": [
             ],
             "is_repeat_message": false,
-            "followed_all_guidelines": true,
+            "followed_all_instructions": true,
         }}
     ]
 }}
@@ -544,8 +609,7 @@ Produce a valid JSON object in the following format: ###
                 {{
                     "number": {i},
                     "instruction": "{g.guideline.content.action}"
-                    "evaluation": "<your evaluation of the guideline to the present state of the interaction>",
-                    "adds_value": "<your assessment if and to what extent following this guideline now would add value>",
+                    "evaluation": "<your evaluation of how the guideline should be followed>",
                     "data_available": "<explanation whether you are provided with the required data to follow this guideline now>"
                 }},"""
                 for i, g in enumerate(guidelines, start=1)
@@ -557,21 +621,22 @@ Produce a valid JSON object in the following format: ###
             “last_message_of_customer”: “{last_customer_message}”,
             "rationale": "<a few words to explain why you should or shouldn't produce a reply to the customer in this case>",
             "produced_reply": <BOOL>,
-            "evaluations_for_each_of_the_provided_guidelines": [
+                "instructions": <A list of all guidelines, plus up to 3 original insights to adhere to>, 
+                "evaluation_for_each_instruction": [
 {guidelines_output_format}
             ],
             "revisions": [
             {{
                 "revision_number": 1,
                 "content": <response chosen after revision 1>,
-                "guidelines_followed": <list of guidelines that were followed>,
-                "guidelines_broken": <list of guidelines that were broken>,
+                "instructions_followed": <list of guidelines that were followed>,
+                "instructions_broken": <list of guidelines that were broken>,
                 "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
-                "followed_all_guidelines": <BOOL>,
-                "guidelines_broken_due_to_missing_data": <BOOL, optional. Necessary only if guidelines_broken_only_due_to_prioritization is true>,
-                "missing_data_rationale": <STR, optional. Necessary only if guidelines_broken_due_to_missing_data is true>,
-                "guidelines_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_guidelines is true>,
-                "prioritization_rationale": <STR, optional. Necessary only if guidelines_broken_only_due_to_prioritization is true>,
+                "followed_all_instructions": <BOOL>,
+                "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
+                "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
+                "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
+                "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
             }},
             ...
             ]
@@ -592,10 +657,10 @@ Produce a valid JSON object in the following format: ###
             self._logger.debug(f"MessageEventProducer produced no reply: {message_event_response}")
             return message_event_response.info, None
 
-        if message_event_response.content.evaluations_for_each_of_the_provided_guidelines:
+        if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
                 "MessageEventGenerator guideline evaluations: "
-                f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluations_for_each_of_the_provided_guidelines], indent=2)}"
+                f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
@@ -609,9 +674,9 @@ Produce a valid JSON object in the following format: ###
                 for r in message_event_response.content.revisions
                 if not r.is_repeat_message
                 and (
-                    r.followed_all_guidelines
-                    or r.guidelines_broken_only_due_to_prioritization
-                    or r.guidelines_broken_due_to_missing_data
+                    r.followed_all_instructions
+                    or r.instructions_broken_only_due_to_prioritization
+                    or r.instructions_broken_due_to_missing_data
                 )
             ),
             None,
@@ -624,8 +689,8 @@ Produce a valid JSON object in the following format: ###
             final_revision = message_event_response.content.revisions[-1]
 
         if (
-            not final_revision.followed_all_guidelines
-            and not final_revision.guidelines_broken_only_due_to_prioritization
+            not final_revision.followed_all_instructions
+            and not final_revision.instructions_broken_only_due_to_prioritization
             and not final_revision.is_repeat_message
         ):
             self._logger.warning(
