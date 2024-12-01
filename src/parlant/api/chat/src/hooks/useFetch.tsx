@@ -57,7 +57,7 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:8800/${url}${params}`, { signal })
+    fetch(`/${url}${params}`, { signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Error: ${response.statusText}`);
         const result = await response.json();
