@@ -279,7 +279,7 @@ class API:
                     json={
                         "kind": "message",
                         "source": "customer",
-                        "data": message,
+                        "message": message,
                     },
                 )
                 customer_message_response.raise_for_status()
