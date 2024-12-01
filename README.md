@@ -73,7 +73,7 @@ $ # Open http://localhost:8000 and play
 
 To start building with Parlant, visit our [documentation portal](https://parlant.io/quickstart/installation).
 
-Need help? Join our [Discord community](https://discord.gg/QXKvkqph) and don't be shy! We're happy to answer questions and help you get up and running.
+Need help? Send us a message on our [Discord server](https://discord.gg/QXKvkqph). We're happy to answer questions and help you get up and running!
 
 ## Contributing
 We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines (no pun intended) will be available soon! 
