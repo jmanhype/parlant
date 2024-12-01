@@ -2674,6 +2674,11 @@ files = [
     {file = "matplotlib-3.9.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:10d3e5c7a99bd28afb957e1ae661323b0800d75b419f24d041ed1cc5d844a764"},
     {file = "matplotlib-3.9.3-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:816a966d5d376bf24c92af8f379e78e67278833e4c7cbc9fa41872eec629a060"},
     {file = "matplotlib-3.9.3-cp39-cp39-win_amd64.whl", hash = "sha256:3fb0b37c896172899a4a93d9442ffdc6f870165f59e05ce2e07c6fded1c15749"},
+    {file = "matplotlib-3.9.3-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:5f2a4ea08e6876206d511365b0bc234edc813d90b930be72c3011bbd7898796f"},
+    {file = "matplotlib-3.9.3-pp39-pypy39_pp73-macosx_11_0_arm64.whl", hash = "sha256:9b081dac96ab19c54fd8558fac17c9d2c9cb5cc4656e7ed3261ddc927ba3e2c5"},
+    {file = "matplotlib-3.9.3-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0a0a63cb8404d1d1f94968ef35738900038137dab8af836b6c21bb6f03d75465"},
+    {file = "matplotlib-3.9.3-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:896774766fd6be4571a43bc2fcbcb1dcca0807e53cab4a5bf88c4aa861a08e12"},
+    {file = "matplotlib-3.9.3.tar.gz", hash = "sha256:cd5dbbc8e25cad5f706845c4d100e2c8b34691b412b93717ce38d8ae803bcfa5"},
 ]
 
 [package.dependencies]
@@ -4603,13 +4608,13 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-stochastics"
-version = "0.4.2"
+version = "0.4.4"
 description = "pytest plugin that allows selectively running tests several times and accepting *some* failures."
 optional = false
-python-versions = ">=3.10"
+python-versions = "<4.0,>=3.10"
 files = [
-    {file = "pytest_stochastics-0.4.2-py3-none-any.whl", hash = "sha256:7f36f4f8d83ac9a3748c2ceaa7ce14fd4842ced5bb5c230a81b2035d0f02dae5"},
-    {file = "pytest_stochastics-0.4.2.tar.gz", hash = "sha256:873ad399ede7222aaaea5518372c20a6627e73f032a370b5fd1fdec965b245d7"},
+    {file = "pytest_stochastics-0.4.4-py3-none-any.whl", hash = "sha256:d48f31d6d98e6fb5c693391291a5485ee843d9ef4a49a0b4c4fe29edc78e8760"},
+    {file = "pytest_stochastics-0.4.4.tar.gz", hash = "sha256:751d7b55c9149fc5eccfdd8167db8ebff113e9f063276c560448944b2c987bb0"},
 ]
 
 [package.dependencies]
@@ -6641,4 +6646,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a32ec93b80224c6b2a21d534fe44dd860635eb930a96c3a1fb988a070bc0471b"
+content-hash = "efefa82cdadec88b053dfcf75bc4f8a67c3e36388f53c77ed24a999466ed6773"
