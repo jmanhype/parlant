@@ -52,7 +52,6 @@ from tests.test_utilities import (
 
 @fixture
 async def long_session_id(
-    client: TestClient,
     container: Container,
     session_id: SessionId,
 ) -> SessionId:
