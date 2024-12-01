@@ -264,6 +264,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     nlp_service = await c[ServiceRegistry].read_nlp_service(nlp_service_name)
 
+    c[NLPService] = nlp_service
+
     c[GlossaryStore] = GlossaryChromaStore(
         ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
         embedder_type=type(await nlp_service.get_embedder()),

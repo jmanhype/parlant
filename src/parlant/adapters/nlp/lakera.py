@@ -24,10 +24,17 @@ from parlant.core.nlp.moderation import ModerationCheck, ModerationService, Mode
 class LakeraGuard(ModerationService):
     def __init__(self, logger: Logger) -> None:
         self._logger = logger
-        self._api_key = os.environ["LAKERA_API_KEY"]
 
     @override
     async def check(self, content: str) -> ModerationCheck:
+        api_key = os.environ.get("LAKERA_API_KEY")
+
+        if not api_key:
+            self._logger.warning(
+                "LakeraGuard is enabled but LAKERA_API_KEY is missing. Skipping check..."
+            )
+            return ModerationCheck(flagged=False, tags=[])
+
         def extract_tags(category: str) -> list[ModerationTag]:
             mapping: dict[str, list[ModerationTag]] = {
                 "moderated_content_crime": ["illicit"],
@@ -45,7 +52,7 @@ class LakeraGuard(ModerationService):
                 response = await client.post(
                     "https://api.lakera.ai/v2/guard/results",
                     json={"messages": [{"content": content, "role": "user"}]},
-                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    headers={"Authorization": f"Bearer {api_key}"},
                 )
 
                 if response.is_error:

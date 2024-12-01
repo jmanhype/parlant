@@ -27,8 +27,10 @@ from parlant.core.context_variables import ContextVariableId
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.guidelines import GuidelineId
+from parlant.core.logging import Logger
 from parlant.core.nlp.generation import GenerationInfo
-from parlant.core.services.tools.service_registry import ServiceRegistry
+from parlant.core.nlp.moderation import ModerationService
+from parlant.core.nlp.service import NLPService
 from parlant.core.sessions import (
     Event,
     EventId,
@@ -64,6 +66,7 @@ class EventSourceDTO(Enum):
 
 class Moderation(Enum):
     AUTO = "auto"
+    PARANOID = "paranoid"
     NONE = "none"
 
 
@@ -280,13 +283,20 @@ def preparation_iteration_to_dto(iteration: PreparationIteration) -> Preparation
     )
 
 
+def _get_jailbreak_moderation_service(logger: Logger) -> ModerationService:
+    from parlant.adapters.nlp.lakera import LakeraGuard
+
+    return LakeraGuard(logger)
+
+
 def create_router(
+    logger: Logger,
     application: Application,
     agent_store: AgentStore,
     customer_store: CustomerStore,
     session_store: SessionStore,
     session_listener: SessionListener,
-    service_registry: ServiceRegistry,
+    nlp_service: NLPService,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -481,11 +491,17 @@ def create_router(
         flagged = False
         tags = set()
 
-        if moderation == Moderation.AUTO:
-            for _, moderation_service in await service_registry.list_moderation_services():
-                check = await moderation_service.check(params.data)
-                flagged |= check.flagged
-                tags.update(check.tags)
+        if moderation in [Moderation.AUTO, Moderation.PARANOID]:
+            moderation_service = await nlp_service.get_moderation_service()
+            check = await moderation_service.check(params.data)
+            flagged |= check.flagged
+            tags.update(check.tags)
+
+        if moderation == Moderation.PARANOID:
+            check = await _get_jailbreak_moderation_service(logger).check(params.data)
+            if "jailbreak" in check.tags:
+                flagged = True
+                tags.update({"jailbreak"})
 
         session = await session_store.read_session(session_id)
 

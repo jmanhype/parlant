@@ -40,6 +40,7 @@ from parlant.core.evaluations import EvaluationStore, EvaluationListener
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import GuidelineStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
+from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import SessionListener, SessionStore
 from parlant.core.glossary import GlossaryStore
@@ -93,6 +94,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
     guideline_tool_association_store = container[GuidelineToolAssociationStore]
     context_variable_store = container[ContextVariableStore]
     service_registry = container[ServiceRegistry]
+    nlp_service = container[NLPService]
     application = container[Application]
 
     api_app = FastAPI()
@@ -179,12 +181,13 @@ async def create_api_app(container: Container) -> ASGIApplication:
     api_app.include_router(
         prefix="/sessions",
         router=sessions.create_router(
+            logger=logger,
             application=application,
             agent_store=agent_store,
             customer_store=customer_store,
             session_store=session_store,
             session_listener=session_listener,
-            service_registry=service_registry,
+            nlp_service=nlp_service,
         ),
     )
 
