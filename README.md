@@ -30,7 +30,7 @@ But these prototypes are rarely ready to meet customers. Once the prototype is f
 
 With DIY prompt-engineering, reliably incorporating feedback from stakeholders is challenging, as simple implementations tend to be fragile and inconsistent.
 
-Parlant bridges this gap in a way that makes it easy and fast for developers to reliably adjust the behavior of AI agents based on feedback from customers and business stakeholders.
+Parlant bridges this gap by making it easy and fast for developers to adjust the behavior of AI agents reliably, allowing you to iterate quickly with feedback from customers and business stakeholders.
 
 ## Key benefits
 
