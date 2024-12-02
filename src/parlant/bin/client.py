@@ -928,7 +928,7 @@ class Interface:
         agents = Actions.list_agents(ctx)
 
         if not agents:
-            rich.print("No data available")
+            rich.print(Text("No data available", style="bold yellow"))
             return
 
         Interface._render_agents(agents)
@@ -1004,7 +1004,7 @@ class Interface:
         events = Actions.list_events(ctx, session_id)
 
         if not events:
-            rich.print("No data available")
+            rich.print(Text("No data available", style="bold yellow"))
             return
 
         Interface._render_events(events=events)
@@ -1018,7 +1018,7 @@ class Interface:
         sessions = Actions.list_sessions(ctx, agent_id, customer_id)
 
         if not sessions:
-            rich.print("No data available")
+            rich.print(Text("No data available", style="bold yellow"))
             return
 
         Interface._render_sessions(sessions)
@@ -1177,7 +1177,7 @@ class Interface:
         terms = Actions.list_terms(ctx, agent_id)
 
         if not terms:
-            rich.print("No data available")
+            rich.print(Text("No data available", style="bold yellow"))
             return
 
         Interface._print_table(list(map(lambda t: t.__dict__, terms)))
@@ -1380,7 +1380,7 @@ class Interface:
             guidelines = Actions.list_guidelines(ctx, agent_id)
 
             if not guidelines:
-                rich.print("No data available")
+                rich.print(Text("No data available", style="bold yellow"))
                 return
 
             Interface._render_guidelines(guidelines)
