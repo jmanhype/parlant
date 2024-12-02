@@ -120,4 +120,4 @@ Feature: Supervision
         And a customer message, "But i want only the one with the best screen quality and long battery life"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains only one result
+        And the message contains only one recommendation
