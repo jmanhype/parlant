@@ -25,7 +25,7 @@ Feature: Supervision
         And a customer message, "What's my account balance?"
         And that the "account_related_questions" guideline is proposed with a priority of 10 because "Customer inquired about their account balance."
         When messages are emitted
-        Then the message contains information that the account balance is not available.
+        Then the message contains that the account balance is not known at the moment.
 
 
     Scenario: Preference for customer request over guideline account_related_questions
