@@ -44,7 +44,7 @@ class CustomerExtraUpdateParamsDTO(DefaultBaseModel):
     remove: Optional[Sequence[str]] = None
 
 
-class TagsUpdateParamsDTO(DefaultBaseModel):
+class TagUpdateParamsDTO(DefaultBaseModel):
     add: Optional[Sequence[TagId]] = None
     remove: Optional[Sequence[TagId]] = None
 
@@ -52,7 +52,7 @@ class TagsUpdateParamsDTO(DefaultBaseModel):
 class CustomerUpdateParamsDTO(DefaultBaseModel):
     name: Optional[str] = None
     extra: Optional[CustomerExtraUpdateParamsDTO] = None
-    tags: Optional[TagsUpdateParamsDTO] = None
+    tags: Optional[TagUpdateParamsDTO] = None
 
 
 def create_router(

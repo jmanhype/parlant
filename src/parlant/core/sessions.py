@@ -828,6 +828,9 @@ class PollingSessionListener(SessionListener):
         correlation_id: Optional[str] = None,
         timeout: Timeout = Timeout.infinite(),
     ) -> bool:
+        # Trigger exception if not found
+        _ = await self._session_store.read_session(session_id)
+
         while True:
             events = await self._session_store.list_events(
                 session_id,

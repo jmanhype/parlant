@@ -95,7 +95,10 @@ class Version:
 
 class ItemNotFoundError(Exception):
     def __init__(self, item_id: UniqueId, message: Optional[str] = None) -> None:
-        super().__init__(f"Item '{item_id}' not found" + (f": {message}" if message else ""))
+        if message:
+            super().__init__(f"{message} (id='{item_id}')")
+        else:
+            super().__init__(f"Item '{item_id}' not found")
 
 
 def generate_id() -> UniqueId:

@@ -15,6 +15,7 @@
 # mypy: disable-error-code=import-untyped
 
 import asyncio
+import json
 import click
 import click.shell_completion
 import click_completion  # type: ignore
@@ -31,6 +32,7 @@ import time
 from typing import Any, Optional, cast
 
 from parlant.client import ParlantClient
+from parlant.client.core import ApiError
 from parlant.client.types import (
     Agent,
     ContextVariable,
@@ -224,7 +226,7 @@ class Actions:
         session_id: str,
     ) -> list[Event]:
         client = cast(ParlantClient, ctx.obj.client)
-        return client.sessions.list_events(session_id=session_id)
+        return client.sessions.list_events(session_id=session_id, wait_for_data=0)
 
     @staticmethod
     def create_term(
@@ -856,7 +858,7 @@ class Interface:
         rich.print(Text(message, style="bold green"))
 
     @staticmethod
-    def _write_error(message: str) -> None:
+    def write_error(message: str) -> None:
         rich.print(Text(message, style="bold red"), file=sys.stderr)
 
     @staticmethod
@@ -901,7 +903,7 @@ class Interface:
             Interface._write_success(f"Added agent (id={agent.id})")
             Interface._render_agents([agent])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -910,7 +912,7 @@ class Interface:
             Actions.delete_agent(ctx, agent_id=agent_id)
             Interface._write_success(f"Removed agent (id={agent_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -920,7 +922,7 @@ class Interface:
 
             Interface._render_agents([agent])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -938,12 +940,12 @@ class Interface:
         agents = Actions.list_agents(ctx)
 
         if not agents:
-            Interface._write_error("Error: No agents exist. Please create at least one agent.")
+            Interface.write_error("Error: No agents exist. Please create at least one agent.")
             set_exit_status(1)
             raise FastExit()
 
         if len(agents) != 1:
-            Interface._write_error("Error: There's more than one agent. Please specify --agent-id.")
+            Interface.write_error("Error: There's more than one agent. Please specify --agent-id.")
             set_exit_status(1)
             raise FastExit()
 
@@ -962,7 +964,7 @@ class Interface:
             Interface._write_success(f"Updated agent (id={agent_id})")
             Interface._render_agents([agent])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1040,7 +1042,7 @@ class Interface:
             Actions.delete_session(ctx, session_id=session_id)
             Interface._write_success(f"Removed session (id={session_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1143,7 +1145,7 @@ class Interface:
         synonyms: list[str],
     ) -> None:
         if not name and not description and not synonyms:
-            Interface._write_error(
+            Interface.write_error(
                 "Error: No updates provided. Please provide at least one of the following: name, description, or synonyms to update the term."
             )
             return
@@ -1275,7 +1277,7 @@ class Interface:
 
         except CoherenceCheckFailure as e:
             contradictions = e.contradictions
-            Interface._write_error("Failed to add guideline")
+            Interface.write_error("Failed to add guideline")
             rich.print("Detected potential incoherence with other guidelines:")
             Interface._print_table(contradictions)
             rich.print(
@@ -1286,7 +1288,7 @@ class Interface:
             )
             set_exit_status(1)
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1321,7 +1323,7 @@ class Interface:
 
         except CoherenceCheckFailure as e:
             contradictions = e.contradictions
-            Interface._write_error("Failed to update guideline")
+            Interface.write_error("Failed to update guideline")
             rich.print("Detected potential incoherence with other guidelines:")
             Interface._print_table(contradictions)
             rich.print(
@@ -1332,7 +1334,7 @@ class Interface:
             )
             set_exit_status(1)
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1346,7 +1348,7 @@ class Interface:
 
             Interface._write_success(f"Removed guideline (id={guideline_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1368,7 +1370,7 @@ class Interface:
                 include_indirect=True,
             )
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1386,7 +1388,7 @@ class Interface:
             Interface._render_guidelines(guidelines)
 
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1409,7 +1411,7 @@ class Interface:
             Interface._write_success(f"Added connection (id={connection.connections[0].id})")
             Interface._print_table([connection.dict()])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1429,7 +1431,7 @@ class Interface:
 
             Interface._write_success(f"Removed entailment (id={connection_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1467,7 +1469,7 @@ class Interface:
             Interface._render_guideline_tool_associations(association.tool_associations)
 
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1485,7 +1487,7 @@ class Interface:
 
             Interface._write_success(f"Removed tool association (id={association_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1583,7 +1585,7 @@ class Interface:
             Actions.delete_variable(ctx, agent_id, variable_id)
             Interface._write_success(f"Removed variable '{variable_id}'")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1622,7 +1624,7 @@ class Interface:
             Interface._write_success(f"Added value (id={cv_value.id})")
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1653,7 +1655,7 @@ class Interface:
             Interface._render_variable_key_value_pairs(pairs)
 
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1668,7 +1670,7 @@ class Interface:
 
             Interface._render_variable_key_value_pairs({key: value})
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1687,7 +1689,7 @@ class Interface:
                 not update
                 and next((s for s in existing_services if s.name == name), None) is not None
             ):
-                Interface._write_error(f"Error: Service '{name}' already exists")
+                Interface.write_error(f"Error: Service '{name}' already exists")
                 set_exit_status(1)
                 return
 
@@ -1696,7 +1698,7 @@ class Interface:
             Interface._write_success(f"Added service '{name}'")
             Interface._print_table([result.dict()])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1709,7 +1711,7 @@ class Interface:
 
             Interface._write_success(f"Removed service '{name}'")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1762,7 +1764,7 @@ class Interface:
             else:
                 rich.print("\nNo tools available for this service.")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1788,7 +1790,7 @@ class Interface:
 
             Interface._render_customer(customers)
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1797,7 +1799,7 @@ class Interface:
             customer = Actions.create_customer(ctx, name)
             Interface._write_success(f"Added customer (id={customer.id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1806,7 +1808,7 @@ class Interface:
             Actions.update_customer(ctx, customer_id=customer_id, name=name)
             Interface._write_success(f"Updated customer (id={customer_id}, name={name})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1815,7 +1817,7 @@ class Interface:
             Actions.delete_customer(ctx, customer_id=customer_id)
             Interface._write_success(f"Removed customer (id={customer_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1824,7 +1826,7 @@ class Interface:
             customer = Actions.view_customer(ctx, customer_id)
             Interface._render_customer([customer])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1835,7 +1837,7 @@ class Interface:
                 f"Added extra key '{key}' with value '{value}' to customer {customer_id}"
             )
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1844,7 +1846,7 @@ class Interface:
             Actions.remove_customer_extra(ctx, customer_id, key)
             Interface._write_success(f"Removed extra key '{key}' from customer {customer_id}")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1853,7 +1855,7 @@ class Interface:
             Actions.add_customer_tag(ctx, customer_id, tag_id)
             Interface._write_success(f"Added tag '{tag_id}' to customer {customer_id}")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1862,7 +1864,7 @@ class Interface:
             Actions.remove_customer_tag(ctx, customer_id, tag_id)
             Interface._write_success(f"Removed tag '{tag_id}' from customer {customer_id}")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1887,7 +1889,7 @@ class Interface:
 
             Interface._render_tag(tags)
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1896,7 +1898,7 @@ class Interface:
             tag = Actions.create_tag(ctx, name=name)
             Interface._write_success(f"Added tag (id={tag.id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1905,7 +1907,7 @@ class Interface:
             tag = Actions.view_tag(ctx, tag_id=tag_id)
             Interface._render_tag([tag])
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1914,7 +1916,7 @@ class Interface:
             Actions.update_tag(ctx, tag_id=tag_id, name=name)
             Interface._write_success(f"Updated tag (id={tag_id}, name={name})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
     @staticmethod
@@ -1923,7 +1925,7 @@ class Interface:
             Actions.delete_tag(ctx, tag_id=tag_id)
             Interface._write_success(f"Removed tag (id={tag_id})")
         except Exception as e:
-            Interface._write_error(f"Error: {type(e).__name__}: {e}")
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
 
@@ -2936,6 +2938,13 @@ def main() -> None:
     async def wrapped_main() -> None:
         try:
             await async_main()
+        except ApiError as e:
+            try:
+                body = json.loads(e.body)
+                Interface.write_error(f"Error: {body['detail']}")
+            except json.JSONDecodeError:
+                Interface.write_error(f"Error: Uncaught API error: status-code={e.body}")
+            set_exit_status(1)
         except FastExit:
             pass
 
