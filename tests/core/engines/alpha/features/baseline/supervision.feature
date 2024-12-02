@@ -95,7 +95,7 @@ Feature: Supervision
         Given the alpha engine
         And an agent whose job is to only sell products that start with the letter t.
         And a guideline "best_soup", to respond with a vegetable soup of your choice when asked what our best dish is
-        And a guideline "initiate_conversation", to greet the customer when no messages have been sent yet
+        And a guideline "initiate_conversation", to greet the customer when its your first response
         And a guideline "table_price", to state that a table costs 100$ when the customer asks for the price of tables
         And a guideline "check_soups", to check which soups are in stock when asked anything about soup
         And a guideline "frustrated_user", to end your response with the word sorry when the user expresses frustration 

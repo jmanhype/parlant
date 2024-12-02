@@ -32,8 +32,6 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.tools import ToolId
 
-# TODO try to remove produce_reply rationale
-
 
 class Revision(DefaultBaseModel):
     revision_number: int
@@ -63,10 +61,11 @@ class MessageGenerationError(Exception):
 class MessageEventSchema(DefaultBaseModel):
     last_message_of_customer: Optional[str]
     produced_reply: Optional[bool] = True
-    rationale: str
-    instructions: list[str]
-    revisions: list[Revision]
+    produced_reply_rationale: Optional[str] = ""
+    guidelines: list[str]
+    insights: Optional[list[str]] = []
     evaluation_for_each_instruction: Optional[list[InstructionEvaluation]] = None
+    revisions: list[Revision]
 
 
 class MessageEventGenerator:
@@ -199,16 +198,16 @@ you don't need to specifically double-check if you followed or broke any guideli
         guideline_list = "\n".join(guidelines)
 
         return f"""
-In formulating your reply, you are required to adhere to the following behavioral guidelines,
-which were determined to be applicable to the latest state of the interaction.
-Each guideline is accompanied by a priority score indicating its significance,
-and a rationale explaining why it applies.
+When crafting your reply, you must follow the behavioral guidelines provided below, which have been identified as relevant to the current state of the interaction. 
+Each guideline includes a priority score to indicate its importance and a rationale for its relevance.
 
-As a reminder, the only situations where you may choose not to adhere to a guideline are:
-    1. Contradicts a previous request made by the customer.
-    2. Contradicts another guideline of higher or equal priority.
-    3. It's absolutely inappropriate given the state of the conversation.
-In all other circumstances, adhere to all of the guidelines, even if the predicate or rationale does not seem applicable.
+You may choose not to follow a guideline only in the following cases:
+    - It conflicts with a previous customer request.
+    - It contradicts another guideline of equal or higher priority.
+    - It is clearly inappropriate given the current context of the conversation.
+In all other situations, you are expected to adhere to the guidelines. 
+These guidelines have already been pre-filtered based on the interaction's context and other considerations outside your scope. 
+Do not disregard a guideline because you believe its 'when' condition or rationale does not apply—this filtering has already been handled.
 
 Guidelines: ###
 {guideline_list}
@@ -248,7 +247,7 @@ TASK DESCRIPTION:
 -----------------
 Continue the provided interaction in a natural and human-like manner. 
 Your task is to produce a response to the latest state of the interaction.
-Always abide by the following general principles (note these are not the "guidelines", these are "principles"):
+Always abide by the following general principles (note these are not the "guidelines". The guidelines will be provided later):
 Principle #1) GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary.
 Principle #2) AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the customer to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the customer instead of maintaining the loop.
 Principle #3) DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the customer requests information you're unsure about, state that this information is not available to you.
@@ -264,10 +263,11 @@ The interaction with the customer has just began, and no messages were sent by e
 If told so by a guideline or some other contextual condition, send the first message. Otherwise, do not produce a reply.
 If you decide not to emit a message, output the following:
 {{
-    “last_message_of_customer”: None,
+    “last_message_of_customer": None,
     "produced_reply": false,
-    "instructions": <A list of all guidelines, plus up to 3 original insights to adhere to>, 
-    "rationale": "<a few words to justify why a reply was NOT produced here>",
+    "guidelines": <list of strings- a re-statement of all guidelines>, 
+    "insights": <list of strings- up to 3 original insights>,
+    "produced_reply_rationale": "<a few words to justify why a reply was NOT produced here>",
     "revisions": []
 }}
 Otherwise, follow the rest of this prompt to choose the content of your response.
@@ -290,29 +290,41 @@ To craft an optimal response, you must produce incremental revisions of your rep
 Each critique during the revision process should be unique to avoid redundancy.
 
 Your final reply must comply with the outlined guidelines and the instructions in this prompt. 
-Pay close attention to priority scores assigned to guidelines; in cases of conflict, higher-priority guidelines may override lower-priority ones.
-
-It is acceptable to deviate from rules only if the deviation arises from deliberate prioritization due to:
-    - Conflicts with a higher-priority guideline
-    - Contradictions with a user request
-    - Insufficient context or data.
-
-In all other situations, even if a guideline seems inapplicable, you must still follow it. If a guideline cannot be fulfilled, you must explicitly justify why in your response.
 
 Before drafting replies and revisions, identify up to three key insights based on this prompt and the ongoing conversation. 
 These insights should include relevant user requests, applicable principles from this prompt, or conclusions drawn from the interaction. 
+Do not add insights unless you believe that they are absolutely necessary. Prefer suggesting fewer insights, if at all.
 When revising, indicate whether each guideline and insight is satisfied in the suggested reply.
-The combination of the behavioral guidelines and your original insights is referred to as your "instructions".
 
 The final output must be a JSON document detailing the message development process, including:
     - Insights to abide by,
     - If and how each instruction (guidelines and insights) was adhered to,
     - Instances where one instruction was prioritized over another,
-    - Situations where instructions were unmet due to insufficient context or data,
+    - Situations where guidelines and insights were unmet due to insufficient context or data,
     - Justifications for all decisions made during the revision process.
     - A marking for whether the suggested response repeats previous messages. If the response is repetitive, continue revising until it is sufficiently unique.
 
 Do not exceed 5 revisions. If you reach the 5th revision, stop there.
+
+
+PRIORITIZING INSTRUCTIONS (GUIDELINES VS. INSIGHTS)
+-----------------
+Deviating from an instruction (either guideline or insight) is acceptable only when the deviation arises from a deliberate prioritization, based on:
+    - Conflicts with a higher-priority guideline (according to their priority scores).
+    - Contradictions with a user request.
+    - Lack of sufficient context or data.
+    - Conflicts with an insight (see below).
+In all other cases, even if you believe that a guideline's condition does not apply, you must follow it. 
+If fulfilling a guideline is not possible, explicitly justify why in your response.
+
+Guidelines vs. Insights:
+Sometimes, a guideline may conflict with an insight you've derived.
+For example, if your insight suggests "the customer is vegetarian," but a guideline instructs you to offer non-vegetarian dishes, prioritizing the insight would better align with the business's goals—since offering vegetarian options would clearly benefit the customer.
+
+However, remember that the guidelines reflect the explicit wishes of the business you represent. Deviating from them should only occur if doing so does not put the business at risk. 
+For instance, if a guideline explicitly prohibits a specific action (e.g., "never do X"), you must not perform that action, even if requested by the user or supported by an insight.
+
+In cases of conflict, prioritize the business's values and ensure your decisions align with their overarching goals.
 
 EXAMPLES
 -----------------
@@ -320,82 +332,78 @@ EXAMPLES
 
 Example 1: A reply that took critique in a few revisions to get right: ###
 {{
-    “last_message_of_customer”: “<customer’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "instructions": ["When <x>, do this...", "When <y>, Say this...", "When <z>, Say that..."]
+    "last_message_of_customer": "Hi, I'd like to know the schedule for the next trains to Boston, please.",
+    "produce_reply": true,
+    "guidelines": [
+        "When the customer asks for train schedules, provide them accurately and concisely."
+    ],
+    "insights": [
+        "Use markdown format when applicable."
+    ],
     "evaluation_for_each_instruction": [
         {{
             "number": 1,
-            "instruction": "Do this [...]",
-            "evaluation": "in this situation, I am instructed to do [...]",
-            "data_available": "no particular data is needed for this"
+            "instruction": "When the customer asks for train schedules, provide them accurately and concisely.",
+            "evaluation": "The customer requested train schedules, so I need to respond with accurate timing information.",
+            "data_available": "Yes, the train schedule data is available."
         }},
         {{
             "number": 2,
-            "instruction": "Say this [...]",
-            "evaluation": "in this situation, I am instructed to say [...]",
-            "data_available": "no particular data is needed for this"
-        }},
-        {{
-            "number": 3,
-            "instruction": "Say that [...]",
-            "evaluation": "in this situation, I am instructed to say [...]",
-            "data_available": "no particular data is needed for this"
-        }},
+            "instruction": "Use markdown format when applicable.",
+            "evaluation": "Markdown formatting makes the schedule clearer and more readable.",
+            "data_available": "Not specifically needed, but markdown format can be applied to any response."
+        }}
     ],
     "revisions": [
         {{
             "revision_number": 1,
-            "content": "some proposed message content",
+            "content": "Train Schedule:\nTrain 101 departs at 10:00 AM and arrives at 12:30 PM.\nTrain 205 departs at 1:00 PM and arrives at 3:45 PM.",
             "instructions_followed": [
-                "#1; correctly did...",
-                "#3; correctly said..."
+                "#1; When the customer asks for train schedules, provide them accurately and concisely."
             ],
             "instructions_broken": [
-                "#2; didn't say...",
+                "#2; Did not use markdown format when applicable."
             ],
             "is_repeat_message": false,
             "followed_all_instructions": false,
             "instructions_broken_due_to_missing_data": false,
             "instructions_broken_only_due_to_prioritization": false
         }},
-        ...,
         {{
             "revision_number": 2,
-            "content": <final verified message content>,
+            "content": "| Train | Departure | Arrival |\n|-------|-----------|---------|\n| 101   | 10:00 AM  | 12:30 PM |\n| 205   | 1:00 PM   | 3:45 PM  |",
             "instructions_followed": [
-                "#1; correctly did...",
-                "#2; correctly said...",
-                "#3; correctly said...",
+                "#1; When the customer asks for train schedules, provide them accurately and concisely.",
+                "#2; Use markdown format when applicable."
             ],
             "instructions_broken": [],
             "is_repeat_message": false,
             "followed_all_instructions": true
-        }},
+        }}
     ]
 }}
 ###
 
 Example 2: A reply where one instruction was prioritized over another: ###
 {{
-    “last_message_of_customer”: “<customer’s last message in the interaction>”,
-    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
-    "instructions": [
+    “last_message_of_customer": “<customer’s last message in the interaction>",
+    "guidelines": [
         "When the customer chooses and orders a burger, then provide it",
-        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
+        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order"
     ],
+    "insights": [],
     "evaluation_for_each_instruction": [
         {{
             "number": 1,
             "instruction": "When the customer chooses and orders a burger, then provide it",
             "evaluation": "This guideline currently applies, so I need to provide the customer with a burger.",
-            "data_available": "The burger choice is available in the interaction"
+            "data_available": "The burger choice is available in the interaction",
         }},
         {{
             "number": 2,
-            "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order."
+            "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order.",
             "evaluation": "The customer chose cheese on the burger, but all of the cheese we currently have is expired",
-            "data_available": "The relevant stock availability is given in the tool calls' data"
+            "data_available": "The relevant stock availability is given in the tool calls' data. Our cheese has expired.",
         }}
     ],
     "revisions": [
@@ -421,24 +429,25 @@ Example 2: A reply where one instruction was prioritized over another: ###
 
 Example 3: Non-Adherence Due to Missing Data: ###
 {{
-    “last_message_of_customer”: “Hi there, can I get something to drink? What do you have on tap?”,
-    "rationale": "The user has not asked me to end the conversation, ",
-    "instructions": [
-        "When the customer asks for a drink, check the menu and offer what's on it",
+    “last_message_of_customer": “Hi there, can I get something to drink? What do you have on tap?",
+    "guidelines": [
+        "When the customer asks for a drink, check the menu and offer what's on it"
+    ],
+    "insights": [
         "Do not state factual information that you do not know or are not sure about."
     ],
     "evaluation_for_each_instruction": [
         {{
             "number": 1,
-            "instruction": "When the customer asks for a drink, check the menu and offer what's on it"
+            "instruction": "When the customer asks for a drink, check the menu and offer what's on it",
             "evaluation": "The customer did ask for a drink, so I should check the menu to see what's available.",
-            "data_available": "No, I don't have the menu info in the interaction or tool calls"
+            "data_available": "No, I don't have the menu info in the interaction or tool calls",
         }},
         {{
             "number": 2,
-            "instruction": "Do not state factual information that you do not know or are not sure about"
+            "instruction": "Do not state factual information that you do not know or are not sure about",
             "evaluation": "There's no information about what we have on tap, so I should not offer any specific option.",
-            "data_available": "No, the list of available drinks is not available to me".
+            "data_available": "No, the list of available drinks is not available to me",
         }},
     ],
     "revisions": [
@@ -465,45 +474,58 @@ Example 3: Non-Adherence Due to Missing Data: ###
 
 Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights. ###
 {{
-    “last_message_of_customer”: I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?”,
-    "rationale": "I need to produce a reply to the customer's question",
-    "instructions": [
+    “last_message_of_customer": I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
+    "guidelines": [
         "When asked anything about plane tickets, suggest completing the order on our android app", 
+        "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+    ],
+    "insights": [
         "In your generated reply to the user, use markdown format when applicable.",
         "The customer does not have an android device and does not want to buy anything",
-
     ],
     "evaluation_for_each_instruction": [
         {{
             "number": 1,
-            "instruction": "When asked anything about plane tickets, suggest completing the order on our website"
-            "evaluation": "I should suggest completing the order on our website",
+            "instruction": "When asked anything about plane tickets, suggest completing the order on our android app",
+            "evaluation": "I should suggest completing the order on our android app",
             "data_available": "Yes, I know that the name of our android app is BestPlaneTickets"
         }},
         {{
             "number": 2,
-            "instruction": "In your generated reply to the user, use markdown format when applicable"
-            "evaluation": "I need to output a message in markdown format",
-            "data_available": "Not needed".
+            "instruction": "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+
+            "evaluation": "Evaluating whether the 'when' condition applied is not my role. I should therefore just mention that shorter flights do not offer a complementary meal",
+            "data_available": "not needed",
         }},
         {{
             "number": 3,
+            "instruction": "In your generated reply to the user, use markdown format when applicable"
+            "evaluation": "I need to output a message in markdown format",
+            "data_available": "Not needed",
+        }},
+        {{
+            "number": 4,
             "instruction": "The customer does not have an android device and does not want to buy anything"
-            "evaluation": "A guideline should not override a user's request, so I should suggesting buying products or anything requiring an android device",
-            "data_available": "Not needed".
+            "evaluation": "A guideline should not override a user's request, so I should not suggest products requiring an android device",
+            "data_available": "Not needed",
         }},
     ],
     "revisions": [
         {{
             "revision_number": 1,
             "content": 
-"| Option | Departure Airport | Departure Time | Arrival Airport |
+"
+| Option | Departure Airport | Departure Time | Arrival Airport |
 |--------|-------------------|----------------|-----------------|
 | 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
-| 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |",
-            "instructions_followed": [s
-                "#2; In your generated reply to the user, use markdown format when applicable.",
-                "#3; The customer does not have an android device and does not want to buy anything",
+| 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |
+
+While this flights are quite long, please note that we do not offer complementary meals on short flights.
+",
+            "instructions_followed": [
+                "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+                "#3; In your generated reply to the user, use markdown format when applicable.",
+                "#4; The customer does not have an android device and does not want to buy anything",
             ],
             "instructions_broken": [
                 "#1; When asked anything about plane tickets, suggest completing the order on our android app.",
@@ -512,7 +534,7 @@ Example 4: Applying Insight- assume the agent is provided with a list of outgoin
             "followed_all_instructions": false,
             "instructions_broken_due_to_missing_data": false,
             "instructions_broken_only_due_to_prioritization": true,
-            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and user requests take precedent over guidelines, so I instruction #1.",
+            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and user requests take precedent over guidelines, so instruction #1 was prioritized.",
         }}
     ]
 }}
@@ -523,8 +545,9 @@ Example 4: Applying Insight- assume the agent is provided with a list of outgoin
 
 Example 5: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
 {{
-    “last_message_of_customer”: “This is not what I was asking for”,
-    "rationale": "<a few words to justify why you decided to respond to the customer at all>",
+    “last_message_of_customer": “This is not what I was asking for",
+    "guidelines": [],
+    "insights": [],
     "evaluation_for_each_instruction": [],
     "revisions": [
         {{
@@ -605,43 +628,47 @@ Produce a valid JSON object in the following format: ###
         )
         guidelines_output_format = "\n".join(
             [
-                f"""
-                {{
-                    "number": {i},
-                    "instruction": "{g.guideline.content.action}"
-                    "evaluation": "<your evaluation of how the guideline should be followed>",
-                    "data_available": "<explanation whether you are provided with the required data to follow this guideline now>"
-                }},"""
+                f"""    {{
+            "number": {i},
+            "instruction": "{g.guideline}"
+            "evaluation": "<your evaluation of how the guideline should be followed>",
+            "data_available": "<explanation whether you are provided with the required data to follow this guideline now>"
+        }},"""
                 for i, g in enumerate(guidelines, start=1)
             ]
         )
+        guidelines_text_list = ", ".join([f'"{g.guideline}"' for g in guidelines])
 
         return f"""
-        {{
-            “last_message_of_customer”: “{last_customer_message}”,
-            "rationale": "<a few words to explain why you should or shouldn't produce a reply to the customer in this case>",
-            "produced_reply": <BOOL>,
-                "instructions": <A list of all guidelines, plus up to 3 original insights to adhere to>, 
-                "evaluation_for_each_instruction": [
+{{
+    “last_message_of_customer": “{last_customer_message}",
+    "produced_reply": "<BOOL>",
+    "produced_reply_rationale": "<str, optional. required only if produced_reply is false>",
+    "guidelines": "[{guidelines_text_list}]",
+    "insights": "<Up to 3 original insights to adhere to>", 
+    "evaluation_for_each_instruction": [
 {guidelines_output_format}
-            ],
-            "revisions": [
-            {{
-                "revision_number": 1,
-                "content": <response chosen after revision 1>,
-                "instructions_followed": <list of guidelines that were followed>,
-                "instructions_broken": <list of guidelines that were broken>,
-                "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
-                "followed_all_instructions": <BOOL>,
-                "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
-                "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
-                "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
-                "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
-            }},
-            ...
-            ]
-        }}
-        ###"""
+        {{
+            <Additional entry for each insight>
+        }},
+    ],
+    "revisions": [
+    {{
+        "revision_number": 1,
+        "content": <response chosen after revision 1>,
+        "instructions_followed": <list of guidelines and insights that were followed>,
+        "instructions_broken": <list of guidelines and insights that were broken>,
+        "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
+        "followed_all_instructions": <BOOL, whether all guidelines and insights followed>,
+        "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
+        "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
+        "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
+        "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
+    }},
+    ...
+    ]
+}}
+###"""
 
     async def _generate_response_message(
         self,
