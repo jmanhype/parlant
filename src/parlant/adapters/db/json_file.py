@@ -177,7 +177,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def flush(self) -> None:
         data = {}
         for collection_name in self._collections:
-            data[collection_name] = self._collections[collection_name]._documents
+            data[collection_name] = self._collections[collection_name].documents
         await self._save_data(data)
 
 
@@ -192,9 +192,10 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self._database = database
         self._name = name
         self._schema = schema
-        self._documents = [cast(TDocument, doc) for doc in data] if data else []
         self._op_counter = 0
         self._lock = asyncio.Lock()
+
+        self.documents = [cast(TDocument, doc) for doc in data] if data else []
 
     @override
     async def find(
@@ -204,7 +205,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         result = []
         for doc in filter(
             lambda d: matches_filters(filters, d),
-            self._documents,
+            self.documents,
         ):
             result.append(doc)
 
@@ -215,7 +216,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> Optional[TDocument]:
-        for doc in self._documents:
+        for doc in self.documents:
             if matches_filters(filters, doc):
                 return doc
 
@@ -229,7 +230,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         ensure_is_total(document, self._schema)
 
         async with self._lock:
-            self._documents.append(document)
+            self.documents.append(document)
 
         await self._database._sync_if_needed()
 
@@ -242,10 +243,10 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
-        for i, d in enumerate(self._documents):
+        for i, d in enumerate(self.documents):
             if matches_filters(filters, d):
                 async with self._lock:
-                    self._documents[i] = cast(TDocument, {**self._documents[i], **params})
+                    self.documents[i] = cast(TDocument, {**self.documents[i], **params})
 
                 await self._database._sync_if_needed()
 
@@ -253,7 +254,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
                     acknowledged=True,
                     matched_count=1,
                     modified_count=1,
-                    updated_document=self._documents[i],
+                    updated_document=self.documents[i],
                 )
 
         if upsert:
@@ -280,10 +281,10 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> DeleteResult[TDocument]:
-        for i, d in enumerate(self._documents):
+        for i, d in enumerate(self.documents):
             if matches_filters(filters, d):
                 async with self._lock:
-                    document = self._documents.pop(i)
+                    document = self.documents.pop(i)
 
                 await self._database._sync_if_needed()
                 return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
