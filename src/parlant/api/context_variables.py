@@ -166,7 +166,9 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_variable(
-        agent_id: AgentId, variable_id: ContextVariableId, params: ContextVariableUpdateParamsDTO
+        agent_id: AgentId,
+        variable_id: ContextVariableId,
+        params: ContextVariableUpdateParamsDTO,
     ) -> ContextVariableDTO:
         def from_dto(dto: ContextVariableUpdateParamsDTO) -> ContextVariableUpdateParams:
             params: ContextVariableUpdateParams = {}

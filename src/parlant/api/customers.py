@@ -121,30 +121,30 @@ def create_router(
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_customer(
-        customer_id: CustomerId,
+        id: CustomerId,
         params: CustomerUpdateParamsDTO,
     ) -> CustomerDTO:
         if params.name:
             _ = await customer_store.update_customer(
-                customer_id=customer_id,
+                customer_id=id,
                 params={"name": params.name},
             )
 
         if params.extra:
             if params.extra.add:
-                await customer_store.add_extra(customer_id, params.extra.add)
+                await customer_store.add_extra(id, params.extra.add)
             if params.extra.remove:
-                await customer_store.remove_extra(customer_id, params.extra.remove)
+                await customer_store.remove_extra(id, params.extra.remove)
 
         if params.tags:
             if params.tags.add:
                 for tag_id in params.tags.add:
-                    await customer_store.add_tag(customer_id, tag_id)
+                    await customer_store.add_tag(id, tag_id)
             if params.tags.remove:
                 for tag_id in params.tags.remove:
-                    await customer_store.remove_tag(customer_id, tag_id)
+                    await customer_store.remove_tag(id, tag_id)
 
-        customer = await customer_store.read_customer(customer_id=customer_id)
+        customer = await customer_store.read_customer(customer_id=id)
 
         return CustomerDTO(
             id=customer.id,
