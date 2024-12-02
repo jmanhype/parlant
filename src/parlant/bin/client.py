@@ -15,7 +15,6 @@
 # mypy: disable-error-code=import-untyped
 
 import asyncio
-import json
 import click
 import click.shell_completion
 import click_completion  # type: ignore
@@ -2940,10 +2939,9 @@ def main() -> None:
             await async_main()
         except ApiError as e:
             try:
-                body = json.loads(e.body)
-                Interface.write_error(f"Error: {body['detail']}")
-            except json.JSONDecodeError:
-                Interface.write_error(f"Error: Uncaught API error: status-code={e.body}")
+                Interface.write_error(f"Error: {e.body['detail']}")
+            except KeyError:
+                Interface.write_error(f"Error: Uncaught API error: status-code={e.status_code}")
             set_exit_status(1)
         except FastExit:
             pass
