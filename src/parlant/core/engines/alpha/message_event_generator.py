@@ -501,7 +501,7 @@ Example 4: Applying Insight- assume the agent is provided with a list of outgoin
 |--------|-------------------|----------------|-----------------|
 | 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
 | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |",
-            "instructions_followed": [
+            "instructions_followed": [s
                 "#2; In your generated reply to the user, use markdown format when applicable.",
                 "#3; The customer does not have an android device and does not want to buy anything",
             ],
@@ -660,7 +660,7 @@ Produce a valid JSON object in the following format: ###
         if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
                 "MessageEventGenerator guideline evaluations: "
-                f"{json.dumps([e.model_dump(mode="json") for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
+                f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
