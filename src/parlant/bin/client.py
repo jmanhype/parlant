@@ -65,6 +65,10 @@ from parlant.client.types import (
 INDENT = "  "
 
 
+class FastExit(Exception):
+    pass
+
+
 class CoherenceCheckFailure(Exception):
     def __init__(self, contradictions: list[dict[str, Any]]) -> None:
         self.contradictions = contradictions
@@ -947,7 +951,17 @@ class Interface:
     @staticmethod
     def get_default_agent(ctx: click.Context) -> str:
         agents = Actions.list_agents(ctx)
-        assert agents
+
+        if not agents:
+            Interface._write_error("Error: No agents exist. Please create at least one agent.")
+            set_exit_status(1)
+            raise FastExit()
+
+        if len(agents) != 1:
+            Interface._write_error("Error: There's more than one agent. Please specify --agent-id.")
+            set_exit_status(1)
+            raise FastExit()
+
         return str(agents[0].id)
 
     @staticmethod
@@ -2013,7 +2027,7 @@ async def async_main() -> None:
     @click.option(
         "--id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2051,7 +2065,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2137,7 +2151,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2173,7 +2187,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2223,7 +2237,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2243,7 +2257,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2277,7 +2291,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2333,7 +2347,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2378,7 +2392,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2402,7 +2416,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2426,7 +2440,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2447,7 +2461,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2483,7 +2497,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2510,7 +2524,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2546,7 +2560,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2586,7 +2600,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2607,7 +2621,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2634,7 +2648,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2664,7 +2678,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2688,7 +2702,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2718,7 +2732,7 @@ async def async_main() -> None:
     @click.option(
         "--agent-id",
         type=str,
-        help="Agent ID (defaults to the first agent)",
+        help="Agent ID",
         metavar="ID",
         required=False,
     )
@@ -2944,7 +2958,13 @@ async def async_main() -> None:
 
 
 def main() -> None:
-    asyncio.run(async_main())
+    async def wrapped_main() -> None:
+        try:
+            await async_main()
+        except FastExit:
+            pass
+
+    asyncio.run(wrapped_main())
 
 
 if __name__ == "__main__":
