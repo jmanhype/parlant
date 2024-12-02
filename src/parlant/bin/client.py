@@ -972,8 +972,9 @@ class Interface:
             {
                 "ID": s.id,
                 "Title": s.title or "",
+                "Agent ID": s.agent_id,
+                "Customer ID": s.customer_id,
                 "Creation Date": reformat_datetime(s.creation_utc),
-                "Costumer ID": s.customer_id,
             }
             for s in sessions
         ]
