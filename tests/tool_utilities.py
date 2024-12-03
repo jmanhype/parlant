@@ -17,6 +17,27 @@ import enum
 from parlant.core.tools import ToolResult
 
 
+class Categories(enum.Enum):
+    GRAPHICSCARD = "Graphics Card"
+    PROCESSOR = "Processor"
+    STORAGE = "Storage"
+    POWER_SUPPLY = "Power Supply"
+    MOTHERBOARD = "Motherboard"
+    MEMORY = "Memory"
+    CASE = "Case"
+    CPUCOOLER = "CPU Cooler"
+    MONITOR = "Monitor"
+    KEYBOARD = "Keyboard"
+    MOUSE = "Mouse"
+    HEADSET = "Headset"
+    AUDIO = "Audio"
+    COOLING = "Cooling"
+    ACCESSORIES = "Accessories"
+    LIGHTING = "Lighting"
+    NETWORKING = "Networking"
+    LAPTOP = "Laptop"
+
+
 def get_available_drinks() -> ToolResult:
     return ToolResult(["Sprite", "Coca Cola"])
 
@@ -112,3 +133,7 @@ def recommend_drink(user_is_adult: bool) -> ToolResult:
 
 def check_username_validity(name: str) -> ToolResult:
     return ToolResult(name != "Dukie")
+
+
+def get_available_soups() -> ToolResult:
+    return ToolResult("['Tomato', 'Turpolance', 'Pumpkin', 'Turkey Soup', 'Tom Yum', 'Onion']")

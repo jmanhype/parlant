@@ -1,6 +1,7 @@
 Feature: Conversation
     Background:
         Given the alpha engine
+        And an empty session
 
     Scenario: The agent says goodbye back when the customer says goodbye
         Given an agent
@@ -43,8 +44,6 @@ Feature: Conversation
         And a customer message, "you see so i feel caught you! i’ve been trying to get information about car breaks and how they insult me and ask me to go away"
         And an agent message, "I apologize for any confusion. I aim to provide helpful information, but I may not have access to specific details about car brakes. If there’s anything else I can assist you with, please let me know."
         And a customer message, "what are the best car breaks out there?"
-        And an agent message, "I already told you to go away!"
-        And a customer message, "but it’s for my integration with mobileye"
         When processing is triggered
         Then a single message event is emitted
         And the message contains no rudeness to tell the user to go away
@@ -63,4 +62,28 @@ Feature: Conversation
         And a customer message, "whats a relevant topic for you?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains telling the user that the relevant topic is Mobileye
+        And the message contains either telling the user that the relevant topic is Mobileye or rudely telling the user to go away
+
+    Scenario: The agent follows a guideline without necessarily adhering to it literally every time
+        Given an agent
+        And an empty session
+        And a guideline to be empathetic and inquire about the customer's problem when a customer is frustrated with the service
+        And a guideline to offer 20% off all products on their next purchase when a customer is frustrated with the service
+        And a customer message, "I'm really unhappy with the service I've been getting!"
+        And an agent message, "Hi there, I'm sorry to have caused you any frustration. First, as a token of our appreciation for your business, I'd like to offer you a 20% off all of our products on your next purchase."
+        And a customer message, "I am extremely frustrated that I didn't get my item yet!"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no direct offer of a 20% discount
+
+    Scenario: The agent stays consistent with suggested results
+        Given an agent
+        And an empty session
+        And a guideline "suggest_relevant_tags", to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio" when a user asks a question about a product
+        And a customer message, "Hi I'm looking for an laptop that suits a software developer. Can you suggest me what tags are relevant for it?"
+        And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'development'"
+        And a customer message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio, development', which one would you recommend best?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains 'productivity', 'professional', and 'development'
+

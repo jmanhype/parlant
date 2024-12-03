@@ -29,7 +29,7 @@ from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, ToolResult
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import PromptBuilder
+from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection
 from parlant.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from parlant.core.emissions import EmittedEvent
 from parlant.core.logging import Logger
@@ -344,7 +344,8 @@ check_stock(): returns all menu items that are currently in stock
             self._get_guideline_propositions_section(
                 ordinary_guideline_propositions,
                 proposition_tool_ids,
-            )
+            ),
+            name=BuiltInSection.GUIDELINE_DESCRIPTIONS,
         )
         builder.add_tool_definitions(id_tool_pairs)
         if staged_calls:

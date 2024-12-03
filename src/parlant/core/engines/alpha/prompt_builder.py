@@ -14,16 +14,14 @@
 
 from __future__ import annotations
 from enum import Enum, auto
-from itertools import chain
 import json
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Optional, Sequence, cast
 
 from parlant.core.tools import Tool
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.sessions import Event, EventSource, MessageEventData
-from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.utils import (
     context_variables_to_json,
@@ -37,9 +35,9 @@ class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
-    TERMINOLOGY = auto()
+    GLOSSARY = auto()
+    GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
-    GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
     STAGED_EVENTS = auto()
 
@@ -203,7 +201,7 @@ The following is information that you're given about the user and context of the
             terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
 
             self.add_section(
-                name=BuiltInSection.TERMINOLOGY,
+                name=BuiltInSection.GLOSSARY,
                 content=f"""
 The following is a glossary of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
 Please be tolerant of possible typos by the user with regards to these terms,
@@ -212,75 +210,6 @@ and let the user know if/when you assume they meant a term by their typo: ###
 ###
 """,  # noqa
                 status=SectionStatus.ACTIVE,
-            )
-
-        return self
-
-    def add_guideline_propositions(
-        self,
-        ordinary: Sequence[GuidelineProposition],
-        tool_enabled: Mapping[GuidelineProposition, Sequence[ToolId]],
-        include_priority: bool = True,
-        include_tool_associations: bool = False,
-    ) -> PromptBuilder:
-        all_propositions = list(chain(ordinary, tool_enabled))
-
-        if all_propositions:
-            guidelines = []
-
-            for i, p in enumerate(all_propositions, start=1):
-                guideline = f"Guideline #{i}) When {p.guideline.content.condition}, then {p.guideline.content.action}"
-
-                if include_priority:
-                    guideline += f"\n    [Priority (1-10): {p.score}; Rationale: {p.rationale}]"
-
-                if include_tool_associations:
-                    if p in tool_enabled:
-                        service_tool_names = ", ".join(
-                            [f"{t_id.service_name}:{t_id.tool_name}" for t_id in tool_enabled[p]]
-                        )
-                        guideline += f"\n    [Associated Tools: {service_tool_names}]"
-
-                guidelines.append(guideline)
-
-            guideline_list = "\n".join(guidelines)
-
-            section_preface = """
-In formulating your reply, you are required to follow these behavioral guidelines,
-which are applicable to the latest state of the interaction.
-"""
-
-            if include_priority:
-                section_preface += """
-Each guideline is accompanied by a priority score indicating its significance,
-and a rationale explaining why it is applicable.
-""".strip()
-
-            if include_tool_associations:
-                section_preface += """
-Note also that each guideline may be associated with one or more tools that it can utilize to achieve its goal, as needed. If a guideline has associated tool(s), use your judgement, as well as the nature of that guideline and the other guidelines provided, to decide whether any tools should be utilized.
-""".strip()  # noqa
-
-            self.add_section(
-                name=BuiltInSection.GUIDELINE_PROPOSITIONS,
-                content=f"""
-{section_preface}
-
-Guidelines: ###
-{guideline_list}
-###
-""",
-                status=SectionStatus.ACTIVE,
-            )
-        else:
-            self.add_section(
-                name=BuiltInSection.GUIDELINE_PROPOSITIONS,
-                content="""
-In formulating your reply, you are normally required to follow a number of behavioral guidelines.
-However, in this case, no special behavioral guidelines were provided. Therefore,
-you don't need to specifically double-check (when generating revisions) if you followed or broke any guidelines.
-""",
-                status=SectionStatus.PASSIVE,
             )
 
         return self
