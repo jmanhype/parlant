@@ -33,13 +33,13 @@ scenarios(
         f"core/engines/alpha/features/baseline/{feature}.feature"
         for feature in (
             "conversation",
-            #            "errors",
-            #            "guideline_connections",
-            #            "moderation",
+            "errors",
+            "guideline_connections",
+            "moderation",
             "proactivity",
             "supervision",
             "glossary",
-            #            "tools",
+            "tools",
             "context_variables",
         )
     )

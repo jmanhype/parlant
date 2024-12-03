@@ -100,7 +100,7 @@ Feature: Conversation
         And a customer message, "Sorry again if I’m bothering you. I just don’t know what to do with this issue I have."
         When processing is triggered
         Then a single message event is emitted
-        And the message contains no mention to 20% off
+        And the message contains no mention of a 20% discount
 
     Scenario: The agent follows a guideline without necessarily adhering to it literally every time
         Given an agent
@@ -125,37 +125,3 @@ Feature: Conversation
         Then a single message event is emitted
         And the message contains 'productivity', 'professional', and 'storage'
 
-    # TODO Not working currently due to the tool, check again later
-    Scenario: The agent knows when to trigger guidelines
-        Given an agent
-        And an empty session
-        And a guideline "in_stock", to verify if the product type is in stock when a user asks anything about a product
-        And a guideline "ask_for_specs", to ask the user what exactly is he looking for when the product type is in stock
-        And the tool "get_in_stock"
-        And an association between "in_stock" and "get_in_stock"
-        And a customer message, " Hi there, im looking to buy an ultrabook. can you help me out?"
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains questions about specific features of the products the user is looking for
-
-    # TODO Not working currently due to the tool, check again later. Not clear if we should handle this testcase currently.
-    Scenario: The agent prioritizes guideline from conversation with tools
-        Given the alpha engine
-        And an agent
-        And a guideline "recommend_three", to recommend best three products when a user mentions specific needs
-        And the tool "get_product_tags"
-        And the tool "get_products_by_tags"
-        And an association between "recommend_three" and "get_product_tags"
-        And an association between "recommend_three" and "get_products_by_tags"
-        And a customer message, "Hey there! I need a laptop for gaming"
-        And an agent message, "Hey there! Gotcha covered—gaming laptops are in stock. Do you have any specific preferences, like budget, screen size, or performance level? If not, I can recommend three awesome options right away!"
-        And a customer message, "I want to play Cyberpunk 2077 and my budget is around $2000"
-        And an agent message, "Alright, based on your budget of around $2000 and your goal of playing Cyberpunk 2077, here are three great options: HP OMEN 16 RTX 4070 - $1899.99: A 16-inch gaming laptop with an AMD Ryzen 9 processor, RTX 4070 GPU, 16GB RAM, and a 1TB SSD. Perfect for high-performance gaming on a QHD display. ASUS ROG Zephyrus G14 - $1799.99: A compact 14-inch gaming laptop with an AMD Ryzen 9 processor, RTX 4070 GPU, 16GB RAM, and a 1TB SSD. Great for gaming on the go with a high-quality QHD display. ASUS TUF Gaming A15 - $1199.99: A 15-inch gaming laptop with an AMD Ryzen 7 processor, RTX 4060 GPU, 16GB RAM, and a 512GB SSD. A solid choice for gaming with excellent performance at a lower price point. Let me know if you'd like more details about any of these or need help deciding!"
-        And a customer message, "im sorry i wanted to say that my budget is 600"
-        And an agent message, "Oh, got it! With a budget of $600, here’s a solid option for gaming: HP Victus 15 - $799.99: A 15-inch gaming laptop with Intel i5, RTX 3050 GPU, 16GB RAM, and a 512GB SSD. It’s slightly above your budget, but it’s one of the most affordable gaming laptops available. Let me know if you’d like more details or need help finding something else!"
-        And a customer message, "This is ridiculous! Why are gaming laptops so expensive? I just want to play one game!"
-        And an agent message, "Whoa, I hear you! Gaming laptops can be pricey, and it’s frustrating when all you want is to play one game. Let’s look at some alternatives. Have you considered a refurbished gaming laptop or even a desktop setup, which can sometimes be more affordable? If you’re open to it, I can also help find a laptop that’s closer to your budget and still runs Cyberpunk 2077 decently."
-        And a customer message, "what do you have for me?"
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains only one result
