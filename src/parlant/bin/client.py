@@ -227,21 +227,6 @@ class Actions:
         return client.sessions.list_events(session_id=session_id)
 
     @staticmethod
-    def create_event(
-        ctx: click.Context,
-        session_id: str,
-        message: str,
-    ) -> Event:
-        client = cast(ParlantClient, ctx.obj.client)
-
-        return client.sessions.create_event(
-            session_id,
-            kind="message",
-            source="customer",
-            message=message,
-        )
-
-    @staticmethod
     def create_term(
         ctx: click.Context,
         agent_id: str,
@@ -1128,16 +1113,6 @@ class Interface:
                     rich.print(f"{INDENT*2}Description: {term.description}\n")
             else:
                 rich.print(f"{INDENT*2}(none)\n")
-
-    @staticmethod
-    def create_event(
-        ctx: click.Context,
-        session_id: str,
-        message: str,
-    ) -> None:
-        event = Actions.create_event(ctx, session_id, message)
-
-        Interface._write_success(f"Added event (id={event.id})")
 
     @staticmethod
     def create_term(
