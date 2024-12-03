@@ -222,6 +222,12 @@ class PayloadDTO(
     DefaultBaseModel,
     json_schema_extra={"example": payload_example},
 ):
+    """
+    A container for a guideline payload along with its kind
+
+    Only `"guideline"` is available at this point.
+    """
+
     kind: PayloadKindDTO
     guideline: Optional[GuidelinePayloadDTO] = None
 
@@ -316,6 +322,12 @@ class InvoiceDataDTO(
     DefaultBaseModel,
     json_schema_extra={"example": invoice_data_example},
 ):
+    """
+    Contains the relevant invoice data.
+
+    At this point only `guideline` is suppoerted.
+    """
+
     guideline: Optional[GuidelineInvoiceDataDTO] = None
 
 
