@@ -473,7 +473,7 @@ Example 3: Non-Adherence Due to Missing Data: ###
 ###
 
 
-Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights. ###
+Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights from a tool call. ###
 {{
     “last_message_of_customer": I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
     "guidelines": [

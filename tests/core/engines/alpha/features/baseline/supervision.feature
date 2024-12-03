@@ -110,10 +110,11 @@ Feature: Supervision
         Then a single message event is emitted
         And the message contains that its first word is hello, and a recommendation for turpolance soup, also known as carrots and sweet potato soup
 
-
+    # TODO check this out later
     Scenario: The agent prioritizes guideline from conversation
         Given the alpha engine
         And an agent
+        And a guideline "recommendation_number", to propose exactly the number of recommendations the customer requested when the customer requests a specific number of recommendations
         And a guideline "recommend_three_items", to recommend three items from "Sony WH-1000XM5, Dyson V15 Detect, Kindle Paperwhite (2024 Edition), Lego Botanical Collection, Le Creuset Dutch Oven,  Apple Watch Series 9, Fujifilm Instax Mini 12, Yeti Rambler Tumbler, Philips Hue Smart Bulbs, Theragun Mini, Bose SoundLink Flex, Hydro Flask Water Bottle, Samsung Galaxy Tab S9,  Osprey Daylite Backpack, Nintendo Switch OLED" when a user asks for recommendation for usage 
         And a customer message, "Hi there, i'm looking for something that best suit a gamer what do you have for me?"
         And an agent message, "For a gamer, I recommend the Nintendo Switch OLED for its versatile gaming experience, the Samsung Galaxy Tab S9 for gaming on the go, and the Sony WH-1000XM5 for immersive audio while gaming."
@@ -122,7 +123,7 @@ Feature: Supervision
         Then a single message event is emitted
         And the message contains only one recommendation
 
-    Scenario: The agent does not ignore critical guideline on user request 1
+    Scenario: The agent does not override critical guideline on user request 1
         Given the alpha engine
         And an agent whose job is to represent a subscription business who offers either a basic or a premium plan
         And a guideline "premium_plan_location" to not offer a premium plan when the customer is not from the United States
@@ -135,7 +136,7 @@ Feature: Supervision
         Then a single message event is emitted
         And the message contains no offer for the premium plan, though offering the basic plan is permissible
 
-    Scenario: The agent does not ignore critical guideline on user request 2
+    Scenario: The agent does not override critical guideline on user request 2
         Given the alpha engine
         And an agent whose job is to represent a subscription business who offers either a basic or a premium plan
         And a guideline "basic_plan_terms_of_service" to not complete the subscription until the user has read and approved the terms of service on blueterms.com when the customer is subscribing to our basic plan

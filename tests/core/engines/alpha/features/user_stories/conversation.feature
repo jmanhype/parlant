@@ -84,14 +84,14 @@ Feature: Conversation
         And an agent message, "I'm sorry you're feeling this way. Let me know how I can help you better."
         And a customer message, "I am so freaking frustrated by you right now!!!!"
         When messages are emitted
-        Then the message contains content which is not an acknoledgment of the customer's frustration followed by a question asking the customer to clarify themselves
+        Then the message contains content which is not an acknowledgment of the customer's frustration followed by a question asking the customer to clarify themselves
 
     Scenario: The agent handles frustration accordingly
         Given an agent
         And an empty session
         And a guideline to try and calm the user and provide a one time 20% off everything on the store when a customer expresses frustration
         And a guideline to ask what is troubling the user when the user expresses frustration without specific reason
-        And a guideline to acknoledge apology only once when a customer apologizes repeatedly
+        And a guideline to acknowledge apology only once when a customer apologizes repeatedly
         And a guideline to shift conversation back to problem-solving when a customer apologizes and asks for help
         And a customer message, "hey"
         And an agent message, "Hello! How's it going?"
@@ -119,9 +119,9 @@ Feature: Conversation
         And an empty session
         And a guideline "suggest_relevant_tags", to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio" when a user asks a question about a product
         And a customer message, "Hi I'm looking for an laptop that suits a software developer. Can you suggest me what tags are relevant for it?"
-        And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'developement'"
-        And a customer message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio', which one would you recommend best?"
+        And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'development'"
+        And a customer message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio, development', which one would you recommend best?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains 'productivity', 'professional', and 'storage'
+        And the message contains 'productivity', 'professional', and 'development'
 

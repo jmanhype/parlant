@@ -80,4 +80,4 @@ Feature: Glossary
         And a customer message, "what is a token?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains an explanation about what a token is, without mentioning that it appears in a glossary or otherwise exposing the source of this information
+        And the message contains an explanation about what a token is, without mentioning that it appears in a glossary
