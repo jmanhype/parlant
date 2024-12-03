@@ -238,7 +238,7 @@ class Actions:
             session_id,
             kind="message",
             source="customer",
-            data=message,
+            message=message,
         )
 
     @staticmethod
