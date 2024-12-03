@@ -99,7 +99,7 @@ Feature: Supervision
         And a guideline "table_price", to state that a table costs 100$ when the customer asks for the price of tables
         And a guideline "check_soups", to check which soups are in stock when asked anything about soup
         And a guideline "frustrated_user", to end your response with the word sorry when the user expresses frustration 
-        And a guideline "open_with_hello", to begin your response with the word hello when the user mentions cucumbers
+        And a guideline "open_with_hello", to begin your response with the word hello when discussing vegetable soups
         And a guideline connection whereby "best_soup" entails "open_with_hello"
         And the tool "get_available_soups"
         And an association between "check_soups" and "get_available_soups"
@@ -110,15 +110,24 @@ Feature: Supervision
         Then a single message event is emitted
         And the message contains that its first word is hello, and a recommendation for turpolance soup, also known as carrots and sweet potato soup
 
-    # TODO check this out later
+    Scenario: The agent uses active guidelines regardless of their predicate
+        Given the alpha engine
+        And an agent
+        And a guideline "frustrated_user", to end your response with the word sorry when the user expresses frustration 
+        And a guideline "start_with_hello", to begin your response with the word hello when the customer mentions cucumbers
+        And a customer message, "I'm so angry at our last talk. I came here to let you know that."
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains hello as the first word, and sorry as the last
+
+
     Scenario: The agent prioritizes guideline from conversation
         Given the alpha engine
         And an agent
-        And a guideline "recommendation_number", to propose exactly the number of recommendations the customer requested when the customer requests a specific number of recommendations
         And a guideline "recommend_three_items", to recommend three items from "Sony WH-1000XM5, Dyson V15 Detect, Kindle Paperwhite (2024 Edition), Lego Botanical Collection, Le Creuset Dutch Oven,  Apple Watch Series 9, Fujifilm Instax Mini 12, Yeti Rambler Tumbler, Philips Hue Smart Bulbs, Theragun Mini, Bose SoundLink Flex, Hydro Flask Water Bottle, Samsung Galaxy Tab S9,  Osprey Daylite Backpack, Nintendo Switch OLED" when a user asks for recommendation for usage 
         And a customer message, "Hi there, i'm looking for something that best suit a gamer what do you have for me?"
         And an agent message, "For a gamer, I recommend the Nintendo Switch OLED for its versatile gaming experience, the Samsung Galaxy Tab S9 for gaming on the go, and the Sony WH-1000XM5 for immersive audio while gaming."
-        And a customer message, "But i want only the one with the best screen quality and long battery life"
+        And a customer message, "But i want only one with the best screen quality and long battery life"
         When processing is triggered
         Then a single message event is emitted
         And the message contains only one recommendation

@@ -264,7 +264,7 @@ The interaction with the customer has just began, and no messages were sent by e
 If told so by a guideline or some other contextual condition, send the first message. Otherwise, do not produce a reply.
 If you decide not to emit a message, output the following:
 {{
-    “last_message_of_customer": None,
+    "last_message_of_customer": None,
     "produced_reply": false,
     "guidelines": <list of strings- a re-statement of all guidelines>, 
     "insights": <list of strings- up to 3 original insights>,
@@ -387,7 +387,7 @@ Example 1: A reply that took critique in a few revisions to get right: ###
 
 Example 2: A reply where one instruction was prioritized over another: ###
 {{
-    “last_message_of_customer": “<customer’s last message in the interaction>",
+    "last_message_of_customer": "<customer’s last message in the interaction>",
     "guidelines": [
         "When the customer chooses and orders a burger, then provide it",
         "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order"
@@ -430,7 +430,7 @@ Example 2: A reply where one instruction was prioritized over another: ###
 
 Example 3: Non-Adherence Due to Missing Data: ###
 {{
-    “last_message_of_customer": “Hi there, can I get something to drink? What do you have on tap?",
+    "last_message_of_customer": "Hi there, can I get something to drink? What do you have on tap?",
     "guidelines": [
         "When the customer asks for a drink, check the menu and offer what's on it"
     ],
@@ -475,7 +475,7 @@ Example 3: Non-Adherence Due to Missing Data: ###
 
 Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights from a tool call. ###
 {{
-    “last_message_of_customer": I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
+    "last_message_of_customer": "I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
     "guidelines": [
         "When asked anything about plane tickets, suggest completing the order on our android app", 
         "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
@@ -546,7 +546,7 @@ While this flights are quite long, please note that we do not offer complementar
 
 Example 5: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
 {{
-    “last_message_of_customer": “This is not what I was asking for",
+    "last_message_of_customer": "This is not what I was asking for",
     "guidelines": [],
     "insights": [],
     "evaluation_for_each_instruction": [],
@@ -581,6 +581,48 @@ Example 5: Avoiding repetitive responses. Given that the previous response by th
             "is_repeat_message": false,
             "followed_all_instructions": true,
         }}
+    ]
+}}
+
+###
+
+Example 6: Not exposing thought process: Assume a tool call for "check_balance" with a returned value of 1,000$ is staged
+###
+{{
+    "last_message_of_customer": How much money do I have in my account, and how do you know it? Is there some service you use to check my balance? Can I access it too?",
+    "guidelines": [
+        "When you need the balance of a customer, then use the 'check_balance' tool."
+    ],
+    "insights": [
+        "Never reveal details about the process you followed to produce your response"
+    ],
+    "evaluation_for_each_instruction": [
+        {{
+            "number": 1,
+            "instruction": "use the 'check_balance' tool",
+            "evaluation": "There's already a staged tool call with this tool, so no further action is required.",
+            "data_available": "Yes, I know that the customer's balance is 1,000$"
+        }},
+        {{
+            "number": 1,
+            "instruction": "Never reveal details about the process you followed to produce your response"
+            "evaluation": "The reply must not reveal details about how I know the client's balance",
+            "data_available": "Not needed",
+        }},
+    ],
+    "revisions": [
+        {{
+            "revision_number": 1,
+            "content": "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide accurate information. However, I’m unable to disclose details about the specific services I use. Is there anything else I can assist you with?",
+            "instructions_followed": [
+                "use the 'check_balance' tool",
+                "Never reveal details about the process you followed to produce your response",
+            ],
+            "instructions_broken": [
+            ],
+            "is_repeat_message": false,
+            "followed_all_instructions": true,
+        }},
     ]
 }}
 ###
@@ -658,7 +700,7 @@ Produce a valid JSON object in the following format: ###
 
         return f"""
 {{
-    “last_message_of_customer": “{last_customer_message}",
+    "last_message_of_customer": "{last_customer_message}",
     "produced_reply": "<BOOL, should be true unless the customer explicitly asked you not to respond>",
     "produced_reply_rationale": "<str, optional. required only if produced_reply is false>",
     "guidelines": [{guidelines_list_text}],
