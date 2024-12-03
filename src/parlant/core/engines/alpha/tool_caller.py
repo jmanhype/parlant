@@ -383,8 +383,8 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
 ###
         """
         )
-        prompt = builder.build()
-        return prompt
+
+        return builder.build()
 
     def _get_output_format(self, id_tool_pairs: Sequence[tuple[ToolId, Tool]]) -> str:
         tool_call_evaluation_format = "\n".join(

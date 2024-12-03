@@ -13,14 +13,29 @@
 # limitations under the License.
 
 import enum
-# from supabase import create_client
-# import os
 
 from parlant.core.tools import ToolResult
 
-# supabase_url = os.environ["SUPABASE_URL"]
-# supabase_anon = os.environ["SUPABASE_ANON_KEY"]
-# supabase = create_client(supabase_url, supabase_anon)
+
+class Categories(enum.Enum):
+    GRAPHICSCARD = "Graphics Card"
+    PROCESSOR = "Processor"
+    STORAGE = "Storage"
+    POWER_SUPPLY = "Power Supply"
+    MOTHERBOARD = "Motherboard"
+    MEMORY = "Memory"
+    CASE = "Case"
+    CPUCOOLER = "CPU Cooler"
+    MONITOR = "Monitor"
+    KEYBOARD = "Keyboard"
+    MOUSE = "Mouse"
+    HEADSET = "Headset"
+    AUDIO = "Audio"
+    COOLING = "Cooling"
+    ACCESSORIES = "Accessories"
+    LIGHTING = "Lighting"
+    NETWORKING = "Networking"
+    LAPTOP = "Laptop"
 
 
 def get_available_drinks() -> ToolResult:
@@ -118,27 +133,6 @@ def recommend_drink(user_is_adult: bool) -> ToolResult:
 
 def check_username_validity(name: str) -> ToolResult:
     return ToolResult(name != "Dukie")
-
-
-class Categories(enum.Enum):
-    GRAPHICSCARD = "Graphics Card"
-    PROCESSOR = "Processor"
-    STORAGE = "Storage"
-    POWER_SUPPLY = "Power Supply"
-    MOTHERBOARD = "Motherboard"
-    MEMORY = "Memory"
-    CASE = "Case"
-    CPUCOOLER = "CPU Cooler"
-    MONITOR = "Monitor"
-    KEYBOARD = "Keyboard"
-    MOUSE = "Mouse"
-    HEADSET = "Headset"
-    AUDIO = "Audio"
-    COOLING = "Cooling"
-    ACCESSORIES = "Accessories"
-    LIGHTING = "Lighting"
-    NETWORKING = "Networking"
-    LAPTOP = "Laptop"
 
 
 def get_available_soups() -> ToolResult:
