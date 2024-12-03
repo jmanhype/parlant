@@ -267,12 +267,12 @@ class ContextVariableReadResult(DefaultBaseModel):
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
     return FreshnessRules(
-        months=list(dto.months or []),
-        days_of_month=list(dto.days_of_month or []),
+        months=list(dto.months) if dto.months else None,
+        days_of_month=list(dto.days_of_month) if dto.days_of_month else None,
         days_of_week=[dow.value for dow in dto.days_of_week] if dto.days_of_week else [],
-        hours=list(dto.hours or []),
-        minutes=list(dto.minutes or []),
-        seconds=list(dto.seconds or []),
+        hours=list(dto.hours) if dto.hours else None,
+        minutes=list(dto.minutes) if dto.minutes else None,
+        seconds=list(dto.seconds) if dto.seconds else None,
     )
 
 
