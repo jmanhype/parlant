@@ -89,7 +89,7 @@ const [agentEvent] = (await client.sessions.listEvents(session_id, {
    kinds: "message",
    source: "ai_agent",
    minOffset: customerEvent.offset,
-   waitForData: 60 // wait for up to 60 seconds for an answer
+   waitForData: 60 // Wait up to 60 seconds for an answer
 }));
 
 // Print the agent's reply
