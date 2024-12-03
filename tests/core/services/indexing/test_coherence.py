@@ -837,7 +837,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
     assert len(incoherence_results) == 0
 
 
-def test_that_a_terminology_based_incoherency_is_detected(
+def test_that_a_glossary_based_incoherency_is_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:

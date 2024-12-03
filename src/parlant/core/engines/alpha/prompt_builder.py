@@ -35,10 +35,9 @@ class BuiltInSection(Enum):
     AGENT_IDENTITY = auto()
     INTERACTION_HISTORY = auto()
     CONTEXT_VARIABLES = auto()
-    TERMINOLOGY = auto()
+    GLOSSARY = auto()
     GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
-    GUIDELINE_PROPOSITIONS = auto()
     TOOLS = auto()
     STAGED_EVENTS = auto()
 
@@ -202,7 +201,7 @@ The following is information that you're given about the user and context of the
             terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
 
             self.add_section(
-                name=BuiltInSection.TERMINOLOGY,
+                name=BuiltInSection.GLOSSARY,
                 content=f"""
 The following is a glossary of the business. When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
 Please be tolerant of possible typos by the user with regards to these terms,
