@@ -14,7 +14,7 @@
 
 from enum import Enum
 from pydantic import Field
-from typing import Annotated, Any, Mapping, Optional, TypeAlias, cast
+from typing import Annotated, Any, Mapping, Optional, Sequence, TypeAlias, cast
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.guideline_connections import ConnectionKind
@@ -125,7 +125,7 @@ class GuidelinePayloadOperationDTO(Enum):
 
 class CoherenceCheckKindDTO(Enum):
     """
-    The specific relationship between the contradicting `Guideline`s.
+    The specific relationship between the contradicting guidelines.
     """
 
     CONTRADICTION_WITH_EXISTING_GUIDELINE = "contradiction_with_existing_guideline"
@@ -136,7 +136,7 @@ class CoherenceCheckKindDTO(Enum):
 
 class ConnectionPropositionKindDTO(Enum):
     """
-    The specific relationship between the connected `Guideline`s.
+    The specific relationship between the connected guidelines.
     """
 
     CONNECTION_WITH_EXISTING_GUIDELINE = "connection_with_existing_guideline"
@@ -305,8 +305,8 @@ class GuidelineInvoiceDataDTO(
 ):
     """Evaluation results for a Guideline, including contradiction checks and connection proposals"""
 
-    coherence_checks: list[CoherenceCheckDTO]
-    connection_propositions: Optional[list[ConnectionPropositionDTO]] = None
+    coherence_checks: Sequence[CoherenceCheckDTO]
+    connection_propositions: Optional[Sequence[ConnectionPropositionDTO]] = None
 
 
 invoice_data_example: ExampleJson = {"guideline": guideline_invoice_data_example}

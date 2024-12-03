@@ -13,10 +13,13 @@
 # limitations under the License.
 
 from collections import defaultdict
+from dataclasses import dataclass
 from itertools import chain
-from typing import Optional, Sequence
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated, Optional, Sequence, TypeAlias
+from fastapi import APIRouter, HTTPException, Path, status
+from pydantic import Field
 
+from parlant.api import agents, common
 from parlant.api.common import (
     ConnectionKindDTO,
     InvoiceDataDTO,
@@ -27,8 +30,12 @@ from parlant.api.common import (
     connection_kind_to_dto,
 )
 from parlant.api.index import InvoiceDTO
-from parlant.core.agents import AgentId
-from parlant.core.common import DefaultBaseModel
+from parlant.core.common import (
+    DefaultBaseModel,
+)
+from parlant.api.common import (
+    ExampleJson,
+)
 from parlant.core.evaluations import (
     CoherenceCheck,
     ConnectionProposition,
@@ -51,65 +58,311 @@ from parlant.core.application import Application
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import ToolId
 
+from parlant.api.common import (
+    GuidelineConditionField,
+    GuidelineActionField,
+)
+
 API_GROUP = "guidelines"
 
 
-class GuidelineDTO(DefaultBaseModel):
-    id: GuidelineId
-    condition: str
-    action: str
+guideline_dto_example: ExampleJson = {
+    "id": "guid_123xz",
+    "condition": "when the customer asks about pricing",
+    "action": "provide current pricing information and mention any ongoing promotions",
+}
 
 
-class GuidelineConnectionDTO(DefaultBaseModel):
-    id: GuidelineConnectionId
+GuidelineIdPath: TypeAlias = Annotated[
+    GuidelineId,
+    Path(
+        description="Unique identifier for the guideline",
+        examples=["IUCGT-l4pS"],
+    ),
+]
+
+
+class GuidelineDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_dto_example},
+):
+    """Assigns an id to the condition-action pair"""
+
+    id: GuidelineIdPath
+    condition: GuidelineConditionField
+    action: GuidelineActionField
+
+
+GuidelineConnectionIdField: TypeAlias = Annotated[
+    GuidelineConnectionId,
+    Field(
+        description="Unique identifier for the `GuildelineConnection`",
+    ),
+]
+
+GuidelineConnectionIndirectField: TypeAlias = Annotated[
+    bool,
+    Field(
+        description="`True` if there is a path from `source` to `target` but no direct connection",
+        examples=[True, False],
+    ),
+]
+guideline_connection_dto_example: ExampleJson = {
+    "id": "conn_456xyz",
+    "source": {
+        "id": "guid_123xz",
+        "condition": "when the customer asks about pricing",
+        "action": "provide current pricing information",
+    },
+    "target": {
+        "id": "guid_789yz",
+        "condition": "when providing pricing information",
+        "action": "mention any seasonal discounts",
+    },
+    "kind": "suggests",
+    "indirect": False,
+}
+
+
+class GuidelineConnectionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_connection_dto_example},
+):
+    """
+    Represents a connection between two guidelines.
+
+    The connection can be strong (with `kind`=`"entails"`) or weak (with `kind`=`"suggests"`)
+    """
+
+    id: GuidelineConnectionIdField
     source: GuidelineDTO
     target: GuidelineDTO
     kind: ConnectionKindDTO
-    indirect: bool
+    indirect: GuidelineConnectionIndirectField
 
 
-class GuidelineToolAssociationDTO(DefaultBaseModel):
-    id: GuidelineToolAssociationId
-    guideline_id: GuidelineId
+GuidelineToolAssociationIdField: TypeAlias = Annotated[
+    GuidelineToolAssociationId,
+    Field(
+        description="Unique identifier for the association between a tool and a guideline",
+        examples=["guid_tool_1"],
+    ),
+]
+
+
+guideline_tool_association_example: ExampleJson = {
+    "id": "gta_101xyz",
+    "guideline_id": "guid_123xz",
+    "tool_id": {"service_name": "pricing_service", "tool_name": "get_prices"},
+}
+
+
+class GuidelineToolAssociationDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_tool_association_example},
+):
+    """
+    Represents an association between a Guideline and a Tool, enabling automatic tool invocation
+    when the Guideline's conditions are met.
+    """
+
+    id: GuidelineToolAssociationIdField
+    guideline_id: GuidelineIdPath
     tool_id: ToolIdDTO
 
 
-class GuidelineWithConnectionsAndToolAssociationsDTO(DefaultBaseModel):
+guideline_with_connections_example: ExampleJson = {
+    "guideline": {
+        "id": "guid_123xz",
+        "condition": "when the customer asks about pricing",
+        "action": "provide current pricing information",
+    },
+    "connections": [
+        {
+            "id": "conn_456yz",
+            "source": {
+                "id": "guid_123xz",
+                "condition": "when the customer asks about pricing",
+                "action": "provide current pricing information",
+            },
+            "target": {
+                "id": "guid_789yz",
+                "condition": "when providing pricing information",
+                "action": "mention any seasonal discounts",
+            },
+            "kind": "suggests",
+            "indirect": False,
+        }
+    ],
+    "tool_associations": [
+        {
+            "id": "gta_101xyz",
+            "guideline_id": "guid_123xz",
+            "tool_id": {"service_name": "pricing_service", "tool_name": "get_prices"},
+        }
+    ],
+}
+
+
+class GuidelineWithConnectionsAndToolAssociationsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_with_connections_example},
+):
+    """A Guideline with its connections and tool associations."""
+
     guideline: GuidelineDTO
     connections: Sequence[GuidelineConnectionDTO]
     tool_associations: Sequence[GuidelineToolAssociationDTO]
 
 
-class GuidelineCreationParamsDTO(DefaultBaseModel):
+guideline_creation_params_example: ExampleJson = {
+    "invoices": [
+        {
+            "payload": {
+                "kind": "guideline",
+                "guideline": {
+                    "content": {
+                        "condition": "when the customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "operation": "add",
+                    "coherence_check": True,
+                    "connection_proposition": True,
+                },
+            },
+            "data": {"guideline": {"coherence_checks": [], "connection_propositions": []}},
+            "approved": True,
+            "checksum": "abc123",
+            "error": None,
+        }
+    ]
+}
+
+
+class GuidelineCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_creation_params_example},
+):
+    """Evaluation invoices to generate Guidelines from."""
+
     invoices: Sequence[InvoiceDTO]
 
 
-class GuidelineCreationResult(DefaultBaseModel):
-    items: list[GuidelineWithConnectionsAndToolAssociationsDTO]
+guideline_creation_result_example: ExampleJson = {
+    "items": [
+        {
+            "guideline": {
+                "id": "guid_123xz",
+                "condition": "when the customer asks about pricing",
+                "action": "provide current pricing information",
+            },
+            "connections": [],
+            "tool_associations": [],
+        }
+    ]
+}
 
 
-class GuidelineConnectionAdditionDTO(DefaultBaseModel):
-    source: GuidelineId
-    target: GuidelineId
+class GuidelineCreationResult(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_creation_result_example},
+):
+    """Result wrapper for Guidelines creation."""
+
+    items: Sequence[GuidelineWithConnectionsAndToolAssociationsDTO]
+
+
+GuidelineConnectionAdditionSourceField: TypeAlias = Annotated[
+    GuidelineId,
+    Field(description="`id` of guideline that is source of this connection."),
+]
+
+GuidelineConnectionAdditionTargetField: TypeAlias = Annotated[
+    GuidelineId,
+    Field(description="`id` of guideline that is target of this connection."),
+]
+
+
+guideline_connection_addition_example: ExampleJson = {
+    "source": "guid_123xz",
+    "target": "guid_789yz",
+    "kind": "suggests",
+}
+
+
+class GuidelineConnectionAdditionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_connection_addition_example},
+):
+    """Used to add connections between Guidelines."""
+
+    source: GuidelineConnectionAdditionSourceField
+    target: GuidelineConnectionAdditionTargetField
     kind: ConnectionKindDTO
 
 
-class GuidelineConnectionUpdateParamsDTO(DefaultBaseModel):
+guideline_connection_update_params_example: ExampleJson = {
+    "add": [{"source": "guide_123xyz", "target": "guide_789xyz", "kind": "suggests"}],
+    "remove": ["guide_456xyz"],
+}
+
+
+class GuidelineConnectionUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_connection_update_params_example},
+):
+    """
+    Parameters for updaing a guideline connection.
+
+    `add` is expected to be a collection of addition objects.
+    `remove` should contain the `id`s of the guidelines to remove.
+    """
+
     add: Optional[Sequence[GuidelineConnectionAdditionDTO]] = None
-    remove: Optional[Sequence[GuidelineId]] = None
+    remove: Optional[Sequence[GuidelineIdPath]] = None
 
 
-class GuidelineToolAssociationUpdateParamsDTO(DefaultBaseModel):
+guideline_tool_association_update_params_example: ExampleJson = {
+    "add": [{"service_name": "pricing_service", "tool_name": "get_prices"}],
+    "remove": [{"service_name": "old_service", "tool_name": "old_tool"}],
+}
+
+
+class GuidelineToolAssociationUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_tool_association_update_params_example},
+):
+    """Parameters for adding/removing tool associations."""
+
     add: Optional[Sequence[ToolIdDTO]] = None
     remove: Optional[Sequence[ToolIdDTO]] = None
 
 
-class GuidelineUpdateParamsDTO(DefaultBaseModel):
+guideline_update_params_example: ExampleJson = {
+    "connections": {
+        "add": [{"source": "guide_123xyz", "target": "guide_789xyz", "kind": "suggests"}],
+        "remove": ["guide_456xyz"],
+    },
+    "tool_associations": {
+        "add": [{"service_name": "pricing_service", "tool_name": "get_prices"}],
+        "remove": [{"service_name": "old_service", "tool_name": "old_tool"}],
+    },
+}
+
+
+class GuidelineUpdateParamsDTO(
+    DefaultBaseModel, json_schema_extra={"example": guideline_update_params_example}
+):
+    """Parameters for updating Guideline objects."""
+
     connections: Optional[GuidelineConnectionUpdateParamsDTO] = None
     tool_associations: Optional[GuidelineToolAssociationUpdateParamsDTO] = None
 
 
-class GuidelineConnection(DefaultBaseModel):
+@dataclass
+class _GuidelineConnection:
+    """Represents one connection between two Guidelines."""
+
     id: GuidelineConnectionId
     source: Guideline
     target: Guideline
@@ -215,6 +468,13 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineDa
         )
 
 
+guideline_example = {
+    "id": "guid_123xz",
+    "condition": "when the customer asks about pricing",
+    "action": "provide current pricing information and mention any ongoing promotions",
+}
+
+
 def create_router(
     application: Application,
     guideline_store: GuidelineStore,
@@ -228,9 +488,9 @@ def create_router(
         guideline_set: str,
         guideline_id: GuidelineId,
         include_indirect: bool = True,
-    ) -> Sequence[tuple[GuidelineConnection, bool]]:
+    ) -> Sequence[tuple[_GuidelineConnection, bool]]:
         connections = [
-            GuidelineConnection(
+            _GuidelineConnection(
                 id=c.id,
                 source=await guideline_store.read_guideline(
                     guideline_set=guideline_set, guideline_id=c.source
@@ -256,12 +516,30 @@ def create_router(
         "/{agent_id}/guidelines",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_guidelines",
+        response_model=GuidelineCreationResult,
+        responses={
+            status.HTTP_201_CREATED: {
+                "description": "Guidelines successfully created. Returns the created guidelines with their connections and tool associations.",
+                "content": common.example_json_content(guideline_creation_result_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Agent not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_guidelines(
-        agent_id: AgentId,
+        agent_id: agents.AgentIdPath,
         params: GuidelineCreationParamsDTO,
     ) -> GuidelineCreationResult:
+        """
+        Creates new guidelines from the provided invoices.
+
+        Each invoice must contain guideline payload data and be approved.
+        The guidelines are created in the specified agent's guideline set.
+        Tool associations and connections are automatically handled.
+        """
         invoices = [_invoice_dto_to_invoice(i) for i in params.invoices]
 
         guideline_ids = set(
@@ -329,12 +607,27 @@ def create_router(
     @router.get(
         "/{agent_id}/guidelines/{guideline_id}",
         operation_id="read_guideline",
+        response_model=GuidelineWithConnectionsAndToolAssociationsDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Guideline details successfully retrieved. Returns the complete guideline with its connections and tool associations.",
+                "content": common.example_json_content(guideline_with_connections_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Guideline or agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_guideline(
-        agent_id: AgentId,
-        guideline_id: GuidelineId,
+        agent_id: agents.AgentIdPath,
+        guideline_id: GuidelineIdPath,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
+        """
+        Retrieves a specific guideline with all its connections and tool associations.
+
+        Returns both direct and indirect connections between guidelines.
+        Tool associations indicate which tools the guideline can use.
+        """
+
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id, guideline_id=guideline_id
         )
@@ -386,9 +679,26 @@ def create_router(
     @router.get(
         "/{agent_id}/guidelines",
         operation_id="list_guidelines",
+        response_model=Sequence[GuidelineDTO],
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all guidelines for the specified agent",
+                "content": common.example_json_content([guideline_dto_example]),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_guidelines(agent_id: AgentId) -> list[GuidelineDTO]:
+    async def list_guidelines(
+        agent_id: agents.AgentIdPath,
+    ) -> Sequence[GuidelineDTO]:
+        """
+        Lists all guidelines for the specified agent.
+
+        Returns an empty list if no guidelines exist.
+        Guidelines are returned in no guaranteed order.
+        Does not include connections or tool associations.
+        """
         guidelines = await guideline_store.list_guidelines(guideline_set=agent_id)
 
         return [
@@ -403,13 +713,36 @@ def create_router(
     @router.patch(
         "/{agent_id}/guidelines/{guideline_id}",
         operation_id="update_guideline",
+        response_model=GuidelineWithConnectionsAndToolAssociationsDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Guideline successfully updated. Returns the updated guideline with its connections and tool associations.",
+                "content": common.example_json_content(guideline_with_connections_example),
+            },
+            status.HTTP_404_NOT_FOUND: {
+                "description": "Guideline, agent, or referenced tool not found"
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Invalid connection rules or validation error in update parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_guideline(
-        agent_id: AgentId,
-        guideline_id: GuidelineId,
+        agent_id: agents.AgentIdPath,
+        guideline_id: GuidelineIdPath,
         params: GuidelineUpdateParamsDTO,
     ) -> GuidelineWithConnectionsAndToolAssociationsDTO:
+        """Updates a guideline's connections and tool associations.
+
+        Only provided attributes will be updated; others remain unchanged.
+
+        Connection rules:
+        - A guideline cannot connect to itself
+        - Only direct connections can be removed
+        - The connection must specify this guideline as source or target
+        - Tool services and tools must exist before creating associations
+        """
         guideline = await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,
@@ -539,12 +872,25 @@ def create_router(
         "/{agent_id}/guidelines/{guideline_id}",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_guideline",
+        responses={
+            status.HTTP_204_NO_CONTENT: {
+                "description": "Guideline successfully deleted. No content returned."
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Guideline or agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_guideline(
-        agent_id: AgentId,
-        guideline_id: GuidelineId,
+        agent_id: agents.AgentIdPath,
+        guideline_id: GuidelineIdPath,
     ) -> None:
+        """Deletes a guideline from the system.
+
+        Also removes all associated connections and tool associations.
+        Deleting a non-existent guideline will return 404.
+        No content will be returned from a successful deletion.
+        """
+
         await guideline_store.read_guideline(
             guideline_set=agent_id,
             guideline_id=guideline_id,

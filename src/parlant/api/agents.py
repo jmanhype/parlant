@@ -17,7 +17,7 @@ import dateutil
 import dateutil.parser
 from fastapi import APIRouter, Path, status
 from pydantic import Field
-from typing import Annotated, Optional, TypeAlias
+from typing import Annotated, Optional, Sequence, TypeAlias
 
 from parlant.api.common import ExampleJson, apigen_config, example_json_content
 from parlant.core.agents import AgentId, AgentStore, AgentUpdateParams
@@ -205,7 +205,7 @@ def create_router(
     @router.get(
         "/",
         operation_id="list_agents",
-        response_model=list[AgentDTO],
+        response_model=Sequence[AgentDTO],
         responses={
             status.HTTP_200_OK: {
                 "description": "List of all agents in the system",
@@ -214,7 +214,7 @@ def create_router(
         },
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_agents() -> list[AgentDTO]:
+    async def list_agents() -> Sequence[AgentDTO]:
         """
         Retrieves a list of all agents in the system.
 
@@ -271,7 +271,7 @@ def create_router(
         response_model=AgentDTO,
         responses={
             status.HTTP_200_OK: {
-                "description": "Agent successfully updated. Returns the updated `Agent`.",
+                "description": "Agent successfully updated. Returns the updated agent.",
                 "content": example_json_content(agent_example),
             },
             status.HTTP_404_NOT_FOUND: {

@@ -15,7 +15,7 @@
 from datetime import datetime
 from enum import Enum
 from fastapi import HTTPException, Path, Query, status
-from typing import Annotated, Optional, TypeAlias, cast
+from typing import Annotated, Optional, Sequence, TypeAlias, cast
 
 from fastapi import APIRouter
 from pydantic import Field
@@ -51,32 +51,32 @@ class DayOfWeekDTO(Enum):
 class FreshnessRulesDTO(DefaultBaseModel):
     """Rules for validating data freshness."""
 
-    months: Optional[list[int]] = Field(
+    months: Optional[Sequence[int]] = Field(
         default=None,
         description="List of valid months (1-12)",
         examples=[[1, 6, 12]],
     )
-    days_of_month: Optional[list[int]] = Field(
+    days_of_month: Optional[Sequence[int]] = Field(
         default=None,
         description="List of valid days of month (1-31)",
         examples=[[1, 15, 30]],
     )
-    days_of_week: Optional[list[DayOfWeekDTO]] = Field(
+    days_of_week: Optional[Sequence[DayOfWeekDTO]] = Field(
         default=None,
         description="List of valid days of week",
         examples=[["Monday", "Wednesday", "Friday"]],
     )
-    hours: Optional[list[int]] = Field(
+    hours: Optional[Sequence[int]] = Field(
         default=None,
         description="List of valid hours (0-23)",
         examples=[[9, 13, 17]],
     )
-    minutes: Optional[list[int]] = Field(
+    minutes: Optional[Sequence[int]] = Field(
         default=None,
         description="List of valid minutes (0-59)",
         examples=[[0, 30]],
     )
-    seconds: Optional[list[int]] = Field(
+    seconds: Optional[Sequence[int]] = Field(
         default=None,
         description="List of valid seconds (0-59)",
         examples=[[0, 30]],
@@ -267,12 +267,12 @@ class ContextVariableReadResult(DefaultBaseModel):
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
     return FreshnessRules(
-        months=dto.months,
-        days_of_month=dto.days_of_month,
+        months=list(dto.months or []),
+        days_of_month=list(dto.days_of_month or []),
         days_of_week=[dow.value for dow in dto.days_of_week] if dto.days_of_week else [],
-        hours=dto.hours,
-        minutes=dto.minutes,
-        seconds=dto.seconds,
+        hours=list(dto.hours or []),
+        minutes=list(dto.minutes or []),
+        seconds=list(dto.seconds or []),
     )
 
 
@@ -517,7 +517,7 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables",
         operation_id="list_variables",
-        response_model=list[ContextVariableDTO],
+        response_model=Sequence[ContextVariableDTO],
         responses={
             status.HTTP_200_OK: {
                 "description": "List of all context variable for the provided agent",
@@ -529,7 +529,7 @@ def create_router(
     )
     async def list_variables(
         agent_id: AgentIdPath,
-    ) -> list[ContextVariableDTO]:
+    ) -> Sequence[ContextVariableDTO]:
         """Lists all context variables set for the provided agent"""
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 

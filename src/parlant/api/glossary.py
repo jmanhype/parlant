@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from fastapi import APIRouter, Path, status
-from typing import Annotated, Optional, TypeAlias
+from typing import Annotated, Optional, Sequence, TypeAlias
 from pydantic import Field
 
 from parlant.api import common
@@ -46,7 +46,7 @@ TermDescriptionField: TypeAlias = Annotated[
 ]
 
 TermSynonymsField: TypeAlias = Annotated[
-    list[str],
+    Sequence[str],
     Field(
         default=[],
         description="A list of synonyms for the term, including alternate contexts if applicable.",
@@ -221,7 +221,7 @@ def create_router(
     @router.get(
         "/{agent_id}/terms",
         operation_id="list_terms",
-        response_model=list[TermDTO],
+        response_model=Sequence[TermDTO],
         responses={
             status.HTTP_200_OK: {
                 "description": "List of all terms in the agent's glossary.",
@@ -235,7 +235,7 @@ def create_router(
     )
     async def list_terms(
         agent_id: TermAgentIdPath,
-    ) -> list[TermDTO]:
+    ) -> Sequence[TermDTO]:
         """
         Retrieves a list of all terms in the agent's glossary.
 

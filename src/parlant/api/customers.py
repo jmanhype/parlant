@@ -28,7 +28,7 @@ API_GROUP = "customers"
 CustomerNameField: TypeAlias = Annotated[
     str,
     Field(
-        description="An arbitrary string that indentifies and/or describes the `Customer`",
+        description="An arbitrary string that indentifies and/or describes the customer",
         examples=["Scooby", "Johan the Mega-VIP"],
         min_length=1,
         max_length=100,
@@ -225,7 +225,7 @@ def create_router(
         response_model=CustomerDTO,
         responses={
             status.HTTP_201_CREATED: {
-                "description": "Customer successfully created. Returns the new `Customer` object.",
+                "description": "Customer successfully created. Returns the new customer object.",
                 "content": example_json_content(customer_example),
             },
             status.HTTP_422_UNPROCESSABLE_ENTITY: {
@@ -238,10 +238,10 @@ def create_router(
         params: CustomerCreationParamsDTO,
     ) -> CustomerDTO:
         """
-        Creates a new `Customer` in the system.
+        Creates a new customer in the system.
 
-        A `Customer` may be created with as little as a `name`.
-        `extra` key-value pairs and additional `tags` may be attached to a `Customer`.
+        A customer may be created with as little as a `name`.
+        `extra` key-value pairs and additional `tags` may be attached to a customer.
         """
         customer = await customer_store.create_customer(
             name=params.name,
@@ -293,7 +293,7 @@ def create_router(
     @router.get(
         "/",
         operation_id="list_customers",
-        response_model=list[CustomerDTO],
+        response_model=Sequence[CustomerDTO],
         responses={
             status.HTTP_200_OK: {
                 "description": "List of all customers in the system.",
@@ -302,7 +302,7 @@ def create_router(
         },
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_customers() -> list[CustomerDTO]:
+    async def list_customers() -> Sequence[CustomerDTO]:
         """
         Retrieves a list of all customers in the system.
 
