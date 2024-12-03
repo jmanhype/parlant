@@ -338,7 +338,6 @@ check_stock(): returns all menu items that are currently in stock
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
-        # TODO ASK DOR - builder.add_user_name_and_tags(*user_tags_pair)
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(
@@ -385,8 +384,6 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
         """
         )
         prompt = builder.build()
-        with open("tool call prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
 
     def _get_output_format(self, id_tool_pairs: Sequence[tuple[ToolId, Tool]]) -> str:
