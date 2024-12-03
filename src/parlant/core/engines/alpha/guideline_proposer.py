@@ -213,7 +213,7 @@ class GuidelineProposer:
 
             self._logger.debug(
                 f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
+                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; continuous: [{proposition.guideline_is_continuous}] ;Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
             if (proposition.applies_score >= 6) and (
