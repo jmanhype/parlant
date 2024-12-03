@@ -4,16 +4,17 @@
   <h3>Parlant</h3>
   <p>A feedback-driven approach to building and guiding customer-facing AI agents</p>
   <p>
-    <a href="https://www.parlant.io/" target="_blank">Homepage</a> |
-    <a href="https://www.parlant.io/docs/about" target="_blank">About</a> |
+    <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/introduction" target="_blank">Introduction</a> |
     <a href="https://www.parlant.io/docs/quickstart/installation" target="_blank">Installation</a> |
-    <a href="https://www.parlant.io/docs/quickstart/tutorial" target="_blank">Tutorial</a>
+    <a href="https://www.parlant.io/docs/quickstart/tutorial" target="_blank">Tutorial</a> |
+    <a href="https://www.parlant.io/docs/about" target="_blank">About</a>
   </p>
   <p>
     <a href="https://pypi.org/project/parlant/" alt="Parlant on PyPi"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/parlant"></a>
-    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/emcie-co/parlant">
+    <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/parlant">
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Apache 2 License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/emcie-co/parlant">
     <a href="https://discord.gg/QXKvkqph"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007?style=flat&logo=discord&logoColor=white&label=discord">
 </a>
   </p>
@@ -64,11 +65,57 @@ With Parlant, they've been able to quickly integrate feedback from customer serv
 - [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
+## Usage Example
+In Parlant, Customer-Agent interaction happens asynchronously, to enable more natural customer interactions, rather than forcing a strict and unnatural request-reply mode.
+
+Here's a basic example (using the TypeScript client SDK):
+
+```typescript
+import { ParlantClient } from 'parlant-client';
+
+const client = ParlantClient({ environment: SERVER_ADDRESS });
+
+session_id = "...";
+
+// Post customer message
+const customerEvent = await client.sessions.createEvent(session_id, {
+   kind: "message",
+   source: "customer",
+   message: "Hey, I'd like to book a room please",
+});
+
+// Wait for and get the agent's reply
+const [agentEvent] = (await client.sessions.listEvents(session_id, {
+   kinds: "message",
+   source: "ai_agent",
+   minOffset: customerEvent.offset,
+   waitForData: 60 // wait for up to 60 seconds for an answer
+}));
+
+// Print the agent's reply
+const { agentMessage } = agentEvent.data as { message: string };
+console.log(agentMessage);
+
+// Inspect the details of the message generation process
+const { trace } = await client.sessions.inspectEvent(
+   session_id,
+   agentEvent.id
+);
+```
+
 ## Getting started
 ```bash
 $ pip install parlant
 $ parlant-server
 $ # Open http://localhost:8000 and play
+```
+
+Install client SDKs:
+```bash
+$ # For Python clients:
+$ pip install parlant-client
+$ # For TypeScript clients:
+$ npm install parlant-client
 ```
 
 To start building with Parlant, visit our [documentation portal](https://parlant.io/quickstart/installation).
