@@ -255,6 +255,11 @@ class CustomerDocumentStore(CustomerStore):
         tag_id: TagId,
         creation_utc: Optional[datetime] = None,
     ) -> Customer:
+        customer = await self.read_customer(customer_id)
+
+        if tag_id in customer.tags:
+            return customer
+
         creation_utc = creation_utc or datetime.now(timezone.utc)
 
         association_document: _CustomerTagAssociationDocument = {
