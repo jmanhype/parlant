@@ -1774,6 +1774,7 @@ class Interface:
                 "ID": customer.id,
                 "Name": customer.name,
                 "Extra": customer.extra,
+                "Tag IDs": ", ".join(customer.tags),
             }
             for customer in customers
         ]
