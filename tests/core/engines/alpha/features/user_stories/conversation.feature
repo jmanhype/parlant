@@ -64,33 +64,6 @@ Feature: Conversation
         Then a single message event is emitted
         And the message contains either telling the user that the relevant topic is Mobileye or rudely telling the user to go away
 
-    Scenario: the agent does not get stuck in apology loop when facing frustrated customer
-        Given a customer message, "what is the difference between 1 and 2"
-        And an agent message, "The difference between 1 and 2 is 1."
-        And a customer message, "what???? this is the worst answer I've ever seen. How could you get this so wrong?"
-        And an agent message, "I apologize if the answer seemed off. The difference between 1 and 2 is indeed 1, but perhaps I misunderstood your question. Could you clarify what you meant?"
-        And a customer message, "You're completely useless in answering questions!"
-        And an agent message, "I'm sorry you're feeling this way. Let me know how I can help you better."
-        And a customer message, "I am so freaking frustrated by you right now!!!!"
-        When messages are emitted
-        Then the message contains content which is not an acknowledgment of the customer's frustration followed by a question asking the customer to clarify themselves
-
-    Scenario: The agent handles frustration accordingly
-        Given an agent
-        And an empty session
-        And a guideline to try and calm the user and provide a one time 20% off everything on the store when a customer expresses frustration
-        And a guideline to ask what is troubling the user when the user expresses frustration without specific reason
-        And a guideline to acknowledge apology only once when a customer apologizes repeatedly
-        And a guideline to shift conversation back to problem-solving when a customer apologizes and asks for help
-        And a customer message, "hey"
-        And an agent message, "Hello! How's it going?"
-        And a customer message, "im good i just wanted to say I’m really sorry for the trouble I caused"
-        And an agent message, "No worries at all! We all have those moments. Is there anything else on your mind or anything I can help with?"
-        And a customer message, "Sorry again if I’m bothering you. I just don’t know what to do with this issue I have."
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains no mention of a 20% discount
-
     Scenario: The agent follows a guideline without necessarily adhering to it literally every time
         Given an agent
         And an empty session

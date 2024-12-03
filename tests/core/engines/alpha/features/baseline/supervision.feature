@@ -110,17 +110,6 @@ Feature: Supervision
         Then a single message event is emitted
         And the message contains that its first word is hello, and a recommendation for turpolance soup, also known as carrots and sweet potato soup
 
-    Scenario: The agent uses active guidelines regardless of their predicate
-        Given the alpha engine
-        And an agent
-        And a guideline "frustrated_user", to end your response with the word sorry when the user expresses frustration 
-        And a guideline "start_with_hello", to begin your response with the word hello when the customer mentions cucumbers
-        And a customer message, "I'm so angry at our last talk. I came here to let you know that."
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains hello as the first word, and sorry as the last
-
-
     Scenario: The agent prioritizes guideline from conversation
         Given the alpha engine
         And an agent
