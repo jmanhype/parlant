@@ -244,26 +244,18 @@ tool_example: ExampleJson = {
     "name": "send_email",
     "description": "Sends an email to specified recipients with configurable priority",
     "parameters": {
-        "to": {
-            "type": "string",
-            "description": "Recipient email address"
-        },
-        "subject": {
-            "type": "string",
-            "description": "Email subject line"
-        },
-        "body": {
-            "type": "string",
-            "description": "Email body content"
-        },
+        "to": {"type": "string", "description": "Recipient email address"},
+        "subject": {"type": "string", "description": "Email subject line"},
+        "body": {"type": "string", "description": "Email body content"},
         "priority": {
             "type": "string",
             "description": "Priority level for the email",
-            "enum": ["high", "medium", "low"]
-        }
+            "enum": ["high", "medium", "low"],
+        },
     },
-    "required": ["to", "subject", "body"]
+    "required": ["to", "subject", "body"],
 }
+
 
 class ToolDTO(
     DefaultBaseModel,
@@ -311,27 +303,18 @@ service_example: ExampleJson = {
             "name": "send_email",
             "description": "Sends an email to specified recipients with configurable priority",
             "parameters": {
-                "to": {
-                    "type": "string",
-                    "description": "Recipient email address"
-                },
-                "subject": {
-                    "type": "string",
-                    "description": "Email subject line"
-                },
-                "body": {
-                    "type": "string",
-                    "description": "Email body content"
-                },
+                "to": {"type": "string", "description": "Recipient email address"},
+                "subject": {"type": "string", "description": "Email subject line"},
+                "body": {"type": "string", "description": "Email body content"},
                 "priority": {
                     "type": "string",
                     "description": "Priority level for the email",
-                    "enum": ["high", "medium", "low"]
-                }
+                    "enum": ["high", "medium", "low"],
+                },
             },
-            "required": ["to", "subject", "body"]
+            "required": ["to", "subject", "body"],
         }
-    ]
+    ],
 }
 
 

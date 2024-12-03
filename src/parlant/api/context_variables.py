@@ -229,8 +229,22 @@ DataField: TypeAlias = Annotated[
     ),
 ]
 
+context_variable_value_example: ExampleJson = {
+    "id": "val_789abc",
+    "last_modified": "2024-03-24T12:00:00Z",
+    "data": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_transaction": "2024-03-23T15:30:00Z",
+        "status": "active",
+    },
+}
 
-class ContextVariableValueDTO(DefaultBaseModel):
+
+class ContextVariableValueDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_value_example},
+):
     """
     Represents the actual stored value for a specific customer's or tag's context.
 
@@ -244,7 +258,20 @@ class ContextVariableValueDTO(DefaultBaseModel):
     data: DataField
 
 
-class ContextVariableValueUpdateParamsDTO(DefaultBaseModel):
+context_variable_value_update_params_example: ExampleJson = {
+    "data": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_transaction": "2024-03-23T15:30:00Z",
+        "status": "active",
+    }
+}
+
+
+class ContextVariableValueUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_value_update_params_example},
+):
     """Parameters for updating a context variable value."""
 
     data: DataField
@@ -257,8 +284,50 @@ KeyValuePairsField: TypeAlias = Annotated[
     ),
 ]
 
+context_variable_read_result_example: ExampleJson = {
+    "context_variable": {
+        "id": "v9a8r7i6b5",
+        "name": "UserBalance",
+        "description": "Stores the account balances of users",
+        "tool_id": {"service_name": "finance_service", "tool_name": "balance_checker"},
+        "freshness_rules": {
+            "months": [1, 6, 12],
+            "days_of_month": [1, 15, 30],
+            "days_of_week": ["Monday", "Wednesday", "Friday"],
+            "hours": [9, 13, 17],
+            "minutes": [0, 30],
+            "seconds": [0, 30],
+        },
+    },
+    "key_value_pairs": {
+        "user_123": {
+            "id": "val_789abc",
+            "last_modified": "2024-03-24T12:00:00Z",
+            "data": {
+                "balance": 5000.50,
+                "currency": "USD",
+                "last_transaction": "2024-03-23T15:30:00Z",
+                "status": "active",
+            },
+        },
+        "user_456": {
+            "id": "val_def123",
+            "last_modified": "2024-03-24T14:30:00Z",
+            "data": {
+                "balance": 7500.75,
+                "currency": "EUR",
+                "last_transaction": "2024-03-24T14:15:00Z",
+                "status": "active",
+            },
+        },
+    },
+}
 
-class ContextVariableReadResult(DefaultBaseModel):
+
+class ContextVariableReadResult(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_read_result_example},
+):
     """Complete context variable data including its values."""
 
     context_variable: ContextVariableDTO
@@ -314,30 +383,6 @@ IncludeValuesQuery: TypeAlias = Annotated[
         examples=[True, False],
     ),
 ]
-
-
-context_variable_value_example: ExampleJson = {
-    "id": "v5a4lb3c9",
-    "last_modified": "2024-03-20T14:30:00Z",
-    "data": {
-        "subscription": "standard",
-    },
-}
-
-
-context_variable_read_result_example: ExampleJson = {
-    "context_variable": context_variable_example,
-    "key_value_pairs": {
-        "customer_123": context_variable_value_example,
-        "tag:vip": {
-            "id": "val_456def",
-            "last_modified": "2024-04-15T10:00:00Z",
-            "data": {
-                "subscription": "premium",
-            },
-        },
-    },
-}
 
 
 def create_router(
