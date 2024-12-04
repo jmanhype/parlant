@@ -399,7 +399,7 @@ def create_router(
         customer_id: CustomerIdPath,
     ) -> None:
         """
-        Deletes a customer from the system.
+        Deletes a customer from the agent.
 
         Deleting a non-existent customer will return 404.
         No content will be returned from a successful deletion.

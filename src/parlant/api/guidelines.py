@@ -536,7 +536,10 @@ def create_router(
         """
         Creates new guidelines from the provided invoices.
 
-        Each invoice must contain guideline payload data and be approved.
+        Invoices are obtained by calling the `create_evaluation` method of the client.
+        (Equivalent to making a POST request to `/index/evaluations`)
+        See the [documentation](https://parlant.io/docs/concepts/customization/guidelines) for more information.
+
         The guidelines are created in the specified agent's guideline set.
         Tool associations and connections are automatically handled.
         """
@@ -741,6 +744,8 @@ def create_router(
         - A guideline cannot connect to itself
         - Only direct connections can be removed
         - The connection must specify this guideline as source or target
+
+        Tool Association rules:
         - Tool services and tools must exist before creating associations
         """
         guideline = await guideline_store.read_guideline(
@@ -884,7 +889,7 @@ def create_router(
         agent_id: agents.AgentIdPath,
         guideline_id: GuidelineIdPath,
     ) -> None:
-        """Deletes a guideline from the system.
+        """Deletes a guideline from the agent.
 
         Also removes all associated connections and tool associations.
         Deleting a non-existent guideline will return 404.

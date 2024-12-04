@@ -327,7 +327,7 @@ def create_router(
         term_id: TermIdPath,
     ) -> None:
         """
-        Deletes a term from the system.
+        Deletes a term from the agent.
 
         Deleting a non-existent term will return 404.
         No content will be returned from a successful deletion.

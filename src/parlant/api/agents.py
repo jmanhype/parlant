@@ -338,7 +338,7 @@ def create_router(
         agent_id: AgentIdPath,
     ) -> None:
         """
-        Deletes an agent from the system.
+        Deletes an agent from the agent.
 
         Deleting a non-existent agent will return 404.
         No content will be returned from a successful deletion.
