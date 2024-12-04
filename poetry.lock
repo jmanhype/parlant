@@ -3789,13 +3789,13 @@ xml = ["lxml (>=4.9.2)"]
 
 [[package]]
 name = "parlant-client"
-version = "0.6.0"
+version = "0.7.0"
 description = "Python API client for Parlant (https://parlant.io)"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "parlant_client-0.6.0-py3-none-any.whl", hash = "sha256:8eab3427b1067af99e95c38ebd942d61d9f16ffeb2d8940b955e827ab834b8f8"},
-    {file = "parlant_client-0.6.0.tar.gz", hash = "sha256:a31cf1bc052b4e04cf7368d256c52c4ec6125db5c339259fa736507ae53a5a5d"},
+    {file = "parlant_client-0.7.0-py3-none-any.whl", hash = "sha256:49f5d747ae76cc76e42bcc4caf0f19289b78fd505fe68f08abf85135f8eda258"},
+    {file = "parlant_client-0.7.0.tar.gz", hash = "sha256:9db7b5f3a098e1310592fada8b953499c22f89af160614ef482deb96c574d0d0"},
 ]
 
 [package.dependencies]
@@ -6646,4 +6646,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "800d1eac2b1e68bb076c6cc3295c014aa6d0db2513b5691a0b3b349a88a9df90"
+content-hash = "e74d047473dfc8ca5025a676cbe80c6cb0b5aa21132cc121f4d5a6114ff81e10"
