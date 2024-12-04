@@ -151,11 +151,6 @@ class AgentUpdateParamsDTO(
 def create_router(
     agent_store: AgentStore,
 ) -> APIRouter:
-    """
-    Creates and configures the agents router with all available endpoints.
-
-    Provides CRUD operations for managing agents in the system.
-    """
     router = APIRouter()
 
     @router.post(

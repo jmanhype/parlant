@@ -112,7 +112,7 @@ class ContextOfTest:
     api: API
 
 
-def is_port_open(port: int) -> bool:
+def is_server_responsive(port: int) -> bool:
     if _output_view := subprocess.getoutput(f"lsof -i:{port}"):
         print(_output_view)
         return True
@@ -125,7 +125,7 @@ def run_server(
     context: ContextOfTest,
     extra_args: list[str] = [],
 ) -> Iterator[subprocess.Popen[str]]:
-    if is_port_open(int(SERVER_PORT)):
+    if is_server_responsive(int(SERVER_PORT)):
         raise Exception(f"Server already running on chosen port {SERVER_PORT}")
 
     exec_args = [

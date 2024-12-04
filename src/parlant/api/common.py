@@ -63,11 +63,11 @@ class ConnectionKindDTO(Enum):
     whether the target Guideline's action should be treated as mandatory or just suggestive.
 
     Values:
-        ENTAILS: Indicates that when the source Guideline is activated, the target
+        "entails": Indicates that when the source Guideline is activated, the target
                 Guideline's action must be executed. This represents a strong, mandatory
                 logical implication.
 
-        SUGGESTS: While the logical connection still exists, this marker indicates that the
+        "suggests": While the logical connection still exists, this marker indicates that the
                  target Guideline's action should be considered but isn't mandatory. It serves
                  as a logical hint rather than a requirement.
 

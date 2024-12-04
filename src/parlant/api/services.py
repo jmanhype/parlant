@@ -34,9 +34,9 @@ class ToolServiceKindDTO(Enum):
     The type of service integration available in the system.
 
     Attributes:
-        SDK: Native integration using the Parlant SDK protocol. Enables advanced features
+        "sdk": Native integration using the Parlant SDK protocol. Enables advanced features
             like bidirectional communication and streaming results.
-        OPENAPI: Integration via OpenAPI specification. Simpler to set up but limited
+        "openapi": Integration via OpenAPI specification. Simpler to set up but limited
             to basic request/response patterns.
     """
 
