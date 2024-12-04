@@ -27,7 +27,7 @@ class LakeraGuard(ModerationService):
 
     @override
     async def check(self, content: str) -> ModerationCheck:
-        api_key = os.environ.get("LAKERA_API_KEY")
+        api_key: str | None = os.environ.get("LAKERA_API_KEY")
 
         if not api_key:
             self._logger.warning(
@@ -75,7 +75,7 @@ class LakeraGuard(ModerationService):
         ]
 
         return ModerationCheck(
-            flagged=any(detected for category, detected in results),
+            flagged=any(detected for _category, detected in results),
             tags=list(
                 set(
                     chain.from_iterable(

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from datetime import datetime
-from typing import Optional, Sequence, cast
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated, Optional, Sequence, TypeAlias, cast
+from fastapi import APIRouter, HTTPException, Path, Query, status
+from pydantic import Field
 
+from parlant.api import common
 from parlant.api.common import (
     CoherenceCheckDTO,
     CoherenceCheckKindDTO,
@@ -31,6 +33,7 @@ from parlant.api.common import (
     PayloadKindDTO,
     apigen_config,
     connection_kind_to_dto,
+    ExampleJson,
 )
 from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
@@ -163,26 +166,248 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
     )
 
 
-class InvoiceDTO(DefaultBaseModel):
+ChecksumField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Checksum of the invoice content",
+        examples=["abc123def456"],
+    ),
+]
+
+ApprovedField: TypeAlias = Annotated[
+    bool,
+    Field(
+        description="Whether the evaluation task the invoice represents has been approved",
+        examples=[True],
+    ),
+]
+
+
+ErrorField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Error message if the evaluation failed",
+        examples=["Failed to process evaluation due to invalid payload"],
+    ),
+]
+
+
+invoice_example: ExampleJson = {
+    "payload": {
+        "kind": "guideline",
+        "guideline": {
+            "content": {
+                "condition": "when customer asks about pricing",
+                "action": "provide current pricing information",
+            },
+            "operation": "add",
+            "updated_id": None,
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+    },
+    "checksum": "abc123def456",
+    "approved": True,
+    "data": {
+        "guideline": {
+            "coherence_checks": [
+                {
+                    "kind": "semantic_overlap",
+                    "first": {
+                        "condition": "when customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "second": {
+                        "condition": "if customer inquires about cost",
+                        "action": "share the latest pricing details",
+                    },
+                    "issue": "These guidelines handle similar scenarios",
+                    "severity": "warning",
+                }
+            ],
+            "connection_propositions": [
+                {
+                    "check_kind": "semantic_similarity",
+                    "source": {
+                        "condition": "when customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "target": {
+                        "condition": "if customer inquires about cost",
+                        "action": "share the latest pricing details",
+                    },
+                    "connection_kind": "suggests",
+                }
+            ],
+        }
+    },
+    "error": None,
+}
+
+
+class InvoiceDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": invoice_example},
+):
+    """Represents the result of evaluating a single payload in an evaluation task.
+
+    An invoice is a comprehensive record of the evaluation results for a single payload.
+    """
+
     payload: PayloadDTO
-    checksum: str
-    approved: bool
-    data: Optional[InvoiceDataDTO]
-    error: Optional[str]
+    checksum: ChecksumField
+    approved: ApprovedField
+    data: Optional[InvoiceDataDTO] = None
+    error: Optional[ErrorField] = None
 
 
-class EvaluationCreationParamsDTO(DefaultBaseModel):
-    agent_id: AgentId
+AgentIdField: TypeAlias = Annotated[
+    AgentId,
+    Field(
+        description="Unique identifier for the agent",
+        examples=["a1g2e3n4t5"],
+    ),
+]
+
+
+evaluation_creation_params_example: ExampleJson = {
+    "agent_id": "a1g2e3n4t5",
+    "payloads": [
+        {
+            "kind": "guideline",
+            "guideline": {
+                "content": {
+                    "condition": "when customer asks about pricing",
+                    "action": "provide current pricing information",
+                },
+                "operation": "add",
+                "coherence_check": True,
+                "connection_proposition": True,
+            },
+        }
+    ],
+}
+
+
+class EvaluationCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": evaluation_creation_params_example},
+):
+    """Parameters for creating a new evaluation task"""
+
+    agent_id: AgentIdField
     payloads: Sequence[PayloadDTO]
 
 
-class EvaluationDTO(DefaultBaseModel):
-    id: EvaluationId
+EvaluationIdPath: TypeAlias = Annotated[
+    EvaluationId,
+    Path(
+        description="Unique identifier of the evaluation to retrieve",
+        examples=["eval_123xz"],
+    ),
+]
+
+EvaluationProgressField: TypeAlias = Annotated[
+    float,
+    Field(
+        description="Progress of the evaluation from 0.0 to 100.0",
+        ge=0.0,
+        le=100.0,
+        examples=[75.0],
+    ),
+]
+
+CreationUtcField: TypeAlias = Annotated[
+    datetime,
+    Field(
+        description="UTC timestamp when the evaluation was created",
+    ),
+]
+
+
+evaluation_example: ExampleJson = {
+    "id": "eval_123xz",
+    "status": "completed",
+    "progress": 100.0,
+    "creation_utc": "2024-03-24T12:00:00Z",
+    "error": None,
+    "invoices": [
+        {
+            "payload": {
+                "kind": "guideline",
+                "guideline": {
+                    "content": {
+                        "condition": "when customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "operation": "add",
+                    "updated_id": None,
+                    "coherence_check": True,
+                    "connection_proposition": True,
+                },
+            },
+            "checksum": "abc123def456",
+            "approved": True,
+            "data": {
+                "guideline": {
+                    "coherence_checks": [
+                        {
+                            "kind": "semantic_overlap",
+                            "first": {
+                                "condition": "when customer asks about pricing",
+                                "action": "provide current pricing information",
+                            },
+                            "second": {
+                                "condition": "if customer inquires about cost",
+                                "action": "share the latest pricing details",
+                            },
+                            "issue": "These guidelines handle similar scenarios",
+                            "severity": "warning",
+                        }
+                    ],
+                    "connection_propositions": [
+                        {
+                            "check_kind": "semantic_similarity",
+                            "source": {
+                                "condition": "when customer asks about pricing",
+                                "action": "provide current pricing information",
+                            },
+                            "target": {
+                                "condition": "if customer inquires about cost",
+                                "action": "share the latest pricing details",
+                            },
+                            "connection_kind": "suggests",
+                        }
+                    ],
+                }
+            },
+            "error": None,
+        }
+    ],
+}
+
+
+class EvaluationDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": evaluation_example},
+):
+    """An evaluation task information tracking analysis of payloads."""
+
+    id: EvaluationIdPath
     status: EvaluationStatusDTO
-    progress: float
-    creation_utc: datetime
-    error: Optional[str]
-    invoices: list[InvoiceDTO]
+    progress: EvaluationProgressField
+    creation_utc: CreationUtcField
+    error: Optional[ErrorField] = None
+    invoices: Sequence[InvoiceDTO]
+
+
+WaitForCompletionQuery: TypeAlias = Annotated[
+    int,
+    Query(
+        description="Maximum time in seconds to wait for evaluation completion",
+        ge=0,
+    ),
+]
 
 
 def create_router(
@@ -197,9 +422,31 @@ def create_router(
         "/evaluations",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_evaluation",
+        response_model=EvaluationDTO,
+        responses={
+            status.HTTP_201_CREATED: {
+                "description": "Evaluation successfully created. Returns the initial evaluation state.",
+                "content": common.example_json_content(evaluation_example),
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in evaluation parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_evaluation(params: EvaluationCreationParamsDTO) -> EvaluationDTO:
+    async def create_evaluation(
+        params: EvaluationCreationParamsDTO,
+    ) -> EvaluationDTO:
+        """
+        Creates a new evaluation task for the specified agent.
+
+        An evaluation analyzes proposed changes (payloads) to an agent's guidelines
+        to ensure coherence and consistency with existing guidelines and the agent's
+        configuration. This helps maintain predictable agent behavior by detecting
+        potential conflicts and unintended consequences before applying changes.
+
+        Returns immediately with the created evaluation's initial state.
+        """
         try:
             agent = await agent_store.read_agent(agent_id=params.agent_id)
             evaluation_id = await evaluation_service.create_evaluation_task(
@@ -221,12 +468,36 @@ def create_router(
     @router.get(
         "/evaluations/{evaluation_id}",
         operation_id="read_evaluation",
+        response_model=EvaluationDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Evaluation details successfully retrieved.",
+                "content": common.example_json_content(evaluation_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Evaluation not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in evaluation parameters"
+            },
+            status.HTTP_504_GATEWAY_TIMEOUT: {
+                "description": "Timeout waiting for evaluation completion"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_evaluation(
-        evaluation_id: EvaluationId,
-        wait_for_completion: int = 60,
+        evaluation_id: EvaluationIdPath,
+        wait_for_completion: WaitForCompletionQuery = 60,
     ) -> EvaluationDTO:
+        """Retrieves the current state of an evaluation.
+
+        * If wait_for_completion == 0, returns current state immediately.
+        * If wait_for_completion > 0, waits for completion/failure or timeout. Defaults to 60.
+
+        Notes:
+        When wait_for_completion > 0:
+        - Returns final state if evaluation completes within timeout
+        - Raises 504 if timeout is reached before completion
+        """
         if wait_for_completion > 0:
             if not await evaluation_listener.wait_for_completion(
                 evaluation_id=evaluation_id,

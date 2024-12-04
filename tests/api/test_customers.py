@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import dateutil
+import dateutil.parser
 from fastapi import status
 from fastapi.testclient import TestClient
 from lagom import Container
@@ -164,7 +164,7 @@ async def test_that_a_tag_can_be_added(
             "tags": {"add": [tag.id]},
         },
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+    assert update_response.status_code == status.HTTP_200_OK
 
     updated_customer = await customer_store.read_customer(customer.id)
     assert tag.id in updated_customer.tags
@@ -191,7 +191,7 @@ async def test_that_a_tag_can_be_removed(
             "tags": {"remove": [tag.id]},
         },
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+    assert update_response.status_code == status.HTTP_200_OK
 
     updated_customer = await customer_store.read_customer(customer.id)
     assert tag.id not in updated_customer.tags
@@ -214,7 +214,7 @@ async def test_that_extra_can_be_added(
             "extra": {"add": new_extra},
         },
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+    assert update_response.status_code == status.HTTP_200_OK
 
     updated_customer = await customer_store.read_customer(customer.id)
     assert updated_customer.extra.get("department") == "sales"
@@ -235,7 +235,7 @@ async def test_that_extra_can_be_removed(
             "extra": {"remove": ["department"]},
         },
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
+    assert update_response.status_code == status.HTTP_200_OK
 
     updated_customer = await customer_store.read_customer(customer.id)
     assert "department" not in updated_customer.extra

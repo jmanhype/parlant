@@ -3,7 +3,7 @@ set positional-arguments
 
 PARLANT_HOME := "./cache"
 LOGS_DIR := "./logs"
-SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8000")
+SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8800")
 
 setup-cache:
   mkdir -p {{PARLANT_HOME}}
@@ -18,10 +18,16 @@ setup-cache:
   poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
 @kill-server:
-  netstat -tulpn | grep :8000 | awk '{print $7}' | cut -d'/' -f1 | xargs kill
+  lsof -i:8800 | grep :8800 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
 
-@kill-cli-test-server:
-  lsof -i:8089 | grep 8089 | cut -d " " -f 3 | xargs kill
+@kill-test-server:
+  lsof -i:8091 | grep :8091 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
+
+@kill-test-plugin-server:
+  lsof -i:8089 | grep :8089 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
+
+@kill: kill-test-plugin-server kill-test-server
+  echo "killed"
 
 @mklogdir:
   mkdir -p {{LOGS_DIR}}
@@ -59,13 +65,18 @@ setup-cache:
 
 @test-client:
   poetry run pytest \
-    -v tests/e2e/test_client_cli_via_api.py --plan=initial
+    -v tests/api tests/e2e/test_client_cli_via_api.py --plan=initial
 
 @test-client-ns:
   poetry run pytest \
-    -v tests/e2e/test_client_cli_via_api.py
+    -v tests/api tests/e2e/test_client_cli_via_api.py
 
-    
-@test-client-sdk:
-  poetry run pytest \
-    -v tests/client --plan=initial
+@install:
+  clear
+  poetry lock --no-update
+  poetry install
+
+@run: install server
+
+@regen-sdk:
+  python scripts/generate_client_sdk.py

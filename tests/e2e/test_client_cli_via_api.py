@@ -26,13 +26,14 @@ import uvicorn
 from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
     SERVER_ADDRESS,
+    SERVER_PORT,
     ContextOfTest,
+    is_server_responsive,
     run_server,
 )
 from parlant.core.services.tools.plugins import tool, ToolEntry, PluginServer
 from parlant.core.tools import ToolResult, ToolContext
 
-REASONABLE_AMOUNT_OF_TIME = 15
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 OPENAPI_SERVER_PORT = 8091
@@ -135,7 +136,8 @@ async def test_that_an_agent_can_be_added(context: ContextOfTest) -> None:
     description = "This is a test agent"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         process = await run_cli(
             "agent",
@@ -189,7 +191,8 @@ async def test_that_an_agent_can_be_updated(
     new_max_engine_iterations = 5
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         process = await run_cli(
             "agent",
@@ -220,7 +223,8 @@ async def test_that_an_agent_can_be_deleted(
     name = "Test Agent"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent = await context.api.create_agent(name=name)
 
@@ -245,7 +249,8 @@ async def test_that_an_agent_can_be_viewed(
     max_engine_iterations = 2
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent = await context.api.create_agent(
             name=name,
@@ -282,7 +287,8 @@ async def test_that_sessions_can_be_listed(
     third_title = "Third Title"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         _ = await context.api.create_session(
@@ -332,7 +338,8 @@ async def test_that_session_can_be_updated(
     session_title = "Old Title"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         session_id = (await context.api.create_session(agent_id=agent_id, title=session_title))[
@@ -363,7 +370,8 @@ async def test_that_a_term_can_be_created_with_synonyms(
     synonyms = "rule, principle"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -394,7 +402,8 @@ async def test_that_a_term_can_be_created_without_synonyms(
     description = "simple guideline with no synonyms"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -433,7 +442,8 @@ async def test_that_a_term_can_be_updated(
     new_synonyms = "instructions"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -474,7 +484,8 @@ async def test_that_a_term_can_be_deleted(
     synonyms = "rule, principle"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -506,7 +517,8 @@ async def test_that_a_guideline_can_be_added(
     action = "greet them back with 'Hello'"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -539,7 +551,8 @@ async def test_that_a_guideline_can_be_updated(
     updated_action = "provide detailed support information"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -583,7 +596,8 @@ async def test_that_adding_a_contradictory_guideline_shows_coherence_errors(
     conflicting_action = "ignore the customer"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -639,7 +653,8 @@ async def test_that_adding_connected_guidelines_creates_connections(
     action2 = "include temperature and humidity"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -701,7 +716,8 @@ async def test_that_a_guideline_can_be_viewed(
     action = "say 'Goodbye' back"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -738,7 +754,8 @@ async def test_that_guidelines_can_be_listed(
     action2 = "offer support"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -777,7 +794,8 @@ async def test_that_guidelines_can_be_entailed(
     action2 = "offer detailed explanation"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -864,7 +882,8 @@ async def test_that_guidelines_can_be_suggestively_entailed(
     action2 = "offer detailed explanation"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -947,7 +966,8 @@ async def test_that_a_guideline_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -978,7 +998,8 @@ async def test_that_a_connection_can_be_removed(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1095,7 +1116,8 @@ async def test_that_a_tool_can_be_enabled_for_a_guideline(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1160,7 +1182,8 @@ async def test_that_a_tool_can_be_disabled_for_a_guideline(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1231,7 +1254,8 @@ async def test_that_variables_can_be_listed(
     description2 = "SECOND"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         _ = await context.api.create_context_variable(agent_id, name1, description1)
@@ -1263,7 +1287,8 @@ async def test_that_a_variable_can_be_added(
     description = "Variable added via CLI"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1301,7 +1326,8 @@ async def test_that_a_variable_can_be_updated(
     new_description = "Variable updated via CLI"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         variable = await context.api.create_context_variable(agent_id, name, description)
@@ -1332,7 +1358,8 @@ async def test_that_a_variable_can_be_removed(
     description = "Variable to be removed via CLI"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1366,7 +1393,8 @@ async def test_that_a_variable_value_can_be_set_with_json(
     data: dict[str, Any] = {"test": "data", "type": 27}
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         variable = await context.api.create_context_variable(
@@ -1405,7 +1433,8 @@ async def test_that_a_variable_value_can_be_set_with_string(
     data = "test_string"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         variable = await context.api.create_context_variable(
@@ -1448,7 +1477,8 @@ async def test_that_a_variables_values_can_be_retrieved(
     }
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
         variable = await context.api.create_context_variable(
@@ -1503,7 +1533,8 @@ async def test_that_a_message_can_be_inspected(
     context: ContextOfTest,
 ) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         agent_id = (await context.api.get_first_agent())["id"]
 
@@ -1571,7 +1602,8 @@ async def test_that_an_openapi_service_can_be_added_via_file(
     service_kind = "openapi"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_openapi_server(rng_app()):
             async with httpx.AsyncClient() as client:
@@ -1616,7 +1648,8 @@ async def test_that_an_openapi_service_can_be_added_via_url(
     service_kind = "openapi"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_openapi_server(rng_app()):
             source = OPENAPI_SERVER_URL + "/openapi.json"
@@ -1661,7 +1694,8 @@ async def test_that_a_sdk_service_can_be_added(
         return ToolResult(param * 2)
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_service_server([sample_tool]) as server:
             assert (
@@ -1693,7 +1727,8 @@ async def test_that_a_service_can_be_removed(
     service_name = "test_service_to_remove"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_openapi_server(rng_app()):
             await context.api.create_openapi_service(service_name, OPENAPI_SERVER_URL)
@@ -1725,7 +1760,8 @@ async def test_that_services_can_be_listed(
     service_name_2 = "test_openapi_service_2"
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_openapi_server(rng_app()):
             await context.api.create_openapi_service(service_name_1, OPENAPI_SERVER_URL)
@@ -1754,7 +1790,8 @@ async def test_that_a_service_can_be_viewed(
     service_url = OPENAPI_SERVER_URL
 
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         async with run_openapi_server(rng_app()):
             await context.api.create_openapi_service(service_name, service_url)
@@ -1786,7 +1823,8 @@ async def test_that_a_service_can_be_viewed(
 
 async def test_that_customers_can_be_listed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         await context.api.create_customer(name="First Customer")
         await context.api.create_customer(name="Second Customer")
@@ -1807,7 +1845,8 @@ async def test_that_customers_can_be_listed(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         assert (
             await run_cli_and_get_exit_status(
@@ -1825,7 +1864,8 @@ async def test_that_a_customer_can_be_added(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_can_be_updated(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer = await context.api.create_customer("TestCustomer")
 
@@ -1847,7 +1887,8 @@ async def test_that_a_customer_can_be_updated(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
@@ -1869,7 +1910,8 @@ async def test_that_a_customer_can_be_viewed(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
@@ -1889,7 +1931,8 @@ async def test_that_a_customer_can_be_deleted(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
 
@@ -1913,7 +1956,8 @@ async def test_that_a_customer_extra_can_be_added(context: ContextOfTest) -> Non
 
 async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (
             await context.api.create_customer(name="TestCustomer", extra={"key1": "value1"})
@@ -1937,7 +1981,8 @@ async def test_that_a_customer_extra_can_be_removed(context: ContextOfTest) -> N
 
 async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
         tag_id = (await context.api.create_tag(name="TestTag"))["id"]
@@ -1960,7 +2005,8 @@ async def test_that_a_customer_tag_can_be_added(context: ContextOfTest) -> None:
 
 async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         customer_id = (await context.api.create_customer(name="TestCustomer"))["id"]
         tag_id = (await context.api.create_tag(name="TestTag"))["id"]
@@ -1984,7 +2030,8 @@ async def test_that_a_customer_tag_can_be_removed(context: ContextOfTest) -> Non
 
 async def test_that_a_tag_can_be_added(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         tag_name = "TestTag"
 
@@ -2004,7 +2051,8 @@ async def test_that_a_tag_can_be_added(context: ContextOfTest) -> None:
 
 async def test_that_tags_can_be_listed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         await context.api.create_tag("FirstTag")
         await context.api.create_tag("SecondTag")
@@ -2025,7 +2073,8 @@ async def test_that_tags_can_be_listed(context: ContextOfTest) -> None:
 
 async def test_that_a_tag_can_be_viewed(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         tag_id = (await context.api.create_tag("TestViewTag"))["id"]
 
@@ -2047,7 +2096,8 @@ async def test_that_a_tag_can_be_viewed(context: ContextOfTest) -> None:
 
 async def test_that_a_tag_can_be_updated(context: ContextOfTest) -> None:
     with run_server(context):
-        await asyncio.sleep(REASONABLE_AMOUNT_OF_TIME)
+        while not is_server_responsive(SERVER_PORT):
+            pass
 
         tag_id = (await context.api.create_tag("TestViewTag"))["id"]
         new_name = "UpdatedTagName"

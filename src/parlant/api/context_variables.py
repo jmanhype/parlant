@@ -14,11 +14,13 @@
 
 from datetime import datetime
 from enum import Enum
-from fastapi import HTTPException, status
-from typing import Optional, cast
+from fastapi import HTTPException, Path, Query, status
+from typing import Annotated, Optional, Sequence, TypeAlias, cast
 
 from fastapi import APIRouter
-from parlant.api.common import ToolIdDTO, JSONSerializableDTO, apigen_config
+from pydantic import Field
+from parlant.api import common
+from parlant.api.common import ToolIdDTO, JSONSerializableDTO, apigen_config, ExampleJson
 from parlant.core.agents import AgentId
 from parlant.core.common import DefaultBaseModel
 from parlant.core.context_variables import (
@@ -35,6 +37,8 @@ API_GROUP = "context-variables"
 
 
 class DayOfWeekDTO(Enum):
+    """Days of the week for freshness rules."""
+
     SUNDAY = "Sunday"
     MONDAY = "Monday"
     TUESDAY = "Tuesday"
@@ -45,59 +49,299 @@ class DayOfWeekDTO(Enum):
 
 
 class FreshnessRulesDTO(DefaultBaseModel):
-    months: Optional[list[int]] = None
-    days_of_month: Optional[list[int]] = None
-    days_of_week: Optional[list[DayOfWeekDTO]] = None
-    hours: Optional[list[int]] = None
-    minutes: Optional[list[int]] = None
-    seconds: Optional[list[int]] = None
+    """Rules for validating data freshness."""
+
+    months: Optional[Sequence[int]] = Field(
+        default=None,
+        description="List of valid months (1-12)",
+        examples=[[1, 6, 12]],
+    )
+    days_of_month: Optional[Sequence[int]] = Field(
+        default=None,
+        description="List of valid days of month (1-31)",
+        examples=[[1, 15, 30]],
+    )
+    days_of_week: Optional[Sequence[DayOfWeekDTO]] = Field(
+        default=None,
+        description="List of valid days of week",
+        examples=[["Monday", "Wednesday", "Friday"]],
+    )
+    hours: Optional[Sequence[int]] = Field(
+        default=None,
+        description="List of valid hours (0-23)",
+        examples=[[9, 13, 17]],
+    )
+    minutes: Optional[Sequence[int]] = Field(
+        default=None,
+        description="List of valid minutes (0-59)",
+        examples=[[0, 30]],
+    )
+    seconds: Optional[Sequence[int]] = Field(
+        default=None,
+        description="List of valid seconds (0-59)",
+        examples=[[0, 30]],
+    )
 
 
-class ContextVariableDTO(DefaultBaseModel):
-    id: ContextVariableId
-    name: str
-    description: Optional[str] = None
+ContextVariableIdPath: TypeAlias = Annotated[
+    ContextVariableId,
+    Path(
+        description="Unique identifier for the context variable",
+        examples=["v9a8r7i6b5"],
+    ),
+]
+
+
+ContextVariableNameField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Name of the context variable",
+        examples=["balance"],
+        min_length=1,
+    ),
+]
+
+ContextVariableDescriptionField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Description of the context variable's purpose",
+        examples=["Stores user preferences for customized interactions"],
+    ),
+]
+
+
+FreshnessRulesField: TypeAlias = Annotated[
+    FreshnessRulesDTO,
+    Field(
+        description="Rules for data freshness validation",
+    ),
+]
+
+context_variable_example = {
+    "id": "v9a8r7i6b5",
+    "name": "UserBalance",
+    "description": "Stores the account balances of users",
+    "tool_id": {
+        "service_name": "finance_service",
+        "tool_name": "balance_checker",
+    },
+    "freshness_rules": {
+        "months": [1, 6, 12],
+        "days_of_month": [1, 15, 30],
+        "days_of_week": ["Monday", "Wednesday", "Friday"],
+        "hours": [9, 13, 17],
+        "minutes": [0, 30],
+        "seconds": [0, 30],
+    },
+}
+
+
+class ContextVariableDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_example},
+):
+    """
+    Represents a type of customer or tag data that the agent tracks.
+
+    Context variables store information that helps the agent provide
+    personalized responses based on each customer's or group's specific situation,
+    such as their subscription tier, usage patterns, or preferences.
+    """
+
+    id: ContextVariableIdPath
+    name: ContextVariableNameField
+    description: Optional[ContextVariableDescriptionField] = None
     tool_id: Optional[ToolIdDTO] = None
-    freshness_rules: Optional[FreshnessRulesDTO] = None
+    freshness_rules: Optional[FreshnessRulesField] = None
 
 
-class ContextVariableCreationParamsDTO(DefaultBaseModel):
-    name: str
-    description: Optional[str] = None
+context_variable_creation_params_example = {
+    "name": "UserBalance",
+    "description": "Stores the account balances of users",
+    "tool_id": {
+        "service_name": "finance_service",
+        "tool_name": "balance_checker",
+    },
+    "freshness_rules": {
+        "months": [1, 6, 12],
+        "days_of_month": [1, 15, 30],
+        "days_of_week": ["Monday", "Wednesday", "Friday"],
+        "hours": [9, 13, 17],
+        "minutes": [0, 30],
+        "seconds": [0, 30],
+    },
+}
+
+
+class ContextVariableCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_creation_params_example},
+):
+    """Parameters for creating a new context variable."""
+
+    name: ContextVariableNameField
+    description: Optional[ContextVariableDescriptionField] = None
     tool_id: Optional[ToolIdDTO] = None
-    freshness_rules: Optional[FreshnessRulesDTO] = None
+    freshness_rules: Optional[FreshnessRulesField] = None
 
 
-class ContextVariableUpdateParamsDTO(DefaultBaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+context_variable_update_params_example = {
+    "name": "CustomerBalance",
+    "freshness_rules": {
+        "hours": [8, 12, 16],
+        "minutes": [0],
+    },
+}
+
+
+class ContextVariableUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_update_params_example},
+):
+    """Parameters for updating an existing context variable."""
+
+    name: Optional[ContextVariableNameField] = None
+    description: Optional[ContextVariableDescriptionField] = None
     tool_id: Optional[ToolIdDTO] = None
-    freshness_rules: Optional[FreshnessRulesDTO] = None
+    freshness_rules: Optional[FreshnessRulesField] = None
 
 
-class ContextVariableValueDTO(DefaultBaseModel):
-    id: ContextVariableValueId
-    last_modified: datetime
-    data: JSONSerializableDTO
+ValueIdField: TypeAlias = Annotated[
+    ContextVariableValueId,
+    Field(
+        description="Unique identifier for the variable value",
+        examples=["val_789abc"],
+    ),
+]
+
+LastModifiedField: TypeAlias = Annotated[
+    datetime,
+    Field(
+        description="Timestamp of the last modification",
+    ),
+]
 
 
-class ContextVariableValueUpdateParamsDTO(DefaultBaseModel):
-    data: JSONSerializableDTO
+DataField: TypeAlias = Annotated[
+    JSONSerializableDTO,
+    Field(
+        description="The actual data stored in the variable",
+    ),
+]
+
+context_variable_value_example: ExampleJson = {
+    "id": "val_789abc",
+    "last_modified": "2024-03-24T12:00:00Z",
+    "data": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_transaction": "2024-03-23T15:30:00Z",
+        "status": "active",
+    },
+}
 
 
-class ContextVariableReadResult(DefaultBaseModel):
+class ContextVariableValueDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_value_example},
+):
+    """
+    Represents the actual stored value for a specific customer's or tag's context.
+
+    This could be their subscription details, feature usage history,
+    preferences, or any other customer or tag information that helps
+    personalize the agent's responses.
+    """
+
+    id: ValueIdField
+    last_modified: LastModifiedField
+    data: DataField
+
+
+context_variable_value_update_params_example: ExampleJson = {
+    "data": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_transaction": "2024-03-23T15:30:00Z",
+        "status": "active",
+    }
+}
+
+
+class ContextVariableValueUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_value_update_params_example},
+):
+    """Parameters for updating a context variable value."""
+
+    data: DataField
+
+
+KeyValuePairsField: TypeAlias = Annotated[
+    dict[str, ContextVariableValueDTO],
+    Field(
+        description="Collection of key-value pairs associated with the variable",
+    ),
+]
+
+context_variable_read_result_example: ExampleJson = {
+    "context_variable": {
+        "id": "v9a8r7i6b5",
+        "name": "UserBalance",
+        "description": "Stores the account balances of users",
+        "tool_id": {"service_name": "finance_service", "tool_name": "balance_checker"},
+        "freshness_rules": {
+            "months": [1, 6, 12],
+            "days_of_month": [1, 15, 30],
+            "days_of_week": ["Monday", "Wednesday", "Friday"],
+            "hours": [9, 13, 17],
+            "minutes": [0, 30],
+            "seconds": [0, 30],
+        },
+    },
+    "key_value_pairs": {
+        "user_123": {
+            "id": "val_789abc",
+            "last_modified": "2024-03-24T12:00:00Z",
+            "data": {
+                "balance": 5000.50,
+                "currency": "USD",
+                "last_transaction": "2024-03-23T15:30:00Z",
+                "status": "active",
+            },
+        },
+        "user_456": {
+            "id": "val_def123",
+            "last_modified": "2024-03-24T14:30:00Z",
+            "data": {
+                "balance": 7500.75,
+                "currency": "EUR",
+                "last_transaction": "2024-03-24T14:15:00Z",
+                "status": "active",
+            },
+        },
+    },
+}
+
+
+class ContextVariableReadResult(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_read_result_example},
+):
+    """Complete context variable data including its values."""
+
     context_variable: ContextVariableDTO
-    key_value_pairs: Optional[dict[str, ContextVariableValueDTO]]
+    key_value_pairs: Optional[KeyValuePairsField] = None
 
 
 def _freshness_ruless_dto_to_freshness_rules(dto: FreshnessRulesDTO) -> FreshnessRules:
     return FreshnessRules(
-        months=dto.months,
-        days_of_month=dto.days_of_month,
+        months=list(dto.months) if dto.months else None,
+        days_of_month=list(dto.days_of_month) if dto.days_of_month else None,
         days_of_week=[dow.value for dow in dto.days_of_week] if dto.days_of_week else [],
-        hours=dto.hours,
-        minutes=dto.minutes,
-        seconds=dto.seconds,
+        hours=list(dto.hours) if dto.hours else None,
+        minutes=list(dto.minutes) if dto.minutes else None,
+        seconds=list(dto.seconds) if dto.seconds else None,
     )
 
 
@@ -114,6 +358,33 @@ def _freshness_ruless_to_dto(freshness_rules: FreshnessRules) -> FreshnessRulesD
     )
 
 
+AgentIdPath: TypeAlias = Annotated[
+    AgentId,
+    Path(
+        description="Unique identifier of the agent",
+        examples=["a1g2e3n4t5"],
+    ),
+]
+
+ContextVariableKeyPath: TypeAlias = Annotated[
+    str,
+    Path(
+        description="Key for the variable value",
+        examples=["user_1", "tag_vip"],
+        min_length=1,
+    ),
+]
+
+
+IncludeValuesQuery: TypeAlias = Annotated[
+    bool,
+    Query(
+        description="Whether to include variable values in the response",
+        examples=[True, False],
+    ),
+]
+
+
 def create_router(
     context_variable_store: ContextVariableStore,
     service_registry: ServiceRegistry,
@@ -124,12 +395,31 @@ def create_router(
         "/{agent_id}/context-variables",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_variable",
+        response_model=ContextVariableDTO,
+        responses={
+            status.HTTP_201_CREATED: {
+                "description": "Context variable type successfully created",
+                "content": common.example_json_content(context_variable_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Agent or tool not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_variable(
-        agent_id: AgentId,
+        agent_id: AgentIdPath,
         params: ContextVariableCreationParamsDTO,
     ) -> ContextVariableDTO:
+        """
+        Creates a new context variable for tracking customer-specific or tag-specific data.
+
+        Example uses:
+        - Track subscription tiers to control feature access
+        - Store usage patterns for personalized recommendations
+        - Remember customer preferences for tailored responses
+        """
         if params.tool_id:
             service = await service_registry.read_tool_service(params.tool_id.service_name)
             _ = await service.read_tool(params.tool_id.tool_name)
@@ -163,13 +453,30 @@ def create_router(
     @router.patch(
         "/{agent_id}/context-variables/{variable_id}",
         operation_id="update_variable",
+        response_model=ContextVariableDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Context variable type successfully updated",
+                "content": common.example_json_content(context_variable_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable or agent not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_variable(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
         params: ContextVariableUpdateParamsDTO,
     ) -> ContextVariableDTO:
+        """
+        Updates an existing context variable.
+
+        Only provided fields will be updated; others remain unchanged.
+        """
+
         def from_dto(dto: ContextVariableUpdateParamsDTO) -> ContextVariableUpdateParams:
             params: ContextVariableUpdateParams = {}
 
@@ -216,11 +523,16 @@ def create_router(
         "/{agent_id}/context-variables",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_variables",
+        responses={
+            status.HTTP_204_NO_CONTENT: {"description": "All context variables deleted"},
+            status.HTTP_404_NOT_FOUND: {"description": "Agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="delete_many"),
     )
     async def delete_all_variables(
-        agent_id: AgentId,
+        agent_id: AgentIdPath,
     ) -> None:
+        """Deletes all context variables and their values for the provided agent ID"""
         for v in await context_variable_store.list_variables(variable_set=agent_id):
             await context_variable_store.delete_variable(variable_set=agent_id, id=v.id)
 
@@ -228,12 +540,21 @@ def create_router(
         "/{agent_id}/context-variables/{variable_id}",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_variable",
+        responses={
+            status.HTTP_204_NO_CONTENT: {
+                "description": "Context variable and all its values deleted"
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable or agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_variable(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
     ) -> None:
+        """
+        Deletes a specific context variable and all its values.
+        """
         await context_variable_store.read_variable(variable_set=agent_id, id=variable_id)
 
         await context_variable_store.delete_variable(variable_set=agent_id, id=variable_id)
@@ -241,11 +562,20 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables",
         operation_id="list_variables",
+        response_model=Sequence[ContextVariableDTO],
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all context variable for the provided agent",
+                "content": common.example_json_content([context_variable_example]),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Agent not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_variables(
-        agent_id: AgentId,
-    ) -> list[ContextVariableDTO]:
+        agent_id: AgentIdPath,
+    ) -> Sequence[ContextVariableDTO]:
+        """Lists all context variables set for the provided agent"""
         variables = await context_variable_store.list_variables(variable_set=agent_id)
 
         return [
@@ -269,14 +599,31 @@ def create_router(
     @router.put(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         operation_id="update_variable_value",
+        response_model=ContextVariableValueDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Context value successfully updated for the customer or tag",
+                "content": common.example_json_content(context_variable_value_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable, agent, or key not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="set_value"),
     )
     async def update_variable_value(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
-        key: str,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
+        key: ContextVariableKeyPath,
         params: ContextVariableValueUpdateParamsDTO,
     ) -> ContextVariableValueDTO:
+        """
+        Updates the value of a context variable.
+
+        The key represents a customer identifier or a customer tag in the format `tag:{tag_id}`.
+        The data contains the actual context information being stored.
+        """
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -298,13 +645,26 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         operation_id="read_variable_value",
+        response_model=ContextVariableValueDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Retrieved context value for the customer or tag",
+                "content": common.example_json_content(context_variable_value_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable, agent, or key not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="get_value"),
     )
     async def read_variable_value(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
-        key: str,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
+        key: ContextVariableKeyPath,
     ) -> ContextVariableValueDTO:
+        """
+        Retrieves the value of a context variable for a specific customer or tag.
+
+        The key should be a customer identifier or a customer tag in the format `tag:{tag_id}`.
+        """
         _ = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -328,13 +688,29 @@ def create_router(
     @router.get(
         "/{agent_id}/context-variables/{variable_id}",
         operation_id="read_variable",
+        response_model=ContextVariableReadResult,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Context variable details with optional values",
+                "content": common.example_json_content(context_variable_read_result_example),
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable or agent not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_variable(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
-        include_values: bool = True,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
+        include_values: IncludeValuesQuery = True,
     ) -> ContextVariableReadResult:
+        """
+        Retrieves a context variable's details and optionally its values.
+
+        Can return all customer or tag values for this variable type if include_values=True.
+        """
         variable = await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
@@ -382,13 +758,25 @@ def create_router(
         "/{agent_id}/context-variables/{variable_id}/{key}",
         status_code=status.HTTP_204_NO_CONTENT,
         operation_id="delete_value",
+        responses={
+            status.HTTP_204_NO_CONTENT: {
+                "description": "Context value deleted for the customer or tag"
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Variable, agent, or key not found"},
+        },
         **apigen_config(group_name=API_GROUP, method_name="delete_value"),
     )
     async def delete_value(
-        agent_id: AgentId,
-        variable_id: ContextVariableId,
-        key: str,
+        agent_id: AgentIdPath,
+        variable_id: ContextVariableIdPath,
+        key: ContextVariableKeyPath,
     ) -> None:
+        """
+        Deletes a specific customer's or tag's value for this context variable.
+
+        The key should be a customer identifier or a customer tag in the format `tag:{tag_id}`.
+        Removes only the value for the specified key while keeping the variable's configuration.
+        """
         await context_variable_store.read_variable(
             variable_set=agent_id,
             id=variable_id,
