@@ -58,7 +58,7 @@ from parlant.client.types import (
     ToolId,
     Customer,
     CustomerExtraUpdateParams,
-    TagsUpdateParams,
+    CustomerTagUpdateParams,
     Tag,
     ConsumptionOffsetsUpdateParams,
 )
@@ -790,12 +790,14 @@ class Actions:
     @staticmethod
     def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(add=[tag_id]))
+        client.customers.update(customer_id=customer_id, tags=CustomerTagUpdateParams(add=[tag_id]))
 
     @staticmethod
     def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
-        client.customers.update(customer_id=customer_id, tags=TagsUpdateParams(remove=[tag_id]))
+        client.customers.update(
+            customer_id=customer_id, tags=CustomerTagUpdateParams(remove=[tag_id])
+        )
 
     @staticmethod
     def list_tags(ctx: click.Context) -> list[Tag]:
