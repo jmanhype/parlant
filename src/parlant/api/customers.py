@@ -180,7 +180,7 @@ tags_update_params_example: ExampleJson = {
 }
 
 
-class TagUpdateParamsDTO(
+class CustomerTagUpdateParamsDTO(
     DefaultBaseModel,
     json_schema_extra={"example": tags_update_params_example},
 ):
@@ -210,7 +210,7 @@ class CustomerUpdateParamsDTO(
 
     name: Optional[CustomerNameField] = None
     extra: Optional[CustomerExtraUpdateParamsDTO] = None
-    tags: Optional[TagUpdateParamsDTO] = None
+    tags: Optional[CustomerTagUpdateParamsDTO] = None
 
 
 def create_router(
