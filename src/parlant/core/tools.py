@@ -60,6 +60,7 @@ class ToolContext:
         self,
         agent_id: str,
         session_id: str,
+        customer_id: str,
         emit_message: Optional[Callable[[str], Awaitable[None]]] = None,
         emit_status: Optional[
             Callable[
@@ -70,6 +71,7 @@ class ToolContext:
     ) -> None:
         self.agent_id = agent_id
         self.session_id = session_id
+        self.customer_id = customer_id
         self._emit_message = emit_message
         self._emit_status = emit_status
 

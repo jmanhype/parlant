@@ -154,14 +154,14 @@ class CustomerExtraUpdateParamsDTO(
     remove: Optional[CustomerExtraRemoveField] = None
 
 
-CustomerTagsUpdateAddField: TypeAlias = Annotated[
+CustomerTagUpdateAddField: TypeAlias = Annotated[
     Sequence[TagIdField],
     Field(
         description="Optional collection of tag ids to add to the customer's tags",
     ),
 ]
 
-CustomerTagsUpdateRemoveField: TypeAlias = Annotated[
+CustomerTagUpdateRemoveField: TypeAlias = Annotated[
     Sequence[TagIdField],
     Field(
         description="Optional collection of tag ids to remove from the customer's tags",
@@ -191,8 +191,8 @@ class CustomerTagUpdateParamsDTO(
     Both operations can be performed in a single request.
     """
 
-    add: Optional[CustomerTagsUpdateAddField] = None
-    remove: Optional[CustomerTagsUpdateRemoveField] = None
+    add: Optional[CustomerTagUpdateAddField] = None
+    remove: Optional[CustomerTagUpdateRemoveField] = None
 
 
 customer_update_params_example: ExampleJson = {

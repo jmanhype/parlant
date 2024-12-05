@@ -15,7 +15,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import enum
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Mapping, Optional, cast
 
 from parlant.core.tools import ToolContext, ToolResult, ToolResultError
 from parlant.core.services.tools.plugins import PluginServer, ToolEntry, tool
@@ -56,7 +56,8 @@ async def agent(container: Container) -> Agent:
 async def context(agent: Agent) -> ToolContext:
     return ToolContext(
         agent_id=agent.id,
-        session_id=SessionId("test_session"),
+        session_id="test_session",
+        customer_id="test_customer",
     )
 
 
@@ -165,13 +166,19 @@ async def test_that_a_plugin_calls_an_async_tool(
             assert result.data == 8
 
 
-async def test_that_a_plugin_tool_has_access_to_the_current_session(
+async def test_that_a_plugin_tool_has_access_to_the_current_session_agent_and_customer(
     context: ToolContext,
     container: Container,
 ) -> None:
     @tool
     async def my_tool(context: ToolContext) -> ToolResult:
-        return ToolResult(context.session_id)
+        return ToolResult(
+            {
+                "session_id": context.session_id,
+                "agent_id": context.agent_id,
+                "customer_id": context.customer_id,
+            }
+        )
 
     async with run_service_server([my_tool]) as server:
         async with create_client(server, container[EventBufferFactory]) as client:
@@ -181,7 +188,11 @@ async def test_that_a_plugin_tool_has_access_to_the_current_session(
                 arguments={},
             )
 
-            assert result.data == context.session_id
+            data = cast(Mapping[str, str], result.data)
+
+            assert data["session_id"] == context.session_id
+            assert data["agent_id"] == context.agent_id
+            assert data["customer_id"] == context.customer_id
 
 
 async def test_that_a_plugin_tool_can_emit_events(

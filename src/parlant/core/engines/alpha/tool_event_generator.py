@@ -79,7 +79,11 @@ class ToolEventGenerator:
             return EventGenerationResult(generation_info, [])
 
         tool_results = await self._tool_caller.execute_tool_calls(
-            ToolContext(agent_id=agents[0].id, session_id=session_id),
+            ToolContext(
+                agent_id=agents[0].id,
+                session_id=session_id,
+                customer_id=customer.id,
+            ),
             tool_calls,
         )
 
