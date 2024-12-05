@@ -1,0 +1,1560 @@
+# Copyright 2024 Emcie Co Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from datetime import datetime
+from enum import Enum
+from fastapi import APIRouter, HTTPException, Path, Query, status
+from itertools import chain
+from pydantic import Field
+from typing import Annotated, Mapping, Optional, Sequence, Set, TypeAlias, cast
+
+
+from parlant.api.common import GuidelineIdField, ExampleJson, JSONSerializableDTO, apigen_config
+from parlant.api.glossary import TermDTO
+from parlant.core.agents import AgentId, AgentStore
+from parlant.core.application import Application
+from parlant.core.async_utils import Timeout
+from parlant.core.common import DefaultBaseModel
+from parlant.core.customers import CustomerId, CustomerStore
+from parlant.core.logging import Logger
+from parlant.core.nlp.generation import GenerationInfo
+from parlant.core.nlp.moderation import ModerationService
+from parlant.core.nlp.service import NLPService
+from parlant.core.sessions import (
+    Event,
+    EventId,
+    EventKind,
+    MessageEventData,
+    MessageGenerationInspection,
+    PreparationIteration,
+    SessionId,
+    SessionListener,
+    SessionStore,
+    SessionUpdateParams,
+    ToolEventData,
+)
+
+API_GROUP = "sessions"
+
+
+class EventKindDTO(Enum):
+    """
+    Type of event in a session.
+
+    Represents different types of interactions that can occur within a conversation.
+    """
+
+    MESSAGE = "message"
+    TOOL = "tool"
+    STATUS = "status"
+    CUSTOM = "custom"
+
+
+class EventSourceDTO(Enum):
+    """
+    Source of an event in the session.
+
+    Identifies who or what generated the event.
+    """
+
+    CUSTOMER = "customer"
+    CUSTOMER_UI = "customer_ui"
+    HUMAN_AGENT = "human_agent"
+    HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
+    AI_AGENT = "ai_agent"
+    SYSTEM = "system"
+
+
+class Moderation(Enum):
+    """Content moderation settings."""
+
+    AUTO = "auto"
+    PARANOID = "paranoid"
+    NONE = "none"
+
+
+ConsumptionOffsetClientField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Latest event offset processed by the client",
+        examples=[42, 100],
+        ge=0,
+    ),
+]
+
+consumption_offsets_example = {"client": 42}
+
+
+class ConsumptionOffsetsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": consumption_offsets_example},
+):
+    """Tracking for message consumption state."""
+
+    client: Optional[ConsumptionOffsetClientField] = None
+
+
+SessionIdPath: TypeAlias = Annotated[
+    SessionId,
+    Path(
+        description="Unique identifier for the session",
+        examples=["sess_123yz"],
+    ),
+]
+
+SessionAgentIdPath: TypeAlias = Annotated[
+    AgentId,
+    Path(
+        description="Unique identifier for the agent associated with the session.",
+        examples=["ag-123Txyz"],
+    ),
+]
+
+SessionCustomerIdField: TypeAlias = Annotated[
+    CustomerId,
+    Field(
+        description="ID of the customer associated with this session.",
+        examples=["cust_123xy"],
+    ),
+]
+
+SessionCreationUTCField: TypeAlias = Annotated[
+    datetime,
+    Field(
+        description="UTC timestamp of when the session was created",
+        examples=["2024-03-24T12:00:00Z"],
+    ),
+]
+
+SessionTitleField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Descriptive title for the session",
+        examples=["Support inquiry about product X"],
+        max_length=200,
+    ),
+]
+
+
+session_example: ExampleJson = {
+    "id": "sess_123yz",
+    "agent_id": "ag_123xyz",
+    "customer_id": "cust_123xy",
+    "creation_utc": "2024-03-24T12:00:00Z",
+    "title": "Product inquiry session",
+    "consumption_offsets": consumption_offsets_example,
+}
+
+
+class SessionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": session_example},
+):
+    """A session represents an ongoing conversation between an agent and a customer."""
+
+    id: SessionIdPath
+    agent_id: SessionAgentIdPath
+    customer_id: SessionCustomerIdField
+    creation_utc: SessionCreationUTCField
+    title: Optional[SessionTitleField] = None
+    consumption_offsets: ConsumptionOffsetsDTO
+
+
+SessionCreationParamsCustomerIdField: TypeAlias = Annotated[
+    Optional[CustomerId],
+    Field(
+        default=None,
+        description=" ID of the customer this session belongs to. If not provided, a guest customer will be created.",
+        examples=[None, "cust_123xy"],
+    ),
+]
+
+
+session_creation_params_example: ExampleJson = {
+    "agent_id": "ag_123xyz",
+    "customer_id": "cust_123xy",
+    "title": "Product inquiry session",
+}
+
+
+class SessionCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": session_creation_params_example},
+):
+    """Parameters for creating a new session."""
+
+    agent_id: SessionAgentIdPath
+    customer_id: SessionCreationParamsCustomerIdField = None
+    title: Optional[SessionTitleField] = None
+
+
+message_example = "Hello, I need help with my order"
+
+
+SessionEventCreationParamsMessageField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Event payload data, format depends on kind",
+        examples=[message_example],
+    ),
+]
+
+event_creation_params_example: ExampleJson = {
+    "kind": "message",
+    "source": "customer",
+    "message": message_example,
+}
+
+
+class EventCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": event_creation_params_example},
+):
+    """Parameters for creating a new event in a session."""
+
+    kind: EventKindDTO
+    source: EventSourceDTO
+    message: Optional[SessionEventCreationParamsMessageField] = None
+
+
+EventIdPath: TypeAlias = Annotated[
+    EventId,
+    Path(
+        description="Unique identifier for the event",
+        examples=["evt_123xyz"],
+    ),
+]
+
+EventOffsetField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Sequential position of the event in the session",
+        examples=[0, 1, 2],
+        ge=0,
+    ),
+]
+
+EventCreationUTCField: TypeAlias = Annotated[
+    datetime,
+    Field(description="UTC timestamp of when the event was created"),
+]
+
+
+EventCorrelationIdField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="ID linking related events together",
+        examples=["corr_13xyz"],
+    ),
+]
+
+event_example: ExampleJson = {
+    "id": "evt_123xyz",
+    "source": "customer",
+    "kind": "message",
+    "offset": 0,
+    "creation_utc": "2024-03-24T12:00:00Z",
+    "correlation_id": "corr_13xyz",
+    "data": {
+        "message": "Hello, I need help with my account",
+        "participant": {"id": "cust_123xy", "display_name": "John Doe"},
+    },
+}
+
+
+class EventDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": event_example},
+):
+    """Represents a single event within a session."""
+
+    id: EventIdPath
+    source: EventSourceDTO
+    kind: EventKindDTO
+    offset: EventOffsetField
+    creation_utc: EventCreationUTCField
+    correlation_id: EventCorrelationIdField
+    data: JSONSerializableDTO
+
+
+class ConsumptionOffsetsUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": consumption_offsets_example},
+):
+    """Parameters for updating consumption offsets."""
+
+    client: Optional[ConsumptionOffsetClientField] = None
+
+
+session_update_params_example: ExampleJson = {
+    "title": "Updated session title",
+    "consumption_offsets": {"client": 42},
+}
+
+
+class SessionUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": session_update_params_example},
+):
+    """Parameters for updating a session."""
+
+    consumption_offsets: Optional[ConsumptionOffsetsUpdateParamsDTO] = None
+    title: Optional[SessionTitleField] = None
+
+
+ToolResultDataField: TypeAlias = Annotated[
+    JSONSerializableDTO,
+    Field(
+        description="The json content returned from the tool",
+        examples=["yes", '{"answer"="42"}', "[ 1, 1, 2, 3 ]"],
+    ),
+]
+
+
+tool_result_metadata_example = {
+    "duration_ms": 150,
+    "cache_hit": False,
+    "rate_limited": False,
+}
+
+
+ToolResultMetadataField: TypeAlias = Annotated[
+    Mapping[str, JSONSerializableDTO],
+    Field(
+        description="A `dict` of the metadata associated with the tool's execution",
+        examples=[tool_result_metadata_example],
+    ),
+]
+
+
+tool_result_example = {
+    "data": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_updated": "2024-03-24T12:00:00Z",
+    },
+    "metadata": tool_result_metadata_example,
+}
+
+
+class ToolResultDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": tool_result_example},
+):
+    """Result from a tool execution."""
+
+    data: ToolResultDataField
+    metadata: ToolResultMetadataField
+
+
+ToolIdField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Unique identifier for the tool in format 'service_name:tool_name'",
+        examples=["email-service:send_email", "payment-service:process_payment"],
+    ),
+]
+
+tool_call_arguments_example = {"account_id": "acc_123xyz", "currency": "USD"}
+
+ToolCallArgumentsField: TypeAlias = Annotated[
+    Mapping[str, JSONSerializableDTO],
+    Field(
+        description="A `dict` of the arguments to the tool call",
+        examples=[tool_call_arguments_example],
+    ),
+]
+
+
+tool_call_example = {
+    "tool_id": "finance_service:check_balance",
+    "arguments": tool_call_arguments_example,
+    "result": {
+        "data": {
+            "balance": 5000.50,
+            "currency": "USD",
+            "last_updated": "2024-03-24T12:00:00Z",
+        },
+        "metadata": tool_result_metadata_example,
+    },
+}
+
+
+class ToolCallDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": tool_call_example},
+):
+    """Information about a tool call."""
+
+    tool_id: ToolIdField
+    arguments: ToolCallArgumentsField
+    result: ToolResultDTO
+
+
+GuidelinePropositionConditionField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The condition for the guideline",
+        examples=["when customer asks about their balance"],
+    ),
+]
+
+GuidelinePropositionActionField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The action for the guideline",
+        examples=["check their current balance and provide the amount with currency"],
+    ),
+]
+
+GuidelinePropositionScoreField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="The score for the guideline",
+        examples=[95],
+    ),
+]
+
+GuidelinePropositionRationaleField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The rationale for the guideline",
+        examples=["This guideline directly addresses balance inquiries with specific actions"],
+    ),
+]
+
+guideline_proposition_example = {
+    "guideline_id": "guide_123x",
+    "condition": "when customer asks about their balance",
+    "action": "check their current balance and provide the amount with currency",
+    "score": 95,
+    "rationale": "This guideline directly addresses balance inquiries with specific actions",
+}
+
+
+class GuidelinePropositionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_proposition_example},
+):
+    """A proposed guideline action."""
+
+    guideline_id: GuidelineIdField
+    condition: GuidelinePropositionConditionField
+    action: GuidelinePropositionActionField
+    score: GuidelinePropositionScoreField
+    rationale: GuidelinePropositionRationaleField
+
+
+ContextVariableIdPath: TypeAlias = Annotated[
+    str,
+    Path(
+        description="Unique identifier for the context variable",
+        examples=["var_123xyz"],
+    ),
+]
+
+ContextVariableNameField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The name of the context variable",
+        examples=["user_preferences", "account_status"],
+        min_length=1,
+        max_length=100,
+    ),
+]
+
+ContextVariableDescriptionField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The description text assigned to this variable",
+        examples=["`c` counts the cost of the count cutting costs"],
+    ),
+]
+
+ContextVariableKeyField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="This is the key which can be used to identify the variable",
+        examples=["cool_variable_name", "melupapepkin"],
+    ),
+]
+
+context_variable_and_value_example = {
+    "id": "var_123xyz",
+    "name": "AccountBalance",
+    "description": "Customer's current account balance and currency",
+    "key": "user_123",
+    "value": {
+        "balance": 5000.50,
+        "currency": "USD",
+        "last_updated": "2024-03-24T12:00:00Z",
+    },
+}
+
+
+class ContextVariableAndValueDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": context_variable_and_value_example},
+):
+    """A context variable and its current value."""
+
+    id: ContextVariableIdPath
+    name: ContextVariableNameField
+    description: ContextVariableDescriptionField
+    key: ContextVariableKeyField
+    value: JSONSerializableDTO
+
+
+UsageInfoInputTokensField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Amount of token received from user over the session",
+        examples=[256],
+    ),
+]
+
+UsageInfoOutputTokensField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Amount of token sent to user over the session",
+        examples=[128],
+    ),
+]
+usage_info_extra_example = {
+    "prompt_tokens": 200,
+    "completion_tokens": 128,
+}
+
+UsageInfoExtraField: TypeAlias = Annotated[
+    Mapping[str, int],
+    Field(
+        description="Extra data associated with the usage information",
+        examples=[usage_info_extra_example],
+    ),
+]
+
+usage_info_example = {
+    "input_tokens": 256,
+    "output_tokens": 128,
+    "extra": usage_info_extra_example,
+}
+
+
+class UsageInfoDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": usage_info_example},
+):
+    """Token usage information."""
+
+    input_tokens: UsageInfoInputTokensField
+    output_tokens: UsageInfoOutputTokensField
+    extra: Optional[UsageInfoExtraField] = None
+
+
+GenerationInfoSchemaNameField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The name of the schema used for the generation",
+        examples=["customer_response_v2"],
+    ),
+]
+
+GenerationInfoModelField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Id of the model used for the generation",
+        examples=["gpt-4-turbo"],
+    ),
+]
+
+GenerationInfoDurationField: TypeAlias = Annotated[
+    float,
+    Field(
+        description="Amount of time spent generating",
+        examples=[2.5],
+    ),
+]
+
+
+generation_info_example = {
+    "schema_name": "customer_response_v2",
+    "model": "gpt-4-turbo",
+    "duration": 2.5,
+    "usage": usage_info_example,
+}
+
+
+class GenerationInfoDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": generation_info_example},
+):
+    """Information about a text generation."""
+
+    schema_name: GenerationInfoSchemaNameField
+    model: GenerationInfoModelField
+    duration: GenerationInfoDurationField
+    usage: UsageInfoDTO
+
+
+MessageGenerationInspectionMessagesField: TypeAlias = Annotated[
+    Sequence[str | None],
+    Field(
+        description="The messages that were generated",
+    ),
+]
+
+
+message_generation_inspection_example = {
+    "generation": generation_info_example,
+    "messages": [
+        "Your current balance is $5,000.50 USD.",
+        None,  # Rejected alternative
+        "According to your account, you have $5,000.50 USD available.",
+    ],
+}
+
+
+class MessageGenerationInspectionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": message_generation_inspection_example},
+):
+    """Inspection data for message generation."""
+
+    generation: GenerationInfoDTO
+    messages: MessageGenerationInspectionMessagesField
+
+
+GuidelinePropositionInspectionTotalDurationField: TypeAlias = Annotated[
+    float,
+    Field(
+        description="Amount of time spent proposing guidelines",
+        examples=[3.5],
+    ),
+]
+
+
+GuidelinePropositionInspectionBatchesField: TypeAlias = Annotated[
+    Sequence[GenerationInfoDTO],
+    Field(
+        description="A list of `GenerationInfoDTO` describing the batches of generation executed",
+    ),
+]
+
+
+guideline_proposition_inspection_example = {
+    "total_duration": 3.5,
+    "batches": [generation_info_example],
+}
+
+
+class GuidelinePropositionInspectionDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": guideline_proposition_inspection_example},
+):
+    """Inspection data for guideline proposition."""
+
+    total_duration: GuidelinePropositionInspectionTotalDurationField
+    batches: GuidelinePropositionInspectionBatchesField
+
+
+PreparationIterationGenerationsToolCallsField: TypeAlias = Annotated[
+    Sequence[GenerationInfoDTO],
+    Field(
+        description="A list of `GenerationInfoDTO` describing the executed tool calls",
+    ),
+]
+
+preparation_iteration_generations_example = {
+    "guideline_proposition": guideline_proposition_inspection_example,
+    "tool_calls": [generation_info_example],
+}
+
+
+class PreparationIterationGenerationsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": preparation_iteration_generations_example},
+):
+    """Generation information for a preparation iteration."""
+
+    guideline_proposition: GuidelinePropositionInspectionDTO
+    tool_calls: PreparationIterationGenerationsToolCallsField
+
+
+PreparationIterationGuidelinePropositionsField: TypeAlias = Annotated[
+    Sequence[GuidelinePropositionDTO],
+    Field(
+        description="List of guideline propositions used in preparation for this iteration",
+    ),
+]
+
+
+PreparationIterationToolCallsField: TypeAlias = Annotated[
+    Sequence[ToolCallDTO],
+    Field(
+        description="List of tool calls made in preparation for this iteration",
+    ),
+]
+
+
+PreparationIterationTermsField: TypeAlias = Annotated[
+    Sequence[TermDTO],
+    Field(
+        description="List of terms participating in the preparation for this iteration",
+    ),
+]
+
+
+PreparationIterationContextVariablesField: TypeAlias = Annotated[
+    Sequence[ContextVariableAndValueDTO],
+    Field(
+        description="List of context variables (and their values) that participated in the preparation for this iteration",
+    ),
+]
+
+preparation_iteration_example = {
+    "generations": preparation_iteration_generations_example,
+    "guideline_propositions": [guideline_proposition_example],
+    "tool_calls": [tool_call_example],
+    "terms": [
+        {
+            "id": "term_123xyz",
+            "name": "balance",
+            "description": "The current amount of money in an account",
+            "synonyms": ["funds", "account balance", "available funds"],
+        }
+    ],
+    "context_variables": [context_variable_and_value_example],
+}
+
+
+class PreparationIterationDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": preparation_iteration_example},
+):
+    """Information about a preparation iteration."""
+
+    generations: PreparationIterationGenerationsDTO
+    guideline_propositions: PreparationIterationGuidelinePropositionsField
+    tool_calls: PreparationIterationToolCallsField
+    terms: PreparationIterationTermsField
+    context_variables: PreparationIterationContextVariablesField
+
+
+EventTraceToolCallsField: TypeAlias = Annotated[
+    Sequence[ToolCallDTO],
+    Field(
+        description="List of tool calls made for the traced event",
+    ),
+]
+
+EventTraceMessageGenerationsField: TypeAlias = Annotated[
+    Sequence[MessageGenerationInspectionDTO],
+    Field(
+        description="List of message generations made for the traced event",
+    ),
+]
+
+EventTracePreparationIterationsField: TypeAlias = Annotated[
+    Sequence[PreparationIterationDTO],
+    Field(
+        description="List of preparation iterations made for the traced event",
+    ),
+]
+
+event_trace_example = {
+    "tool_calls": [tool_call_example],
+    "message_generations": [message_generation_inspection_example],
+    "preparation_iterations": [preparation_iteration_example],
+}
+
+
+class EventTraceDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": event_trace_example},
+):
+    """Trace information for an event."""
+
+    tool_calls: EventTraceToolCallsField
+    message_generations: EventTraceMessageGenerationsField
+    preparation_iterations: EventTracePreparationIterationsField
+
+
+event_inspection_example = {
+    "session_id": "sess_123yz",
+    "event": event_example,
+    "trace": event_trace_example,
+}
+
+
+class EventInspectionResult(
+    DefaultBaseModel,
+    json_schema_extra={"example": event_inspection_example},
+):
+    """Result of inspecting an event."""
+
+    session_id: SessionIdPath
+    event: EventDTO
+    trace: Optional[EventTraceDTO] = None
+
+
+def event_to_dto(event: Event) -> EventDTO:
+    return EventDTO(
+        id=event.id,
+        source=EventSourceDTO(event.source),
+        kind=EventKindDTO(event.kind),
+        offset=event.offset,
+        creation_utc=event.creation_utc,
+        correlation_id=event.correlation_id,
+        data=cast(JSONSerializableDTO, event.data),
+    )
+
+
+def generation_info_to_dto(gi: GenerationInfo) -> GenerationInfoDTO:
+    return GenerationInfoDTO(
+        schema_name=gi.schema_name,
+        model=gi.model,
+        duration=gi.duration,
+        usage=UsageInfoDTO(
+            input_tokens=gi.usage.input_tokens,
+            output_tokens=gi.usage.output_tokens,
+            extra=gi.usage.extra,
+        ),
+    )
+
+
+def message_generation_inspection_to_dto(
+    m: MessageGenerationInspection,
+) -> MessageGenerationInspectionDTO:
+    return MessageGenerationInspectionDTO(
+        generation=generation_info_to_dto(m.generation),
+        messages=list(m.messages),
+    )
+
+
+def preparation_iteration_to_dto(iteration: PreparationIteration) -> PreparationIterationDTO:
+    return PreparationIterationDTO(
+        generations=PreparationIterationGenerationsDTO(
+            guideline_proposition=GuidelinePropositionInspectionDTO(
+                total_duration=iteration.generations.guideline_proposition.total_duration,
+                batches=[
+                    generation_info_to_dto(generation)
+                    for generation in iteration.generations.guideline_proposition.batches
+                ],
+            ),
+            tool_calls=[
+                generation_info_to_dto(generation)
+                for generation in iteration.generations.tool_calls
+            ],
+        ),
+        guideline_propositions=[
+            GuidelinePropositionDTO(
+                guideline_id=proposition["guideline_id"],
+                condition=proposition["condition"],
+                action=proposition["action"],
+                score=proposition["score"],
+                rationale=proposition["rationale"],
+            )
+            for proposition in iteration.guideline_propositions
+        ],
+        tool_calls=[
+            ToolCallDTO(
+                tool_id=tool_call["tool_id"],
+                arguments=cast(Mapping[str, JSONSerializableDTO], tool_call["arguments"]),
+                result=ToolResultDTO(
+                    data=cast(JSONSerializableDTO, tool_call["result"]["data"]),
+                    metadata=cast(
+                        Mapping[str, JSONSerializableDTO], tool_call["result"]["metadata"]
+                    ),
+                ),
+            )
+            for tool_call in iteration.tool_calls
+        ],
+        terms=[
+            TermDTO(
+                id=term["id"],
+                name=term["name"],
+                description=term["description"],
+                synonyms=term["synonyms"],
+            )
+            for term in iteration.terms
+        ],
+        context_variables=[
+            ContextVariableAndValueDTO(
+                id=cv["id"],
+                name=cv["name"],
+                description=cv["description"] or "",
+                key=cv["key"],
+                value=cast(JSONSerializableDTO, cv["value"]),
+            )
+            for cv in iteration.context_variables
+        ],
+    )
+
+
+AllowGreetingQuery: TypeAlias = Annotated[
+    bool,
+    Query(
+        description="Whether to allow the agent to send an initial greeting",
+    ),
+]
+
+AgentIdQuery: TypeAlias = Annotated[
+    AgentId,
+    Query(
+        description="Unique identifier of the agent",
+        examples=["ag_123xyz"],
+    ),
+]
+
+CustomerIdQuery: TypeAlias = Annotated[
+    CustomerId,
+    Query(
+        description="Unique identifier of the customers",
+        examples=["cust_123xy"],
+    ),
+]
+
+ModerationQuery: TypeAlias = Annotated[
+    Moderation,
+    Query(
+        description="Content moderation level for the event",
+    ),
+]
+
+MinOffsetQuery: TypeAlias = Annotated[
+    int,
+    Query(
+        description="Only return events with offset >= this value",
+        examples=[0, 42],
+    ),
+]
+
+CorrelationIdQuery: TypeAlias = Annotated[
+    str,
+    Query(
+        description="ID linking related events together",
+        examples=["corr_13xyz"],
+    ),
+]
+
+KindsQuery: TypeAlias = Annotated[
+    str,
+    Query(
+        description="If set, only list events of the specified kinds (separated by commas)",
+        examples=["message,tool", "message,status"],
+    ),
+]
+
+
+def _get_jailbreak_moderation_service(logger: Logger) -> ModerationService:
+    from parlant.adapters.nlp.lakera import LakeraGuard
+
+    return LakeraGuard(logger)
+
+
+def create_router(
+    logger: Logger,
+    application: Application,
+    agent_store: AgentStore,
+    customer_store: CustomerStore,
+    session_store: SessionStore,
+    session_listener: SessionListener,
+    nlp_service: NLPService,
+) -> APIRouter:
+    router = APIRouter()
+
+    @router.post(
+        "/",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="create_session",
+        response_model=SessionDTO,
+        responses={
+            status.HTTP_201_CREATED: {
+                "description": "Session successfully created. Returns the complete session object.",
+                "content": {"application/json": {"example": session_example}},
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="create"),
+    )
+    async def create_session(
+        params: SessionCreationParamsDTO,
+        allow_greeting: AllowGreetingQuery = True,
+    ) -> SessionDTO:
+        """Creates a new session between an agent and customer.
+
+        The session will be initialized with the specified agent and optional customer.
+        If no customer_id is provided, a guest customer will be created.
+        """
+        _ = await agent_store.read_agent(agent_id=params.agent_id)
+
+        session = await application.create_customer_session(
+            customer_id=params.customer_id or CustomerStore.GUEST_ID,
+            agent_id=params.agent_id,
+            title=params.title,
+            allow_greeting=allow_greeting,
+        )
+
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            customer_id=session.customer_id,
+            creation_utc=session.creation_utc,
+            consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
+            title=session.title,
+        )
+
+    @router.get(
+        "/{session_id}",
+        operation_id="read_session",
+        response_model=SessionDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Session details successfully retrieved",
+                "content": {"application/json": {"example": session_example}},
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+        },
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
+    )
+    async def read_session(
+        session_id: SessionIdPath,
+    ) -> SessionDTO:
+        """Retrieves details of a specific session by ID."""
+
+        session = await session_store.read_session(session_id=session_id)
+
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            creation_utc=session.creation_utc,
+            title=session.title,
+            customer_id=session.customer_id,
+            consumption_offsets=ConsumptionOffsetsDTO(
+                client=session.consumption_offsets["client"],
+            ),
+        )
+
+    @router.get(
+        "/",
+        operation_id="list_sessions",
+        response_model=Sequence[SessionDTO],
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all matching sessions",
+                "content": {"application/json": {"example": [session_example]}},
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list"),
+    )
+    async def list_sessions(
+        agent_id: Optional[AgentIdQuery] = None,
+        customer_id: Optional[CustomerIdQuery] = None,
+    ) -> Sequence[SessionDTO]:
+        """Lists all sessions matching the specified filters.
+
+        Can filter by agent_id and/or customer_id. Returns all sessions if no
+        filters are provided."""
+
+        sessions = await session_store.list_sessions(
+            agent_id=agent_id,
+            customer_id=customer_id,
+        )
+
+        return [
+            SessionDTO(
+                id=s.id,
+                agent_id=s.agent_id,
+                creation_utc=s.creation_utc,
+                title=s.title,
+                customer_id=s.customer_id,
+                consumption_offsets=ConsumptionOffsetsDTO(
+                    client=s.consumption_offsets["client"],
+                ),
+            )
+            for s in sessions
+        ]
+
+    @router.delete(
+        "/{session_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="delete_session",
+        responses={
+            status.HTTP_204_NO_CONTENT: {"description": "Session successfully deleted"},
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+        },
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
+    )
+    async def delete_session(
+        session_id: SessionIdPath,
+    ) -> None:
+        """Deletes a session and all its associated events.
+
+        The operation is idempotent - deleting a non-existent session will return 404."""
+
+        await session_store.read_session(session_id)
+        await session_store.delete_session(session_id)
+
+    @router.delete(
+        "/",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="delete_sessions",
+        responses={
+            status.HTTP_204_NO_CONTENT: {
+                "description": "All matching sessions successfully deleted"
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="delete_many"),
+    )
+    async def delete_sessions(
+        agent_id: Optional[AgentIdQuery] = None,
+        customer_id: Optional[CustomerIdQuery] = None,
+    ) -> None:
+        """Deletes all sessions matching the specified filters.
+
+        Can filter by agent_id and/or customer_id. Will delete all sessions if no
+        filters are provided."""
+
+        sessions = await session_store.list_sessions(
+            agent_id=agent_id,
+            customer_id=customer_id,
+        )
+
+        for s in sessions:
+            await session_store.delete_session(s.id)
+
+    @router.patch(
+        "/{session_id}",
+        operation_id="update_session",
+        responses={
+            status.HTTP_200_OK: {"description": "Session successfully updated"},
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in update parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="update"),
+    )
+    async def update_session(
+        session_id: SessionIdPath,
+        params: SessionUpdateParamsDTO,
+    ) -> SessionDTO:
+        """Updates an existing session's attributes.
+
+        Only provided attributes will be updated; others remain unchanged."""
+
+        async def from_dto(dto: SessionUpdateParamsDTO) -> SessionUpdateParams:
+            params: SessionUpdateParams = {}
+
+            if dto.consumption_offsets:
+                session = await session_store.read_session(session_id)
+
+                if dto.consumption_offsets.client:
+                    params["consumption_offsets"] = {
+                        **session.consumption_offsets,
+                        "client": dto.consumption_offsets.client,
+                    }
+
+            if dto.title:
+                params["title"] = dto.title
+
+            return params
+
+        session = await session_store.update_session(
+            session_id=session_id,
+            params=await from_dto(params),
+        )
+
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            creation_utc=session.creation_utc,
+            title=session.title,
+            customer_id=session.customer_id,
+            consumption_offsets=ConsumptionOffsetsDTO(
+                client=session.consumption_offsets["client"],
+            ),
+        )
+
+    @router.post(
+        "/{session_id}/events",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="create_event",
+        response_model=EventDTO,
+        responses={
+            status.HTTP_201_CREATED: {
+                "description": "Event successfully created",
+                "content": {"application/json": {"example": event_example}},
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in event parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="create_event"),
+    )
+    async def create_event(
+        session_id: SessionIdPath,
+        params: EventCreationParamsDTO,
+        moderation: ModerationQuery = Moderation.NONE,
+    ) -> EventDTO:
+        """Creates a new event in the specified session.
+
+        Currently supports creating message events from customer and human agent sources."""
+
+        if params.kind != EventKindDTO.MESSAGE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only message events can currently be added manually",
+            )
+
+        if params.source == EventSourceDTO.CUSTOMER:
+            return await _add_customer_message(session_id, params, moderation)
+        elif params.source == EventSourceDTO.AI_AGENT:
+            return await _add_agent_message(session_id, params)
+        elif params.source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
+            return await _add_human_agent_message_on_behalf_of_ai_agent(session_id, params)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Only "customer" and "human_agent_on_behalf_of_ai_agent" sources are supported for direct posting.',
+            )
+
+    async def _add_customer_message(
+        session_id: SessionIdPath,
+        params: EventCreationParamsDTO,
+        moderation: Moderation = Moderation.NONE,
+    ) -> EventDTO:
+        if not params.message:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'message' field for event",
+            )
+
+        flagged = False
+        tags: Set[str] = set()
+
+        if moderation in [Moderation.AUTO, Moderation.PARANOID]:
+            moderation_service = await nlp_service.get_moderation_service()
+            check = await moderation_service.check(params.message)
+            flagged |= check.flagged
+            tags.update(check.tags)
+
+        if moderation == Moderation.PARANOID:
+            check = await _get_jailbreak_moderation_service(logger).check(params.message)
+            if "jailbreak" in check.tags:
+                flagged = True
+                tags.update({"jailbreak"})
+
+        session = await session_store.read_session(session_id)
+
+        try:
+            customer = await customer_store.read_customer(session.customer_id)
+            customer_display_name = customer.name
+        except Exception:
+            customer_display_name = session.customer_id
+
+        message_data: MessageEventData = {
+            "message": params.message,
+            "participant": {
+                "id": session.customer_id,
+                "display_name": customer_display_name,
+            },
+            "flagged": flagged,
+            "tags": list(tags),
+        }
+
+        event = await application.post_event(
+            session_id=session_id,
+            kind=params.kind.value,
+            data=message_data,
+            source="customer",
+            trigger_processing=True,
+        )
+
+        return event_to_dto(event)
+
+    async def _add_agent_message(
+        session_id: SessionIdPath,
+        params: EventCreationParamsDTO,
+    ) -> EventDTO:
+        if params.message:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="If you add an agent message, you cannot specify what the message will be, as it will be auto-generated by the agent.",
+            )
+
+        session = await session_store.read_session(session_id)
+
+        correlation_id = await application.dispatch_processing_task(session)
+
+        await session_listener.wait_for_events(
+            session_id=session_id,
+            correlation_id=correlation_id,
+            timeout=Timeout(60),
+        )
+
+        event = next(
+            iter(
+                await session_store.list_events(
+                    session_id=session_id,
+                    correlation_id=correlation_id,
+                    kinds=["status"],
+                )
+            )
+        )
+
+        return event_to_dto(event)
+
+    async def _add_human_agent_message_on_behalf_of_ai_agent(
+        session_id: SessionIdPath,
+        params: EventCreationParamsDTO,
+    ) -> EventDTO:
+        if not params.message:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'data' field for message",
+            )
+
+        session = await session_store.read_session(session_id)
+        agent = await agent_store.read_agent(session.agent_id)
+
+        message_data: MessageEventData = {
+            "message": params.message,
+            "participant": {
+                "id": agent.id,
+                "display_name": agent.name,
+            },
+        }
+
+        event = await application.post_event(
+            session_id=session_id,
+            kind=params.kind.value,
+            data=message_data,
+            source="human_agent_on_behalf_of_ai_agent",
+            trigger_processing=False,
+        )
+
+        return EventDTO(
+            id=event.id,
+            source=EventSourceDTO(event.source),
+            kind=EventKindDTO(event.kind),
+            offset=event.offset,
+            creation_utc=event.creation_utc,
+            correlation_id=event.correlation_id,
+            data=cast(JSONSerializableDTO, event.data),
+        )
+
+    @router.get(
+        "/{session_id}/events",
+        operation_id="list_events",
+        response_model=Sequence[EventDTO],
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of events matching the specified criteria",
+                "content": {"application/json": {"example": [event_example]}},
+            },
+            status.HTTP_404_NOT_FOUND: {
+                "description": "Session not found",
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+            status.HTTP_504_GATEWAY_TIMEOUT: {
+                "description": "Request timeout waiting for new events"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list_events"),
+    )
+    async def list_events(
+        session_id: SessionIdPath,
+        min_offset: Optional[MinOffsetQuery] = None,
+        source: Optional[EventSourceDTO] = None,
+        correlation_id: Optional[CorrelationIdQuery] = None,
+        kinds: Optional[KindsQuery] = None,
+        wait_for_data: int = 60,
+    ) -> Sequence[EventDTO]:
+        """Lists events from a session with optional filtering and waiting capabilities.
+
+        This endpoint retrieves events from a specified session and can:
+        1. Filter events by their offset, source, type, and correlation ID
+        2. Wait for new events to arrive if requested
+        3. Return events in chronological order based on their offset
+
+        Notes:
+            Long Polling Behavior:
+            - When wait_for_data = 0:
+                Returns immediately with any existing events that match the criteria
+            - When wait_for_data > 0:
+                - If new matching events arrive within the timeout period, returns with those events
+                - If no new events arrive before timeout, raises 504 Gateway Timeout
+                - If matching events already exist, returns immediately with those events
+        """
+        kind_list: Sequence[EventKind] = kinds.split(",") if kinds else []  # type: ignore
+        assert all(k in EventKind.__args__ for k in kind_list)  # type: ignore
+
+        if wait_for_data > 0:
+            if not await session_listener.wait_for_events(
+                session_id=session_id,
+                min_offset=min_offset or 0,
+                source=source.value if source else None,
+                kinds=kind_list,
+                correlation_id=correlation_id,
+                timeout=Timeout(wait_for_data),
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Request timed out",
+                )
+
+        events = await session_store.list_events(
+            session_id=session_id,
+            min_offset=min_offset,
+            source=source.value if source else None,
+            kinds=kind_list,
+            correlation_id=correlation_id,
+        )
+
+        return [
+            EventDTO(
+                id=e.id,
+                source=EventSourceDTO(e.source),
+                kind=EventKindDTO(e.kind),
+                offset=e.offset,
+                creation_utc=e.creation_utc,
+                correlation_id=e.correlation_id,
+                data=cast(JSONSerializableDTO, e.data),
+            )
+            for e in events
+        ]
+
+    @router.delete(
+        "/{session_id}/events",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="delete_events",
+        responses={
+            status.HTTP_204_NO_CONTENT: {"description": "Events successfully deleted"},
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="delete_events"),
+    )
+    async def delete_events(
+        session_id: SessionIdPath,
+        min_offset: MinOffsetQuery,
+    ) -> None:
+        """Deletes events from a session with offset >= the specified value.
+
+        This operation is permanent and cannot be undone."""
+
+        events = await session_store.list_events(
+            session_id=session_id,
+            min_offset=min_offset,
+            exclude_deleted=True,
+        )
+
+        for e in events:
+            await session_store.delete_event(e.id)
+
+    @router.get(
+        "/{session_id}/events/{event_id}",
+        operation_id="inspect_event",
+        response_model=EventInspectionResult,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Event inspection details successfully retrieved",
+                "content": {"application/json": {"example": event_inspection_example}},
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Session or event not found"},
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="inspect_event"),
+    )
+    async def inspect_event(
+        session_id: SessionIdPath,
+        event_id: EventIdPath,
+    ) -> EventInspectionResult:
+        """Retrieves detailed inspection information about an event.
+
+        For AI agent message events, includes information about message generation,
+        tool calls, and preparation iterations."""
+
+        event = await session_store.read_event(session_id, event_id)
+
+        trace: Optional[EventTraceDTO] = None
+
+        if event.kind == "message" and event.source == "ai_agent":
+            inspection = await session_store.read_inspection(
+                session_id=session_id,
+                correlation_id=event.correlation_id,
+            )
+
+            trace = EventTraceDTO(
+                tool_calls=await _find_correlated_tool_calls(session_id, event),
+                message_generations=[
+                    message_generation_inspection_to_dto(m) for m in inspection.message_generations
+                ],
+                preparation_iterations=[
+                    preparation_iteration_to_dto(iteration)
+                    for iteration in inspection.preparation_iterations
+                ],
+            )
+
+        return EventInspectionResult(
+            session_id=session_id,
+            event=event_to_dto(event),
+            trace=trace,
+        )
+
+    async def _find_correlated_tool_calls(
+        session_id: SessionIdPath,
+        event: Event,
+    ) -> Sequence[ToolCallDTO]:
+        """Helper function to find tool calls correlated with an event."""
+
+        tool_events = await session_store.list_events(
+            session_id=session_id,
+            kinds=["tool"],
+            correlation_id=event.correlation_id,
+        )
+
+        tool_calls = list(
+            chain.from_iterable(cast(ToolEventData, e.data)["tool_calls"] for e in tool_events)
+        )
+
+        return [
+            ToolCallDTO(
+                tool_id=tc["tool_id"],
+                arguments=cast(Mapping[str, JSONSerializableDTO], tc["arguments"]),
+                result=ToolResultDTO(
+                    data=cast(JSONSerializableDTO, tc["result"]["data"]),
+                    metadata=cast(Mapping[str, JSONSerializableDTO], tc["result"]["metadata"]),
+                ),
+            )
+            for tc in tool_calls
+        ]
+
+    return router

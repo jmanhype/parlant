@@ -1,6 +1,21 @@
+# Copyright 2024 Emcie Co Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
-from utils import Package, die, for_each_package
 from functools import partial
+
+from utils import Package, die, for_each_package
 
 
 def run_cmd_or_die(
@@ -23,26 +38,6 @@ def lint_package(mypy: bool, ruff: bool, package: Package) -> None:
     if ruff:
         run_cmd_or_die("ruff check", "Please fix Ruff lint errors", package)
         run_cmd_or_die("ruff format --check", "Please format files with Ruff", package)
-
-    if package.bin_files:
-        for bin_file in package.bin_files:
-            if mypy:
-                run_cmd_or_die(
-                    f"mypy {bin_file}",
-                    "Please fix MyPy lint errors",
-                    package,
-                )
-            if ruff:
-                run_cmd_or_die(
-                    f"ruff check {bin_file}",
-                    "Please fix Ruff lint errors",
-                    package,
-                )
-                run_cmd_or_die(
-                    f"ruff format --check {bin_file}",
-                    "Please format files with Ruff",
-                    package,
-                )
 
 
 if __name__ == "__main__":

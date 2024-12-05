@@ -1,12 +1,27 @@
+# Copyright 2024 Emcie Co Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #!/usr/bin/python3
 from functools import partial
 from pathlib import Path
 import semver  # type: ignore
 import subprocess
 import sys
-from utils import die, for_each_package, Package, get_packages
 import re
 import toml  # type: ignore
+
+from utils import die, for_each_package, Package, get_packages
 
 
 def get_project_file(package: Package) -> Path:
@@ -40,8 +55,8 @@ def set_package_version(version: str, package: Package) -> None:
         )
 
         project_file_content = re.sub(
-            f'\nemcie-(.+?) = "{current_version}"\n',
-            f'\nemcie-\\1 = "{version}"\n',
+            f'\nparlant-(.+?) = "{current_version}"\n',
+            f'\nparlant-\\1 = "{version}"\n',
             project_file_content,
         )
 
@@ -55,19 +70,19 @@ def set_package_version(version: str, package: Package) -> None:
 
 
 def update_version_variable_in_code(version: str) -> None:
-    server_package = next(p for p in get_packages() if p.name == "server")
-    init_file: Path = server_package.path / "src/emcie/server/__init__.py"
+    server_package = next(p for p in get_packages() if p.name == "parlant")
+    version_file: Path = server_package.path / "src/parlant/version.py"
 
-    init_file_content = init_file.read_text()
+    version_file_content = version_file.read_text()
     current_version = get_current_version(server_package)
 
-    init_file_content = re.sub(
+    version_file_content = re.sub(
         f'VERSION = "{current_version}"',
         f'VERSION = "{version}"',
-        init_file_content,
+        version_file_content,
     )
 
-    init_file.write_text(init_file_content)
+    version_file.write_text(version_file_content)
 
 
 def tag_repo(version: str) -> None:
@@ -79,7 +94,7 @@ def tag_repo(version: str) -> None:
 
 
 def get_current_server_version() -> str:
-    server_package = next(p for p in get_packages() if p.name == "server")
+    server_package = next(p for p in get_packages() if p.name == "parlant")
     return get_current_version(server_package)
 
 
@@ -110,6 +125,8 @@ def update_version(
         version = version.bump_prerelease("beta")
     if alpha:
         version = version.bump_prerelease("alpha")
+    else:
+        version = version.finalize_version()
 
     return str(version)
 
@@ -128,9 +145,7 @@ def commit_version(version: str) -> bool:
 
 if __name__ == "__main__":
     if there_are_pending_git_changes():
-        die(
-            "error: version bumps must take place on a clean tree with no pending changes"
-        )
+        die("error: version bumps must take place on a clean tree with no pending changes")
 
     current_version = get_current_server_version()
 
