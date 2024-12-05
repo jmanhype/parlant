@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "parlant"
-version = "1.0.0-rc.4"
+version = "1.0.0"
 description = ""
 authors = ["Yam Marcovitz <yam@emcie.co>", "Dor Zohar <dor@emcie.co>"]
 readme = "README.md"
