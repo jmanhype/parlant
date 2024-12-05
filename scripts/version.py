@@ -125,6 +125,8 @@ def update_version(
         version = version.bump_prerelease("beta")
     if alpha:
         version = version.bump_prerelease("alpha")
+    else:
+        version = version.finalize_version()
 
     return str(version)
 
