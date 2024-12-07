@@ -194,7 +194,7 @@ class CustomerDocumentStore(CustomerStore):
         if customer_id == CustomerStore.GUEST_ID:
             return Customer(
                 id=CustomerStore.GUEST_ID,
-                name="guest",
+                name="<guest>",
                 creation_utc=datetime.now(timezone.utc),
                 extra={},
                 tags=[],
