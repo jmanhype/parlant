@@ -1623,7 +1623,7 @@ class Interface:
                 value=value,
             )
 
-            Interface._write_success(f"Added value (id={cv_value.id})")
+            Interface._write_success(f"Updated variable value (id={cv_value.id})")
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
