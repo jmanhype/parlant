@@ -1856,7 +1856,7 @@ class Interface:
     def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         try:
             Actions.add_customer_tag(ctx, customer_id, tag_id)
-            Interface._write_success(f"Added tag '{tag_id}' to customer {customer_id}")
+            Interface._write_success(f"Added tag (id={tag_id}) to customer {customer_id}'")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1865,7 +1865,7 @@ class Interface:
     def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         try:
             Actions.remove_customer_tag(ctx, customer_id, tag_id)
-            Interface._write_success(f"Removed tag '{tag_id}' from customer {customer_id}")
+            Interface._write_success(f"Removed tag (id={tag_id}) from customer {customer_id}")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
