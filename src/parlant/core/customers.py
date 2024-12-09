@@ -236,13 +236,16 @@ class CustomerDocumentStore(CustomerStore):
     ) -> Sequence[Customer]:
         return [
             await self._deserialize_customer(e) for e in await self._customers_collection.find({})
-        ]
+        ] + [await self.read_customer(CustomerStore.GUEST_ID)]
 
     @override
     async def delete_customer(
         self,
         customer_id: CustomerId,
     ) -> None:
+        if customer_id == CustomerStore.GUEST_ID:
+            raise ValueError("Removing the guest customer is not allowed")
+
         result = await self._customers_collection.delete_one({"id": {"$eq": customer_id}})
 
         if result.deleted_count == 0:
