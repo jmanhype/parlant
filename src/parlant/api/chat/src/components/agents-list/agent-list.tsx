@@ -62,6 +62,12 @@ const AgentList = (): ReactNode => {
                     </div>
                 ))}
             </div>
+            {agent && 
+            <div className='flex justify-end'>
+                <Button variant='ghost' onClick={() => selectCustomer('')}>
+                    Continue with a guest Customer
+                </Button>
+            </div>}
         </div>
     );
 };
