@@ -234,9 +234,9 @@ class CustomerDocumentStore(CustomerStore):
     async def list_customers(
         self,
     ) -> Sequence[Customer]:
-        return [
+        return [await self.read_customer(CustomerStore.GUEST_ID)] + [
             await self._deserialize_customer(e) for e in await self._customers_collection.find({})
-        ] + [await self.read_customer(CustomerStore.GUEST_ID)]
+        ]
 
     @override
     async def delete_customer(
