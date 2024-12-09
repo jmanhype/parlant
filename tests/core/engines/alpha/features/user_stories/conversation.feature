@@ -116,9 +116,9 @@ Feature: Conversation
         And a guideline to refer to them by their first name only, and welcome them 'back' when a customer greets you
         And a guideline to assure them you will escalate it internally and get back to them when a business-plan customer is having an issue
         And a customer message, "Hi there"
-        And an agent message, "Hey Beef, welcome back to Bug! How can I help you today?"
+        And an agent message, "Hey Beef, welcome to Bug! How can I help you today?"
         And a customer message, "I'm having issues with my web camera"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains no greeting with the word 'back' in it
+        And the message contains no welcoming back of the customer
         And the message contains that the request will be escelated
