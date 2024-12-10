@@ -124,9 +124,9 @@ $ npm install parlant-client
 
 To start building with Parlant, visit our [documentation portal](https://parlant.io/docs/quickstart/introduction).
 
-Need help? Send us a message on [Discord](https://discord.gg/QXKvkqph). We're happy to answer questions and help you get up and running!
+Need help? Send us a message on [Discord](https://discord.gg/duxWqxKk6J). We're happy to answer questions and help you get up and running!
 
 ## Contributing
 We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines will be available soon! 
 
-Want to get involved? Join us on [Discord](https://discord.gg/QXKvkqph) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
+Want to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
