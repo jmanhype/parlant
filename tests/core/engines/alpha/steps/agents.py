@@ -27,7 +27,7 @@ def given_an_agent(
 
 
 @step(given, parsers.parse("an agent whose job is {description}"), target_fixture="agent_id")
-def given_an_agent_with_identity(
+def given_an_agent_with_description(
     context: ContextOfTest,
     description: str,
 ) -> AgentId:
@@ -45,7 +45,7 @@ def given_an_agent_with_identity(
     parsers.parse('an agent named "{name}" whose job is {description}'),
     target_fixture="agent_id",
 )
-def given_an_agent_with_identity_and_name(
+def given_an_agent_with_description_and_name(
     context: ContextOfTest,
     description: str,
     name: str,
