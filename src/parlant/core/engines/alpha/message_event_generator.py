@@ -693,7 +693,7 @@ Produce a valid JSON object in the following format: ###
         """
         else:
             insights_output_format = """
-            <Additional entires for all insights>
+            <Additional entries for all insights>
 """
 
         return f"""

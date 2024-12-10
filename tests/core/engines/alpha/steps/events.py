@@ -15,9 +15,9 @@
 from typing import Optional, cast
 from pytest_bdd import given, then, parsers, when
 
-from parlant.core.agents import Agent
+from parlant.core.agents import AgentId, AgentStore
 from parlant.core.common import JSONSerializable
-from parlant.core.customers import Customer
+from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.utils import emitted_tool_event_to_dict
 from parlant.core.emissions import EmittedEvent
 from parlant.core.nlp.moderation import ModerationTag
@@ -45,10 +45,13 @@ def given_an_agent_message(
     context: ContextOfTest,
     agent_message: str,
     session_id: SessionId,
-    agent: Agent,
+    agent_id: AgentId,
 ) -> SessionId:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
+    session_store = context.container[SessionStore]
+    agent_store = context.container[AgentStore]
+
+    session = context.sync_await(session_store.read_session(session_id=session_id))
+    agent = context.sync_await(agent_store.read_agent(agent_id))
 
     message_data: MessageEventData = {
         "message": agent_message,
@@ -59,7 +62,7 @@ def given_an_agent_message(
     }
 
     event = context.sync_await(
-        store.create_event(
+        session_store.create_event(
             session_id=session.id,
             source="ai_agent",
             kind="message",
@@ -82,10 +85,13 @@ def given_a_human_message_on_behalf_of_the_agent(
     context: ContextOfTest,
     agent_message: str,
     session_id: SessionId,
-    agent: Agent,
+    agent_id: AgentId,
 ) -> SessionId:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
+    session_store = context.container[SessionStore]
+    agent_store = context.container[AgentStore]
+
+    session = context.sync_await(session_store.read_session(session_id=session_id))
+    agent = context.sync_await(agent_store.read_agent(agent_id))
 
     message_data: MessageEventData = {
         "message": agent_message,
@@ -96,7 +102,7 @@ def given_a_human_message_on_behalf_of_the_agent(
     }
 
     event = context.sync_await(
-        store.create_event(
+        session_store.create_event(
             session_id=session.id,
             source="human_agent_on_behalf_of_ai_agent",
             kind="message",
@@ -115,10 +121,12 @@ def given_a_customer_message(
     context: ContextOfTest,
     session_id: SessionId,
     customer_message: str,
-    customer: Customer,
 ) -> SessionId:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
+    session_store = context.container[SessionStore]
+    customer_store = context.container[CustomerStore]
+
+    session = context.sync_await(session_store.read_session(session_id=session_id))
+    customer = context.sync_await(customer_store.read_customer(customer_id=session.customer_id))
 
     message_data: MessageEventData = {
         "message": customer_message,
@@ -129,7 +137,7 @@ def given_a_customer_message(
     }
 
     event = context.sync_await(
-        store.create_event(
+        session_store.create_event(
             session_id=session.id,
             source="customer",
             kind="message",
@@ -154,18 +162,24 @@ def given_a_flagged_customer_message(
     customer_message: str,
     moderation_tag: ModerationTag,
 ) -> SessionId:
-    store = context.container[SessionStore]
-    session = context.sync_await(store.read_session(session_id=session_id))
+    session_store = context.container[SessionStore]
+    customer_store = context.container[CustomerStore]
+
+    session = context.sync_await(session_store.read_session(session_id=session_id))
+    customer = context.sync_await(customer_store.read_customer(customer_id=session.customer_id))
 
     message_data: MessageEventData = {
         "message": customer_message,
-        "participant": {"display_name": ""},
+        "participant": {
+            "id": customer.id,
+            "display_name": customer.name,
+        },
         "flagged": True,
         "tags": [moderation_tag],
     }
 
     event = context.sync_await(
-        store.create_event(
+        session_store.create_event(
             session_id=session.id,
             source="customer",
             kind="message",
