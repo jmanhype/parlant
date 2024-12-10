@@ -27,13 +27,32 @@ def given_an_agent(
 
 
 @step(given, parsers.parse("an agent whose job is {description}"), target_fixture="agent_id")
-def given_an_agent_with_identity(
+def given_an_agent_with_description(
     context: ContextOfTest,
     description: str,
 ) -> AgentId:
     agent = context.sync_await(
         context.container[AgentStore].create_agent(
             name="test-agent",
+            description=f"Your job is {description}",
+        )
+    )
+    return agent.id
+
+
+@step(
+    given,
+    parsers.parse('an agent named "{name}" whose job is {description}'),
+    target_fixture="agent_id",
+)
+def given_an_agent_with_description_and_name(
+    context: ContextOfTest,
+    description: str,
+    name: str,
+) -> AgentId:
+    agent = context.sync_await(
+        context.container[AgentStore].create_agent(
+            name=name,
             description=f"Your job is {description}",
         )
     )

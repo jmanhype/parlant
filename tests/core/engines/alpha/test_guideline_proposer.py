@@ -927,7 +927,7 @@ def test_that_guideline_with_already_addressed_condition_but_unaddressed_action_
         ("customer", "I thought you're a pizza shop, this is very frustrating"),
         (
             "ai_agent",
-            "I'm sorry that you're frustrated, but unfortunately we're out ingredients at this time",
+            "I don't know what to tell you, we're out ingredients at this time",
         ),
         ("customer", "What the heck! I'm never ordering from you guys again"),
     ]

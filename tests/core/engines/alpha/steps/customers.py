@@ -41,9 +41,7 @@ def given_a_customer_tag(
     session_store = context.container[SessionStore]
     customer_store = context.container[CustomerStore]
     tag_store = context.container[TagStore]
-
-    tag = context.sync_await(tag_store.create_tag(tag_name))
-
+    tag = next(t for t in context.sync_await(tag_store.list_tags()) if t.name == tag_name)
     customer_id = context.sync_await(session_store.read_session(session_id)).customer_id
 
     context.sync_await(
