@@ -17,7 +17,7 @@ from pytest_bdd import given, then, parsers, when
 
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.common import JSONSerializable
-from parlant.core.customers import CustomerId, CustomerStore
+from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.utils import emitted_tool_event_to_dict
 from parlant.core.emissions import EmittedEvent
 from parlant.core.nlp.moderation import ModerationTag
@@ -118,12 +118,13 @@ def given_a_customer_message(
     context: ContextOfTest,
     session_id: SessionId,
     customer_message: str,
-    customer_id: CustomerId,
 ) -> SessionId:
     session_store = context.container[SessionStore]
     customer_store = context.container[CustomerStore]
+
     session = context.sync_await(session_store.read_session(session_id=session_id))
-    customer = context.sync_await(customer_store.read_customer(customer_id=customer_id))
+    customer = context.sync_await(customer_store.read_customer(customer_id=session.customer_id))
+
     message_data: MessageEventData = {
         "message": customer_message,
         "participant": {
