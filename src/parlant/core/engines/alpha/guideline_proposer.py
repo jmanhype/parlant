@@ -315,6 +315,7 @@ Additionally, actions that involve continuous behavior (e.g., "do not ask the us
 Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
 Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
 
+IMPORTANT: Some guidelines include multiple actions. If only a portion of those actions were fulfilled earlier in the conversation, treat the guideline as though it has been fully executed. In such cases, re-apply the guideline only if its condition becomes true again later in the conversation, unless it is marked as continuous.
 
 Examples of Condition Evaluations:
 -------------------
@@ -443,7 +444,7 @@ Example #3:
 - Guidelines: ###
 1) condition: the customer asks about the value of a stock. action: provide the price using the 'check_stock_price' tool
 2) condition: the weather at a certain location is discussed. action: check the weather at that location using the 'check_weather' tool
-
+3) condition: the customer asked about the weather. action: provide the customre with the temperature and the chances of precipitation  
 ###
 - **Expected Result**:
 ```json
@@ -466,6 +467,18 @@ Example #3:
         "condition_applies": false,
         "condition_application_rationale": "while weather was discussed earlier, the conversation have moved on to an entirely different topic (stock prices)",
         "applies_score": 3
+    }},
+    {{
+        "guideline_number": 3,
+        "condition": "the customer asked about the weather.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
+        "action": "provide the customre with the temperature and the chances of precipitation",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The action was partially fulfilled by reporting the temperature without the chances of precipitation. As partially fulfilled guidelines are treated as completed, this guideline is considered applied",
+        "guideline_previously_applied": true,
+        "guideline_should_reapply": false,
+        "applies_score": 4
     }},
     ]
 }}
@@ -502,6 +515,4 @@ Expected Output
     ```""")
 
         prompt = builder.build()
-        with open("guideline proposition prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
