@@ -36,12 +36,6 @@ from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 
 
-class GuidelinePreviouslyAppliedEnum(str, Enum):
-    no = "no"
-    partially = "partially"
-    fully = "fully"
-
-
 class GuidelinePropositionSchema(DefaultBaseModel):
     guideline_number: int
     condition: str
@@ -49,9 +43,8 @@ class GuidelinePropositionSchema(DefaultBaseModel):
     condition_applies: bool
     action: Optional[str] = ""
     guideline_is_continuous: Optional[bool] = False
-    guideline_previously_applied: Optional[GuidelinePreviouslyAppliedEnum] = (
-        GuidelinePreviouslyAppliedEnum.no
-    )
+    guideline_previously_applied_rationale: Optional[str] = ""
+    guideline_previously_applied: Optional[str] = "no"
     guideline_should_reapply: Optional[bool] = False
     applies_score: int
 
@@ -225,7 +218,7 @@ class GuidelineProposer:
             )
 
             if (proposition.applies_score >= 6) and (
-                (proposition.guideline_previously_applied == GuidelinePreviouslyAppliedEnum.no)
+                (proposition.guideline_previously_applied == "no")
                 or proposition.guideline_should_reapply
             ):
                 propositions.append(
