@@ -110,7 +110,7 @@ class CerebrasSchematicGenerator(BaseSchematicGenerator[T]):
             raise
 
 
-class Llama3_1_8B(CerebrasSchematicGenerator[T]):
+class Llama3_3_8B(CerebrasSchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(
             model_name="llama3.1-8b",
@@ -134,10 +134,10 @@ class Llama3_1_8B(CerebrasSchematicGenerator[T]):
         return self._estimating_tokenizer
 
 
-class Llama3_1_70B(CerebrasSchematicGenerator[T]):
+class Llama3_3_70B(CerebrasSchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(
-            model_name="llama3.1-70b",
+            model_name="llama3.3-70b",
             logger=logger,
         )
 
@@ -169,7 +169,7 @@ class CerebrasService(NLPService):
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> CerebrasSchematicGenerator[T]:
-        return Llama3_1_70B[t](self._logger)  # type: ignore
+        return Llama3_3_70B[t](self._logger)  # type: ignore
 
     @override
     async def get_embedder(self) -> Embedder:
