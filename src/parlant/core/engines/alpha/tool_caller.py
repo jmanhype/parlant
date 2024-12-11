@@ -135,10 +135,11 @@ class ToolCaller:
                     interaction_history=interaction_history,
                     terms=terms,
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
-                    batch=(t[0], t[1], props),
+                    batch=(key[0], key[1], props),
+                    context_tools=[t for t in batches if t != key],
                     staged_events=staged_events,
                 )
-                for t, props in batches.items()
+                for key, props in batches.items()
             ]
 
             batch_generations, tool_call_batches = zip(*(await asyncio.gather(*batch_tasks)))
@@ -160,6 +161,7 @@ class ToolCaller:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         batch: tuple[ToolId, Tool, list[GuidelineProposition]],
+        context_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
     ) -> tuple[GenerationInfo, list[ToolCall]]:
         inference_prompt = self._format_tool_call_inference_prompt(
@@ -169,6 +171,7 @@ class ToolCaller:
             terms,
             ordinary_guideline_propositions,
             batch,
+            context_tools,
             staged_events,
         )
 
@@ -182,7 +185,7 @@ class ToolCaller:
                 arguments=tc.arguments or {},
             )
             for tc in inference_output
-            if tc.applicability_score >= 6
+            if tc.should_run and tc.applicability_score >= 6
         ]
 
     async def execute_tool_calls(
@@ -212,6 +215,7 @@ class ToolCaller:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         batch: tuple[ToolId, Tool, list[GuidelineProposition]],
+        context_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
     ) -> str:
         assert len(agents) == 1
@@ -406,7 +410,7 @@ check_stock(): returns all menu items that are currently in stock
             ),
             name=BuiltInSection.GUIDELINE_DESCRIPTIONS,
         )
-        builder.add_tool_definitions(tool_id=batch[0], tool=batch[1])
+        builder.add_tool_definitions(tools=list(context_tools) + [(batch[0], batch[1])])
         if staged_calls:
             builder.add_section(
                 f"""
@@ -449,7 +453,7 @@ Given the tool, your output should adhere to the following format:
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "arguments": <ARGUMENTS FOR THE TOOL. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
-            "should_run": <BOOL>,
+            "should_run": <BOOL>
         }}                                               
     ]
 }}
@@ -488,7 +492,7 @@ Some guidelines have a tool associated with them, which you may decide to apply 
 Guidelines: 
 ###
 {guideline_list}
-f"\n    Associated Tool: {tool_id_propositions[0].service_name}:{tool_id_propositions[0].tool_name}"
+\n    Associated Tool: {tool_id_propositions[0].service_name}:{tool_id_propositions[0].tool_name}"
 ###
 """
 
