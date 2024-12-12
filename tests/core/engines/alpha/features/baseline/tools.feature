@@ -184,7 +184,7 @@ Feature: Tools
         And a single message event is emitted
         And the message contains a recommendation for toppings which do not include pineapple
 
-    Scenario: The agent uses tools based on the agents description
+    Scenario: The agent correctly chooses to call the right tool
         Given an agent whose job is to sell groceries
         And the term "carrot" defined as a kind of fruit
         And a guideline "check_prices" to reply with the price of the item when a customer asks about an items price 
