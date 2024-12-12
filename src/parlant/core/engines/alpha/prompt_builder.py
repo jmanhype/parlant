@@ -17,7 +17,6 @@ from enum import Enum, auto
 import json
 from typing import Any, Optional, Sequence, cast
 
-from parlant.core.tools import Tool
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
@@ -28,7 +27,6 @@ from parlant.core.engines.alpha.utils import (
     emitted_tool_events_to_dicts,
 )
 from parlant.core.emissions import EmittedEvent
-from parlant.core.tools import ToolId
 
 
 class BuiltInSection(Enum):
@@ -38,7 +36,6 @@ class BuiltInSection(Enum):
     GLOSSARY = auto()
     GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
-    TOOLS = auto()
     STAGED_EVENTS = auto()
 
 
@@ -213,33 +210,6 @@ and let the user know if/when you assume they meant a term by their typo: ###
 """,  # noqa
                 status=SectionStatus.ACTIVE,
             )
-
-        return self
-
-    def add_tool_definitions(self, tools: Sequence[tuple[ToolId, Tool]]) -> PromptBuilder:
-        assert tools
-
-        tool_specs = [
-            {
-                "name": tool_id.to_string(),
-                "description": tool.description,
-                "parameters": tool.parameters,
-                "required_parameters": tool.required,
-            }
-            for tool_id, tool in tools
-        ]
-
-        self.add_section(
-            name=BuiltInSection.TOOLS,
-            content=f"""
-The following are the tool function definitions. Generate one reply for each tool.
-IMPORTANT: You must not return results for any tool that do not appear in the following list, even if you believe they might be relevant.
-: ###
-{tool_specs}
-###
-""",
-            status=SectionStatus.ACTIVE,
-        )
 
         return self
 

@@ -45,6 +45,9 @@ class ToolCallEvaluation(DefaultBaseModel):
     applicability_score: int
     arguments: Optional[Mapping[str, Any]] = dict()
     same_call_is_already_staged: bool
+    better_reference_tool_rationale: Optional[str] = None
+    reference_tool_better_applies: bool
+    better_reference_tool_name: Optional[str] = None
     should_run: bool
 
 
@@ -136,7 +139,7 @@ class ToolCaller:
                     terms=terms,
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
                     batch=(key[0], key[1], props),
-                    context_tools=[t for t in batches if t != key],
+                    reference_tools=[t for t in batches if t != key],
                     staged_events=staged_events,
                 )
                 for key, props in batches.items()
@@ -161,7 +164,7 @@ class ToolCaller:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         batch: tuple[ToolId, Tool, list[GuidelineProposition]],
-        context_tools: Sequence[tuple[ToolId, Tool]],
+        reference_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
     ) -> tuple[GenerationInfo, list[ToolCall]]:
         inference_prompt = self._format_tool_call_inference_prompt(
@@ -171,7 +174,7 @@ class ToolCaller:
             terms,
             ordinary_guideline_propositions,
             batch,
-            context_tools,
+            reference_tools,
             staged_events,
         )
 
@@ -215,7 +218,7 @@ class ToolCaller:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         batch: tuple[ToolId, Tool, list[GuidelineProposition]],
-        context_tools: Sequence[tuple[ToolId, Tool]],
+        reference_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
     ) -> str:
         assert len(agents) == 1
@@ -274,8 +277,11 @@ Produce a valid JSON object according to the following format:
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "arguments": <ARGUMENTS FOR THE TOOL. CAN BE DROPPED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
+            "better_reference_tool_rationale": "<A BRIEF EXPLANATION OF WHETHER A REFERENCE TOOL APPLIES AND, IF SO, WHY ITS MORE SUITABLE>",
+            "reference_tool_better_applies": <BOOL>,
+            "better_reference_tool_name": "<REFERENCE TOOL NAME>",
             "should_run": <BOOL>,
-        }},
+        }}
         ...
     ]
 }}
@@ -308,6 +314,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
                 "customer_id": "12345",
             }},
             "same_call_is_already_staged": true,
+            "reference_tool_better_applies": false,
             "should_run": false,
         }}
     ]
@@ -331,6 +338,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
             "rationale": "There is no reason to notify the supervisor of anything",
             "applicability_score": 1,
             "same_call_is_already_staged": false,
+            "reference_tool_better_applies": false,
             "should_run": false,
         }}
     ]
@@ -340,7 +348,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
 ###
 Example 3:
 
-Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call
+Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call, assume some irrelevant reference tools exists
 ###
 ```json
 {{
@@ -357,6 +365,8 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
                 "Destination": "Newark",
             }},
             "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
+            "reference_tool_better_applies": false,
             "should_run": true,
         }}
     ]
@@ -365,9 +375,8 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
 
 ###
 Example 4:
-Context - there are two available tools, and no calls have been staged yet:
-check_calories(<product_name>): returns the number of calories in a the product
-check_stock(): returns all menu items that are currently in stock
+Context - the examined tool is check_calories(<product_name>): returns the number of calories in a the product
+- one reference tool of check_stock(): returns all menu items that are currently in stock
 ###
 ```json
 {{
@@ -383,6 +392,8 @@ check_stock(): returns all menu items that are currently in stock
                 "product_name": "margherita",
             }},
             "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
+            "reference_tool_better_applies": false,
             "should_run": true,
         }},
         {{
@@ -392,7 +403,115 @@ check_stock(): returns all menu items that are currently in stock
                 "product_name": "deep dish",
             }},
             "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
+            "reference_tool_better_applies": false,
             "should_run": true,
+        }}
+    ]
+}}
+```
+
+###
+Example 5:
+Context - the examined tool is check_vehicle_price(model: str), and reference tool of - check_motorcycle_price(model: str)
+###
+```json
+{{
+    "last_customer_message": "What's your price for a Harley-Davidson Street Glide?",
+    "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
+    "name": "check_motorcycle_price",
+    "tool_call_evaluations": [
+        {{
+            "rationale": "we need to check for the price of a specific motorcycle model",
+            "applicability_score": 9,
+            "arguments": {{
+                "model": "Harley-Davidson Street Glide",
+            }},
+            "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "the only reference tool is less relevant than the examined tool, since the examined tool is designed specifically for motorcycle models, and not just general vehicles.",
+            "reference_tool_better_applies": false,
+            "should_run": true,
+        }},
+    ]
+}}
+```
+
+###
+Example 6:
+Context - the examined tool is check_motorcycle_price(model: str), and one reference tool of - check_vehicle_price(model: str)
+###
+```json
+{{
+    "last_customer_message": "What's your price for a Harley-Davidson Street Glide?",
+    "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
+    "name": "check_vehicle_price",
+    "tool_call_evaluations": [
+        {{
+            "rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
+            "applicability_score": 8,
+            "arguments": {{
+                "model": "Harley-Davidson Street Glide",
+            }},
+            "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "check_motorcycle_price applies specifically for motorcycles, which is better fitting for this case compared to the more general check_vehicle_price",
+            "reference_tool_better_applies": true,
+            "better_reference_tool_name": check_motorcycle_price,
+            "should_run": false,
+        }},
+    ]
+}}
+```
+###
+Example 7:
+Context - the examined tool is check_indoor_temperature(room: str), and reference tool of check_temperature(location: str, type: str)
+###
+```json
+{{
+    "last_customer_message": "What's the temperature in the living room right now?",
+    "most_recent_customer_inquiry_or_need": "Checking the current temperature in the living room",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
+    "name": "check_indoor_temperature",
+    "tool_call_evaluations": [
+        {{
+            "rationale": "need to check the current temperature in a specific room",
+            "applicability_score": 7,
+            "arguments": {{
+                "room": "living room"
+            }},
+            "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "check_temperature is more versatile and can handle both indoor and outdoor locations with the type parameter, making it more suitable than the room-specific tool",
+            "reference_tool_better_applies": true,
+            "better_reference_tool_name": "check_temperature",
+            "should_run": false
+        }}
+    ]
+}}
+```
+
+###
+Example 8:
+Context - the examined tool is search_product(query: str), and reference tool of search_electronics(query: str, specifications: dict)
+###
+```json
+{{
+    "last_customer_message": "I'm looking for a gaming laptop with at least 16GB RAM and an RTX 3080",
+    "most_recent_customer_inquiry_or_need": "Searching for a gaming laptop with specific technical requirements",
+    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
+    "name": "search_product",
+    "tool_call_evaluations": [
+        {{
+            "rationale": "need to search for a product with specific technical requirements",
+            "applicability_score": 6,
+            "arguments": {{
+                "query": "gaming laptop RTX 3080 16GB RAM"
+            }},
+            "same_call_is_already_staged": false,
+            "better_reference_tool_rationale": "search_electronics is more appropriate as it allows for structured specification of technical requirements rather than relying on text search, which will provide more accurate results for electronic products",
+            "reference_tool_better_applies": true,
+            "better_reference_tool_name": "search_electronics",
+            "should_run": false
         }}
     ]
 }}
@@ -404,13 +523,18 @@ check_stock(): returns all menu items that are currently in stock
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(
-            self._get_guideline_propositions_section(
+            self._add_guideline_propositions_section(
                 ordinary_guideline_propositions,
                 (batch[0], batch[2]),
             ),
             name=BuiltInSection.GUIDELINE_DESCRIPTIONS,
         )
-        builder.add_tool_definitions(tools=list(context_tools) + [(batch[0], batch[1])])
+        builder.add_section(
+            self._add_tool_definitions_section(
+                candidate_tool=(batch[0], batch[1]),
+                reference_tools=reference_tools,
+            )
+        )
         if staged_calls:
             builder.add_section(
                 f"""
@@ -453,6 +577,9 @@ Given the tool, your output should adhere to the following format:
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "arguments": <ARGUMENTS FOR THE TOOL. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
+            "better_reference_tool_rationale": "<A BRIEF EXPLANATION OF WHETHER A REFERENCE TOOL APPLIES AND, IF SO, WHY ITS MORE SUITABLE>",
+            "reference_tool_better_applies": <BOOLEAN>,
+            "better_reference_tool_name": "<REFERENCE TOOL NAME>",
             "should_run": <BOOL>
         }}                                               
     ]
@@ -466,7 +593,51 @@ However, note that you may choose to duplicate certain entries in 'tool_call_eva
 
         return builder.build()
 
-    def _get_guideline_propositions_section(
+    def _add_tool_definitions_section(
+        self, candidate_tool: tuple[ToolId, Tool], reference_tools: Sequence[tuple[ToolId, Tool]]
+    ) -> str:
+        def _get_tool_spec(t_id: ToolId, t: Tool) -> dict[str, Any]:
+            return {
+                "name": t_id.to_string(),
+                "description": t.description,
+                "parameters": t.parameters,
+                "required_parameters": t.required,
+            }
+
+        candidate_tool_spec = _get_tool_spec(candidate_tool[0], candidate_tool[1])
+        if not reference_tools:
+            return f"""
+The following is the tool function definition.
+IMPORTANT: You must not return results for any tool other than this one, even if you believe they might be relevant:
+###
+{candidate_tool_spec}
+###
+"""
+        else:
+            reference_tool_specs = [
+                _get_tool_spec(tool_id, tool) for tool_id, tool in reference_tools
+            ]
+            return f"""
+You are provided with multiple tools, categorized as follows:
+- Candidate Tool: The tool under your evaluation.
+- Reference Tools: Additional tools provided for context.
+Your task is to evaluate the necessity and usage of the Candidate Tool only.
+- Use the Reference Tools as a contextual benchmark to decide whether the Candidate Tool:
+Provides information, or
+- Performs actions that cannot be more effectively handled by a Reference Tool.
+Apply the Candidate Tool only if it offers a unique advantage or capability over the Reference Tools.
+Focus solely on evaluating the Candidate Tool; do not evaluate any tool than the Candidate Tool.
+Candidate tool:
+###
+{candidate_tool_spec}
+###
+Reference tools:
+###
+{reference_tool_specs}
+###
+"""
+
+    def _add_guideline_propositions_section(
         self,
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_id_propositions: tuple[ToolId, list[GuidelineProposition]],
