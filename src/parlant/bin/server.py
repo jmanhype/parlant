@@ -271,12 +271,14 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[NLPService] = nlp_service
 
+    embedder_factory = EmbedderFactory(c)
     c[GlossaryStore] = await EXIT_STACK.enter_async_context(
         GlossaryVectorStore(
             await EXIT_STACK.enter_async_context(
-                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
+                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
             ),
             embedder_type=type(await nlp_service.get_embedder()),
+            embedder_factory=embedder_factory,
         )
     )
 
