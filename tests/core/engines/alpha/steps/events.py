@@ -235,7 +235,7 @@ def then_the_message_contains(
             context=f"Here's a message in the context of a conversation: {message}",
             condition=f"the text contains {something}",
         )
-    )
+    ), f"message: '{message}', expected to contain: '{something}'"
 
 
 @step(then, parsers.parse("the message mentions {something}"))
@@ -252,7 +252,7 @@ def then_the_message_mentions(
             context=f"Here's a message in the context of a conversation: {message}",
             condition=f"the text mentions {something}",
         )
-    )
+    ), f"message: '{message}', expected to contain: '{something}'"
 
 
 @step(then, "no events are emitted")

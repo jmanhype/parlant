@@ -47,6 +47,10 @@ class Embedder(ABC):
     @abstractmethod
     def tokenizer(self) -> EstimatingTokenizer: ...
 
+    @property
+    @abstractmethod
+    def dimensions(self) -> int: ...
+
 
 class EmbedderFactory:
     def __init__(self, container: Container):

@@ -19,11 +19,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 GuidelineId = NewType("GuidelineId", str)
 

@@ -263,6 +263,11 @@ class M2Bert32K(TogetherAIEmbedder):
     def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._estimating_tokenizer
 
+    @property
+    @override
+    def dimensions(self) -> int:
+        return 768
+
 
 class TogetherService(NLPService):
     def __init__(

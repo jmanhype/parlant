@@ -285,6 +285,10 @@ class OpenAITextEmbedding3Large(OpenAIEmbedder):
     def max_tokens(self) -> int:
         return 8192
 
+    @property
+    def dimensions(self) -> int:
+        return 3072
+
 
 class OpenAITextEmbedding3Small(OpenAIEmbedder):
     def __init__(self) -> None:
@@ -294,6 +298,10 @@ class OpenAITextEmbedding3Small(OpenAIEmbedder):
     @override
     def max_tokens(self) -> int:
         return 8192
+
+    @property
+    def dimensions(self) -> int:
+        return 3072
 
 
 class OpenAIModerationService(ModerationService):

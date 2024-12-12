@@ -20,11 +20,8 @@ from typing_extensions import override, TypedDict, Self
 
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.guidelines import GuidelineId
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 from parlant.core.tools import ToolId
 
 GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)

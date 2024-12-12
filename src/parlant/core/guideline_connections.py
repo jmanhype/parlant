@@ -23,11 +23,8 @@ import networkx  # type: ignore
 
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.guidelines import GuidelineId
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 

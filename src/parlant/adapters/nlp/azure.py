@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from openai import AsyncAzureOpenAI
 from typing import Any, Mapping
+from typing_extensions import override
 import json
 import jsonfinder  # type: ignore
 import os
@@ -218,10 +219,12 @@ class AzureEmbedder(Embedder):
         self._tokenizer = AzureEstimatingTokenizer(model_name=self.model_name)
 
     @property
+    @override
     def id(self) -> str:
         return f"azure/{self.model_name}"
 
     @property
+    @override
     def tokenizer(self) -> AzureEstimatingTokenizer:
         return self._tokenizer
 
@@ -252,8 +255,13 @@ class AzureTextEmbedding3Large(AzureEmbedder):
         super().__init__(model_name="text-embedding-3-large", client=_client)
 
     @property
+    @override
     def max_tokens(self) -> int:
         return 8192
+
+    @property
+    def dimensions(self) -> int:
+        return 3072
 
 
 class AzureTextEmbedding3Small(AzureEmbedder):
@@ -268,6 +276,10 @@ class AzureTextEmbedding3Small(AzureEmbedder):
     @property
     def max_tokens(self) -> int:
         return 8192
+
+    @property
+    def dimensions(self) -> int:
+        return 3072
 
 
 class AzureService(NLPService):

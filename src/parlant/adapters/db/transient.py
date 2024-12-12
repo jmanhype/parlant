@@ -16,18 +16,16 @@ from __future__ import annotations
 from typing import Optional, Sequence, cast
 from typing_extensions import override
 from typing_extensions import get_type_hints
+
+from parlant.core.persistence.common import matches_filters, Where, ObjectId, ensure_is_total
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DeleteResult,
     DocumentCollection,
     DocumentDatabase,
     InsertResult,
-    ObjectId,
     TDocument,
     UpdateResult,
-    Where,
-    ensure_is_total,
-    matches_filters,
 )
 
 

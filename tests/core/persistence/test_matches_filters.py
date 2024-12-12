@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import typing
-from parlant.core.persistence.document_database import Where, matches_filters
+from parlant.core.persistence.common import Where, matches_filters
 
 
 def test_equal_to() -> None:

@@ -223,6 +223,10 @@ class GeminiTextEmbedding_004(GoogleEmbedder):
     def max_tokens(self) -> int:
         return 8000
 
+    @property
+    def dimensions(self) -> int:
+        return 768
+
 
 class GeminiService(NLPService):
     def __init__(

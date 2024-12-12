@@ -15,7 +15,6 @@
 import asyncio
 from contextlib import AsyncExitStack
 import os
-from pathlib import Path
 import tempfile
 from typing import Any, AsyncIterator, cast
 from fastapi import FastAPI
@@ -24,8 +23,8 @@ import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
 
-from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.openai import OpenAIService
+from parlant.adapters.vector_db.transient import TransientVectorDatabase
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -46,7 +45,6 @@ from parlant.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
-from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
@@ -60,7 +58,7 @@ from parlant.core.sessions import (
     SessionStore,
 )
 from parlant.core.engines.alpha.engine import AlphaEngine
-from parlant.core.glossary import GlossaryStore
+from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
@@ -165,12 +163,15 @@ async def container() -> AsyncIterator[Container]:
 
         container[NLPService] = await container[ServiceRegistry].read_nlp_service("default")
 
+        embedder_type = type(await container[NLPService].get_embedder())
+        embedder_factory = EmbedderFactory(container)
         container[GlossaryStore] = await stack.enter_async_context(
-            GlossaryChromaStore(
+            GlossaryVectorStore(
                 await stack.enter_async_context(
-                    ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container))
+                    TransientVectorDatabase(container[Logger], embedder_factory, embedder_type)
                 ),
-                embedder_type=type(await container[NLPService].get_embedder()),
+                embedder_factory=embedder_factory,
+                embedder_type=embedder_type,
             )
         )
 
