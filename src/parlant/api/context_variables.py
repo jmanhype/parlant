@@ -153,8 +153,9 @@ class ContextVariableCreationParamsDTO(
             try:
                 croniter(value)
             except Exception:
-                raise ValueError(
-                    "the provided freshness_rules. contain an invalid cron expression."
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="the provided freshness_rules. contain an invalid cron expression.",
                 )
         return value
 

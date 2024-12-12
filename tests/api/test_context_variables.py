@@ -41,14 +41,7 @@ async def test_that_context_variable_can_be_created(
     agent_id: AgentId,
     tool_id: ToolId,
 ) -> None:
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": [14],
-        "days_of_week": ["Thursday"],
-        "hours": [18],
-        "minutes": None,
-        "seconds": None,
-    }
+    freshness_rules = "0 18 14 5 4"
 
     response = client.post(
         f"/agents/{agent_id}/context-variables",
@@ -88,14 +81,7 @@ async def test_that_context_variable_can_be_updated(
 
     new_name = "updated_test_variable"
     new_description = "updated test of variable"
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": [14],
-        "days_of_week": ["Thursday"],
-        "hours": [18],
-        "minutes": None,
-        "seconds": None,
-    }
+    freshness_rules = "0 18 14 5 4"
 
     context_variable_dto = (
         client.patch(
@@ -138,11 +124,7 @@ async def test_that_invalid_freshness_rules_raise_error_when_creating_context_va
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     error_response = response.json()
     assert "detail" in error_response
-    assert (
-        "Value error, the provided freshness_rules. contain an invalid cron expression."
-        in error_response["detail"][0]["msg"]
-    )
-
+    assert error_response["detail"] == "the provided freshness_rules. contain an invalid cron expression."
 
 async def test_that_all_context_variables_can_be_deleted(
     client: TestClient,

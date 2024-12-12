@@ -40,34 +40,12 @@ class _TermDTO(TypedDict):
     description: str
     synonyms: Optional[list[str]]
 
-
-class _FreshnessRulesDTO(TypedDict):
-    months: Optional[list[int]]
-    days_of_month: Optional[list[int]]
-    days_of_week: Optional[
-        list[
-            Literal[
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-            ]
-        ]
-    ]
-    hours: Optional[list[int]]
-    minutes: Optional[list[int]]
-    seconds: Optional[list[int]]
-
-
 class _ContextVariableDTO(TypedDict):
     id: str
     name: str
     description: Optional[str]
     tool_id: Optional[str]
-    freshness_rules: Optional[_FreshnessRulesDTO]
+    freshness_rules: Optional[str]
 
 
 class _GuidelineDTO(TypedDict):
