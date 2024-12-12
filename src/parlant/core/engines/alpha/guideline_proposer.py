@@ -14,7 +14,6 @@
 
 import asyncio
 from dataclasses import dataclass
-from enum import Enum
 from functools import cached_property
 from itertools import chain
 import json
@@ -257,10 +256,10 @@ class GuidelineProposer:
                 "condition_application_rationale": "<Explanation for why the condition is or isn't met>",
                 "condition_applies": "<BOOL>",
                 "action": g.content.action,
-                "guideline_is_continuous": "<ENUM: Either 'no', 'partially' or 'fully. Optional, only necessary if guideline_previously_applied is true>",
-                "guideline_previously_applied_rationale": "<Explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
-                "guideline_previously_applied": "<BOOL: Optional, whether the condition already applied and the action was already taken>",
-                "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
+                "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
+                "guideline_previously_applied_rationale": "<str, explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
+                "guideline_previously_applied": "<str: either 'no', 'partially' or 'fully' depanding on whether and to what degree the action was previously preformed>",
+                "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is not 'no'>",
                 "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score indicates that the guideline should be active>",
             }
             for i, g in guidelines.items()
