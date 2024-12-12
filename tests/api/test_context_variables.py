@@ -124,7 +124,11 @@ async def test_that_invalid_freshness_rules_raise_error_when_creating_context_va
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     error_response = response.json()
     assert "detail" in error_response
-    assert error_response["detail"] == "the provided freshness_rules. contain an invalid cron expression."
+    assert (
+        error_response["detail"]
+        == "the provided freshness_rules. contain an invalid cron expression."
+    )
+
 
 async def test_that_all_context_variables_can_be_deleted(
     client: TestClient,

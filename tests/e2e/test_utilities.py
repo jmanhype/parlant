@@ -25,7 +25,6 @@ import subprocess
 import sys
 import time
 from typing import Any, AsyncIterator, Iterator, Optional, TypedDict, cast
-from typing_extensions import Literal
 
 
 class _ServiceDTO(TypedDict):
@@ -39,6 +38,7 @@ class _TermDTO(TypedDict):
     name: str
     description: str
     synonyms: Optional[list[str]]
+
 
 class _ContextVariableDTO(TypedDict):
     id: str

@@ -131,7 +131,7 @@ async def test_that_value_refreshes_when_freshness_rules_are_met(
 ) -> None:
     variable_name = "AccountBalance"
     test_key = "test-key"
-    current_data = {"balance": 500.00}
+    current_data = {"balance": 500.0}
     tool_id = ToolId(service_name="local", tool_name="fetch_account_balance")
 
     await create_fetch_account_balance_tool(context.container)
@@ -165,7 +165,7 @@ async def test_that_value_refreshes_when_freshness_rules_are_met(
     )
 
     assert value
-    assert value.data == {"balance": 1000.00}
+    assert value.data == {"balance": 1000.0}
 
 
 async def test_that_value_is_created_when_need_to_be_freshed(
