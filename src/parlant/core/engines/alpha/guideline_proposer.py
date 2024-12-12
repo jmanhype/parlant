@@ -259,7 +259,7 @@ class GuidelineProposer:
                 "condition_application_rationale": "<Explanation for why the condition is or isn't met>",
                 "condition_applies": "<BOOL>",
                 "action": g.content.action,
-                "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true>",
+                "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true. Specifies whether the action is taken one-time, or is continuous>",
                 "guideline_previously_applied_rationale": "<str, explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
                 "guideline_previously_applied": "<str: either 'no', 'partially' or 'fully' depanding on whether and to what degree the action was previously preformed>",
                 "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is not 'no'>",
@@ -314,7 +314,8 @@ Insights Regarding Guideline re-activation
 -------------------
 A condition typically no longer applies if its corresponding action has already been executed.
 However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question.
-Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. You can mark these types of actions down using "guideline_is_continuous" in your output.
+Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. Mark these guidelines "guideline_is_continuous" in your output.
+Actions that forbid certain behaviors are generally considered continuous, as they must be upheld across multiple messages to ensure consistent adherence.
 
 Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
 Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
