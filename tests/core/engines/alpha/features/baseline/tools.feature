@@ -185,7 +185,8 @@ Feature: Tools
         And the message contains a recommendation for toppings which do not include pineapple
 
     Scenario: The agent uses tools based on the agents description
-        Given an agent whose job is to sell groceries, while remembering that our business considers carrots to be fruit
+        Given an agent whose job is to sell groceries
+        And the term "carrot" defined as a kind of fruit
         And a guideline "check_prices" to reply with the price of the item when a customer asks about an items price 
         And the tool "check_fruit_price"
         And the tool "check_vegetable_price"

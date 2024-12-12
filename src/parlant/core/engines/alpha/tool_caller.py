@@ -41,13 +41,15 @@ ToolResultId = NewType("ToolResultId", str)
 
 
 class ToolCallEvaluation(DefaultBaseModel):
-    rationale: str
+    applicability_rationale: str
     applicability_score: int
     arguments: Optional[Mapping[str, Any]] = dict()
     same_call_is_already_staged: bool
-    better_reference_tool_rationale: Optional[str] = None
-    reference_tool_better_applies: bool
-    better_reference_tool_name: Optional[str] = None
+    comparison_with_rejected_tools_including_references_to_subtleties: str
+    relevant_subtleties: str
+    a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety: bool
+    better_rejected_tool_name: Optional[str] = None
+    better_rejected_tool_rationale: Optional[str] = None
     should_run: bool
 
 
@@ -56,7 +58,8 @@ class ToolCallInferenceSchema(DefaultBaseModel):
     most_recent_customer_inquiry_or_need: Optional[str] = None
     most_recent_customer_inquiry_or_need_was_already_resolved: Optional[bool] = False
     name: str
-    tool_call_evaluations: list[ToolCallEvaluation]
+    subtleties_to_be_aware_of: str
+    tool_calls_for_candidate_tool: list[ToolCallEvaluation]
 
 
 @dataclass(frozen=True)
@@ -188,7 +191,7 @@ class ToolCaller:
                 arguments=tc.arguments or {},
             )
             for tc in inference_output
-            if tc.should_run and tc.applicability_score >= 6
+            if tc.should_run and tc.applicability_score >= 6 and not tc.a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety
         ]
 
     async def execute_tool_calls(
@@ -271,23 +274,26 @@ Produce a valid JSON object according to the following format:
     "most_recent_customer_inquiry_or_need": "<customer's inquiry or need>",
     "most_recent_customer_inquiry_or_need_was_already_resolved": <BOOL>,
     "name": "<TOOL NAME>",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
+            "applicability_rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "arguments": <ARGUMENTS FOR THE TOOL. CAN BE DROPPED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
-            "better_reference_tool_rationale": "<A BRIEF EXPLANATION OF WHETHER A REFERENCE TOOL APPLIES AND, IF SO, WHY ITS MORE SUITABLE>",
-            "reference_tool_better_applies": <BOOL>,
-            "better_reference_tool_name": "<REFERENCE TOOL NAME>",
-            "should_run": <BOOL>,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "<A VERY BRIEF OVERVIEW OF HOW THIS CALL FARES AGAINST OTHER TOOLS IN APPLICABILITY>",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": <BOOLEAN>,
+            "better_rejected_tool_name": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS IS THE NAME OF THAT REJECTED TOOL>",
+            "better_rejected_tool_rationale": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS EXPLAINS WHY>",
+            "should_run": <BOOL>
         }}
         ...
     ]
 }}
 ```
 
-where the tool provided to you under appears at least once in "tool_call_evaluations", whether you decide to use it or not.
+where the tool provided to you under appears at least once in "tool_calls_for_candidate_tool", whether you decide to use it or not.
 The exact format of your output will be provided to you at the end of this prompt.
 
 The following examples show correct outputs for various hypothetical situations. 
@@ -298,7 +304,7 @@ EXAMPLES
 ###
 Example 1:
 
-Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call
+Context - the id of the customer is 12345, and check_balance(12345) is already listed as a staged tool call
 ###
 ```json
 {{
@@ -306,16 +312,19 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
     "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_balance",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "We need the client's current balance to respond to their question",
+            "applicability_rationale": "We need the client's current balance to respond to their question",
             "applicability_score": 9,
             "arguments": {{
                 "customer_id": "12345",
             }},
             "same_call_is_already_staged": true,
-            "reference_tool_better_applies": false,
-            "should_run": false,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "should_run": false
         }}
     ]
 }}
@@ -324,7 +333,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
 ###
 Example 2:
 
-Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call
+Context - the id of the customer is 12345, and check_balance(12345) is listed as the only staged tool call
 ###
 ```json
 {{
@@ -332,14 +341,17 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
     "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "ping_supervisor",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
             
-            "rationale": "There is no reason to notify the supervisor of anything",
+            "applicability_rationale": "There is no reason to notify the supervisor of anything",
             "applicability_score": 1,
             "same_call_is_already_staged": false,
-            "reference_tool_better_applies": false,
-            "should_run": false,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "should_run": false
         }}
     ]
 }}
@@ -356,18 +368,20 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
     "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_ride_price",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
+            "applicability_rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
             "applicability_score": 9,
             "arguments": {{
                 "origin": "New York",
                 "Destination": "Newark",
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
-            "reference_tool_better_applies": false,
-            "should_run": true,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "should_run": true
         }}
     ]
 }}
@@ -375,7 +389,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
 
 ###
 Example 4:
-Context - the examined tool is check_calories(<product_name>): returns the number of calories in a the product
+Context - the candidate tool is check_calories(<product_name>): returns the number of calories in a the product
 - one reference tool of check_stock(): returns all menu items that are currently in stock
 ###
 ```json
@@ -384,28 +398,32 @@ Context - the examined tool is check_calories(<product_name>): returns the numbe
     "most_recent_customer_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_calories",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "We need to check how many calories are in the margherita pizza",
+            "applicability_rationale": "We need to check how many calories are in the margherita pizza",
             "applicability_score": 9,
             "arguments": {{
                 "product_name": "margherita",
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
-            "reference_tool_better_applies": false,
-            "should_run": true,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "should_run": true
+            
         }},
         {{
-            "rationale": "We need to check how many calories are in the deep dish pizza",
+            "applicability_rationale": "We need to check how many calories are in the deep dish pizza",
             "applicability_score": 9,
             "arguments": {{
                 "product_name": "deep dish",
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "None of the available reference tools are deemed more suitable for the examine tool’s application",
-            "reference_tool_better_applies": false,
-            "should_run": true,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "should_run": true
         }}
     ]
 }}
@@ -413,7 +431,7 @@ Context - the examined tool is check_calories(<product_name>): returns the numbe
 
 ###
 Example 5:
-Context - the examined tool is check_vehicle_price(model: str), and reference tool of - check_motorcycle_price(model: str)
+Context - the candidate tool is check_vehicle_price(model: str), and reference tool of - check_motorcycle_price(model: str)
 ###
 ```json
 {{
@@ -421,17 +439,21 @@ Context - the examined tool is check_vehicle_price(model: str), and reference to
     "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_motorcycle_price",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "we need to check for the price of a specific motorcycle model",
+            "applicability_rationale": "we need to check for the price of a specific motorcycle model",
             "applicability_score": 9,
             "arguments": {{
                 "model": "Harley-Davidson Street Glide",
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "the only reference tool is less relevant than the examined tool, since the examined tool is designed specifically for motorcycle models, and not just general vehicles.",
-            "reference_tool_better_applies": false,
-            "should_run": true,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "candidate tool is more specialized for this use case than the rejected tools",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
+            "better_rejected_tool_name": "check_motorcycle_price",
+            "better_rejected_tool_rationale": "the only reference tool is less relevant than the candidate tool, since the candidate tool is designed specifically for motorcycle models, and not just general vehicles.",
+            "should_run": true
         }},
     ]
 }}
@@ -439,7 +461,7 @@ Context - the examined tool is check_vehicle_price(model: str), and reference to
 
 ###
 Example 6:
-Context - the examined tool is check_motorcycle_price(model: str), and one reference tool of - check_vehicle_price(model: str)
+Context - the candidate tool is check_motorcycle_price(model: str), and one reference tool of - check_vehicle_price(model: str)
 ###
 ```json
 {{
@@ -447,25 +469,28 @@ Context - the examined tool is check_motorcycle_price(model: str), and one refer
     "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_vehicle_price",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
+            "applicability_rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
             "applicability_score": 8,
             "arguments": {{
                 "model": "Harley-Davidson Street Glide",
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "check_motorcycle_price applies specifically for motorcycles, which is better fitting for this case compared to the more general check_vehicle_price",
-            "reference_tool_better_applies": true,
-            "better_reference_tool_name": check_motorcycle_price,
-            "should_run": false,
+            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_motorcycle_price",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
+            "better_rejected_tool_name": "check_motorcycle_price",
+            "better_rejected_tool_rationale": "check_motorcycle_price applies specifically for motorcycles, which is better fitting for this case compared to the more general check_vehicle_price",
+            "should_run": false
         }},
     ]
 }}
 ```
 ###
 Example 7:
-Context - the examined tool is check_indoor_temperature(room: str), and reference tool of check_temperature(location: str, type: str)
+Context - the candidate tool is check_indoor_temperature(room: str), and reference tool of check_temperature(location: str, type: str)
 ###
 ```json
 {{
@@ -473,17 +498,20 @@ Context - the examined tool is check_indoor_temperature(room: str), and referenc
     "most_recent_customer_inquiry_or_need": "Checking the current temperature in the living room",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "check_indoor_temperature",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "need to check the current temperature in a specific room",
+            "applicability_rationale": "need to check the current temperature in a specific room",
             "applicability_score": 7,
             "arguments": {{
                 "room": "living room"
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "check_temperature is more versatile and can handle both indoor and outdoor locations with the type parameter, making it more suitable than the room-specific tool",
-            "reference_tool_better_applies": true,
-            "better_reference_tool_name": "check_temperature",
+            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_temperature",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
+            "better_rejected_tool_name": "check_temperature",
+            "better_rejected_tool_rationale": "check_temperature is more versatile and can handle both indoor and outdoor locations with the type parameter, making it more suitable than the room-specific tool",
             "should_run": false
         }}
     ]
@@ -492,7 +520,7 @@ Context - the examined tool is check_indoor_temperature(room: str), and referenc
 
 ###
 Example 8:
-Context - the examined tool is search_product(query: str), and reference tool of search_electronics(query: str, specifications: dict)
+Context - the candidate tool is search_product(query: str), and reference tool of search_electronics(query: str, specifications: dict)
 ###
 ```json
 {{
@@ -500,17 +528,20 @@ Context - the examined tool is search_product(query: str), and reference tool of
     "most_recent_customer_inquiry_or_need": "Searching for a gaming laptop with specific technical requirements",
     "most_recent_customer_inquiry_or_need_was_already_resolved": false,
     "name": "search_product",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "need to search for a product with specific technical requirements",
+            "applicability_rationale": "need to search for a product with specific technical requirements",
             "applicability_score": 6,
             "arguments": {{
                 "query": "gaming laptop RTX 3080 16GB RAM"
             }},
             "same_call_is_already_staged": false,
-            "better_reference_tool_rationale": "search_electronics is more appropriate as it allows for structured specification of technical requirements rather than relying on text search, which will provide more accurate results for electronic products",
-            "reference_tool_better_applies": true,
-            "better_reference_tool_name": "search_electronics",
+            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as search_electronics",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
+            "better_rejected_tool_name": "search_electronics",
+            "better_rejected_tool_rationale": "search_electronics is more appropriate as it allows for structured specification of technical requirements rather than relying on text search, which will provide more accurate results for electronic products",
             "should_run": false
         }}
     ]
@@ -571,22 +602,25 @@ Given the tool, your output should adhere to the following format:
     "most_recent_customer_inquiry_or_need": "<customer's inquiry or need>",
     "most_recent_customer_inquiry_or_need_was_already_resolved": <BOOL>,
     "name": "{batch[0].service_name}:{batch[0].tool_name}",
-    "tool_call_evaluations": [
+    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+    "tool_calls_for_candidate_tool": [
         {{
-            "rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
+            "applicability_rationale": "<A FEW WORDS THAT EXPLAIN WHETHER, HOW, AND TO WHAT EXTENT THE TOOL NEEDS TO BE CALLED AT THIS POINT>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "arguments": <ARGUMENTS FOR THE TOOL. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
             "same_call_is_already_staged": <BOOLEAN>,
-            "better_reference_tool_rationale": "<A BRIEF EXPLANATION OF WHETHER A REFERENCE TOOL APPLIES AND, IF SO, WHY ITS MORE SUITABLE>",
-            "reference_tool_better_applies": <BOOLEAN>,
-            "better_reference_tool_name": "<REFERENCE TOOL NAME>",
+            "comparison_with_rejected_tools_including_references_to_subtleties": "<A VERY BRIEF OVERVIEW OF HOW THIS CALL FARES AGAINST OTHER TOOLS IN APPLICABILITY>",
+            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": <BOOLEAN>,
+            "better_rejected_tool_name": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS IS THE NAME OF THAT REJECTED TOOL>",
+            "better_rejected_tool_rationale": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS EXPLAINS WHY>",
             "should_run": <BOOL>
         }}                                               
     ]
 }}
 ```
 
-However, note that you may choose to duplicate certain entries in 'tool_call_evaluations' if you wish to call a certain tool multiple times with different arguments.
+However, note that you may choose to have multiple entries in 'tool_calls_for_candidate_tool' if you wish to call the candidate tool multiple times with different arguments.
 ###
         """
         )
@@ -620,20 +654,24 @@ IMPORTANT: You must not return results for any tool other than this one, even if
             return f"""
 You are provided with multiple tools, categorized as follows:
 - Candidate Tool: The tool under your evaluation.
-- Reference Tools: Additional tools provided for context.
-Your task is to evaluate the necessity and usage of the Candidate Tool only.
-- Use the Reference Tools as a contextual benchmark to decide whether the Candidate Tool:
-Provides information, or
-- Performs actions that cannot be more effectively handled by a Reference Tool.
-Apply the Candidate Tool only if it offers a unique advantage or capability over the Reference Tools.
-Focus solely on evaluating the Candidate Tool; do not evaluate any tool than the Candidate Tool.
-Candidate tool:
-###
-{candidate_tool_spec}
-###
-Reference tools:
-###
+- Rejected Tools: A list of additional tools that have been considered already and deemed irrelevant for an unspecified reason
+
+Your task is to evaluate the necessity and usage of the Candidate Tool ONLY.
+- Use the Rejected Tools as a contextual benchmark to decide whether the Candidate Tool should be run.
+The rejected tools may have been rejected for any reason whatsoever, which you are not privy to.
+If the Candidate Tool seems even less relevant than any of the Rejected Tools, then it should not be run at all.
+DO NOT RUN the Candidate Tool as a "FALLBACK", "LAST RESORT", or "LAST VIABLE CHOICE" if another tool that actually seems more appropriate was nonetheless rejected for some reason.
+Remember that other tools were rejected while taking your (agent's) description and glossary into full consideration. Nothing was overlooked.
+However, if the Candidate Tool truly offers a unique advantage or capability over all other Rejected Tools,
+given the agent's description and glossary, then do choose to use it and provide its arguments. 
+Finally, focus solely on evaluating the Candidate Tool; do not evaluate any other tool.
+
+Rejected tools: ###
 {reference_tool_specs}
+###
+
+Candidate tool: ###
+{candidate_tool_spec}
 ###
 """
 
@@ -700,10 +738,11 @@ Guidelines:
             hints={"temperature": 0.0},
         )
 
-        self._logger.debug(
-            f"Tool call request results: {json.dumps([t.model_dump(mode='json') for t in inference.content.tool_call_evaluations], indent=2),}"
-        )
-        return inference.info, inference.content.tool_call_evaluations
+        log_message = json.dumps(inference.content.model_dump(mode="json"), indent=2)
+
+        self._logger.debug(f"Tool call request results: {log_message}")
+
+        return inference.info, inference.content.tool_calls_for_candidate_tool
 
     async def _run_tool(
         self,
