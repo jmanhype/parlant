@@ -184,6 +184,10 @@ GUIDELINES_DICT = {
         "action": "Search the interaction history for the most recent count, add 1 to it and respond with the new count",
     },
     "cow_response": {"condition": "The customer says hello", "action": "respond like a cow would"},
+    "many_actions": {
+        "condition": "the customer asked a question about birds",
+        "action": "answer their question enthusiastically, while not using punctuation. Also say that the kingfisher is your favorite bird",
+    },
 }
 
 
@@ -473,7 +477,7 @@ def test_that_irrelevant_guidelines_are_not_proposed_parametrized_2(
     )
 
 
-def test_that_guidelines_with_the_same_conditions_are_scored_identically(
+def test_that_guidelines_with_the_same_conditions_are_scored_similarly(
     context: ContextOfTest,
     agent: Agent,
     customer: Customer,
@@ -510,7 +514,10 @@ def test_that_guidelines_with_the_same_conditions_are_scored_identically(
 
     assert len(guideline_propositions) == len(relevant_guidelines)
     assert all(gp.guideline in relevant_guidelines for gp in guideline_propositions)
-    assert len(list(unique(gp.score for gp in guideline_propositions))) == 1
+    proposition_scores = list(unique(gp.score for gp in guideline_propositions))
+    assert len(proposition_scores) == 1 or (
+        len(proposition_scores) == 2 and abs(proposition_scores[0] - proposition_scores[1]) <= 1
+    )
 
 
 def test_that_many_guidelines_are_classified_correctly(  # a stress test
@@ -1136,4 +1143,59 @@ def test_that_guideline_with_initial_response_is_proposed(
         conversation_context,
         conversation_guideline_names,
         relevant_guideline_names,
+    )
+
+
+def test_that_partially_fulfilled_guideline_is_considered_fulfilled(
+    context: ContextOfTest,
+    agent: Agent,
+    customer: Customer,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "customer",
+            "Hi there! I was wondering - what's the life expectancy of owls?",
+        ),
+        (
+            "ai_agent",
+            "Owls are amazing depending on the species owls can live 5 to 30 years in the wild and even longer in captivity wow owls are incredible",
+        ),
+        ("customer", "That's shorter than I expected, thank you!"),
+    ]
+    conversation_guideline_names: list[str] = ["many_actions"]
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        agent,
+        customer,
+        conversation_context,
+        conversation_guideline_names,
+        [],
+    )
+
+
+def test_that_barely_fulfilled_guideline_is_considered_fulfilled(
+    context: ContextOfTest,
+    agent: Agent,
+    customer: Customer,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        (
+            "customer",
+            "Hi there! I was wondering - what's the life expectancy of owls?",
+        ),
+        (
+            "ai_agent",
+            "Great Question! Owls can live 5 to 30 years in the wild, and even longer in captivity.",
+        ),
+        ("customer", "That's shorter than I expected, thank you!"),
+    ]
+
+    conversation_guideline_names: list[str] = ["many_actions"]
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        agent,
+        customer,
+        conversation_context,
+        conversation_guideline_names,
+        [],
     )

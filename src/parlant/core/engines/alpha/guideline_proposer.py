@@ -60,6 +60,7 @@ class ConditionApplicabilityEvaluation:
     score: int
     condition_application_rationale: str
     guideline_previously_applied_rationale: str
+    guideline_previously_applied: str
     guideline_should_reapply: bool
 
 
@@ -135,6 +136,7 @@ class GuidelineProposer:
                         GuidelineProposition(
                             guideline=guidelines_dict[evaluation.guideline_number],
                             score=evaluation.score,
+                            guideline_previously_applied=evaluation.guideline_previously_applied,
                             rationale=f'''Condition Application: "{evaluation.condition_application_rationale}"; Guideline Previously Applied: "{evaluation.guideline_previously_applied_rationale}"''',
                             should_reapply=evaluation.guideline_should_reapply,
                         )
@@ -213,7 +215,7 @@ class GuidelineProposer:
 
             self._logger.debug(
                 f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; continuous: [{proposition.guideline_is_continuous}] ;Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
+                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: [{proposition.guideline_is_continuous}] ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
             if (proposition.applies_score >= 6) and (
@@ -229,6 +231,7 @@ class GuidelineProposer:
                         action=guidelines_dict[int(proposition.guideline_number)].content.action,
                         score=proposition.applies_score,
                         condition_application_rationale=proposition.condition_application_rationale,
+                        guideline_previously_applied=proposition.guideline_previously_applied,
                         guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
                         or "",
                         guideline_should_reapply=proposition.guideline_should_reapply or False,
@@ -338,6 +341,7 @@ Is there anything else I can help you with?"}}}},
 - Guidelines: ###
 1) condition: the customer initiates a purchase. action: Open a new cart for the customer
 2) condition: the customer asks about data security. action: Refer the customer to our privacy policy page
+3) condition: the customer asked to subscribe to our pro plan. action: maintain a helpful tone and thank them for shopping at our store
 ###
 - **Expected Result**:
 ```json
@@ -360,6 +364,18 @@ Is there anything else I can help you with?"}}}},
         "guideline_is_continuous": false,
         "guideline_should_reapply": false,
         "applies_score": 9
+    }},
+    {{
+        "guideline_number": 3,
+        "condition": "the customer asked to subscribe to our pro plan",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer recently asked to subscribe to the pro plan. The conversation is beginning to drift elsewhere, but still deals with the pro plan",
+        "action": "maintain a helpful tone and thank them for shopping at our store",
+        "guideline_previously_applied_rationale": "a helpful tone was maintained, but the agent didn't thank the customer for shoppint at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
+        "guideline_previously_applied": "partially",
+        "guideline_is_continuous": false,
+        "guideline_should_reapply": false,
+        "applies_score": 6
     }}
 ]}}
 ```
@@ -382,8 +398,8 @@ Example #2:
 ###
 - Guidelines: ###
 3) condition: the customer indicates that they are looking for a job. action: ask the customer for their location
-4) condition: the customer asks about job openings. action: emphasize that we have plenty of positions relevant to the customer
-6) condition: discussing job opportunities. action: maintain a positive, assuring tone
+4) condition: the customer asks about job openings. action: emphasize that we have plenty of positions relevant to the customer, and over 10,000 opennings overall
+6) condition: discussing job opportunities. action: maintain a positive, assuring tone 
 
 ###
 - **Expected Result**:
@@ -398,7 +414,7 @@ Example #2:
         "guideline_is_continuous": false,
         "guideline_previously_applied_rationale": "The assistant asked for the customer's location earlier in the interaction. There is no need to ask for it again, as it is already known.",
         "guideline_previously_applied": "fully",
-        "guideline_should_reapply": "no",
+        "guideline_should_reapply": false,
         "applies_score": 3
     }},
     {{
@@ -406,11 +422,11 @@ Example #2:
         "condition": "the customer asks about job openings.",
         "condition_applies": true,
         "condition_application_rationale": "the customer asked about job openings, and the discussion still revolves around this request",
-        "action": "emphasize that we have plenty of positions relevant to the customer",
+        "action": "emphasize that we have plenty of positions relevant to the customer, and over 10,000 opennings overall",
         "guideline_is_continuous": false,
-        "guideline_previously_applied_rationale": "The assistant already has emphasized that we have open positions. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
-        "guideline_previously_applied": true,
-        "guideline_should_reapply": "fully",
+        "guideline_previously_applied_rationale": "The assistant already has emphasized that we have open positions, but neglected to mention that we offer 10k opennings overall. The guideline partially applies and should be treated as if it was fully applied. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
+        "guideline_previously_applied": "partially",
+        "guideline_should_reapply": true,
         "applies_score": 7
     }},
     {{
