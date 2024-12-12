@@ -371,7 +371,7 @@ class OpenAIService(NLPService):
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
         if t == ToolCallInferenceSchema:
             return FallbackSchematicGenerator(
-                #GPT_4o_Mini[t](self._logger),  # type: ignore
+                # GPT_4o_Mini[t](self._logger),  # type: ignore
                 GPT_4o[t](self._logger),  # type: ignore
                 logger=self._logger,
             )
