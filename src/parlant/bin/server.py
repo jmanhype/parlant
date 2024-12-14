@@ -17,6 +17,7 @@
 import asyncio
 from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
+import importlib
 import os
 from lagom import Container, Singleton
 from typing import AsyncIterator, Callable
@@ -131,6 +132,7 @@ class CLIParams:
     port: int
     nlp_service: str
     log_level: str
+    module: str
 
 
 def load_anthropic() -> NLPService:
@@ -179,6 +181,41 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
     agents = await agent_store.list_agents()
     if not agents:
         await agent_store.create_agent(name=DEFAULT_AGENT_NAME)
+
+
+@asynccontextmanager
+async def load_module(
+    container: Container,
+    module_path: str,
+) -> AsyncIterator[None]:
+    mod = importlib.import_module(module_path)
+
+    if module_path.endswith("parlant_config"):
+        if not hasattr(mod, "load_modules"):
+            raise StartupError("parlant_config must define a function load_modules()")
+
+        submodule_paths = mod.load_modules()
+        submodules = []
+        for submodule_path in submodule_paths:
+            submodule = importlib.import_module(submodule_path)
+            if not hasattr(submodule, "initialize_module") or not hasattr(
+                submodule, "shutdown_module"
+            ):
+                raise StartupError(
+                    f"Module {submodule.__name__} must define initialize_module and shutdown_module"
+                )
+            submodules.append(submodule)
+    else:
+        submodules = [mod]
+
+    for m in submodules:
+        await m.initialize_module(container)
+
+    try:
+        yield
+    finally:
+        for m in submodules:
+            await m.shutdown_module()
 
 
 @asynccontextmanager
@@ -369,6 +406,9 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
             evaluator=container[BehavioralChangeEvaluator],
         )
 
+        if params.module:
+            await EXIT_STACK.enter_async_context(load_module(container, params.module))
+
         await create_agent_if_absent(container[AgentStore])
 
         yield await create_api_app(container)
@@ -489,6 +529,12 @@ def main() -> None:
         is_flag=True,
         help="Print server version and exit",
     )
+    @click.option(
+        "--module",
+        type=str,
+        default="",
+        help="Path to a single module or 'parlant_confi'. If 'parlant_config', it loads multiple modules from it.",
+    )
     @click.pass_context
     def cli(
         ctx: click.Context,
@@ -502,6 +548,7 @@ def main() -> None:
         together: bool,
         log_level: str,
         version: bool,
+        module: str,
     ) -> None:
         if version:
             print(f"Parlant v{VERSION}")
@@ -541,6 +588,7 @@ def main() -> None:
             port=port,
             nlp_service=nlp_service,
             log_level=log_level,
+            module=module,
         )
 
         asyncio.run(start_server(ctx.obj))
