@@ -1,6 +1,6 @@
-import asyncio
 from lagom import Container
 
+from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.services.tools.plugins import PluginServer, tool
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import ToolContext, ToolResult
@@ -16,6 +16,7 @@ def list_categories(context: ToolContext) -> ToolResult:
 
 async def initialize_module(container: Container) -> None:
     global server_instance
+    _background_task_service = container[BackgroundTaskService]
 
     server = PluginServer(
         tools=[list_categories],
@@ -23,7 +24,10 @@ async def initialize_module(container: Container) -> None:
         host="127.0.0.1",
     )
 
-    asyncio.create_task(server.serve())
+    await _background_task_service.start(
+        server.serve(),
+        tag="plugin-server 'parlant-tech-store'",
+    )
     server_instance = server
 
     service_registry = container[ServiceRegistry]
