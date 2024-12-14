@@ -92,7 +92,11 @@ from parlant.core.guideline_tool_associations import (
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
-from .test_utilities import SyncAwaiter
+from .test_utilities import (
+    SyncAwaiter,
+    create_schematic_generation_result_collection,
+    create_schematic_generator,
+)
 
 
 @fixture
@@ -175,24 +179,45 @@ async def container() -> AsyncIterator[Container]:
             )
         )
 
-        container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(GuidelinePropositionsSchema)
-        container[SchematicGenerator[MessageEventSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(MessageEventSchema)
-        container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ToolCallInferenceSchema)
-        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ConditionsEntailmentTestsSchema)
-        container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ActionsContradictionTestsSchema)
-        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
+        schematic_generation_result_collection = (
+            await create_schematic_generation_result_collection(stack, logger=container[Logger])
+        )
+
+        container[
+            SchematicGenerator[GuidelinePropositionsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
+            schematic_generation_result_collection,
+        )
+        container[SchematicGenerator[MessageEventSchema]] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(MessageEventSchema),
+            schematic_generation_result_collection,
+        )
+        container[SchematicGenerator[ToolCallInferenceSchema]] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
+            schematic_generation_result_collection,
+        )
+        container[
+            SchematicGenerator[ConditionsEntailmentTestsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
+            schematic_generation_result_collection,
+        )
+
+        container[
+            SchematicGenerator[ActionsContradictionTestsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
+            schematic_generation_result_collection,
+        )
+        container[
+            SchematicGenerator[GuidelineConnectionPropositionsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(
+                GuidelineConnectionPropositionsSchema
+            ),
+            schematic_generation_result_collection,
+        )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
