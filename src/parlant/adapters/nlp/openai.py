@@ -42,7 +42,7 @@ from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     FallbackSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
@@ -62,7 +62,7 @@ class OpenAIEstimatingTokenizer(EstimatingTokenizer):
         return len(tokens)
 
 
-class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
+class OpenAISchematicGenerator(SchematicGenerator[T]):
     supported_openai_params = ["temperature", "logit_bias", "max_tokens"]
     supported_hints = supported_openai_params + ["strict"]
 
