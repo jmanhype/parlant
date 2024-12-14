@@ -69,7 +69,8 @@ from parlant.core.sessions import (
     SessionStore,
 )
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
-from parlant.core.persistence.document_database import DocumentCollection, ObjectId
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentCollection
 
 T = TypeVar("T")
 GLOBAL_CACHE_FILE = Path("_schematic_cache.json")
