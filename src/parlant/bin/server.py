@@ -114,6 +114,7 @@ EXIT_STACK: AsyncExitStack
 DEFAULT_AGENT_NAME = "Default Agent"
 
 sys.path.append(PARLANT_HOME_DIR.as_posix())
+sys.path.append(".")
 
 CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)

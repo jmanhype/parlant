@@ -34,7 +34,7 @@ from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 
-ToolServiceKind = Literal["openapi", "sdk", "local", "local_transient"]
+ToolServiceKind = Literal["openapi", "sdk", "local"]
 
 
 class ServiceRegistry(ABC):
@@ -45,6 +45,7 @@ class ServiceRegistry(ABC):
         kind: ToolServiceKind,
         url: str,
         source: Optional[str] = None,
+        transient: bool = False,
     ) -> ToolService: ...
 
     @abstractmethod
@@ -216,6 +217,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
         kind: ToolServiceKind,
         url: str,
         source: Optional[str] = None,
+        transient: bool = False,
     ) -> ToolService:
         service: ToolService
 
@@ -245,7 +247,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
         self._running_services[name] = service
 
-        if kind != "local_transient":
+        if not transient:
             await self._tool_services_collection.update_one(
                 filters={"name": {"$eq": name}},
                 params=self._serialize_tool_service(name, service),
