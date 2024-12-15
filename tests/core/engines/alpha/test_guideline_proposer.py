@@ -1146,7 +1146,7 @@ def test_that_guideline_with_initial_response_is_proposed(
     )
 
 
-def test_that_partially_fulfilled_guideline_is_considered_fulfilled(
+def test_that_guideline_with_multiple_actions_is_partially_fulfilled_when_a_few_actions_occured(
     context: ContextOfTest,
     agent: Agent,
     customer: Customer,
@@ -1173,7 +1173,7 @@ def test_that_partially_fulfilled_guideline_is_considered_fulfilled(
     )
 
 
-def test_that_barely_fulfilled_guideline_is_considered_fulfilled(
+def test_that_guideline_with_multiple_actions_is_partially_fulfilled_when_one_action_occured(
     context: ContextOfTest,
     agent: Agent,
     customer: Customer,

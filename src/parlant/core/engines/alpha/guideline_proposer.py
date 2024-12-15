@@ -25,7 +25,10 @@ from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
-from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
+from parlant.core.engines.alpha.guideline_proposition import (
+    GuidelineProposition,
+    PreviouslyAppliedType,
+)
 from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.guidelines import Guideline
@@ -136,7 +139,9 @@ class GuidelineProposer:
                         GuidelineProposition(
                             guideline=guidelines_dict[evaluation.guideline_number],
                             score=evaluation.score,
-                            guideline_previously_applied=evaluation.guideline_previously_applied,
+                            guideline_previously_applied=PreviouslyAppliedType(
+                                evaluation.guideline_previously_applied
+                            ),
                             rationale=f'''Condition Application: "{evaluation.condition_application_rationale}"; Guideline Previously Applied: "{evaluation.guideline_previously_applied_rationale}"''',
                             should_reapply=evaluation.guideline_should_reapply,
                         )
