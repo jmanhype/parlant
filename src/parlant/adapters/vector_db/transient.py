@@ -47,13 +47,13 @@ class TransientVectorDatabase(VectorDatabase):
         self._embedder_factory = embedder_factory
         self._embedder_type = embedder_type
 
-        self._multi_tenant: nano_vectordb.MultiTenantNanoVDB
+        self._database: nano_vectordb.MultiTenantNanoVDB
         self._collection_name_to_tenant_id: dict[str, str] = {}
-        self._collections: dict[str, _TransientCollection[BaseDocument]] = {}
+        self._collections: dict[str, TransientVectorCollection[BaseDocument]] = {}
 
     async def __aenter__(self) -> Self:
         self._embedder = self._embedder_factory.create_embedder(self._embedder_type)
-        self._multi_tenant = nano_vectordb.MultiTenantNanoVDB(self._embedder.dimensions)
+        self._database = nano_vectordb.MultiTenantNanoVDB(self._embedder.dimensions)
         return self
 
     async def __aexit__(
@@ -70,30 +70,30 @@ class TransientVectorDatabase(VectorDatabase):
         name: str,
         schema: type[TDocument],
         embedder_type: type[Embedder],
-    ) -> _TransientCollection[TDocument]:
+    ) -> TransientVectorCollection[TDocument]:
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
 
-        tenant_id = self._multi_tenant.create_tenant()
+        tenant_id = self._database.create_tenant()
         self._collection_name_to_tenant_id[name] = tenant_id
 
-        self._collections[name] = _TransientCollection(
+        self._collections[name] = TransientVectorCollection(
             self._logger,
-            nano_db=self._multi_tenant.get_tenant(tenant_id),
+            nano_db=self._database.get_tenant(tenant_id),
             name=name,
             schema=schema,
             embedder=self._embedder_factory.create_embedder(embedder_type),
         )
 
-        return cast(_TransientCollection[TDocument], self._collections[name])
+        return cast(TransientVectorCollection[TDocument], self._collections[name])
 
     @override
     async def get_collection(
         self,
         name: str,
-    ) -> _TransientCollection[TDocument]:
+    ) -> TransientVectorCollection[TDocument]:
         if collection := self._collections.get(name):
-            return cast(_TransientCollection[TDocument], collection)
+            return cast(TransientVectorCollection[TDocument], collection)
 
         raise ValueError(f'Transient collection "{name}" not found.')
 
@@ -103,23 +103,23 @@ class TransientVectorDatabase(VectorDatabase):
         name: str,
         schema: type[TDocument],
         embedder_type: type[Embedder],
-    ) -> _TransientCollection[TDocument]:
+    ) -> TransientVectorCollection[TDocument]:
         if collection := self._collections.get(name):
             assert schema == collection._schema
-            return cast(_TransientCollection[TDocument], collection)
+            return cast(TransientVectorCollection[TDocument], collection)
 
-        tenant_id = self._multi_tenant.create_tenant()
+        tenant_id = self._database.create_tenant()
         self._collection_name_to_tenant_id[name] = tenant_id
 
-        self._collections[name] = _TransientCollection(
+        self._collections[name] = TransientVectorCollection(
             self._logger,
-            nano_db=self._multi_tenant.get_tenant(tenant_id),
+            nano_db=self._database.get_tenant(tenant_id),
             name=name,
             schema=schema,
             embedder=self._embedder_factory.create_embedder(embedder_type),
         )
 
-        return cast(_TransientCollection[TDocument], self._collections[name])
+        return cast(TransientVectorCollection[TDocument], self._collections[name])
 
     @override
     async def delete_collection(
@@ -128,11 +128,11 @@ class TransientVectorDatabase(VectorDatabase):
     ) -> None:
         if name not in self._collections:
             raise ValueError(f'Collection "{name}" not found.')
-        self._multi_tenant.delete_tenant(self._collection_name_to_tenant_id[name])
+        self._database.delete_tenant(self._collection_name_to_tenant_id[name])
         del self._collections[name]
 
 
-class _TransientCollection(Generic[TDocument], VectorCollection[TDocument]):
+class TransientVectorCollection(Generic[TDocument], VectorCollection[TDocument]):
     def __init__(
         self,
         logger: Logger,

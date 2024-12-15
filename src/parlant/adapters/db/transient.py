@@ -31,31 +31,31 @@ from parlant.core.persistence.document_database import (
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._collections: dict[str, _TransientDocumentCollection[BaseDocument]] = {}
+        self._collections: dict[str, TransientDocumentCollection[BaseDocument]] = {}
 
     @override
     async def create_collection(
         self,
         name: str,
         schema: type[TDocument],
-    ) -> _TransientDocumentCollection[TDocument]:
+    ) -> TransientDocumentCollection[TDocument]:
         annotations = get_type_hints(schema)
         assert "id" in annotations and annotations["id"] == ObjectId
 
-        self._collections[name] = _TransientDocumentCollection(
+        self._collections[name] = TransientDocumentCollection(
             name=name,
             schema=schema,
         )
 
-        return cast(_TransientDocumentCollection[TDocument], self._collections[name])
+        return cast(TransientDocumentCollection[TDocument], self._collections[name])
 
     @override
     async def get_collection(
         self,
         name: str,
-    ) -> _TransientDocumentCollection[TDocument]:
+    ) -> TransientDocumentCollection[TDocument]:
         if name in self._collections:
-            return cast(_TransientDocumentCollection[TDocument], self._collections[name])
+            return cast(TransientDocumentCollection[TDocument], self._collections[name])
         raise ValueError(f'Collection "{name}" does not exist')
 
     @override
@@ -63,9 +63,9 @@ class TransientDocumentDatabase(DocumentDatabase):
         self,
         name: str,
         schema: type[TDocument],
-    ) -> _TransientDocumentCollection[TDocument]:
+    ) -> TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return cast(_TransientDocumentCollection[TDocument], collection)
+            return cast(TransientDocumentCollection[TDocument], collection)
 
         annotations = get_type_hints(schema)
         assert "id" in annotations and annotations["id"] == ObjectId
@@ -86,7 +86,7 @@ class TransientDocumentDatabase(DocumentDatabase):
             raise ValueError(f'Collection "{name}" does not exist')
 
 
-class _TransientDocumentCollection(DocumentCollection[TDocument]):
+class TransientDocumentCollection(DocumentCollection[TDocument]):
     def __init__(
         self,
         name: str,
