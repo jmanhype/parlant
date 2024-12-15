@@ -35,7 +35,7 @@ from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     FallbackSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
@@ -58,7 +58,7 @@ class LlamaEstimatingTokenizer(EstimatingTokenizer):
         return len(tokens) + 36
 
 
-class TogetherAISchematicGenerator(BaseSchematicGenerator[T]):
+class TogetherAISchematicGenerator(SchematicGenerator[T]):
     supported_hints = ["temperature"]
 
     def __init__(
@@ -262,6 +262,11 @@ class M2Bert32K(TogetherAIEmbedder):
     @override
     def tokenizer(self) -> HuggingFaceEstimatingTokenizer:
         return self._estimating_tokenizer
+
+    @property
+    @override
+    def dimensions(self) -> int:
+        return 768
 
 
 class TogetherService(NLPService):

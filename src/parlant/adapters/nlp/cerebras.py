@@ -26,7 +26,7 @@ from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
 from parlant.core.nlp.embedding import Embedder
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
     UsageInfo,
@@ -47,7 +47,7 @@ class LlamaEstimatingTokenizer(EstimatingTokenizer):
         return len(tokens) + 36
 
 
-class CerebrasSchematicGenerator(BaseSchematicGenerator[T]):
+class CerebrasSchematicGenerator(SchematicGenerator[T]):
     supported_hints = ["temperature"]
 
     def __init__(

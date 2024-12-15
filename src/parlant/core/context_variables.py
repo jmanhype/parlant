@@ -26,11 +26,8 @@ from parlant.core.common import (
     Version,
     generate_id,
 )
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 from parlant.core.tools import ToolId
 
 ContextVariableId = NewType("ContextVariableId", str)

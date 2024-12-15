@@ -33,9 +33,9 @@ from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
 from parlant.core.nlp.embedding import Embedder
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
+    SchematicGenerator,
     UsageInfo,
 )
 from parlant.core.logging import Logger
@@ -55,7 +55,7 @@ class AnthropicEstimatingTokenizer(EstimatingTokenizer):
         return await self._client.count_tokens(prompt)
 
 
-class AnthropicAISchematicGenerator(BaseSchematicGenerator[T]):
+class AnthropicAISchematicGenerator(SchematicGenerator[T]):
     supported_hints = ["temperature"]
 
     def __init__(

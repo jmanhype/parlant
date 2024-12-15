@@ -22,6 +22,7 @@ from typing import Any, Mapping, Optional, Sequence, cast
 from typing_extensions import override, Self
 import aiofiles
 
+from parlant.core.persistence.common import Where, matches_filters, ensure_is_total
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DeleteResult,
@@ -30,9 +31,6 @@ from parlant.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
-    Where,
-    ensure_is_total,
-    matches_filters,
 )
 from parlant.core.logging import Logger
 

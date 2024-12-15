@@ -27,10 +27,10 @@ from pathlib import Path
 import sys
 import uvicorn
 
+from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.nlp.service import NLPService
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.version import VERSION
-from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -54,7 +54,6 @@ from parlant.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineStore,
 )
-from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.nlp.generation import SchematicGenerator
@@ -68,7 +67,7 @@ from parlant.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from parlant.core.glossary import GlossaryStore
+from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -272,12 +271,14 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[NLPService] = nlp_service
 
+    embedder_factory = EmbedderFactory(c)
     c[GlossaryStore] = await EXIT_STACK.enter_async_context(
-        GlossaryChromaStore(
+        GlossaryVectorStore(
             await EXIT_STACK.enter_async_context(
-                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
+                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
             ),
             embedder_type=type(await nlp_service.get_embedder()),
+            embedder_factory=embedder_factory,
         )
     )
 

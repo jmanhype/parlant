@@ -42,7 +42,7 @@ from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     FallbackSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
@@ -62,7 +62,7 @@ class OpenAIEstimatingTokenizer(EstimatingTokenizer):
         return len(tokens)
 
 
-class OpenAISchematicGenerator(BaseSchematicGenerator[T]):
+class OpenAISchematicGenerator(SchematicGenerator[T]):
     supported_openai_params = ["temperature", "logit_bias", "max_tokens"]
     supported_hints = supported_openai_params + ["strict"]
 
@@ -285,6 +285,10 @@ class OpenAITextEmbedding3Large(OpenAIEmbedder):
     def max_tokens(self) -> int:
         return 8192
 
+    @property
+    def dimensions(self) -> int:
+        return 3072
+
 
 class OpenAITextEmbedding3Small(OpenAIEmbedder):
     def __init__(self) -> None:
@@ -294,6 +298,10 @@ class OpenAITextEmbedding3Small(OpenAIEmbedder):
     @override
     def max_tokens(self) -> int:
         return 8192
+
+    @property
+    def dimensions(self) -> int:
+        return 3072
 
 
 class OpenAIModerationService(ModerationService):

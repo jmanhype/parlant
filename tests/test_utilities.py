@@ -13,17 +13,33 @@
 # limitations under the License.
 
 import asyncio
+import hashlib
+import json
 import logging
-from contextlib import contextmanager
+from contextlib import AsyncExitStack, contextmanager
+from pathlib import Path
 from time import sleep
-from typing import Any, Awaitable, Callable, Generator, Iterator, Optional, TypeVar
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Generator,
+    Iterator,
+    Mapping,
+    Optional,
+    TypeVar,
+    TypedDict,
+    cast,
+)
 
 from lagom import Container
+from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.nlp.openai import GPT_4o
+from parlant.bin.server import PARLANT_HOME_DIR
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
-from parlant.core.common import DefaultBaseModel, JSONSerializable
+from parlant.core.common import DefaultBaseModel, JSONSerializable, Version
 from parlant.core.context_variables import (
     ContextVariable,
     ContextVariableId,
@@ -35,10 +51,29 @@ from parlant.core.glossary import GlossaryStore, Term
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from parlant.core.logging import LogLevel, Logger
-from parlant.core.sessions import Event, MessageEventData, Session, SessionId, SessionStore
+from parlant.core.nlp.generation import (
+    FallbackSchematicGenerator,
+    GenerationInfo,
+    SchematicGenerationResult,
+    SchematicGenerator,
+    UsageInfo,
+)
+from parlant.core.nlp.tokenization import EstimatingTokenizer
+from parlant.core.sessions import (
+    _GenerationInfoDocument,
+    _UsageInfoDocument,
+    Event,
+    MessageEventData,
+    Session,
+    SessionId,
+    SessionStore,
+)
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentCollection
 
 T = TypeVar("T")
+GLOBAL_CACHE_FILE = Path("schematic_generation_test_cache.json")
 
 
 class NLPTestSchema(DefaultBaseModel):
@@ -312,3 +347,150 @@ def get_when_done_or_timeout(
         sleep(1)
 
     raise TimeoutError()
+
+
+TBaseModel = TypeVar("TBaseModel", bound=DefaultBaseModel)
+
+
+class _SchematicGenerationResultDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+    content: JSONSerializable
+    info: _GenerationInfoDocument
+
+
+class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
+    VERSION = Version.from_string("0.1.0")
+
+    def __init__(
+        self,
+        base_generator: SchematicGenerator[TBaseModel],
+        collection: DocumentCollection[_SchematicGenerationResultDocument],
+    ):
+        self._base_generator = base_generator
+        self._collection = collection
+        self._ensure_cache_file_exists()
+
+    def _ensure_cache_file_exists(self) -> None:
+        if not GLOBAL_CACHE_FILE.exists():
+            GLOBAL_CACHE_FILE.write_text("{}")
+
+    def _generate_id(
+        self,
+        prompt: str,
+        hints: Mapping[str, Any],
+    ) -> str:
+        sorted_hints = json.dumps(dict(sorted(hints.items())), sort_keys=True)
+        key_content = f"{self.id}:{prompt}:{sorted_hints}"
+        return hashlib.sha256(key_content.encode()).hexdigest()
+
+    def _serialize_result(
+        self,
+        id: str,
+        result: SchematicGenerationResult[TBaseModel],
+    ) -> _SchematicGenerationResultDocument:
+        def serialize_generation_info(generation: GenerationInfo) -> _GenerationInfoDocument:
+            return _GenerationInfoDocument(
+                schema_name=generation.schema_name,
+                model=generation.model,
+                duration=generation.duration,
+                usage=_UsageInfoDocument(
+                    input_tokens=generation.usage.input_tokens,
+                    output_tokens=generation.usage.output_tokens,
+                    extra=generation.usage.extra,
+                ),
+            )
+
+        return _SchematicGenerationResultDocument(
+            id=ObjectId(id),
+            version=self.VERSION.to_string(),
+            content=result.content.model_dump(mode="json"),
+            info=serialize_generation_info(result.info),
+        )
+
+    def _deserialize_result(
+        self,
+        doc: _SchematicGenerationResultDocument,
+        schema_type: type[TBaseModel],
+    ) -> SchematicGenerationResult[TBaseModel]:
+        def deserialize_generation_info(
+            generation_document: _GenerationInfoDocument,
+        ) -> GenerationInfo:
+            return GenerationInfo(
+                schema_name=generation_document["schema_name"],
+                model=generation_document["model"],
+                duration=generation_document["duration"],
+                usage=UsageInfo(
+                    input_tokens=generation_document["usage"]["input_tokens"],
+                    output_tokens=generation_document["usage"]["output_tokens"],
+                    extra=generation_document["usage"]["extra"],
+                ),
+            )
+
+        content = schema_type.model_validate(doc["content"])
+        info = deserialize_generation_info(doc["info"])
+
+        return SchematicGenerationResult[TBaseModel](content=content, info=info)
+
+    async def generate(
+        self,
+        prompt: str,
+        hints: Mapping[str, Any] = {},
+    ) -> SchematicGenerationResult[TBaseModel]:
+        id = self._generate_id(prompt, hints)
+
+        result_document = await self._collection.find_one(filters={"id": {"$eq": id}})
+        if result_document:
+            schema_type = (
+                self._base_generator.schema
+                if type(self._base_generator) is not FallbackSchematicGenerator
+                else cast(FallbackSchematicGenerator[TBaseModel], self._base_generator)
+                ._generators[0]
+                .schema
+            )
+
+            return self._deserialize_result(doc=result_document, schema_type=schema_type)
+
+        result = await self._base_generator.generate(prompt, hints)
+        await self._collection.insert_one(document=self._serialize_result(id=id, result=result))
+
+        return result
+
+    @property
+    def id(self) -> str:
+        return self._base_generator.id
+
+    @property
+    def max_tokens(self) -> int:
+        return self._base_generator.max_tokens
+
+    @property
+    def tokenizer(self) -> EstimatingTokenizer:
+        return self._base_generator.tokenizer
+
+
+async def create_schematic_generation_result_collection(
+    stack: AsyncExitStack,
+    logger: Logger,
+) -> DocumentCollection[_SchematicGenerationResultDocument]:
+    _db = await stack.enter_async_context(
+        JSONFileDocumentDatabase(
+            logger,
+            PARLANT_HOME_DIR / GLOBAL_CACHE_FILE,
+        )
+    )
+
+    return await _db.get_or_create_collection(
+        name="cache_schematic_generation_results", schema=_SchematicGenerationResultDocument
+    )
+
+
+async def create_schematic_generator(
+    base_generator: SchematicGenerator[TBaseModel],
+    collection: DocumentCollection[_SchematicGenerationResultDocument],
+    use_cache: bool,
+) -> SchematicGenerator[TBaseModel]:
+    if use_cache is False:
+        return base_generator
+
+    return CachedSchematicGenerator(base_generator, collection)

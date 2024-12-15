@@ -1,7 +1,7 @@
 # Copyright 2024 Emcie Co Ltd.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# Licensed under the Apache License, Version 2.0 (the "License")
+# You may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
@@ -15,21 +15,17 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (
-    Generic,
-    Optional,
-    Sequence,
-    TypeVar,
-    TypedDict,
-)
+from typing import Generic, Optional, Sequence, TypeVar, TypedDict
 
-from parlant.core.persistence.common import ObjectId, Where
 from parlant.core.common import Version
+from parlant.core.nlp.embedding import Embedder
+from parlant.core.persistence.common import ObjectId, Where
 
 
 class BaseDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
+    content: str
 
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
@@ -55,74 +51,68 @@ class DeleteResult(Generic[TDocument]):
     deleted_document: Optional[TDocument]
 
 
-class DocumentDatabase(ABC):
+@dataclass(frozen=True)
+class SimilarDocumentResult(Generic[TDocument]):
+    document: TDocument
+    distance: float
+
+    def __hash__(self) -> int:
+        return hash(str(self.document))
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, SimilarDocumentResult):
+            return bool(self.document == value.document)
+        return False
+
+
+class VectorDatabase(ABC):
     @abstractmethod
     async def create_collection(
         self,
         name: str,
         schema: type[TDocument],
-    ) -> DocumentCollection[TDocument]:
-        """
-        Creates a new collection with the given name and returns the collection.
-        """
-        ...
+        embedder_type: type[Embedder],
+    ) -> VectorCollection[TDocument]: ...
 
     @abstractmethod
     async def get_collection(
         self,
         name: str,
-    ) -> DocumentCollection[TDocument]:
-        """
-        Retrieves an existing collection by its name.
-        """
-        ...
+    ) -> VectorCollection[TDocument]: ...
 
     @abstractmethod
     async def get_or_create_collection(
         self,
         name: str,
         schema: type[TDocument],
-    ) -> DocumentCollection[TDocument]:
-        """
-        Retrieves an existing collection by its name or creates a new one if it does not exist.
-        """
-        ...
+        embedder_type: type[Embedder],
+    ) -> VectorCollection[TDocument]: ...
 
     @abstractmethod
     async def delete_collection(
         self,
         name: str,
-    ) -> None:
-        """
-        Deletes a collection by its name.
-        """
-        ...
+    ) -> None: ...
 
 
-class DocumentCollection(ABC, Generic[TDocument]):
+class VectorCollection(ABC, Generic[TDocument]):
     @abstractmethod
     async def find(
         self,
         filters: Where,
-    ) -> Sequence[TDocument]:
-        """Finds all documents that match the given filters."""
-        ...
+    ) -> Sequence[TDocument]: ...
 
     @abstractmethod
     async def find_one(
         self,
         filters: Where,
-    ) -> Optional[TDocument]:
-        """Returns the first document that matches the query criteria."""
-        ...
+    ) -> Optional[TDocument]: ...
 
     @abstractmethod
     async def insert_one(
         self,
         document: TDocument,
-    ) -> InsertResult:
-        """Inserts a single document into the collection."""
-        ...
+    ) -> InsertResult: ...
 
     @abstractmethod
     async def update_one(
@@ -130,15 +120,18 @@ class DocumentCollection(ABC, Generic[TDocument]):
         filters: Where,
         params: TDocument,
         upsert: bool = False,
-    ) -> UpdateResult[TDocument]:
-        """Updates the first document that matches the query criteria. If upsert is True,
-        inserts the document if it does not exist."""
-        ...
+    ) -> UpdateResult[TDocument]: ...
 
     @abstractmethod
     async def delete_one(
         self,
         filters: Where,
-    ) -> DeleteResult[TDocument]:
-        """Deletes the first document that matches the query criteria."""
-        ...
+    ) -> DeleteResult[TDocument]: ...
+
+    @abstractmethod
+    async def find_similar_documents(
+        self,
+        filters: Where,
+        query: str,
+        k: int,
+    ) -> Sequence[SimilarDocumentResult[TDocument]]: ...

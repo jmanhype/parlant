@@ -42,12 +42,8 @@ from parlant.core.context_variables import ContextVariableId
 from parlant.core.customers import CustomerId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-    Where,
-)
+from parlant.core.persistence.common import ObjectId, Where
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 from parlant.core.glossary import TermId
 
 SessionId = NewType("SessionId", str)

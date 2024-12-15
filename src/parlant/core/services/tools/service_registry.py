@@ -30,11 +30,8 @@ from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import LocalToolService, ToolService
 from parlant.core.common import ItemNotFoundError, Version, UniqueId
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 
 ToolServiceKind = Literal["openapi", "sdk", "local"]

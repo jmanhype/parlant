@@ -19,18 +19,15 @@ from typing import AsyncIterator, Iterator, TypedDict
 from lagom import Container
 from pytest import fixture
 
-from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.openai import OpenAITextEmbedding3Large
+from parlant.adapters.vector_db.chroma import ChromaCollection, ChromaDatabase
 from parlant.core.agents import AgentStore, AgentId
 from parlant.core.common import Version
+from parlant.core.glossary import GlossaryVectorStore
 from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.adapters.db.chroma.database import (
-    ChromaCollection,
-    ChromaDatabase,
-)
 from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
-from parlant.core.persistence.document_database import ObjectId
+from parlant.core.persistence.common import ObjectId
 from tests.test_utilities import SyncAwaiter
 
 
@@ -331,8 +328,9 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
         async with ChromaDatabase(
             container[Logger], Path(temp_dir), EmbedderFactory(container)
         ) as chroma_db:
-            async with GlossaryChromaStore(
+            async with GlossaryVectorStore(
                 chroma_db,
+                embedder_factory=container[EmbedderFactory],
                 embedder_type=type(await container[NLPService].get_embedder()),
             ) as glossary_chroma_store:
                 bazoo = await glossary_chroma_store.create_term(

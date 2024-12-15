@@ -31,7 +31,7 @@ from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     FallbackSchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
@@ -53,7 +53,7 @@ class GoogleEstimatingTokenizer(EstimatingTokenizer):
         return int(result.total_tokens)
 
 
-class GeminiSchematicGenerator(BaseSchematicGenerator[T]):
+class GeminiSchematicGenerator(SchematicGenerator[T]):
     supported_hints = ["temperature"]
 
     def __init__(
@@ -222,6 +222,10 @@ class GeminiTextEmbedding_004(GoogleEmbedder):
     @override
     def max_tokens(self) -> int:
         return 8000
+
+    @property
+    def dimensions(self) -> int:
+        return 768
 
 
 class GeminiService(NLPService):

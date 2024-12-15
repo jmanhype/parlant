@@ -39,11 +39,8 @@ from parlant.core.common import (
 )
 from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent, GuidelineId
-from parlant.core.persistence.document_database import (
-    DocumentCollection,
-    DocumentDatabase,
-    ObjectId,
-)
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 EvaluationId = NewType("EvaluationId", str)
 
