@@ -487,7 +487,7 @@ def main() -> None:
     @click.option(
         "--version",
         is_flag=True,
-        help="Show the version and exit",
+        help="Print server version and exit",
     )
     @click.pass_context
     def cli(
@@ -504,7 +504,7 @@ def main() -> None:
         version: bool,
     ) -> None:
         if version:
-            print(f"parlant-server version {VERSION}")
+            print(f"Parlant v{VERSION}")
             sys.exit(0)
 
         if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
