@@ -34,7 +34,7 @@ from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 
-ToolServiceKind = Literal["openapi", "sdk", "local"]
+ToolServiceKind = Literal["openapi", "sdk", "local", "local_transient"]
 
 
 class ServiceRegistry(ABC):
@@ -219,7 +219,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
     ) -> ToolService:
         service: ToolService
 
-        if kind == "local":
+        if kind in "local":
             self._running_services[name] = LocalToolService()
             return self._running_services[name]
         elif kind == "openapi":
@@ -245,11 +245,12 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
         self._running_services[name] = service
 
-        await self._tool_services_collection.update_one(
-            filters={"name": {"$eq": name}},
-            params=self._serialize_tool_service(name, service),
-            upsert=True,
-        )
+        if kind != "local_transient":
+            await self._tool_services_collection.update_one(
+                filters={"name": {"$eq": name}},
+                params=self._serialize_tool_service(name, service),
+                upsert=True,
+            )
 
         return service
 

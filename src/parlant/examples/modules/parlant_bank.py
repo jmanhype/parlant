@@ -10,8 +10,8 @@ server_instance: PluginServer | None = None
 
 
 @tool
-def list_categories(context: ToolContext) -> ToolResult:
-    return ToolResult(["laptops", "chairs"])
+def read_account_balance(context: ToolContext) -> ToolResult:
+    return ToolResult(999)
 
 
 async def initialize_module(container: Container) -> None:
@@ -19,22 +19,22 @@ async def initialize_module(container: Container) -> None:
     _background_task_service = container[BackgroundTaskService]
 
     server = PluginServer(
-        tools=[list_categories],
-        port=8095,
+        tools=[read_account_balance],
+        port=8094,
         host="127.0.0.1",
     )
-
     await _background_task_service.start(
         server.serve(),
-        tag="plugin-server 'parlant-tech-store'",
+        tag="plugin-server 'parlant-bank'",
     )
+
     server_instance = server
 
     service_registry = container[ServiceRegistry]
     await service_registry.update_tool_service(
-        name="parlant-tech-store",
-        kind="sdk",
-        url="http://127.0.0.1:8095",
+        name="parlant-bank",
+        kind="local_transient",
+        url="http://127.0.0.1:8094",
     )
 
 

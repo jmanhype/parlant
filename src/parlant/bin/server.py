@@ -21,6 +21,7 @@ import importlib
 import os
 from lagom import Container, Singleton
 from typing import AsyncIterator, Callable
+import toml
 from typing_extensions import NoReturn
 import click
 import click_completion
@@ -132,7 +133,7 @@ class CLIParams:
     port: int
     nlp_service: str
     log_level: str
-    module: str
+    modules: list[str]
 
 
 def load_anthropic() -> NLPService:
@@ -184,37 +185,45 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
 
 
 @asynccontextmanager
-async def load_module(
+async def load_modules(
     container: Container,
-    module_path: str,
+    modules: list[str],
 ) -> AsyncIterator[None]:
-    mod = importlib.import_module(module_path)
+    if not modules:
+        config_file = "parlant_config.toml"
+        if os.path.isfile(config_file):
+            config = toml.load(config_file)
+            # Expecting structure of:
+            # [parlant]
+            # modules = ["module_1", "module_2"]
+            modules = config.get("parlant", {}).get("modules", [])
+        else:
+            modules = []
 
-    if module_path.endswith("parlant_config"):
-        if not hasattr(mod, "load_modules"):
-            raise StartupError("parlant_config must define a function load_modules()")
+    if not modules:
+        container[Logger].info("no modules loaded")
+        yield
+        return
 
-        submodule_paths = mod.load_modules()
-        submodules = []
-        for submodule_path in submodule_paths:
-            submodule = importlib.import_module(submodule_path)
-            if not hasattr(submodule, "initialize_module") or not hasattr(
-                submodule, "shutdown_module"
-            ):
-                raise StartupError(
-                    f"Module {submodule.__name__} must define initialize_module and shutdown_module"
-                )
-            submodules.append(submodule)
-    else:
-        submodules = [mod]
+    imported_modules = []
 
-    for m in submodules:
+    for module_path in modules:
+        module = importlib.import_module(module_path)
+        if not hasattr(module, "initialize_module") or not hasattr(module, "shutdown_module"):
+            raise StartupError(
+                f"Module {module.__name__} must define initialize_module and shutdown_module"
+            )
+        imported_modules.append(module)
+
+    for m in imported_modules:
+        container[Logger].info(f"initialize module {m.__name__}")
         await m.initialize_module(container)
 
     try:
         yield
     finally:
-        for m in submodules:
+        for m in reversed(imported_modules):
+            container[Logger].info(f"shutdown module {m.__name__}")
             await m.shutdown_module()
 
 
@@ -406,8 +415,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
             evaluator=container[BehavioralChangeEvaluator],
         )
 
-        if params.module:
-            await EXIT_STACK.enter_async_context(load_module(container, params.module))
+        await EXIT_STACK.enter_async_context(load_modules(container, params.modules))
 
         await create_agent_if_absent(container[AgentStore])
 
@@ -530,10 +538,14 @@ def main() -> None:
         help="Print server version and exit",
     )
     @click.option(
-        "--module",
-        type=str,
-        default="",
-        help="Path to a single module or 'parlant_confi'. If 'parlant_config', it loads multiple modules from it.",
+        "--modules",
+        multiple=True,
+        default=[],
+        help=(
+            "Specify one or more modules to load. "
+            "If no modules are specified, the server will attempt to load them from "
+            "a 'parlant_config.toml' file in the current directory."
+        ),
     )
     @click.pass_context
     def cli(
@@ -548,7 +560,7 @@ def main() -> None:
         together: bool,
         log_level: str,
         version: bool,
-        module: str,
+        modules: list[str],
     ) -> None:
         if version:
             print(f"Parlant v{VERSION}")
@@ -588,7 +600,7 @@ def main() -> None:
             port=port,
             nlp_service=nlp_service,
             log_level=log_level,
-            module=module,
+            modules=modules,
         )
 
         asyncio.run(start_server(ctx.obj))

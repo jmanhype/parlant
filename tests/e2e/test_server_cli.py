@@ -245,7 +245,7 @@ async def test_that_glossary_terms_load_after_server_restart(context: ContextOfT
 
 async def test_that_server_starts_with_single_module(context: ContextOfTest) -> None:
     with run_server(
-        context, extra_args=["--module", "parlant.modules.examples.parlant_tech_store"]
+        context, extra_args=["--modules", "parlant.examples.modules.parlant_tech_store"]
     ):
         await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
 
@@ -278,7 +278,20 @@ async def test_that_server_starts_with_single_module(context: ContextOfTest) -> 
 
 
 async def test_that_server_starts_with_parlant_config(context: ContextOfTest) -> None:
-    with run_server(context, extra_args=["--module", "parlant.modules.examples.parlant_config"]):
+    _toml_data = """
+[parlant]
+    modules=[
+                "parlant.examples.modules.parlant_tech_store",
+                "parlant.examples.modules.parlant_bank",
+            ]
+"""
+
+    with (
+        open("parlant_config.toml", "w") as parlant_config_file,
+    ):
+        parlant_config_file.write(_toml_data)
+
+    with run_server(context, extra_args=[]):
         await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
 
         agent = await context.api.get_first_agent()
