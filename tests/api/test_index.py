@@ -478,7 +478,11 @@ async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
         .json()["id"]
     )
 
-    content = client.get(f"/index/evaluations/{second_evaluation_id}").raise_for_status().json()
+    content = (
+        client.get(f"/index/evaluations/{second_evaluation_id}", params={"wait_for_completion": 0})
+        .raise_for_status()
+        .json()
+    )
 
     assert content["status"] == "failed"
     assert content["error"] == f"An evaluation task '{first_evaluation_id}' is already running."
