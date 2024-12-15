@@ -30,7 +30,6 @@ import uvicorn
 from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.nlp.service import NLPService
 from parlant.core.tags import TagDocumentStore, TagStore
-from parlant.version import VERSION
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -98,6 +97,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
 )
 from parlant.core.logging import FileLogger, LogLevel, Logger
 from parlant.core.application import Application
+from parlant.core.version import VERSION
 
 DEFAULT_PORT = 8800
 SERVER_ADDRESS = "https://localhost"
@@ -484,6 +484,11 @@ def main() -> None:
         default="info",
         help="Log level",
     )
+    @click.option(
+        "--version",
+        is_flag=True,
+        help="Print server version and exit",
+    )
     @click.pass_context
     def cli(
         ctx: click.Context,
@@ -496,7 +501,12 @@ def main() -> None:
         cerebras: bool,
         together: bool,
         log_level: str,
+        version: bool,
     ) -> None:
+        if version:
+            print(f"Parlant v{VERSION}")
+            sys.exit(0)
+
         if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
             print("error: only one NLP service profile can be selected")
             sys.exit(1)
