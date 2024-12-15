@@ -73,7 +73,7 @@ from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import DocumentCollection
 
 T = TypeVar("T")
-GLOBAL_CACHE_FILE = Path("_schematic_cache.json")
+GLOBAL_CACHE_FILE = Path("schematic_generation_test_cache.json")
 
 
 class NLPTestSchema(DefaultBaseModel):
