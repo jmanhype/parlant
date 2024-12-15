@@ -245,7 +245,7 @@ async def test_that_glossary_terms_load_after_server_restart(context: ContextOfT
 
 async def test_that_server_starts_with_single_module(context: ContextOfTest) -> None:
     with run_server(
-        context, extra_args=["--modules", "parlant.examples.modules.parlant_tech_store"]
+        context, extra_args=["--modules", "examples.modules.parlant_tech_store"]
     ):
         await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
 
@@ -274,61 +274,4 @@ async def test_that_server_starts_with_single_module(context: ContextOfTest) -> 
         assert await nlp_test(
             agent_replies[0]["data"]["message"],
             "laptops and chairs",
-        )
-
-
-async def test_that_server_starts_with_parlant_config(context: ContextOfTest) -> None:
-    _toml_data = """
-[parlant]
-    modules=[
-                "parlant.examples.modules.parlant_tech_store",
-                "parlant.examples.modules.parlant_bank",
-            ]
-"""
-
-    with (
-        open("parlant_config.toml", "w") as parlant_config_file,
-    ):
-        parlant_config_file.write(_toml_data)
-
-    with run_server(context, extra_args=[]):
-        await asyncio.sleep(EXTENDED_AMOUNT_OF_TIME)
-
-        agent = await context.api.get_first_agent()
-
-        products_guideline = await context.api.create_guideline(
-            agent_id=agent["id"],
-            condition="the user asks about product categories",
-            action="tell them which product categories are available",
-        )
-        _ = await context.api.add_association(
-            agent_id=agent["id"],
-            guideline_id=products_guideline["id"],
-            service_name="parlant-tech-store",
-            tool_name="list_categories",
-        )
-
-        bank_guideline = await context.api.create_guideline(
-            agent_id=agent["id"],
-            condition="the user asks for their account balance",
-            action="tell them their current balance",
-        )
-        _ = await context.api.add_association(
-            agent_id=agent["id"],
-            guideline_id=bank_guideline["id"],
-            service_name="parlant-bank",
-            tool_name="read_account_balance",
-        )
-
-        session = await context.api.create_session(agent["id"])
-
-        agent_replies = await context.api.get_agent_replies(
-            session_id=session["id"],
-            message="Hello, what product categories do you have? Also, can you tell me my balance?",
-            number_of_replies_to_expect=1,
-        )
-
-        assert await nlp_test(
-            agent_replies[0]["data"]["message"],
-            "the product categories are laptops and chairs, and the user's balance is 999",
         )

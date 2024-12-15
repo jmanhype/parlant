@@ -33,8 +33,9 @@ async def initialize_module(container: Container) -> None:
     service_registry = container[ServiceRegistry]
     await service_registry.update_tool_service(
         name="parlant-tech-store",
-        kind="local_transient",
+        kind="sdk",
         url="http://127.0.0.1:8095",
+        transient=True,
     )
 
 
