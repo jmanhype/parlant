@@ -113,7 +113,6 @@ DEFAULT_AGENT_NAME = "Default Agent"
 
 sys.path.append(PARLANT_HOME_DIR.as_posix())
 
-
 CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
 BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
@@ -383,7 +382,7 @@ async def serve_app(
         app,
         host="0.0.0.0",
         port=port,
-        log_level="info",
+        log_level="critical",
         timeout_graceful_shutdown=1,
     )
     server = uvicorn.Server(config)

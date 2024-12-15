@@ -16,14 +16,13 @@ from abc import ABC, abstractmethod
 import asyncio
 from contextlib import contextmanager
 from enum import Enum, auto
+import logging
 from pathlib import Path
+import structlog
 import time
 import traceback
 from typing import Any, Iterator
 from typing_extensions import override
-import coloredlogs  # type: ignore
-import logging
-import logging.handlers
 
 from parlant.core.contextual_correlator import ContextualCorrelator
 
@@ -35,12 +34,14 @@ class LogLevel(Enum):
     ERROR = auto()
     CRITICAL = auto()
 
-
-class CustomFormatter(logging.Formatter, ABC):
-    def __init__(self) -> None:
-        super().__init__(
-            "%(asctime)s %(name)s[P=%(process)d; T=%(thread)d] %(levelname)s %(message)s"
-        )
+    def to_logging_level(self) -> int:
+        return {
+            LogLevel.DEBUG: logging.DEBUG,
+            LogLevel.INFO: logging.INFO,
+            LogLevel.WARNING: logging.WARNING,
+            LogLevel.ERROR: logging.ERROR,
+            LogLevel.CRITICAL: logging.CRITICAL,
+        }[self]
 
 
 class Logger(ABC):
@@ -74,41 +75,47 @@ class CorrelationalLogger(Logger):
         log_level: LogLevel = LogLevel.DEBUG,
     ) -> None:
         self._correlator = correlator
-        self.logger = logging.getLogger("parlant")
-        self._formatter = CustomFormatter()
-        self.set_level(log_level)
+        self.raw_logger = logging.getLogger("parlant")
+        self.raw_logger.setLevel(log_level.to_logging_level())
 
-    @override
-    def set_level(self, log_level: LogLevel) -> None:
-        self.logger.setLevel(
-            {
-                LogLevel.DEBUG: logging.DEBUG,
-                LogLevel.INFO: logging.INFO,
-                LogLevel.WARNING: logging.WARNING,
-                LogLevel.ERROR: logging.ERROR,
-                LogLevel.CRITICAL: logging.CRITICAL,
-            }[log_level]
+        # Wrap it with structlog configuration
+        self._logger = structlog.wrap_logger(
+            self.raw_logger,
+            processors=[
+                structlog.processors.TimeStamper(fmt="iso"),
+                structlog.stdlib.add_log_level,
+                structlog.stdlib.filter_by_level,
+                structlog.stdlib.PositionalArgumentsFormatter(),
+                structlog.processors.StackInfoRenderer(),
+                structlog.processors.format_exc_info,
+                structlog.dev.ConsoleRenderer(colors=True),
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
         )
 
     @override
+    def set_level(self, log_level: LogLevel) -> None:
+        self.raw_logger.setLevel(log_level.to_logging_level())
+
+    @override
     def debug(self, message: str) -> None:
-        self.logger.debug(self._add_correlation_id(message))
+        self._logger.debug(self._add_correlation_id(message))
 
     @override
     def info(self, message: str) -> None:
-        self.logger.info(self._add_correlation_id(message))
+        self._logger.info(self._add_correlation_id(message))
 
     @override
     def warning(self, message: str) -> None:
-        self.logger.warning(self._add_correlation_id(message))
+        self._logger.warning(self._add_correlation_id(message))
 
     @override
     def error(self, message: str) -> None:
-        self.logger.error(self._add_correlation_id(message))
+        self._logger.error(self._add_correlation_id(message))
 
     @override
     def critical(self, message: str) -> None:
-        self.logger.critical(self._add_correlation_id(message))
+        self._logger.critical(self._add_correlation_id(message))
 
     @override
     @contextmanager
@@ -151,7 +158,6 @@ class StdoutLogger(CorrelationalLogger):
         log_level: LogLevel = LogLevel.DEBUG,
     ) -> None:
         super().__init__(correlator, log_level)
-        coloredlogs.install(level="DEBUG", logger=self.logger)
 
 
 class FileLogger(CorrelationalLogger):
@@ -169,7 +175,4 @@ class FileLogger(CorrelationalLogger):
         ]
 
         for handler in handlers:
-            handler.setFormatter(self._formatter)
-            self.logger.addHandler(handler)
-
-        coloredlogs.install(level=log_level.name, logger=self.logger)
+            self.raw_logger.addHandler(handler)

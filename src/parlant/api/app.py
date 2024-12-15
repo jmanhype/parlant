@@ -122,9 +122,10 @@ async def create_api_app(container: Container) -> ASGIApplication:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        with correlator.correlation_scope(f"request({generate_id()})"):
-            logger.info(f"{request.method} {request.url.path}")
-            return await call_next(request)
+        request_id = generate_id()
+        with correlator.correlation_scope(f"RID({request_id})"):
+            with logger.operation(f"HTTP Request: {request.method} {request.url.path}"):
+                return await call_next(request)
 
     @api_app.exception_handler(ItemNotFoundError)
     async def item_not_found_error_handler(
