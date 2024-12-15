@@ -17,7 +17,6 @@ import hashlib
 import json
 import logging
 from contextlib import AsyncExitStack, contextmanager
-import os
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -75,11 +74,6 @@ from parlant.core.persistence.document_database import DocumentCollection
 
 T = TypeVar("T")
 GLOBAL_CACHE_FILE = Path("_schematic_cache.json")
-CACHE_SCHEMATIC_GENERATION_RESULTS = (
-    True
-    if os.environ.get("CACHE_SCHEMATIC_GENERATION_RESULTS", "True").lower() == "true"
-    else False
-)
 
 
 class NLPTestSchema(DefaultBaseModel):
@@ -494,9 +488,9 @@ async def create_schematic_generation_result_collection(
 async def create_schematic_generator(
     base_generator: SchematicGenerator[TBaseModel],
     collection: DocumentCollection[_SchematicGenerationResultDocument],
-    cache: Optional[bool] = None,
+    use_cache: bool,
 ) -> SchematicGenerator[TBaseModel]:
-    if cache is False or (cache is None and CACHE_SCHEMATIC_GENERATION_RESULTS is False):
+    if use_cache is False:
         return base_generator
 
     return CachedSchematicGenerator(base_generator, collection)

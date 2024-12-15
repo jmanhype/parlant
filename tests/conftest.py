@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
+import pytest
 
 from parlant.adapters.nlp.openai import OpenAIService
 from parlant.adapters.vector_db.transient import TransientVectorDatabase
@@ -110,8 +111,18 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
 
 
 @fixture
-async def container() -> AsyncIterator[Container]:
+async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
     container = Container()
+
+    stochastic_plan = next(
+        (arg.split("=")[1] for arg in request.config.invocation_params.args if "--plan" in arg),
+        None,
+    )
+
+    use_cache = {
+        None: True,
+        "initial": True,
+    }.get(stochastic_plan, False)
 
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
@@ -188,20 +199,24 @@ async def container() -> AsyncIterator[Container]:
         ] = await create_schematic_generator(
             await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
             schematic_generation_result_collection,
+            use_cache,
         )
         container[SchematicGenerator[MessageEventSchema]] = await create_schematic_generator(
             await container[NLPService].get_schematic_generator(MessageEventSchema),
             schematic_generation_result_collection,
+            use_cache,
         )
         container[SchematicGenerator[ToolCallInferenceSchema]] = await create_schematic_generator(
             await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
             schematic_generation_result_collection,
+            use_cache,
         )
         container[
             SchematicGenerator[ConditionsEntailmentTestsSchema]
         ] = await create_schematic_generator(
             await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
             schematic_generation_result_collection,
+            use_cache,
         )
 
         container[
@@ -209,6 +224,7 @@ async def container() -> AsyncIterator[Container]:
         ] = await create_schematic_generator(
             await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
             schematic_generation_result_collection,
+            use_cache,
         )
         container[
             SchematicGenerator[GuidelineConnectionPropositionsSchema]
@@ -217,6 +233,7 @@ async def container() -> AsyncIterator[Container]:
                 GuidelineConnectionPropositionsSchema
             ),
             schematic_generation_result_collection,
+            use_cache,
         )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
