@@ -534,11 +534,6 @@ def main() -> None:
         help="Log level",
     )
     @click.option(
-        "--version",
-        is_flag=True,
-        help="Print server version and exit",
-    )
-    @click.option(
         "--modules",
         multiple=True,
         default=[],
@@ -547,6 +542,11 @@ def main() -> None:
             "If no modules are specified, the server will attempt to load them from "
             "a 'parlant_config.toml' file in the current directory."
         ),
+    )
+    @click.option(
+        "--version",
+        is_flag=True,
+        help="Print server version and exit",
     )
     @click.pass_context
     def cli(
@@ -560,8 +560,8 @@ def main() -> None:
         cerebras: bool,
         together: bool,
         log_level: str,
-        version: bool,
         modules: list[str],
+        version: bool,
     ) -> None:
         if version:
             print(f"Parlant v{VERSION}")
