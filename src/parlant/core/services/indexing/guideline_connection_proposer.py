@@ -141,7 +141,7 @@ Additionally, you may assume the following: If <Y> occurs due to Guideline 1, th
 
 
 Important clarifications: 
-1. Actions do not Apply to tge Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
+1. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 2. Temporal Constraints: If the target guideline’s "when" condition was true in the past or will only become true in the future due to other factors, this is not considered causation. Causation is invalid if the source’s "then" statement can be applied while the target’s "when" condition remains false.
 3. Assume that the condition of the source guideline is true. Meaning, examine whether the fulfillment of both the 'when' and 'then' statements of the source guideline cause the target's 'when' to be true. 
 4. If one guideline being fulfilled merely suggests or implies that the other guideline's 'when' becomes true - it's not considered causation. This is never a valid rationale for a suggested connection.
