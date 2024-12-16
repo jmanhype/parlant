@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from itertools import chain
 import json
 import traceback
@@ -21,7 +22,6 @@ from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
-from parlant.core.engines.alpha.event_generation import EventGenerationsResult
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
@@ -31,6 +31,12 @@ from parlant.core.sessions import Event
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.tools import ToolId
+
+
+@dataclass(frozen=True)
+class MessageEventGenerationResult:
+    generation_info: GenerationInfo
+    events: Sequence[Optional[EmittedEvent]]
 
 
 class Revision(DefaultBaseModel):
@@ -90,7 +96,7 @@ class MessageEventGenerator:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EventGenerationsResult]:
+    ) -> Sequence[MessageEventGenerationResult]:
         assert len(agents) == 1
 
         with self._logger.operation("Message production"):
@@ -162,10 +168,10 @@ class MessageEventGenerator:
                             data=response_message,
                         )
 
-                        return [EventGenerationsResult([generation_info], [event])]
+                        return [MessageEventGenerationResult(generation_info, [event])]
                     else:
                         self._logger.debug("Skipping response; no response deemed necessary")
-                        return [EventGenerationsResult([generation_info], [])]
+                        return [MessageEventGenerationResult(generation_info, [])]
                 except Exception as exc:
                     self._logger.warning(
                         f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"

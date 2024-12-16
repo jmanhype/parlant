@@ -356,7 +356,7 @@ class AlphaEngine(Engine):
             ):
                 message_generation_inspections.append(
                     MessageGenerationInspection(
-                        generation=event_generation_result.generations[0],
+                        generation=event_generation_result.generation_info,
                         messages=[
                             e.data["message"]
                             if e and e.kind == "message" and isinstance(e.data, dict)

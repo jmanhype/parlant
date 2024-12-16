@@ -40,6 +40,12 @@ ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)
 
 
+@dataclass(frozen=True)
+class ToolEventGenerationsResult:
+    generations: Sequence[GenerationInfo]
+    events: Sequence[Optional[EmittedEvent]]
+
+
 class ToolCallEvaluation(DefaultBaseModel):
     applicability_rationale: str
     applicability_score: int
