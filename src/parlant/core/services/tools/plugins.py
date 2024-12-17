@@ -309,7 +309,7 @@ class PluginServer:
             app,
             host=self.host,
             port=self.port,
-            log_level="info",
+            log_level="critical",
         )
 
         self._server = uvicorn.Server(config)

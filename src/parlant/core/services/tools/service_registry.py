@@ -45,6 +45,7 @@ class ServiceRegistry(ABC):
         kind: ToolServiceKind,
         url: str,
         source: Optional[str] = None,
+        transient: bool = False,
     ) -> ToolService: ...
 
     @abstractmethod
@@ -216,10 +217,11 @@ class ServiceDocumentRegistry(ServiceRegistry):
         kind: ToolServiceKind,
         url: str,
         source: Optional[str] = None,
+        transient: bool = False,
     ) -> ToolService:
         service: ToolService
 
-        if kind == "local":
+        if kind in "local":
             self._running_services[name] = LocalToolService()
             return self._running_services[name]
         elif kind == "openapi":
@@ -245,11 +247,12 @@ class ServiceDocumentRegistry(ServiceRegistry):
 
         self._running_services[name] = service
 
-        await self._tool_services_collection.update_one(
-            filters={"name": {"$eq": name}},
-            params=self._serialize_tool_service(name, service),
-            upsert=True,
-        )
+        if not transient:
+            await self._tool_services_collection.update_one(
+                filters={"name": {"$eq": name}},
+                params=self._serialize_tool_service(name, service),
+                upsert=True,
+            )
 
         return service
 
