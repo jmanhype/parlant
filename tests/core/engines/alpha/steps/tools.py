@@ -338,6 +338,20 @@ def given_a_tool(
             "parameters": {},
             "required": [],
         },
+        "consult_policy": {
+            "name": "consult_policy",
+            "description": "",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
+        "other_inquiries": {
+            "name": "other_inquiries",
+            "description": "This tool needs to be run when looking for answers that are not covered by other resources",
+            "module_path": "tests.tool_utilities",
+            "parameters": {},
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))
