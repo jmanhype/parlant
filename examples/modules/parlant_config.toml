@@ -1,2 +1,0 @@
-[parlant]
-modules=["parlant.examples.modules.parlant_tech_store", "parlant.examples.modules.parlant_bank"]

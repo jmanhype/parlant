@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import importlib
 import os
 from lagom import Container, Singleton
-from typing import AsyncIterator, Callable
+from typing import AsyncIterator, Callable, Iterable
 import toml
 from typing_extensions import NoReturn
 import click
@@ -185,46 +185,43 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
         await agent_store.create_agent(name=DEFAULT_AGENT_NAME)
 
 
+async def get_module_list_from_config() -> list[str]:
+    config_file = Path("parlant.toml")
+
+    if config_file.exists():
+        config = toml.load(config_file)
+        # Expecting structure of:
+        # [parlant]
+        # modules = ["module_1", "module_2"]
+        return list(config.get("parlant", {}).get("modules", []))
+
+    return []
+
+
 @asynccontextmanager
 async def load_modules(
     container: Container,
-    modules: list[str],
+    modules: Iterable[str],
 ) -> AsyncIterator[None]:
-    if not modules:
-        config_file = "parlant_config.toml"
-        if os.path.isfile(config_file):
-            config = toml.load(config_file)
-            # Expecting structure of:
-            # [parlant]
-            # modules = ["module_1", "module_2"]
-            modules = config.get("parlant", {}).get("modules", [])
-        else:
-            modules = []
-
-    if not modules:
-        container[Logger].info("no modules loaded")
-        yield
-        return
-
     imported_modules = []
 
     for module_path in modules:
         module = importlib.import_module(module_path)
         if not hasattr(module, "initialize_module") or not hasattr(module, "shutdown_module"):
             raise StartupError(
-                f"Module {module.__name__} must define initialize_module and shutdown_module"
+                f"Module '{module.__name__}' must define initialize_module(container: lagom.Container) and shutdown_module()"
             )
         imported_modules.append(module)
 
     for m in imported_modules:
-        container[Logger].info(f"initialize module {m.__name__}")
+        LOGGER.info(f"Initializing module '{m.__name__}'")
         await m.initialize_module(container)
 
     try:
         yield
     finally:
         for m in reversed(imported_modules):
-            container[Logger].info(f"shutdown module {m.__name__}")
+            LOGGER.info(f"Shutting down module '{m.__name__}'")
             await m.shutdown_module()
 
 
@@ -411,12 +408,17 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
     EXIT_STACK = AsyncExitStack()
 
     async with setup_container(params.nlp_service) as container, EXIT_STACK:
+        modules = set(await get_module_list_from_config() + params.modules)
+
+        if modules:
+            await EXIT_STACK.enter_async_context(load_modules(container, modules))
+        else:
+            LOGGER.info("No extra modules selected")
+
         await recover_server_tasks(
             evaluation_store=container[EvaluationStore],
             evaluator=container[BehavioralChangeEvaluator],
         )
-
-        await EXIT_STACK.enter_async_context(load_modules(container, params.modules))
 
         await create_agent_if_absent(container[AgentStore])
 
@@ -437,6 +439,11 @@ async def serve_app(
     server = uvicorn.Server(config)
 
     try:
+        LOGGER.info(".---------------------------------------------------------.")
+        LOGGER.info("| Server is ready for some serious action... bring it on! |")
+        LOGGER.info("'---------------------------------------------------------'")
+        LOGGER.info(f"Try the Sandbox UI at http://localhost:{port}/chat")
+        LOGGER.warning("Prepare to be amazed...")
         await server.serve()
         await asyncio.sleep(0)  # Required to trigger the possible cancellation error
     except (KeyboardInterrupt, asyncio.CancelledError):
@@ -534,13 +541,14 @@ def main() -> None:
         help="Log level",
     )
     @click.option(
-        "--modules",
+        "--module",
         multiple=True,
         default=[],
+        metavar="MODULE",
         help=(
-            "Specify one or more modules to load. "
-            "If no modules are specified, the server will attempt to load them from "
-            "a 'parlant_config.toml' file in the current directory."
+            "Specify a module to load. To load multiple modules, pass this argument multiple times. "
+            "If parlant.toml exists in the working directory, any additional modules specified "
+            "in it will also be loaded."
         ),
     )
     @click.option(
@@ -560,7 +568,7 @@ def main() -> None:
         cerebras: bool,
         together: bool,
         log_level: str,
-        modules: list[str],
+        module: tuple[str],
         version: bool,
     ) -> None:
         if version:
@@ -601,7 +609,7 @@ def main() -> None:
             port=port,
             nlp_service=nlp_service,
             log_level=log_level,
-            modules=modules,
+            modules=list(module),
         )
 
         asyncio.run(start_server(ctx.obj))
