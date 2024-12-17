@@ -1135,11 +1135,11 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        condition="Asked for our pizza topping selection",
-        action="list the possible toppings and recommend olives",
+        condition="A US based customer attempts to purchase a ladder",
+        action="Ask how tall the ladder should be",
     )
     target_guideline_content = _create_guideline_content(
-        condition="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
+        condition="discussing sizes with an American customer", action="Use imperial units"
     )
     connection_propositions = list(
         context.sync_await(
@@ -1162,11 +1162,12 @@ def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
     connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = _create_guideline_content(
-        condition="Asked for our pizza topping selection",
-        action="list the possible toppings and recommend olives",
+        condition="Planning trips to Brazil",
+        action="Check if there are any festivals happening on the relevant days, and suggest them to the customer if they coincide with their plans",
     )
     target_guideline_content = _create_guideline_content(
-        condition="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
+        condition="Suggesting activites in a non-English speaking country",
+        action="Ask the customer if they speak the local language",
     )
     connection_propositions = list(
         context.sync_await(
@@ -1179,4 +1180,4 @@ def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS

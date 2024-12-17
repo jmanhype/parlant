@@ -97,7 +97,7 @@ class PromptBuilder:
             self.add_section(
                 name=BuiltInSection.AGENT_IDENTITY,
                 content=f"""
-You are {agent.name}, an AI agent.
+You are an AI agent named {agent.name}.
 
 The following is a description of your background and personality: ###
 {agent.description}

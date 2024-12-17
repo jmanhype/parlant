@@ -37,8 +37,8 @@ class GuidelineConnectionPropositionSchema(DefaultBaseModel):
     source_then: str
     target_when: str
     target_when_is_customer_action: bool
-    is_target_when_caused_by_source_then: bool
     rationale: str
+    is_target_when_caused_by_source_then: bool
     is_source_then_suggestive_or_optional: bool = False
     target_then: str = ""
     is_target_then_suggestive_or_optional: bool = False
@@ -119,20 +119,27 @@ class GuidelineConnectionProposer:
         comparison_set: dict[int, GuidelineContent],
     ) -> str:
         builder = PromptBuilder()
+        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 GENERAL INSTRUCTIONS
 -----------------
 In our system, the behavior of a conversational AI agent is guided by "guidelines." 
-These guidelines are used by the agent whenever it interacts with a customer.
+These guidelines are used by the agent whenever it responds to a customer in a chat.
 
 Each guideline is composed of two parts:
 - "when": A natural-language condition specifying when the guideline applies. After every message that the user (also referred to as the customer) sends, this condition is tested to determine if the guideline should influence the agent's next reply.
 - "then": A natural-language instruction that the agent must follow whenever the "when" condition applies to the current state of the conversation. These instructions are directed solely at the agent and do not apply to the customer.
 
-Your task is to identify cases where the activation of one guideline’s "then" statement directly causes the "when" condition of another guideline to apply. This type of relation between two guidelines is called a "causal connection".
+After each message by the customer, a separate component examines which guidelines need to be activated, meaning that they'd effect the agent's response, based on whether their 'when' condition is fulfilled.
+Your task is to identify causal connections between guidelines. A causal connection exists when the activation of one guideline directly triggers the conditions of another.
 
-To explain this idea, consider the following scenario:
+Your role in our system is to determine which guidelines should automatically cause another guideline to activate.
+Meaning, to identify cases where the activation of one guideline’s "then" statement directly causes the "when" condition of another guideline to apply.
+
+HOW TO IDENTIFY A CAUSAL CONNECTION
+-----------------
+Consider two guidelines:
 Guideline 1: When <X>, then <Y>.
 Guideline 2: When <W>, then <Z>.
 We say that guideline 1 forms a "causal connection" (or simply causes) guideline 2 iff applying the "then" of Guideline 1 (<Y>) directly causes the "when" of Guideline 2 (<W>) to hold true. 
@@ -144,20 +151,25 @@ Important clarifications:
 1. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 2. Temporal Constraints: If the target guideline’s "when" condition was true in the past or will only become true in the future due to other factors, this is not considered causation. Causation is invalid if the source’s "then" statement can be applied while the target’s "when" condition remains false.
 3. Assume that the condition of the source guideline is true. Meaning, examine whether the fulfillment of both the 'when' and 'then' statements of the source guideline cause the target's 'when' to be true. 
-4. If one guideline being fulfilled merely suggests or implies that the other guideline's 'when' becomes true - it's not considered causation. This is never a valid rationale for a suggested connection.
+4. Implication is not sufficient: If one guideline being fulfilled merely suggests or implies that the other guideline's 'when' becomes true - it's not considered causation. This is never a valid rationale for a suggested connection.
 
 CAUSAL CONNECTION TYPES
 -----------------
-When a causal connection is identified, we wish to know whether it involves actions that the agent must undertake, or if its prescriptions are merely suggestive or optional, resulting in a "suggestive causal connection".
-A causal connection is considered suggestive if either of the following conditions is met:
-- The source guideline's "then" statement is suggestive or optional.
-- The target guideline's "then" statement is suggestive or optional.
+When a causal connection is identified, we want to determine whether it involves actions the agent must undertake or if the actions are merely suggestive or optional—resulting in a "suggestive causal connection".
 
+A causal connection is considered suggestive if either of the following conditions is true:
 
-For example, a connection is suggestive if it's of the form {{source="When <X> then <Y>", target="When <W> then consider <Z>"}} (where <W> is caused by <Y>), or similarly if {{source="When <X> then only do <Y> under certain conditions", target="When <W> then <Z>"}}.
-If both guidelines' "then" statements prescribe mandatory actions that the agent must take, then the connection is not considered suggestive. Conversely, if either "then" statement is optional or suggestive, the connection is considered suggestive.
-'Then' statements which prescribe actions which the agent must attempt to take, even if they might fail, are NOT considered suggestive, as they describe an action that's mandatory.
+    - The "then" statement in the source guideline is suggestive or optional.
+    - The "then" statement in the target guideline is suggestive or optional.
 
+To identify such suggestive causal connections, you must evaluate whether each 'then' statement is suggestive or optional and return the following fields:
+
+    - is_source_then_suggestive_or_optional
+    - is_target_then_suggestive_or_optional
+
+A 'then' statement is considered suggestive or optional if it meets either of these criteria:
+    - t proposes a non-mandatory action for the agent, such as "consider recommending this book."
+    - It describes an action contingent on certain conditions, such as "check if the item is in stock and add it to the order if it is."
 
 Task Description
 -----------------
@@ -542,10 +554,10 @@ Expected Output:
     ]
 }}
 '''
+
 """  # noqa
         )
 
-        builder.add_agent_identity(agent)
         # Find and add glossary to prompt
         causation_candidates = "\n\t".join(
             f"{{id: {id}, when: {g.condition}, then: {g.action}}}"
