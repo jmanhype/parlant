@@ -92,7 +92,7 @@ Need help? Send us a message on [Discord](https://discord.gg/duxWqxKk6J). We're 
 Adding a guideline for an agent—for example, to ask a counter-question to get more info when a customer asks a question:
 ```bash
 parlant guideline create \
-    --agent-id CUSTOMER_SUCCESS_AGENT_ID
+    --agent-id CUSTOMER_SUCCESS_AGENT_ID \
     --condition "a free-tier customer is asking how to use our product" \
     --action "first seek to understsand what they're trying to achieve"
 ```
