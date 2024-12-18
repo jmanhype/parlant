@@ -413,7 +413,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
         if modules:
             await EXIT_STACK.enter_async_context(load_modules(container, modules))
         else:
-            LOGGER.info("No extra modules selected")
+            LOGGER.info("No external modules selected")
 
         await recover_server_tasks(
             evaluation_store=container[EvaluationStore],
@@ -439,11 +439,10 @@ async def serve_app(
     server = uvicorn.Server(config)
 
     try:
-        LOGGER.info(".---------------------------------------------------------.")
-        LOGGER.info("| Server is ready for some serious action... bring it on! |")
-        LOGGER.info("'---------------------------------------------------------'")
-        LOGGER.info(f"Try the Sandbox UI at http://localhost:{port}/chat")
-        LOGGER.warning("Prepare to be amazed...")
+        LOGGER.info(".-----------------------------------------.")
+        LOGGER.info("| Server is ready for some serious action |")
+        LOGGER.info("'-----------------------------------------'")
+        LOGGER.info(f"Try the Sandbox UI at http://localhost:{port}")
         await server.serve()
         await asyncio.sleep(0)  # Required to trigger the possible cancellation error
     except (KeyboardInterrupt, asyncio.CancelledError):
