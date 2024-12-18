@@ -173,7 +173,6 @@ class Application:
             await self._guideline_connection_store.create_connection(
                 source=source_guideline_id,
                 target=target_guideline_id,
-                kind=proposition.connection_kind,
             )
 
         content_guidelines: dict[str, GuidelineId] = {

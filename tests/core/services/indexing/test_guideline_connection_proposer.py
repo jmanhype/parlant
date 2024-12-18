@@ -21,7 +21,6 @@ from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.glossary import GlossaryStore
-from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
@@ -81,7 +80,6 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_1(
@@ -151,7 +149,6 @@ def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
 def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_1(
@@ -342,7 +339,6 @@ def test_that_a_connection_is_proposed_based_on_given_glossary(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
@@ -389,7 +385,6 @@ def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_one_guideline_can_entail_multiple_guidelines(
@@ -424,10 +419,8 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
     assert len(connection_propositions) == 2
     assert connection_propositions[0].source == introduced_guidelines[0]
     assert connection_propositions[0].target == introduced_guidelines[1]
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
     assert connection_propositions[1].source == introduced_guidelines[0]
     assert connection_propositions[1].target == introduced_guidelines[2]
-    assert connection_propositions[1].kind == ConnectionKind.ENTAILS
 
 
 def base_test_that_entailing_whens_are_not_connected(
@@ -597,10 +590,8 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
     assert len(connection_propositions) == 2
     assert connection_propositions[0].source == introduced_guidelines[0]
     assert connection_propositions[0].target == introduced_guidelines[1]
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
     assert connection_propositions[1].source == introduced_guidelines[1]
     assert connection_propositions[1].target == introduced_guidelines[2]
-    assert connection_propositions[1].kind == ConnectionKind.ENTAILS
 
 
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one(
@@ -636,10 +627,8 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
     assert len(connection_propositions) == 2
     assert connection_propositions[0].source == introduced_guidelines[0]
     assert connection_propositions[0].target == introduced_guidelines[1]
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
     assert connection_propositions[1].source == introduced_guidelines[1]
     assert connection_propositions[1].target == introduced_guidelines[2]
-    assert connection_propositions[1].kind == ConnectionKind.ENTAILS
 
 
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggests_the_next_one(
@@ -675,10 +664,8 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggest
     assert len(connection_propositions) == 2
     assert connection_propositions[0].source == introduced_guidelines[0]
     assert connection_propositions[0].target == introduced_guidelines[1]
-    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
     assert connection_propositions[1].source == introduced_guidelines[1]
     assert connection_propositions[1].target == introduced_guidelines[2]
-    assert connection_propositions[1].kind == ConnectionKind.SUGGESTS
 
 
 def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_action_entails_the_following_condition(
@@ -748,7 +735,6 @@ def base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_co
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS
 
 
 def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive_parametrized_1(
@@ -932,7 +918,6 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing conditions and entailing actions aren't connected
@@ -962,7 +947,6 @@ def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that e
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_agent_based_connection_is_detected(
@@ -999,7 +983,6 @@ def test_that_agent_based_connection_is_detected(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(  # This test fails occasionally
@@ -1125,7 +1108,6 @@ def test_that_strictly_entailed_predicate_describing_an_agent_action_is_detected
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_strict_entailment_due_to_the_sources_condition_is_detected_1(
@@ -1152,7 +1134,6 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected_1(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
@@ -1180,7 +1161,6 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
 def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
@@ -1208,4 +1188,3 @@ def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
-    assert connection_propositions[0].kind == ConnectionKind.SUGGESTS

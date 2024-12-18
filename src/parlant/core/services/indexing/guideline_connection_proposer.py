@@ -21,7 +21,6 @@ from more_itertools import chunked
 from parlant.core import async_utils
 from parlant.core.agents import Agent
 from parlant.core.common import DefaultBaseModel
-from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.logging import Logger
 from parlant.core.nlp.generation import SchematicGenerator
@@ -53,7 +52,6 @@ class GuidelineConnectionPropositionsSchema(DefaultBaseModel):
 class GuidelineConnectionProposition:
     source: GuidelineContent
     target: GuidelineContent
-    kind: ConnectionKind
     score: int
     rationale: str
 
@@ -152,32 +150,6 @@ Important clarifications:
 2. Temporal Constraints: If the target guideline’s "when" condition was true in the past or will only become true in the future due to other factors, this is not considered causation. Causation is invalid if the source’s "then" statement can be applied while the target’s "when" condition remains false.
 3. Assume that the condition of the source guideline is true. Meaning, examine whether the fulfillment of both the 'when' and 'then' statements of the source guideline cause the target's 'when' to be true. 
 4. Implication is not sufficient: If one guideline being fulfilled merely suggests or implies that the other guideline's 'when' becomes true - it's not considered causation. This is never a valid rationale for a suggested connection.
-
-CAUSAL CONNECTION TYPES
------------------
-When a causal connection is identified, we want to determine whether it involves actions the agent must undertake or if the actions are merely suggestive or optional—resulting in a "suggestive causal connection".
-
-A causal connection is considered suggestive if either of the following conditions is true:
-
-    - The "then" statement in the source guideline is suggestive or optional.
-    - The "then" statement in the target guideline is suggestive or optional.
-
-To identify such suggestive causal connections, you must evaluate whether each 'then' statement is suggestive or optional and return the following fields:
-
-    - is_source_then_suggestive_or_optional
-    - is_target_then_suggestive_or_optional
-
-A 'then' statement is considered suggestive or optional if it meets either of these criteria:
-    - t proposes a non-mandatory action for the agent, such as "consider recommending this book."
-    - It describes an action contingent on certain conditions, such as "check if the item is in stock and add it to the order if it is."
-
-Task Description
------------------
-Your task is to:
-    1. Evaluate pairs of guidelines and detect which pairs fulfill such causal connections, by assessing whether the source’s "then" action directly and immediately causes the target’s "when" condition.
-    2. Determine whether the causal connections are suggestive, based on the nature of the "then" statements. 
-
-
 
 EXAMPLES
 -----------------
@@ -680,13 +652,6 @@ Connection Propositions Found:
             GuidelineConnectionProposition(
                 source=guidelines_dict[p.source_id],
                 target=guidelines_dict[p.target_id],
-                kind={
-                    False: ConnectionKind.ENTAILS,
-                    True: ConnectionKind.SUGGESTS,
-                }[
-                    p.is_source_then_suggestive_or_optional
-                    or p.is_target_then_suggestive_or_optional
-                ],
                 score=int(p.causation_score),
                 rationale=p.rationale,
             )

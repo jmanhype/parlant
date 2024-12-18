@@ -19,7 +19,7 @@ from pytest import raises
 
 from parlant.core.agents import AgentId
 from parlant.core.common import ItemNotFoundError
-from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationStore
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore
 from parlant.core.services.tools.service_registry import ServiceRegistry
@@ -44,7 +44,7 @@ async def create_and_connect(
 
     for source, target in zip(guidelines, guidelines[1:]):
         await container[GuidelineConnectionStore].create_connection(
-            source=source.id, target=target.id, kind=ConnectionKind.ENTAILS
+            source=source.id, target=target.id
         )
 
     return guidelines
@@ -188,7 +188,6 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                                 "condition": "highlight the best-reviewed restaurant",
                                 "action": "recommend the top choice",
                             },
-                            "connection_kind": "entails",
                         }
                     ],
                 }
@@ -224,7 +223,6 @@ async def test_that_a_connection_between_two_introduced_guidelines_is_created(
                                 "condition": "highlight the best-reviewed restaurant",
                                 "action": "recommend the top choice",
                             },
-                            "connection_kind": "entails",
                         }
                     ],
                 }
@@ -306,7 +304,6 @@ async def test_that_a_connection_to_an_existing_guideline_is_created(
                             "condition": "provide the current weather update",
                             "action": "include temperature and humidity",
                         },
-                        "connection_kind": "entails",
                     }
                 ],
             }
@@ -409,7 +406,6 @@ async def test_that_a_connection_can_be_added_to_a_guideline(
                             {
                                 "source": guidelines[0].id,
                                 "target": guidelines[1].id,
-                                "kind": "entails",
                             }
                         ],
                     },
@@ -430,12 +426,10 @@ async def test_that_a_connection_can_be_added_to_a_guideline(
     assert len(stored_connections) == 1
     assert stored_connections[0].source == guidelines[0].id
     assert stored_connections[0].target == guidelines[1].id
-    assert stored_connections[0].kind == ConnectionKind.ENTAILS
 
     assert len(response_connections) == 1
     assert response_connections[0]["source"]["id"] == guidelines[0].id
     assert response_connections[0]["target"]["id"] == guidelines[1].id
-    assert response_connections[0]["kind"] == "entails"
 
 
 async def test_that_a_direct_target_connection_can_be_removed_from_a_guideline(
@@ -559,7 +553,7 @@ async def test_that_reading_a_guideline_lists_both_direct_and_indirect_connectio
 
     for source, target in zip(guidelines, guidelines[1:]):
         await container[GuidelineConnectionStore].create_connection(
-            source=source.id, target=target.id, kind=ConnectionKind.ENTAILS
+            source=source.id, target=target.id
         )
 
     third_item = (
@@ -925,7 +919,6 @@ async def test_that_an_existing_guideline_can_be_updated(
     await connection_store.create_connection(
         source=existing_guideline.id,
         target=connected_guideline.id,
-        kind=ConnectionKind.ENTAILS,
     )
 
     new_action = "reply with 'Howdy!'"
@@ -962,7 +955,6 @@ async def test_that_an_existing_guideline_can_be_updated(
                                     "condition": connected_guideline_post_update.content.condition,
                                     "action": connected_guideline_post_update.content.action,
                                 },
-                                "connection_kind": "entails",
                             }
                         ],
                     },
@@ -990,7 +982,6 @@ async def test_that_an_existing_guideline_can_be_updated(
     assert len(updated_connections) == 1
     assert updated_connections[0].source == existing_guideline.id
     assert updated_connections[0].target == connected_guideline_post_update.id
-    assert updated_connections[0].kind == ConnectionKind.ENTAILS
 
 
 async def test_that_an_updated_guideline_can_entail_an_added_guideline(
@@ -1041,7 +1032,6 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                                     "condition": "replying to greeting message",
                                     "action": "ask how they are",
                                 },
-                                "connection_kind": "entails",
                             }
                         ],
                     }
@@ -1077,7 +1067,6 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
                                     "condition": "replying to greeting message",
                                     "action": "ask how they are",
                                 },
-                                "connection_kind": "entails",
                             }
                         ],
                     }
@@ -1112,7 +1101,6 @@ async def test_that_an_updated_guideline_can_entail_an_added_guideline(
     assert len(updated_connections) == 1
     assert updated_connections[0].source == updated_guideline.id
     assert updated_connections[0].target == added_guideline.id
-    assert updated_connections[0].kind == ConnectionKind.ENTAILS
 
 
 async def test_that_guideline_update_retains_existing_connections_with_disabled_connection_proposition(
@@ -1137,7 +1125,6 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
     await connection_store.create_connection(
         source=existing_guideline.id,
         target=connected_guideline.id,
-        kind=ConnectionKind.ENTAILS,
     )
 
     new_action = "reply with 'Howdy!'"
@@ -1189,4 +1176,3 @@ async def test_that_guideline_update_retains_existing_connections_with_disabled_
     assert len(updated_connections) == 1
     assert updated_connections[0].source == existing_guideline.id
     assert updated_connections[0].target == connected_guideline.id
-    assert updated_connections[0].kind == ConnectionKind.ENTAILS

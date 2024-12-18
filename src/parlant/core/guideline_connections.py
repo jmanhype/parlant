@@ -15,7 +15,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum, auto
 from typing import NewType, Optional, Sequence
 from typing_extensions import override, TypedDict, Self
 
@@ -30,18 +29,12 @@ from parlant.core.persistence.document_database import DocumentDatabase, Documen
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 
 
-class ConnectionKind(Enum):
-    ENTAILS = auto()
-    SUGGESTS = auto()
-
-
 @dataclass(frozen=True)
 class GuidelineConnection:
     id: GuidelineConnectionId
     creation_utc: datetime
     source: GuidelineId
     target: GuidelineId
-    kind: ConnectionKind
 
 
 class GuidelineConnectionStore(ABC):
@@ -50,7 +43,6 @@ class GuidelineConnectionStore(ABC):
         self,
         source: GuidelineId,
         target: GuidelineId,
-        kind: ConnectionKind,
     ) -> GuidelineConnection: ...
 
     @abstractmethod
@@ -74,7 +66,6 @@ class _GuidelineConnectionDocument(TypedDict, total=False):
     creation_utc: str
     source: GuidelineId
     target: GuidelineId
-    kind: str
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
@@ -112,7 +103,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             creation_utc=guideline_connection.creation_utc.isoformat(),
             source=guideline_connection.source,
             target=guideline_connection.target,
-            kind=guideline_connection.kind.name,
         )
 
     def _deserialize(
@@ -124,7 +114,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             creation_utc=datetime.fromisoformat(guideline_connection_document["creation_utc"]),
             source=guideline_connection_document["source"],
             target=guideline_connection_document["target"],
-            kind=ConnectionKind[guideline_connection_document["kind"]],
         )
 
     async def _get_graph(self) -> networkx.DiGraph:
@@ -144,7 +133,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                         c.source,
                         c.target,
                         {
-                            "kind": c.kind,
                             "id": c.id,
                         },
                     )
@@ -161,7 +149,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self,
         source: GuidelineId,
         target: GuidelineId,
-        kind: ConnectionKind,
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineConnection:
         async with self._lock.writer_lock:
@@ -172,7 +159,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 creation_utc=creation_utc,
                 source=source,
                 target=target,
-                kind=kind,
             )
 
             result = await self._collection.update_one(
@@ -181,19 +167,18 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                 upsert=True,
             )
 
-        assert result.updated_document
+            assert result.updated_document
 
-        graph = await self._get_graph()
+            graph = await self._get_graph()
 
-        graph.add_node(source)
-        graph.add_node(target)
+            graph.add_node(source)
+            graph.add_node(target)
 
-        graph.add_edge(
-            source,
-            target,
-            kind=kind,
-            id=guideline_connection.id,
-        )
+            graph.add_edge(
+                source,
+                target,
+                id=guideline_connection.id,
+            )
 
         return guideline_connection
 

@@ -32,7 +32,6 @@ from parlant.api.common import (
     PayloadDTO,
     PayloadKindDTO,
     apigen_config,
-    connection_kind_to_dto,
     ExampleJson,
 )
 from parlant.core.async_utils import Timeout
@@ -151,7 +150,6 @@ def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> Invoic
                             condition=c.target.condition,
                             action=c.target.action,
                         ),
-                        connection_kind=connection_kind_to_dto(c.connection_kind),
                     )
                     for c in invoice_data.connection_propositions
                 ]
@@ -236,7 +234,6 @@ invoice_example: ExampleJson = {
                         "condition": "if customer inquires about cost",
                         "action": "share the latest pricing details",
                     },
-                    "connection_kind": "suggests",
                 }
             ],
         }

@@ -16,7 +16,7 @@ from pytest_bdd import given, parsers
 
 from parlant.core.agents import AgentId
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
@@ -419,9 +419,5 @@ def given_a_guideline_connection(
         store.create_connection(
             source=context.guidelines[guideline_a].id,
             target=context.guidelines[guideline_b].id,
-            kind={
-                "entails": ConnectionKind.ENTAILS,
-                "suggests": ConnectionKind.SUGGESTS,
-            }[connection_kind],
         )
     )

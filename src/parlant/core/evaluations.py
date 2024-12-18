@@ -37,7 +37,6 @@ from parlant.core.common import (
     Version,
     generate_id,
 )
-from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineContent, GuidelineId
 from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
@@ -98,7 +97,6 @@ class ConnectionProposition:
     check_kind: ConnectionPropositionKind
     source: GuidelineContent
     target: GuidelineContent
-    connection_kind: ConnectionKind
 
 
 @dataclass(frozen=True)
@@ -197,7 +195,6 @@ class _ConnectionPropositionDocument(TypedDict):
     check_kind: ConnectionPropositionKind
     source: _GuidelineContentDocument
     target: _GuidelineContentDocument
-    connection_kind: str
 
 
 class _InvoiceGuidelineDataDocument(TypedDict):
@@ -282,7 +279,6 @@ class EvaluationDocumentStore(EvaluationStore):
                     condition=cp.target.condition,
                     action=cp.target.action,
                 ),
-                connection_kind=cp.connection_kind.name,
             )
 
         def serialize_invoice_guideline_data(
@@ -359,13 +355,10 @@ class EvaluationDocumentStore(EvaluationStore):
         def deserialize_connection_proposition_document(
             cp_doc: _ConnectionPropositionDocument,
         ) -> ConnectionProposition:
-            connection_kind = ConnectionKind[cp_doc["connection_kind"]]
-
             return ConnectionProposition(
                 check_kind=cp_doc["check_kind"],
                 source=deserialize_guideline_content_document(cp_doc["source"]),
                 target=deserialize_guideline_content_document(cp_doc["target"]),
-                connection_kind=connection_kind,
             )
 
         def deserialize_invoice_guideline_data(
