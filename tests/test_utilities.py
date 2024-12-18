@@ -482,7 +482,7 @@ async def create_schematic_generation_result_collection(
     _db = await stack.enter_async_context(
         JSONFileDocumentDatabase(
             logger,
-            PARLANT_HOME_DIR / GLOBAL_CACHE_FILE,
+            Path("runtime-data") / GLOBAL_CACHE_FILE,
         )
     )
 
