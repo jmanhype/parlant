@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 from itertools import chain
@@ -21,6 +20,7 @@ import time
 import traceback
 from typing import Any, Mapping, NewType, Optional, Sequence
 
+from parlant.core import async_utils
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
@@ -154,7 +154,9 @@ class ToolCaller:
                 for key, props in batches.items()
             ]
 
-            batch_generations, tool_call_batches = zip(*(await asyncio.gather(*batch_tasks)))
+            batch_generations, tool_call_batches = zip(
+                *(await async_utils.safe_gather(*batch_tasks))
+            )
 
         t_end = time.time()
 
@@ -208,7 +210,7 @@ class ToolCaller:
         tool_calls: Sequence[ToolCall],
     ) -> Sequence[ToolCallResult]:
         with self._logger.operation("Tool calls"):
-            tool_results = await asyncio.gather(
+            tool_results = await async_utils.safe_gather(
                 *(
                     self._run_tool(
                         context=context,
