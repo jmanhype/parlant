@@ -446,7 +446,7 @@ Example #2:
         "guideline_previously_applied": "fully",
         "guideline_should_reapply": true,
         "applies_score": 9
-    }},
+    }}
     ]
 }}
 ```
@@ -503,7 +503,7 @@ Example #3:
         "guideline_previously_applied": "partially",
         "guideline_should_reapply": false,
         "applies_score": 4
-    }},
+    }}
     ]
 }}
 ```
