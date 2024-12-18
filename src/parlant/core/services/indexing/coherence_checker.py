@@ -309,21 +309,21 @@ Expected Output:
             "compared_guideline_when": "a customer orders a TV",
             "origin_entails_compared_rationale": "A customer ordering an electrical appliance doesn't necessarily mean they are ordering a TV specifically",
             "origin_when_entails_compared_when": false,
-            "origin_entails_compared_severity": 3
-            "compared_entails_origin_rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance",,
+            "origin_entails_compared_severity": 3,
+            "compared_entails_origin_rationale": "since TVs are electronic appliances, ordering a TV entails ordering an electrical appliance",
             "compared_when_entails_origin_when": true,
-            "compared_entails_origin_severity": 9,
+            "compared_entails_origin_severity": 9
         }},
         {{
             "compared_guideline_id": 2,
             "origin_guideline_when": "a customer orders an electrical appliance",
             "compared_guideline_when": "a customer orders any item",
-            "origin_entails_compared_rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item",,
+            "origin_entails_compared_rationale": "electrical appliances are items, so ordering an electrical appliance entails ordering an item",
             "origin_when_entails_compared_when": true,
             "origin_entails_compared_severity": 10,
             "compared_entails_origin_rationale": "ordering an electrical appliance doesn't entail ordering any item, since the customer might be ordering a non-electronic item",
             "compared_when_entails_origin_when": false,
-            "compared_entails_origin_severity": 2,
+            "compared_entails_origin_severity": 2
         }},
         {{
             "compared_guideline_id": 3,
@@ -334,7 +334,7 @@ Expected Output:
             "origin_entails_compared_severity": 1,
             "compared_entails_origin_rationale": "chairs are not electrical appliances, so ordering a chair does not entail ordering an electrical appliance",
             "compared_when_entails_origin_when": false,
-            "compared_entails_origin_severity": 2,
+            "compared_entails_origin_severity": 2
         }},
         {{
             "compared_guideline_id": 4,
@@ -345,7 +345,7 @@ Expected Output:
             "origin_entails_compared_severity": 3,
             "compared_entails_origin_rationale": "asking for a discount does not entail the ordering of an electrical appliance, as the discount may apply to another type of item",
             "compared_when_entails_origin_when": false,
-            "compared_entails_origin_severity": 2,
+            "compared_entails_origin_severity": 2
         }},
         {{
             "compared_guideline_id": 5,
@@ -356,8 +356,8 @@ Expected Output:
             "origin_entails_compared_severity": 1,
             "compared_entails_origin_rationale": "a customer greeting the assistant in no way entails them ordering an electrical appliance",
             "compared_when_entails_origin_when": false,
-            "compared_entails_origin_severity": 1,
-        }},
+            "compared_entails_origin_severity": 1
+        }}
     ]
 }}
 ```
@@ -390,9 +390,9 @@ Expected Output:
             "origin_entails_compared_rationale": "offering products does not entail suggesting a tv, as another type of product could be offered",
             "origin_when_entails_compared_when": false,
             "origin_entails_compared_severity": 3,
-            "compared_entails_origin_rationale": "by suggesting a TV, a product is offered to the customer,
+            "compared_entails_origin_rationale": "by suggesting a TV, a product is offered to the customer",
             "compared_when_entails_origin_when": true,
-            "compared_entails_origin_severity": 9,
+            "compared_entails_origin_severity": 9
         }},
         {{
             "compared_guideline_id": 2,
@@ -403,7 +403,7 @@ Expected Output:
             "origin_entails_compared_severity": false,
             "compared_entails_origin_rationale": "the customer asking for recommendations does not entail that a product is offered to them. They could be asking out of their own accord",
             "compared_when_entails_origin_when": false,
-            "compared_entails_origin_severity": 3,
+            "compared_entails_origin_severity": 3
         }},
         {{
             "compared_guideline_id": 3,
@@ -414,7 +414,7 @@ Expected Output:
             "origin_entails_compared_severity": 3,
             "compared_entails_origin_rationale": "when a TV warranty plan is recommended, a product (the warranty) is offered to the customer, so recommending a TV warranty plan entails offering a product",
             "compared_when_entails_origin_when": true,
-            "compared_entails_origin_severity": 8,
+            "compared_entails_origin_severity": 8
         }},
         {{
             "compared_guideline_id": 4,
@@ -425,8 +425,8 @@ Expected Output:
             "origin_entails_compared_severity": false,
             "compared_entails_origin_rationale": "offering a product to the customer entails the discussion of a store item, as it's fair to assume that product is a store item",
             "compared_when_entails_origin_when": true,
-            "compared_entails_origin_severity": 7,
-        }},
+            "compared_entails_origin_severity": 7
+        }}
     ]
 }}
 ```
@@ -610,7 +610,7 @@ Expected Output:
             "rationale": "shipping the item immediately can be done while also greeting the customer, both actions can be taken simultaneously",
             "thens_contradiction": false,
             "severity": 1
-        }},
+        }}
     ]
 }}
 ```
@@ -667,8 +667,7 @@ Expected Output:
             "rationale": "the guidelines dictate registering the customer to two separate races. While this is not inherently contradictory, it can lead to confusing or undefined behavior",
             "thens_contradiction": true,
             "severity": 8
-        }},
-
+        }}
     ]
 }}
 ```

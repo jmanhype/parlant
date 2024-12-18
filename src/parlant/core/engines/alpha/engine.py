@@ -302,7 +302,7 @@ class AlphaEngine(Engine):
                                 total_duration=guideline_proposition_result.total_duration,
                                 batches=guideline_proposition_result.batch_generations,
                             ),
-                            tool_calls=[tool_event_generation_result.generation_info]
+                            tool_calls=tool_event_generation_result.generations
                             if tool_event_generation_result
                             else [],
                         ),

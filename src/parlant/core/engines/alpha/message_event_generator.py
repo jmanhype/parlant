@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from itertools import chain
 import json
 import traceback
@@ -21,7 +22,6 @@ from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
-from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
@@ -31,6 +31,12 @@ from parlant.core.sessions import Event
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.tools import ToolId
+
+
+@dataclass(frozen=True)
+class MessageEventGenerationResult:
+    generation_info: GenerationInfo
+    events: Sequence[Optional[EmittedEvent]]
 
 
 class Revision(DefaultBaseModel):
@@ -90,7 +96,7 @@ class MessageEventGenerator:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Sequence[EventGenerationResult]:
+    ) -> Sequence[MessageEventGenerationResult]:
         assert len(agents) == 1
 
         with self._logger.operation("Message production"):
@@ -162,10 +168,10 @@ class MessageEventGenerator:
                             data=response_message,
                         )
 
-                        return [EventGenerationResult(generation_info, [event])]
+                        return [MessageEventGenerationResult(generation_info, [event])]
                     else:
                         self._logger.debug("Skipping response; no response deemed necessary")
-                        return [EventGenerationResult(generation_info, [])]
+                        return [MessageEventGenerationResult(generation_info, [])]
                 except Exception as exc:
                     self._logger.warning(
                         f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
@@ -398,13 +404,13 @@ Example 2: A reply where one instruction was prioritized over another: ###
             "number": 1,
             "instruction": "When the customer chooses and orders a burger, then provide it",
             "evaluation": "This guideline currently applies, so I need to provide the customer with a burger.",
-            "data_available": "The burger choice is available in the interaction",
+            "data_available": "The burger choice is available in the interaction"
         }},
         {{
             "number": 2,
             "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order.",
             "evaluation": "The customer chose cheese on the burger, but all of the cheese we currently have is expired",
-            "data_available": "The relevant stock availability is given in the tool calls' data. Our cheese has expired.",
+            "data_available": "The relevant stock availability is given in the tool calls' data. Our cheese has expired."
         }}
     ],
     "revisions": [
@@ -442,14 +448,14 @@ Example 3: Non-Adherence Due to Missing Data: ###
             "number": 1,
             "instruction": "When the customer asks for a drink, check the menu and offer what's on it",
             "evaluation": "The customer did ask for a drink, so I should check the menu to see what's available.",
-            "data_available": "No, I don't have the menu info in the interaction or tool calls",
+            "data_available": "No, I don't have the menu info in the interaction or tool calls"
         }},
         {{
             "number": 2,
             "instruction": "Do not state factual information that you do not know or are not sure about",
             "evaluation": "There's no information about what we have on tap, so I should not offer any specific option.",
-            "data_available": "No, the list of available drinks is not available to me",
-        }},
+            "data_available": "No, the list of available drinks is not available to me"
+        }}
     ],
     "revisions": [
         {{
@@ -459,7 +465,7 @@ Example 3: Non-Adherence Due to Missing Data: ###
                 "#2; Do not state factual information that you do not know or are not sure about"
             ],
             "instructions_broken": [
-                "#1; Lacking menu data in the context prevented me from providing the client with drink information.",
+                "#1; Lacking menu data in the context prevented me from providing the client with drink information."
             ],
             "is_repeat_message": false,
             "followed_all_instructions": false,
@@ -478,11 +484,11 @@ Example 4: Applying Insight- assume the agent is provided with a list of outgoin
     "last_message_of_customer": "I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
     "guidelines": [
         "When asked anything about plane tickets, suggest completing the order on our android app", 
-        "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+        "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal"
     ],
     "insights": [
         "In your generated reply to the customer, use markdown format when applicable.",
-        "The customer does not have an android device and does not want to buy anything",
+        "The customer does not have an android device and does not want to buy anything"
     ],
     "evaluation_for_each_instruction": [
         {{
@@ -496,20 +502,20 @@ Example 4: Applying Insight- assume the agent is provided with a list of outgoin
             "instruction": "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
 
             "evaluation": "Evaluating whether the 'when' condition applied is not my role. I should therefore just mention that shorter flights do not offer a complementary meal",
-            "data_available": "not needed",
+            "data_available": "not needed"
         }},
         {{
             "number": 3,
-            "instruction": "In your generated reply to the customer, use markdown format when applicable"
+            "instruction": "In your generated reply to the customer, use markdown format when applicable",
             "evaluation": "I need to output a message in markdown format",
-            "data_available": "Not needed",
+            "data_available": "Not needed"
         }},
         {{
             "number": 4,
-            "instruction": "The customer does not have an android device and does not want to buy anything"
+            "instruction": "The customer does not have an android device and does not want to buy anything",
             "evaluation": "A guideline should not override a customer's request, so I should not suggest products requiring an android device",
-            "data_available": "Not needed",
-        }},
+            "data_available": "Not needed"
+        }}
     ],
     "revisions": [
         {{
@@ -526,16 +532,16 @@ While this flights are quite long, please note that we do not offer complementar
             "instructions_followed": [
                 "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
                 "#3; In your generated reply to the customer, use markdown format when applicable.",
-                "#4; The customer does not have an android device and does not want to buy anything",
+                "#4; The customer does not have an android device and does not want to buy anything"
             ],
             "instructions_broken": [
-                "#1; When asked anything about plane tickets, suggest completing the order on our android app.",
+                "#1; When asked anything about plane tickets, suggest completing the order on our android app."
             ],
             "is_repeat_message": false,
             "followed_all_instructions": false,
             "instructions_broken_due_to_missing_data": false,
             "instructions_broken_only_due_to_prioritization": true,
-            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and customer requests take precedent over guidelines, so instruction #1 was prioritized.",
+            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and customer requests take precedent over guidelines, so instruction #1 was prioritized."
         }}
     ]
 }}
@@ -559,7 +565,7 @@ Example 5: Avoiding repetitive responses. Given that the previous response by th
             "instructions_broken": [
             ],
             "is_repeat_message": true,
-            "followed_all_instructions": true,
+            "followed_all_instructions": true
         }},
         {{
             "revision_number": 2,
@@ -569,7 +575,7 @@ Example 5: Avoiding repetitive responses. Given that the previous response by th
             "instructions_broken": [
             ],
             "is_repeat_message": true,
-            "followed_all_instructions": true,
+            "followed_all_instructions": true
         }},
         {{
             "revision_number": 3,
@@ -579,7 +585,7 @@ Example 5: Avoiding repetitive responses. Given that the previous response by th
             "instructions_broken": [
             ],
             "is_repeat_message": false,
-            "followed_all_instructions": true,
+            "followed_all_instructions": true
         }}
     ]
 }}
@@ -589,7 +595,7 @@ Example 5: Avoiding repetitive responses. Given that the previous response by th
 Example 6: Not exposing thought process: Assume a tool call for "check_balance" with a returned value of 1,000$ is staged
 ###
 {{
-    "last_message_of_customer": How much money do I have in my account, and how do you know it? Is there some service you use to check my balance? Can I access it too?",
+    "last_message_of_customer": "How much money do I have in my account, and how do you know it? Is there some service you use to check my balance? Can I access it too?",
     "guidelines": [
         "When you need the balance of a customer, then use the 'check_balance' tool."
     ],
@@ -605,10 +611,10 @@ Example 6: Not exposing thought process: Assume a tool call for "check_balance" 
         }},
         {{
             "number": 1,
-            "instruction": "Never reveal details about the process you followed to produce your response"
+            "instruction": "Never reveal details about the process you followed to produce your response",
             "evaluation": "The reply must not reveal details about how I know the client's balance",
-            "data_available": "Not needed",
-        }},
+            "data_available": "Not needed"
+        }}
     ],
     "revisions": [
         {{
@@ -616,13 +622,13 @@ Example 6: Not exposing thought process: Assume a tool call for "check_balance" 
             "content": "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide accurate information. However, I’m unable to disclose details about the specific services I use. Is there anything else I can assist you with?",
             "instructions_followed": [
                 "use the 'check_balance' tool",
-                "Never reveal details about the process you followed to produce your response",
+                "Never reveal details about the process you followed to produce your response"
             ],
             "instructions_broken": [
             ],
             "is_repeat_message": false,
-            "followed_all_instructions": true,
-        }},
+            "followed_all_instructions": true
+        }}
     ]
 }}
 ###
@@ -673,7 +679,7 @@ Produce a valid JSON object in the following format: ###
                 f"""    
         {{
             "number": {i},
-            "instruction": "{g.guideline.content.action}"
+            "instruction": "{g.guideline.content.action}",
             "evaluation": "<your evaluation of how the guideline should be followed>",
             "data_available": "<explanation whether you are provided with the required data to follow this guideline now>"
         }},"""
@@ -685,7 +691,7 @@ Produce a valid JSON object in the following format: ###
             insights_output_format = """
             {{
                 "number": 1,
-                "instruction": "<Insight #1, if it exists>"
+                "instruction": "<Insight #1, if it exists>",
                 "evaluation": "<your evaluation of how the insight should be followed>",
                 "data_available": "<explanation whether you are provided with the required data to follow this insight now>"
             }},
@@ -718,7 +724,7 @@ Produce a valid JSON object in the following format: ###
         "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
         "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
         "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
-        "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
+        "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>
     }},
     ...
     ]

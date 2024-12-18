@@ -145,3 +145,15 @@ def fetch_account_balance() -> ToolResult:
 
 def get_keyleth_stamina() -> ToolResult:
     return ToolResult(data=100.0)
+
+
+def consult_policy() -> ToolResult:
+    policies = {
+        "return_policy": "The return policy allows returns within 4 days and 4 hours from the time of purchase.",
+        "warranty_policy": "All products come with a 1-year warranty.",
+    }
+    return ToolResult(policies)
+
+
+def other_inquiries() -> ToolResult:
+    return ToolResult("Sorry, we could not find a specific answer to your query.")

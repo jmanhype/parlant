@@ -184,8 +184,9 @@ Feature: Tools
         And a single message event is emitted
         And the message contains a recommendation for toppings which do not include pineapple
 
-    Scenario: The agent uses tools based on the agents description
-        Given an agent whose job is to sell groceries, while remembering that our business considers carrots to be fruit
+    Scenario: The agent correctly chooses to call the right tool
+        Given an agent whose job is to sell groceries
+        And the term "carrot" defined as a kind of fruit
         And a guideline "check_prices" to reply with the price of the item when a customer asks about an items price 
         And the tool "check_fruit_price"
         And the tool "check_vegetable_price"
@@ -231,3 +232,17 @@ Feature: Tools
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains a call to "available_products_by_category" with category "peripherals"
+
+    Scenario: The agent chooses to consult the policy when the user asks about product returns
+        Given a guideline "handle_policy_questions" to consult policy and answer when the user asks policy-related matters
+        And the tool "consult_policy"
+        And the tool "other_inquiries"
+        And an association between "handle_policy_questions" and "consult_policy"
+        And an association between "handle_policy_questions" and "other_inquiries"
+        And a customer message, "I'd like to return a product please?"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And the tool calls event contains 1 tool call(s)
+        And the tool calls event contains a call to "local:consult_policy" regarding return policies
+        And a single message event is emitted
+        And the message contains that the return policy allows returns within 4 days and 4 hours from the time of purchase
