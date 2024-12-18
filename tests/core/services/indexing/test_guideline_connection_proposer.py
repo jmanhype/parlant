@@ -1128,7 +1128,7 @@ def test_that_strictly_entailed_predicate_describing_an_agent_action_is_detected
     assert connection_propositions[0].kind == ConnectionKind.ENTAILS
 
 
-def test_that_strict_entailment_due_to_the_sources_condition_is_detected(
+def test_that_strict_entailment_due_to_the_sources_condition_is_detected_1(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -1140,6 +1140,34 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected(
     )
     target_guideline_content = _create_guideline_content(
         condition="discussing sizes with an American customer", action="Use imperial units"
+    )
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(
+                agent,
+                [source_guideline_content, target_guideline_content],
+            )
+        )
+    )
+    assert len(connection_propositions) == 1
+    assert connection_propositions[0].source == source_guideline_content
+    assert connection_propositions[0].target == target_guideline_content
+    assert connection_propositions[0].kind == ConnectionKind.ENTAILS
+
+
+def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    source_guideline_content = _create_guideline_content(
+        condition="a non-guest customer greets you",
+        action="refer to them by their first name, and welcome them 'back'",
+    )
+    target_guideline_content = _create_guideline_content(
+        condition="you're welcoming non-guest customers",
+        action="refer to them by their first name, and welcome them 'back'",
     )
     connection_propositions = list(
         context.sync_await(
