@@ -123,3 +123,7 @@ class HuggingFaceEmbedder(Embedder):
 class JinaAIEmbedder(HuggingFaceEmbedder):
     def __init__(self) -> None:
         super().__init__("jinaai/jina-embeddings-v2-base-en")
+
+    @property
+    def dimensions(self) -> int:
+        return 768

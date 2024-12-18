@@ -15,8 +15,15 @@
 # This is a separate module to avoid circular dependencies
 
 from dataclasses import dataclass
+from enum import Enum
 
 from parlant.core.guidelines import Guideline
+
+
+class PreviouslyAppliedType(Enum):
+    NO = "no"
+    PARTIALLY = "partially"
+    FULLY = "fully"
 
 
 @dataclass(frozen=True)
@@ -24,4 +31,5 @@ class GuidelineProposition:
     guideline: Guideline
     score: int
     rationale: str
+    guideline_previously_applied: PreviouslyAppliedType = PreviouslyAppliedType.NO
     should_reapply: bool = False

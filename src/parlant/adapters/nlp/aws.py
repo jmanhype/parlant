@@ -26,7 +26,7 @@ from parlant.adapters.nlp.hugging_face import JinaAIEmbedder
 from parlant.core.nlp.embedding import Embedder
 from parlant.core.nlp.generation import (
     T,
-    BaseSchematicGenerator,
+    SchematicGenerator,
     GenerationInfo,
     SchematicGenerationResult,
     UsageInfo,
@@ -47,7 +47,7 @@ class AnthropicBedrockEstimatingTokenizer(EstimatingTokenizer):
         return int(len(tokens) * 1.15)
 
 
-class AnthropicBedrockAISchematicGenerator(BaseSchematicGenerator[T]):
+class AnthropicBedrockAISchematicGenerator(SchematicGenerator[T]):
     supported_hints = ["temperature"]
 
     def __init__(

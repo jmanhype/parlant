@@ -17,9 +17,11 @@
 import asyncio
 from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
+import importlib
 import os
 from lagom import Container, Singleton
-from typing import AsyncIterator, Callable
+from typing import AsyncIterator, Callable, Iterable
+import toml
 from typing_extensions import NoReturn
 import click
 import click_completion
@@ -27,10 +29,9 @@ from pathlib import Path
 import sys
 import uvicorn
 
+from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.nlp.service import NLPService
 from parlant.core.tags import TagDocumentStore, TagStore
-from parlant.version import VERSION
-from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -54,7 +55,6 @@ from parlant.core.guidelines import (
     GuidelineDocumentStore,
     GuidelineStore,
 )
-from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.nlp.generation import SchematicGenerator
@@ -68,7 +68,7 @@ from parlant.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from parlant.core.glossary import GlossaryStore
+from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -99,6 +99,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
 )
 from parlant.core.logging import FileLogger, LogLevel, Logger
 from parlant.core.application import Application
+from parlant.core.version import VERSION
 
 DEFAULT_PORT = 8800
 SERVER_ADDRESS = "https://localhost"
@@ -113,7 +114,7 @@ EXIT_STACK: AsyncExitStack
 DEFAULT_AGENT_NAME = "Default Agent"
 
 sys.path.append(PARLANT_HOME_DIR.as_posix())
-
+sys.path.append(".")
 
 CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
@@ -133,6 +134,7 @@ class CLIParams:
     port: int
     nlp_service: str
     log_level: str
+    modules: list[str]
 
 
 def load_anthropic() -> NLPService:
@@ -183,6 +185,46 @@ async def create_agent_if_absent(agent_store: AgentStore) -> None:
         await agent_store.create_agent(name=DEFAULT_AGENT_NAME)
 
 
+async def get_module_list_from_config() -> list[str]:
+    config_file = Path("parlant.toml")
+
+    if config_file.exists():
+        config = toml.load(config_file)
+        # Expecting structure of:
+        # [parlant]
+        # modules = ["module_1", "module_2"]
+        return list(config.get("parlant", {}).get("modules", []))
+
+    return []
+
+
+@asynccontextmanager
+async def load_modules(
+    container: Container,
+    modules: Iterable[str],
+) -> AsyncIterator[None]:
+    imported_modules = []
+
+    for module_path in modules:
+        module = importlib.import_module(module_path)
+        if not hasattr(module, "initialize_module") or not hasattr(module, "shutdown_module"):
+            raise StartupError(
+                f"Module '{module.__name__}' must define initialize_module(container: lagom.Container) and shutdown_module()"
+            )
+        imported_modules.append(module)
+
+    for m in imported_modules:
+        LOGGER.info(f"Initializing module '{m.__name__}'")
+        await m.initialize_module(container)
+
+    try:
+        yield
+    finally:
+        for m in reversed(imported_modules):
+            LOGGER.info(f"Shutting down module '{m.__name__}'")
+            await m.shutdown_module()
+
+
 @asynccontextmanager
 async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c = Container()
@@ -224,19 +266,25 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
 
-    c[AgentStore] = AgentDocumentStore(agents_db)
-    c[ContextVariableStore] = ContextVariableDocumentStore(context_variables_db)
-    c[TagStore] = TagDocumentStore(tags_db)
-    c[CustomerStore] = CustomerDocumentStore(customers_db)
-    c[GuidelineStore] = GuidelineDocumentStore(guidelines_db)
-    c[GuidelineToolAssociationStore] = GuidelineToolAssociationDocumentStore(
-        guideline_tool_associations_db
+    c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db))
+    c[ContextVariableStore] = await EXIT_STACK.enter_async_context(
+        ContextVariableDocumentStore(context_variables_db)
     )
-    c[GuidelineConnectionStore] = GuidelineConnectionDocumentStore(guideline_connections_db)
-    c[SessionStore] = SessionDocumentStore(sessions_db)
+    c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db))
+    c[CustomerStore] = await EXIT_STACK.enter_async_context(CustomerDocumentStore(customers_db))
+    c[GuidelineStore] = await EXIT_STACK.enter_async_context(GuidelineDocumentStore(guidelines_db))
+    c[GuidelineToolAssociationStore] = await EXIT_STACK.enter_async_context(
+        GuidelineToolAssociationDocumentStore(guideline_tool_associations_db)
+    )
+    c[GuidelineConnectionStore] = await EXIT_STACK.enter_async_context(
+        GuidelineConnectionDocumentStore(guideline_connections_db)
+    )
+    c[SessionStore] = await EXIT_STACK.enter_async_context(SessionDocumentStore(sessions_db))
     c[SessionListener] = PollingSessionListener
 
-    c[EvaluationStore] = EvaluationDocumentStore(evaluations_db)
+    c[EvaluationStore] = await EXIT_STACK.enter_async_context(
+        EvaluationDocumentStore(evaluations_db)
+    )
     c[EvaluationListener] = PollingEvaluationListener
 
     c[EventEmitterFactory] = Singleton(EventPublisherFactory)
@@ -266,9 +314,15 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
 
     c[NLPService] = nlp_service
 
-    c[GlossaryStore] = GlossaryChromaStore(
-        ChromaDatabase(LOGGER, PARLANT_HOME_DIR, EmbedderFactory(c)),
-        embedder_type=type(await nlp_service.get_embedder()),
+    embedder_factory = EmbedderFactory(c)
+    c[GlossaryStore] = await EXIT_STACK.enter_async_context(
+        GlossaryVectorStore(
+            await EXIT_STACK.enter_async_context(
+                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
+            ),
+            embedder_type=type(await nlp_service.get_embedder()),
+            embedder_factory=embedder_factory,
+        )
     )
 
     c[SchematicGenerator[GuidelinePropositionsSchema]] = await nlp_service.get_schematic_generator(
@@ -354,6 +408,13 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
     EXIT_STACK = AsyncExitStack()
 
     async with setup_container(params.nlp_service) as container, EXIT_STACK:
+        modules = set(await get_module_list_from_config() + params.modules)
+
+        if modules:
+            await EXIT_STACK.enter_async_context(load_modules(container, modules))
+        else:
+            LOGGER.info("No external modules selected")
+
         await recover_server_tasks(
             evaluation_store=container[EvaluationStore],
             evaluator=container[BehavioralChangeEvaluator],
@@ -372,12 +433,16 @@ async def serve_app(
         app,
         host="0.0.0.0",
         port=port,
-        log_level="info",
+        log_level="critical",
         timeout_graceful_shutdown=1,
     )
     server = uvicorn.Server(config)
 
     try:
+        LOGGER.info(".-----------------------------------------.")
+        LOGGER.info("| Server is ready for some serious action |")
+        LOGGER.info("'-----------------------------------------'")
+        LOGGER.info(f"Try the Sandbox UI at http://localhost:{port}")
         await server.serve()
         await asyncio.sleep(0)  # Required to trigger the possible cancellation error
     except (KeyboardInterrupt, asyncio.CancelledError):
@@ -474,6 +539,22 @@ def main() -> None:
         default="info",
         help="Log level",
     )
+    @click.option(
+        "--module",
+        multiple=True,
+        default=[],
+        metavar="MODULE",
+        help=(
+            "Specify a module to load. To load multiple modules, pass this argument multiple times. "
+            "If parlant.toml exists in the working directory, any additional modules specified "
+            "in it will also be loaded."
+        ),
+    )
+    @click.option(
+        "--version",
+        is_flag=True,
+        help="Print server version and exit",
+    )
     @click.pass_context
     def cli(
         ctx: click.Context,
@@ -486,7 +567,13 @@ def main() -> None:
         cerebras: bool,
         together: bool,
         log_level: str,
+        module: tuple[str],
+        version: bool,
     ) -> None:
+        if version:
+            print(f"Parlant v{VERSION}")
+            sys.exit(0)
+
         if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
             print("error: only one NLP service profile can be selected")
             sys.exit(1)
@@ -521,6 +608,7 @@ def main() -> None:
             port=port,
             nlp_service=nlp_service,
             log_level=log_level,
+            modules=list(module),
         )
 
         asyncio.run(start_server(ctx.obj))

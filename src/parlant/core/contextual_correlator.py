@@ -35,7 +35,7 @@ class ContextualCorrelator:
         current_scopes = self._scopes.get()
 
         if current_scopes:
-            new_scopes = current_scopes + f".{scope_id}"
+            new_scopes = current_scopes + f"::{scope_id}"
         else:
             new_scopes = scope_id
 

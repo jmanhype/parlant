@@ -15,7 +15,6 @@
 import asyncio
 from contextlib import AsyncExitStack
 import os
-from pathlib import Path
 import tempfile
 from typing import Any, AsyncIterator, cast
 from fastapi import FastAPI
@@ -23,9 +22,10 @@ from fastapi.testclient import TestClient
 import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
+import pytest
 
-from parlant.adapters.db.chroma.glossary import GlossaryChromaStore
 from parlant.adapters.nlp.openai import OpenAIService
+from parlant.adapters.vector_db.transient import TransientVectorDatabase
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -46,7 +46,6 @@ from parlant.core.guideline_connections import (
     GuidelineConnectionStore,
 )
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
-from parlant.adapters.db.chroma.database import ChromaDatabase
 from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.service_registry import (
@@ -60,7 +59,7 @@ from parlant.core.sessions import (
     SessionStore,
 )
 from parlant.core.engines.alpha.engine import AlphaEngine
-from parlant.core.glossary import GlossaryStore
+from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionsSchema,
@@ -87,9 +86,6 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
 from parlant.core.logging import Logger, StdoutLogger
 from parlant.core.application import Application
 from parlant.core.agents import AgentDocumentStore, AgentStore
-from parlant.core.persistence.document_database import (
-    DocumentDatabase,
-)
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
@@ -97,7 +93,11 @@ from parlant.core.guideline_tool_associations import (
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
-from .test_utilities import SyncAwaiter
+from .test_utilities import (
+    SyncAwaiter,
+    create_schematic_generation_result_collection,
+    create_schematic_generator,
+)
 
 
 @fixture
@@ -111,26 +111,21 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
 
 
 @fixture
-async def container() -> AsyncIterator[Container]:
+async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
     container = Container()
+
+    stochastic_plan = next(
+        (arg.split("=")[1] for arg in request.config.invocation_params.args if "--plan" in arg),
+        None,
+    )
+
+    use_cache = {
+        None: True,
+        "initial": True,
+    }.get(stochastic_plan, False)
 
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
-
-    container[DocumentDatabase] = TransientDocumentDatabase
-    container[AgentStore] = Singleton(AgentDocumentStore)
-    container[GuidelineStore] = Singleton(GuidelineDocumentStore)
-    container[GuidelineConnectionStore] = Singleton(GuidelineConnectionDocumentStore)
-    container[SessionStore] = Singleton(SessionDocumentStore)
-    container[ContextVariableStore] = Singleton(ContextVariableDocumentStore)
-    container[TagStore] = Singleton(TagDocumentStore)
-    container[CustomerStore] = Singleton(CustomerDocumentStore)
-    container[GuidelineToolAssociationStore] = Singleton(GuidelineToolAssociationDocumentStore)
-    container[SessionListener] = PollingSessionListener
-    container[EvaluationStore] = Singleton(EvaluationDocumentStore)
-    container[EvaluationListener] = PollingEvaluationListener
-    container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
-    container[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
     async with AsyncExitStack() as stack:
         temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
@@ -140,9 +135,41 @@ async def container() -> AsyncIterator[Container]:
             BackgroundTaskService(container[Logger])
         )
 
+        container[AgentStore] = await stack.enter_async_context(
+            AgentDocumentStore(TransientDocumentDatabase())
+        )
+        container[GuidelineStore] = await stack.enter_async_context(
+            GuidelineDocumentStore(TransientDocumentDatabase())
+        )
+        container[GuidelineConnectionStore] = await stack.enter_async_context(
+            GuidelineConnectionDocumentStore(TransientDocumentDatabase())
+        )
+        container[SessionStore] = await stack.enter_async_context(
+            SessionDocumentStore(TransientDocumentDatabase())
+        )
+        container[ContextVariableStore] = await stack.enter_async_context(
+            ContextVariableDocumentStore(TransientDocumentDatabase())
+        )
+        container[TagStore] = await stack.enter_async_context(
+            TagDocumentStore(TransientDocumentDatabase())
+        )
+        container[CustomerStore] = await stack.enter_async_context(
+            CustomerDocumentStore(TransientDocumentDatabase())
+        )
+        container[GuidelineToolAssociationStore] = await stack.enter_async_context(
+            GuidelineToolAssociationDocumentStore(TransientDocumentDatabase())
+        )
+        container[SessionListener] = PollingSessionListener
+        container[EvaluationStore] = await stack.enter_async_context(
+            EvaluationDocumentStore(TransientDocumentDatabase())
+        )
+        container[EvaluationListener] = PollingEvaluationListener
+        container[BehavioralChangeEvaluator] = BehavioralChangeEvaluator
+        container[EventEmitterFactory] = Singleton(EventPublisherFactory)
+
         container[ServiceRegistry] = await stack.enter_async_context(
             ServiceDocumentRegistry(
-                database=container[DocumentDatabase],
+                database=TransientDocumentDatabase(),
                 event_emitter_factory=container[EventEmitterFactory],
                 correlator=container[ContextualCorrelator],
                 nlp_services={"default": OpenAIService(container[Logger])},
@@ -151,29 +178,63 @@ async def container() -> AsyncIterator[Container]:
 
         container[NLPService] = await container[ServiceRegistry].read_nlp_service("default")
 
-        container[GlossaryStore] = GlossaryChromaStore(
-            ChromaDatabase(container[Logger], Path(temp_dir), EmbedderFactory(container)),
-            embedder_type=type(await container[NLPService].get_embedder()),
+        embedder_type = type(await container[NLPService].get_embedder())
+        embedder_factory = EmbedderFactory(container)
+        container[GlossaryStore] = await stack.enter_async_context(
+            GlossaryVectorStore(
+                await stack.enter_async_context(
+                    TransientVectorDatabase(container[Logger], embedder_factory, embedder_type)
+                ),
+                embedder_factory=embedder_factory,
+                embedder_type=embedder_type,
+            )
         )
 
-        container[SchematicGenerator[GuidelinePropositionsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(GuidelinePropositionsSchema)
-        container[SchematicGenerator[MessageEventSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(MessageEventSchema)
-        container[SchematicGenerator[ToolCallInferenceSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ToolCallInferenceSchema)
-        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ConditionsEntailmentTestsSchema)
-        container[SchematicGenerator[ActionsContradictionTestsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(ActionsContradictionTestsSchema)
-        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = await container[
-            NLPService
-        ].get_schematic_generator(GuidelineConnectionPropositionsSchema)
+        schematic_generation_result_collection = (
+            await create_schematic_generation_result_collection(stack, logger=container[Logger])
+        )
+
+        container[
+            SchematicGenerator[GuidelinePropositionsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
+            schematic_generation_result_collection,
+            use_cache,
+        )
+        container[SchematicGenerator[MessageEventSchema]] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(MessageEventSchema),
+            schematic_generation_result_collection,
+            use_cache,
+        )
+        container[SchematicGenerator[ToolCallInferenceSchema]] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
+            schematic_generation_result_collection,
+            use_cache,
+        )
+        container[
+            SchematicGenerator[ConditionsEntailmentTestsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
+            schematic_generation_result_collection,
+            use_cache,
+        )
+
+        container[
+            SchematicGenerator[ActionsContradictionTestsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
+            schematic_generation_result_collection,
+            use_cache,
+        )
+        container[
+            SchematicGenerator[GuidelineConnectionPropositionsSchema]
+        ] = await create_schematic_generator(
+            await container[NLPService].get_schematic_generator(
+                GuidelineConnectionPropositionsSchema
+            ),
+            schematic_generation_result_collection,
+            use_cache,
+        )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)

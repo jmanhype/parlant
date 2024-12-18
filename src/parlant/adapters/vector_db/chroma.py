@@ -14,71 +14,45 @@
 
 from __future__ import annotations
 import asyncio
-from dataclasses import dataclass
 import importlib
 import json
 import operator
 from pathlib import Path
-from typing import Generic, Optional, Sequence, TypeVar, TypedDict, cast
-from typing_extensions import override
+from typing import Generic, Optional, Sequence, cast
+from typing_extensions import override, Self
 import chromadb
 
-from parlant.core.common import Version
-from parlant.core.nlp.embedding import Embedder, EmbedderFactory
-from parlant.core.persistence.document_database import (
-    DeleteResult,
-    DocumentCollection,
-    InsertResult,
-    ObjectId,
-    UpdateResult,
-    Where,
-    ensure_is_total,
-)
 from parlant.core.logging import Logger
+from parlant.core.nlp.embedding import Embedder, EmbedderFactory
+from parlant.core.persistence.common import Where, ensure_is_total
+from parlant.core.persistence.vector_database import (
+    BaseDocument,
+    DeleteResult,
+    InsertResult,
+    SimilarDocumentResult,
+    UpdateResult,
+    VectorCollection,
+    VectorDatabase,
+    TDocument,
+)
 
 
-class BaseDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-    content: str
-
-
-TDocument = TypeVar("TDocument", bound=BaseDocument)
-
-
-@dataclass(frozen=True)
-class SimilarDocumentResult(Generic[TDocument]):
-    document: TDocument
-    distance: float
-
-    def __hash__(self) -> int:
-        return hash(str(self.document))
-
-    def __eq__(self, value: object) -> bool:
-        if isinstance(value, SimilarDocumentResult):
-            return bool(self.document == value.document)
-        return False
-
-
-class ChromaDatabase:
+class ChromaDatabase(VectorDatabase):
     def __init__(
         self,
         logger: Logger,
         dir_path: Path,
         embedder_factory: EmbedderFactory,
     ) -> None:
+        self._dir_path = dir_path
         self._logger = logger
         self._embedder_factory = embedder_factory
 
-        self._chroma_client = chromadb.PersistentClient(str(dir_path))
-        self._collections: dict[str, ChromaCollection[BaseDocument]] = (
-            self._load_chromadb_collections()
-        )
+        self._chroma_client: chromadb.api.ClientAPI
+        self._collections: dict[str, ChromaCollection[BaseDocument]] = {}
 
-    def _load_chromadb_collections(
-        self,
-    ) -> dict[str, ChromaCollection[BaseDocument]]:
-        collections: dict[str, ChromaCollection[BaseDocument]] = {}
+    async def __aenter__(self) -> Self:
+        self._chroma_client = chromadb.PersistentClient(str(self._dir_path))
         for chromadb_collection in self._chroma_client.list_collections():
             embedder_module = importlib.import_module(
                 chromadb_collection.metadata["embedder_module_path"]
@@ -94,7 +68,7 @@ class ChromaDatabase:
                 embedding_function=None,
             )
 
-            collections[chromadb_collection.name] = ChromaCollection(
+            self._collections[chromadb_collection.name] = ChromaCollection(
                 logger=self._logger,
                 chromadb_collection=chroma_collection,
                 name=chromadb_collection.name,
@@ -103,9 +77,18 @@ class ChromaDatabase:
                 ),
                 embedder=embedder,
             )
-        return collections
+        return self
 
-    def create_collection(
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[object],
+    ) -> None:
+        pass
+
+    @override
+    async def create_collection(
         self,
         name: str,
         schema: type[TDocument],
@@ -133,7 +116,8 @@ class ChromaDatabase:
 
         return cast(ChromaCollection[TDocument], self._collections[name])
 
-    def get_collection(
+    @override
+    async def get_collection(
         self,
         name: str,
     ) -> ChromaCollection[TDocument]:
@@ -142,7 +126,8 @@ class ChromaDatabase:
 
         raise ValueError(f'ChromaDB collection "{name}" not found.')
 
-    def get_or_create_collection(
+    @override
+    async def get_or_create_collection(
         self,
         name: str,
         schema: type[TDocument],
@@ -171,7 +156,8 @@ class ChromaDatabase:
 
         return cast(ChromaCollection[TDocument], self._collections[name])
 
-    def delete_collection(
+    @override
+    async def delete_collection(
         self,
         name: str,
     ) -> None:
@@ -181,7 +167,7 @@ class ChromaDatabase:
         del self._collections[name]
 
 
-class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
+class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
     def __init__(
         self,
         logger: Logger,
@@ -332,6 +318,7 @@ class ChromaCollection(Generic[TDocument], DocumentCollection[TDocument]):
                 deleted_document=None,
             )
 
+    @override
     async def find_similar_documents(
         self,
         filters: Where,

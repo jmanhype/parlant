@@ -18,10 +18,7 @@ from lagom import Container
 from pytest import fixture
 
 from parlant.core.agents import AgentId
-from parlant.core.context_variables import (
-    ContextVariableStore,
-    FreshnessRules,
-)
+from parlant.core.context_variables import ContextVariableStore
 from parlant.core.tools import LocalToolService, ToolId
 
 
@@ -44,14 +41,7 @@ async def test_that_context_variable_can_be_created(
     agent_id: AgentId,
     tool_id: ToolId,
 ) -> None:
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": [14],
-        "days_of_week": ["Thursday"],
-        "hours": [18],
-        "minutes": None,
-        "seconds": None,
-    }
+    freshness_rules = "0 18 14 5 4"
 
     response = client.post(
         f"/agents/{agent_id}/context-variables",
@@ -91,14 +81,7 @@ async def test_that_context_variable_can_be_updated(
 
     new_name = "updated_test_variable"
     new_description = "updated test of variable"
-    freshness_rules = {
-        "months": [5],
-        "days_of_month": [14],
-        "days_of_week": ["Thursday"],
-        "hours": [18],
-        "minutes": None,
-        "seconds": None,
-    }
+    freshness_rules = "0 18 14 5 4"
 
     context_variable_dto = (
         client.patch(
@@ -116,6 +99,35 @@ async def test_that_context_variable_can_be_updated(
     assert context_variable_dto["name"] == new_name
     assert context_variable_dto["description"] == new_description
     assert context_variable_dto["freshness_rules"] == freshness_rules
+
+
+async def test_that_invalid_freshness_rules_raise_error_when_creating_context_variable(
+    client: TestClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    invalid_freshness_rules = "invalid cron expression"
+
+    response = client.post(
+        f"/agents/{agent_id}/context-variables",
+        json={
+            "name": "test_variable_invalid_cron",
+            "description": "Test variable with invalid cron expression",
+            "tool_id": {
+                "service_name": tool_id.service_name,
+                "tool_name": tool_id.tool_name,
+            },
+            "freshness_rules": invalid_freshness_rules,
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_response = response.json()
+    assert "detail" in error_response
+    assert (
+        error_response["detail"]
+        == "the provided freshness_rules. contain an invalid cron expression."
+    )
 
 
 async def test_that_all_context_variables_can_be_deleted(
@@ -186,14 +198,7 @@ async def test_that_context_variables_can_be_listed(
         name="test_variable",
         description="test variable",
         tool_id=tool_id,
-        freshness_rules=FreshnessRules(
-            months=[5],
-            days_of_month=None,
-            days_of_week=None,
-            hours=None,
-            minutes=None,
-            seconds=None,
-        ),
+        freshness_rules="0,15,30,45 * * * *",
     )
 
     second_variable = await context_variable_store.create_variable(
@@ -217,8 +222,6 @@ async def test_that_context_variables_can_be_listed(
     assert second_variable.description == variables[1]["description"]
 
     assert first_variable.freshness_rules is not None
-    assert first_variable.freshness_rules.months == variables[0]["freshness_rules"]["months"]
-
     assert second_variable.freshness_rules is None
 
 

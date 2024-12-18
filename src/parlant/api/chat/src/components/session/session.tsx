@@ -12,6 +12,7 @@ import styles from './session.module.scss';
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import { NEW_SESSION_ID } from '../chat-header/chat-header';
 import { spaceClick } from '@/utils/methods';
+import { twJoin } from 'tailwind-merge';
 
 interface Props {
     session: SessionInterface;
@@ -35,8 +36,9 @@ export const DeleteDialog = ({session, closeDialog, deleteClicked}: {session: Se
 
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
     const sessionNameRef = useRef<HTMLInputElement>(null);
-    const {setSessionId, setAgentId, setNewSession, agents, setSessions, openDialog, closeDialog} = useSession();
+    const {setSessionId, setAgentId, setNewSession, agents, customers, setSessions, openDialog, closeDialog} = useSession();
     const [agentsMap, setAgentsMap] = useState(new Map());
+    const [customerMap, setCustomerMap] = useState(new Map());
 
     useEffect(() => {
         if (!isSelected) return;
@@ -47,6 +49,10 @@ export default function Session({session, isSelected, refetch, editingTitle, set
     useEffect(() => {
         if (agents) setAgentsMap(new Map(agents.map(agent => [agent.id, agent])));
     }, [agents]);
+
+    useEffect(() => {
+        if (customers) setCustomerMap(new Map(customers.map(customer => [customer.id, customer])));
+    }, [customers]);
 
     const deleteSession = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -116,6 +122,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
         {title: 'delete', onClick: deleteSession, imgPath: 'icons/delete.svg'},
     ];
     const agent = agentsMap.get(session.agent_id);
+    const customer = customerMap.get(session.customer_id);
 
     return (
         <div data-testid="session"
@@ -129,9 +136,9 @@ export default function Session({session, isSelected, refetch, editingTitle, set
                 {editingTitle !== session.id &&
                     <div className="overflow-hidden overflow-ellipsis flex items-center">
                         <div>
-                            {agent && <AgentAvatar agent={agent}/>}
+                            <AgentAvatar agent={agent || {id: '', name: 'N/A'}} customer={customer || {id: '', name: 'N/A'}}/>
                         </div>
-                        <div>
+                        <div className={twJoin(!agent && 'opacity-50')}>
                             {session.title}
                             <small className='text-[12px] text-[#A9A9A9] font-light flex gap-[6px]'>
                                 {getDateStr(session.creation_utc)}

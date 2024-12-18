@@ -47,6 +47,12 @@ class SchematicGenerationResult(Generic[T]):
 
 
 class SchematicGenerator(ABC, Generic[T]):
+    @cached_property
+    def schema(self) -> type[T]:
+        orig_class = getattr(self, "__orig_class__")
+        generic_args = get_args(orig_class)
+        return cast(type[T], generic_args[0])
+
     @abstractmethod
     async def generate(
         self,
@@ -65,14 +71,6 @@ class SchematicGenerator(ABC, Generic[T]):
     @property
     @abstractmethod
     def tokenizer(self) -> EstimatingTokenizer: ...
-
-
-class BaseSchematicGenerator(SchematicGenerator[T]):
-    @cached_property
-    def schema(self) -> type[T]:
-        orig_class = getattr(self, "__orig_class__")
-        generic_args = get_args(orig_class)
-        return cast(type[T], generic_args[0])
 
 
 class FallbackSchematicGenerator(SchematicGenerator[T]):

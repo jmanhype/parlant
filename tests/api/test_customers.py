@@ -65,7 +65,7 @@ async def test_that_a_customer_can_be_read(
     assert dateutil.parser.parse(data["creation_utc"]) == customer.creation_utc
 
 
-async def test_that_customers_can_be_listed(
+async def test_that_all_customers_including_guests_can_be_listed(
     client: TestClient,
     container: Container,
 ) -> None:
@@ -89,7 +89,7 @@ async def test_that_customers_can_be_listed(
 
     customers = client.get("/customers").raise_for_status().json()
 
-    assert len(customers) == 2
+    assert len(customers) == 3
     assert any(
         first_name == customer["name"] and first_extra == customer["extra"]
         for customer in customers
@@ -98,6 +98,7 @@ async def test_that_customers_can_be_listed(
         second_name == customer["name"] and second_extra == customer["extra"]
         for customer in customers
     )
+    assert any("<guest>" == customer["name"] for customer in customers)
 
 
 async def test_that_a_customer_can_be_updated_with_a_new_name(

@@ -12,7 +12,7 @@ cache/
 .vscode
 .venv
 logs
-/runtime-data/
+runtime-data
 /dist/
 scripts/sdks/
 scripts/fern/openapi
