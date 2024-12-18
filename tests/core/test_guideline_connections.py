@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Sequence
+from typing import AsyncIterator, Sequence
 from pytest import fixture, raises
 
 from parlant.core.guideline_connections import (
@@ -32,10 +32,11 @@ def underlying_database() -> DocumentDatabase:
 
 
 @fixture
-def store(
+async def guideline_connection_store(
     underlying_database: DocumentDatabase,
-) -> GuidelineConnectionStore:
-    return GuidelineConnectionDocumentStore(database=underlying_database)
+) -> AsyncIterator[GuidelineConnectionStore]:
+    async with GuidelineConnectionDocumentStore(database=underlying_database) as store:
+        yield store
 
 
 def has_connection(
@@ -46,7 +47,7 @@ def has_connection(
 
 
 async def test_that_direct_guideline_connections_can_be_listed(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
@@ -60,13 +61,13 @@ async def test_that_direct_guideline_connections_can_be_listed(
         (b_id, d_id),
         (z_id, b_id),
     ]:
-        await store.create_connection(
+        await guideline_connection_store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
         )
 
-    a_connections = await store.list_connections(
+    a_connections = await guideline_connection_store.list_connections(
         source=a_id,
         indirect=False,
     )
@@ -77,7 +78,7 @@ async def test_that_direct_guideline_connections_can_be_listed(
 
 
 async def test_that_indirect_guideline_connections_can_be_listed(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
@@ -86,13 +87,13 @@ async def test_that_indirect_guideline_connections_can_be_listed(
     z_id = GuidelineId("z")
 
     for source, target in [(a_id, b_id), (a_id, c_id), (b_id, d_id), (z_id, b_id)]:
-        await store.create_connection(
+        await guideline_connection_store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
         )
 
-    a_connections = await store.list_connections(
+    a_connections = await guideline_connection_store.list_connections(
         source=a_id,
         indirect=True,
     )
@@ -104,7 +105,7 @@ async def test_that_indirect_guideline_connections_can_be_listed(
 
 
 async def test_that_db_data_is_loaded_correctly(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
     underlying_database: DocumentDatabase,
 ) -> None:
     a_id = GuidelineId("a")
@@ -114,18 +115,17 @@ async def test_that_db_data_is_loaded_correctly(
     z_id = GuidelineId("z")
 
     for source, target in [(a_id, b_id), (a_id, c_id), (b_id, d_id), (z_id, b_id)]:
-        await store.create_connection(
+        await guideline_connection_store.create_connection(
             source=source,
             target=target,
             kind=ConnectionKind.ENTAILS,
         )
 
-    new_store_with_same_db = GuidelineConnectionDocumentStore(underlying_database)
-
-    a_connections = await new_store_with_same_db.list_connections(
-        source=a_id,
-        indirect=True,
-    )
+    async with GuidelineConnectionDocumentStore(underlying_database) as new_store_with_same_db:
+        a_connections = await new_store_with_same_db.list_connections(
+            source=a_id,
+            indirect=True,
+        )
 
     assert len(a_connections) == 3
     assert has_connection(a_connections, (a_id, b_id))
@@ -134,16 +134,20 @@ async def test_that_db_data_is_loaded_correctly(
 
 
 async def test_that_connections_are_returned_for_source_without_indirect_connections(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await guideline_connection_store.create_connection(
+        source=a_id, target=b_id, kind=ConnectionKind.ENTAILS
+    )
+    await guideline_connection_store.create_connection(
+        source=b_id, target=c_id, kind=ConnectionKind.ENTAILS
+    )
 
-    connections = await store.list_connections(
+    connections = await guideline_connection_store.list_connections(
         source=a_id,
         indirect=False,
     )
@@ -154,16 +158,20 @@ async def test_that_connections_are_returned_for_source_without_indirect_connect
 
 
 async def test_that_connections_are_returned_for_source_with_indirect_connections(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await guideline_connection_store.create_connection(
+        source=a_id, target=b_id, kind=ConnectionKind.ENTAILS
+    )
+    await guideline_connection_store.create_connection(
+        source=b_id, target=c_id, kind=ConnectionKind.ENTAILS
+    )
 
-    connections = await store.list_connections(
+    connections = await guideline_connection_store.list_connections(
         source=a_id,
         indirect=True,
     )
@@ -175,16 +183,20 @@ async def test_that_connections_are_returned_for_source_with_indirect_connection
 
 
 async def test_that_connections_are_returned_for_target_without_indirect_connections(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await guideline_connection_store.create_connection(
+        source=a_id, target=b_id, kind=ConnectionKind.ENTAILS
+    )
+    await guideline_connection_store.create_connection(
+        source=b_id, target=c_id, kind=ConnectionKind.ENTAILS
+    )
 
-    connections = await store.list_connections(
+    connections = await guideline_connection_store.list_connections(
         target=b_id,
         indirect=False,
     )
@@ -195,16 +207,20 @@ async def test_that_connections_are_returned_for_target_without_indirect_connect
 
 
 async def test_that_connections_are_returned_for_target_with_indirect_connections(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id, kind=ConnectionKind.ENTAILS)
-    await store.create_connection(source=b_id, target=c_id, kind=ConnectionKind.ENTAILS)
+    await guideline_connection_store.create_connection(
+        source=a_id, target=b_id, kind=ConnectionKind.ENTAILS
+    )
+    await guideline_connection_store.create_connection(
+        source=b_id, target=c_id, kind=ConnectionKind.ENTAILS
+    )
 
-    connections = await store.list_connections(
+    connections = await guideline_connection_store.list_connections(
         target=c_id,
         indirect=True,
     )
@@ -216,10 +232,10 @@ async def test_that_connections_are_returned_for_target_with_indirect_connection
 
 
 async def test_that_error_is_raised_when_neither_source_nor_target_is_provided(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     with raises(AssertionError):
-        await store.list_connections(
+        await guideline_connection_store.list_connections(
             indirect=False,
             source=None,
             target=None,
@@ -227,13 +243,13 @@ async def test_that_error_is_raised_when_neither_source_nor_target_is_provided(
 
 
 async def test_that_error_is_raised_when_both_source_and_target_are_provided(
-    store: GuidelineConnectionStore,
+    guideline_connection_store: GuidelineConnectionStore,
 ) -> None:
     a_id = GuidelineId("a")
     b_id = GuidelineId("b")
 
     with raises(AssertionError):
-        await store.list_connections(
+        await guideline_connection_store.list_connections(
             source=a_id,
             target=b_id,
             indirect=False,
