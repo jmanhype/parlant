@@ -71,7 +71,7 @@ def set_package_version(version: str, package: Package) -> None:
 
 def update_version_variable_in_code(version: str) -> None:
     server_package = next(p for p in get_packages() if p.name == "parlant")
-    version_file: Path = server_package.path / "src/parlant/version.py"
+    version_file: Path = server_package.path / "src/parlant/core/version.py"
 
     version_file_content = version_file.read_text()
     current_version = get_current_version(server_package)
