@@ -328,7 +328,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is already l
             "applicability_rationale": "We need the client's current balance to respond to their question",
             "applicability_score": 9,
             "arguments": {{
-                "customer_id": "12345",
+                "customer_id": "12345"
             }},
             "same_call_is_already_staged": true,
             "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
@@ -385,7 +385,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is the only 
             "applicability_score": 9,
             "arguments": {{
                 "origin": "New York",
-                "Destination": "Newark",
+                "Destination": "Newark"
             }},
             "same_call_is_already_staged": false,
             "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
@@ -414,7 +414,7 @@ Context - the candidate tool is check_calories(<product_name>): returns the numb
             "applicability_rationale": "We need to check how many calories are in the margherita pizza",
             "applicability_score": 9,
             "arguments": {{
-                "product_name": "margherita",
+                "product_name": "margherita"
             }},
             "same_call_is_already_staged": false,
             "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
@@ -427,7 +427,7 @@ Context - the candidate tool is check_calories(<product_name>): returns the numb
             "applicability_rationale": "We need to check how many calories are in the deep dish pizza",
             "applicability_score": 9,
             "arguments": {{
-                "product_name": "deep dish",
+                "product_name": "deep dish"
             }},
             "same_call_is_already_staged": false,
             "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
@@ -455,7 +455,7 @@ Context - the candidate tool is check_vehicle_price(model: str), and reference t
             "applicability_rationale": "we need to check for the price of a specific motorcycle model",
             "applicability_score": 9,
             "arguments": {{
-                "model": "Harley-Davidson Street Glide",
+                "model": "Harley-Davidson Street Glide"
             }},
             "same_call_is_already_staged": false,
             "comparison_with_rejected_tools_including_references_to_subtleties": "candidate tool is more specialized for this use case than the rejected tools",
@@ -464,7 +464,7 @@ Context - the candidate tool is check_vehicle_price(model: str), and reference t
             "better_rejected_tool_name": "check_motorcycle_price",
             "better_rejected_tool_rationale": "the only reference tool is less relevant than the candidate tool, since the candidate tool is designed specifically for motorcycle models, and not just general vehicles.",
             "should_run": true
-        }},
+        }}
     ]
 }}
 ```
@@ -485,7 +485,7 @@ Context - the candidate tool is check_motorcycle_price(model: str), and one refe
             "applicability_rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
             "applicability_score": 8,
             "arguments": {{
-                "model": "Harley-Davidson Street Glide",
+                "model": "Harley-Davidson Street Glide"
             }},
             "same_call_is_already_staged": false,
             "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_motorcycle_price",
@@ -494,7 +494,7 @@ Context - the candidate tool is check_motorcycle_price(model: str), and one refe
             "better_rejected_tool_name": "check_motorcycle_price",
             "better_rejected_tool_rationale": "check_motorcycle_price applies specifically for motorcycles, which is better fitting for this case compared to the more general check_vehicle_price",
             "should_run": false
-        }},
+        }}
     ]
 }}
 ```
