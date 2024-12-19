@@ -77,7 +77,7 @@ export default function Chat(): ReactElement {
         setShowTyping(false);
     };
 
-    const regenerateMessageDialog = (index: number) => (sessionId: string, offset: number) => {
+    const regenerateMessageDialog = (index: number) => (sessionId: string) => {
         const isLastMessage = index === messages.length - 1;
         const lastUserMessageOffset = messages[index - 1].offset;
         if (isLastMessage) return regenerateMessage(index, sessionId, lastUserMessageOffset + 1);
