@@ -8,6 +8,7 @@ All notable changes to Parlant will be documented here.
 - Print traceback when reporting server boot errors
 - Make cancelled operations issue a warning rather than an error
 - Fixed tool calling with optional parameters
+- Fix sandbox UI issues with message regeneration and status icon
 
 ## [1.1.0] - 2024-12-18
 
