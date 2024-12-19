@@ -224,9 +224,8 @@ Test guideline: ###
 Causation candidates:
 ###
 {{"id": 1, "when": "suggesting a book", "then": "mention its availability in the local library"}}
-{{"id": 2, "when": "recommending books", "then": "consider highlighting the ones with the best reviews"}}
-{{"id": 3, "when": "the customer greets you", "then": "greet them back with 'hello'"}}
-{{"id": 4, "when": "suggesting products", "then": "check if the product is available in our store, and only offer it if it is"}}
+{{"id": 2, "when": "the customer greets you", "then": "greet them back with 'hello'"}}
+{{"id": 3, "when": "suggesting products", "then": "check if the product is available in our store, and only offer it if it is"}}
 
 Expected Output:
 ```json
@@ -259,29 +258,6 @@ Expected Output:
             "target_id": 2,
             "source_when": "The customer asks for a book recommendation",
             "source_then": "suggest a book",
-            "target_when": "recommending books",
-            "target_when_is_customer_action": false,
-            "rationale": "the agent's applying of 'suggest a book' causes the recommendation of books to occur.",
-            "is_target_when_caused_by_source_then": true,
-            "causation_score": 9
-        }},
-        {{
-            "source_id": 2,
-            "target_id": 0,
-            "source_when": "recommending books",
-            "source_then": "consider highlighting the ones with the best reviews",
-            "target_when": "The customer asks for a book recommendation",
-            "target_when_is_customer_action": true,
-            "rationale": "the agent's highlighting reviews does not cause the customer to retrospectively ask for anything",
-            "is_target_when_caused_by_source_then": false,
-
-            "causation_score": 1
-        }},
-        {{
-            "source_id": 0,
-            "target_id": 3,
-            "source_when": "The customer asks for a book recommendation",
-            "source_then": "suggest a book",
             "target_when": "the customer greets you",
             "target_when_is_customer_action": true,
             "rationale": "the agent's suggesting a book does not cause the customer to greet the agent retrospectively",
@@ -290,7 +266,7 @@ Expected Output:
             "causation_score": 1
         }},
         {{
-            "source_id": 3,
+            "source_id": 2,
             "target_id": 0,
             "source_when": "the customer greets you",
             "source_then": "greet them back with 'hello'",
@@ -302,7 +278,7 @@ Expected Output:
         }},
         {{
             "source_id": 0,
-            "target_id": 4,
+            "target_id": 3,
             "source_when": "The customer asks for a book recommendation",
             "source_then": "suggest a book",
             "target_when": "suggesting products",
@@ -312,7 +288,7 @@ Expected Output:
             "causation_score": 9
         }},
         {{
-            "source_id": 4,
+            "source_id": 3,
             "target_id": 0,
             "source_when": "suggesting products",
             "source_then": "check if the product is available in our store, and only offer it if it is'",
@@ -476,7 +452,10 @@ Expected Output:
     ]
 }}
 '''
+###
 
+ADDITIONAL INFORMATION
+-----------------
 """  # noqa
         )
 
