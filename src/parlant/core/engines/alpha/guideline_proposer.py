@@ -64,6 +64,7 @@ class ConditionApplicabilityEvaluation:
     condition_application_rationale: str
     guideline_previously_applied_rationale: str
     guideline_previously_applied: str
+    guideline_is_continuous: bool
     guideline_should_reapply: bool
 
 
@@ -142,6 +143,7 @@ class GuidelineProposer:
                         guideline_previously_applied=PreviouslyAppliedType(
                             evaluation.guideline_previously_applied
                         ),
+                        guideline_is_continuous=evaluation.guideline_is_continuous,
                         rationale=f'''Condition Application: "{evaluation.condition_application_rationale}"; Guideline Previously Applied: "{evaluation.guideline_previously_applied_rationale}"''',
                         should_reapply=evaluation.guideline_should_reapply,
                     )
@@ -220,7 +222,7 @@ class GuidelineProposer:
 
             self._logger.debug(
                 f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: [{proposition.guideline_is_continuous}] ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
+                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: {proposition.guideline_is_continuous} ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
             if (proposition.applies_score >= 6) and (
@@ -240,6 +242,7 @@ class GuidelineProposer:
                         guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
                         or "",
                         guideline_should_reapply=proposition.guideline_should_reapply or False,
+                        guideline_is_continuous=proposition.guideline_is_continuous,
                     )
                 )
 
@@ -319,7 +322,8 @@ Insights Regarding Guideline re-activation
 -------------------
 A condition typically no longer applies if its corresponding action has already been executed.
 However, there are exceptions where re-application is warranted, such as when the condition is re-applied again. For example, a guideline with the condition "the customer is asking a question" should be applied again whenever the customer asks a question.
-Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met. Mark these guidelines "guideline_is_continuous" in your output.
+Additionally, actions that involve continuous behavior (e.g., "do not ask the user for their age", or guidelines involving the language the agent should use) should be re-applied whenever their condition is met, even if their action was already taken. Mark these guidelines "guideline_is_continuous" in your output.
+If a guideline's condition has multiple requirements, mark it as continuous if at least one of them is continuous. Actions like "tell the customer they are pretty and help them with their order" should be marked as continuous, since 'helping them with their order' is continuous.
 Actions that forbid certain behaviors are generally considered continuous, as they must be upheld across multiple messages to ensure consistent adherence.
 
 Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
@@ -491,6 +495,64 @@ Example #3:
         "condition_applies": false,
         "condition_application_rationale": "while weather was discussed earlier, the conversation have moved on to an entirely different topic (stock prices)",
         "applies_score": 3
+    }},
+    {{
+        "guideline_number": 3,
+        "condition": "the customer asked about the weather.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
+        "action": "provide the customre with the temperature and the chances of precipitation",
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "The action was partially fulfilled by reporting the temperature without the chances of precipitation. As partially fulfilled guidelines are treated as completed, this guideline is considered applied",
+        "guideline_previously_applied": "partially",
+        "guideline_should_reapply": false,
+        "applies_score": 4
+    }}
+    ]
+}}
+```
+
+Example #4:
+- Interaction Events: ###
+[{{"id": "11", "kind": "<message>", "source": "customer",
+"data": {{"message": "Hi there, I'd like to order a beer"}}}},
+{{"id": "23", "kind": "<message>", "source": "assistant",
+"data": {{"message": "Hello! I'd love to help you with your order! Before we begin our order, are you over 18?"}}}},
+{{"id": "34", "kind": "<message>", "source": "customer",
+"data": {{"message": "Yes, I'm 24"}}}},
+
+###
+- Guidelines: ###
+1) condition: the customer is under the age of 30. action: do not suggest wine
+2) condition: the customer is ordering beer. action: Ensure that the client is over 18 and help them with their order
+3) condition: the customer greeted you. action: Greet them back with "hello" or "hey", but never with "hi"
+###
+- **Expected Result**:
+```json
+{{ "checks": [
+    {{
+        "guideline_number": 1,
+        "condition": "the customer is under the age of 30.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer indicated that they're 24, which is under 30",
+        "action": "do not suggest wine",
+        "guideline_is_continuous": true,
+        "guideline_previously_applied_rationale": "The guideline's action is continuous, so it should re-apply whenever the condition is met",
+        "guideline_previously_applied": "fully",
+        "guideline_should_reapply": true,
+        "applies_score": 9
+    }},
+    {{
+        "guideline_number": 1,
+        "condition": "the customer is ordering beer.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer is in the process of ordering a beer",
+        "action": "Ensure that the client is over 18 and help them with their order",
+        "guideline_is_continuous": true,
+        "guideline_previously_applied_rationale": "The guideline's action is continuous, so it should re-apply whenever the condition is met",
+        "guideline_previously_applied": "fully",
+        "guideline_should_reapply": true,
+        "applies_score": 9
     }},
     {{
         "guideline_number": 3,
