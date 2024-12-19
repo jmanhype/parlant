@@ -77,13 +77,15 @@ export default function Chat(): ReactElement {
         setShowTyping(false);
     };
 
-    const regenerateMessageDialog = (index: number) => (sessionId: string, offset: number) => {
+    const regenerateMessageDialog = (index: number) => (sessionId: string) => {
         const isLastMessage = index === messages.length - 1;
-        if (isLastMessage) return regenerateMessage(index, sessionId, offset);
+        const lastUserMessageOffset = messages[index - 1].offset;
+        if (isLastMessage) return regenerateMessage(index, sessionId, lastUserMessageOffset + 1);
+
 
         const onApproved = () => {
             closeQuestionDialog();
-            regenerateMessage(index, sessionId, offset);
+            regenerateMessage(index, sessionId, lastUserMessageOffset + 1);
         };
 
         const question = 'Regenerating this message would cause all of the following messages in the session to disappear.';
@@ -95,7 +97,7 @@ export default function Chat(): ReactElement {
         const prevLastOffset = lastOffset;
 
         setMessages(messages => messages.slice(0, index));
-        setLastOffset(offset - 1);
+        setLastOffset(offset);
         setIsRegenerating(true);
         const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset}`).catch((e) => ({error: e}));
         if (deleteSession?.error) {
@@ -128,9 +130,10 @@ export default function Chat(): ReactElement {
         if (!lastEvent) return;
         const offset = lastEvent?.offset;
         if (offset || offset === 0) setLastOffset(offset + 1);
-        const correlationsMap = groupBy(lastMessages || [], (item: EventInterface) => item?.correlation_id.split('.')[0]);
+        const correlationsMap = groupBy(lastMessages || [], (item: EventInterface) => item?.correlation_id.split('::')[0]);
         const newMessages = lastMessages?.filter(e => e.kind === 'message') || [];
-        const withStatusMessages = newMessages.map(newMessage => ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('.')[0]]?.at(-1)?.data?.status}));
+        const withStatusMessages = newMessages.map((newMessage, i) =>
+            ({...newMessage, serverStatus: correlationsMap?.[newMessage.correlation_id.split('::')[0]]?.at(-1)?.data?.status || (newMessages[i + 1] ? 'ready' : null)}));
         if (newMessages.length && isRegenerating) setIsRegenerating(false);
 
         if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
