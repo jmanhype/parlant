@@ -9,6 +9,7 @@ All notable changes to Parlant will be documented here.
 - Make cancelled operations issue a warning rather than an error
 - Fixed tool calling with optional parameters
 - Fix sandbox UI issues with message regeneration and status icon
+- Fix case where guideline is applied due to condition being partially applied
 
 ## [1.1.0] - 2024-12-18
 
