@@ -54,6 +54,7 @@ from parlant.core.tools import (
     ToolContext,
     EnumValueType,
     ToolResultError,
+    normalize_tool_arguments,
 )
 from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -415,20 +416,15 @@ class PluginServer:
             )
 
             func = self.tools[name].function
-            func_params = inspect.signature(func).parameters
-
-            def get_value(parameter_type: Any, argument: Any) -> Any:
-                if inspect.isclass(parameter_type) and issubclass(parameter_type, enum.Enum):
-                    return parameter_type(argument)
-                return argument
 
             try:
-                converted_arguments = {
-                    param_name: get_value(func_params[param_name].annotation, argument)
-                    for param_name, argument in request.arguments.items()
-                }
-
-                result = self.tools[name].function(context, **converted_arguments)  # type: ignore
+                result = self.tools[name].function(
+                    context,
+                    **normalize_tool_arguments(
+                        inspect.signature(func).parameters,
+                        request.arguments,
+                    ),
+                )  # type: ignore
             except BaseException:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
