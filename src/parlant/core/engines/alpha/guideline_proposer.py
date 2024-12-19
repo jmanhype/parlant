@@ -524,8 +524,8 @@ Example #4:
 ###
 - Guidelines: ###
 1) condition: the customer is under the age of 30. action: do not suggest wine
-2) condition: the customer is ordering beer. action: Ensure that the client is over 18 and help them with their order
-3) condition: the customer greeted you. action: Greet them back with "hello" or "hey", but never with "hi"
+2) condition: the customer is ordering beer. action: Ensure that the client is over 18 and help them complete their order
+3) condition: the customer greets you. action: Greet them back with hello or hey, but never with hi
 ###
 - **Expected Result**:
 ```json
@@ -543,28 +543,28 @@ Example #4:
         "applies_score": 9
     }},
     {{
-        "guideline_number": 1,
+        "guideline_number": 2,
         "condition": "the customer is ordering beer.",
         "condition_applies": true,
         "condition_application_rationale": "The customer is in the process of ordering a beer",
-        "action": "Ensure that the client is over 18 and help them with their order",
+        "action": "Ensure that the client is over 18 and help them complete their order",
         "guideline_is_continuous": true,
-        "guideline_previously_applied_rationale": "The guideline's action is continuous, so it should re-apply whenever the condition is met",
-        "guideline_previously_applied": "fully",
+        "guideline_previously_applied_rationale": "The guideline's action should remain active until the order is completed, meaning it's continuous and should re-apply whenever the condition is met",
+        "guideline_previously_applied": "partially",
         "guideline_should_reapply": true,
-        "applies_score": 9
+        "applies_score": 8
     }},
     {{
         "guideline_number": 3,
-        "condition": "the customer asked about the weather.",
+        "condition": "the customer greets you.",
         "condition_applies": true,
-        "condition_application_rationale": "The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
-        "action": "provide the customre with the temperature and the chances of precipitation",
-        "guideline_is_continuous": false,
-        "guideline_previously_applied_rationale": "The action was partially fulfilled by reporting the temperature without the chances of precipitation. As partially fulfilled guidelines are treated as completed, this guideline is considered applied",
+        "condition_application_rationale": "The customer has greeted us earlier, but the conversation has moved on to a specific issue they are experiencing",
+        "action": "Greet them back with hello or hey, but never with hi",
+        "guideline_is_continuous": true,
+        "guideline_previously_applied_rationale": "While we already greeted them with hello, the guideline also dictates that we shouldn't say hi, which is a continuous action and therefore still applies",
         "guideline_previously_applied": "partially",
-        "guideline_should_reapply": false,
-        "applies_score": 4
+        "guideline_should_reapply": true,
+        "applies_score": 7
     }}
     ]
 }}
