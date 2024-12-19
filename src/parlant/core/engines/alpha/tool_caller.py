@@ -244,12 +244,12 @@ class ToolCaller:
 GENERAL INSTRUCTIONS
 -----------------
 You are part of a system of AI agents which interact with a customer on the behalf of a business.
-The behavior of the system is determined by a list of behavioral guidelines provided by the business. 
-Some of these guidelines are equipped with external tools—functions that enable the AI to access crucial information and execute specific actions. 
+The behavior of the system is determined by a list of behavioral guidelines provided by the business.
+Some of these guidelines are equipped with external tools—functions that enable the AI to access crucial information and execute specific actions.
 Your responsibility in this system is to evaluate when and how these tools should be employed, based on the current state of interaction, which will be detailed later in this prompt.
 
-This evaluation and execution process occurs iteratively, preceding each response generated to the customer. 
-Consequently, some tool calls may have already been initiated and executed following the customer's most recent message. 
+This evaluation and execution process occurs iteratively, preceding each response generated to the customer.
+Consequently, some tool calls may have already been initiated and executed following the customer's most recent message.
 Any such completed tool call will be detailed later in this prompt along with its result.
 These calls do not require to be re-run at this time, unless you identify a valid reason for their reevaluation.
 
@@ -262,8 +262,8 @@ These calls do not require to be re-run at this time, unless you identify a vali
 -----------------
 TASK DESCRIPTION
 -----------------
-Your task is to review the provided tool and, based on your most recent interaction with the customer, decide whether to use it. 
-For the provided tool, assign a score from 1 to 10 to indicate its usefulness at this time, where a higher score indicates that the tool call should execute. 
+Your task is to review the provided tool and, based on your most recent interaction with the customer, decide whether to use it.
+For the provided tool, assign a score from 1 to 10 to indicate its usefulness at this time, where a higher score indicates that the tool call should execute.
 For any tool with a score of 5 or higher, provide the arguments for activation, following the format in its description.
 
 While doing so, take the following instructions into account:
@@ -304,7 +304,7 @@ Produce a valid JSON object according to the following format:
 where the tool provided to you under appears at least once in "tool_calls_for_candidate_tool", whether you decide to use it or not.
 The exact format of your output will be provided to you at the end of this prompt.
 
-The following examples show correct outputs for various hypothetical situations. 
+The following examples show correct outputs for various hypothetical situations.
 Only the responses are provided, without the interaction history or tool descriptions, though these can be inferred from the responses.
 
 EXAMPLES
@@ -352,7 +352,7 @@ Context - the id of the customer is 12345, and check_balance(12345) is listed as
     "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
     "tool_calls_for_candidate_tool": [
         {{
-            
+
             "applicability_rationale": "There is no reason to notify the supervisor of anything",
             "applicability_score": 1,
             "same_call_is_already_staged": false,
@@ -419,7 +419,7 @@ Context - the candidate tool is check_calories(<product_name>): returns the numb
             "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
             "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
             "should_run": true
-            
+
         }},
         {{
             "applicability_rationale": "We need to check how many calories are in the deep dish pizza",
@@ -581,7 +581,7 @@ STAGED TOOL CALLS
 -----------------
 The following is a list of tool calls staged after the interaction’s latest state. Use this information to avoid redundant calls and to guide your response.
 
-Reminder: If a tool is already staged with the exact same arguments, set "same_call_is_already_staged" to true. 
+Reminder: If a tool is already staged with the exact same arguments, set "same_call_is_already_staged" to true.
 You may still choose to re-run the tool call, but only if there is a specific reason for it to be executed multiple times.
 
 The staged tool calls are:
@@ -623,7 +623,7 @@ Given the tool, your output should adhere to the following format:
             "better_rejected_tool_name": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS IS THE NAME OF THAT REJECTED TOOL>",
             "better_rejected_tool_rationale": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS EXPLAINS WHY>",
             "should_run": <BOOL>
-        }}                                               
+        }}
     ]
 }}
 ```
@@ -671,7 +671,7 @@ If the Candidate Tool seems even less relevant than any of the Rejected Tools, t
 DO NOT RUN the Candidate Tool as a "FALLBACK", "LAST RESORT", or "LAST VIABLE CHOICE" if another tool that actually seems more appropriate was nonetheless rejected for some reason.
 Remember that other tools were rejected while taking your (agent's) description and glossary into full consideration. Nothing was overlooked.
 However, if the Candidate Tool truly offers a unique advantage or capability over all other Rejected Tools,
-given the agent's description and glossary, then do choose to use it and provide its arguments. 
+given the agent's description and glossary, then do choose to use it and provide its arguments.
 Finally, focus solely on evaluating the Candidate Tool; do not evaluate any other tool.
 
 Rejected tools: ###
@@ -703,10 +703,10 @@ Candidate tool: ###
         return f"""
 GUIDELINES
 ---------------------
-The following guidelines have been identified as relevant to the current state of interaction with the customer. 
+The following guidelines have been identified as relevant to the current state of interaction with the customer.
 Some guidelines have a tool associated with them, which you may decide to apply as needed. Use these guidelines to understand the context for the provided tool.
 
-Guidelines: 
+Guidelines:
 ###
 {guideline_list}
 \n    Associated Tool: {tool_id_propositions[0].service_name}:{tool_id_propositions[0].tool_name}"
