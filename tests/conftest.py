@@ -284,7 +284,7 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[GuidelinePropositionsSchema],
             container[SchematicGenerator[GuidelinePropositionsSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     if isinstance(
         container[SchematicGenerator[MessageEventSchema]],
@@ -293,7 +293,7 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[MessageEventSchema],
             container[SchematicGenerator[MessageEventSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     if isinstance(
         container[SchematicGenerator[ToolCallInferenceSchema]],
@@ -302,7 +302,7 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[ToolCallInferenceSchema],
             container[SchematicGenerator[ToolCallInferenceSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     if isinstance(
         container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
@@ -311,7 +311,7 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[ConditionsEntailmentTestsSchema],
             container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     if isinstance(
         container[SchematicGenerator[ActionsContradictionTestsSchema]],
@@ -320,7 +320,7 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[ActionsContradictionTestsSchema],
             container[SchematicGenerator[ActionsContradictionTestsSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     if isinstance(
         container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
@@ -329,6 +329,6 @@ def no_cached_generations(container: Container) -> NoCachedGenerations:
         cast(
             CachedSchematicGenerator[GuidelineConnectionPropositionsSchema],
             container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
-        ).use_cache = False
+        ).set_use_cache(False)
 
     return NoCachedGenerations()

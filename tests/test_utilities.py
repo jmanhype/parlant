@@ -371,9 +371,13 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         self._base_generator = base_generator
         self._collection = collection
 
-        self.use_cache = use_cache
+        self._use_cache = use_cache
 
         self._ensure_cache_file_exists()
+
+    def set_use_cache(self, new_value: bool) -> bool:
+        self._use_cache = new_value
+        return self._use_cache
 
     def _ensure_cache_file_exists(self) -> None:
         if not GLOBAL_CACHE_FILE.exists():
@@ -441,7 +445,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         prompt: str,
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[TBaseModel]:
-        if self.use_cache is False:
+        if self._use_cache is False:
             return await self._base_generator.generate(prompt, hints)
 
         id = self._generate_id(prompt, hints)
