@@ -94,9 +94,9 @@ from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
 from .test_utilities import (
+    CachedSchematicGenerator,
     SyncAwaiter,
     create_schematic_generation_result_collection,
-    create_schematic_generator,
 )
 
 
@@ -194,46 +194,40 @@ async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
             await create_schematic_generation_result_collection(stack, logger=container[Logger])
         )
 
-        container[
-            SchematicGenerator[GuidelinePropositionsSchema]
-        ] = await create_schematic_generator(
+        container[SchematicGenerator[GuidelinePropositionsSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
             schematic_generation_result_collection,
             use_cache,
         )
-        container[SchematicGenerator[MessageEventSchema]] = await create_schematic_generator(
+        container[SchematicGenerator[MessageEventSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(MessageEventSchema),
             schematic_generation_result_collection,
             use_cache,
         )
-        container[SchematicGenerator[ToolCallInferenceSchema]] = await create_schematic_generator(
+        container[SchematicGenerator[ToolCallInferenceSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
             schematic_generation_result_collection,
             use_cache,
         )
-        container[
-            SchematicGenerator[ConditionsEntailmentTestsSchema]
-        ] = await create_schematic_generator(
+        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
             schematic_generation_result_collection,
             use_cache,
         )
 
-        container[
-            SchematicGenerator[ActionsContradictionTestsSchema]
-        ] = await create_schematic_generator(
+        container[SchematicGenerator[ActionsContradictionTestsSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
             schematic_generation_result_collection,
             use_cache,
         )
-        container[
-            SchematicGenerator[GuidelineConnectionPropositionsSchema]
-        ] = await create_schematic_generator(
-            await container[NLPService].get_schematic_generator(
-                GuidelineConnectionPropositionsSchema
-            ),
-            schematic_generation_result_collection,
-            use_cache,
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = (
+            CachedSchematicGenerator(
+                await container[NLPService].get_schematic_generator(
+                    GuidelineConnectionPropositionsSchema
+                ),
+                schematic_generation_result_collection,
+                use_cache,
+            )
         )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
@@ -275,3 +269,64 @@ async def async_client(api_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
         base_url="http://testserver",
     ) as client:
         yield client
+
+
+class NoCachedGenerations:
+    pass
+
+
+@fixture
+def no_cache(container: Container) -> None:
+    if isinstance(
+        container[SchematicGenerator[GuidelinePropositionsSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[GuidelinePropositionsSchema],
+            container[SchematicGenerator[GuidelinePropositionsSchema]],
+        ).use_cache = False
+
+    if isinstance(
+        container[SchematicGenerator[MessageEventSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[MessageEventSchema],
+            container[SchematicGenerator[MessageEventSchema]],
+        ).use_cache = False
+
+    if isinstance(
+        container[SchematicGenerator[ToolCallInferenceSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[ToolCallInferenceSchema],
+            container[SchematicGenerator[ToolCallInferenceSchema]],
+        ).use_cache = False
+
+    if isinstance(
+        container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[ConditionsEntailmentTestsSchema],
+            container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
+        ).use_cache = False
+
+    if isinstance(
+        container[SchematicGenerator[ActionsContradictionTestsSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[ActionsContradictionTestsSchema],
+            container[SchematicGenerator[ActionsContradictionTestsSchema]],
+        ).use_cache = False
+
+    if isinstance(
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
+        CachedSchematicGenerator,
+    ):
+        cast(
+            CachedSchematicGenerator[GuidelineConnectionPropositionsSchema],
+            container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
+        ).use_cache = False

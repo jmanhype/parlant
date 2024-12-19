@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import enum
+from typing import Optional
 
 from parlant.core.tools import ToolResult
 
@@ -157,3 +158,12 @@ def consult_policy() -> ToolResult:
 
 def other_inquiries() -> ToolResult:
     return ToolResult("Sorry, we could not find a specific answer to your query.")
+
+
+def try_unlock_card(last_6_digits: Optional[str] = None) -> ToolResult:
+    try:
+        if not last_6_digits:
+            return ToolResult({"failure": "need to specify the last 6 digits of the card"})
+        return ToolResult({"success": "card succesfuly unlocked"})
+    except BaseException:
+        return ToolResult({"failure": "system error"})

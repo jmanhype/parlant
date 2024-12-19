@@ -352,6 +352,17 @@ def given_a_tool(
             "parameters": {},
             "required": [],
         },
+        "try_unlock_card": {
+            "name": "try_unlock_card",
+            "description": "This tool unlocks a credit card",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "last_6_digits": {
+                    "type": "string",
+                },
+            },
+            "required": [],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

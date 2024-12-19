@@ -366,9 +366,12 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         self,
         base_generator: SchematicGenerator[TBaseModel],
         collection: DocumentCollection[_SchematicGenerationResultDocument],
+        use_cache: bool,
     ):
         self._base_generator = base_generator
         self._collection = collection
+        self.use_cache = use_cache
+
         self._ensure_cache_file_exists()
 
     def _ensure_cache_file_exists(self) -> None:
@@ -437,6 +440,9 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         prompt: str,
         hints: Mapping[str, Any] = {},
     ) -> SchematicGenerationResult[TBaseModel]:
+        if self.use_cache is False:
+            return await self._base_generator.generate(prompt, hints)
+
         id = self._generate_id(prompt, hints)
 
         result_document = await self._collection.find_one(filters={"id": {"$eq": id}})
@@ -483,14 +489,3 @@ async def create_schematic_generation_result_collection(
     return await _db.get_or_create_collection(
         name="cache_schematic_generation_results", schema=_SchematicGenerationResultDocument
     )
-
-
-async def create_schematic_generator(
-    base_generator: SchematicGenerator[TBaseModel],
-    collection: DocumentCollection[_SchematicGenerationResultDocument],
-    use_cache: bool,
-) -> SchematicGenerator[TBaseModel]:
-    if use_cache is False:
-        return base_generator
-
-    return CachedSchematicGenerator(base_generator, collection)
