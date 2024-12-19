@@ -225,7 +225,7 @@ Causation candidates:
 ###
 {{"id": 1, "when": "suggesting a book", "then": "mention its availability in the local library"}}
 {{"id": 2, "when": "the customer greets you", "then": "greet them back with 'hello'"}}
-{{"id": 3, "when": "suggesting products", "then": "check if the product is available in our store, and only offer it if it is"}}
+{{"id": 3, "when": "offering the customer products", "then": "check if the product is available in our store, and only offer it if it is"}}
 
 Expected Output:
 ```json
@@ -281,9 +281,9 @@ Expected Output:
             "target_id": 3,
             "source_when": "The customer asks for a book recommendation",
             "source_then": "suggest a book",
-            "target_when": "suggesting products",
+            "target_when": "offering the customer products",
             "target_when_is_customer_action": false,
-            "rationale": "the agent's suggesting a book, necessarily causes the suggestion of a product.",
+            "rationale": "the agent's suggesting a book, necessarily causes the offering of a product.",
             "is_target_when_caused_by_source_then": true,
             "causation_score": 9
         }},
@@ -388,6 +388,46 @@ Expected Output:
 ```
 
 ###
+###
+Example 4
+Input:
+Test guideline: ###
+{{"id": 0, "when": "a new topping is suggested", "then": "announce that the suggestion will be forwarded to management for consideration"}}
+###
+Causation candidates: ###
+{{"id": 1, "when": "discussing opening hours", "then": "mention that the store closes early on Sundays"}}
+
+Expected Output:
+```json
+{{
+    "propositions": [
+        {{
+            "source_id": 0,
+            "target_id": 1,
+            "source_when": "a new topping is suggested",
+            "source_then": "announce that the suggestion will be forwarded to management for consideration",
+            "target_when": "discussing opening hours",
+            "target_when_is_customer_action": false,
+            "rationale": "the agent's forwarding something to management has nothing to do with opening hours",
+            "is_target_when_caused_by_source_then": false,
+            "causation_score": 1
+        }},
+        {{
+            "source_id": 1,
+            "target_id": 0,
+            "source_when": "discussing opening hours",
+            "source_then": "mention that the store closes early on Sundays",
+            "target_when": "a new topping is suggested",
+            "target_when_is_customer_action": false,
+            "rationale": "the agent's store hours discussion does not cause any new topping suggestion to occur",
+            "is_target_when_caused_by_source_then": false,
+            "causation_score": 1
+        }},
+    ]
+}}
+```
+###
+
 
 ADDITIONAL INFORMATION
 -----------------
