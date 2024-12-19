@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-None
+- Expose deletion flag for events in Session API
 
 ## [1.1.0] - 2024-12-18
 

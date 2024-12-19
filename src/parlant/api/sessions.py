@@ -286,6 +286,7 @@ class EventDTO(
     creation_utc: EventCreationUTCField
     correlation_id: EventCorrelationIdField
     data: JSONSerializableDTO
+    deleted: bool
 
 
 class ConsumptionOffsetsUpdateParamsDTO(
@@ -817,6 +818,7 @@ def event_to_dto(event: Event) -> EventDTO:
         creation_utc=event.creation_utc,
         correlation_id=event.correlation_id,
         data=cast(JSONSerializableDTO, event.data),
+        deleted=event.deleted,
     )
 
 
@@ -1362,6 +1364,7 @@ def create_router(
             creation_utc=event.creation_utc,
             correlation_id=event.correlation_id,
             data=cast(JSONSerializableDTO, event.data),
+            deleted=event.deleted,
         )
 
     @router.get(
@@ -1443,6 +1446,7 @@ def create_router(
                 creation_utc=e.creation_utc,
                 correlation_id=e.correlation_id,
                 data=cast(JSONSerializableDTO, e.data),
+                deleted=e.deleted,
             )
             for e in events
         ]

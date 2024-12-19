@@ -56,10 +56,10 @@ uvicorn = "^0.32.1"
 nano-vectordb = "^0.0.4.3"
 structlog = "^24.4.0"
 colorama = "^0.4.6"
-parlant-client = "^0.8"
+parlant-client = "^0"
 
 [tool.poetry.group.dev.dependencies]
-parlant-client = { git = "https://github.com/emcie-co/parlant-client-python.git", tag = "v0.8.0" }
+parlant-client = { git = "https://github.com/emcie-co/parlant-client-python.git", tag = "v0.9.0" }
 ipython = "^8.26.0"
 mypy = "^1.11.1"
 pep8-naming = "^0.13.3"
