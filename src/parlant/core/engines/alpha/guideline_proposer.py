@@ -242,7 +242,7 @@ class GuidelineProposer:
                         guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
                         or "",
                         guideline_should_reapply=proposition.guideline_should_reapply or False,
-                        guideline_is_continuous=proposition.guideline_is_continuous,
+                        guideline_is_continuous=proposition.guideline_is_continuous or False,
                     )
                 )
 
