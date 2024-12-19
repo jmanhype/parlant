@@ -20,13 +20,12 @@ from unittest.mock import AsyncMock
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.engine import AlphaEngine
-
 from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
 from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.types import Context
 from parlant.core.emission.event_buffer import EventBuffer
 from parlant.core.sessions import SessionId, SessionStore
-from tests.conftest import NoCachedGenerations
+
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -77,7 +76,7 @@ def when_processing_is_triggered_and_cancelled_in_the_middle(
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
-    no_cached_generations: NoCachedGenerations,
+    no_cache: None,
 ) -> list[EmittedEvent]:
     event_buffer = EventBuffer(
         context.sync_await(
@@ -95,7 +94,7 @@ def when_processing_is_triggered_and_cancelled_in_the_middle(
         )
     )
 
-    context.sync_await(asyncio.sleep(1))
+    context.sync_await(asyncio.sleep(0.5))
 
     processing_task.cancel()
 
