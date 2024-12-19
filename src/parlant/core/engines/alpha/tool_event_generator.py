@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
+from itertools import chain
 from typing import Mapping, Optional, Sequence
 
 from parlant.core.customers import Customer
-from parlant.core.engines.alpha.event_generation import EventGenerationResult
 from parlant.core.tools import ToolContext
 from parlant.core.contextual_correlator import ContextualCorrelator
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.logging import Logger
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
@@ -29,6 +30,12 @@ from parlant.core.glossary import Term
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCaller
 from parlant.core.emissions import EmittedEvent, EventEmitter
 from parlant.core.tools import ToolId
+
+
+@dataclass(frozen=True)
+class ToolEventGenerationsResult:
+    generations: Sequence[GenerationInfo]
+    events: Sequence[Optional[EmittedEvent]]
 
 
 class ToolEventGenerator:
@@ -57,16 +64,15 @@ class ToolEventGenerator:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Optional[EventGenerationResult]:
+    ) -> Optional[ToolEventGenerationsResult]:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
             self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return None
 
-        generation_info, tool_calls = await self._tool_caller.infer_tool_calls(
+        inference_tool_calls_result = await self._tool_caller.infer_tool_calls(
             agents,
-            customer,
             context_variables,
             interaction_history,
             terms,
@@ -75,8 +81,9 @@ class ToolEventGenerator:
             staged_events,
         )
 
+        tool_calls = list(chain.from_iterable(inference_tool_calls_result.batches))
         if not tool_calls:
-            return EventGenerationResult(generation_info, [])
+            return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [])
 
         tool_results = await self._tool_caller.execute_tool_calls(
             ToolContext(
@@ -88,7 +95,7 @@ class ToolEventGenerator:
         )
 
         if not tool_results:
-            return EventGenerationResult(generation_info, [])
+            return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [])
 
         event_data: ToolEventData = {
             "tool_calls": [
@@ -106,4 +113,4 @@ class ToolEventGenerator:
             data=event_data,
         )
 
-        return EventGenerationResult(generation_info, [event])
+        return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [event])

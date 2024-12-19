@@ -12,7 +12,7 @@ interface Props {
     event: EventInterface;
     isContinual: boolean;
     isRegenerateHidden?: boolean;
-    regenerateMessageFn?: (sessionId: string, offset: number) => void;
+    regenerateMessageFn?: (sessionId: string) => void;
 }
 
 const statusIcon = {
@@ -54,7 +54,7 @@ export default function Message({event, isContinual, isRegenerateHidden, regener
                 {!isClient &&
                 <div className={twMerge('self-stretch items-center px-[16px] flex invisible peer-hover:visible hover:visible', isRegenerateHidden && 'hidden')}>
                     <Tooltip value='Regenerate' side='right'>
-                        <div data-testid='regenerate-button'role='button' onClick={() => regenerateMessageFn?.(sessionId as string, event.offset)} className='group cursor-pointer'>
+                        <div data-testid='regenerate-button'role='button' onClick={() => regenerateMessageFn?.(sessionId as string)} className='group cursor-pointer'>
                             <img src="icons/regenerate.svg" alt="regenerate" className='block group-hover:hidden'/>
                             <img src="icons/regenerate-filled.svg" alt="regenerate" className='hidden group-hover:block'/>
                         </div>

@@ -16,9 +16,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import enum
 import importlib
 import inspect
 from typing import (
+    Any,
     Awaitable,
     Callable,
     Literal,
@@ -259,11 +261,7 @@ class LocalToolService(ToolService):
 
         try:
             func_params = inspect.signature(func).parameters
-            converted_arguments = {
-                param_name: func_params[param_name].annotation(arg_value)
-                for param_name, arg_value in arguments.items()
-            }
-            result: ToolResult = func(**converted_arguments)
+            result: ToolResult = func(**normalize_tool_arguments(func_params, arguments))
 
             if inspect.isawaitable(result):
                 result = await result
@@ -274,3 +272,19 @@ class LocalToolService(ToolService):
             raise ToolResultError(name, "Tool result is not an instance of ToolResult")
 
         return result
+
+
+def normalize_tool_arguments(
+    parameters: Mapping[str, inspect.Parameter],
+    arguments: Mapping[str, Any],
+) -> Any:
+    return {
+        param_name: normalize_tool_argument(parameters[param_name].annotation, argument)
+        for param_name, argument in arguments.items()
+    }
+
+
+def normalize_tool_argument(parameter_type: Any, argument: Any) -> Any:
+    if inspect.isclass(parameter_type) and issubclass(parameter_type, enum.Enum):
+        return parameter_type(argument)
+    return argument

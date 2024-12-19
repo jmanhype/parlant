@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
 import importlib
 import os
+import traceback
 from lagom import Container, Singleton
 from typing import AsyncIterator, Callable, Iterable
 import toml
@@ -448,6 +449,7 @@ async def serve_app(
     except (KeyboardInterrupt, asyncio.CancelledError):
         await BACKGROUND_TASK_SERVICE.cancel_all(reason="Server shutting down")
     except BaseException as e:
+        LOGGER.critical(traceback.format_exc())
         LOGGER.critical(e.__class__.__name__ + ": " + str(e))
         sys.exit(1)
 

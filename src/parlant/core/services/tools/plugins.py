@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import enum
 import inspect
 import json
+import traceback
 import dateutil.parser
 from types import TracebackType
 from typing import (
@@ -36,7 +37,7 @@ from typing import (
     overload,
 )
 from typing_extensions import Unpack, override
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 import httpx
 from urllib.parse import urljoin
@@ -53,6 +54,7 @@ from parlant.core.tools import (
     ToolContext,
     EnumValueType,
     ToolResultError,
+    normalize_tool_arguments,
 )
 from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -414,13 +416,20 @@ class PluginServer:
             )
 
             func = self.tools[name].function
-            func_params = inspect.signature(func).parameters
-            converted_arguments = {
-                param_name: func_params[param_name].annotation(arg_value)
-                for param_name, arg_value in request.arguments.items()
-            }
 
-            result = self.tools[name].function(context, **converted_arguments)  # type: ignore
+            try:
+                result = self.tools[name].function(
+                    context,
+                    **normalize_tool_arguments(
+                        inspect.signature(func).parameters,
+                        request.arguments,
+                    ),
+                )  # type: ignore
+            except BaseException:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=traceback.format_exc(),
+                )
 
             result_future: asyncio.Future[ToolResult]
 
@@ -517,7 +526,8 @@ class PluginClient(ToolService):
             ) as response:
                 if response.is_error:
                     raise ToolExecutionError(
-                        tool_name=name, message=f"url='{self.url}', arguments='{arguments}'"
+                        tool_name=name,
+                        message=f"url='{self.url}', arguments='{arguments}'",
                     )
 
                 event_emitter = await self._event_emitter_factory.create_event_emitter(

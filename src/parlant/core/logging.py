@@ -136,7 +136,7 @@ class CorrelationalLogger(Logger):
             else:
                 self.info(f"{name} finished in {round(t_end - t_start, 3)} seconds")
         except asyncio.CancelledError:
-            self.error(f"{name} cancelled after {round(time.time() - t_start, 3)} seconds")
+            self.warning(f"{name} cancelled after {round(time.time() - t_start, 3)} seconds")
             raise
         except Exception as exc:
             self.error(f"{name} failed")

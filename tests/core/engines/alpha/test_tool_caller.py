@@ -14,7 +14,8 @@
 
 from datetime import datetime, timezone
 import enum
-from typing import Any, cast
+from itertools import chain
+from typing import Any, Optional, cast
 from lagom import Container
 from pytest import fixture
 
@@ -53,12 +54,16 @@ async def customer(container: Container, customer_id: CustomerId) -> Customer:
     return await container[CustomerStore].read_customer(customer_id)
 
 
-def create_interaction_history(conversation_context: list[tuple[str, str]]) -> list[Event]:
+def create_interaction_history(
+    conversation_context: list[tuple[str, str]],
+    customer: Optional[Customer] = None,
+) -> list[Event]:
     return [
         create_event_message(
             offset=i,
             source=cast(EventSource, source),
             message=message,
+            customer=customer,
         )
         for i, (source, message) in enumerate(conversation_context)
     ]
@@ -143,9 +148,8 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
         ): [ToolId(service_name="local", tool_name=tool.name)]
     }
 
-    _, tool_calls = await tool_caller.infer_tool_calls(
+    inference_tool_calls_result = await tool_caller.infer_tool_calls(
         agents=[agent],
-        customer=customer,
         context_variables=[],
         interaction_history=interaction_history,
         terms=[],
@@ -154,6 +158,7 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
         staged_events=[],
     )
 
+    tool_calls = list(chain.from_iterable(inference_tool_calls_result.batches))
     assert len(tool_calls) == 1
     tool_call = tool_calls[0]
 
@@ -217,9 +222,8 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
             url=server.url,
         )
 
-        _, tool_calls = await tool_caller.infer_tool_calls(
+        inference_tool_calls_result = await tool_caller.infer_tool_calls(
             agents=[agent],
-            customer=customer,
             context_variables=[],
             interaction_history=interaction_history,
             terms=[],
@@ -228,6 +232,7 @@ async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
             staged_events=[],
         )
 
+    tool_calls = list(chain.from_iterable(inference_tool_calls_result.batches))
     assert len(tool_calls) == 1
     tool_call = tool_calls[0]
 

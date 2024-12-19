@@ -1017,6 +1017,7 @@ class Interface:
                 "Offset": e.offset,
                 "Kind": e.kind,
                 "Data": e.data,
+                "Deleted": e.deleted,
             }
             for e in events
         ]
