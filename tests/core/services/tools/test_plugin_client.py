@@ -312,7 +312,25 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
             assert result.data == "category_a"
 
 
-async def test_that_a_plugin_tool_that_return_huge_payload_raises_an_error(
+async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
+    context: ToolContext, container: Container
+) -> None:
+    @tool
+    def my_tool(context: ToolContext, arg_1: int, arg_2: Optional[int] = None) -> ToolResult:
+        assert arg_2
+        return ToolResult(arg_1 * arg_2)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            result = await client.call_tool(
+                my_tool.tool.name,
+                context,
+                arguments={"arg_1": 2, "arg_2": 4},
+            )
+            assert result.data == 8
+
+
+async def test_that_a_plugin_tool_that_returns_a_huge_payload_raises_an_error(
     context: ToolContext,
     container: Container,
     agent: Agent,

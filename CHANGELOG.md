@@ -7,6 +7,7 @@ All notable changes to Parlant will be documented here.
 - Expose deletion flag for events in Session API
 - Print traceback when reporting server boot errors
 - Make cancelled operations issue a warning rather than an error
+- Fixed tool calling with optional parameters
 
 ## [1.1.0] - 2024-12-18
 

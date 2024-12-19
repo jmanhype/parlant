@@ -784,7 +784,7 @@ Guidelines:
         except Exception as e:
             self._logger.error(
                 f"Tool execution error (tool='{tool_call.tool_id.to_string()}', "
-                "arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
+                f"arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
             )
 
             return ToolCallResult(
