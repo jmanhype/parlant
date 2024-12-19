@@ -39,9 +39,7 @@ Parlant bridges this gap by making it easy and fast for developers to adjust the
 
 ## Real-world impact
 
-[Revenued](https://www.revenued.com), a business capital provider, could get into trouble if their AI agents make false or misleading claims.
-
-With Parlant, they've been able to quickly integrate feedback from customer service experts and then test and verify that the agents aren't making problematic promises or statements to customers.
+[Revenued](https://www.revenued.com), a business capital provider, uses Parlant to infuse human-like conversations for their Sales Copilot. They leverage Parlant's structured CLI to modify the agent's behavior quickly and easily based on feedback from company stakeholders.
 
 ## Key benefits
 
