@@ -136,34 +136,6 @@ Feature: Conversation
         And a customer message, "123456"
         When processing is triggered
         Then a single message event is emitted
-        And the tool calls event contains 1 tool call(s)
+        And a single tool calls event is emitted
         And the tool calls event contains that the card was succesfully unlocked
         And the message contains that the card was unlocked
-
-
-def test_that_guideline_with_one_continuous_action_and_one_single_time_action_is_reapplied_as_if_its_continuous(
-    context: ContextOfTest,
-    agent: Agent,
-    customer: Customer,
-) -> None:
-    conversation_context: list[tuple[str, str]] = [
-        (
-            "customer",
-            "my card is locked",
-        ),
-        (
-            "ai_agent",
-            "I'm sorry to hear that your card is locked. Could you please provide the last 6 digits of your card so I can assist you in unlocking it?",
-        ),
-        ("customer", "123456"),
-    ]
-
-    conversation_guideline_names: list[str] = ["many_actions"]
-    base_test_that_correct_guidelines_are_proposed(
-        context,
-        agent,
-        customer,
-        conversation_context,
-        conversation_guideline_names,
-        [],
-    )
