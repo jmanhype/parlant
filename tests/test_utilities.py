@@ -367,7 +367,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         base_generator: SchematicGenerator[TBaseModel],
         collection: DocumentCollection[_SchematicGenerationResultDocument],
     ):
-        self._base_generator = base_generator
+        self.base_generator = base_generator
         self._collection = collection
         self._ensure_cache_file_exists()
 
@@ -442,31 +442,31 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         result_document = await self._collection.find_one(filters={"id": {"$eq": id}})
         if result_document:
             schema_type = (
-                self._base_generator.schema
-                if type(self._base_generator) is not FallbackSchematicGenerator
-                else cast(FallbackSchematicGenerator[TBaseModel], self._base_generator)
+                self.base_generator.schema
+                if type(self.base_generator) is not FallbackSchematicGenerator
+                else cast(FallbackSchematicGenerator[TBaseModel], self.base_generator)
                 ._generators[0]
                 .schema
             )
 
             return self._deserialize_result(doc=result_document, schema_type=schema_type)
 
-        result = await self._base_generator.generate(prompt, hints)
+        result = await self.base_generator.generate(prompt, hints)
         await self._collection.insert_one(document=self._serialize_result(id=id, result=result))
 
         return result
 
     @property
     def id(self) -> str:
-        return self._base_generator.id
+        return self.base_generator.id
 
     @property
     def max_tokens(self) -> int:
-        return self._base_generator.max_tokens
+        return self.base_generator.max_tokens
 
     @property
     def tokenizer(self) -> EstimatingTokenizer:
-        return self._base_generator.tokenizer
+        return self.base_generator.tokenizer
 
 
 async def create_schematic_generation_result_collection(

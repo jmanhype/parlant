@@ -94,6 +94,7 @@ from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
 from .test_utilities import (
+    CachedSchematicGenerator,
     SyncAwaiter,
     create_schematic_generation_result_collection,
     create_schematic_generator,
@@ -275,3 +276,66 @@ async def async_client(api_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
         base_url="http://testserver",
     ) as client:
         yield client
+
+
+class NoCachedGenerations:
+    pass
+
+
+@fixture
+def no_cached_generations(container: Container) -> NoCachedGenerations:
+    if isinstance(
+        container[SchematicGenerator[GuidelinePropositionsSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[GuidelinePropositionsSchema]] = cast(
+            CachedSchematicGenerator[GuidelinePropositionsSchema],
+            container[SchematicGenerator[GuidelinePropositionsSchema]],
+        ).base_generator
+
+    if isinstance(
+        container[SchematicGenerator[MessageEventSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[MessageEventSchema]] = cast(
+            CachedSchematicGenerator[MessageEventSchema],
+            container[SchematicGenerator[MessageEventSchema]],
+        ).base_generator
+
+    if isinstance(
+        container[SchematicGenerator[ToolCallInferenceSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[ToolCallInferenceSchema]] = cast(
+            CachedSchematicGenerator[ToolCallInferenceSchema],
+            container[SchematicGenerator[ToolCallInferenceSchema]],
+        ).base_generator
+
+    if isinstance(
+        container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = cast(
+            CachedSchematicGenerator[ConditionsEntailmentTestsSchema],
+            container[SchematicGenerator[ConditionsEntailmentTestsSchema]],
+        ).base_generator
+
+    if isinstance(
+        container[SchematicGenerator[ActionsContradictionTestsSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[ActionsContradictionTestsSchema]] = cast(
+            CachedSchematicGenerator[ActionsContradictionTestsSchema],
+            container[SchematicGenerator[ActionsContradictionTestsSchema]],
+        ).base_generator
+
+    if isinstance(
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
+        CachedSchematicGenerator,
+    ):
+        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = cast(
+            CachedSchematicGenerator[GuidelineConnectionPropositionsSchema],
+            container[SchematicGenerator[GuidelineConnectionPropositionsSchema]],
+        ).base_generator
+
+    return NoCachedGenerations()

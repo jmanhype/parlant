@@ -26,6 +26,7 @@ from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.types import Context
 from parlant.core.emission.event_buffer import EventBuffer
 from parlant.core.sessions import SessionId, SessionStore
+from tests.conftest import NoCachedGenerations
 from tests.core.engines.alpha.utils import ContextOfTest, step
 
 
@@ -76,6 +77,7 @@ def when_processing_is_triggered_and_cancelled_in_the_middle(
     engine: AlphaEngine,
     agent_id: AgentId,
     session_id: SessionId,
+    no_cached_generations: NoCachedGenerations,
 ) -> list[EmittedEvent]:
     event_buffer = EventBuffer(
         context.sync_await(
