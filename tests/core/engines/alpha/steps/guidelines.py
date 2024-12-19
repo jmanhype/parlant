@@ -403,14 +403,11 @@ def given_a_guideline_proposition(
 
 @step(
     given,
-    parsers.parse(
-        'a guideline connection whereby "{guideline_a}" {connection_kind} "{guideline_b}"'
-    ),
+    parsers.parse('a guideline connection whereby "{guideline_a}" entails "{guideline_b}"'),
 )
 def given_a_guideline_connection(
     context: ContextOfTest,
     guideline_a: str,
-    connection_kind: str,
     guideline_b: str,
 ) -> None:
     store = context.container[GuidelineConnectionStore]

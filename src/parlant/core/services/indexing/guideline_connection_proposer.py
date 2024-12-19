@@ -38,9 +38,6 @@ class GuidelineConnectionPropositionSchema(DefaultBaseModel):
     target_when_is_customer_action: bool
     rationale: str
     is_target_when_caused_by_source_then: bool
-    is_source_then_suggestive_or_optional: bool = False
-    target_then: str = ""
-    is_target_then_suggestive_or_optional: bool = False
     causation_score: int
 
 
@@ -144,7 +141,6 @@ We say that guideline 1 forms a "causal connection" (or simply causes) guideline
 
 Additionally, you may assume the following: If <Y> occurs due to Guideline 1, then <X> is currently true. This means both <X> and <Y> can be considered true when assessing whether <W> is true for Guideline 2.
 
-
 Important clarifications: 
 1. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 2. Temporal Constraints: If the target guideline’s "when" condition was true in the past or will only become true in the future due to other factors, this is not considered causation. Causation is invalid if the source’s "then" statement can be applied while the target’s "when" condition remains false.
@@ -181,9 +177,6 @@ Expected Output:
             "target_when_is_customer_action": true,
             "rationale": "the agent's mentioning the likelihood of rain does not cause the customer ask about the weather retrospectively",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "provide the current weather update",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 3
         }},
         {{
@@ -195,9 +188,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's providing a current weather update necessarily causes a weather update to be provided",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "try to estimate whether it's likely to rain",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 10
         }},
         {{
@@ -209,9 +199,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's mentioning the chances for rain does not retrospectively make the discussion about umbrellas",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "refer the customer to our electronic store",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 3
         }},
         {{
@@ -223,9 +210,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's referring to the electronic store does not cause a weather update to be provided",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "try to estimate whether it's likely to rain",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 1
         }}
     ]
@@ -277,11 +261,8 @@ Expected Output:
             "source_then": "suggest a book",
             "target_when": "recommending books",
             "target_when_is_customer_action": false,
-            "rationale": "the agent's applying of 'suggest a book' causes the recommendation of books to occur. The target's then begins with 'consider', making it suggestive.",
+            "rationale": "the agent's applying of 'suggest a book' causes the recommendation of books to occur.",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "consider highlighting the ones with the best reviews",
-            "is_target_then_suggestive_or_optional": true,
             "causation_score": 9
         }},
         {{
@@ -293,9 +274,7 @@ Expected Output:
             "target_when_is_customer_action": true,
             "rationale": "the agent's highlighting reviews does not cause the customer to retrospectively ask for anything",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": true,
-            "target_then": "suggest a book",
-            "is_target_then_suggestive_or_optional": false,
+
             "causation_score": 1
         }},
         {{
@@ -307,9 +286,7 @@ Expected Output:
             "target_when_is_customer_action": true,
             "rationale": "the agent's suggesting a book does not cause the customer to greet the agent retrospectively",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "greet them back with 'hello'",
-            "is_target_then_suggestive_or_optional": false,
+
             "causation_score": 1
         }},
         {{
@@ -330,11 +307,8 @@ Expected Output:
             "source_then": "suggest a book",
             "target_when": "suggesting products",
             "target_when_is_customer_action": false,
-            "rationale": "the agent's suggesting a book, necessarily causes the suggestion of a product. The suggestion is optional, making the connection suggestive.",
+            "rationale": "the agent's suggesting a book, necessarily causes the suggestion of a product.",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "check if the product is available in our store, and only offer it if it is'",
-            "is_target_then_suggestive_or_optional": true,
             "causation_score": 9
         }},
         {{
@@ -346,9 +320,6 @@ Expected Output:
             "target_when_is_customer_action": true,
             "rationale": "the agent's checking product availability does not cause the customer to ask for book recommendations retrospectively",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": true,
-            "target_then": "suggest a book",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 2
         }}
     ]
@@ -412,9 +383,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's suggesting to add the topping to the menu is causing a new topping is being suggested",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "announce that the suggestion will be forwarded to management for consideration",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 9
         }},
         {{
@@ -426,9 +394,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's' announcement from the source's 'then' should cause a message to be forwarded to management",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "try to forward the message to management via email",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 8
         }},
         {{
@@ -440,9 +405,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "the agent's emailing a message is not necessarily a new topping suggestion",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "announce that the suggestion will be forwarded to management for consideration",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 2
         }}
     ]
@@ -476,9 +438,6 @@ Expected Output:
             "target_when_is_customer_action": true,
             "rationale": "actions taken by the agent cannot ever cause the customer to do anything",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": true,
-            "target_then": "consider suggesting buying a new TV",
-            "is_target_then_suggestive_or_optional": true,
             "causation_score": 1
         }},
         {{
@@ -490,9 +449,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "suggesting to buy a new TV causes the mentioning of a TV, which is an electronic product",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": true,
-            "target_then": "check if the product is available, and inform the customer about its price if it is",
-            "is_target_then_suggestive_or_optional": true,
             "causation_score": 9
         }},
         {{
@@ -504,9 +460,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "informing the customer about a price causes the discussion to be about product prices",
             "is_target_when_caused_by_source_then": true,
-            "is_source_then_suggestive_or_optional": true,
-            "target_then": "inform the customer about our black friday deals",
-            "is_target_then_suggestive_or_optional": false,
             "causation_score": 9
         }},
         {{
@@ -518,9 +471,6 @@ Expected Output:
             "target_when_is_customer_action": false,
             "rationale": "informing about black friday deals does not necessarily cause the mentioning of an electronic product",
             "is_target_when_caused_by_source_then": false,
-            "is_source_then_suggestive_or_optional": false,
-            "target_then": "check if the product is available, and inform the customer about its price if it is",
-            "is_target_then_suggestive_or_optional": true,
             "causation_score": 2
         }}
     ]
@@ -565,9 +515,6 @@ Causation candidates: ###
             "target_when_is_customer_action": <BOOL>,
             "rationale": <Explanation for if and how the source's 'then' causes the target's 'when'. The explanation should revolve around the word 'cause' or a conjugation of it>,
             "is_target_when_caused_by_source_then": <BOOL>,
-            "is_source_then_suggestive_or_optional": <BOOL>,
-            "target_then": {g.action},
-            "is_target_then_suggestive_or_optional": <BOOL>,
             "causation_score": <Score between 1-10 indicating the strength of the connection>
         }},
         {{
@@ -579,9 +526,6 @@ Causation candidates: ###
             "target_when_is_customer_action": <BOOL>,
             "rationale": <Explanation for if and how the source's 'then' causes the target's 'when'. The explanation should revolve around the word 'cause' or a conjugation of it>,
             "is_target_when_caused_by_source_then": <BOOL>,
-            "is_source_then_suggestive_or_optional": <BOOL>,
-            "target_then": {evaluated_guideline.action},
-            "is_target_then_suggestive_or_optional": <BOOL>,
             "causation_score": <Score between 1-10 indicating the strength of the connection>
         }},
             """

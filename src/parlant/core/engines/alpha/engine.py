@@ -516,7 +516,7 @@ class AlphaEngine(Engine):
         ] = []
 
         for proposition, connected_guidelines in connected_guidelines_by_proposition.items():
-            for connected_guideline, connection_kind in connected_guidelines:
+            for connected_guideline in connected_guidelines:
                 if existing_connections := [
                     connection
                     for connection in proposition_and_inferred_guideline_guideline_pairs
@@ -543,7 +543,7 @@ class AlphaEngine(Engine):
                         )
 
                 proposition_and_inferred_guideline_guideline_pairs.append(
-                    (proposition, connected_guideline, connection_kind),
+                    (proposition, connected_guideline),
                 )
 
         return [

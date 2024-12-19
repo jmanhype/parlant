@@ -231,7 +231,6 @@ class Application:
                         await self._guideline_connection_store.create_connection(
                             source=content_guidelines[source_key],
                             target=content_guidelines[target_key],
-                            kind=proposition.connection_kind,
                         )
                     else:
                         await _create_connection_with_existing_guideline(

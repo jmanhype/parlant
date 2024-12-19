@@ -373,7 +373,6 @@ evaluation_example: ExampleJson = {
                                 "condition": "if customer inquires about cost",
                                 "action": "share the latest pricing details",
                             },
-                            "connection_kind": "suggests",
                         }
                     ],
                 }

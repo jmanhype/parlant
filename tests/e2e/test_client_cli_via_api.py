@@ -706,7 +706,6 @@ async def test_that_adding_connected_guidelines_creates_connections(
 
         assert connection["source"] == source
         assert connection["target"] == target
-        assert connection["kind"] == "entails"
 
 
 async def test_that_a_guideline_can_be_viewed(
@@ -865,11 +864,7 @@ async def test_that_guidelines_can_be_entailed(
         guideline = await context.api.read_guideline(agent_id, first_guideline["id"])
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
-        assert (
-            connection["source"] == first_guideline
-            and connection["target"] == second_guideline
-            and connection["kind"] == "entails"
-        )
+        assert connection["source"] == first_guideline and connection["target"] == second_guideline
 
 
 async def test_that_guidelines_can_be_suggestively_entailed(
@@ -939,7 +934,6 @@ async def test_that_guidelines_can_be_suggestively_entailed(
             "entail",
             "--agent-id",
             agent_id,
-            "--suggestive",
             "--source",
             first_guideline["id"],
             "--target",
@@ -955,11 +949,7 @@ async def test_that_guidelines_can_be_suggestively_entailed(
 
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
-        assert (
-            connection["source"] == first_guideline
-            and connection["target"] == second_guideline
-            and connection["kind"] == "suggests"
-        )
+        assert connection["source"] == first_guideline and connection["target"] == second_guideline
 
 
 async def test_that_a_guideline_can_be_deleted(
@@ -1040,7 +1030,6 @@ async def test_that_a_connection_can_be_deleted(
                                                 "condition": "greeting the customer",
                                                 "action": "ask for his health condition",
                                             },
-                                            "connection_kind": "entails",
                                         }
                                     ],
                                 },
@@ -1076,7 +1065,6 @@ async def test_that_a_connection_can_be_deleted(
                                                 "condition": "greeting the customer",
                                                 "action": "ask for his health condition",
                                             },
-                                            "connection_kind": "entails",
                                         }
                                     ],
                                 },

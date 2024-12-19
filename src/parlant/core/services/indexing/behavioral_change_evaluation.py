@@ -297,7 +297,6 @@ class GuidelineEvaluator:
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
-                        connection_kind=c.kind,
                     )
                 )
 
@@ -315,7 +314,6 @@ class GuidelineEvaluator:
                         else "connection_with_existing_guideline",
                         source=c.source,
                         target=c.target,
-                        connection_kind=c.kind,
                     )
                 )
 

@@ -1235,7 +1235,6 @@ class Interface:
 
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Role": "Source" if conn.source.id == guideline.id else "Target",
                 "Peer Role": "Target" if conn.source.id == guideline.id else "Source",
                 "Peer ID": peer.id,
@@ -1246,7 +1245,6 @@ class Interface:
         def to_indirect_entailment_item(conn: GuidelineConnection) -> dict[str, str]:
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Source ID": conn.source.id,
                 "Source Condition": conn.source.condition,
                 "Source Action": conn.source.action,
@@ -2476,13 +2474,6 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option(
-        "--suggestive",
-        is_flag=True,
-        show_default=True,
-        default=False,
-        help="Make the entailment suggestive rather than definite",
-    )
     @click.option("--source", type=str, metavar="ID", help="Source guideline ID", required=True)
     @click.option("--target", type=str, metavar="ID", help="Target guideline ID", required=True)
     @click.pass_context
@@ -2501,7 +2492,6 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source,
             target_guideline_id=target,
-            kind="suggests" if suggestive else "entails",
         )
 
     @guideline.command("disentail", help="Delete an entailment between two guidelines")
