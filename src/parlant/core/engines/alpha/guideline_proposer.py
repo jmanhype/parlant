@@ -531,6 +531,7 @@ Example #4:
 1) condition: the customer is under the age of 30. action: do not suggest wine
 2) condition: the customer is ordering beer. action: Ensure that the client is over 18 and help them complete their order
 3) condition: the customer greets you. action: Greet them back with hello or hey, but never with hi
+4) condition: the customer is ordering a beer. action: check that beer is in stock before continuing the process
 ###
 - **Expected Result**:
 ```json
@@ -570,6 +571,18 @@ Example #4:
         "guideline_previously_applied": "partially",
         "guideline_should_reapply": true,
         "applies_score": 7
+    }},
+    {{
+        "guideline_number": 4,
+        "condition": "the customer is ordering a beer.",
+        "condition_applies": true,
+        "condition_application_rationale": "The customer asked for a beer earlier, and is still in the process of ordering it",
+        "actions": ["check that beer is in stock before continuing the process"],
+        "guideline_is_continuous": false,
+        "guideline_previously_applied_rationale": "Since the agent continued the interaction, and it has moved on to a new subject, we may assume that the stock was checked",
+        "guideline_previously_applied": "fully",
+        "guideline_should_reapply": false,
+        "applies_score": 8
     }}
     ]
 }}
