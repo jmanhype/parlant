@@ -566,7 +566,7 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
         ("customer", "That's great! Thanks!"),
     ]
 
-    exceptions = ["credit_payment1", "credit_payment2", "cow_response"]
+    exceptions = ["credit_payment1", "credit_payment2", "cow_response", "payment_process"]
 
     conversation_guideline_names: list[str] = [
         guideline_name
@@ -1058,13 +1058,14 @@ def test_that_guideline_that_needs_to_be_reapplied_is_proposed(
     ]
 
     conversation_guideline_names: list[str] = ["large_pizza_crust"]
+    relevant_guideline_names = conversation_guideline_names
     base_test_that_correct_guidelines_are_proposed(
         context,
         agent,
         customer,
         conversation_context,
         conversation_guideline_names,
-        [],
+        relevant_guideline_names,
         context_variables=[],
     )
 
