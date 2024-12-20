@@ -31,6 +31,7 @@ from parlant.core.context_variables import ContextVariableDocumentStore, Context
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
+from parlant.core.engines.alpha import guideline_proposer
 from parlant.core.evaluations import (
     EvaluationListener,
     PollingEvaluationListener,
@@ -61,6 +62,7 @@ from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
+    GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
 from parlant.core.engines.alpha.message_event_generator import (
@@ -89,6 +91,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
+from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
@@ -254,6 +257,8 @@ async def container(
                 cache_options,
                 generation_schema,
             )
+
+        container[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)

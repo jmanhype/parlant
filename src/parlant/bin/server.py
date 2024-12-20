@@ -31,7 +31,9 @@ import sys
 import uvicorn
 
 from parlant.adapters.vector_db.chroma import ChromaDatabase
+from parlant.core.engines.alpha import guideline_proposer
 from parlant.core.nlp.service import NLPService
+from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
@@ -78,6 +80,7 @@ from parlant.core.guideline_tool_associations import (
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
+    GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
 from parlant.core.engines.alpha.message_event_generator import (
@@ -345,9 +348,12 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         SchematicGenerator[GuidelineConnectionPropositionsSchema]
     ] = await nlp_service.get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
+    c[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
+
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],
         c[SchematicGenerator[GuidelinePropositionsSchema]],
+        c[ShotCollection[GuidelinePropositionShot]],
     )
     c[GuidelineConnectionProposer] = GuidelineConnectionProposer(
         c[Logger],
