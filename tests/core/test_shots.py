@@ -7,6 +7,12 @@ from parlant.core.engines.alpha.guideline_proposer import (
     GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
+from parlant.core.engines.alpha.message_event_generator import (
+    MessageEventGenerator,
+    MessageEventGeneratorShot,
+    MessageEventSchema,
+    Revision,
+)
 from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.guidelines import GuidelineContent
@@ -84,4 +90,36 @@ async def test_that_appended_shot_is_displayed_in_tool_caller_shots(
     await shot_collection.append(new_shot)
 
     shots = await tool_caller.shots()
+    assert new_shot in shots
+
+
+async def test_that_appended_shot_is_displayed_in_message_generator_shots(
+    container: Container,
+) -> None:
+    message_generator = container[MessageEventGenerator]
+    shot_collection = container[ShotCollection[MessageEventGeneratorShot]]
+
+    new_shot = MessageEventGeneratorShot(
+        description="Test Shot Description",
+        expected_result=MessageEventSchema(
+            last_message_of_customer="This is a very cool feature, man!",
+            guidelines=[],
+            insights=[],
+            evaluation_for_each_instruction=[],
+            revisions=[
+                Revision(
+                    revision_number=1,
+                    content=("Muito Obrigado!"),
+                    instructions_followed=[],
+                    instructions_broken=[],
+                    is_repeat_message=False,
+                    followed_all_instructions=True,
+                ),
+            ],
+        ),
+    )
+
+    await shot_collection.append(new_shot)
+
+    shots = await message_generator.shots()
     assert new_shot in shots

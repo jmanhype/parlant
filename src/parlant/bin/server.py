@@ -32,6 +32,8 @@ import uvicorn
 
 from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.engines.alpha import guideline_proposer
+from parlant.core.engines.alpha import tool_caller
+from parlant.core.engines.alpha import message_event_generator
 from parlant.core.nlp.service import NLPService
 from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
@@ -77,7 +79,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionShot,
@@ -85,6 +87,7 @@ from parlant.core.engines.alpha.guideline_proposer import (
 )
 from parlant.core.engines.alpha.message_event_generator import (
     MessageEventGenerator,
+    MessageEventGeneratorShot,
     MessageEventSchema,
 )
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
@@ -349,6 +352,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     ] = await nlp_service.get_schematic_generator(GuidelineConnectionPropositionsSchema)
 
     c[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
+    c[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
+    c[ShotCollection[MessageEventGeneratorShot]] = message_event_generator.shot_collection
 
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],

@@ -332,12 +332,14 @@ The exact format of your output will be provided to you at the end of this promp
 The following examples show correct outputs for various hypothetical situations.
 Only the responses are provided, without the interaction history or tool descriptions, though these can be inferred from the responses.
 
-EXAMPLES
------------------
 """  # noqa
         )
         builder.add_section(
-            "\n".join(
+            """
+EXAMPLES
+-----------------
+"""
+            + "\n".join(
                 f"""
 Example {i}: ###
 {self._format_shot(shot)}

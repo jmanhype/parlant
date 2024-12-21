@@ -396,6 +396,7 @@ Only re-apply these if the condition ceased to be true earlier in the conversati
 IMPORTANT: Some guidelines include multiple actions. If only a portion of those actions were fulfilled earlier in the conversation, output "fully" for guideline_previously_applied, and treat the guideline as though it has been fully executed. 
 In such cases, re-apply the guideline only if its condition becomes true again later in the conversation, unless it is marked as continuous.
 
+<<<<<<< HEAD
 Examples of Condition Evaluations:
 -------------------
 <<<<<<< HEAD
@@ -636,10 +637,16 @@ Example #4:
 ```
 =======
 >>>>>>> ecf3aa96 (Add few shot feature and implement it on guideline_proposer)
+=======
+>>>>>>> 2d3af256 (Implement Shot mechanism in message generator)
 """  # noqa
         )
         builder.add_section(
-            "".join(
+            """
+Examples of Condition Evaluations:
+-------------------
+"""
+            + "".join(
                 f"""
 Example #{i}:
 {self._format_shot(shot)}
