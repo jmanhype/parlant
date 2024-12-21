@@ -216,7 +216,7 @@ class GuidelineProposer:
             staged_events=staged_events,
             terms=terms,
             guidelines=guidelines_dict,
-            shots=await shot_collection.list(),
+            shots=await self.shots(),
         )
 
         with self._logger.operation(
@@ -894,19 +894,19 @@ example_3_expected = GuidelinePropositionsSchema(
 
 _baseline_shots: Sequence[GuidelinePropositionShot] = [
     GuidelinePropositionShot(
-        description="Guidelines application when the customer purchases a subscription and asks about data security.",
+        description="",
         interaction_events=example_1_events,
         guidelines=example_1_guidelines,
         expected_result=example_1_expected,
     ),
     GuidelinePropositionShot(
-        description="Guidelines application when the customer is looking for a job.",
+        description="",
         interaction_events=example_2_events,
         guidelines=example_2_guidelines,
         expected_result=example_2_expected,
     ),
     GuidelinePropositionShot(
-        description="Guidelines application when the customer asks about stock prices and the weather.",
+        description="",
         interaction_events=example_3_events,
         guidelines=example_3_guidelines,
         expected_result=example_3_expected,

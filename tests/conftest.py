@@ -32,6 +32,7 @@ from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
 from parlant.core.engines.alpha import guideline_proposer
+from parlant.core.engines.alpha import tool_caller
 from parlant.core.evaluations import (
     EvaluationListener,
     PollingEvaluationListener,
@@ -69,7 +70,7 @@ from parlant.core.engines.alpha.message_event_generator import (
     MessageEventGenerator,
     MessageEventSchema,
 )
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
@@ -259,6 +260,7 @@ async def container(
             )
 
         container[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
+        container[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
