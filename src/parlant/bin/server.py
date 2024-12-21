@@ -353,7 +353,6 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],
         c[SchematicGenerator[GuidelinePropositionsSchema]],
-        c[ShotCollection[GuidelinePropositionShot]],
     )
     c[GuidelineConnectionProposer] = GuidelineConnectionProposer(
         c[Logger],

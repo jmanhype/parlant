@@ -27,7 +27,6 @@ from parlant.core.engines.alpha.utils import (
     emitted_tool_events_to_dicts,
 )
 from parlant.core.emissions import EmittedEvent
-from parlant.core.shots import Shot
 
 
 class BuiltInSection(Enum):
@@ -38,7 +37,6 @@ class BuiltInSection(Enum):
     GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
     STAGED_EVENTS = auto()
-    FEW_SHOTS = auto()
 
 
 class SectionStatus(Enum):
@@ -236,27 +234,6 @@ Use the details they offer to assist in your task: ###
 {staged_events_as_dict}
 ###
 """,
-                status=SectionStatus.ACTIVE,
-            )
-
-        return self
-
-    def add_few_shots(
-        self,
-        shots: Sequence[Shot],
-    ) -> PromptBuilder:
-        if shots:
-            self.add_section(
-                name=BuiltInSection.FEW_SHOTS,
-                content="".join(
-                    f"""
-Example #{i}:
-{shot.format()}
-
-
-"""
-                    for i, shot in enumerate(shots, start=1)
-                ),
                 status=SectionStatus.ACTIVE,
             )
 

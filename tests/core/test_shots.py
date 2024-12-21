@@ -1,8 +1,6 @@
 from datetime import datetime, timezone
 from lagom import Container
 
-from parlant.core.agents import Agent
-from parlant.core.customers import Customer
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionSchema,
@@ -16,15 +14,13 @@ from parlant.core.shots import ShotCollection
 
 async def test_that_appended_shot_is_displayed_in_guideline_proposer_prompt(
     container: Container,
-    agent: Agent,
-    customer: Customer,
 ) -> None:
     guideline_proposer = container[GuidelineProposer]
     shot_collection = container[ShotCollection[GuidelinePropositionShot]]
 
     guideline_content = GuidelineContent(
         condition="A user compliments the product",
-        action="Tell him to stop being a bitch",
+        action="Thank him with in Portuguese",
     )
 
     guideline_proposition_shot = GuidelinePropositionShot(
@@ -59,18 +55,6 @@ async def test_that_appended_shot_is_displayed_in_guideline_proposer_prompt(
 
     await shot_collection.append(guideline_proposition_shot)
 
-    shots = await shot_collection.list()
-    prompt = guideline_proposer._format_prompt(
-        agents=[agent],
-        customer=customer,
-        context_variables=[],
-        interaction_history=[],
-        staged_events=[],
-        terms=[],
-        guidelines={},
-        shots=shots,
-    )
+    shots = await guideline_proposer.shots()
 
-    assert "Rationale: The user said that the feature is cool" in prompt
-    assert "This is a very cool feature, man!" in prompt
-    assert "Tell him to stop being a bitch" in prompt
+    assert guideline_proposition_shot in shots

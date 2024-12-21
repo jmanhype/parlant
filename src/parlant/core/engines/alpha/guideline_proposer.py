@@ -63,53 +63,6 @@ class GuidelinePropositionShot(Shot):
     guidelines: Sequence[GuidelineContent]
     expected_result: GuidelinePropositionsSchema
 
-    @override
-    def format(self) -> str:
-        def adapt_event(e: Event) -> JSONSerializable:
-            source_map: dict[EventSource, str] = {
-                "customer": "user",
-                "customer_ui": "frontend_application",
-                "human_agent": "human_service_agent",
-                "human_agent_on_behalf_of_ai_agent": "ai_agent",
-                "ai_agent": "ai_agent",
-                "system": "system-provided",
-            }
-
-            return {
-                "event_kind": e.kind,
-                "event_source": source_map[e.source],
-                "data": e.data,
-            }
-
-        example = ""
-        if self.interaction_events:
-            example += f"""
-- Interaction Events: ###
-{json.dumps([adapt_event(e) for e in self.interaction_events], indent=2)}
-###
-
-"""
-        if self.guidelines:
-            formatted_guidelines = "\n".join(
-                f"{i}) condition: {g.condition}, action: {g.action}"
-                for i, g in enumerate(self.guidelines, start=1)
-            )
-            example += f"""
-- Guidelines: ###
-{formatted_guidelines}
-###
-
-"""
-
-        example += f"""
-- **Expected Result**:
-```json
-{json.dumps(self.expected_result.model_dump(mode="json"), indent=2)}
-```
-"""
-
-        return example
-
 
 @dataclass(frozen=True)
 class ConditionApplicabilityEvaluation:
@@ -141,11 +94,9 @@ class GuidelineProposer:
         self,
         logger: Logger,
         schematic_generator: SchematicGenerator[GuidelinePropositionsSchema],
-        shot_collection: ShotCollection[GuidelinePropositionShot],
     ) -> None:
         self._logger = logger
         self._schematic_generator = schematic_generator
-        self._shot_collection = shot_collection
 
     async def propose_guidelines(
         self,
@@ -265,7 +216,7 @@ class GuidelineProposer:
             staged_events=staged_events,
             terms=terms,
             guidelines=guidelines_dict,
-            shots=await self._shot_collection.list(),
+            shots=await shot_collection.list(),
         )
 
         with self._logger.operation(
@@ -309,6 +260,55 @@ class GuidelineProposer:
 
         return propositions_generation_response.info, propositions
 
+    async def shots(self) -> Sequence[GuidelinePropositionShot]:
+        return await shot_collection.list()
+
+    def _format_shot(self, shot: GuidelinePropositionShot) -> str:
+        def adapt_event(e: Event) -> JSONSerializable:
+            source_map: dict[EventSource, str] = {
+                "customer": "user",
+                "customer_ui": "frontend_application",
+                "human_agent": "human_service_agent",
+                "human_agent_on_behalf_of_ai_agent": "ai_agent",
+                "ai_agent": "ai_agent",
+                "system": "system-provided",
+            }
+
+            return {
+                "event_kind": e.kind,
+                "event_source": source_map[e.source],
+                "data": e.data,
+            }
+
+        formatted_shot = ""
+        if shot.interaction_events:
+            formatted_shot += f"""
+- Interaction Events: ###
+{json.dumps([adapt_event(e) for e in shot.interaction_events], indent=2)}
+###
+
+"""
+        if shot.guidelines:
+            formatted_guidelines = "\n".join(
+                f"{i}) condition: {g.condition}, action: {g.action}"
+                for i, g in enumerate(shot.guidelines, start=1)
+            )
+            formatted_shot += f"""
+- Guidelines: ###
+{formatted_guidelines}
+###
+
+"""
+
+        formatted_shot += f"""
+- **Expected Result**:
+```json
+{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+```
+"""
+
+        return formatted_shot
+
     def _format_prompt(
         self,
         agents: Sequence[Agent],
@@ -318,7 +318,7 @@ class GuidelineProposer:
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
         guidelines: dict[int, Guideline],
-        shots: Sequence[Shot],
+        shots: Sequence[GuidelinePropositionShot],
     ) -> str:
         assert len(agents) == 1
 
@@ -638,7 +638,17 @@ Example #4:
 >>>>>>> ecf3aa96 (Add few shot feature and implement it on guideline_proposer)
 """  # noqa
         )
-        builder.add_few_shots(shots)
+        builder.add_section(
+            "".join(
+                f"""
+Example #{i}:
+{self._format_shot(shot)}
+
+###
+"""
+                for i, shot in enumerate(shots, start=1)
+            )
+        )
         builder.add_agent_identity(agents[0])
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)

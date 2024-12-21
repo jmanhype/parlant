@@ -35,7 +35,6 @@ from parlant.core.glossary import Term
 from parlant.core.nlp.generation import SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
-    GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
 from parlant.core.engines.alpha.guideline_proposition import (
@@ -46,7 +45,6 @@ from parlant.core.sessions import EventSource
 from parlant.core.logging import Logger
 from parlant.core.glossary import TermId
 
-from parlant.core.shots import ShotCollection
 from tests.core.common.utils import create_event_message
 from tests.test_utilities import SyncAwaiter
 
@@ -228,7 +226,6 @@ def propose_guidelines(
     guideline_proposer = GuidelineProposer(
         context.logger,
         context.schematic_generator,
-        context.container[ShotCollection[GuidelinePropositionShot]],
     )
 
     interaction_history = [
