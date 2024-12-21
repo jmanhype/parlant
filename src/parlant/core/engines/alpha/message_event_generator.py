@@ -225,9 +225,8 @@ In all other situations, you are expected to adhere to the guidelines.
 These guidelines have already been pre-filtered based on the interaction's context and other considerations outside your scope. 
 Do not disregard a guideline because you believe its 'when' condition or rationale does not apply—this filtering has already been handled.
 
-Guidelines: ###
+- **Guidelines**:
 {guideline_list}
-###
 """
 
     def _format_shot(
@@ -566,10 +565,11 @@ example_1_expected = MessageEventSchema(
         Revision(
             revision_number=2,
             content=(
-                "| Train | Departure | Arrival |\n"
-                "|-------|-----------|---------|\n"
-                "| 101   | 10:00 AM  | 12:30 PM |\n"
-                "| 205   | 1:00 PM   | 3:45 PM  |"
+                """
+                | Train | Departure | Arrival |
+                |-------|-----------|---------|
+                | 101   | 10:00 AM  | 12:30 PM |
+                | 205   | 1:00 PM   | 3:45 PM  |"""
             ),
             instructions_followed=[
                 "#1; When the customer asks for train schedules, provide them accurately and concisely.",
@@ -724,11 +724,12 @@ example_4_expected = MessageEventSchema(
         Revision(
             revision_number=1,
             content=(
-                "| Option | Departure Airport | Departure Time | Arrival Airport |\n"
-                "|--------|-------------------|----------------|-----------------|\n"
-                "| 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |\n"
-                "| 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |\n\n"
-                "While this flights are quite long, please note that we do not offer complementary meals on short flights.\n"
+                """
+                | Option | Departure Airport | Departure Time | Arrival Airport   |
+                |--------|-------------------|----------------|-------------------|
+                | 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
+                | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |
+                While this flights are quite long, please note that we do not offer complementary meals on short flights."""
             ),
             instructions_followed=[
                 "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",

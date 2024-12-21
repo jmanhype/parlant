@@ -341,10 +341,9 @@ EXAMPLES
 """
             + "\n".join(
                 f"""
-Example {i}: ###
+Example #{i}: ###
 {self._format_shot(shot)}
 ###
-
 """
                 for i, shot in enumerate(shots, start=1)
             )

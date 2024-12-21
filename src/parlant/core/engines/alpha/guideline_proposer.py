@@ -283,9 +283,8 @@ class GuidelineProposer:
         formatted_shot = ""
         if shot.interaction_events:
             formatted_shot += f"""
-- Interaction Events: ###
+- **Interaction Events**:
 {json.dumps([adapt_event(e) for e in shot.interaction_events], indent=2)}
-###
 
 """
         if shot.guidelines:
@@ -294,9 +293,8 @@ class GuidelineProposer:
                 for i, g in enumerate(shot.guidelines, start=1)
             )
             formatted_shot += f"""
-- Guidelines: ###
+- **Guidelines**: 
 {formatted_guidelines}
-###
 
 """
 
@@ -648,9 +646,8 @@ Examples of Condition Evaluations:
 """
             + "".join(
                 f"""
-Example #{i}:
+Example #{i}: ###
 {self._format_shot(shot)}
-
 ###
 """
                 for i, shot in enumerate(shots, start=1)
