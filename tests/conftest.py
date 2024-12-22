@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack
 import os
 import tempfile
 from typing import Any, AsyncIterator, cast
@@ -48,7 +48,6 @@ from parlant.core.guideline_connections import (
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.core.nlp.service import NLPService
-from parlant.core.services.tools.plugins import PluginServer, ToolEntry
 from parlant.core.services.tools.service_registry import (
     ServiceDocumentRegistry,
     ServiceRegistry,
