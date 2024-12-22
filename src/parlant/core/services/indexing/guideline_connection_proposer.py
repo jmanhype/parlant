@@ -150,14 +150,14 @@ Important clarifications:
 
 HOW TO FILL is_target_when_caused_by_source_then
 -----------------
-The field is_target_when_caused_by_source_then, which you must return for every connection proposition, indicates if full causation applies.
-You have 4 options you may choose for:
-1. "no" - indicating no relation between the source's action and the target's condition.
-2. "implies" - indicates that the source's action implies that the target's condition is true, either now or in a past / future state of the interaction.
+The field is_target_when_caused_by_source_then indicates the type of causal relationship between the source guideline's "then" statement and the target guideline's "when" condition. 
+You must select the most accurate option from the following:
+1. "no" - Select this if there is no causal relationship between the source's action and the target's condition.
+2. "implies" - Use this when the source's action makes it likely or possible that the target's condition holds true, but does not guarantee it. This is a weaker form of causation, where the action suggests or sets up conditions for the target.
     Example: the action "respond with our opening hours" implies the condition "you are asked about our opening hours"
-3. "causes general case" - indicates that the source's action causes a general case, that the target's condition is a specific case of. 
+3. "causes general case" - Choose this when the source's action causes a broad or generic condition, and the target's condition is a specific instance of that broader condition.
     Example: the action "refer the customer to our documentation" causes the general case for the condition "you are referring the customer to our usage documentation"
-4. "causes" - indicates that the source's action necessarily causes the target's condition to be true. 
+4. "causes" - Use this for direct and necessary causation, where the source's action guarantees that the target's condition immediately becomes true.
     Example: the action "refer the customer to our documentation" causes the specific case for the condition "referring the customer to our documentation"
 
 EXAMPLES
