@@ -15,6 +15,7 @@ None
 ### Changed
 - Print traceback when reporting server boot errors
 - Make cancelled operations issue a warning rather than an error
+- Made all stores thread-safe with reader/writer locks
 
 ### Fixed
 - Fixed tool calling with optional parameters
