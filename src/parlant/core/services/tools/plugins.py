@@ -125,21 +125,33 @@ class _ResolvedToolParameterTyped(NamedTuple):
     is_optional: bool
 
 
-def _tool_decorator_impl(
-    **kwargs: Unpack[_ToolDecoratorParams],
-) -> Callable[[ToolFunction], ToolEntry]:
-    def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
-        if not param.annotation.__name__ == "Optional":
-            return _ResolvedToolParameterTyped(
-                t=param.annotation,
-                is_optional=False,
-            )
-        else:
+def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
+    try:
+        if args := get_args(param.annotation):
+            if getattr(param.annotation, "__name__", None) != "Optional":
+                if len(args) != 2:
+                    raise Exception()
+                if type(None) not in args:
+                    raise Exception()
+                if all(t is None for t in args):
+                    raise Exception()
+
             return _ResolvedToolParameterTyped(
                 t=get_args(param.annotation)[0],
                 is_optional=True,
             )
+        else:
+            return _ResolvedToolParameterTyped(
+                t=param.annotation,
+                is_optional=False,
+            )
+    except Exception:
+        raise TypeError(f"Parameter type '{param.annotation}' is not supported in tool functions")
 
+
+def _tool_decorator_impl(
+    **kwargs: Unpack[_ToolDecoratorParams],
+) -> Callable[[ToolFunction], ToolEntry]:
     def _ensure_valid_tool_signature(func: ToolFunction) -> None:
         signature = inspect.signature(func)
 
@@ -206,7 +218,8 @@ def _tool_decorator_impl(
     def _find_required_params(func: ToolFunction) -> list[str]:
         parameters = list(inspect.signature(func).parameters.values())
         parameters = parameters[1:]  # Skip tool context parameter
-        return [p.name for p in parameters if p.annotation.__name__ != "Optional"]
+        resolved_params = {p.name: _resolve_param_type(p) for p in parameters}
+        return [name for name, type in resolved_params.items() if not type.is_optional]
 
     def decorator(func: ToolFunction) -> ToolEntry:
         _ensure_valid_tool_signature(func)
