@@ -381,7 +381,7 @@ class OpenAIService(NLPService):
     @override
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
         if t == GuidelineConnectionPropositionsSchema:
-            return GPT_4o_24_08_06[t](self._logger)
+            return GPT_4o_24_08_06[t](self._logger)  # type: ignore
         return GPT_4o[t](self._logger)  # type: ignore
 
     @override
