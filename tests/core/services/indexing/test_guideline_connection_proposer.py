@@ -369,7 +369,7 @@ def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
     )
 
     target_guideline_content = _create_guideline_content(
-        "offering to purchase altcoins from a european service",
+        "suggesting to purchase altcoins from a european service",
         "warn about EU regulations",
     )
 
