@@ -35,7 +35,6 @@ from typing import (
 from lagom import Container
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.nlp.openai import GPT_4o
-from parlant.bin.server import PARLANT_HOME_DIR
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
@@ -482,7 +481,7 @@ async def create_schematic_generation_result_collection(
     _db = await stack.enter_async_context(
         JSONFileDocumentDatabase(
             logger,
-            PARLANT_HOME_DIR / GLOBAL_CACHE_FILE,
+            Path("runtime-data") / GLOBAL_CACHE_FILE,
         )
     )
 
