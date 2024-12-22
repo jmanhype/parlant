@@ -764,13 +764,13 @@ class AlphaEngine(Engine):
     ) -> Sequence[GuidelineProposition]:
         def utterance_to_proposition(utterance: UtteranceRequest) -> GuidelineProposition:
             ratioanles = {
-                UtteranceReason.BUY_TIME: "Generating the next message is taking a long time, due to information not currently available to you",
-                UtteranceReason.FOLLOW_UP: "An external module has determined that a follow up is necessary",
+                UtteranceReason.BUY_TIME: "An external module has determined that this response is necessary, and you must adhere to it.",
+                UtteranceReason.FOLLOW_UP: "An external module has determined that this response is necessary, and you must adhere to it.",
             }
 
             conditions = {
-                UtteranceReason.BUY_TIME: "Generating the message takes a long time",
-                UtteranceReason.FOLLOW_UP: "The agent needs to follow up on their last message",
+                UtteranceReason.BUY_TIME: "always",
+                UtteranceReason.FOLLOW_UP: "always",
             }
 
             return GuidelineProposition(
