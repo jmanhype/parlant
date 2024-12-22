@@ -1104,7 +1104,7 @@ def test_that_entailment_due_to_the_sources_condition_is_detected(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_ןimplied_but_not_entailed_guidelines_are_not_connected(
+def test_that_an_action_that_causes_a_more_general_case_of_another_guidelines_source_is_not_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
