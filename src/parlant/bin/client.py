@@ -463,7 +463,6 @@ class Actions:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
@@ -475,7 +474,6 @@ class Actions:
                     GuidelineConnectionAddition(
                         source=source_guideline_id,
                         target=target_guideline_id,
-                        kind=kind,
                     ),
                 ]
             ),
@@ -1421,7 +1419,6 @@ class Interface:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> None:
         try:
             connection = Actions.create_entailment(
@@ -1429,7 +1426,6 @@ class Interface:
                 agent_id,
                 source_guideline_id,
                 target_guideline_id,
-                kind,
             )
 
             Interface._write_success(f"Added connection (id={connection.connections[0].id})")

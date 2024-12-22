@@ -216,7 +216,7 @@ class GPT_4o(OpenAISchematicGenerator[T]):
         return 128 * 1024
 
 
-class GPT_4o_old(OpenAISchematicGenerator[T]):
+class GPT_4o_24_08_06(OpenAISchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(model_name="gpt-4o-2024-08-06", logger=logger)
 
@@ -381,7 +381,7 @@ class OpenAIService(NLPService):
     @override
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
         if t == GuidelineConnectionPropositionsSchema:
-            return GPT_4o_old[t](self._logger)
+            return GPT_4o_24_08_06[t](self._logger)
         return GPT_4o[t](self._logger)  # type: ignore
 
     @override
