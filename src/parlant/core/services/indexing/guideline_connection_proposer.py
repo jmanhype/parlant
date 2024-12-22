@@ -142,9 +142,9 @@ We say that guideline 1 forms a "causal connection" (or simply causes) guideline
 Additionally, you may assume the following: If <Y> occurs due to Guideline 1, then <X> is currently true. This means both <X> and <Y> can be considered true when assessing whether <W> is true for Guideline 2.
 
 Important clarifications: 
-1. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
+1. Assume that the condition of the source guideline is true. Meaning, examine whether the fulfillment of both the 'when' and 'then' statements of the source guideline cause the target's 'when' to be true. 
 2. Temporal Constraints: If the target guideline’s "when" condition was true in the past or will only become true in the future due to other factors, this is not considered causation. Causation is invalid if the source’s "then" statement can be applied while the target’s "when" condition remains false.
-3. Assume that the condition of the source guideline is true. Meaning, examine whether the fulfillment of both the 'when' and 'then' statements of the source guideline cause the target's 'when' to be true. 
+3. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 4. Implication is not sufficient: If one guideline being fulfilled merely suggests or implies that the other guideline's 'when' becomes true - it's not considered causation. This is never a valid rationale for a suggested connection.
 
 EXAMPLES
@@ -238,7 +238,7 @@ Expected Output:
             "source_then": "suggest a book",
             "target_when": "suggesting a book",
             "target_when_is_customer_action": false,
-            "rationale": "the agent's suggesting a book causes the suggestion of a book",
+            "rationale": "the agent's suggesting a book after being asked for book recommendations directly causes the suggestion of a book to be made",
             "is_target_when_caused_by_source_then": true,
             "causation_score": 10
         }},
@@ -388,14 +388,13 @@ Expected Output:
 ```
 
 ###
-###
 Example 4
 Input:
 Test guideline: ###
-{{"id": 0, "when": "a new topping is suggested", "then": "announce that the suggestion will be forwarded to management for consideration"}}
+{{"id": 0, "when": "a senior customer asks to extend their deal", "then": "Continue with the request if the customer's contract ends in the upcoming year"}}
 ###
 Causation candidates: ###
-{{"id": 1, "when": "discussing opening hours", "then": "mention that the store closes early on Sundays"}}
+{{"id": 1, "when": "extending the contract of a senior customer", "then": "Confirm with them that they have read the contract terms"}}
 
 Expected Output:
 ```json
@@ -404,30 +403,28 @@ Expected Output:
         {{
             "source_id": 0,
             "target_id": 1,
-            "source_when": "a new topping is suggested",
-            "source_then": "announce that the suggestion will be forwarded to management for consideration",
-            "target_when": "discussing opening hours",
+            "source_when": "a senior customer asks to extend their deal",
+            "source_then": "Continue with the request if the customer's contract ends in the upcoming year",
+            "target_when": "extending the contract of a senior customer",
             "target_when_is_customer_action": false,
-            "rationale": "the agent's forwarding something to management has nothing to do with opening hours",
-            "is_target_when_caused_by_source_then": false,
-            "causation_score": 1
+            "rationale": "continuing to process the request of a senior customer to extend their deal causes the process of extending the contract of a senior customer",
+            "is_target_when_caused_by_source_then": true,
+            "causation_score": 7
         }},
         {{
             "source_id": 1,
             "target_id": 0,
-            "source_when": "discussing opening hours",
-            "source_then": "mention that the store closes early on Sundays",
-            "target_when": "a new topping is suggested",
-            "target_when_is_customer_action": false,
-            "rationale": "the agent's store hours discussion does not cause any new topping suggestion to occur",
+            "source_when": "extending the contract of a senior customer",
+            "source_then": "Confirm with them that they have read the contract terms",
+            "target_when": "a senior customer asks to extend their deal",
+            "target_when_is_customer_action": true,
+            "rationale": "an action by the agent can never cause the customer to ask to extend their deal retrospectively",
             "is_target_when_caused_by_source_then": false,
             "causation_score": 1
         }},
     ]
 }}
 ```
-###
-
 
 ADDITIONAL INFORMATION
 -----------------

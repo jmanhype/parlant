@@ -136,8 +136,8 @@ async def test_that_connections_are_returned_for_source_without_indirect_connect
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id)
-    await store.create_connection(source=b_id, target=c_id)
+    await guideline_connection_store.create_connection(source=a_id, target=b_id)
+    await guideline_connection_store.create_connection(source=b_id, target=c_id)
 
     connections = await guideline_connection_store.list_connections(
         source=a_id,
@@ -156,8 +156,8 @@ async def test_that_connections_are_returned_for_source_with_indirect_connection
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id)
-    await store.create_connection(source=b_id, target=c_id)
+    await guideline_connection_store.create_connection(source=a_id, target=b_id)
+    await guideline_connection_store.create_connection(source=b_id, target=c_id)
 
     connections = await guideline_connection_store.list_connections(
         source=a_id,
@@ -177,8 +177,8 @@ async def test_that_connections_are_returned_for_target_without_indirect_connect
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id)
-    await store.create_connection(source=b_id, target=c_id)
+    await guideline_connection_store.create_connection(source=a_id, target=b_id)
+    await guideline_connection_store.create_connection(source=b_id, target=c_id)
 
     connections = await guideline_connection_store.list_connections(
         target=b_id,
@@ -197,8 +197,8 @@ async def test_that_connections_are_returned_for_target_with_indirect_connection
     b_id = GuidelineId("b")
     c_id = GuidelineId("c")
 
-    await store.create_connection(source=a_id, target=b_id)
-    await store.create_connection(source=b_id, target=c_id)
+    await guideline_connection_store.create_connection(source=a_id, target=b_id)
+    await guideline_connection_store.create_connection(source=b_id, target=c_id)
 
     connections = await guideline_connection_store.list_connections(
         target=c_id,

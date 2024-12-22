@@ -1188,3 +1188,40 @@ def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
     assert len(connection_propositions) == 1
     assert connection_propositions[0].source == source_guideline_content
     assert connection_propositions[0].target == target_guideline_content
+
+
+def test_that_ןimplied_but_not_entailed_guidelines_are_not_connected(  # This test fails occasionally
+    context: _TestContext,
+    agent: Agent,
+) -> None:
+    introduced_guidelines: Sequence[GuidelineContent] = [
+        GuidelineContent(condition=i["condition"], action=i["action"])
+        for i in [
+            {
+                "condition": "the customer needs help unlocking their card",
+                "action": "ask for the last 6 digits and help them unlock",
+            },
+            {
+                "condition": "you have tried to unlock the customer's card but failed due to invalid customer ID",
+                "action": "explain the issue and ask them to try to log out and back into the app again",
+            },
+            {
+                "condition": "you have tried to unlock the customer's card but failed due to customer 'ineligibility'",
+                "action": "explain the issue and ask them to have a parent contact the bank",
+            },
+            {
+                "condition": "you have tried to unlock the customer's card but failed due to not finding the card",
+                "action": "explain the issue and ask them to double check the card number and that it is indeed a card that's associated with their account",
+            },
+        ]
+    ]
+
+    connection_proposer = context.container[GuidelineConnectionProposer]
+
+    connection_propositions = list(
+        context.sync_await(
+            connection_proposer.propose_connections(agent, introduced_guidelines, [])
+        )
+    )
+
+    assert len(connection_propositions) == 0
