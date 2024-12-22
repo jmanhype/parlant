@@ -24,7 +24,7 @@ async def consult_expert(context: ToolContext, user_query: str) -> ToolResult:
     async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
         (
             await client.post(
-                f"https://localhost:8800/sessions/{context.session_id}/events",
+                f"http://localhost:8800/sessions/{context.session_id}/events",
                 json={
                     "kind": "message",
                     "source": "ai_agent",

@@ -467,7 +467,6 @@ class AlphaEngine(Engine):
                 await self._load_relevant_terms(
                     agents=[agent],
                     context_variables=context_variables,
-                    interaction_history=interaction.history,
                 )
             )
 
@@ -491,7 +490,7 @@ class AlphaEngine(Engine):
                 agents=[agent],
                 customer=customer,
                 context_variables=context_variables,
-                interaction_history=interaction.history,
+                interaction_history=[],
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions={},
