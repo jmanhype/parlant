@@ -271,16 +271,18 @@ class ServiceDocumentRegistry(ServiceRegistry):
         self,
         name: str,
     ) -> ToolService:
-        if name not in self._running_services:
-            raise ItemNotFoundError(item_id=UniqueId(name))
+        async with self._lock.reader_lock:
+            if name not in self._running_services:
+                raise ItemNotFoundError(item_id=UniqueId(name))
 
-        return self._running_services[name]
+            return self._running_services[name]
 
     @override
     async def list_tool_services(
         self,
     ) -> Sequence[tuple[str, ToolService]]:
-        return list(self._running_services.items())
+        async with self._lock.reader_lock:
+            return list(self._running_services.items())
 
     @override
     async def read_moderation_service(
@@ -296,23 +298,26 @@ class ServiceDocumentRegistry(ServiceRegistry):
     async def list_moderation_services(
         self,
     ) -> Sequence[tuple[str, ModerationService]]:
-        return list(self._moderation_services.items())
+        async with self._lock.reader_lock:
+            return list(self._moderation_services.items())
 
     @override
     async def read_nlp_service(
         self,
         name: str,
     ) -> NLPService:
-        if name not in self._nlp_services:
-            raise ItemNotFoundError(item_id=UniqueId(name))
+        async with self._lock.reader_lock:
+            if name not in self._nlp_services:
+                raise ItemNotFoundError(item_id=UniqueId(name))
 
-        return self._nlp_services[name]
+            return self._nlp_services[name]
 
     @override
     async def list_nlp_services(
         self,
     ) -> Sequence[tuple[str, NLPService]]:
-        return list(self._nlp_services.items())
+        async with self._lock.reader_lock:
+            return list(self._nlp_services.items())
 
     @override
     async def delete_service(self, name: str) -> None:
