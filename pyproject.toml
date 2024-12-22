@@ -14,6 +14,7 @@ parlant = "parlant.bin.client:main"
 [tool.poetry.dependencies]
 aiofiles = "^24.1.0"
 aiopenapi3 = "^0.6.0"
+aiorwlock = "^1.5.0"
 anthropic = "^0.37.1"
 boto3 = "^1.35.70"
 cerebras-cloud-sdk = "^1.12.1"
