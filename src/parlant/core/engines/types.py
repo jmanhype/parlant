@@ -51,6 +51,6 @@ class Engine(ABC):
     async def utter(
         self,
         context: Context,
-        event_emmitter: EventEmitter,
+        event_emitter: EventEmitter,
         actions: Sequence[UtteranceRequest],
     ) -> bool: ...

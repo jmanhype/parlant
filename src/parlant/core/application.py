@@ -40,7 +40,7 @@ from parlant.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from parlant.core.engines.types import Context, Engine
+from parlant.core.engines.types import Context, Engine, UtteranceRequest
 from parlant.core.logging import Logger
 
 
@@ -139,6 +139,34 @@ class Application:
                 agent_id=session.agent_id,
             ),
             event_emitter=event_emitter,
+        )
+
+    async def dispatch_utter_task(
+        self,
+        session: Session,
+        actions: Sequence[UtteranceRequest],
+    ) -> str:
+        with self._correlator.correlation_scope(generate_id()):
+            await self._background_task_service.restart(
+                self._do_utter_session(session, actions),
+                tag=f"utter-session({session.id})",
+            )
+            return self._correlator.correlation_id
+
+    async def _do_utter_session(
+        self,
+        session: Session,
+        actions: Sequence[UtteranceRequest],
+    ) -> None:
+        event_emitter = await self._event_emitter_factory.create_event_emitter(
+            emitting_agent_id=session.agent_id,
+            session_id=session.id,
+        )
+
+        await self._engine.utter(
+            context=Context(session_id=session.id, agent_id=session.agent_id),
+            event_emitter=event_emitter,
+            actions=actions,
         )
 
     async def create_guidelines(
