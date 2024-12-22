@@ -148,8 +148,17 @@ Important clarifications:
 
 3. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 
-
-
+HOW TO FILL is_target_when_caused_by_source_then
+-----------------
+The field is_target_when_caused_by_source_then, which you must return for every connection proposition, indicates if full causation applies.
+You have 4 options you may choose for:
+1. "no" - indicating no relation between the source's action and the target's condition.
+2. "implies" - indicates that the source's action implies that the target's condition is true, either now or in a past / future state of the interaction.
+    Example: the action "respond with our opening hours" implies the condition "you are asked about our opening hours"
+3. "causes general case" - indicates that the source's action causes a general case, that the target's condition is a specific case of. 
+    Example: the action "refer the customer to our documentation" causes the general case for the condition "you are referring the customer to our usage documentation"
+4. "causes" - indicates that the source's action necessarily causes the target's condition to be true. 
+    Example: the action "refer the customer to our documentation" causes the specific case for the condition "referring the customer to our documentation"
 
 EXAMPLES
 -----------------
@@ -418,7 +427,7 @@ Expected Output:
             "target_when": "forwarding messages to our CEO",
             "target_when_is_customer_action": false,
             "rationale": "announcing that we are forwarding the message to management may imply that it will be forwarded to our CEO, but it doesn't necessarily send it to them specifically",
-            "is_target_when_caused_by_source_then": "implies",
+            "is_target_when_caused_by_source_then": "causes general case",
             "causation_score": 5
         }},
         {{
@@ -471,7 +480,7 @@ Expected Output:
             "is_target_when_caused_by_source_then": "no",
             "causation_score": 1
         }},
-                {{
+        {{
             "source_id": 0,
             "target_id": 2,
             "source_when": "a senior customer asks to extend their deal",
@@ -479,7 +488,7 @@ Expected Output:
             "target_when": "processing a two-way contract extension",
             "target_when_is_customer_action": false,
             "rationale": "while continuing with the request of a senior customer to extend their deal causes a contract extension, it might not be a two-way contract specifically",
-            "is_target_when_caused_by_source_then": "implies",
+            "is_target_when_caused_by_source_then": "causes general case",
             "causation_score": 4
         }},
         {{
