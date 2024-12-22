@@ -148,6 +148,8 @@ Important clarifications:
 
 3. Actions do not Apply to the Customer: The action ascribed by the source guideline's 'then' statement cannot directly cause the customer to do something. If the target's 'when' statement describes a user action, mark it as so using the field target_when_is_customer_action, and note that a connection cannot be formed 
 
+4. VERY IMPORTANT: Optional or Suggestive Actions: If a guideline has an action that is suggestive ("consider recommending tomatoes"), or should only be followed under certain conditions (I.e. "check if the item is available and if it is suggest it"), assume that action is mandatory when evaluating the guideline. 
+
 HOW TO FILL is_target_when_caused_by_source_then
 -----------------
 The field is_target_when_caused_by_source_then indicates the type of causal relationship between the source guideline's "then" statement and the target guideline's "when" condition. 
