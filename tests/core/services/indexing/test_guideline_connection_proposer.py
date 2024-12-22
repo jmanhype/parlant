@@ -116,61 +116,7 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
     )
 
 
-def base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
-    context: _TestContext,
-    agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
-) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-
-    source_guideline_content = _create_guideline_content(
-        source_guideline_definition["condition"],
-        source_guideline_definition["action"],
-    )
-
-    target_guideline_content = _create_guideline_content(
-        target_guideline_definition["condition"],
-        target_guideline_definition["action"],
-    )
-
-    connection_propositions = list(
-        context.sync_await(
-            connection_proposer.propose_connections(
-                agent,
-                [
-                    source_guideline_content,
-                    target_guideline_content,
-                ],
-            )
-        )
-    )
-
-    assert len(connection_propositions) == 1
-    assert connection_propositions[0].source == source_guideline_content
-    assert connection_propositions[0].target == target_guideline_content
-
-
-def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_1(
-    context: _TestContext,
-    agent: Agent,
-) -> None:
-    source_guideline_definition: dict[str, str] = {
-        "guideline_set": "test-agent",
-        "condition": "the customer requests technical support",
-        "action": "provide the support contact details",
-    }
-    target_guideline_definition: dict[str, str] = {
-        "guideline_set": "test-agent",
-        "condition": "providing support contact details",
-        "action": "consider checking the troubleshooting guide first",
-    }
-    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
-    )
-
-
-def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_2(
+def test_that_a_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_3(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -184,7 +130,7 @@ def test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_c
         "condition": "mentioning office hours",
         "action": "you may suggest the best time to visit for quicker service",
     }
-    base_test_that_a_suggestion_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other(
+    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
@@ -631,7 +577,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
     assert connection_propositions[1].target == introduced_guidelines[2]
 
 
-def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_suggests_the_next_one(
+def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one_2(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -705,39 +651,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
     assert correct_propositions_set == suggested_propositions_set
 
 
-def base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
-    context: _TestContext,
-    agent: Agent,
-    source_guideline_definition: dict[str, str],
-    target_guideline_definition: dict[str, str],
-) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-
-    source_guideline_content = _create_guideline_content(
-        source_guideline_definition["condition"],
-        source_guideline_definition["action"],
-    )
-
-    target_guideline_content = _create_guideline_content(
-        target_guideline_definition["condition"],
-        target_guideline_definition["action"],
-    )
-
-    connection_propositions = list(
-        context.sync_await(
-            connection_proposer.propose_connections(
-                agent,
-                [source_guideline_content, target_guideline_content],
-            )
-        )
-    )
-
-    assert len(connection_propositions) == 1
-    assert connection_propositions[0].source == source_guideline_content
-    assert connection_propositions[0].target == target_guideline_content
-
-
-def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive_parametrized_1(
+def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_4(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -749,12 +663,12 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
         "condition": "mentioning a video",
         "action": "notify the customer about supported video formats",
     }
-    base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
+    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
-def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive_parametrized_2(
+def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_5(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -768,7 +682,7 @@ def test_that_a_suggestive_guideline_which_entails_another_guideline_are_connect
         "condition": "offering express delivery",
         "action": "mention it takes up to 48 hours",
     }
-    base_test_that_a_suggestive_guideline_which_entails_another_guideline_are_connected_as_suggestive(
+    base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
         context, agent, source_guideline_definition, target_guideline_definition
     )
 
@@ -920,7 +834,7 @@ def test_that_misspelled_entailing_guidelines_are_connected(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_try_actions_are_connected_but_not_suggestive(  # Tests both that entailing conditions and entailing actions aren't connected
+def test_that_try_actions_are_connected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -985,7 +899,7 @@ def test_that_agent_based_connection_is_detected(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(  # This test fails occasionally
+def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(
     context: _TestContext,
 ) -> None:
     agent = Agent(
@@ -1084,7 +998,7 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
     assert len(connection_propositions) == 0
 
 
-def test_that_strictly_entailed_predicate_describing_an_agent_action_is_detected(
+def test_that_entailed_predicate_describing_an_agent_action_is_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -1163,7 +1077,7 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
+def test_that_entailment_due_to_the_sources_condition_is_detected(
     context: _TestContext,
     agent: Agent,
 ) -> None:
@@ -1190,7 +1104,7 @@ def test_that_suggestive_entailment_due_to_the_sources_condition_is_detected(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_ןimplied_but_not_entailed_guidelines_are_not_connected(  # This test fails occasionally
+def test_that_ןimplied_but_not_entailed_guidelines_are_not_connected(
     context: _TestContext,
     agent: Agent,
 ) -> None:

@@ -595,11 +595,6 @@ Please output JSON structured in the following format, which includes two entrie
             guideline_to_test,
             {k: v for k, v in guidelines_dict.items() if k != 0},
         )
-        # TODO delete saves
-        with open(
-            f"prompts/guideline connection prompt - {guideline_to_test.condition}.txt", "w"
-        ) as f:
-            f.write(prompt)
         response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
@@ -614,16 +609,6 @@ Connection Propositions Found:
 ----------------------------------------
 """
         )
-
-        # TODO delete saves
-        with open(
-            f"prompts/guideline connection response - {guideline_to_test.condition}.txt", "w"
-        ) as f:
-            f.write(
-                json.dumps(
-                    [p.model_dump(mode="json") for p in response.content.propositions], indent=2
-                )
-            )
 
         relevant_propositions = [
             GuidelineConnectionProposition(
