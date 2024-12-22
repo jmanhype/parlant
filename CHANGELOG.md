@@ -11,6 +11,7 @@ None
 
 ### Added
 - Expose deletion flag for events in Session API
+- Support for union parameters ("T | None") in tool functions
 
 ### Changed
 - Print traceback when reporting server boot errors
