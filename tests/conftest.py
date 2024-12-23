@@ -182,6 +182,13 @@ async def container(
     container[Logger] = logger
 
     async with AsyncExitStack() as stack:
+        schematic_generation_result_collection = (
+            await create_schematic_generation_result_collection(stack, logger=container[Logger])
+        )
+
+        temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
+        os.environ["PARLANT_HOME"] = temp_dir
+
         container[BackgroundTaskService] = await stack.enter_async_context(
             BackgroundTaskService(container[Logger])
         )
