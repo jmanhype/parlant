@@ -129,9 +129,10 @@ async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
     async with AsyncExitStack() as stack:
-        schematic_generation_result_collection = (
-            await create_schematic_generation_result_collection(stack, logger=container[Logger])
-        )
+        if use_cache:
+            schematic_generation_result_collection = (
+                await create_schematic_generation_result_collection(stack, logger=container[Logger])
+            )
 
         temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
         os.environ["PARLANT_HOME"] = temp_dir
