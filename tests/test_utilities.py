@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import asyncio
+from collections.abc import AsyncIterator
 import hashlib
 import json
 import logging
-from contextlib import AsyncExitStack, contextmanager
-import os
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -352,7 +352,7 @@ def get_when_done_or_timeout(
 TBaseModel = TypeVar("TBaseModel", bound=DefaultBaseModel)
 
 
-class _SchematicGenerationResultDocument(TypedDict, total=False):
+class SchematicGenerationResultDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     content: JSONSerializable
@@ -365,7 +365,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
     def __init__(
         self,
         base_generator: SchematicGenerator[TBaseModel],
-        collection: DocumentCollection[_SchematicGenerationResultDocument],
+        collection: DocumentCollection[SchematicGenerationResultDocument],
         use_cache: bool,
     ):
         self._base_generator = base_generator
@@ -391,7 +391,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         self,
         id: str,
         result: SchematicGenerationResult[TBaseModel],
-    ) -> _SchematicGenerationResultDocument:
+    ) -> SchematicGenerationResultDocument:
         def serialize_generation_info(generation: GenerationInfo) -> _GenerationInfoDocument:
             return _GenerationInfoDocument(
                 schema_name=generation.schema_name,
@@ -404,7 +404,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
                 ),
             )
 
-        return _SchematicGenerationResultDocument(
+        return SchematicGenerationResultDocument(
             id=ObjectId(id),
             version=self.VERSION.to_string(),
             content=result.content.model_dump(mode="json"),
@@ -413,7 +413,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
 
     def _deserialize_result(
         self,
-        doc: _SchematicGenerationResultDocument,
+        doc: SchematicGenerationResultDocument,
         schema_type: type[TBaseModel],
     ) -> SchematicGenerationResult[TBaseModel]:
         def deserialize_generation_info(
@@ -475,20 +475,12 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         return self._base_generator.tokenizer
 
 
+@asynccontextmanager
 async def create_schematic_generation_result_collection(
-    stack: AsyncExitStack,
     logger: Logger,
-) -> DocumentCollection[_SchematicGenerationResultDocument]:
-    parlant_home_dir = Path(os.environ.get("PARLANT_HOME", "runtime-data"))
-    parlant_home_dir.mkdir(parents=True, exist_ok=True)
-
-    _db = await stack.enter_async_context(
-        JSONFileDocumentDatabase(
-            logger,
-            parlant_home_dir / GLOBAL_CACHE_FILE,
+) -> AsyncIterator[DocumentCollection[SchematicGenerationResultDocument]]:
+    async with JSONFileDocumentDatabase(logger, GLOBAL_CACHE_FILE) as db:
+        yield await db.get_or_create_collection(
+            name="schematic_generation_result_cache",
+            schema=SchematicGenerationResultDocument,
         )
-    )
-
-    return await _db.get_or_create_collection(
-        name="cache_schematic_generation_results", schema=_SchematicGenerationResultDocument
-    )

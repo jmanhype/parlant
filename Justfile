@@ -53,7 +53,7 @@ setup-cache:
 
 @test-deterministic *specs='':
     poetry run pytest \
-      -vv {{specs}} --plan=deterministic --use-cache \
+      -vv {{specs}} --plan=deterministic \
       --tap-combined --tap-outdir=logs/deterministic \
       --timing-file=logs/deterministic/test_timings.csv \
       --junit-xml=logs/deterministic/testresults.xml \
@@ -61,7 +61,7 @@ setup-cache:
 
 @test-stochastic *specs='':
     poetry run pytest \
-      -vv {{specs}} --plan=stochastic \
+      -vv {{specs}} --plan=stochastic --no-cache \
       --tap-combined --tap-outdir=logs/stochastic \
       --timing-file=logs/stochastic/test_timings.csv \
       --junit-xml=logs/stochastic/testresults.xml \
@@ -69,7 +69,7 @@ setup-cache:
 
 @test-core-stable *specs='':
     poetry run pytest \
-      -vv {{specs}} --plan=core_stable \
+      -vv {{specs}} --plan=core_stable --no-cache \
       --tap-combined --tap-outdir=logs/core_stable \
       --timing-file=logs/core_stable/test_timings.csv \
       --junit-xml=logs/core_stable/testresults.xml \
@@ -77,7 +77,7 @@ setup-cache:
 
 @test-core-unstable *specs='':
     poetry run pytest \
-      -vv {{specs}} --plan=core_unstable \
+      -vv {{specs}} --plan=core_unstable --no-cache \
       --tap-combined --tap-outdir=logs/core_unstable \
       --timing-file=logs/core_unstable/test_timings.csv \
       --junit-xml=logs/core_unstable/testresults.xml \
@@ -85,7 +85,7 @@ setup-cache:
 
 @test-core-experimental *specs='':
     poetry run pytest \
-      -vv {{specs}} --plan=core_experimental \
+      -vv {{specs}} --plan=core_experimental --no-cache \
       --tap-combined --tap-outdir=logs/core_experimental \
       --timing-file=logs/core_experimental/test_timings.csv \
       --junit-xml=logs/core_experimental/testresults.xml \
@@ -93,12 +93,12 @@ setup-cache:
 
 @test-complete *specs='':
   poetry run pytest \
-      -vv {{specs}} --plan=complete \
+      -vv {{specs}} --plan=complete --no-cache \
       --tap-combined --tap-outdir=logs/complete \
       --timing-file=logs/complete/test_timings.csv \
       --junit-xml=logs/complete/testresults.xml \
       --color=auto
-  
+
 
 @test-list:
   echo "just test-deterministic #(uses cache)"
@@ -106,7 +106,7 @@ setup-cache:
   echo "# just test-core-stable #(no cache)"
   echo "just test-core-unstable #(no cache)"
   echo "# just test-core-experimental #(no cache)"
-  
+
 @install:
   clear
   poetry lock --no-update
