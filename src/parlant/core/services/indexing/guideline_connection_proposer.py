@@ -162,7 +162,8 @@ You must select the most accurate option from the following, listed from the wea
 4. "causes" - Use this for direct and necessary causation, where the source's action guarantees that the target's condition immediately becomes true.
     Example: the action "refer the customer to our documentation" causes the specific case for the condition "referring the customer to our documentation"
 
-Always select the strongest option that applies to the provided guidelines. E.g., if a connection satisfies both "implies" and "causes", choose "causes".
+Always select the strongest option that applies to the provided guidelines. 
+E.g., if you could both say that guideline A implies guideline B and that it causes guideline B, choose the latter.
 
 EXAMPLES
 -----------------
