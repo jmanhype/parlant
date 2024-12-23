@@ -17,6 +17,7 @@ import hashlib
 import json
 import logging
 from contextlib import AsyncExitStack, contextmanager
+import os
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -478,10 +479,13 @@ async def create_schematic_generation_result_collection(
     stack: AsyncExitStack,
     logger: Logger,
 ) -> DocumentCollection[_SchematicGenerationResultDocument]:
+    parlant_home_dir = Path(os.environ.get("PARLANT_HOME", "runtime-data"))
+    parlant_home_dir.mkdir(parents=True, exist_ok=True)
+
     _db = await stack.enter_async_context(
         JSONFileDocumentDatabase(
             logger,
-            Path("runtime-data") / GLOBAL_CACHE_FILE,
+            parlant_home_dir / GLOBAL_CACHE_FILE,
         )
     )
 
