@@ -2476,7 +2476,6 @@ async def async_main() -> None:
     def guideline_entail(
         ctx: click.Context,
         agent_id: str,
-        suggestive: bool,
         source: str,
         target: str,
     ) -> None:
