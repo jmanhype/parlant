@@ -777,7 +777,7 @@ async def test_that_guideline_deletion_removes_tool_associations(
 
 
 async def test_that_an_http_404_is_thrown_when_associating_with_a_nonexistent_local_tool_to_a_guideline(
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
@@ -803,7 +803,7 @@ async def test_that_an_http_404_is_thrown_when_associating_with_a_nonexistent_lo
         }
     }
 
-    response = client.patch(
+    response = await async_client.patch(
         f"/agents/{agent_id}/guidelines/{guideline.id}",
         json=request_data,
     )
@@ -812,7 +812,7 @@ async def test_that_an_http_404_is_thrown_when_associating_with_a_nonexistent_lo
 
 
 async def test_that_an_http_404_is_thrown_when_associating_with_a_nonexistent_openapi_tool_to_a_guideline(
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     container: Container,
     agent_id: AgentId,
 ) -> None:
@@ -847,7 +847,7 @@ async def test_that_an_http_404_is_thrown_when_associating_with_a_nonexistent_op
             }
         }
 
-        response = client.patch(
+        response = await async_client.patch(
             f"/agents/{agent_id}/guidelines/{guideline.id}",
             json=request_data,
         )
