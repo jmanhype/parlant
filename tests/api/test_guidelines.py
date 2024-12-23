@@ -24,7 +24,13 @@ from parlant.core.guideline_tool_associations import GuidelineToolAssociationSto
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import LocalToolService, ToolId
-from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
+
+from tests.test_utilities import (
+    OPENAPI_SERVER_URL,
+    rng_app,
+    run_openapi_server,
+    run_service_server,
+)
 
 
 async def create_and_connect(

@@ -27,6 +27,7 @@ from parlant.core.tools import Tool
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.guidelines import Guideline
 from parlant.core.sessions import Event, MessageEventData, EventSource, EventId
+
 from tests.test_utilities import SyncAwaiter
 
 

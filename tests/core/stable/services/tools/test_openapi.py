@@ -17,6 +17,7 @@ from pytest import mark
 
 from parlant.core.tools import ToolContext
 from parlant.core.services.tools.openapi import OpenAPIClient
+
 from tests.test_utilities import (
     OPENAPI_SERVER_URL,
     TOOLS,

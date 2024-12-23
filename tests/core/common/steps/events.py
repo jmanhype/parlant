@@ -29,8 +29,8 @@ from parlant.core.sessions import (
     StatusEventData,
     ToolEventData,
 )
-
 from parlant.core.tools import ToolId
+
 from tests import tool_utilities
 from tests.core.common.utils import ContextOfTest, step
 from tests.test_utilities import nlp_test

@@ -23,6 +23,7 @@ from parlant.core.guideline_tool_associations import (
 )
 from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.tools import LocalToolService, ToolId
+
 from tests.core.common.utils import ContextOfTest, step
 
 

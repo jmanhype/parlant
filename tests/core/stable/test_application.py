@@ -24,6 +24,7 @@ from parlant.core.customers import CustomerId, CustomerStore
 from parlant.core.guidelines import GuidelineStore
 from parlant.core.sessions import Session, SessionStore
 from parlant.core.tools import ToolResult
+
 from tests.test_utilities import create_guideline, nlp_test
 
 REASONABLE_AMOUNT_OF_TIME = 10

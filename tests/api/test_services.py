@@ -22,6 +22,7 @@ from lagom import Container
 from parlant.core.services.tools.plugins import tool
 from parlant.core.tools import ToolResult, ToolContext
 from parlant.core.services.tools.service_registry import ServiceRegistry
+
 from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
 
 

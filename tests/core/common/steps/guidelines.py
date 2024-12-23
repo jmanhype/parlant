@@ -18,6 +18,7 @@ from parlant.core.agents import AgentId
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import Guideline, GuidelineStore
+
 from tests.core.common.utils import ContextOfTest, step
 
 

@@ -19,6 +19,9 @@ import tempfile
 from typing import Any
 import httpx
 
+from parlant.core.services.tools.plugins import tool
+from parlant.core.tools import ToolResult, ToolContext
+
 from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
     SERVER_ADDRESS,
@@ -27,8 +30,6 @@ from tests.e2e.test_utilities import (
     is_server_responsive,
     run_server,
 )
-from parlant.core.services.tools.plugins import tool
-from parlant.core.tools import ToolResult, ToolContext
 from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
 
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25

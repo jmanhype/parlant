@@ -22,9 +22,9 @@ from parlant.core.context_variables import (
 )
 from parlant.core.customers import CustomerStore
 from parlant.core.sessions import SessionId, SessionStore
-
 from parlant.core.tags import TagStore
 from parlant.core.tools import ToolId
+
 from tests.core.common.utils import ContextOfTest, step
 
 

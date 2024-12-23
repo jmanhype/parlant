@@ -22,6 +22,7 @@ from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
+
 from tests.core.conftest import _TestContext
 
 

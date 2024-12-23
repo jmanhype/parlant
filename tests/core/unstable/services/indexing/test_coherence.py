@@ -18,6 +18,7 @@ from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
     IncoherenceKind,
 )
+
 from tests.core.conftest import _TestContext
 
 

@@ -15,12 +15,12 @@
 import asyncio
 import enum
 from typing import Mapping, Optional, cast
-
-from parlant.core.tools import ToolContext, ToolResult, ToolResultError
-from parlant.core.services.tools.plugins import PluginServer, tool
 from lagom import Container
 from pytest import fixture, raises
 import pytest
+
+from parlant.core.tools import ToolContext, ToolResult, ToolResultError
+from parlant.core.services.tools.plugins import PluginServer, tool
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.emission.event_buffer import EventBuffer, EventBufferFactory
@@ -28,6 +28,7 @@ from parlant.core.emissions import EventEmitter, EventEmitterFactory
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.sessions import SessionId
 from parlant.core.tools import ToolExecutionError
+
 from tests.test_utilities import run_service_server
 
 

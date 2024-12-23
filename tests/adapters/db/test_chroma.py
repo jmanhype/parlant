@@ -28,6 +28,7 @@ from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
 from parlant.core.persistence.common import ObjectId
+
 from tests.test_utilities import SyncAwaiter
 
 

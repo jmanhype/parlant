@@ -19,6 +19,7 @@ from pytest_bdd import given, parsers
 from parlant.core.agents import Agent, AgentId
 from parlant.core.customers import Customer, CustomerStore
 from parlant.core.sessions import Session, SessionId, SessionStore
+
 from tests.core.common.utils import ContextOfTest, step
 
 
