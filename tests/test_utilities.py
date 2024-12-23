@@ -17,11 +17,17 @@ from collections.abc import AsyncIterator
 import hashlib
 import json
 import logging
+<<<<<<< HEAD
 from contextlib import asynccontextmanager, contextmanager
+=======
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+import os
+>>>>>>> 744f5394 (Add guideline connection proposer unstable tests)
 from pathlib import Path
 from time import sleep
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     Generator,
@@ -33,7 +39,11 @@ from typing import (
     cast,
 )
 
+from fastapi import FastAPI, Query, Request, Response
+from fastapi.responses import JSONResponse
+import httpx
 from lagom import Container
+import uvicorn
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.nlp.openai import GPT_4o
 from parlant.core.agents import Agent, AgentId, AgentStore
@@ -59,6 +69,7 @@ from parlant.core.nlp.generation import (
     UsageInfo,
 )
 from parlant.core.nlp.tokenization import EstimatingTokenizer
+from parlant.core.services.tools.plugins import PluginServer, ToolEntry
 from parlant.core.sessions import (
     _GenerationInfoDocument,
     _UsageInfoDocument,

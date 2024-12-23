@@ -22,15 +22,7 @@ from lagom import Container
 from parlant.core.services.tools.plugins import tool
 from parlant.core.tools import ToolResult, ToolContext
 from parlant.core.services.tools.service_registry import ServiceRegistry
-
-from tests.core.stable.services.tools.test_openapi import (
-    OPENAPI_SERVER_URL,
-    rng_app,
-    run_openapi_server,
-)
-
-
-from tests.core.stable.services.tools.test_plugin_client import run_service_server
+from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
 
 
 async def test_that_sdk_service_is_created(

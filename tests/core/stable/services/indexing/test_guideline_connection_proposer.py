@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence
 
-from lagom import Container
-from pytest import fixture
 
 from parlant.core.agents import Agent, AgentId
 from parlant.core.glossary import GlossaryStore
@@ -25,51 +22,29 @@ from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
-
-from tests.test_utilities import SyncAwaiter
-
-
-@dataclass
-class _TestContext:
-    sync_await: SyncAwaiter
-    container: Container
-
-
-@fixture
-def context(
-    sync_await: SyncAwaiter,
-    container: Container,
-) -> _TestContext:
-    return _TestContext(sync_await, container)
-
-
-def _create_guideline_content(
-    condition: str,
-    action: str,
-) -> GuidelineContent:
-    return GuidelineContent(condition=condition, action=action)
+from tests.core.conftest import _TestContext
 
 
 def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [target_guideline_content, source_guideline_content],
@@ -83,7 +58,7 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
 
 
 def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_1(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -95,12 +70,12 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
         "action": "mention the best time to go for a walk",
     }
     base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_2(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -112,12 +87,12 @@ def test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_
         "action": "highlight the one with the best reviews",
     }
     base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_a_connection_is_proposed_for_two_guidelines_where_the_content_of_one_suggests_a_follow_up_to_the_condition_of_the_other_parametrized_3(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -131,12 +106,12 @@ def test_that_a_connection_is_proposed_for_two_guidelines_where_the_content_of_o
         "action": "you may suggest the best time to visit for quicker service",
     }
     base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -177,10 +152,10 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -198,7 +173,7 @@ def test_that_multiple_connections_are_detected_and_proposed_at_the_same_time(
 
 
 def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     existing_guidelines: Sequence[GuidelineContent] = [
@@ -239,23 +214,25 @@ def test_that_possible_connections_between_existing_guidelines_are_not_proposed(
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(connection_proposer.propose_connections(agent, [], existing_guidelines))
+        base_context.sync_await(
+            connection_proposer.propose_connections(agent, [], existing_guidelines)
+        )
     )
 
     assert len(connection_propositions) == 0
 
 
 def test_that_a_connection_is_proposed_based_on_given_glossary(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-    glossary_store = context.container[GlossaryStore]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
+    glossary_store = base_context.container[GlossaryStore]
 
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
@@ -263,18 +240,18 @@ def test_that_a_connection_is_proposed_based_on_given_glossary(
         )
     )
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer asks about walnut prices",
         "provide the current walnut prices",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "providing altcoin prices",
         "mention that between exchanges, there can be minor differences",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -288,20 +265,20 @@ def test_that_a_connection_is_proposed_based_on_given_glossary(
 
 
 def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-    glossary_store = context.container[GlossaryStore]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
+    glossary_store = base_context.container[GlossaryStore]
 
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
             description="walnut is an altcoin",
         )
     )
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="the tall tree",
@@ -309,18 +286,18 @@ def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
         )
     )
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer asks about getting walnuts",
         "reply that the customer can buy walnuts from the tall tree",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "suggesting to purchase altcoins from a european service",
         "warn about EU regulations",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -334,11 +311,11 @@ def test_that_a_connection_is_proposed_based_on_multiple_glossary_terms(
 
 
 def test_that_one_guideline_can_entail_multiple_guidelines(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
-        _create_guideline_content(condition=i["condition"], action=i["action"])
+        GuidelineContent(condition=i["condition"], action=i["action"])
         for i in [
             {
                 "condition": "the customer asks for our catalouge",
@@ -355,10 +332,10 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -370,25 +347,25 @@ def test_that_one_guideline_can_entail_multiple_guidelines(
 
 
 def base_test_that_entailing_whens_are_not_connected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [
@@ -403,7 +380,7 @@ def base_test_that_entailing_whens_are_not_connected(
 
 
 def test_that_entailing_whens_are_not_connected_parametrized_1(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -415,12 +392,12 @@ def test_that_entailing_whens_are_not_connected_parametrized_1(
         "action": "remind the customer about our discounts",
     }
     base_test_that_entailing_whens_are_not_connected(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_entailing_whens_are_not_connected_parametrized_2(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -432,30 +409,30 @@ def test_that_entailing_whens_are_not_connected_parametrized_2(
         "action": "refer them to our international website",
     }
     base_test_that_entailing_whens_are_not_connected(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def base_test_that_entailing_thens_are_not_connected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
     source_guideline_definition: dict[str, str],
     target_guideline_definition: dict[str, str],
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         source_guideline_definition["condition"],
         source_guideline_definition["action"],
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         target_guideline_definition["condition"],
         target_guideline_definition["action"],
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [
@@ -470,7 +447,7 @@ def base_test_that_entailing_thens_are_not_connected(
 
 
 def test_that_entailing_thens_are_not_connected_parametrized_1(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -482,12 +459,12 @@ def test_that_entailing_thens_are_not_connected_parametrized_1(
         "action": "clarify that the store is closed on Saturdays",
     }
     base_test_that_entailing_thens_are_not_connected(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_entailing_thens_are_not_connected_parametrized_2(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -499,12 +476,12 @@ def test_that_entailing_thens_are_not_connected_parametrized_2(
         "action": "explain that it can be colored green",
     }
     base_test_that_entailing_thens_are_not_connected(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one_using_pronouns_from_then_to_when(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -525,10 +502,10 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -541,7 +518,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
 
 
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -562,47 +539,10 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
-            connection_proposer.propose_connections(agent, introduced_guidelines, [])
-        )
-    )
-
-    assert len(connection_propositions) == 2
-    assert connection_propositions[0].source == introduced_guidelines[0]
-    assert connection_propositions[0].target == introduced_guidelines[1]
-    assert connection_propositions[1].source == introduced_guidelines[1]
-    assert connection_propositions[1].target == introduced_guidelines[2]
-
-
-def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one_2(
-    context: _TestContext,
-    agent: Agent,
-) -> None:
-    introduced_guidelines: Sequence[GuidelineContent] = [
-        GuidelineContent(condition=i["condition"], action=i["action"])
-        for i in [
-            {
-                "condition": "discussing sandwiches",
-                "action": "recommend the daily specials",
-            },
-            {
-                "condition": "listing the daily specials",
-                "action": "consider mentioning ingredients that may cause allergic reactions",
-            },
-            {
-                "condition": "discussing anything related to a food allergies",
-                "action": "you may note that all dishes may contain peanut residues",
-            },
-        ]
-    ]
-
-    connection_proposer = context.container[GuidelineConnectionProposer]
-
-    connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -615,7 +555,7 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
 
 
 def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_action_entails_the_following_condition(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -636,10 +576,10 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -652,7 +592,7 @@ def test_that_circular_connection_is_proposed_for_three_guidelines_where_each_ac
 
 
 def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_4(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -664,12 +604,12 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
         "action": "notify the customer about supported video formats",
     }
     base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other_parametrized_5(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     source_guideline_definition: dict[str, str] = {
@@ -683,28 +623,28 @@ def base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where
         "action": "mention it takes up to 48 hours",
     }
     base_test_that_an_entailment_connection_is_proposed_for_two_guidelines_where_the_content_of_one_entails_the_condition_of_the_other(
-        context, agent, source_guideline_definition, target_guideline_definition
+        base_context, agent, source_guideline_definition, target_guideline_definition
     )
 
 
 def test_that_no_connection_is_made_for_a_guidelines_whose_condition_entails_another_guidelines_condition(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer refers to a past interaction",
         "ask for the date of this previous interaction",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "the customer refers to a quota offered in a past interaction",
         "answer that that quota is no longer relevant",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -715,23 +655,23 @@ def test_that_no_connection_is_made_for_a_guidelines_whose_condition_entails_ano
 
 
 def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes_another_guideline(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "The customer complains that the phrases in the photograph are blurry",
         "clarify what the unclear phrases mean",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "a word is misunderstood",
         "reply with its dictionary definition",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -742,23 +682,23 @@ def test_that_no_connection_is_made_for_a_guideline_which_implies_but_not_causes
 
 
 def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that entailing conditions and entailing actions aren't connected
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer refers to a past interaction",
         "ask the customer for the date of this interaction",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "the customer asks about a solution suggested in a previous interaction",
         "ask when that conversation occurred",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -769,23 +709,23 @@ def test_that_guidelines_with_similar_thens_arent_connected(  # Tests both that 
 
 
 def test_that_identical_actions_arent_connected(  # Tests both that entailing conditions and entailing actions aren't connected
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "asked about pizza toppings",
         "list our pizza toppings",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "asked about our menu",
         "list our pizza toppings",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -796,13 +736,13 @@ def test_that_identical_actions_arent_connected(  # Tests both that entailing co
 
 
 def test_that_misspelled_entailing_guidelines_are_connected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-    glossary_store = context.container[GlossaryStore]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
+    glossary_store = base_context.container[GlossaryStore]
 
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="walnut",
@@ -810,18 +750,18 @@ def test_that_misspelled_entailing_guidelines_are_connected(
         )
     )
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer ask about wallnut prices",
         "provide the curent walnut prices",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "provding altcoinn prices",
         "mention that between exchanges, there can be minor differences",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -835,23 +775,23 @@ def test_that_misspelled_entailing_guidelines_are_connected(
 
 
 def test_that_try_actions_are_connected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer complains that a suggested solution did not work",
         "reply in a hostile manner",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "the conversational tone is hostile",
         "try to de-escalate the situation",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -864,10 +804,10 @@ def test_that_try_actions_are_connected(
 
 
 def test_that_agent_based_connection_is_detected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
     agent = Agent(
         id=AgentId("sparkling-water-agent"),
         name="sparkling-water-agent",
@@ -875,18 +815,18 @@ def test_that_agent_based_connection_is_detected(
         creation_utc=datetime.now(timezone.utc),
         max_engine_iterations=3,
     )
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         "the customer asks for drink recommendation",
         "recommend orange soda",
     )
 
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         "recommending a vegetable based soda",
         "mention that between exchanges, there can be minor differences",
     )
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -900,7 +840,7 @@ def test_that_agent_based_connection_is_detected(
 
 
 def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected_as_false_positives(
-    context: _TestContext,
+    base_context: _TestContext,
 ) -> None:
     agent = Agent(
         id=AgentId("Sparkleton Agent"),
@@ -910,9 +850,9 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
         max_engine_iterations=3,
     )
 
-    glossary_store = context.container[GlossaryStore]
+    glossary_store = base_context.container[GlossaryStore]
 
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="Sparkleton",
@@ -920,7 +860,7 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
             synonyms=["sparkleton", "sparkletown", "the company"],
         )
     )
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="tomatola",
@@ -928,7 +868,7 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
             synonyms=["tomato cola"],
         )
     )
-    context.sync_await(
+    base_context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="carbon coin",
@@ -987,10 +927,10 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )
@@ -999,20 +939,20 @@ def test_that_many_guidelines_with_agent_description_and_glossary_arent_detected
 
 
 def test_that_entailed_predicate_describing_an_agent_action_is_detected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         condition="Asked for our pizza topping selection",
         action="list the possible toppings and recommend olives",
     )
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         condition="Recommending pizza toppings", action="Recommend mushrooms as they are healthy"
     )
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -1025,20 +965,20 @@ def test_that_entailed_predicate_describing_an_agent_action_is_detected(
 
 
 def test_that_strict_entailment_due_to_the_sources_condition_is_detected_1(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         condition="A US based customer attempts to purchase a ladder",
         action="Ask how tall the ladder should be",
     )
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         condition="discussing sizes with an American customer", action="Use imperial units"
     )
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -1051,48 +991,21 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected_1(
 
 
 def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
-    source_guideline_content = _create_guideline_content(
+    source_guideline_content = GuidelineContent(
         condition="a non-guest customer greets you",
         action="refer to them by their first name, and welcome them 'back'",
     )
-    target_guideline_content = _create_guideline_content(
+    target_guideline_content = GuidelineContent(
         condition="you're welcoming non-guest customers",
         action="refer to them by their first name, and welcome them 'back'",
     )
     connection_propositions = list(
-        context.sync_await(
-            connection_proposer.propose_connections(
-                agent,
-                [source_guideline_content, target_guideline_content],
-            )
-        )
-    )
-    assert len(connection_propositions) == 1
-    assert connection_propositions[0].source == source_guideline_content
-    assert connection_propositions[0].target == target_guideline_content
-
-
-def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test fails occasionally
-    context: _TestContext,
-    agent: Agent,
-) -> None:
-    connection_proposer = context.container[GuidelineConnectionProposer]
-
-    source_guideline_content = _create_guideline_content(
-        condition="Planning trips to Brazil",
-        action="Check if there are any festivals happening on the relevant days, and suggest them to the customer if they coincide with their plans",
-    )
-    target_guideline_content = _create_guideline_content(
-        condition="Suggesting activites in a non-English speaking country",
-        action="Ask the customer if they speak the local language",
-    )
-    connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -1105,7 +1018,7 @@ def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test 
 
 
 def test_that_an_action_that_causes_a_more_general_case_of_another_guidelines_source_is_not_detected(
-    context: _TestContext,
+    base_context: _TestContext,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -1130,10 +1043,10 @@ def test_that_an_action_that_causes_a_more_general_case_of_another_guidelines_so
         ]
     ]
 
-    connection_proposer = context.container[GuidelineConnectionProposer]
+    connection_proposer = base_context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        context.sync_await(
+        base_context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )

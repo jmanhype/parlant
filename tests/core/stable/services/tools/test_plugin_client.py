@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import asyncio
-from contextlib import asynccontextmanager
 import enum
-from typing import AsyncIterator, Mapping, Optional, cast
+from typing import Mapping, Optional, cast
 
 from parlant.core.tools import ToolContext, ToolResult, ToolResultError
-from parlant.core.services.tools.plugins import PluginServer, ToolEntry, tool
+from parlant.core.services.tools.plugins import PluginServer, tool
 from lagom import Container
 from pytest import fixture, raises
 import pytest
@@ -29,6 +28,7 @@ from parlant.core.emissions import EventEmitter, EventEmitterFactory
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.sessions import SessionId
 from parlant.core.tools import ToolExecutionError
+from tests.test_utilities import run_service_server
 
 
 class SessionBuffers(EventEmitterFactory):
@@ -59,19 +59,6 @@ async def context(agent: Agent) -> ToolContext:
         session_id="test_session",
         customer_id="test_customer",
     )
-
-
-@asynccontextmanager
-async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
-    async with PluginServer(
-        tools=tools,
-        port=8091,
-        host="127.0.0.1",
-    ) as server:
-        try:
-            yield server
-        finally:
-            await server.shutdown()
 
 
 def create_client(
