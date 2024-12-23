@@ -13,16 +13,10 @@
 # limitations under the License.
 
 import asyncio
-from collections.abc import AsyncIterator
 import hashlib
 import json
 import logging
-<<<<<<< HEAD
 from contextlib import asynccontextmanager, contextmanager
-=======
-from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-import os
->>>>>>> 744f5394 (Add guideline connection proposer unstable tests)
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -495,3 +489,119 @@ async def create_schematic_generation_result_collection(
             name="schematic_generation_result_cache",
             schema=SchematicGenerationResultDocument,
         )
+
+
+@asynccontextmanager
+async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
+    async with PluginServer(
+        tools=tools,
+        port=8091,
+        host="127.0.0.1",
+    ) as server:
+        try:
+            yield server
+        finally:
+            await server.shutdown()
+
+
+OPENAPI_SERVER_PORT = 8089
+OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
+
+
+async def one_required_query_param(
+    query_param: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": query_param})
+
+
+async def two_required_query_params(
+    query_param_1: int = Query(),
+    query_param_2: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": query_param_1 + query_param_2})
+
+
+class OneBodyParam(DefaultBaseModel):
+    body_param: str
+
+
+async def one_required_body_param(
+    body: OneBodyParam,
+) -> JSONResponse:
+    return JSONResponse({"result": body.body_param})
+
+
+class TwoBodyParams(DefaultBaseModel):
+    body_param_1: str
+    body_param_2: str
+
+
+async def two_required_body_params(
+    body: TwoBodyParams,
+) -> JSONResponse:
+    return JSONResponse({"result": body.body_param_1 + body.body_param_2})
+
+
+async def one_required_query_param_one_required_body_param(
+    body: OneBodyParam,
+    query_param: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": f"{body.body_param}: {query_param}"})
+
+
+def rng_app() -> FastAPI:
+    app = FastAPI(servers=[{"url": OPENAPI_SERVER_URL}])
+
+    @app.middleware("http")
+    async def debug_request(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        return response
+
+    for tool in TOOLS:
+        registration_func = app.post if "body" in tool.__name__ else app.get
+        registration_func(f"/{tool.__name__}", operation_id=tool.__name__)(tool)
+
+    return app
+
+
+class DummyDTO(DefaultBaseModel):
+    number: int
+    text: str
+
+
+async def dto_object(dto: DummyDTO) -> JSONResponse:
+    return JSONResponse({})
+
+
+@asynccontextmanager
+async def run_openapi_server(app: FastAPI) -> AsyncIterator[None]:
+    config = uvicorn.Config(app=app, port=OPENAPI_SERVER_PORT)
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+    yield
+    server.should_exit = True
+    await task
+
+
+async def get_json(address: str, params: dict[str, str] = {}) -> Any:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        response = await client.get(address, params=params)
+        response.raise_for_status()
+        return response.json()
+
+
+async def get_openapi_spec(address: str) -> str:
+    return json.dumps(await get_json(f"{address}/openapi.json"), indent=2)
+
+
+TOOLS = (
+    one_required_query_param,
+    two_required_query_params,
+    one_required_body_param,
+    two_required_body_params,
+    one_required_query_param_one_required_body_param,
+    dto_object,
+)

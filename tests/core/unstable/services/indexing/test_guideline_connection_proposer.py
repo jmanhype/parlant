@@ -4,14 +4,14 @@ from parlant.core.agents import Agent
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.guideline_connection_proposer import GuidelineConnectionProposer
 
-from tests.core.conftest import _TestContext
+from tests.core.common.utils import ContextOfTest
 
 
 def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test fails occasionally
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    connection_proposer = base_context.container[GuidelineConnectionProposer]
+    connection_proposer = context.container[GuidelineConnectionProposer]
 
     source_guideline_content = GuidelineContent(
         condition="Planning trips to Brazil",
@@ -22,7 +22,7 @@ def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test 
         action="Ask the customer if they speak the local language",
     )
     connection_propositions = list(
-        base_context.sync_await(
+        context.sync_await(
             connection_proposer.propose_connections(
                 agent,
                 [source_guideline_content, target_guideline_content],
@@ -35,7 +35,7 @@ def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test 
 
 
 def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails_the_next_one_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     introduced_guidelines: Sequence[GuidelineContent] = [
@@ -56,10 +56,10 @@ def test_that_connection_is_proposed_for_a_sequence_where_each_guideline_entails
         ]
     ]
 
-    connection_proposer = base_context.container[GuidelineConnectionProposer]
+    connection_proposer = context.container[GuidelineConnectionProposer]
 
     connection_propositions = list(
-        base_context.sync_await(
+        context.sync_await(
             connection_proposer.propose_connections(agent, introduced_guidelines, [])
         )
     )

@@ -19,11 +19,11 @@ from parlant.core.services.indexing.coherence_checker import (
     IncoherenceKind,
 )
 
-from tests.core.conftest import _TestContext
+from tests.core.common.utils import ContextOfTest
 
 
 def test_that_guidelines_with_many_incoherencies_are_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guidelines_with_incoherencies: list[GuidelineContent] = []
@@ -56,10 +56,10 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
             )
         )
 
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 guidelines_with_incoherencies,

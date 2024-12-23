@@ -23,7 +23,7 @@ from parlant.core.services.indexing.coherence_checker import (
     IncoherenceTest,
 )
 
-from tests.core.conftest import _TestContext
+from tests.core.common.utils import ContextOfTest
 from tests.test_utilities import nlp_test
 
 
@@ -98,7 +98,7 @@ The following is a glossary that applies to this agent:
 
 
 def base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
-    context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
@@ -137,7 +137,7 @@ def base_test_that_contradicting_actions_with_hierarchical_conditions_are_detect
 
 
 def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_parametrized_1(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -149,12 +149,12 @@ def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_pa
         "action": "Inform them that upcoming features are added only according to the roadmap",
     }
     base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_parametrized_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -166,12 +166,12 @@ def test_that_contradicting_actions_with_hierarchical_conditions_are_detected_pa
         "action": "Escalate immediately to the highest priority for resolution",
     }
     base_test_that_contradicting_actions_with_hierarchical_conditions_are_detected(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def base_test_that_contingent_incoherencies_are_detected(
-    context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
@@ -211,7 +211,7 @@ def base_test_that_contingent_incoherencies_are_detected(
 
 
 def test_that_contingent_incoherencies_are_detected_parametrized_1(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -224,12 +224,12 @@ def test_that_contingent_incoherencies_are_detected_parametrized_1(
         "action": "Offer a temporary data limit extension without requiring an upgrade",
     }
     base_test_that_contingent_incoherencies_are_detected(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_contingent_incoherencies_are_detected_parametrized_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -242,12 +242,12 @@ def test_that_contingent_incoherencies_are_detected_parametrized_2(
         "action": "Roll back or offer the option to revert to previous settings",
     }
     base_test_that_contingent_incoherencies_are_detected(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def base_test_that_temporal_contradictions_are_detected_as_incoherencies(
-    context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
@@ -286,7 +286,7 @@ def base_test_that_temporal_contradictions_are_detected_as_incoherencies(
 
 
 def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized_1(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -298,12 +298,12 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized
         "action": "Delay software updates to avoid disrupting their operations",
     }
     base_test_that_temporal_contradictions_are_detected_as_incoherencies(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -315,12 +315,12 @@ def test_that_temporal_contradictions_are_detected_as_incoherencies_parametrized
         "action": "re-evaluate all transactions from that quarter before closing the books",  # noqa
     }
     base_test_that_temporal_contradictions_are_detected_as_incoherencies(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
-    context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
@@ -359,7 +359,7 @@ def base_test_that_contextual_contradictions_are_detected_as_contingent_incohere
 
 
 def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_parametrized_1(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -371,12 +371,12 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_p
         "action": "Consolidate data handling to enhance efficiency",
     }
     base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_parametrized_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -389,12 +389,12 @@ def test_that_contextual_contradictions_are_detected_as_contingent_incoherence_p
         "action": "avoid discounts and push for higher-priced contracts",
     }
     base_test_that_contextual_contradictions_are_detected_as_contingent_incoherence(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def base_test_that_non_contradicting_guidelines_arent_false_positives(
-    context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     guideline_a_definition: dict[str, str],
     guideline_b_definition: dict[str, str],
@@ -421,7 +421,7 @@ def base_test_that_non_contradicting_guidelines_arent_false_positives(
 
 
 def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_1(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -433,12 +433,12 @@ def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_1(
         "action": "Direct them to documentation detailing the company’s compliance with those regulations",  # noqa
     }
     base_test_that_non_contradicting_guidelines_arent_false_positives(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_2(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guideline_a_definition: dict[str, str] = {
@@ -450,15 +450,15 @@ def test_that_non_contradicting_guidelines_arent_false_positives_parametrized_2(
         "action": "Thank them publicly and encourage them to share more about their positive experience",  # noqa
     }
     base_test_that_non_contradicting_guidelines_arent_false_positives(
-        base_context, agent, guideline_a_definition, guideline_b_definition
+        context, agent, guideline_a_definition, guideline_b_definition
     )
 
 
 def test_that_suggestive_conditions_with_contradicting_actions_are_detected_as_contingent_incoherencies(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="Recommending pizza toppings",
         action="Only recommend mushrooms as they are healthy",
@@ -470,7 +470,7 @@ def test_that_suggestive_conditions_with_contradicting_actions_are_detected_as_c
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -488,16 +488,16 @@ def test_that_suggestive_conditions_with_contradicting_actions_are_detected_as_c
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
 def test_that_logically_contradicting_response_actions_are_detected_as_incoherencies(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="Recommending pizza toppings", action="Recommend tomatoes"
     )
@@ -508,7 +508,7 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -526,16 +526,16 @@ def test_that_logically_contradicting_response_actions_are_detected_as_incoheren
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
 def test_that_entailing_conditions_with_unrelated_actions_arent_false_positives(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="ordering tickets for a movie",
         action="check if the customer is eligible for a discount",
@@ -547,7 +547,7 @@ def test_that_entailing_conditions_with_unrelated_actions_arent_false_positives(
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -559,10 +559,10 @@ def test_that_entailing_conditions_with_unrelated_actions_arent_false_positives(
 
 
 def test_that_contradicting_actions_that_are_contextualized_by_their_conditions_are_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="asked to schedule an appointment for the weekend",
         action="alert the customer about our weekend hours and schedule the appointment",
@@ -574,7 +574,7 @@ def test_that_contradicting_actions_that_are_contextualized_by_their_conditions_
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -592,13 +592,13 @@ def test_that_contradicting_actions_that_are_contextualized_by_their_conditions_
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
 def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     coherent_guidelines: list[GuidelineContent] = []
@@ -651,10 +651,10 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
             )
         )
 
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 coherent_guidelines,
@@ -666,7 +666,7 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
 
 
 def test_that_guidelines_with_many_incoherencies_are_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
     guidelines_with_incoherencies: list[GuidelineContent] = []
@@ -699,10 +699,10 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
             )
         )
 
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 guidelines_with_incoherencies,
@@ -729,10 +729,10 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
 
 
 def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guidelines_to_evaluate = [
         GuidelineContent(
             condition="a document is being discussed",
@@ -749,7 +749,7 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     ]
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 guidelines_to_evaluate,
@@ -770,16 +770,16 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     assert len(incoherencies_to_detect) == 0
 
     for incoherence in incoherence_results:
-        assert base_context.sync_await(
-            incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence)
+        assert context.sync_await(
+            incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence)
         )
 
 
 def test_that_existing_guidelines_are_not_checked_against_each_other(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_to_evaluate = GuidelineContent(
         condition="the customer is dissatisfied",
         action="apologize and suggest to forward the request to management",
@@ -796,7 +796,7 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_to_evaluate],
@@ -809,12 +809,12 @@ def test_that_existing_guidelines_are_not_checked_against_each_other(
 
 
 def test_that_a_glossary_based_incoherency_is_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    glossary_store = base_context.container[GlossaryStore]
+    glossary_store = context.container[GlossaryStore]
 
-    base_context.sync_await(
+    context.sync_await(
         glossary_store.create_term(
             term_set=agent.id,
             name="PAP",
@@ -823,7 +823,7 @@ def test_that_a_glossary_based_incoherency_is_detected(
         )
     )
 
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="the client asks our recommendation",
         action="add one pap to the order",
@@ -835,7 +835,7 @@ def test_that_a_glossary_based_incoherency_is_detected(
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -854,13 +854,13 @@ def test_that_a_glossary_based_incoherency_is_detected(
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
 
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
 def test_that_an_agent_description_based_incoherency_is_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
 ) -> None:
     agent = Agent(
         id=AgentId("sparkling-water-agent"),
@@ -870,7 +870,7 @@ def test_that_an_agent_description_based_incoherency_is_detected(
         max_engine_iterations=3,
     )
 
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="the client asks for our recommendation",
         action="Recommend a product according to our company's philosophy",
@@ -881,7 +881,7 @@ def test_that_an_agent_description_based_incoherency_is_detected(
         action="suggest sparkling orange juice",
     )
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -899,19 +899,19 @@ def test_that_an_agent_description_based_incoherency_is_detected(
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
-    assert base_context.sync_await(
+    assert context.sync_await(
         nlp_test_action_contradiction(
-            agent, base_context.container[GlossaryStore], incoherence_results[0]
+            agent, context.container[GlossaryStore], incoherence_results[0]
         )
     )
 
 
 def test_that_many_guidelines_which_are_all_contradictory_are_detected(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
     n: int = 7,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
 
     contradictory_guidelines = [
         GuidelineContent(
@@ -921,7 +921,7 @@ def test_that_many_guidelines_which_are_all_contradictory_are_detected(
         for i in range(n)
     ]
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 contradictory_guidelines,
@@ -936,10 +936,10 @@ def test_that_many_guidelines_which_are_all_contradictory_are_detected(
 
 
 def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  # Same as test_that_logically_contradicting_actions_are_detected_as_incoherencies but with typos
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(condition="Recommending pizza tops", action="Recommend tomatos")
 
     guideline_b = GuidelineContent(
@@ -948,7 +948,7 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -966,16 +966,16 @@ def test_that_misspelled_contradicting_actions_are_detected_as_incoherencies(  #
     )
     assert correct_guidelines_option_1 or correct_guidelines_option_2
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.CONTINGENT
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )
 
 
 def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not_false_positives(
-    base_context: _TestContext,
+    context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = base_context.container[CoherenceChecker]
+    coherence_checker = context.container[CoherenceChecker]
     guideline_a = GuidelineContent(
         condition="the customer is a returning customer", action="add a 5% discount to the order"
     )
@@ -986,7 +986,7 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
     )
 
     incoherence_results = list(
-        base_context.sync_await(
+        context.sync_await(
             coherence_checker.propose_incoherencies(
                 agent,
                 [guideline_a, guideline_b],
@@ -996,6 +996,6 @@ def test_that_seemingly_contradictory_but_actually_complementary_actions_are_not
 
     assert len(incoherence_results) == 1
     assert incoherence_results[0].IncoherenceKind == IncoherenceKind.STRICT
-    assert base_context.sync_await(
-        incoherence_nlp_test(agent, base_context.container[GlossaryStore], incoherence_results[0])
+    assert context.sync_await(
+        incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence_results[0])
     )

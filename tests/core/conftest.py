@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from lagom import Container
 from pytest import fixture
@@ -57,20 +56,6 @@ def customer(context: ContextOfTest) -> Customer:
 @fixture
 def customer_id(customer: Customer) -> CustomerId:
     return customer.id
-
-
-@dataclass
-class _TestContext:
-    sync_await: SyncAwaiter
-    container: Container
-
-
-@fixture
-def base_context(
-    sync_await: SyncAwaiter,
-    container: Container,
-) -> _TestContext:
-    return _TestContext(sync_await, container)
 
 
 @fixture
