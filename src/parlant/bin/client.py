@@ -463,7 +463,6 @@ class Actions:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
@@ -475,7 +474,6 @@ class Actions:
                     GuidelineConnectionAddition(
                         source=source_guideline_id,
                         target=target_guideline_id,
-                        kind=kind,
                     ),
                 ]
             ),
@@ -1235,7 +1233,6 @@ class Interface:
 
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Role": "Source" if conn.source.id == guideline.id else "Target",
                 "Peer Role": "Target" if conn.source.id == guideline.id else "Source",
                 "Peer ID": peer.id,
@@ -1246,7 +1243,6 @@ class Interface:
         def to_indirect_entailment_item(conn: GuidelineConnection) -> dict[str, str]:
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Source ID": conn.source.id,
                 "Source Condition": conn.source.condition,
                 "Source Action": conn.source.action,
@@ -1423,7 +1419,6 @@ class Interface:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> None:
         try:
             connection = Actions.create_entailment(
@@ -1431,7 +1426,6 @@ class Interface:
                 agent_id,
                 source_guideline_id,
                 target_guideline_id,
-                kind,
             )
 
             Interface._write_success(f"Added connection (id={connection.connections[0].id})")
@@ -2476,20 +2470,12 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option(
-        "--suggestive",
-        is_flag=True,
-        show_default=True,
-        default=False,
-        help="Make the entailment suggestive rather than definite",
-    )
     @click.option("--source", type=str, metavar="ID", help="Source guideline ID", required=True)
     @click.option("--target", type=str, metavar="ID", help="Target guideline ID", required=True)
     @click.pass_context
     def guideline_entail(
         ctx: click.Context,
         agent_id: str,
-        suggestive: bool,
         source: str,
         target: str,
     ) -> None:
@@ -2501,7 +2487,6 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source,
             target_guideline_id=target,
-            kind="suggests" if suggestive else "entails",
         )
 
     @guideline.command("disentail", help="Delete an entailment between two guidelines")

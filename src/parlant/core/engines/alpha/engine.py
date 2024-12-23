@@ -31,7 +31,7 @@ from parlant.core.context_variables import (
 )
 from parlant.core.customers import Customer, CustomerStore
 from parlant.core.guidelines import Guideline, GuidelineStore
-from parlant.core.guideline_connections import ConnectionKind, GuidelineConnectionStore
+from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
@@ -484,20 +484,20 @@ class AlphaEngine(Engine):
         guideline_set: str,
         propositions: Sequence[GuidelineProposition],
     ) -> Sequence[GuidelineProposition]:
-        connected_guidelines_by_proposition = defaultdict[
-            GuidelineProposition, list[tuple[Guideline, ConnectionKind]]
-        ](list)
+        connected_guidelines_by_proposition = defaultdict[GuidelineProposition, list[Guideline]](
+            list
+        )
 
         for proposition in propositions:
             connected_guideline_ids = {
-                (c.target, c.kind)
+                c.target
                 for c in await self._guideline_connection_store.list_connections(
                     indirect=True,
                     source=proposition.guideline.id,
                 )
             }
 
-            for connected_guideline_id, connection_kind in connected_guideline_ids:
+            for connected_guideline_id in connected_guideline_ids:
                 if any(connected_guideline_id == p.guideline.id for p in propositions):
                     # no need to add this connected one as it's already an assumed proposition
                     continue
@@ -508,15 +508,15 @@ class AlphaEngine(Engine):
                 )
 
                 connected_guidelines_by_proposition[proposition].append(
-                    (connected_guideline, connection_kind),
+                    connected_guideline,
                 )
 
         proposition_and_inferred_guideline_guideline_pairs: list[
-            tuple[GuidelineProposition, Guideline, ConnectionKind]
+            tuple[GuidelineProposition, Guideline]
         ] = []
 
         for proposition, connected_guidelines in connected_guidelines_by_proposition.items():
-            for connected_guideline, connection_kind in connected_guidelines:
+            for connected_guideline in connected_guidelines:
                 if existing_connections := [
                     connection
                     for connection in proposition_and_inferred_guideline_guideline_pairs
@@ -532,12 +532,7 @@ class AlphaEngine(Engine):
                     # priority of our connected guideline's proposition...
                     #
                     # Now try to read that out loud in one go :)
-                    if (
-                        existing_connection[2] == ConnectionKind.ENTAILS
-                        and connection_kind == ConnectionKind.SUGGESTS
-                    ):
-                        continue  # Stay with existing one
-                    elif existing_connection[0].score >= proposition.score:
+                    if existing_connection[0].score >= proposition.score:
                         continue  # Stay with existing one
                     else:
                         # This proposition's score is higher, so it's better that
@@ -548,16 +543,13 @@ class AlphaEngine(Engine):
                         )
 
                 proposition_and_inferred_guideline_guideline_pairs.append(
-                    (proposition, connected_guideline, connection_kind),
+                    (proposition, connected_guideline),
                 )
 
         return [
             GuidelineProposition(
                 guideline=connection[1],
-                score={
-                    ConnectionKind.SUGGESTS.name: connection[0].score // 2,
-                    ConnectionKind.ENTAILS.name: connection[0].score,
-                }[connection[2].name],
+                score=connection[0].score,
                 rationale="Automatically inferred from context",
             )
             for connection in proposition_and_inferred_guideline_guideline_pairs
