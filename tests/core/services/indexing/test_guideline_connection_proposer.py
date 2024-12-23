@@ -1077,7 +1077,7 @@ def test_that_strict_entailment_due_to_the_sources_condition_is_detected_2(
     assert connection_propositions[0].target == target_guideline_content
 
 
-def test_that_entailment_due_to_the_sources_condition_is_detected(
+def test_that_entailment_due_to_the_sources_condition_is_detected(  # This test fails occasionally
     context: _TestContext,
     agent: Agent,
 ) -> None:
