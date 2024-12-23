@@ -282,13 +282,16 @@ class PluginServer:
         tools: Sequence[ToolEntry],
         port: int = 8089,
         host: str = "0.0.0.0",
+        on_app_created: Callable[[FastAPI], Awaitable[FastAPI]] | None = None,
     ) -> None:
         self.tools = {entry.tool.name: entry for entry in tools}
         self.host = host
         self.port = port
         self.url = f"http://{self.host}:{self.port}"
 
-        self._server: Optional[uvicorn.Server] = None
+        self._on_app_created = on_app_created
+
+        self._server: uvicorn.Server | None = None
 
     async def __aenter__(self) -> PluginServer:
         self._task = asyncio.create_task(self.serve())
@@ -319,6 +322,9 @@ class PluginServer:
 
     async def serve(self) -> None:
         app = self._create_app()
+
+        if self._on_app_created:
+            app = await self._on_app_created(app)
 
         config = uvicorn.Config(
             app,
