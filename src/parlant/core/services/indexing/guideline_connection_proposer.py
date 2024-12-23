@@ -153,7 +153,7 @@ Important clarifications:
 HOW TO FILL is_target_when_caused_by_source_then
 -----------------
 The field is_target_when_caused_by_source_then indicates the type of causal relationship between the source guideline's "then" statement and the target guideline's "when" condition. 
-You must select the most accurate option from the following:
+You must select the most accurate option from the following, listed from the weakest connection to the strongest:
 1. "no" - Select this if there is no causal relationship between the source's action and the target's condition.
 2. "implies" - Use this when the source's action makes it likely or possible that the target's condition holds true, but does not guarantee it. This is a weaker form of causation, where the action suggests or sets up conditions for the target.
     Example: the action "respond with our opening hours" implies the condition "you are asked about our opening hours"
@@ -161,6 +161,8 @@ You must select the most accurate option from the following:
     Example: the action "refer the customer to our documentation" causes the general case for the condition "you are referring the customer to our usage documentation"
 4. "causes" - Use this for direct and necessary causation, where the source's action guarantees that the target's condition immediately becomes true.
     Example: the action "refer the customer to our documentation" causes the specific case for the condition "referring the customer to our documentation"
+
+Always select the strongest option that applies to the provided guidelines. E.g., if a connection satisfies both "implies" and "causes", choose "causes".
 
 EXAMPLES
 -----------------
