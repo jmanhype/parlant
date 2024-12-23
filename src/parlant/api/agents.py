@@ -198,7 +198,7 @@ def create_router(
         )
 
     @router.get(
-        "/",
+        "",
         operation_id="list_agents",
         response_model=Sequence[AgentDTO],
         responses={

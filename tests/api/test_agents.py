@@ -86,6 +86,63 @@ async def test_that_an_agent_can_be_created_with_max_engine_iterations(
     assert agent["max_engine_iterations"] == 1
 
 
+async def test_that_an_agent_can_be_listed(
+    async_client: httpx.AsyncClient,
+) -> None:
+    _ = (
+        (
+            await async_client.post(
+                "/agents",
+                json={"name": "test-agent"},
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    agents = (
+        (
+            await async_client.get(
+                "/agents",
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert len(agents) == 1
+    assert agents[0]["name"] == "test-agent"
+    assert agents[0]["description"] is None
+
+
+async def test_that_an_agent_can_be_read(
+    async_client: httpx.AsyncClient,
+) -> None:
+    agent = (
+        (
+            await async_client.post(
+                "/agents",
+                json={"name": "test-agent"},
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    agent_dto = (
+        (
+            await async_client.get(
+                f"/agents/{agent['id']}",
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert agent_dto["name"] == "test-agent"
+    assert agent_dto["description"] is None
+
+
 @mark.parametrize(
     "patch_request",
     (
