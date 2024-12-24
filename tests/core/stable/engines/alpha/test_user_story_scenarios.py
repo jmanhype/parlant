@@ -14,7 +14,7 @@
 
 from pytest_bdd import scenarios
 
-from tests.core.common.utils import load_steps
+from tests.core.common.engines.alpha.utils import load_steps
 
 
 load_steps(

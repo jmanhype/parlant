@@ -19,7 +19,8 @@ from parlant.core.engines.alpha.guideline_proposition import GuidelinePropositio
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guidelines import Guideline, GuidelineStore
 
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 
 
 @step(given, parsers.parse("a guideline to {do_something} when {a_condition_holds}"))

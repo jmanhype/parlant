@@ -25,7 +25,8 @@ from parlant.core.sessions import SessionId, SessionStore
 from parlant.core.tags import TagStore
 from parlant.core.tools import ToolId
 
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 
 
 def get_or_create_variable(

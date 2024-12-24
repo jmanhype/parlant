@@ -15,7 +15,8 @@
 from pytest_bdd import given, parsers
 from parlant.core.tags import TagStore, TagId
 
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 
 
 @step(given, parsers.parse('a tag "{tag_name}"'))

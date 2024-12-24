@@ -32,7 +32,8 @@ from parlant.core.sessions import (
 from parlant.core.tools import ToolId
 
 from tests import tool_utilities
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 from tests.test_utilities import nlp_test
 
 

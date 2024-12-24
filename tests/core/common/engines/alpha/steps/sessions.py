@@ -20,7 +20,8 @@ from parlant.core.agents import Agent, AgentId
 from parlant.core.customers import Customer, CustomerStore
 from parlant.core.sessions import Session, SessionId, SessionStore
 
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 
 
 @step(given, "an empty session", target_fixture="session_id")

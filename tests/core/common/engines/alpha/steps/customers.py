@@ -18,7 +18,8 @@ from parlant.core.customers import CustomerStore, CustomerId
 from parlant.core.sessions import SessionStore, SessionId
 from parlant.core.tags import TagStore, TagId
 
-from tests.core.common.utils import ContextOfTest, step
+from tests.core.common.engines.alpha.utils import step
+from tests.core.common.utils import ContextOfTest
 
 
 @step(given, parsers.parse('a customer with the name "{name}"'))
