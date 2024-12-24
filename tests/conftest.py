@@ -17,7 +17,6 @@ from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, cast
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
@@ -152,6 +151,16 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
     return {"patience": 10}
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    group = parser.getgroup("caching")
+    group.addoption(
+        "--use-cache",
+        action="store_true",
+        dest="use_cache",
+        help="Whether to use the cache during the current test suite",
+    )
+
+
 @fixture
 async def container(
     correlator: ContextualCorrelator,
@@ -160,20 +169,16 @@ async def container(
 ) -> AsyncIterator[Container]:
     container = Container()
 
-    stochastic_plan = next(
-        (arg.split("=")[1] for arg in request.config.invocation_params.args if "--plan" in arg),
-        None,
-    )
-
-    use_cache = {
-        None: True,
-        "initial": True,
-    }.get(stochastic_plan, False)
+    use_cache = bool(request.config.getoption("use_cache", False))
 
     container[ContextualCorrelator] = Singleton(ContextualCorrelator)
     container[Logger] = StdoutLogger(container[ContextualCorrelator])
 
     async with AsyncExitStack() as stack:
+        schematic_generation_result_collection = (
+            await create_schematic_generation_result_collection(stack, logger=container[Logger])
+        )
+
         temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
         os.environ["PARLANT_HOME"] = temp_dir
 
@@ -236,10 +241,6 @@ async def container(
             )
         )
 
-        schematic_generation_result_collection = (
-            await create_schematic_generation_result_collection(stack, logger=container[Logger])
-        )
-
         container[SchematicGenerator[GuidelinePropositionsSchema]] = CachedSchematicGenerator(
             await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
             schematic_generation_result_collection,
@@ -300,12 +301,6 @@ async def container(
 @fixture
 async def api_app(container: Container) -> ASGIApplication:
     return await create_api_app(container)
-
-
-@fixture
-async def client(api_app: FastAPI) -> AsyncIterator[TestClient]:
-    with TestClient(api_app) as client:
-        yield client
 
 
 @fixture
