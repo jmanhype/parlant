@@ -11,9 +11,15 @@
                     ]
                 },
                 {
+                    "policy": "strict3",
+                    "tests": [
+                        "tests/core/stable"
+                    ]
+                },
+                {
                     "policy": "majority3",
                     "tests": [
-                        "tests/core/"
+                        "tests/core/unstable"
                     ]
                 }
             ]

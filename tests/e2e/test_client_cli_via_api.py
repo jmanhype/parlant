@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import asyncio
-from contextlib import asynccontextmanager
 import json
 import os
 import tempfile
-from typing import Any, AsyncIterator, Awaitable, Callable
-from fastapi import FastAPI, Query, Request, Response
-from fastapi.responses import JSONResponse
+from typing import Any
 import httpx
-import uvicorn
+
+from parlant.core.services.tools.plugins import tool
+from parlant.core.tools import ToolResult, ToolContext
 
 from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
@@ -31,77 +30,9 @@ from tests.e2e.test_utilities import (
     is_server_responsive,
     run_server,
 )
-from parlant.core.services.tools.plugins import tool, ToolEntry, PluginServer
-from parlant.core.tools import ToolResult, ToolContext
+from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
 
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
-
-OPENAPI_SERVER_PORT = 8091
-OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
-
-
-@asynccontextmanager
-async def run_openapi_server(
-    app: FastAPI,
-) -> AsyncIterator[None]:
-    config = uvicorn.Config(app=app, port=OPENAPI_SERVER_PORT)
-    server = uvicorn.Server(config)
-    task = asyncio.create_task(server.serve())
-    yield
-    server.should_exit = True
-    await task
-
-
-async def one_required_query_param(
-    query_param: int = Query(),
-) -> JSONResponse:
-    return JSONResponse({"result": query_param})
-
-
-async def two_required_query_params(
-    query_param_1: int = Query(),
-    query_param_2: int = Query(),
-) -> JSONResponse:
-    return JSONResponse({"result": query_param_1 + query_param_2})
-
-
-TOOLS = (
-    one_required_query_param,
-    two_required_query_params,
-)
-
-
-def rng_app() -> FastAPI:
-    app = FastAPI(servers=[{"url": OPENAPI_SERVER_URL}])
-
-    @app.middleware("http")
-    async def debug_request(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        response = await call_next(request)
-        return response
-
-    for t in TOOLS:
-        registration_func = app.post if "body" in t.__name__ else app.get
-        registration_func(f"/{t.__name__}", operation_id=t.__name__)(t)
-
-    return app
-
-
-@asynccontextmanager
-async def run_service_server(
-    tools: list[ToolEntry],
-) -> AsyncIterator[PluginServer]:
-    async with PluginServer(
-        tools=tools,
-        port=8091,
-        host="127.0.0.1",
-    ) as server:
-        try:
-            yield server
-        finally:
-            await server.shutdown()
 
 
 async def run_cli(*args: str, **kwargs: Any) -> asyncio.subprocess.Process:
