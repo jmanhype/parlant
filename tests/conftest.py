@@ -151,14 +151,23 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
     return {"patience": 10}
 
 
-def pytest_addoption(parser: pytest.Parser) -> None:
-    group = parser.getgroup("caching")
-    group.addoption(
-        "--use-cache",
-        action="store_true",
-        dest="use_cache",
-        help="Whether to use the cache during the current test suite",
-    )
+async def make_schematic_generator(
+    container: Container,
+    cache_options: CacheOptions,
+    schema: type[T],
+) -> SchematicGenerator[T]:
+    base_generator = await container[NLPService].get_schematic_generator(schema)
+
+    if cache_options.cache_enabled:
+        assert cache_options.cache_collection
+
+        return CachedSchematicGenerator[T](
+            base_generator=base_generator,
+            collection=cache_options.cache_collection,
+            use_cache=True,
+        )
+    else:
+        return base_generator
 
 
 @fixture
@@ -169,19 +178,10 @@ async def container(
 ) -> AsyncIterator[Container]:
     container = Container()
 
-    use_cache = bool(request.config.getoption("use_cache", False))
-
-    container[ContextualCorrelator] = Singleton(ContextualCorrelator)
-    container[Logger] = StdoutLogger(container[ContextualCorrelator])
+    container[ContextualCorrelator] = correlator
+    container[Logger] = logger
 
     async with AsyncExitStack() as stack:
-        schematic_generation_result_collection = (
-            await create_schematic_generation_result_collection(stack, logger=container[Logger])
-        )
-
-        temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
-        os.environ["PARLANT_HOME"] = temp_dir
-
         container[BackgroundTaskService] = await stack.enter_async_context(
             BackgroundTaskService(container[Logger])
         )
@@ -241,41 +241,19 @@ async def container(
             )
         )
 
-        container[SchematicGenerator[GuidelinePropositionsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[MessageEventSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(MessageEventSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[ToolCallInferenceSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-
-        container[SchematicGenerator[ActionsContradictionTestsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = (
-            CachedSchematicGenerator(
-                await container[NLPService].get_schematic_generator(
-                    GuidelineConnectionPropositionsSchema
-                ),
-                schematic_generation_result_collection,
-                use_cache,
+        for generation_schema in (
+            GuidelinePropositionsSchema,
+            MessageEventSchema,
+            ToolCallInferenceSchema,
+            ConditionsEntailmentTestsSchema,
+            ActionsContradictionTestsSchema,
+            GuidelineConnectionPropositionsSchema,
+        ):
+            container[SchematicGenerator[generation_schema]] = await make_schematic_generator(  # type: ignore
+                container,
+                cache_options,
+                generation_schema,
             )
-        )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
