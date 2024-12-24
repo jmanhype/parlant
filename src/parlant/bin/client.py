@@ -3029,7 +3029,11 @@ async def async_main() -> None:
     def tag_delete(ctx: click.Context, id: str) -> None:
         Interface.delete_tag(ctx, id)
 
-    @cli.command("help", context_settings={"ignore_unknown_options": True})
+    @cli.command(
+        "help",
+        context_settings={"ignore_unknown_options": True},
+        help="Show help for a command",
+    )
     @click.argument("command", nargs=-1, required=False)
     @click.pass_context
     def help_command(ctx: click.Context, command: Optional[tuple[str]] = None) -> None:
