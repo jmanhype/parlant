@@ -36,6 +36,7 @@ from parlant.core.engines.alpha import tool_caller
 from parlant.core.engines.alpha import message_event_generator
 from parlant.core.nlp.service import NLPService
 from parlant.core.shots import ShotCollection
+from parlant.core.style_guides import StyleGuideDocumentStore, StyleGuideStore
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.api.app import create_api_app, ASGIApplication
 from parlant.core.background_tasks import BackgroundTaskService
@@ -288,6 +289,10 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     )
     c[SessionStore] = await EXIT_STACK.enter_async_context(SessionDocumentStore(sessions_db))
     c[SessionListener] = PollingSessionListener
+
+    c[StyleGuideStore] = await EXIT_STACK.enter_async_context(
+        StyleGuideDocumentStore(guidelines_db)
+    )
 
     c[EvaluationStore] = await EXIT_STACK.enter_async_context(
         EvaluationDocumentStore(evaluations_db)

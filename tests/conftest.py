@@ -95,6 +95,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationStore,
 )
 from parlant.core.shots import ShotCollection
+from parlant.core.style_guides import StyleGuideDocumentStore, StyleGuideStore
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
@@ -215,6 +216,9 @@ async def container(
         )
         container[GuidelineToolAssociationStore] = await stack.enter_async_context(
             GuidelineToolAssociationDocumentStore(TransientDocumentDatabase())
+        )
+        container[StyleGuideStore] = await stack.enter_async_context(
+            StyleGuideDocumentStore(TransientDocumentDatabase())
         )
         container[SessionListener] = PollingSessionListener
         container[EvaluationStore] = await stack.enter_async_context(
