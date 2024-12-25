@@ -70,6 +70,7 @@ def context(
         guidelines=dict(),
         guideline_propositions=dict(),
         tools=dict(),
+        actions=list(),
     )
 
 

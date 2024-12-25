@@ -27,6 +27,7 @@ from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
 from parlant.core.customers import CustomerId, CustomerStore
+from parlant.core.engines.types import UtteranceReason, UtteranceRequest
 from parlant.core.logging import Logger
 from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.nlp.moderation import ModerationService
@@ -210,11 +211,31 @@ SessionEventCreationParamsMessageField: TypeAlias = Annotated[
     ),
 ]
 
+SessionEventCreationParamsActionField: TypeAlias = Annotated[
+    str,
+    Field(
+        description='A single action that explains what to say; i.e. "Tell the customer that you are thinking and will be right back with an answer."',
+        examples=[message_example],
+    ),
+]
+
 event_creation_params_example: ExampleJson = {
     "kind": "message",
     "source": "customer",
     "message": message_example,
 }
+
+
+class UtteranceReasonDTO(Enum):
+    """Defines the reason for the action"""
+
+    BUY_TIME = "buy_time"
+    FOLLOW_UP = "follow_up"
+
+
+class UtteranceRequestDTO(DefaultBaseModel):
+    action: SessionEventCreationParamsActionField
+    reason: UtteranceReasonDTO
 
 
 class EventCreationParamsDTO(
@@ -226,6 +247,7 @@ class EventCreationParamsDTO(
     kind: EventKindDTO
     source: EventSourceDTO
     message: Optional[SessionEventCreationParamsMessageField] = None
+    actions: Optional[list[UtteranceRequestDTO]] = None
 
 
 EventIdPath: TypeAlias = Annotated[
@@ -965,6 +987,14 @@ def _get_jailbreak_moderation_service(logger: Logger) -> ModerationService:
     return LakeraGuard(logger)
 
 
+def utterance_request_dto_to_utterance_request(utter: UtteranceRequestDTO) -> UtteranceRequest:
+    reason_dto_to_reason = {
+        UtteranceReasonDTO.BUY_TIME: UtteranceReason.BUY_TIME,
+        UtteranceReasonDTO.FOLLOW_UP: UtteranceReason.FOLLOW_UP,
+    }
+    return UtteranceRequest(action=utter.action, reason=reason_dto_to_reason[utter.reason])
+
+
 def create_router(
     logger: Logger,
     application: Application,
@@ -1307,7 +1337,12 @@ def create_router(
 
         session = await session_store.read_session(session_id)
 
-        correlation_id = await application.dispatch_processing_task(session)
+        if params.actions:
+            actions = [utterance_request_dto_to_utterance_request(a) for a in params.actions]
+            correlation_id = await application.utter(session, actions)
+
+        else:
+            correlation_id = await application.dispatch_processing_task(session)
 
         await session_listener.wait_for_events(
             session_id=session_id,

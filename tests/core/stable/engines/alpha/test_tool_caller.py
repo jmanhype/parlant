@@ -106,7 +106,6 @@ async def create_local_tool(
 
 
 async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_parameter(
-    customer: Customer,
     local_tool_service: LocalToolService,
     tool_caller: ToolCaller,
     agent: Agent,

@@ -992,3 +992,45 @@ async def test_that_an_agent_message_can_be_regenerated(
 
     assert len(events) == 1
     assert "cold" in events[0]["data"]["message"].lower()
+
+
+async def test_that_an_agent_message_can_be_generated_from_utterance_requests(
+    async_client: httpx.AsyncClient,
+    session_id: SessionId,
+) -> None:
+    event = (
+        (
+            await async_client.post(
+                f"/sessions/{session_id}/events",
+                json={
+                    "kind": "message",
+                    "source": "ai_agent",
+                    "actions": [
+                        {
+                            "action": "Tell the user that you're thinking and will be right back with an answer",
+                            "reason": "buy_time",
+                        }
+                    ],
+                },
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    events = (
+        (
+            await async_client.get(
+                f"/sessions/{session_id}/events",
+                params={
+                    "kinds": "message",
+                    "correlation_id": event["correlation_id"],
+                },
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert len(events) == 1
+    assert "thinking" in events[0]["data"]["message"].lower()

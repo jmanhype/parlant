@@ -141,3 +141,30 @@ def when_messages_are_emitted(
     assert all(e is not None for e in message_event_generator_results[0].events)
 
     return list(cast(list[EmittedEvent], message_event_generator_results[0].events))
+
+
+@step(when, "uttering is triggered", target_fixture="emitted_events")
+def when_uttering_is_triggered(
+    context: ContextOfTest,
+    engine: AlphaEngine,
+    session_id: SessionId,
+    agent_id: AgentId,
+) -> list[EmittedEvent]:
+    buffer = EventBuffer(
+        context.sync_await(
+            context.container[AgentStore].read_agent(agent_id),
+        )
+    )
+
+    context.sync_await(
+        engine.utter(
+            Context(
+                session_id=session_id,
+                agent_id=agent_id,
+            ),
+            buffer,
+            context.actions,
+        )
+    )
+
+    return buffer.events
