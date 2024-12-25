@@ -31,6 +31,9 @@ from parlant.core.context_variables import ContextVariableDocumentStore, Context
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
+from parlant.core.engines.alpha import guideline_proposer
+from parlant.core.engines.alpha import tool_caller
+from parlant.core.engines.alpha import message_event_generator
 from parlant.core.evaluations import (
     EvaluationListener,
     PollingEvaluationListener,
@@ -61,13 +64,15 @@ from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
+    GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
 from parlant.core.engines.alpha.message_event_generator import (
     MessageEventGenerator,
+    MessageEventGeneratorShot,
     MessageEventSchema,
 )
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
@@ -89,6 +94,7 @@ from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
+from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
@@ -254,6 +260,12 @@ async def container(
                 cache_options,
                 generation_schema,
             )
+
+        container[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
+        container[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
+        container[ShotCollection[MessageEventGeneratorShot]] = (
+            message_event_generator.shot_collection
+        )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)

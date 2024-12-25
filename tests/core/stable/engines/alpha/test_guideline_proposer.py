@@ -223,7 +223,10 @@ def propose_guidelines(
     terms: Sequence[Term] = [],
     staged_events: Sequence[EmittedEvent] = [],
 ) -> Sequence[GuidelineProposition]:
-    guideline_proposer = GuidelineProposer(context.logger, context.schematic_generator)
+    guideline_proposer = GuidelineProposer(
+        context.logger,
+        context.schematic_generator,
+    )
 
     interaction_history = [
         create_event_message(

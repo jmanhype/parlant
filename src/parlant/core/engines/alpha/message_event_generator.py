@@ -30,6 +30,7 @@ from parlant.core.emissions import EmittedEvent, EventEmitter
 from parlant.core.sessions import Event
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
+from parlant.core.shots import Shot, ShotCollection
 from parlant.core.tools import ToolId
 
 
@@ -74,6 +75,11 @@ class MessageEventSchema(DefaultBaseModel):
     revisions: list[Revision]
 
 
+@dataclass
+class MessageEventGeneratorShot(Shot):
+    expected_result: MessageEventSchema
+
+
 class MessageEventGenerator:
     def __init__(
         self,
@@ -84,6 +90,9 @@ class MessageEventGenerator:
         self._logger = logger
         self._correlator = correlator
         self._schematic_generator = schematic_generator
+
+    async def shots(self) -> Sequence[MessageEventGeneratorShot]:
+        return await shot_collection.list()
 
     async def generate_events(
         self,
@@ -130,6 +139,7 @@ class MessageEventGenerator:
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                 staged_events=staged_events,
+                shots=await self.shots(),
             )
 
             self._logger.debug(f"Message production prompt:\n{prompt}")
@@ -215,10 +225,19 @@ In all other situations, you are expected to adhere to the guidelines.
 These guidelines have already been pre-filtered based on the interaction's context and other considerations outside your scope. 
 Do not disregard a guideline because you believe its 'when' condition or rationale does not apply—this filtering has already been handled.
 
-Guidelines: ###
+- **Guidelines**:
 {guideline_list}
-###
 """
+
+    def _format_shot(
+        self,
+        shot: MessageEventGeneratorShot,
+    ) -> str:
+        return f"""
+- **Expected Result**:
+```json
+{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+```"""
 
     def _format_prompt(
         self,
@@ -230,6 +249,7 @@ Guidelines: ###
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
+        shots: Sequence[MessageEventGeneratorShot],
     ) -> str:
         assert len(agents) == 1
         builder = PromptBuilder()
@@ -333,306 +353,22 @@ For instance, if a guideline explicitly prohibits a specific action (e.g., "neve
 
 In cases of conflict, prioritize the business's values and ensure your decisions align with their overarching goals.
 
+"""  # noqa
+        )
+        builder.add_section(
+            """
 EXAMPLES
 -----------------
+"""
+            + "\n".join(
+                f"""
+Example {i} - {shot.description}: ###
+{self._format_shot(shot)}
 ###
 
-Example 1: A reply that took critique in a few revisions to get right: ###
-{{
-    "last_message_of_customer": "Hi, I'd like to know the schedule for the next trains to Boston, please.",
-    "produced_reply": true,
-    "guidelines": [
-        "When the customer asks for train schedules, provide them accurately and concisely."
-    ],
-    "insights": [
-        "Use markdown format when applicable."
-    ],
-    "evaluation_for_each_instruction": [
-        {{
-            "number": 1,
-            "instruction": "When the customer asks for train schedules, provide them accurately and concisely.",
-            "evaluation": "The customer requested train schedules, so I need to respond with accurate timing information.",
-            "data_available": "Yes, the train schedule data is available."
-        }},
-        {{
-            "number": 2,
-            "instruction": "Use markdown format when applicable.",
-            "evaluation": "Markdown formatting makes the schedule clearer and more readable.",
-            "data_available": "Not specifically needed, but markdown format can be applied to any response."
-        }}
-    ],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": "Train Schedule:\nTrain 101 departs at 10:00 AM and arrives at 12:30 PM.\nTrain 205 departs at 1:00 PM and arrives at 3:45 PM.",
-            "instructions_followed": [
-                "#1; When the customer asks for train schedules, provide them accurately and concisely."
-            ],
-            "instructions_broken": [
-                "#2; Did not use markdown format when applicable."
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": false,
-            "instructions_broken_due_to_missing_data": false,
-            "instructions_broken_only_due_to_prioritization": false
-        }},
-        {{
-            "revision_number": 2,
-            "content": "| Train | Departure | Arrival |\n|-------|-----------|---------|\n| 101   | 10:00 AM  | 12:30 PM |\n| 205   | 1:00 PM   | 3:45 PM  |",
-            "instructions_followed": [
-                "#1; When the customer asks for train schedules, provide them accurately and concisely.",
-                "#2; Use markdown format when applicable."
-            ],
-            "instructions_broken": [],
-            "is_repeat_message": false,
-            "followed_all_instructions": true
-        }}
-    ]
-}}
-###
-
-Example 2: A reply where one instruction was prioritized over another: ###
-{{
-    "last_message_of_customer": "<customer’s last message in the interaction>",
-    "guidelines": [
-        "When the customer chooses and orders a burger, then provide it",
-        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order"
-    ],
-    "insights": [],
-    "evaluation_for_each_instruction": [
-        {{
-            "number": 1,
-            "instruction": "When the customer chooses and orders a burger, then provide it",
-            "evaluation": "This guideline currently applies, so I need to provide the customer with a burger.",
-            "data_available": "The burger choice is available in the interaction"
-        }},
-        {{
-            "number": 2,
-            "instruction": "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order.",
-            "evaluation": "The customer chose cheese on the burger, but all of the cheese we currently have is expired",
-            "data_available": "The relevant stock availability is given in the tool calls' data. Our cheese has expired."
-        }}
-    ],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": "I'd be happy to prepare your burger as soon as we restock the requested toppings.",
-            "instructions_followed": [
-                "#2; upheld food quality and did not go on to preparing the burger without fresh toppings."
-            ],
-            "instructions_broken": [
-                "#1; did not provide the burger with requested toppings immediately due to the unavailability of fresh ingredients."
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": false,
-            "instructions_broken_only_due_to_prioritization": true,
-            "prioritization_rationale": "Given the higher priority score of guideline 2, maintaining food quality standards before serving the burger is prioritized over immediate service.",
-            "instructions_broken_due_to_missing_data": false
-        }}
-    ]
-}}
-###
-
-
-Example 3: Non-Adherence Due to Missing Data: ###
-{{
-    "last_message_of_customer": "Hi there, can I get something to drink? What do you have on tap?",
-    "guidelines": [
-        "When the customer asks for a drink, check the menu and offer what's on it"
-    ],
-    "insights": [
-        "Do not state factual information that you do not know or are not sure about."
-    ],
-    "evaluation_for_each_instruction": [
-        {{
-            "number": 1,
-            "instruction": "When the customer asks for a drink, check the menu and offer what's on it",
-            "evaluation": "The customer did ask for a drink, so I should check the menu to see what's available.",
-            "data_available": "No, I don't have the menu info in the interaction or tool calls"
-        }},
-        {{
-            "number": 2,
-            "instruction": "Do not state factual information that you do not know or are not sure about",
-            "evaluation": "There's no information about what we have on tap, so I should not offer any specific option.",
-            "data_available": "No, the list of available drinks is not available to me"
-        }}
-    ],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": "I'm sorry, but I'm having trouble accessing our menu at the moment. Can I ",
-            "instructions_followed": [
-                "#2; Do not state factual information that you do not know or are not sure about"
-            ],
-            "instructions_broken": [
-                "#1; Lacking menu data in the context prevented me from providing the client with drink information."
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": false,
-            "missing_data_rationale": "Menu data was missing",
-            "instructions_broken_due_to_missing_data": true,
-            "instructions_broken_only_due_to_prioritization": false
-        }}
-    ]
-}}
-
-###
-
-
-Example 4: Applying Insight- assume the agent is provided with a list of outgoing flights from a tool call. ###
-{{
-    "last_message_of_customer": "I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
-    "guidelines": [
-        "When asked anything about plane tickets, suggest completing the order on our android app", 
-        "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal"
-    ],
-    "insights": [
-        "In your generated reply to the customer, use markdown format when applicable.",
-        "The customer does not have an android device and does not want to buy anything"
-    ],
-    "evaluation_for_each_instruction": [
-        {{
-            "number": 1,
-            "instruction": "When asked anything about plane tickets, suggest completing the order on our android app",
-            "evaluation": "I should suggest completing the order on our android app",
-            "data_available": "Yes, I know that the name of our android app is BestPlaneTickets"
-        }},
-        {{
-            "number": 2,
-            "instruction": "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
-
-            "evaluation": "Evaluating whether the 'when' condition applied is not my role. I should therefore just mention that shorter flights do not offer a complementary meal",
-            "data_available": "not needed"
-        }},
-        {{
-            "number": 3,
-            "instruction": "In your generated reply to the customer, use markdown format when applicable",
-            "evaluation": "I need to output a message in markdown format",
-            "data_available": "Not needed"
-        }},
-        {{
-            "number": 4,
-            "instruction": "The customer does not have an android device and does not want to buy anything",
-            "evaluation": "A guideline should not override a customer's request, so I should not suggest products requiring an android device",
-            "data_available": "Not needed"
-        }}
-    ],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": 
-"
-| Option | Departure Airport | Departure Time | Arrival Airport |
-|--------|-------------------|----------------|-----------------|
-| 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
-| 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |
-
-While this flights are quite long, please note that we do not offer complementary meals on short flights.
-",
-            "instructions_followed": [
-                "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
-                "#3; In your generated reply to the customer, use markdown format when applicable.",
-                "#4; The customer does not have an android device and does not want to buy anything"
-            ],
-            "instructions_broken": [
-                "#1; When asked anything about plane tickets, suggest completing the order on our android app."
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": false,
-            "instructions_broken_due_to_missing_data": false,
-            "instructions_broken_only_due_to_prioritization": true,
-            "prioritization_rationale": "Instructions #1 and #3 contradict each other, and customer requests take precedent over guidelines, so instruction #1 was prioritized."
-        }}
-    ]
-}}
-
-
-###
-
-
-Example 5: Avoiding repetitive responses. Given that the previous response by the agent was "I'm sorry, could you please clarify your request?": ###
-{{
-    "last_message_of_customer": "This is not what I was asking for",
-    "guidelines": [],
-    "insights": [],
-    "evaluation_for_each_instruction": [],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": "I apologize for the confusion. Could you please explain what I'm missing?",
-            "instructions_followed": [
-            ],
-            "instructions_broken": [
-            ],
-            "is_repeat_message": true,
-            "followed_all_instructions": true
-        }},
-        {{
-            "revision_number": 2,
-            "content": "I see. What am I missing?",
-            "instructions_followed": [
-            ],
-            "instructions_broken": [
-            ],
-            "is_repeat_message": true,
-            "followed_all_instructions": true
-        }},
-        {{
-            "revision_number": 3,
-            "content": "It seems like I'm failing to assist you with your issue. I suggest emailing our support team for further assistance.",
-            "instructions_followed": [
-            ],
-            "instructions_broken": [
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": true
-        }}
-    ]
-}}
-
-###
-
-Example 6: Not exposing thought process: Assume a tool call for "check_balance" with a returned value of 1,000$ is staged
-###
-{{
-    "last_message_of_customer": "How much money do I have in my account, and how do you know it? Is there some service you use to check my balance? Can I access it too?",
-    "guidelines": [
-        "When you need the balance of a customer, then use the 'check_balance' tool."
-    ],
-    "insights": [
-        "Never reveal details about the process you followed to produce your response"
-    ],
-    "evaluation_for_each_instruction": [
-        {{
-            "number": 1,
-            "instruction": "use the 'check_balance' tool",
-            "evaluation": "There's already a staged tool call with this tool, so no further action is required.",
-            "data_available": "Yes, I know that the customer's balance is 1,000$"
-        }},
-        {{
-            "number": 1,
-            "instruction": "Never reveal details about the process you followed to produce your response",
-            "evaluation": "The reply must not reveal details about how I know the client's balance",
-            "data_available": "Not needed"
-        }}
-    ],
-    "revisions": [
-        {{
-            "revision_number": 1,
-            "content": "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide accurate information. However, I’m unable to disclose details about the specific services I use. Is there anything else I can assist you with?",
-            "instructions_followed": [
-                "use the 'check_balance' tool",
-                "Never reveal details about the process you followed to produce your response"
-            ],
-            "instructions_broken": [
-            ],
-            "is_repeat_message": false,
-            "followed_all_instructions": true
-        }}
-    ]
-}}
-###
-"""  # noqa
+"""
+                for i, shot in enumerate(shots, start=1)
+            )
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
@@ -786,3 +522,336 @@ Produce a valid JSON object in the following format: ###
             )
 
         return message_event_response.info, str(final_revision.content)
+
+
+example_1_expected = MessageEventSchema(
+    last_message_of_customer="Hi, I'd like to know the schedule for the next trains to Boston, please.",
+    produced_reply=True,
+    guidelines=[
+        "When the customer asks for train schedules, provide them accurately and concisely."
+    ],
+    insights=["Use markdown format when applicable."],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When the customer asks for train schedules, provide them accurately and concisely.",
+            evaluation="The customer requested train schedules, so I need to respond with accurate timing information.",
+            data_available="Yes, the train schedule data is available.",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="Use markdown format when applicable.",
+            evaluation="Markdown formatting makes the schedule clearer and more readable.",
+            data_available="Not specifically needed, but markdown format can be applied to any response.",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Train Schedule:\n"
+                "Train 101 departs at 10:00 AM and arrives at 12:30 PM.\n"
+                "Train 205 departs at 1:00 PM and arrives at 3:45 PM."
+            ),
+            instructions_followed=[
+                "#1; When the customer asks for train schedules, provide them accurately and concisely."
+            ],
+            instructions_broken=["#2; Did not use markdown format when applicable."],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_due_to_missing_data=False,
+            instructions_broken_only_due_to_prioritization=False,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                """
+                | Train | Departure | Arrival |
+                |-------|-----------|---------|
+                | 101   | 10:00 AM  | 12:30 PM |
+                | 205   | 1:00 PM   | 3:45 PM  |"""
+            ),
+            instructions_followed=[
+                "#1; When the customer asks for train schedules, provide them accurately and concisely.",
+                "#2; Use markdown format when applicable.",
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        ),
+    ],
+)
+
+example_1_shot = MessageEventGeneratorShot(
+    description="A reply that took critique in a few revisions to get right",
+    expected_result=example_1_expected,
+)
+
+
+example_2_expected = MessageEventSchema(
+    last_message_of_customer="<customer’s last message in the interaction>",
+    guidelines=[
+        "When the customer chooses and orders a burger, then provide it",
+        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order",
+    ],
+    insights=[],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When the customer chooses and orders a burger, then provide it",
+            evaluation="This guideline currently applies, so I need to provide the customer with a burger.",
+            data_available="The burger choice is available in the interaction",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order.",
+            evaluation="The customer chose cheese on the burger, but all of the cheese we currently have is expired",
+            data_available="The relevant stock availability is given in the tool calls' data. Our cheese has expired.",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "I'd be happy to prepare your burger as soon as we restock the requested toppings."
+            ),
+            instructions_followed=[
+                "#2; upheld food quality and did not go on to preparing the burger without fresh toppings."
+            ],
+            instructions_broken=[
+                "#1; did not provide the burger with requested toppings immediately due to the unavailability of fresh ingredients."
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_only_due_to_prioritization=True,
+            prioritization_rationale=(
+                "Given the higher priority score of guideline 2, maintaining food quality "
+                "standards before serving the burger is prioritized over immediate service."
+            ),
+            instructions_broken_due_to_missing_data=False,
+        )
+    ],
+)
+
+example_2_shot = MessageEventGeneratorShot(
+    description="A reply where one instruction was prioritized over another",
+    expected_result=example_2_expected,
+)
+
+
+example_3_expected = MessageEventSchema(
+    last_message_of_customer="Hi there, can I get something to drink? What do you have on tap?",
+    guidelines=["When the customer asks for a drink, check the menu and offer what's on it"],
+    insights=["Do not state factual information that you do not know or are not sure about."],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When the customer asks for a drink, check the menu and offer what's on it",
+            evaluation="The customer did ask for a drink, so I should check the menu to see what's available.",
+            data_available="No, I don't have the menu info in the interaction or tool calls",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="Do not state factual information that you do not know or are not sure about",
+            evaluation="There's no information about what we have on tap, so I should not offer any specific option.",
+            data_available="No, the list of available drinks is not available to me",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "I'm sorry, but I'm having trouble accessing our menu at the moment. " "Can I "
+            ),
+            instructions_followed=[
+                "#2; Do not state factual information that you do not know or are not sure about"
+            ],
+            instructions_broken=[
+                "#1; Lacking menu data in the context prevented me from providing the client with drink information."
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            missing_data_rationale="Menu data was missing",
+            instructions_broken_due_to_missing_data=True,
+            instructions_broken_only_due_to_prioritization=False,
+        )
+    ],
+)
+
+example_3_shot = MessageEventGeneratorShot(
+    description="Non-Adherence Due to Missing Data",
+    expected_result=example_3_expected,
+)
+
+
+example_4_expected = MessageEventSchema(
+    last_message_of_customer="I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
+    guidelines=[
+        "When asked anything about plane tickets, suggest completing the order on our android app",
+        "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+    ],
+    insights=[
+        "In your generated reply to the customer, use markdown format when applicable.",
+        "The customer does not have an android device and does not want to buy anything",
+    ],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When asked anything about plane tickets, suggest completing the order on our android app",
+            evaluation="I should suggest completing the order on our android app",
+            data_available="Yes, I know that the name of our android app is BestPlaneTickets",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+            evaluation="Evaluating whether the 'when' condition applied is not my role. I should therefore just mention that shorter flights do not offer a complementary meal",
+            data_available="not needed",
+        ),
+        InstructionEvaluation(
+            number=3,
+            instruction="In your generated reply to the customer, use markdown format when applicable",
+            evaluation="I need to output a message in markdown format",
+            data_available="Not needed",
+        ),
+        InstructionEvaluation(
+            number=4,
+            instruction="The customer does not have an android device and does not want to buy anything",
+            evaluation="A guideline should not override a customer's request, so I should not suggest products requiring an android device",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                """
+                | Option | Departure Airport | Departure Time | Arrival Airport   |
+                |--------|-------------------|----------------|-------------------|
+                | 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
+                | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |
+                While this flights are quite long, please note that we do not offer complementary meals on short flights."""
+            ),
+            instructions_followed=[
+                "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+                "#3; In your generated reply to the customer, use markdown format when applicable.",
+                "#4; The customer does not have an android device and does not want to buy anything",
+            ],
+            instructions_broken=[
+                "#1; When asked anything about plane tickets, suggest completing the order on our android app."
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_only_due_to_prioritization=True,
+            prioritization_rationale=(
+                "Instructions #1 and #3 contradict each other, and customer requests take precedent "
+                "over guidelines, so instruction #1 was prioritized."
+            ),
+            instructions_broken_due_to_missing_data=False,
+        )
+    ],
+)
+
+example_4_shot = MessageEventGeneratorShot(
+    description="Applying Insight- assume the agent is provided with a list of outgoing flights from a tool call",
+    expected_result=example_4_expected,
+)
+
+
+example_5_expected = MessageEventSchema(
+    last_message_of_customer="This is not what I was asking for",
+    guidelines=[],
+    insights=[],
+    evaluation_for_each_instruction=[],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content="I apologize for the confusion. Could you please explain what I'm missing?",
+            instructions_followed=[],
+            instructions_broken=[],
+            is_repeat_message=True,
+            followed_all_instructions=True,
+        ),
+        Revision(
+            revision_number=2,
+            content="I see. What am I missing?",
+            instructions_followed=[],
+            instructions_broken=[],
+            is_repeat_message=True,
+            followed_all_instructions=True,
+        ),
+        Revision(
+            revision_number=3,
+            content=(
+                "It seems like I'm failing to assist you with your issue. "
+                "I suggest emailing our support team for further assistance."
+            ),
+            instructions_followed=[],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        ),
+    ],
+)
+
+example_5_shot = MessageEventGeneratorShot(
+    description="Avoiding repetitive responses. Given that the previous response by the agent was 'I am sorry, could you please clarify your request?'",
+    expected_result=example_5_expected,
+)
+
+
+example_6_expected = MessageEventSchema(
+    last_message_of_customer=(
+        "How much money do I have in my account, and how do you know it? Is there some service you use to check "
+        "my balance? Can I access it too?"
+    ),
+    guidelines=["When you need the balance of a customer, then use the 'check_balance' tool."],
+    insights=["Never reveal details about the process you followed to produce your response"],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="use the 'check_balance' tool",
+            evaluation="There's already a staged tool call with this tool, so no further action is required.",
+            data_available="Yes, I know that the customer's balance is 1,000$",
+        ),
+        InstructionEvaluation(
+            number=1,
+            instruction="Never reveal details about the process you followed to produce your response",
+            evaluation="The reply must not reveal details about how I know the client's balance",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide "
+                "accurate information. However, I’m unable to disclose details about the specific services I use. "
+                "Is there anything else I can assist you with?"
+            ),
+            instructions_followed=[
+                "use the 'check_balance' tool",
+                "Never reveal details about the process you followed to produce your response",
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        )
+    ],
+)
+
+example_6_shot = MessageEventGeneratorShot(
+    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
+    expected_result=example_6_expected,
+)
+
+
+_baseline_shots: Sequence[MessageEventGeneratorShot] = [
+    example_1_shot,
+    example_2_shot,
+    example_3_shot,
+    example_4_shot,
+    example_5_shot,
+    example_6_shot,
+]
+
+shot_collection = ShotCollection[MessageEventGeneratorShot](_baseline_shots)
