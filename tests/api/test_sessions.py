@@ -1006,7 +1006,10 @@ async def test_that_an_agent_message_can_be_generated_from_utterance_requests(
                     "kind": "message",
                     "source": "ai_agent",
                     "actions": [
-                        {"action": "Tell the user that I'm thinking", "reason": "buy_time"}
+                        {
+                            "action": "Tell the user that you're thinking and will be right back with an answer",
+                            "reason": "buy_time",
+                        }
                     ],
                 },
             )

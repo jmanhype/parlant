@@ -214,7 +214,7 @@ SessionEventCreationParamsMessageField: TypeAlias = Annotated[
 SessionEventCreationParamsActionField: TypeAlias = Annotated[
     str,
     Field(
-        description="A single action from the AI agent, such as 'the the user Thinking..' or 'inform the user that more information is coming'",
+        description='A single action that explains what to say; i.e. "Tell the customer that you are thinking and will be right back with an answer."',
         examples=[message_example],
     ),
 ]

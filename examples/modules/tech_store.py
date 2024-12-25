@@ -29,7 +29,10 @@ async def consult_expert(context: ToolContext, user_query: str) -> ToolResult:
                     "kind": "message",
                     "source": "ai_agent",
                     "actions": [
-                        {"action": "Tell the user that I'm thinking", "reason": "buy_time"}
+                        {
+                            "action": "Tell the user that you're thinking and will be right back with an answer",
+                            "reason": "buy_time",
+                        }
                     ],
                 },
             )

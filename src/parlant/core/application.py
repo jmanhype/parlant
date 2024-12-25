@@ -147,27 +147,18 @@ class Application:
         actions: Sequence[UtteranceRequest],
     ) -> str:
         with self._correlator.correlation_scope(generate_id()):
-            await self._background_task_service.restart(
-                self._do_utter_session(session, actions),
-                tag=f"utter-session({session.id})",
+            event_emitter = await self._event_emitter_factory.create_event_emitter(
+                emitting_agent_id=session.agent_id,
+                session_id=session.id,
             )
+
+            await self._engine.utter(
+                context=Context(session_id=session.id, agent_id=session.agent_id),
+                event_emitter=event_emitter,
+                actions=actions,
+            )
+
             return self._correlator.correlation_id
-
-    async def _do_utter_session(
-        self,
-        session: Session,
-        actions: Sequence[UtteranceRequest],
-    ) -> None:
-        event_emitter = await self._event_emitter_factory.create_event_emitter(
-            emitting_agent_id=session.agent_id,
-            session_id=session.id,
-        )
-
-        await self._engine.utter(
-            context=Context(session_id=session.id, agent_id=session.agent_id),
-            event_emitter=event_emitter,
-            actions=actions,
-        )
 
     async def create_guidelines(
         self,
