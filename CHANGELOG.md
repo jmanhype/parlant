@@ -11,6 +11,7 @@ All notable changes to Parlant will be documented here.
 - Reverted GPT version for guideline connection proposer to 2024-08-06
 - Changed definition of causal connection to take the source's when statement into account. The connection proposer now assumes the source's condition is true when examining if it entails other guideline.
 - Group engine tests by stability ranking
+- Allow tapping into the PluginServer FastAPI app to provide additional custom endpoints
 
 
 ## [1.2.0] - 2024-12-19
