@@ -41,11 +41,16 @@ class StyleGuideExample:
 
 
 @dataclass(frozen=True)
+class StyleGuideContent:
+    principle: str
+    examples: Sequence[StyleGuideExample]
+
+
+@dataclass(frozen=True)
 class StyleGuide:
     id: StyleGuideId
     creation_utc: datetime
-    principle: str
-    examples: Sequence[StyleGuideExample]
+    content: StyleGuideContent
 
 
 class StyleGuideUpdateParams(TypedDict, total=False):
@@ -165,8 +170,8 @@ class StyleGuideDocumentStore(StyleGuideStore):
             version=self.VERSION.to_string(),
             creation_utc=style_guide.creation_utc.isoformat(),
             style_guide_set=style_guide_set,
-            principle=style_guide.principle,
-            examples=[self._serialize_example(ex) for ex in style_guide.examples],
+            principle=style_guide.content.principle,
+            examples=[self._serialize_example(ex) for ex in style_guide.content.examples],
         )
 
     def _deserialize(
@@ -176,8 +181,10 @@ class StyleGuideDocumentStore(StyleGuideStore):
         return StyleGuide(
             id=StyleGuideId(doc["id"]),
             creation_utc=datetime.fromisoformat(doc["creation_utc"]),
-            principle=doc["principle"],
-            examples=[self._deserialize_example(ex) for ex in doc["examples"]],
+            content=StyleGuideContent(
+                principle=doc["principle"],
+                examples=[self._deserialize_example(ex) for ex in doc["examples"]],
+            ),
         )
 
     @override
@@ -194,8 +201,10 @@ class StyleGuideDocumentStore(StyleGuideStore):
             style_guide = StyleGuide(
                 id=StyleGuideId(generate_id()),
                 creation_utc=creation_utc,
-                principle=principle,
-                examples=examples,
+                content=StyleGuideContent(
+                    principle=principle,
+                    examples=examples,
+                ),
             )
 
             await self._collection.insert_one(
