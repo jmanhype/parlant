@@ -141,7 +141,7 @@ class Application:
             event_emitter=event_emitter,
         )
 
-    async def dispatch_utter_task(
+    async def utter(
         self,
         session: Session,
         actions: Sequence[UtteranceRequest],

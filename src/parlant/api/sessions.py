@@ -1339,7 +1339,7 @@ def create_router(
 
         if params.actions:
             actions = [utterance_request_dto_to_utterance_request(a) for a in params.actions]
-            correlation_id = await application.dispatch_utter_task(session, actions)
+            correlation_id = await application.utter(session, actions)
 
         else:
             correlation_id = await application.dispatch_processing_task(session)
