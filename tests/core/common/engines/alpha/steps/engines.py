@@ -143,8 +143,8 @@ def when_messages_are_emitted(
     return list(cast(list[EmittedEvent], message_event_generator_results[0].events))
 
 
-@step(when, "uttring actions", target_fixture="emitted_events")
-def when_uttring_actions(
+@step(when, "uttering is triggered", target_fixture="emitted_events")
+def when_uttering_is_triggered(
     context: ContextOfTest,
     engine: AlphaEngine,
     session_id: SessionId,

@@ -197,14 +197,28 @@ def given_a_flagged_customer_message(
 
 @step(
     given,
-    parsers.parse('an utterance with action of "{action}" and reason of "{reason}"'),
+    parsers.parse('an utterance with action of "{action}", to follow up with the customer'),
 )
-def given_an_utterance(
+def given_a_follow_up_utterance_request(
     context: ContextOfTest,
     action: str,
-    reason: str,
 ) -> UtteranceRequest:
-    utterance_request = UtteranceRequest(action=action, reason=UtteranceReason[reason])
+    utterance_request = UtteranceRequest(action=action, reason=UtteranceReason.FOLLOW_UP)
+
+    context.actions.append(utterance_request)
+
+    return utterance_request
+
+
+@step(
+    given,
+    parsers.parse('an utterance with action of "{action}", to buy time'),
+)
+def given_a_buy_time_utterance_request(
+    context: ContextOfTest,
+    action: str,
+) -> UtteranceRequest:
+    utterance_request = UtteranceRequest(action=action, reason=UtteranceReason.BUY_TIME)
 
     context.actions.append(utterance_request)
 
