@@ -52,5 +52,5 @@ class Engine(ABC):
         self,
         context: Context,
         event_emitter: EventEmitter,
-        actions: Sequence[UtteranceRequest],
+        requests: Sequence[UtteranceRequest],
     ) -> bool: ...

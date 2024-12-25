@@ -144,24 +144,24 @@ class AlphaEngine(Engine):
         self,
         context: Context,
         event_emitter: EventEmitter,
-        actions: Sequence[UtteranceRequest],
+        requests: Sequence[UtteranceRequest],
     ) -> bool:
         interaction_state = await self._load_interaction_state(context)
-        session_id = context.session_id
-
         try:
-            with self._logger.operation(f"Uttering actions '{actions}' for session {session_id}"):
-                await self._do_utter(context, interaction_state, event_emitter, actions)
+            with self._logger.operation(
+                f"Uttering actions '{[r.action for r in requests]}' for session {context.session_id}"
+            ):
+                await self._do_utter(context, interaction_state, event_emitter, requests)
             return True
 
         except asyncio.CancelledError:
-            self._logger.warning(f"Uttering actions for session {session_id} was cancelled.")
+            self._logger.warning(f"Uttering for session {context.session_id} was cancelled.")
             return False
 
         except Exception as exc:
             formatted_exception = traceback.format_exception(type(exc), exc, exc.__traceback__)
             self._logger.error(
-                f"Error during uttering actions for session {session_id}: {formatted_exception}"
+                f"Error during uttering for session {context.session_id}: {formatted_exception}"
             )
 
             await event_emitter.emit_status_event(
@@ -176,7 +176,7 @@ class AlphaEngine(Engine):
 
         except BaseException as exc:
             self._logger.critical(
-                f"Critical error during uttering actions for session {session_id}: "
+                f"Critical error during uttering for session {context.session_id}: "
                 f"{traceback.format_exception(type(exc), exc, exc.__traceback__)}"
             )
             raise
@@ -443,7 +443,7 @@ class AlphaEngine(Engine):
         context: Context,
         interaction: _InteractionState,
         event_emitter: EventEmitter,
-        actions: Sequence[UtteranceRequest],
+        requests: Sequence[UtteranceRequest],
     ) -> None:
         agent = await self._agent_store.read_agent(context.agent_id)
         session = await self._session_store.read_session(context.session_id)
@@ -471,14 +471,14 @@ class AlphaEngine(Engine):
             )
 
             ordinary_guideline_propositions = await self._utter_requests_to_guideline_propositions(
-                actions
+                requests
             )
 
             await event_emitter.emit_status_event(
                 correlation_id=self._correlator.correlation_id,
                 data={
                     "acknowledged_offset": interaction.last_known_event_offset,
-                    "status": "processing",
+                    "status": "typing",
                     "data": {},
                 },
             )
@@ -759,10 +759,10 @@ class AlphaEngine(Engine):
 
     async def _utter_requests_to_guideline_propositions(
         self,
-        actions: Sequence[UtteranceRequest],
+        requests: Sequence[UtteranceRequest],
     ) -> Sequence[GuidelineProposition]:
-        def utterance_to_proposition(utterance: UtteranceRequest) -> GuidelineProposition:
-            ratioanles = {
+        def utterance_to_proposition(i: int, utterance: UtteranceRequest) -> GuidelineProposition:
+            rationales = {
                 UtteranceReason.BUY_TIME: "An external module has determined that this response is necessary, and you must adhere to it.",
                 UtteranceReason.FOLLOW_UP: "An external module has determined that this response is necessary, and you must adhere to it.",
             }
@@ -774,18 +774,18 @@ class AlphaEngine(Engine):
 
             return GuidelineProposition(
                 guideline=Guideline(
-                    id=GuidelineId(""),
+                    id=GuidelineId(f"<utterance-request-{i}>"),
                     creation_utc=datetime.now(timezone.utc),
                     content=GuidelineContent(
                         condition=conditions[utterance.reason],
                         action=utterance.action,
                     ),
                 ),
-                rationale=ratioanles[utterance.reason],
+                rationale=rationales[utterance.reason],
                 score=10,
             )
 
-        return [utterance_to_proposition(action) for action in actions]
+        return [utterance_to_proposition(i, request) for i, request in enumerate(requests, start=1)]
 
 
 async def fresh_value(

@@ -144,7 +144,7 @@ class Application:
     async def utter(
         self,
         session: Session,
-        actions: Sequence[UtteranceRequest],
+        requests: Sequence[UtteranceRequest],
     ) -> str:
         with self._correlator.correlation_scope(generate_id()):
             event_emitter = await self._event_emitter_factory.create_event_emitter(
@@ -155,7 +155,7 @@ class Application:
             await self._engine.utter(
                 context=Context(session_id=session.id, agent_id=session.agent_id),
                 event_emitter=event_emitter,
-                actions=actions,
+                requests=requests,
             )
 
             return self._correlator.correlation_id
