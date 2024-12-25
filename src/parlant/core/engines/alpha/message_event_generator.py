@@ -31,6 +31,7 @@ from parlant.core.sessions import Event
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.shots import Shot, ShotCollection
+from parlant.core.style_guides import StyleGuide
 from parlant.core.tools import ToolId
 
 
@@ -104,6 +105,7 @@ class MessageEventGenerator:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        style_guides: Sequence[StyleGuide],
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventGenerationResult]:
         assert len(agents) == 1

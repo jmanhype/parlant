@@ -153,6 +153,7 @@ def when_messages_are_emitted(
             terms=[],
             ordinary_guideline_propositions=list(context.guideline_propositions.values()),
             tool_enabled_guideline_propositions={},
+            style_guides=[],
             staged_events=[],
         )
     )
