@@ -1,8 +1,7 @@
 
 <div align="center">
-<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/70757094103f6cc50e311edaeb0729e960fbcb56/logo.png" width="125" />
-  <h3>Parlant</h3>
-  <p>A structured approach to building and guiding customer-facing AI agents</p>
+<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/8a85e2f5bcb297573bc311ece29e7308879e473e/banner.png" />
+  <h3>Parlant: A client/server API for guided customer-facing agents based on LLMs</h3>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
@@ -18,30 +17,47 @@
     <a href="https://discord.gg/duxWqxKk6J"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007?style=flat&logo=discord&logoColor=white&label=discord">
 </a>
   </p>
-  <img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
 </div>
 
-## What is Parlant?
-Parlant is a structured way to create and manage guided customer-facing AI agents. It lets you build robust agents from scratch; or, in more advanced cases, a robust interaction layer for your prebuilt agents.
+## ✨ What is Parlant?
+Parlant is an open-source client/server API for building and serving guided customer-facing agents based on LLMs (Large Language Models).
 
-Structure is what lets Parlant get better accuracy than most other agentic frameworks. It allows Parlant to run pinpointed, real-time conformance checks that ensure your agents adhere to your instruction. It also gives you specific feedback on where agents may have misinterpreted your instructions, so you can quickly troubleshoot and improve.
+It comes pre-built with responsive session (conversation) management, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, and other goodies.
 
-Just as importantly, Parlant's way of breaking behavioral guidance down to different elements helps it understand your intentions better. Using this understanding, Parlant actively gives you feedback on your configuration to help you maintain a behavioral configuration for your agents that's coherent and free of confusing contradictions.
+## 📦 Quickstart
+```bash
+$ pip install parlant
+$ parlant-server
+$ # Open the sandbox UI at http://localhost:8000 and play
+```
 
-## Why use Parlant?
-Building conversational AI agents is relatively simple for most developers—at least, it's relatively simple to build an initial prototype.
+<img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
 
-But these prototypes are rarely ready to meet customers. Once the prototype is functional, it has to be continually tuned so that its behavior actually provides customers with a good experience that business stakeholders approve.
 
-With DIY prompt-engineering, reliably incorporating feedback from stakeholders is challenging, as simple implementations tend to be fragile and inconsistent.
+## 🤔 What Makes Parlant Different?
 
-Parlant bridges this gap by making it easy and fast for developers to adjust the behavior of AI agents reliably, allowing you to iterate quickly with feedback from customers and business stakeholders.
+In a word: _guidance._ Parlant's engine revolves around solving one key problem: how can we reliably guide customer-facing agents to behave in alignment with our needs and intentions.
 
-## Real-world impact
+Hence Parlant's fundamentally different approach to agent building: [Managed Guidelines](https://www.parlant.io/docs/concepts/customization/guidelines).
 
-[Revenued](https://www.revenued.com), a business capital provider, uses Parlant to infuse human-like conversations for their Sales Copilot. They leverage Parlant's structured CLI to modify the agent's behavior quickly and easily based on feedback from company stakeholders.
+```bash
+$ parlant guideline create \
+    --agent-id MY_AGENT_ID \
+    --condition "the customer wants to return an item" \
+    --action "get the order number and item name and then help them return it"
+```
 
-## Key benefits
+By giving structure to behavioral guidelines, and _granularizing_ guidelines (i.e. making each behavioral guideline a first-class entity in the engine), Parlant's engine is able to offer unprecedented control, quality, and efficiency in building LLM-based agents:
+
+1. **Reliability:** Running focused self-critique in real-time, per guideline, to ensure it is actually followed
+1. **Explainability:** Providing feedback around its interpretation of guidelines in each real-life context, which helps in troubleshooting and improvement
+1. **Maintainability:** Helping you maintain a coherent set of guidelines by detecting and alerting you to possible contradictions (gross or subtle) in your instructions
+
+## 🚀 Real-world impact
+
+[Revenued](https://www.revenued.com), a business capital provider, uses Parlant for their Sales Copilot. They leverage Parlant's structured CLI to modify the agent's behavior quickly and easily based on feedback from company stakeholders.
+
+## 💪 Key benefits
 
 ### Control that actually works
 * **Guidelines**: Control responses by writing contextual rules - like "offer limited time coupons if it's a holiday" or "make it very clear we don't offer loans if a customer asks about it". By using condition/action definitions, you define exactly when and how your agent should respond
@@ -61,28 +77,15 @@ Parlant bridges this gap by making it easy and fast for developers to adjust the
 * **Debug with ease**: Troubleshoot effectively by tracing which guidelines were applied and why for any given response
 * **Test before deploy**: Validate changes using the built-in chat UI to test new behaviors before they reach customers
 
-## Works with all major LLM providers
+## 🤖 Works with all major LLM providers
 - [OpenAI](https://platform.openai.com/docs/overview) (also via [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/))
 - [Gemini](https://ai.google.dev/)
 - [Meta Llama 3](https://www.llama.com/) (via [Together AI](https://www.together.ai/) or [Cerebras](https://cerebras.ai/))
 - [Anthropic](https://www.anthropic.com/api) (also via [AWS Bedrock](https://aws.amazon.com/bedrock/))
 
-## Getting started
-```bash
-$ pip install parlant
-$ parlant-server
-$ # Open http://localhost:8000 and play
-```
+## 📚 Learning Parlant
 
-Install client SDKs:
-```bash
-$ # For Python clients:
-$ pip install parlant-client
-$ # For TypeScript clients:
-$ npm install parlant-client
-```
-
-To start building with Parlant, visit our [documentation portal](https://parlant.io/docs/quickstart/introduction).
+To start learning and building with Parlant, visit our [documentation portal](https://parlant.io/docs/quickstart/introduction).
 
 Need help? Send us a message on [Discord](https://discord.gg/duxWqxKk6J). We're happy to answer questions and help you get up and running!
 
@@ -132,7 +135,7 @@ const { trace } = await client.sessions.inspectEvent(
 );
 ```
 
-## Contributing
-We're currently finalizing our Contributor License Agreement (CLA). Full contribution guidelines will be available soon! 
+## 👋 Contributing
+We're currently finalizing our contribution guidelines. Check back soon! 
 
-Want to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
+Can't wait to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
