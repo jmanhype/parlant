@@ -20,7 +20,7 @@
 </div>
 
 ## ✨ What is Parlant?
-Parlant is an open-source client/server API for building and serving guided customer-facing agents based on LLMs (Large Language Models).
+Parlant is a fully open-source (Apache 2.0) client/server framework for building and serving guided customer-facing agents based on LLMs (Large Language Models).
 
 It comes pre-built with responsive session (conversation) management, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, and other goodies.
 
