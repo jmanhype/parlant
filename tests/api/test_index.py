@@ -25,6 +25,8 @@ from tests.core.stable.services.indexing.test_evaluator import (
     AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING,
 )
 
+from tests.conftest import NoCachedGenerations
+
 
 async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_status(
     async_client: httpx.AsyncClient,
@@ -76,6 +78,7 @@ async def test_that_an_evaluation_can_be_created_and_fetched_with_completed_stat
 async def test_that_an_evaluation_can_be_fetched_with_running_status(
     async_client: httpx.AsyncClient,
     agent_id: AgentId,
+    no_cache: NoCachedGenerations,
 ) -> None:
     evaluation_id = (
         (
@@ -463,6 +466,7 @@ async def test_that_an_error_is_returned_when_no_payloads_are_provided(
 async def test_that_an_evaluation_task_fails_if_another_task_is_already_running(
     async_client: httpx.AsyncClient,
     agent_id: AgentId,
+    no_cache: NoCachedGenerations,
 ) -> None:
     payloads = [
         {

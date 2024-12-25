@@ -280,7 +280,7 @@ class PluginServer:
     def __init__(
         self,
         tools: Sequence[ToolEntry],
-        port: int = 8089,
+        port: int = 8091,
         host: str = "0.0.0.0",
         on_app_created: Callable[[FastAPI], Awaitable[FastAPI]] | None = None,
     ) -> None:

@@ -51,6 +51,12 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: just test-deterministic
     
+    - name: Test Parlant (core-stable)
+      if: always()
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: just test-core-stable
+    
     - name: Test Parlant (core-unstable)
       if: always()
       env:

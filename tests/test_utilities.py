@@ -504,7 +504,7 @@ async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServ
             await server.shutdown()
 
 
-OPENAPI_SERVER_PORT = 8089
+OPENAPI_SERVER_PORT = 8092
 OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
 
 
