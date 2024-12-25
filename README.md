@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/8a85e2f5bcb297573bc311ece29e7308879e473e/banner.png" />
-  <h3>Parlant: A client/server API for guided customer-facing agents based on LLMs</h3>
+  <h2>Parlant: A client/server API for guided customer-facing agents based on LLMs</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
