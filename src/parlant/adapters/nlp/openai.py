@@ -34,6 +34,7 @@ from pydantic import ValidationError
 import tiktoken
 
 from parlant.adapters.nlp.common import normalize_json_output
+from parlant.core.engines.alpha.guideline_proposer import GuidelinePropositionsSchema
 from parlant.core.logging import Logger
 from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
@@ -380,7 +381,7 @@ class OpenAIService(NLPService):
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> OpenAISchematicGenerator[T]:
-        if t == GuidelineConnectionPropositionsSchema:
+        if t == GuidelineConnectionPropositionsSchema or t == GuidelinePropositionsSchema:
             return GPT_4o_24_08_06[t](self._logger)  # type: ignore
         return GPT_4o[t](self._logger)  # type: ignore
 

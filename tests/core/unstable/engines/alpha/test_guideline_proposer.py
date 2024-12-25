@@ -182,6 +182,10 @@ GUIDELINES_DICT = {
         "condition": "the customer asked a question about birds",
         "action": "answer their question enthusiastically, while not using punctuation. Also say that the kingfisher is your favorite bird",
     },
+    "second_thanks": {
+        "condition": "the customer is thanking you for the second time in the interaction",
+        "action": "compliment the customer for their manners",
+    },
 }
 
 
@@ -392,7 +396,7 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
             "ai_agent",
             "Got it! Your blue 'City Cruiser' skateboard and black medium helmet are ready for checkout. How would you like to pay?",
         ),
-        ("customer", "I'll pay with a credit card, thanks."),
+        ("customer", "I'll pay with a credit card, thank you very much!"),
         (
             "ai_agent",
             "Thank you for your order! Your skateboard and helmet will be shipped shortly. Enjoy your ride!",
@@ -400,17 +404,20 @@ def test_that_many_guidelines_are_classified_correctly(  # a stress test
         ("customer", "That's great! Thanks!"),
     ]
 
-    exceptions = ["credit_payment1", "credit_payment2", "cow_response"]
+    exceptions = [
+        "credit_payment1",
+        "credit_payment2",
+        "cow_response",
+        "thankful_customer",
+        "payment_process",
+    ]
 
     conversation_guideline_names: list[str] = [
         guideline_name
         for guideline_name in GUIDELINES_DICT.keys()
         if guideline_name not in exceptions
     ]
-    relevant_guideline_names = [
-        "announce_shipment",
-        "thankful_customer",
-    ]
+    relevant_guideline_names = ["announce_shipment", "second_thanks"]
     base_test_that_correct_guidelines_are_proposed(
         context,
         agent,
@@ -510,13 +517,14 @@ def test_that_guideline_that_needs_to_be_reapplied_is_proposed(
     ]
 
     conversation_guideline_names: list[str] = ["large_pizza_crust"]
+    relevant_guideline_names = conversation_guideline_names
     base_test_that_correct_guidelines_are_proposed(
         context,
         agent,
         customer,
         conversation_context,
         conversation_guideline_names,
-        [],
+        relevant_guideline_names,
         context_variables=[],
     )
 
