@@ -64,6 +64,7 @@ from parlant.core.engines.types import Context, Engine, UtteranceReason, Utteran
 from parlant.core.emissions import EventEmitter, EmittedEvent
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.logging import Logger
+from parlant.core.style_guides import StyleGuideStore
 from parlant.core.tools import ToolContext, ToolId
 
 
@@ -87,6 +88,7 @@ class AlphaEngine(Engine):
         guideline_connection_store: GuidelineConnectionStore,
         service_registry: ServiceRegistry,
         guideline_tool_association_store: GuidelineToolAssociationStore,
+        style_guide_store: StyleGuideStore,
         guideline_proposer: GuidelineProposer,
         tool_event_generator: ToolEventGenerator,
         message_event_generator: MessageEventGenerator,
@@ -103,6 +105,7 @@ class AlphaEngine(Engine):
         self._guideline_connection_store = guideline_connection_store
         self._service_registry = service_registry
         self._guideline_tool_association_store = guideline_tool_association_store
+        self._style_guide_store = style_guide_store
         self._guideline_proposer = guideline_proposer
         self._tool_event_generator = tool_event_generator
         self._message_event_generator = message_event_generator
@@ -383,6 +386,8 @@ class AlphaEngine(Engine):
                             },
                         )
 
+            style_guides = await self._style_guide_store.list_style_guides(style_guide_set=agent.id)
+
             message_generation_inspections = []
 
             for event_generation_result in await self._message_event_generator.generate_events(
@@ -394,6 +399,7 @@ class AlphaEngine(Engine):
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+                style_guides=style_guides,
                 staged_events=all_tool_events,
             ):
                 message_generation_inspections.append(
