@@ -1,6 +1,6 @@
 
 <div align="center">
-<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/8a85e2f5bcb297573bc311ece29e7308879e473e/banner.png" />
+<img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
   <h2>A Client/Server Framework for Building LLM Guided Agents</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
@@ -136,6 +136,6 @@ const { trace } = await client.sessions.inspectEvent(
 ```
 
 ## 👋 Contributing
-We're currently finalizing our contribution guidelines. Check back soon! 
+We're currently finalizing our contribution guidelines. Check back soon!
 
 Can't wait to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
