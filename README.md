@@ -89,7 +89,7 @@ To start learning and building with Parlant, visit our [documentation portal](ht
 
 Need help? Send us a message on [Discord](https://discord.gg/duxWqxKk6J). We're happy to answer questions and help you get up and running!
 
-## Usage Example
+## 💻 Usage Example
 Adding a guideline for an agent—for example, to ask a counter-question to get more info when a customer asks a question:
 ```bash
 parlant guideline create \
