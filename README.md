@@ -33,6 +33,13 @@ $ # Open the sandbox UI at http://localhost:8000 and play
 
 <img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
 
+## 🙋‍♂️🙋‍♀️ Who Is Parlant For?
+Parlant is the right tool for the job if you're building an LLM-based chat agent, and:
+
+1. You require a high degree of behavioral precision and consistency
+1. Your agent is expected to undergo many behavioral refinements and changes, and you need a way to implement those changes efficiently and confidently
+1. You would benefit from assistance in maintaining coherence and disentangling subtleties in numerous agent instructions
+1. Conversational UX and user-engagmeent is an important concern for your use case
 
 ## 🤔 What Makes Parlant Different?
 
