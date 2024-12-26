@@ -164,6 +164,7 @@ def create_router(
     @router.get(
         "/{tag_id}",
         operation_id="read_tag",
+        status_code=status.HTTP_200_OK,
         response_model=TagDTO,
         responses={
             status.HTTP_200_OK: {
@@ -189,6 +190,7 @@ def create_router(
     @router.get(
         "",
         operation_id="list_tags",
+        status_code=status.HTTP_200_OK,
         response_model=list[TagDTO],
         responses={
             status.HTTP_200_OK: {
@@ -212,9 +214,13 @@ def create_router(
     @router.patch(
         "/{tag_id}",
         operation_id="update_tag",
-        status_code=status.HTTP_204_NO_CONTENT,
+        status_code=status.HTTP_200_OK,
+        response_model=TagDTO,
         responses={
-            status.HTTP_204_NO_CONTENT: {"description": "Tag successfully updated"},
+            status.HTTP_200_OK: {
+                "description": "Tag successfully updated. Returns the updated tag.",
+                "content": {"application/json": {"example": tag_example}},
+            },
             status.HTTP_404_NOT_FOUND: {"description": "No tag found with the specified ID"},
             status.HTTP_422_UNPROCESSABLE_ENTITY: {
                 "description": "Invalid update parameters. Ensure name follows required format."
@@ -225,17 +231,19 @@ def create_router(
     async def update_tag(
         tag_id: TagIdPath,
         params: TagUpdateParamsDTO,
-    ) -> None:
+    ) -> TagDTO:
         """
         Updates an existing tag's name.
 
-        Only the name can be modified - the ID and creation timestamp are immutable.
-        Returns a 404 error if no tag exists with the specified ID.
+        Only the name can be modified,
+        The tag's ID and creation timestamp cannot be modified.
         """
-        await tag_store.update_tag(
+        tag = await tag_store.update_tag(
             tag_id=tag_id,
             params={"name": params.name},
         )
+
+        return TagDTO(id=tag.id, creation_utc=tag.creation_utc, name=tag.name)
 
     @router.delete(
         "/{tag_id}",
