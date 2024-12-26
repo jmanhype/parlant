@@ -3,17 +3,25 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-- Fix 404 not being returned if a tool service isn't found
+TBD
+
+## [1.3.0] - 2024-12-26
+
+### Added
+- Add manual utterance requests
+- Refactor few-shot examples and allow adding more examples from a module
+- Allow tapping into the PluginServer FastAPI app to provide additional custom endpoints
 - Support for union parameters ("T | None") in tool functions
+
+### Changed
+- Fix 404 not being returned if a tool service isn't found
 - Made all stores thread-safe with reader/writer locks
 - Fixed having direct calls to asyncio.gather() instead of safe_gather()
-- Removed connection kind (entails / suggests) from the guideline connection proposer and all places downstream. the connection_kind argument is no longer needed or supported for all guideline connections.
 - Reverted GPT version for guideline connection proposer to 2024-08-06
 - Changed definition of causal connection to take the source's when statement into account. The connection proposer now assumes the source's condition is true when examining if it entails other guideline.
-- Group engine tests by stability ranking
-- Allow tapping into the PluginServer FastAPI app to provide additional custom endpoints
-- Refactor few-shot examples and allow adding more examples from a module
-- Add manual utterance requests
+
+### Removed
+- Removed connection kind (entails / suggests) from the guideline connection proposer and all places downstream. the connection_kind argument is no longer needed or supported for all guideline connections.
 
 
 ## [1.2.0] - 2024-12-19
