@@ -80,6 +80,12 @@ from parlant.core.persistence.document_database import DocumentCollection
 T = TypeVar("T")
 GLOBAL_CACHE_FILE = Path("schematic_generation_test_cache.json")
 
+SERVER_PORT = 8089
+SERVER_ADDRESS = f"http://localhost:{SERVER_PORT}"
+
+PLUGIN_SERVER_PORT = 8091
+OPENAPI_SERVER_PORT = 8092
+
 
 class NLPTestSchema(DefaultBaseModel):
     answer: bool
@@ -495,7 +501,7 @@ async def create_schematic_generation_result_collection(
 async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
     async with PluginServer(
         tools=tools,
-        port=8091,
+        port=PLUGIN_SERVER_PORT,
         host="127.0.0.1",
     ) as server:
         try:
@@ -504,7 +510,6 @@ async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServ
             await server.shutdown()
 
 
-OPENAPI_SERVER_PORT = 8089
 OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
 
 
