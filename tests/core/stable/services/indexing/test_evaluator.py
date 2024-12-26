@@ -15,6 +15,8 @@
 import asyncio
 
 from lagom import Container
+from pytest import raises
+
 from parlant.core.agents import Agent
 from parlant.core.evaluations import (
     EvaluationListener,
@@ -29,7 +31,8 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from pytest import raises
+
+from tests.conftest import NoCachedGenerations
 
 AMOUNT_OF_TIME_TO_WAIT_FOR_EVALUATION_TO_START_RUNNING = 0.3
 
@@ -314,6 +317,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
 async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_task_contains_its_error_details(
     container: Container,
     agent: Agent,
+    no_cache: NoCachedGenerations,
 ) -> None:
     evaluation_service = container[BehavioralChangeEvaluator]
     evaluation_store = container[EvaluationStore]
