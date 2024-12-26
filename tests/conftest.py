@@ -87,7 +87,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from parlant.core.logging import Logger, StdoutLogger
+from parlant.core.logging import LogLevel, Logger, StdoutLogger
 from parlant.core.application import Application
 from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.guideline_tool_associations import (
@@ -125,7 +125,7 @@ def correlator() -> ContextualCorrelator:
 
 @fixture
 def logger(correlator: ContextualCorrelator) -> Logger:
-    return StdoutLogger(correlator=correlator)
+    return StdoutLogger(correlator=correlator, log_level=LogLevel.INFO)
 
 
 @dataclass(frozen=True)
