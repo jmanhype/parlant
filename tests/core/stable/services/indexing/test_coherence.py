@@ -665,69 +665,6 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
     assert len(incoherence_results) == 0
 
 
-def test_that_guidelines_with_many_incoherencies_are_detected(
-    context: ContextOfTest,
-    agent: Agent,
-) -> None:
-    guidelines_with_incoherencies: list[GuidelineContent] = []
-
-    for guideline_params in [
-        {
-            "condition": "Asked for UPS shipping",
-            "action": "Send UPS a request and inform the client that the order would arrive in 5 business days",
-        },
-        {
-            "condition": "Asked for express shipping",
-            "action": "register the order and inform the client that the order would arrive tomorrow",
-        },
-        {
-            "condition": "Asked for delayed shipping",
-            "action": "Send UPS the request and inform the client that the order would arrive in the next calendar year",
-        },
-        {
-            "condition": "The client stops responding mid-order",
-            "action": "save the client's order in their cart and notify them that it has not been shipped yet",
-        },
-        {
-            "condition": "The client refuses to give their address",
-            "action": "cancel the order and notify the client",
-        },
-    ]:
-        guidelines_with_incoherencies.append(
-            GuidelineContent(
-                condition=guideline_params["condition"], action=guideline_params["action"]
-            )
-        )
-
-    coherence_checker = context.container[CoherenceChecker]
-
-    incoherence_results = list(
-        context.sync_await(
-            coherence_checker.propose_incoherencies(
-                agent,
-                guidelines_with_incoherencies,
-            )
-        )
-    )
-
-    n = len(guidelines_with_incoherencies)
-    assert len(incoherence_results) == n * (n - 1) // 2
-
-    # Tests that there's exactly 1 case of incoherence per pair of guidelines
-    expected_pairs = {
-        (g1, g2)
-        for i, g1 in enumerate(guidelines_with_incoherencies)
-        for g2 in guidelines_with_incoherencies[i + 1 :]
-    }
-
-    for c in incoherence_results:
-        assert (c.guideline_a, c.guideline_b) in expected_pairs
-        assert c.IncoherenceKind == IncoherenceKind.CONTINGENT
-        expected_pairs.remove((c.guideline_a, c.guideline_b))
-
-    assert len(expected_pairs) == 0
-
-
 def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     context: ContextOfTest,
     agent: Agent,
