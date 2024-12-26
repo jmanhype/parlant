@@ -81,6 +81,42 @@ async def test_that_context_variable_can_be_updated(
 
     new_name = "updated_test_variable"
     new_description = "updated test of variable"
+
+    context_variable_dto = (
+        (
+            await async_client.patch(
+                f"/agents/{agent_id}/context-variables/{context_variable.id}",
+                json={
+                    "name": new_name,
+                    "description": new_description,
+                },
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert context_variable_dto["name"] == new_name
+    assert context_variable_dto["description"] == new_description
+
+
+async def test_that_context_variable_can_be_updated_with_a_valid_freshness_rules(
+    container: Container,
+    async_client: httpx.AsyncClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    context_variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+    )
+
+    new_name = "updated_test_variable"
+    new_description = "updated test of variable"
     freshness_rules = "0 18 14 5 4"
 
     context_variable_dto = (
@@ -101,6 +137,43 @@ async def test_that_context_variable_can_be_updated(
     assert context_variable_dto["name"] == new_name
     assert context_variable_dto["description"] == new_description
     assert context_variable_dto["freshness_rules"] == freshness_rules
+
+
+async def test_that_invalid_freshness_rules_raise_error_when_updating_context_variable(
+    container: Container,
+    async_client: httpx.AsyncClient,
+    agent_id: AgentId,
+    tool_id: ToolId,
+) -> None:
+    context_variable_store = container[ContextVariableStore]
+
+    context_variable = await context_variable_store.create_variable(
+        variable_set=agent_id,
+        name="test_variable",
+        description="test variable",
+        tool_id=tool_id,
+    )
+
+    new_name = "updated_test_variable"
+    new_description = "updated test of variable"
+    freshness_rules = "Invalid freshness"
+
+    response = await async_client.patch(
+        f"/agents/{agent_id}/context-variables/{context_variable.id}",
+        json={
+            "name": new_name,
+            "description": new_description,
+            "freshness_rules": freshness_rules,
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_response = response.json()
+    assert "detail" in error_response
+    assert (
+        error_response["detail"]
+        == "the provided freshness_rules. contain an invalid cron expression."
+    )
 
 
 async def test_that_invalid_freshness_rules_raise_error_when_creating_context_variable(

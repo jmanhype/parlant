@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from parlant.core.agents import Agent
+from parlant.core.glossary import GlossaryStore
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.coherence_checker import (
     CoherenceChecker,
@@ -20,6 +21,7 @@ from parlant.core.services.indexing.coherence_checker import (
 )
 
 from tests.core.common.utils import ContextOfTest
+from tests.core.stable.services.indexing.test_coherence import incoherence_nlp_test
 
 
 def test_that_guidelines_with_many_incoherencies_are_detected(
@@ -83,3 +85,50 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
         expected_pairs.remove((c.guideline_a, c.guideline_b))
 
     assert len(expected_pairs) == 0
+
+
+def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
+    context: ContextOfTest,
+    agent: Agent,
+) -> None:
+    coherence_checker = context.container[CoherenceChecker]
+    guidelines_to_evaluate = [
+        GuidelineContent(
+            condition="a document is being discussed",
+            action="provide the full document to the customer",
+        ),
+        GuidelineContent(
+            condition="a client asks to summarize a document",
+            action="provide a summary of the document in 100 words or less",
+        ),
+        GuidelineContent(
+            condition="the client asks for a summary of another customer's medical document",
+            action="refuse to share the document or its summary",
+        ),
+    ]
+
+    incoherence_results = list(
+        context.sync_await(
+            coherence_checker.propose_incoherencies(
+                agent,
+                guidelines_to_evaluate,
+            )
+        )
+    )
+
+    assert len(incoherence_results) == 3
+    incoherencies_to_detect = {
+        (guideline_a, guideline_b)
+        for i, guideline_a in enumerate(guidelines_to_evaluate)
+        for guideline_b in guidelines_to_evaluate[i + 1 :]
+    }
+    for c in incoherence_results:
+        assert (c.guideline_a, c.guideline_b) in incoherencies_to_detect
+        assert c.IncoherenceKind == IncoherenceKind.STRICT
+        incoherencies_to_detect.remove((c.guideline_a, c.guideline_b))
+    assert len(incoherencies_to_detect) == 0
+
+    for incoherence in incoherence_results:
+        assert context.sync_await(
+            incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence)
+        )

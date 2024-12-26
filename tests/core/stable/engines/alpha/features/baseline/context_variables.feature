@@ -10,7 +10,7 @@ Feature: Context Variables
         And a customer message, "Do you know my power?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains no acknowledgment of the customer’s power
+        And the message contains no mention of the customer’s specific power
 
     Scenario: The agent selects variables that are specifically attached to the relevant customer
         Given a customer with the name "Keyleth"

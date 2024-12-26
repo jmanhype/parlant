@@ -837,9 +837,9 @@ class Actions:
         return client.tags.retrieve(tag_id=tag_id)
 
     @staticmethod
-    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
+    def update_tag(ctx: click.Context, tag_id: str, name: str) -> Tag:
         client = cast(ParlantClient, ctx.obj.client)
-        client.tags.update(tag_id=tag_id, name=name)
+        return client.tags.update(tag_id=tag_id, name=name)
 
     @staticmethod
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
@@ -1796,7 +1796,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_customer(customers: list[Customer]) -> None:
+    def _render_customers(customers: list[Customer]) -> None:
         customer_items: list[dict[str, Any]] = [
             {
                 "ID": customer.id,
@@ -1817,7 +1817,7 @@ class Interface:
                 rich.print(Text("No customers found", style="bold yellow"))
                 return
 
-            Interface._render_customer(customers)
+            Interface._render_customers(customers)
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1834,8 +1834,10 @@ class Interface:
     @staticmethod
     def update_customer(ctx: click.Context, customer_id: str, name: str) -> None:
         try:
-            Actions.update_customer(ctx, customer_id=customer_id, name=name)
-            Interface._write_success(f"Updated customer (id={customer_id}, name={name})")
+            customer = Actions.update_customer(ctx, customer_id=customer_id, name=name)
+            Interface._write_success(f"Updated customer (id={customer_id})")
+
+            Interface._render_customers([customer])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1853,7 +1855,7 @@ class Interface:
     def view_customer(ctx: click.Context, customer_id: str) -> None:
         try:
             customer = Actions.view_customer(ctx, customer_id)
-            Interface._render_customer([customer])
+            Interface._render_customers([customer])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1897,7 +1899,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_tag(tags: list[Tag]) -> None:
+    def _render_tags(tags: list[Tag]) -> None:
         tag_items: list[dict[str, Any]] = [
             {
                 "ID": tag.id,
@@ -1916,7 +1918,7 @@ class Interface:
                 rich.print("No tags found.")
                 return
 
-            Interface._render_tag(tags)
+            Interface._render_tags(tags)
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1934,7 +1936,7 @@ class Interface:
     def view_tag(ctx: click.Context, tag_id: str) -> None:
         try:
             tag = Actions.view_tag(ctx, tag_id=tag_id)
-            Interface._render_tag([tag])
+            Interface._render_tags([tag])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1942,8 +1944,10 @@ class Interface:
     @staticmethod
     def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
         try:
-            Actions.update_tag(ctx, tag_id=tag_id, name=name)
-            Interface._write_success(f"Updated tag (id={tag_id}, name={name})")
+            tag = Actions.update_tag(ctx, tag_id=tag_id, name=name)
+            Interface._write_success(f"Updated tag (id={tag_id})")
+
+            Interface._render_tags([tag])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)

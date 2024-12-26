@@ -91,16 +91,22 @@ async def test_that_a_tag_can_be_updated(
     tag = await tag_store.create_tag(old_name)
 
     new_name = "Alpha"
-    update_response = await async_client.patch(
-        f"/tags/{tag.id}",
-        json={
-            "name": new_name,
-        },
+    updated_tag_dto = (
+        (
+            await async_client.patch(
+                f"/tags/{tag.id}",
+                json={
+                    "name": new_name,
+                },
+            )
+        )
+        .raise_for_status()
+        .json()
     )
-    assert update_response.status_code == status.HTTP_204_NO_CONTENT
 
-    updated_tag = await tag_store.read_tag(tag.id)
-    assert updated_tag.name == new_name
+    assert updated_tag_dto["id"] == tag.id
+    assert updated_tag_dto["name"] == new_name
+    assert dateutil.parser.parse(updated_tag_dto["creation_utc"]) == tag.creation_utc
 
 
 async def test_that_a_tag_can_be_deleted(

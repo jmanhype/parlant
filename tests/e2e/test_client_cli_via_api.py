@@ -24,13 +24,18 @@ from parlant.core.tools import ToolResult, ToolContext
 
 from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
-    SERVER_ADDRESS,
-    SERVER_PORT,
     ContextOfTest,
     is_server_responsive,
     run_server,
 )
-from tests.test_utilities import OPENAPI_SERVER_URL, rng_app, run_openapi_server, run_service_server
+from tests.test_utilities import (
+    OPENAPI_SERVER_URL,
+    SERVER_ADDRESS,
+    SERVER_PORT,
+    rng_app,
+    run_openapi_server,
+    run_service_server,
+)
 
 REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 

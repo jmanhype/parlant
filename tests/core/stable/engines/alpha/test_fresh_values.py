@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from croniter import croniter
 from lagom import Container
 from pytest import mark
@@ -115,11 +115,15 @@ async def test_that_value_is_not_refreshed_when_freshness_rules_are_not_met(
     [
         (
             "0,15,30,45 * * * *",
-            croniter("0,15,30,45 * * * *", datetime.now(timezone.utc)).get_next(datetime),
+            croniter(
+                "0,15,30,45 * * * *", datetime.now(timezone.utc) + timedelta(minutes=1)
+            ).get_next(datetime),
         ),
         (
             "0 0,6,12,18 * * *",
-            croniter("0 0,6,12,18 * * *", datetime.now(timezone.utc)).get_next(datetime),
+            croniter(
+                "0 0,6,12,18 * * *", datetime.now(timezone.utc) + timedelta(minutes=1)
+            ).get_next(datetime),
         ),
     ],
 )

@@ -295,7 +295,7 @@ class ContextVariableDocumentStore(ContextVariableStore):
                     {
                         "freshness_rules": params["freshness_rules"]
                         if "freshness_rules" in params and params["freshness_rules"]
-                        else {}
+                        else None
                     }
                 ),
             }
