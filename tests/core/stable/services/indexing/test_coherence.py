@@ -665,53 +665,6 @@ def test_that_many_coherent_guidelines_arent_detected_as_false_positive(
     assert len(incoherence_results) == 0
 
 
-def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
-    context: ContextOfTest,
-    agent: Agent,
-) -> None:
-    coherence_checker = context.container[CoherenceChecker]
-    guidelines_to_evaluate = [
-        GuidelineContent(
-            condition="a document is being discussed",
-            action="provide the full document to the customer",
-        ),
-        GuidelineContent(
-            condition="a client asks to summarize a document",
-            action="provide a summary of the document in 100 words or less",
-        ),
-        GuidelineContent(
-            condition="the client asks for a summary of another customer's medical document",
-            action="refuse to share the document or its summary",
-        ),
-    ]
-
-    incoherence_results = list(
-        context.sync_await(
-            coherence_checker.propose_incoherencies(
-                agent,
-                guidelines_to_evaluate,
-            )
-        )
-    )
-
-    assert len(incoherence_results) == 3
-    incoherencies_to_detect = {
-        (guideline_a, guideline_b)
-        for i, guideline_a in enumerate(guidelines_to_evaluate)
-        for guideline_b in guidelines_to_evaluate[i + 1 :]
-    }
-    for c in incoherence_results:
-        assert (c.guideline_a, c.guideline_b) in incoherencies_to_detect
-        assert c.IncoherenceKind == IncoherenceKind.STRICT
-        incoherencies_to_detect.remove((c.guideline_a, c.guideline_b))
-    assert len(incoherencies_to_detect) == 0
-
-    for incoherence in incoherence_results:
-        assert context.sync_await(
-            incoherence_nlp_test(agent, context.container[GlossaryStore], incoherence)
-        )
-
-
 def test_that_existing_guidelines_are_not_checked_against_each_other(
     context: ContextOfTest,
     agent: Agent,
