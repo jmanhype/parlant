@@ -164,7 +164,6 @@ def create_router(
     @router.get(
         "/{tag_id}",
         operation_id="read_tag",
-        status_code=status.HTTP_200_OK,
         response_model=TagDTO,
         responses={
             status.HTTP_200_OK: {
@@ -190,7 +189,6 @@ def create_router(
     @router.get(
         "",
         operation_id="list_tags",
-        status_code=status.HTTP_200_OK,
         response_model=list[TagDTO],
         responses={
             status.HTTP_200_OK: {
@@ -214,7 +212,6 @@ def create_router(
     @router.patch(
         "/{tag_id}",
         operation_id="update_tag",
-        status_code=status.HTTP_200_OK,
         response_model=TagDTO,
         responses={
             status.HTTP_200_OK: {
