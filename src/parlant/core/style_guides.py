@@ -29,7 +29,7 @@ StyleGuideId = NewType("StyleGuideId", str)
 
 @dataclass(frozen=True)
 class StyleGuideEvent:
-    source: EventSource
+    source: EventSource  # Why sequence?
     message: str
 
 
