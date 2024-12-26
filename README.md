@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>A Client/Server Framework for Building LLM Guided Agents</h2>
+  <h2>A Client/Server Framework for Building Guided LLM Agents</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
