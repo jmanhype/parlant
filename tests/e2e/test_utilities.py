@@ -26,6 +26,8 @@ import sys
 import time
 from typing import Any, AsyncIterator, Iterator, Optional, TypedDict, cast
 
+from tests.test_utilities import SERVER_ADDRESS, SERVER_PORT
+
 
 class _ServiceDTO(TypedDict):
     name: str
@@ -59,9 +61,6 @@ class _ContextVariableValueDTO(TypedDict):
     last_modified: str
     data: Any
 
-
-SERVER_PORT = 8089
-SERVER_ADDRESS = f"http://localhost:{SERVER_PORT}"
 
 LOGGER = logging.getLogger(__name__)
 

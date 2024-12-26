@@ -56,7 +56,7 @@ from parlant.core.tools import (
     ToolResultError,
     normalize_tool_arguments,
 )
-from parlant.core.common import DefaultBaseModel, JSONSerializable
+from parlant.core.common import DefaultBaseModel, ItemNotFoundError, JSONSerializable, UniqueId
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.sessions import SessionId, SessionStatus
@@ -125,21 +125,33 @@ class _ResolvedToolParameterTyped(NamedTuple):
     is_optional: bool
 
 
-def _tool_decorator_impl(
-    **kwargs: Unpack[_ToolDecoratorParams],
-) -> Callable[[ToolFunction], ToolEntry]:
-    def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
-        if not param.annotation.__name__ == "Optional":
-            return _ResolvedToolParameterTyped(
-                t=param.annotation,
-                is_optional=False,
-            )
-        else:
+def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
+    try:
+        if args := get_args(param.annotation):
+            if getattr(param.annotation, "__name__", None) != "Optional":
+                if len(args) != 2:
+                    raise Exception()
+                if type(None) not in args:
+                    raise Exception()
+                if all(t is None for t in args):
+                    raise Exception()
+
             return _ResolvedToolParameterTyped(
                 t=get_args(param.annotation)[0],
                 is_optional=True,
             )
+        else:
+            return _ResolvedToolParameterTyped(
+                t=param.annotation,
+                is_optional=False,
+            )
+    except Exception:
+        raise TypeError(f"Parameter type '{param.annotation}' is not supported in tool functions")
 
+
+def _tool_decorator_impl(
+    **kwargs: Unpack[_ToolDecoratorParams],
+) -> Callable[[ToolFunction], ToolEntry]:
     def _ensure_valid_tool_signature(func: ToolFunction) -> None:
         signature = inspect.signature(func)
 
@@ -206,7 +218,8 @@ def _tool_decorator_impl(
     def _find_required_params(func: ToolFunction) -> list[str]:
         parameters = list(inspect.signature(func).parameters.values())
         parameters = parameters[1:]  # Skip tool context parameter
-        return [p.name for p in parameters if p.annotation.__name__ != "Optional"]
+        resolved_params = {p.name: _resolve_param_type(p) for p in parameters}
+        return [name for name, type in resolved_params.items() if not type.is_optional]
 
     def decorator(func: ToolFunction) -> ToolEntry:
         _ensure_valid_tool_signature(func)
@@ -269,13 +282,16 @@ class PluginServer:
         tools: Sequence[ToolEntry],
         port: int = 8089,
         host: str = "0.0.0.0",
+        on_app_created: Callable[[FastAPI], Awaitable[FastAPI]] | None = None,
     ) -> None:
         self.tools = {entry.tool.name: entry for entry in tools}
         self.host = host
         self.port = port
         self.url = f"http://{self.host}:{self.port}"
 
-        self._server: Optional[uvicorn.Server] = None
+        self._on_app_created = on_app_created
+
+        self._server: uvicorn.Server | None = None
 
     async def __aenter__(self) -> PluginServer:
         self._task = asyncio.create_task(self.serve())
@@ -307,6 +323,9 @@ class PluginServer:
     async def serve(self) -> None:
         app = self._create_app()
 
+        if self._on_app_created:
+            app = await self._on_app_created(app)
+
         config = uvicorn.Config(
             app,
             host=self.host,
@@ -336,13 +355,28 @@ class PluginServer:
 
         @app.get("/tools/{name}")
         async def read_tool(name: str) -> ReadToolResponse:
-            return ReadToolResponse(tool=self.tools[name].tool)
+            try:
+                spec = self.tools[name]
+            except KeyError:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Tool: '{name}' does not exists",
+                )
+            return ReadToolResponse(tool=spec.tool)
 
         @app.post("/tools/{name}/calls")
         async def call_tool(
             name: str,
             request: CallToolRequest,
         ) -> StreamingResponse:
+            try:
+                self.tools[name]
+            except KeyError:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Tool: '{name}' does not exists",
+                )
+
             end = asyncio.Event()
             chunks_received = asyncio.Semaphore(value=0)
             lock = asyncio.Lock()
@@ -495,6 +529,8 @@ class PluginClient(ToolService):
     @override
     async def read_tool(self, name: str) -> Tool:
         response = await self._http_client.get(self._get_url(f"/tools/{name}"))
+        if response.status_code == status.HTTP_404_NOT_FOUND:
+            raise ItemNotFoundError(UniqueId(name))
         content = response.json()
         tool = content["tool"]
         return Tool(
@@ -524,6 +560,9 @@ class PluginClient(ToolService):
                     "arguments": arguments,
                 },
             ) as response:
+                if response.status_code == status.HTTP_404_NOT_FOUND:
+                    raise ItemNotFoundError(UniqueId(name))
+
                 if response.is_error:
                     raise ToolExecutionError(
                         tool_name=name,

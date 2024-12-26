@@ -16,11 +16,12 @@ import asyncio
 import hashlib
 import json
 import logging
-from contextlib import AsyncExitStack, contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from time import sleep
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     Generator,
@@ -32,10 +33,13 @@ from typing import (
     cast,
 )
 
+from fastapi import FastAPI, Query, Request, Response
+from fastapi.responses import JSONResponse
+import httpx
 from lagom import Container
+import uvicorn
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.nlp.openai import GPT_4o
-from parlant.bin.server import PARLANT_HOME_DIR
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.application import Application
 from parlant.core.async_utils import Timeout
@@ -59,6 +63,7 @@ from parlant.core.nlp.generation import (
     UsageInfo,
 )
 from parlant.core.nlp.tokenization import EstimatingTokenizer
+from parlant.core.services.tools.plugins import PluginServer, ToolEntry
 from parlant.core.sessions import (
     _GenerationInfoDocument,
     _UsageInfoDocument,
@@ -74,6 +79,12 @@ from parlant.core.persistence.document_database import DocumentCollection
 
 T = TypeVar("T")
 GLOBAL_CACHE_FILE = Path("schematic_generation_test_cache.json")
+
+SERVER_PORT = 8089
+SERVER_ADDRESS = f"http://localhost:{SERVER_PORT}"
+
+PLUGIN_SERVER_PORT = 8091
+OPENAPI_SERVER_PORT = 8092
 
 
 class NLPTestSchema(DefaultBaseModel):
@@ -352,7 +363,7 @@ def get_when_done_or_timeout(
 TBaseModel = TypeVar("TBaseModel", bound=DefaultBaseModel)
 
 
-class _SchematicGenerationResultDocument(TypedDict, total=False):
+class SchematicGenerationResultDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
     content: JSONSerializable
@@ -365,7 +376,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
     def __init__(
         self,
         base_generator: SchematicGenerator[TBaseModel],
-        collection: DocumentCollection[_SchematicGenerationResultDocument],
+        collection: DocumentCollection[SchematicGenerationResultDocument],
         use_cache: bool,
     ):
         self._base_generator = base_generator
@@ -391,7 +402,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         self,
         id: str,
         result: SchematicGenerationResult[TBaseModel],
-    ) -> _SchematicGenerationResultDocument:
+    ) -> SchematicGenerationResultDocument:
         def serialize_generation_info(generation: GenerationInfo) -> _GenerationInfoDocument:
             return _GenerationInfoDocument(
                 schema_name=generation.schema_name,
@@ -404,7 +415,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
                 ),
             )
 
-        return _SchematicGenerationResultDocument(
+        return SchematicGenerationResultDocument(
             id=ObjectId(id),
             version=self.VERSION.to_string(),
             content=result.content.model_dump(mode="json"),
@@ -413,7 +424,7 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
 
     def _deserialize_result(
         self,
-        doc: _SchematicGenerationResultDocument,
+        doc: SchematicGenerationResultDocument,
         schema_type: type[TBaseModel],
     ) -> SchematicGenerationResult[TBaseModel]:
         def deserialize_generation_info(
@@ -475,17 +486,127 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
         return self._base_generator.tokenizer
 
 
+@asynccontextmanager
 async def create_schematic_generation_result_collection(
-    stack: AsyncExitStack,
     logger: Logger,
-) -> DocumentCollection[_SchematicGenerationResultDocument]:
-    _db = await stack.enter_async_context(
-        JSONFileDocumentDatabase(
-            logger,
-            PARLANT_HOME_DIR / GLOBAL_CACHE_FILE,
+) -> AsyncIterator[DocumentCollection[SchematicGenerationResultDocument]]:
+    async with JSONFileDocumentDatabase(logger, GLOBAL_CACHE_FILE) as db:
+        yield await db.get_or_create_collection(
+            name="schematic_generation_result_cache",
+            schema=SchematicGenerationResultDocument,
         )
-    )
 
-    return await _db.get_or_create_collection(
-        name="cache_schematic_generation_results", schema=_SchematicGenerationResultDocument
-    )
+
+@asynccontextmanager
+async def run_service_server(tools: list[ToolEntry]) -> AsyncIterator[PluginServer]:
+    async with PluginServer(
+        tools=tools,
+        port=PLUGIN_SERVER_PORT,
+        host="127.0.0.1",
+    ) as server:
+        try:
+            yield server
+        finally:
+            await server.shutdown()
+
+
+OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
+
+
+async def one_required_query_param(
+    query_param: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": query_param})
+
+
+async def two_required_query_params(
+    query_param_1: int = Query(),
+    query_param_2: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": query_param_1 + query_param_2})
+
+
+class OneBodyParam(DefaultBaseModel):
+    body_param: str
+
+
+async def one_required_body_param(
+    body: OneBodyParam,
+) -> JSONResponse:
+    return JSONResponse({"result": body.body_param})
+
+
+class TwoBodyParams(DefaultBaseModel):
+    body_param_1: str
+    body_param_2: str
+
+
+async def two_required_body_params(
+    body: TwoBodyParams,
+) -> JSONResponse:
+    return JSONResponse({"result": body.body_param_1 + body.body_param_2})
+
+
+async def one_required_query_param_one_required_body_param(
+    body: OneBodyParam,
+    query_param: int = Query(),
+) -> JSONResponse:
+    return JSONResponse({"result": f"{body.body_param}: {query_param}"})
+
+
+def rng_app() -> FastAPI:
+    app = FastAPI(servers=[{"url": OPENAPI_SERVER_URL}])
+
+    @app.middleware("http")
+    async def debug_request(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        return response
+
+    for tool in TOOLS:
+        registration_func = app.post if "body" in tool.__name__ else app.get
+        registration_func(f"/{tool.__name__}", operation_id=tool.__name__)(tool)
+
+    return app
+
+
+class DummyDTO(DefaultBaseModel):
+    number: int
+    text: str
+
+
+async def dto_object(dto: DummyDTO) -> JSONResponse:
+    return JSONResponse({})
+
+
+@asynccontextmanager
+async def run_openapi_server(app: FastAPI) -> AsyncIterator[None]:
+    config = uvicorn.Config(app=app, port=OPENAPI_SERVER_PORT)
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+    yield
+    server.should_exit = True
+    await task
+
+
+async def get_json(address: str, params: dict[str, str] = {}) -> Any:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        response = await client.get(address, params=params)
+        response.raise_for_status()
+        return response.json()
+
+
+async def get_openapi_spec(address: str) -> str:
+    return json.dumps(await get_json(f"{address}/openapi.json"), indent=2)
+
+
+TOOLS = (
+    one_required_query_param,
+    two_required_query_params,
+    one_required_body_param,
+    two_required_body_params,
+    one_required_query_param_one_required_body_param,
+    dto_object,
+)

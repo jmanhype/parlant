@@ -21,6 +21,7 @@ import traceback
 from typing import Any, Mapping, NewType, Optional, Sequence, cast
 
 from parlant.core import async_utils
+from parlant.core.shots import Shot, ShotCollection
 from parlant.core.tools import Tool, ToolContext
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
@@ -66,6 +67,12 @@ class ToolCallInferenceSchema(DefaultBaseModel):
     name: str
     subtleties_to_be_aware_of: str
     tool_calls_for_candidate_tool: list[ToolCallEvaluation]
+
+
+@dataclass
+class ToolCallerInferenceShot(Shot):
+    context: str
+    expected_result: ToolCallInferenceSchema
 
 
 @dataclass(frozen=True)
@@ -185,6 +192,7 @@ class ToolCaller:
             batch,
             reference_tools,
             staged_events,
+            await self.shots(),
         )
 
         with self._logger.operation(f"Tool classification for tool_id '{batch[0]}'"):
@@ -221,6 +229,22 @@ class ToolCaller:
 
             return tool_results
 
+    async def shots(self) -> Sequence[ToolCallerInferenceShot]:
+        return await shot_collection.list()
+
+    def _format_shot(
+        self,
+        shot: ToolCallerInferenceShot,
+    ) -> str:
+        return f"""
+- **Context**:
+{shot.context}
+
+- **Expected Result**:
+```json
+{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+```"""
+
     def _format_tool_call_inference_prompt(
         self,
         agents: Sequence[Agent],
@@ -231,6 +255,7 @@ class ToolCaller:
         batch: tuple[ToolId, Tool, list[GuidelineProposition]],
         reference_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
+        shots: Sequence[ToolCallerInferenceShot],
     ) -> str:
         assert len(agents) == 1
 
@@ -307,255 +332,21 @@ The exact format of your output will be provided to you at the end of this promp
 The following examples show correct outputs for various hypothetical situations.
 Only the responses are provided, without the interaction history or tool descriptions, though these can be inferred from the responses.
 
+"""  # noqa
+        )
+        builder.add_section(
+            """
 EXAMPLES
 -----------------
+"""
+            + "\n".join(
+                f"""
+Example #{i}: ###
+{self._format_shot(shot)}
 ###
-Example 1:
-
-Context - the id of the customer is 12345, and check_balance(12345) is already listed as a staged tool call
-###
-```json
-{{
-    "last_customer_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
-    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_balance",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "We need the client's current balance to respond to their question",
-            "applicability_score": 9,
-            "arguments": {{
-                "customer_id": "12345"
-            }},
-            "same_call_is_already_staged": true,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "should_run": false
-        }}
-    ]
-}}
-```
-
-###
-Example 2:
-
-Context - the id of the customer is 12345, and check_balance(12345) is listed as the only staged tool call
-###
-```json
-{{
-    "last_customer_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
-    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "ping_supervisor",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-
-            "applicability_rationale": "There is no reason to notify the supervisor of anything",
-            "applicability_score": 1,
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "should_run": false
-        }}
-    ]
-}}
-```
-
-###
-Example 3:
-
-Context - the id of the customer is 12345, and check_balance(12345) is the only staged tool call, assume some irrelevant reference tools exists
-###
-```json
-{{
-    "last_customer_message": "Do I have enough money in my account to get a taxi from New York to Newark?",
-    "most_recent_customer_inquiry_or_need": "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, and report the result to the customer",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_ride_price",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
-            "applicability_score": 9,
-            "arguments": {{
-                "origin": "New York",
-                "Destination": "Newark"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "should_run": true
-        }}
-    ]
-}}
-```
-
-###
-Example 4:
-Context - the candidate tool is check_calories(<product_name>): returns the number of calories in a the product
-- one reference tool of check_stock(): returns all menu items that are currently in stock
-###
-```json
-{{
-    "last_customer_message": "Which pizza has more calories, the classic margherita or the deep dish?",
-    "most_recent_customer_inquiry_or_need": "Checking the number of calories in two types of pizza and replying with which one has more",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_calories",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "We need to check how many calories are in the margherita pizza",
-            "applicability_score": 9,
-            "arguments": {{
-                "product_name": "margherita"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "should_run": true
-
-        }},
-        {{
-            "applicability_rationale": "We need to check how many calories are in the deep dish pizza",
-            "applicability_score": 9,
-            "arguments": {{
-                "product_name": "deep dish"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "None of the available reference tools are deemed more suitable for the candidate tool’s application",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "should_run": true
-        }}
-    ]
-}}
-```
-
-###
-Example 5:
-Context - the candidate tool is check_vehicle_price(model: str), and reference tool of - check_motorcycle_price(model: str)
-###
-```json
-{{
-    "last_customer_message": "What's your price for a Harley-Davidson Street Glide?",
-    "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_motorcycle_price",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "we need to check for the price of a specific motorcycle model",
-            "applicability_score": 9,
-            "arguments": {{
-                "model": "Harley-Davidson Street Glide"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "candidate tool is more specialized for this use case than the rejected tools",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": false,
-            "better_rejected_tool_name": "check_motorcycle_price",
-            "better_rejected_tool_rationale": "the only reference tool is less relevant than the candidate tool, since the candidate tool is designed specifically for motorcycle models, and not just general vehicles.",
-            "should_run": true
-        }}
-    ]
-}}
-```
-
-###
-Example 6:
-Context - the candidate tool is check_motorcycle_price(model: str), and one reference tool of - check_vehicle_price(model: str)
-###
-```json
-{{
-    "last_customer_message": "What's your price for a Harley-Davidson Street Glide?",
-    "most_recent_customer_inquiry_or_need": "Checking the price of a Harley-Davidson Street Glide motorcycle",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_vehicle_price",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
-            "applicability_score": 8,
-            "arguments": {{
-                "model": "Harley-Davidson Street Glide"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_motorcycle_price",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
-            "better_rejected_tool_name": "check_motorcycle_price",
-            "better_rejected_tool_rationale": "check_motorcycle_price applies specifically for motorcycles, which is better fitting for this case compared to the more general check_vehicle_price",
-            "should_run": false
-        }}
-    ]
-}}
-```
-###
-Example 7:
-Context - the candidate tool is check_indoor_temperature(room: str), and reference tool of check_temperature(location: str, type: str)
-###
-```json
-{{
-    "last_customer_message": "What's the temperature in the living room right now?",
-    "most_recent_customer_inquiry_or_need": "Checking the current temperature in the living room",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "check_indoor_temperature",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "need to check the current temperature in a specific room",
-            "applicability_score": 7,
-            "arguments": {{
-                "room": "living room"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_temperature",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
-            "better_rejected_tool_name": "check_temperature",
-            "better_rejected_tool_rationale": "check_temperature is more versatile and can handle both indoor and outdoor locations with the type parameter, making it more suitable than the room-specific tool",
-            "should_run": false
-        }}
-    ]
-}}
-```
-
-###
-Example 8:
-Context - the candidate tool is search_product(query: str), and reference tool of search_electronics(query: str, specifications: dict)
-###
-```json
-{{
-    "last_customer_message": "I'm looking for a gaming laptop with at least 16GB RAM and an RTX 3080",
-    "most_recent_customer_inquiry_or_need": "Searching for a gaming laptop with specific technical requirements",
-    "most_recent_customer_inquiry_or_need_was_already_resolved": false,
-    "name": "search_product",
-    "subtleties_to_be_aware_of": "<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
-    "tool_calls_for_candidate_tool": [
-        {{
-            "applicability_rationale": "need to search for a product with specific technical requirements",
-            "applicability_score": 6,
-            "arguments": {{
-                "query": "gaming laptop RTX 3080 16GB RAM"
-            }},
-            "same_call_is_already_staged": false,
-            "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as search_electronics",
-            "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": true,
-            "better_rejected_tool_name": "search_electronics",
-            "better_rejected_tool_rationale": "search_electronics is more appropriate as it allows for structured specification of technical requirements rather than relying on text search, which will provide more accurate results for electronic products",
-            "should_run": false
-        }}
-    ]
-}}
-```
-"""  # noqa
+"""
+                for i, shot in enumerate(shots, start=1)
+            )
         )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
@@ -633,7 +424,8 @@ However, note that you may choose to have multiple entries in 'tool_calls_for_ca
         """
         )
 
-        return builder.build()
+        prompt = builder.build()
+        return prompt
 
     def _add_tool_definitions_section(
         self, candidate_tool: tuple[ToolId, Tool], reference_tools: Sequence[tuple[ToolId, Tool]]
@@ -796,3 +588,269 @@ Guidelines:
                     "control": {},
                 },
             )
+
+
+_baseline_shots: Sequence[ToolCallerInferenceShot] = [
+    ToolCallerInferenceShot(
+        description="",
+        context="the id of the customer is 12345, and check_balance(12345) is already listed as a staged tool call",
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="Do I have enough money in my account to get a taxi from New York to Newark?",
+            most_recent_customer_inquiry_or_need=(
+                "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, "
+                "and report the result to the customer"
+            ),
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_balance",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "We need the client's current balance to respond to their question",
+                    "applicability_score": 9,
+                    "arguments": {"customer_id": "12345"},
+                    "same_call_is_already_staged": True,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": (
+                        "There are no tools in the list of rejected tools"
+                    ),
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "better_rejected_tool_name": None,
+                    "better_rejected_tool_rationale": None,
+                    "should_run": False,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context="the id of the customer is 12345, and check_balance(12345) is listed as the only staged tool call",
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="Do I have enough money in my account to get a taxi from New York to Newark?",
+            most_recent_customer_inquiry_or_need=(
+                "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, "
+                "and report the result to the customer"
+            ),
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="ping_supervisor",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "There is no reason to notify the supervisor of anything",
+                    "applicability_score": 1,
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "should_run": False,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the id of the customer is 12345, and check_balance(12345) is the only staged tool call; "
+            "some irrelevant reference tools exist"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="Do I have enough money in my account to get a taxi from New York to Newark?",
+            most_recent_customer_inquiry_or_need=(
+                "Checking customer's balance, comparing it to the price of a taxi from New York to Newark, "
+                "and report the result to the customer"
+            ),
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_ride_price",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
+                    "applicability_score": 9,
+                    "arguments": {"origin": "New York", "Destination": "Newark"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": (
+                        "None of the available reference tools are deemed more suitable for the candidate tool’s application"
+                    ),
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "better_rejected_tool_name": None,
+                    "better_rejected_tool_rationale": None,
+                    "should_run": True,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the candidate tool is check_calories(<product_name>): returns the number of calories in a product; "
+            "one reference tool is check_stock()"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="Which pizza has more calories, the classic margherita or the deep dish?",
+            most_recent_customer_inquiry_or_need=(
+                "Checking the number of calories in two types of pizza and replying with which one has more"
+            ),
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_calories",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "We need to check how many calories are in the margherita pizza",
+                    "applicability_score": 9,
+                    "arguments": {"product_name": "margherita"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": (
+                        "None of the available reference tools are deemed more suitable for the candidate tool’s application"
+                    ),
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "better_rejected_tool_name": None,
+                    "better_rejected_tool_rationale": None,
+                    "should_run": True,
+                },
+                {
+                    "applicability_rationale": "We need to check how many calories are in the deep dish pizza",
+                    "applicability_score": 9,
+                    "arguments": {"product_name": "deep dish"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": (
+                        "None of the available reference tools are deemed more suitable for the candidate tool’s application"
+                    ),
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "better_rejected_tool_name": None,
+                    "better_rejected_tool_rationale": None,
+                    "should_run": True,
+                },
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the candidate tool is check_vehicle_price(model: str), and reference tool is check_motorcycle_price(model: str)"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="What's your price for a Harley-Davidson Street Glide?",
+            most_recent_customer_inquiry_or_need="Checking the price of a Harley-Davidson Street Glide motorcycle",
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_motorcycle_price",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "we need to check for the price of a specific motorcycle model",
+                    "applicability_score": 9,
+                    "arguments": {"model": "Harley-Davidson Street Glide"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": (
+                        "candidate tool is more specialized for this use case than the rejected tools"
+                    ),
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
+                    "better_rejected_tool_name": "check_motorcycle_price",
+                    "better_rejected_tool_rationale": (
+                        "the only reference tool is less relevant than the candidate tool, "
+                        "since the candidate tool is designed specifically for motorcycle models, "
+                        "and not just general vehicles."
+                    ),
+                    "should_run": True,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the candidate tool is check_motorcycle_price(model: str), and one reference tool is check_vehicle_price(model: str)"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="What's your price for a Harley-Davidson Street Glide?",
+            most_recent_customer_inquiry_or_need="Checking the price of a Harley-Davidson Street Glide motorcycle",
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_vehicle_price",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
+                    "applicability_score": 8,
+                    "arguments": {"model": "Harley-Davidson Street Glide"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_motorcycle_price",
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": True,
+                    "better_rejected_tool_name": "check_motorcycle_price",
+                    "better_rejected_tool_rationale": (
+                        "check_motorcycle_price applies specifically for motorcycles, "
+                        "which is better fitting for this case compared to the more general check_vehicle_price"
+                    ),
+                    "should_run": False,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the candidate tool is check_indoor_temperature(room: str), and reference tool is check_temperature(location: str, type: str)"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="What's the temperature in the living room right now?",
+            most_recent_customer_inquiry_or_need="Checking the current temperature in the living room",
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="check_indoor_temperature",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "need to check the current temperature in a specific room",
+                    "applicability_score": 7,
+                    "arguments": {"room": "living room"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_temperature",
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": True,
+                    "better_rejected_tool_name": "check_temperature",
+                    "better_rejected_tool_rationale": (
+                        "check_temperature is more versatile and can handle both indoor and outdoor locations "
+                        "with the type parameter, making it more suitable than the room-specific tool"
+                    ),
+                    "should_run": False,
+                }
+            ],
+        ),
+    ),
+    ToolCallerInferenceShot(
+        description="",
+        context=(
+            "the candidate tool is search_product(query: str), and reference tool is "
+            "search_electronics(query: str, specifications: dict)"
+        ),
+        expected_result=ToolCallInferenceSchema(
+            last_customer_message="I'm looking for a gaming laptop with at least 16GB RAM and an RTX 3080",
+            most_recent_customer_inquiry_or_need="Searching for a gaming laptop with specific technical requirements",
+            most_recent_customer_inquiry_or_need_was_already_resolved=False,
+            name="search_product",
+            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            tool_calls_for_candidate_tool=[
+                {
+                    "applicability_rationale": "need to search for a product with specific technical requirements",
+                    "applicability_score": 6,
+                    "arguments": {"query": "gaming laptop RTX 3080 16GB RAM"},
+                    "same_call_is_already_staged": False,
+                    "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as search_electronics",
+                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": True,
+                    "better_rejected_tool_name": "search_electronics",
+                    "better_rejected_tool_rationale": (
+                        "search_electronics is more appropriate as it allows for structured "
+                        "specification of technical requirements rather than relying on text search, "
+                        "which will provide more accurate results for electronic products"
+                    ),
+                    "should_run": False,
+                }
+            ],
+        ),
+    ),
+]
+
+
+shot_collection = ShotCollection[ToolCallerInferenceShot](_baseline_shots)

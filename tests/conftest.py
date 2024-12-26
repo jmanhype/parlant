@@ -14,11 +14,9 @@
 
 import asyncio
 from contextlib import AsyncExitStack
-import os
-import tempfile
+from dataclasses import dataclass
 from typing import Any, AsyncIterator, cast
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 import httpx
 from lagom import Container, Singleton
 from pytest import fixture, Config
@@ -33,6 +31,9 @@ from parlant.core.context_variables import ContextVariableDocumentStore, Context
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerDocumentStore, CustomerStore
+from parlant.core.engines.alpha import guideline_proposer
+from parlant.core.engines.alpha import tool_caller
+from parlant.core.engines.alpha import message_event_generator
 from parlant.core.evaluations import (
     EvaluationListener,
     PollingEvaluationListener,
@@ -40,7 +41,7 @@ from parlant.core.evaluations import (
     EvaluationStore,
 )
 from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.generation import T, SchematicGenerator
 from parlant.core.guideline_connections import (
     GuidelineConnectionDocumentStore,
     GuidelineConnectionStore,
@@ -48,6 +49,7 @@ from parlant.core.guideline_connections import (
 from parlant.core.guidelines import GuidelineDocumentStore, GuidelineStore
 from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.core.nlp.service import NLPService
+from parlant.core.persistence.document_database import DocumentCollection
 from parlant.core.services.tools.service_registry import (
     ServiceDocumentRegistry,
     ServiceRegistry,
@@ -62,13 +64,15 @@ from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
+    GuidelinePropositionShot,
     GuidelinePropositionsSchema,
 )
 from parlant.core.engines.alpha.message_event_generator import (
     MessageEventGenerator,
+    MessageEventGeneratorShot,
     MessageEventSchema,
 )
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
+from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
@@ -83,21 +87,64 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from parlant.core.logging import Logger, StdoutLogger
+from parlant.core.logging import LogLevel, Logger, StdoutLogger
 from parlant.core.application import Application
 from parlant.core.agents import AgentDocumentStore, AgentStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
     GuidelineToolAssociationStore,
 )
+from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.tools import LocalToolService
 
 from .test_utilities import (
     CachedSchematicGenerator,
+    SchematicGenerationResultDocument,
     SyncAwaiter,
     create_schematic_generation_result_collection,
 )
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    group = parser.getgroup("caching")
+
+    group.addoption(
+        "--no-cache",
+        action="store_true",
+        dest="no_cache",
+        default=False,
+        help="Whether to avoid using the cache during the current test suite",
+    )
+
+
+@fixture
+def correlator() -> ContextualCorrelator:
+    return ContextualCorrelator()
+
+
+@fixture
+def logger(correlator: ContextualCorrelator) -> Logger:
+    return StdoutLogger(correlator=correlator, log_level=LogLevel.INFO)
+
+
+@dataclass(frozen=True)
+class CacheOptions:
+    cache_enabled: bool
+    cache_collection: DocumentCollection[SchematicGenerationResultDocument] | None
+
+
+@fixture
+async def cache_options(
+    request: pytest.FixtureRequest,
+    logger: Logger,
+) -> AsyncIterator[CacheOptions]:
+    if not request.config.getoption("no_cache", True):
+        logger.warning("*** Cache is enabled")
+        async with create_schematic_generation_result_collection(logger=logger) as collection:
+            yield CacheOptions(cache_enabled=True, cache_collection=collection)
+    else:
+        yield CacheOptions(cache_enabled=False, cache_collection=None)
 
 
 @fixture
@@ -110,27 +157,37 @@ def test_config(pytestconfig: Config) -> dict[str, Any]:
     return {"patience": 10}
 
 
+async def make_schematic_generator(
+    container: Container,
+    cache_options: CacheOptions,
+    schema: type[T],
+) -> SchematicGenerator[T]:
+    base_generator = await container[NLPService].get_schematic_generator(schema)
+
+    if cache_options.cache_enabled:
+        assert cache_options.cache_collection
+
+        return CachedSchematicGenerator[T](
+            base_generator=base_generator,
+            collection=cache_options.cache_collection,
+            use_cache=True,
+        )
+    else:
+        return base_generator
+
+
 @fixture
-async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
+async def container(
+    correlator: ContextualCorrelator,
+    logger: Logger,
+    cache_options: CacheOptions,
+) -> AsyncIterator[Container]:
     container = Container()
 
-    stochastic_plan = next(
-        (arg.split("=")[1] for arg in request.config.invocation_params.args if "--plan" in arg),
-        None,
-    )
-
-    use_cache = {
-        None: True,
-        "initial": True,
-    }.get(stochastic_plan, False)
-
-    container[ContextualCorrelator] = Singleton(ContextualCorrelator)
-    container[Logger] = StdoutLogger(container[ContextualCorrelator])
+    container[ContextualCorrelator] = correlator
+    container[Logger] = logger
 
     async with AsyncExitStack() as stack:
-        temp_dir = stack.enter_context(tempfile.TemporaryDirectory())
-        os.environ["PARLANT_HOME"] = temp_dir
-
         container[BackgroundTaskService] = await stack.enter_async_context(
             BackgroundTaskService(container[Logger])
         )
@@ -190,44 +247,24 @@ async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
             )
         )
 
-        schematic_generation_result_collection = (
-            await create_schematic_generation_result_collection(stack, logger=container[Logger])
-        )
-
-        container[SchematicGenerator[GuidelinePropositionsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(GuidelinePropositionsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[MessageEventSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(MessageEventSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[ToolCallInferenceSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ToolCallInferenceSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[ConditionsEntailmentTestsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ConditionsEntailmentTestsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-
-        container[SchematicGenerator[ActionsContradictionTestsSchema]] = CachedSchematicGenerator(
-            await container[NLPService].get_schematic_generator(ActionsContradictionTestsSchema),
-            schematic_generation_result_collection,
-            use_cache,
-        )
-        container[SchematicGenerator[GuidelineConnectionPropositionsSchema]] = (
-            CachedSchematicGenerator(
-                await container[NLPService].get_schematic_generator(
-                    GuidelineConnectionPropositionsSchema
-                ),
-                schematic_generation_result_collection,
-                use_cache,
+        for generation_schema in (
+            GuidelinePropositionsSchema,
+            MessageEventSchema,
+            ToolCallInferenceSchema,
+            ConditionsEntailmentTestsSchema,
+            ActionsContradictionTestsSchema,
+            GuidelineConnectionPropositionsSchema,
+        ):
+            container[SchematicGenerator[generation_schema]] = await make_schematic_generator(  # type: ignore
+                container,
+                cache_options,
+                generation_schema,
             )
+
+        container[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
+        container[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
+        container[ShotCollection[MessageEventGeneratorShot]] = (
+            message_event_generator.shot_collection
         )
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
@@ -254,12 +291,6 @@ async def container(request: pytest.FixtureRequest) -> AsyncIterator[Container]:
 @fixture
 async def api_app(container: Container) -> ASGIApplication:
     return await create_api_app(container)
-
-
-@fixture
-async def client(api_app: FastAPI) -> AsyncIterator[TestClient]:
-    with TestClient(api_app) as client:
-        yield client
 
 
 @fixture

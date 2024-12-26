@@ -13,95 +13,31 @@
 # limitations under the License.
 
 import asyncio
-from contextlib import asynccontextmanager
 import json
 import os
 import tempfile
-from typing import Any, AsyncIterator, Awaitable, Callable
-from fastapi import FastAPI, Query, Request, Response
-from fastapi.responses import JSONResponse
+from typing import Any
 import httpx
-import uvicorn
+
+from parlant.core.services.tools.plugins import tool
+from parlant.core.tools import ToolResult, ToolContext
 
 from tests.e2e.test_utilities import (
     CLI_CLIENT_PATH,
-    SERVER_ADDRESS,
-    SERVER_PORT,
     ContextOfTest,
     is_server_responsive,
     run_server,
 )
-from parlant.core.services.tools.plugins import tool, ToolEntry, PluginServer
-from parlant.core.tools import ToolResult, ToolContext
-
-REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
-
-OPENAPI_SERVER_PORT = 8091
-OPENAPI_SERVER_URL = f"http://localhost:{OPENAPI_SERVER_PORT}"
-
-
-@asynccontextmanager
-async def run_openapi_server(
-    app: FastAPI,
-) -> AsyncIterator[None]:
-    config = uvicorn.Config(app=app, port=OPENAPI_SERVER_PORT)
-    server = uvicorn.Server(config)
-    task = asyncio.create_task(server.serve())
-    yield
-    server.should_exit = True
-    await task
-
-
-async def one_required_query_param(
-    query_param: int = Query(),
-) -> JSONResponse:
-    return JSONResponse({"result": query_param})
-
-
-async def two_required_query_params(
-    query_param_1: int = Query(),
-    query_param_2: int = Query(),
-) -> JSONResponse:
-    return JSONResponse({"result": query_param_1 + query_param_2})
-
-
-TOOLS = (
-    one_required_query_param,
-    two_required_query_params,
+from tests.test_utilities import (
+    OPENAPI_SERVER_URL,
+    SERVER_ADDRESS,
+    SERVER_PORT,
+    rng_app,
+    run_openapi_server,
+    run_service_server,
 )
 
-
-def rng_app() -> FastAPI:
-    app = FastAPI(servers=[{"url": OPENAPI_SERVER_URL}])
-
-    @app.middleware("http")
-    async def debug_request(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        response = await call_next(request)
-        return response
-
-    for t in TOOLS:
-        registration_func = app.post if "body" in t.__name__ else app.get
-        registration_func(f"/{t.__name__}", operation_id=t.__name__)(t)
-
-    return app
-
-
-@asynccontextmanager
-async def run_service_server(
-    tools: list[ToolEntry],
-) -> AsyncIterator[PluginServer]:
-    async with PluginServer(
-        tools=tools,
-        port=8091,
-        host="127.0.0.1",
-    ) as server:
-        try:
-            yield server
-        finally:
-            await server.shutdown()
+REASONABLE_AMOUNT_OF_TIME_FOR_TERM_CREATION = 0.25
 
 
 async def run_cli(*args: str, **kwargs: Any) -> asyncio.subprocess.Process:
@@ -706,7 +642,6 @@ async def test_that_adding_connected_guidelines_creates_connections(
 
         assert connection["source"] == source
         assert connection["target"] == target
-        assert connection["kind"] == "entails"
 
 
 async def test_that_a_guideline_can_be_viewed(
@@ -865,101 +800,7 @@ async def test_that_guidelines_can_be_entailed(
         guideline = await context.api.read_guideline(agent_id, first_guideline["id"])
         assert "connections" in guideline and len(guideline["connections"]) == 1
         connection = guideline["connections"][0]
-        assert (
-            connection["source"] == first_guideline
-            and connection["target"] == second_guideline
-            and connection["kind"] == "entails"
-        )
-
-
-async def test_that_guidelines_can_be_suggestively_entailed(
-    context: ContextOfTest,
-) -> None:
-    condition1 = "the customer needs assistance"
-    action1 = "provide help"
-
-    condition2 = "customer ask about a certain subject"
-    action2 = "offer detailed explanation"
-
-    with run_server(context):
-        while not is_server_responsive(SERVER_PORT):
-            pass
-
-        agent_id = (await context.api.get_first_agent())["id"]
-
-        process = await run_cli(
-            "guideline",
-            "create",
-            "--agent-id",
-            agent_id,
-            "--no-check",
-            "--no-connect",
-            "--condition",
-            condition1,
-            "--action",
-            action1,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_view, stderr_view = await process.communicate()
-        output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in output_view
-        assert process.returncode == os.EX_OK
-
-        process = await run_cli(
-            "guideline",
-            "create",
-            "--agent-id",
-            agent_id,
-            "--no-check",
-            "--no-connect",
-            "--condition",
-            condition2,
-            "--action",
-            action2,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_view, stderr_view = await process.communicate()
-        output_view = stdout_view.decode() + stderr_view.decode()
-        assert "Traceback (most recent call last):" not in output_view
-        assert process.returncode == os.EX_OK
-
-        guidelines = await context.api.list_guidelines(agent_id)
-
-        first_guideline = next(
-            g for g in guidelines if g["condition"] == condition1 and g["action"] == action1
-        )
-        second_guideline = next(
-            g for g in guidelines if g["condition"] == condition2 and g["action"] == action2
-        )
-
-        process = await run_cli(
-            "guideline",
-            "entail",
-            "--agent-id",
-            agent_id,
-            "--suggestive",
-            "--source",
-            first_guideline["id"],
-            "--target",
-            second_guideline["id"],
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        await process.communicate()
-        await process.wait()
-        assert process.returncode == os.EX_OK
-
-        guideline = await context.api.read_guideline(agent_id, first_guideline["id"])
-
-        assert "connections" in guideline and len(guideline["connections"]) == 1
-        connection = guideline["connections"][0]
-        assert (
-            connection["source"] == first_guideline
-            and connection["target"] == second_guideline
-            and connection["kind"] == "suggests"
-        )
+        assert connection["source"] == first_guideline and connection["target"] == second_guideline
 
 
 async def test_that_a_guideline_can_be_deleted(
@@ -1040,7 +881,6 @@ async def test_that_a_connection_can_be_deleted(
                                                 "condition": "greeting the customer",
                                                 "action": "ask for his health condition",
                                             },
-                                            "connection_kind": "entails",
                                         }
                                     ],
                                 },
@@ -1076,7 +916,6 @@ async def test_that_a_connection_can_be_deleted(
                                                 "condition": "greeting the customer",
                                                 "action": "ask for his health condition",
                                             },
-                                            "connection_kind": "entails",
                                         }
                                     ],
                                 },

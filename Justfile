@@ -1,12 +1,20 @@
 set dotenv-load
 set positional-arguments
 
-PARLANT_HOME := "./cache"
+PARLANT_HOME := "./runtime-data"
 LOGS_DIR := "./logs"
 SERVER_ADDRESS := env("SERVER_ADDRESS", "http://localhost:8800")
 
+@unknown:
+  echo "Please specify a command"
+
+
 setup-cache:
   mkdir -p {{PARLANT_HOME}}
+
+setup-logdir:
+  mkdir -p {{LOGS_DIR}}
+
 
 @server *args: setup-cache
   PARLANT_HOME={{PARLANT_HOME}} poetry run parlant-server {{args}}
@@ -17,59 +25,53 @@ setup-cache:
 @chat *args='':
   poetry run parlant -s {{SERVER_ADDRESS}} agent chat "$@"
 
+
 @kill-server:
   lsof -i:8800 | grep :8800 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
 
 @kill-test-server:
-  lsof -i:8091 | grep :8091 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
+  lsof -i:8089 | grep :8089 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
 
 @kill-test-plugin-server:
-  lsof -i:8089 | grep :8089 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
+  lsof -i:8091 | grep :8091 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
+  lsof -i:8092 | grep :8092 | cut -d " " -f 3 | xargs kill && echo "KILLED" || echo "NOT KILLED"
 
 @kill: kill-test-plugin-server kill-test-server
   echo "killed"
 
-@mklogdir:
-  mkdir -p {{LOGS_DIR}}
 
-@test *tests='': mklogdir
-  poetry run pytest \
-    -v {{tests}} \
-    --plan=initial \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
+@test-deterministic *specs='': setup-logdir
+    mkdir -p logs/deterministric
+    poetry run pytest \
+      -vv {{specs}} --plan=deterministic \
+      --tap-combined --tap-outdir=logs/deterministic \
+      --timing-file=logs/deterministic/test_timings.csv \
+      --junit-xml=logs/deterministic/testresults.xml \
+      --color=auto
 
-@test-ns *tests='': mklogdir
-  poetry run pytest \
-    -v {{tests}} \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
+@test-core-stable *specs='': setup-logdir
+    mkdir -p logs/core_stable
+    poetry run pytest \
+      -vv {{specs}} --plan=core_stable --no-cache \
+      --tap-combined --tap-outdir=logs/core_stable \
+      --timing-file=logs/core_stable/test_timings.csv \
+      --junit-xml=logs/core_stable/testresults.xml \
+      --color=auto
 
-@test-co *tests='': mklogdir
-  poetry run pytest \
-    -v {{tests}} \
-    --plan=initial --co \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
+@test-core-unstable *specs='': setup-logdir
+    mkdir -p logs/core_unstable
+    poetry run pytest \
+      -vv {{specs}} --plan=core_unstable --no-cache \
+      --tap-combined --tap-outdir=logs/core_unstable \
+      --timing-file=logs/core_unstable/test_timings.csv \
+      --junit-xml=logs/core_unstable/testresults.xml \
+      --color=auto
 
-@test-ns-co *tests='': mklogdir
-  poetry run pytest \
-    -v {{tests}} \
-    --co \
-    --tap-combined --tap-outdir=logs \
-    --junit-xml=logs/testresults.xml \
-    | tee logs/testresults.log
-
-@test-client:
-  poetry run pytest \
-    -v tests/api tests/e2e/test_client_cli_via_api.py --plan=initial
-
-@test-client-ns:
-  poetry run pytest \
-    -v tests/api tests/e2e/test_client_cli_via_api.py
+test-complete  *specs='':
+  just test-deterministic {{specs}} #(uses cache)
+  just test-core-stable {{specs}} #(no cache)
+  just test-core-unstable {{specs}} #(no cache)
+  
 
 @install:
   clear
@@ -80,3 +82,6 @@ setup-cache:
 
 @regen-sdk:
   python scripts/generate_client_sdk.py
+
+@clean:
+  find . -type d | grep __pycache__ | xargs rm -rf

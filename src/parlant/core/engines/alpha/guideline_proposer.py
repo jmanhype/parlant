@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import cached_property
 from itertools import chain
 import json
 import math
 import time
-from typing import Optional, Sequence
+from typing import Optional, Sequence, cast
 
+from parlant.core import async_utils
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
@@ -31,11 +32,12 @@ from parlant.core.engines.alpha.guideline_proposition import (
 )
 from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from parlant.core.glossary import Term
-from parlant.core.guidelines import Guideline
-from parlant.core.sessions import Event
+from parlant.core.guidelines import Guideline, GuidelineContent
+from parlant.core.sessions import Event, EventId, EventSource
 from parlant.core.emissions import EmittedEvent
-from parlant.core.common import DefaultBaseModel
+from parlant.core.common import DefaultBaseModel, JSONSerializable
 from parlant.core.logging import Logger
+from parlant.core.shots import Shot, ShotCollection
 
 
 class GuidelinePropositionSchema(DefaultBaseModel):
@@ -53,6 +55,13 @@ class GuidelinePropositionSchema(DefaultBaseModel):
 
 class GuidelinePropositionsSchema(DefaultBaseModel):
     checks: Sequence[GuidelinePropositionSchema]
+
+
+@dataclass
+class GuidelinePropositionShot(Shot):
+    interaction_events: Sequence[Event]
+    guidelines: Sequence[GuidelineContent]
+    expected_result: GuidelinePropositionsSchema
 
 
 @dataclass(frozen=True)
@@ -128,12 +137,14 @@ class GuidelineProposer:
             ]
 
             batch_generations, condition_evaluations_batches = zip(
-                *(await asyncio.gather(*batch_tasks))
+                *(await async_utils.safe_gather(*batch_tasks))
             )
 
         propositions_batches: list[list[GuidelineProposition]] = []
 
-        for batch in condition_evaluations_batches:
+        for batch in cast(
+            tuple[list[ConditionApplicabilityEvaluation]], condition_evaluations_batches
+        ):
             guideline_propositions = []
             for evaluation in batch:
                 guideline_propositions.append(
@@ -155,7 +166,7 @@ class GuidelineProposer:
         return GuidelinePropositionResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
-            batch_generations=batch_generations,
+            batch_generations=list(cast(tuple[GenerationInfo], batch_generations)),
             batches=propositions_batches,
         )
 
@@ -205,6 +216,7 @@ class GuidelineProposer:
             staged_events=staged_events,
             terms=terms,
             guidelines=guidelines_dict,
+            shots=await self.shots(),
         )
 
         with self._logger.operation(
@@ -248,6 +260,53 @@ class GuidelineProposer:
 
         return propositions_generation_response.info, propositions
 
+    async def shots(self) -> Sequence[GuidelinePropositionShot]:
+        return await shot_collection.list()
+
+    def _format_shot(self, shot: GuidelinePropositionShot) -> str:
+        def adapt_event(e: Event) -> JSONSerializable:
+            source_map: dict[EventSource, str] = {
+                "customer": "user",
+                "customer_ui": "frontend_application",
+                "human_agent": "human_service_agent",
+                "human_agent_on_behalf_of_ai_agent": "ai_agent",
+                "ai_agent": "ai_agent",
+                "system": "system-provided",
+            }
+
+            return {
+                "event_kind": e.kind,
+                "event_source": source_map[e.source],
+                "data": e.data,
+            }
+
+        formatted_shot = ""
+        if shot.interaction_events:
+            formatted_shot += f"""
+- **Interaction Events**:
+{json.dumps([adapt_event(e) for e in shot.interaction_events], indent=2)}
+
+"""
+        if shot.guidelines:
+            formatted_guidelines = "\n".join(
+                f"{i}) condition: {g.condition}, action: {g.action}"
+                for i, g in enumerate(shot.guidelines, start=1)
+            )
+            formatted_shot += f"""
+- **Guidelines**: 
+{formatted_guidelines}
+
+"""
+
+        formatted_shot += f"""
+- **Expected Result**:
+```json
+{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+```
+"""
+
+        return formatted_shot
+
     def _format_prompt(
         self,
         agents: Sequence[Agent],
@@ -257,6 +316,7 @@ class GuidelineProposer:
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
         guidelines: dict[int, Guideline],
+        shots: Sequence[GuidelinePropositionShot],
     ) -> str:
         assert len(agents) == 1
 
@@ -334,8 +394,10 @@ Only re-apply these if the condition ceased to be true earlier in the conversati
 IMPORTANT: Some guidelines include multiple actions. If only a portion of those actions were fulfilled earlier in the conversation, output "fully" for guideline_previously_applied, and treat the guideline as though it has been fully executed. 
 In such cases, re-apply the guideline only if its condition becomes true again later in the conversation, unless it is marked as continuous.
 
+<<<<<<< HEAD
 Examples of Condition Evaluations:
 -------------------
+<<<<<<< HEAD
 Example #1:
 - Interaction Events: ###
 [{{"id": "11", "kind": "<message>", "source": "customer",
@@ -571,7 +633,25 @@ Example #4:
     ]
 }}
 ```
+=======
+>>>>>>> ecf3aa96 (Add few shot feature and implement it on guideline_proposer)
+=======
+>>>>>>> 2d3af256 (Implement Shot mechanism in message generator)
 """  # noqa
+        )
+        builder.add_section(
+            """
+Examples of Condition Evaluations:
+-------------------
+"""
+            + "".join(
+                f"""
+Example #{i}: ###
+{self._format_shot(shot)}
+###
+"""
+                for i, shot in enumerate(shots, start=1)
+            )
         )
         builder.add_agent_identity(agents[0])
         builder.add_context_variables(context_variables)
@@ -604,3 +684,237 @@ Expected Output
 
         prompt = builder.build()
         return prompt
+
+
+def _make_event(e_id: str, source: EventSource, message: str) -> Event:
+    return Event(
+        id=EventId(e_id),
+        source=source,
+        kind="message",
+        creation_utc=datetime.now(timezone.utc),
+        offset=0,
+        correlation_id="",
+        data={"message": message},
+        deleted=False,
+    )
+
+
+example_1_events = [
+    _make_event("11", "customer", "Can I purchase a subscription to your software?"),
+    _make_event("23", "ai_agent", "Absolutely, I can assist you with that right now."),
+    _make_event("34", "customer", "Please proceed with the subscription for the Pro plan."),
+    _make_event(
+        "56",
+        "ai_agent",
+        "Your subscription has been successfully activated. Is there anything else I can help you with?",
+    ),
+    _make_event("78", "customer", "Yes, can you tell me more about your data security policies?"),
+]
+
+example_1_guidelines = [
+    GuidelineContent(
+        condition="the customer initiates a purchase.",
+        action="Open a new cart for the customer",
+    ),
+    GuidelineContent(
+        condition="the customer asks about data security",
+        action="Refer the customer to our privacy policy page",
+    ),
+    GuidelineContent(
+        condition="the customer asked to subscribe to our pro plan",
+        action="maintain a helpful tone and thank them for shopping at our store",
+    ),
+]
+
+example_1_expected = GuidelinePropositionsSchema(
+    checks=[
+        GuidelinePropositionSchema(
+            guideline_number=1,
+            condition="the customer initiates a purchase",
+            condition_application_rationale="The purchase-related guideline was initiated earlier, but is currently irrelevant since the customer completed the purchase and the conversation has moved to a new topic.",
+            condition_applies=False,
+            applies_score=3,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=2,
+            condition="the customer asks about data security",
+            condition_applies=True,
+            condition_application_rationale="The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
+            action="Refer the customer to our privacy policy page",
+            guideline_previously_applied_rationale="This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
+            guideline_previously_applied="no",
+            guideline_is_continuous=False,
+            guideline_should_reapply=False,
+            applies_score=9,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=3,
+            condition="the customer asked to subscribe to our pro plan",
+            condition_applies=True,
+            condition_application_rationale="The customer recently asked to subscribe to the pro plan. The conversation is beginning to drift elsewhere, but still deals with the pro plan",
+            action="maintain a helpful tone and thank them for shopping at our store",
+            guideline_previously_applied_rationale="a helpful tone was maintained, but the agent didn't thank the customer for shoppint at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
+            guideline_previously_applied="partially",
+            guideline_is_continuous=False,
+            guideline_should_reapply=False,
+            applies_score=6,
+        ),
+    ]
+)
+
+example_2_events = [
+    _make_event("11", "customer", "I'm looking for a job, what do you have available?"),
+    _make_event(
+        "23",
+        "ai_agent",
+        "Hi there! we have plenty of opportunities for you, where are you located?",
+    ),
+    _make_event("34", "customer", "I'm looking for anything around the bay area"),
+    _make_event(
+        "56",
+        "ai_agent",
+        "That's great. We have a number of positions available over there. What kind of role are you interested in?",
+    ),
+    _make_event("78", "customer", "Anything to do with training and maintaining AI agents"),
+]
+
+example_2_guidelines = [
+    GuidelineContent(
+        condition="the customer indicates that they are looking for a job.",
+        action="ask the customer for their location",
+    ),
+    GuidelineContent(
+        condition="the customer asks about job openings.",
+        action="emphasize that we have plenty of positions relevant to the customer, and over 10,000 opennings overall",
+    ),
+    GuidelineContent(
+        condition="discussing job opportunities.", action="maintain a positive, assuring tone"
+    ),
+]
+
+example_2_expected = GuidelinePropositionsSchema(
+    checks=[
+        GuidelinePropositionSchema(
+            guideline_number=3,
+            condition="the customer indicates that they are looking for a job.",
+            condition_application_rationale="The current discussion is about the type of job the customer is looking for",
+            condition_applies=True,
+            action="ask the customer for their location",
+            guideline_is_continuous=False,
+            guideline_previously_applied_rationale="The assistant asked for the customer's location earlier in the interaction. There is no need to ask for it again, as it is already known.",
+            guideline_previously_applied="fully",
+            guideline_should_reapply=False,
+            applies_score=3,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=4,
+            condition="the customer asks about job openings.",
+            condition_applies=True,
+            condition_application_rationale="the customer asked about job openings, and the discussion still revolves around this request",
+            action="emphasize that we have plenty of positions relevant to the customer, and over 10,000 opennings overall",
+            guideline_is_continuous=False,
+            guideline_previously_applied_rationale="The assistant already has emphasized that we have open positions, but neglected to mention that we offer 10k opennings overall. The guideline partially applies and should be treated as if it was fully applied. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
+            guideline_previously_applied="partially",
+            guideline_should_reapply=True,
+            applies_score=7,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=6,
+            condition="discussing job opportunities.",
+            condition_applies=True,
+            condition_application_rationale="the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
+            action="maintain a positive, assuring tone",
+            guideline_is_continuous=True,
+            guideline_previously_applied_rationale="The assistant's tone is positive already. This action describes a continuous action, so the guideline should be re-applied.",
+            guideline_previously_applied="fully",
+            guideline_should_reapply=True,
+            applies_score=9,
+        ),
+    ]
+)
+
+
+example_3_events = [
+    _make_event("11", "customer", "Hi there, what is the S&P500 trading at right now?"),
+    _make_event("23", "ai_agent", "Hello! It's currently priced at just about 6,000$."),
+    _make_event(
+        "34", "customer", "Better than I hoped. And what's the weather looking like today?"
+    ),
+    _make_event("56", "ai_agent", "It's 5 degrees Celsius in London today"),
+    _make_event("78", "customer", "Bummer. Does S&P500 still trade at 6,000$ by the way?"),
+]
+
+example_3_guidelines = [
+    GuidelineContent(
+        condition="the customer asks about the value of a stock.",
+        action="provide the price using the 'check_stock_price' tool",
+    ),
+    GuidelineContent(
+        condition="the weather at a certain location is discussed.",
+        action="check the weather at that location using the 'check_weather' tool",
+    ),
+    GuidelineContent(
+        condition="the customer asked about the weather.",
+        action="provide the customre with the temperature and the chances of precipitation",
+    ),
+]
+
+example_3_expected = GuidelinePropositionsSchema(
+    checks=[
+        GuidelinePropositionSchema(
+            guideline_number=1,
+            condition="the customer asks about the value of a stock.",
+            condition_application_rationale="The customer asked what does the S&P500 trade at",
+            condition_applies=True,
+            action="provide the price using the 'check_stock_price' tool",
+            guideline_is_continuous=False,
+            guideline_previously_applied_rationale="The assistant previously reported about the price of that stock following the customer's question, but since the price might have changed since then, it should be checked again.",
+            guideline_previously_applied="fully",
+            guideline_should_reapply=True,
+            applies_score=9,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=2,
+            condition="the weather at a certain location is discussed.",
+            condition_application_rationale="while weather was discussed earlier, the conversation have moved on to an entirely different topic (stock prices)",
+            condition_applies=False,
+            applies_score=3,
+        ),
+        GuidelinePropositionSchema(
+            guideline_number=3,
+            condition="the customer asked about the weather.",
+            condition_application_rationale="The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
+            condition_applies=True,
+            action="provide the customre with the temperature and the chances of precipitation",
+            guideline_is_continuous=False,
+            guideline_previously_applied_rationale="The action was partially fulfilled by reporting the temperature without the chances of precipitation. As partially fulfilled guidelines are treated as completed, this guideline is considered applied",
+            guideline_previously_applied="partially",
+            guideline_should_reapply=False,
+            applies_score=4,
+        ),
+    ]
+)
+
+
+_baseline_shots: Sequence[GuidelinePropositionShot] = [
+    GuidelinePropositionShot(
+        description="",
+        interaction_events=example_1_events,
+        guidelines=example_1_guidelines,
+        expected_result=example_1_expected,
+    ),
+    GuidelinePropositionShot(
+        description="",
+        interaction_events=example_2_events,
+        guidelines=example_2_guidelines,
+        expected_result=example_2_expected,
+    ),
+    GuidelinePropositionShot(
+        description="",
+        interaction_events=example_3_events,
+        guidelines=example_3_guidelines,
+        expected_result=example_3_expected,
+    ),
+]
+
+shot_collection = ShotCollection[GuidelinePropositionShot](_baseline_shots)

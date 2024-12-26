@@ -14,10 +14,9 @@
 
 from enum import Enum
 from pydantic import Field
-from typing import Annotated, Any, Mapping, Optional, Sequence, TypeAlias, cast
+from typing import Annotated, Any, Mapping, Optional, Sequence, TypeAlias
 
 from parlant.core.common import DefaultBaseModel
-from parlant.core.guideline_connections import ConnectionKind
 from parlant.core.guidelines import GuidelineId
 
 
@@ -52,29 +51,6 @@ class EvaluationStatusDTO(Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-
-
-class ConnectionKindDTO(Enum):
-    """
-    Defines the logical connection type between Guidelines, specifically how one Guideline's
-    activation influences another.
-
-    The connection itself is always entailed (logically follows), but this enum determines
-    whether the target Guideline's action should be treated as mandatory or just suggestive.
-
-    Values:
-        "entails": Indicates that when the source Guideline is activated, the target
-                Guideline's action must be executed. This represents a strong, mandatory
-                logical implication.
-
-        "suggests": While the logical connection still exists, this marker indicates that the
-                 target Guideline's action should be considered but isn't mandatory. It serves
-                 as a logical hint rather than a requirement.
-
-    """
-
-    ENTAILS = "entails"
-    SUGGESTS = "suggests"
 
 
 GuidelineConditionField: TypeAlias = Annotated[
@@ -283,7 +259,6 @@ connection_proposition_example: ExampleJson = {
         "condition": "System logs are available",
         "action": "Analyze logs for error patterns",
     },
-    "connection_kind": "suggests",
 }
 
 
@@ -296,7 +271,6 @@ class ConnectionPropositionDTO(
     check_kind: ConnectionPropositionKindDTO
     source: GuidelineContentDTO
     target: GuidelineContentDTO
-    connection_kind: ConnectionKindDTO
 
 
 guideline_invoice_data_example: ExampleJson = {
@@ -329,23 +303,6 @@ class InvoiceDataDTO(
     """
 
     guideline: Optional[GuidelineInvoiceDataDTO] = None
-
-
-def connection_kind_to_dto(kind: ConnectionKind) -> ConnectionKindDTO:
-    return cast(
-        ConnectionKindDTO,
-        {
-            ConnectionKind.ENTAILS: "entails",
-            ConnectionKind.SUGGESTS: "suggests",
-        }[kind],
-    )
-
-
-def connection_kind_dto_to_connection_kind(dto: ConnectionKindDTO) -> ConnectionKind:
-    return {
-        ConnectionKindDTO.ENTAILS: ConnectionKind.ENTAILS,
-        ConnectionKindDTO.SUGGESTS: ConnectionKind.SUGGESTS,
-    }[dto]
 
 
 ServiceNameField: TypeAlias = Annotated[

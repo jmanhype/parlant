@@ -40,7 +40,7 @@ from parlant.core.sessions import (
     SessionListener,
     SessionStore,
 )
-from parlant.core.engines.types import Context, Engine
+from parlant.core.engines.types import Context, Engine, UtteranceRequest
 from parlant.core.logging import Logger
 
 
@@ -141,6 +141,25 @@ class Application:
             event_emitter=event_emitter,
         )
 
+    async def utter(
+        self,
+        session: Session,
+        requests: Sequence[UtteranceRequest],
+    ) -> str:
+        with self._correlator.correlation_scope(generate_id()):
+            event_emitter = await self._event_emitter_factory.create_event_emitter(
+                emitting_agent_id=session.agent_id,
+                session_id=session.id,
+            )
+
+            await self._engine.utter(
+                context=Context(session_id=session.id, agent_id=session.agent_id),
+                event_emitter=event_emitter,
+                requests=requests,
+            )
+
+            return self._correlator.correlation_id
+
     async def create_guidelines(
         self,
         guideline_set: str,
@@ -173,7 +192,6 @@ class Application:
             await self._guideline_connection_store.create_connection(
                 source=source_guideline_id,
                 target=target_guideline_id,
-                kind=proposition.connection_kind,
             )
 
         content_guidelines: dict[str, GuidelineId] = {
@@ -232,7 +250,6 @@ class Application:
                         await self._guideline_connection_store.create_connection(
                             source=content_guidelines[source_key],
                             target=content_guidelines[target_key],
-                            kind=proposition.connection_kind,
                         )
                     else:
                         await _create_connection_with_existing_guideline(

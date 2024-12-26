@@ -15,12 +15,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum, auto
 from typing import NewType, Optional, Sequence
 from typing_extensions import override, TypedDict, Self
 
 import networkx  # type: ignore
 
+from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.guidelines import GuidelineId
 from parlant.core.persistence.common import ObjectId
@@ -29,18 +29,12 @@ from parlant.core.persistence.document_database import DocumentDatabase, Documen
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 
 
-class ConnectionKind(Enum):
-    ENTAILS = auto()
-    SUGGESTS = auto()
-
-
 @dataclass(frozen=True)
 class GuidelineConnection:
     id: GuidelineConnectionId
     creation_utc: datetime
     source: GuidelineId
     target: GuidelineId
-    kind: ConnectionKind
 
 
 class GuidelineConnectionStore(ABC):
@@ -49,7 +43,6 @@ class GuidelineConnectionStore(ABC):
         self,
         source: GuidelineId,
         target: GuidelineId,
-        kind: ConnectionKind,
     ) -> GuidelineConnection: ...
 
     @abstractmethod
@@ -73,7 +66,6 @@ class _GuidelineConnectionDocument(TypedDict, total=False):
     creation_utc: str
     source: GuidelineId
     target: GuidelineId
-    kind: str
 
 
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
@@ -83,6 +75,8 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self._database = database
         self._collection: DocumentCollection[_GuidelineConnectionDocument]
         self._graph: networkx.DiGraph | None = None
+
+        self._lock = ReaderWriterLock()
 
     async def __aenter__(self) -> Self:
         self._collection = await self._database.get_or_create_collection(
@@ -109,7 +103,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             creation_utc=guideline_connection.creation_utc.isoformat(),
             source=guideline_connection.source,
             target=guideline_connection.target,
-            kind=guideline_connection.kind.name,
         )
 
     def _deserialize(
@@ -121,7 +114,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             creation_utc=datetime.fromisoformat(guideline_connection_document["creation_utc"]),
             source=guideline_connection_document["source"],
             target=guideline_connection_document["target"],
-            kind=ConnectionKind[guideline_connection_document["kind"]],
         )
 
     async def _get_graph(self) -> networkx.DiGraph:
@@ -141,7 +133,6 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
                         c.source,
                         c.target,
                         {
-                            "kind": c.kind,
                             "id": c.id,
                         },
                     )
@@ -158,38 +149,36 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self,
         source: GuidelineId,
         target: GuidelineId,
-        kind: ConnectionKind,
         creation_utc: Optional[datetime] = None,
     ) -> GuidelineConnection:
-        creation_utc = creation_utc or datetime.now(timezone.utc)
+        async with self._lock.writer_lock:
+            creation_utc = creation_utc or datetime.now(timezone.utc)
 
-        guideline_connection = GuidelineConnection(
-            id=GuidelineConnectionId(generate_id()),
-            creation_utc=creation_utc,
-            source=source,
-            target=target,
-            kind=kind,
-        )
+            guideline_connection = GuidelineConnection(
+                id=GuidelineConnectionId(generate_id()),
+                creation_utc=creation_utc,
+                source=source,
+                target=target,
+            )
 
-        result = await self._collection.update_one(
-            filters={"source": {"$eq": source}, "target": {"$eq": target}},
-            params=self._serialize(guideline_connection),
-            upsert=True,
-        )
+            result = await self._collection.update_one(
+                filters={"source": {"$eq": source}, "target": {"$eq": target}},
+                params=self._serialize(guideline_connection),
+                upsert=True,
+            )
 
-        assert result.updated_document
+            assert result.updated_document
 
-        graph = await self._get_graph()
+            graph = await self._get_graph()
 
-        graph.add_node(source)
-        graph.add_node(target)
+            graph.add_node(source)
+            graph.add_node(target)
 
-        graph.add_edge(
-            source,
-            target,
-            kind=kind,
-            id=guideline_connection.id,
-        )
+            graph.add_edge(
+                source,
+                target,
+                id=guideline_connection.id,
+            )
 
         return guideline_connection
 
@@ -198,16 +187,17 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         self,
         id: GuidelineConnectionId,
     ) -> None:
-        connection_document = await self._collection.find_one(filters={"id": {"$eq": id}})
+        async with self._lock.writer_lock:
+            connection_document = await self._collection.find_one(filters={"id": {"$eq": id}})
 
-        if not connection_document:
-            raise ItemNotFoundError(item_id=UniqueId(id))
+            if not connection_document:
+                raise ItemNotFoundError(item_id=UniqueId(id))
 
-        connection = self._deserialize(connection_document)
+            connection = self._deserialize(connection_document)
 
-        (await self._get_graph()).remove_edge(connection.source, connection.target)
+            (await self._get_graph()).remove_edge(connection.source, connection.target)
 
-        await self._collection.delete_one(filters={"id": {"$eq": id}})
+            await self._collection.delete_one(filters={"id": {"$eq": id}})
 
     @override
     async def list_connections(
@@ -261,11 +251,12 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
                 return connections
 
-        graph = await self._get_graph()
+        async with self._lock.reader_lock:
+            graph = await self._get_graph()
 
-        if source:
-            connections = await get_node_connections(source)
-        elif target:
-            connections = await get_node_connections(target, reversed_graph=True)
+            if source:
+                connections = await get_node_connections(source)
+            elif target:
+                connections = await get_node_connections(target, reversed_graph=True)
 
         return connections

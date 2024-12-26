@@ -50,7 +50,7 @@ class ToolEventGenerator:
         self._correlator = correlator
         self._service_registry = service_registry
 
-        self._tool_caller = ToolCaller(logger, service_registry, schematic_generator)
+        self.tool_caller = ToolCaller(logger, service_registry, schematic_generator)
 
     async def generate_events(
         self,
@@ -71,7 +71,7 @@ class ToolEventGenerator:
             self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return None
 
-        inference_tool_calls_result = await self._tool_caller.infer_tool_calls(
+        inference_tool_calls_result = await self.tool_caller.infer_tool_calls(
             agents,
             context_variables,
             interaction_history,
@@ -85,7 +85,7 @@ class ToolEventGenerator:
         if not tool_calls:
             return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [])
 
-        tool_results = await self._tool_caller.execute_tool_calls(
+        tool_results = await self.tool_caller.execute_tool_calls(
             ToolContext(
                 agent_id=agents[0].id,
                 session_id=session_id,

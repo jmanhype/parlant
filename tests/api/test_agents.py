@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from typing import Any
-from fastapi.testclient import TestClient
 from fastapi import status
+import httpx
 from lagom import Container
 from pytest import mark, raises
 
@@ -22,10 +22,10 @@ from parlant.core.agents import AgentStore
 from parlant.core.common import ItemNotFoundError
 
 
-def test_that_an_agent_can_be_created_without_description(
-    client: TestClient,
+async def test_that_an_agent_can_be_created_without_description(
+    async_client: httpx.AsyncClient,
 ) -> None:
-    response = client.post(
+    response = await async_client.post(
         "/agents",
         json={"name": "test-agent"},
     )
@@ -38,10 +38,10 @@ def test_that_an_agent_can_be_created_without_description(
     assert agent["description"] is None
 
 
-def test_that_an_agent_can_be_created_with_description(
-    client: TestClient,
+async def test_that_an_agent_can_be_created_with_description(
+    async_client: httpx.AsyncClient,
 ) -> None:
-    response = client.post(
+    response = await async_client.post(
         "/agents",
         json={"name": "test-agent", "description": "You are a test agent"},
     )
@@ -54,10 +54,10 @@ def test_that_an_agent_can_be_created_with_description(
     assert agent["description"] == "You are a test agent"
 
 
-def test_that_an_agent_can_be_created_without_max_engine_iterations(
-    client: TestClient,
+async def test_that_an_agent_can_be_created_without_max_engine_iterations(
+    async_client: httpx.AsyncClient,
 ) -> None:
-    response = client.post(
+    response = await async_client.post(
         "/agents",
         json={"name": "test-agent"},
     )
@@ -70,10 +70,10 @@ def test_that_an_agent_can_be_created_without_max_engine_iterations(
     assert agent["max_engine_iterations"] == 3
 
 
-def test_that_an_agent_can_be_created_with_max_engine_iterations(
-    client: TestClient,
+async def test_that_an_agent_can_be_created_with_max_engine_iterations(
+    async_client: httpx.AsyncClient,
 ) -> None:
-    response = client.post(
+    response = await async_client.post(
         "/agents",
         json={"name": "test-agent", "max_engine_iterations": 1},
     )
@@ -84,6 +84,63 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
 
     assert agent["name"] == "test-agent"
     assert agent["max_engine_iterations"] == 1
+
+
+async def test_that_an_agent_can_be_listed(
+    async_client: httpx.AsyncClient,
+) -> None:
+    _ = (
+        (
+            await async_client.post(
+                "/agents",
+                json={"name": "test-agent"},
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    agents = (
+        (
+            await async_client.get(
+                "/agents",
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert len(agents) == 1
+    assert agents[0]["name"] == "test-agent"
+    assert agents[0]["description"] is None
+
+
+async def test_that_an_agent_can_be_read(
+    async_client: httpx.AsyncClient,
+) -> None:
+    agent = (
+        (
+            await async_client.post(
+                "/agents",
+                json={"name": "test-agent"},
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    agent_dto = (
+        (
+            await async_client.get(
+                f"/agents/{agent['id']}",
+            )
+        )
+        .raise_for_status()
+        .json()
+    )
+
+    assert agent_dto["name"] == "test-agent"
+    assert agent_dto["description"] is None
 
 
 @mark.parametrize(
@@ -97,7 +154,7 @@ def test_that_an_agent_can_be_created_with_max_engine_iterations(
     ),
 )
 async def test_that_agent_can_be_updated(
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     container: Container,
     patch_request: dict[str, Any],
 ) -> None:
@@ -105,9 +162,11 @@ async def test_that_agent_can_be_updated(
     agent = await agent_store.create_agent("test-agent")
 
     agent_dto = (
-        client.patch(
-            f"/agents/{agent.id}",
-            json=patch_request,
+        (
+            await async_client.patch(
+                f"/agents/{agent.id}",
+                json=patch_request,
+            )
         )
         .raise_for_status()
         .json()
@@ -119,13 +178,13 @@ async def test_that_agent_can_be_updated(
 
 
 async def test_that_an_agent_can_be_deleted(
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     container: Container,
 ) -> None:
     agent_store = container[AgentStore]
     agent = await agent_store.create_agent("test-agent")
 
-    delete_response = client.delete(
+    delete_response = await async_client.delete(
         f"/agents/{agent.id}",
     )
     assert delete_response.status_code == status.HTTP_204_NO_CONTENT

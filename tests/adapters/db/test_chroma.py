@@ -28,6 +28,7 @@ from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
 from parlant.core.persistence.common import ObjectId
+
 from tests.test_utilities import SyncAwaiter
 
 
@@ -322,7 +323,8 @@ async def test_loading_collections(
 
 
 async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_large_query_input(
-    container: Container, agent_id: AgentId
+    container: Container,
+    agent_id: AgentId,
 ) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         async with ChromaDatabase(
@@ -330,7 +332,7 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
         ) as chroma_db:
             async with GlossaryVectorStore(
                 chroma_db,
-                embedder_factory=container[EmbedderFactory],
+                embedder_factory=EmbedderFactory(container),
                 embedder_type=type(await container[NLPService].get_embedder()),
             ) as glossary_chroma_store:
                 bazoo = await glossary_chroma_store.create_term(

@@ -15,6 +15,7 @@
 # mypy: disable-error-code=import-untyped
 
 import asyncio
+import os
 import click
 import click.shell_completion
 import click_completion  # type: ignore
@@ -463,7 +464,6 @@ class Actions:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> GuidelineWithConnectionsAndToolAssociations:
         client = cast(ParlantClient, ctx.obj.client)
 
@@ -475,7 +475,6 @@ class Actions:
                     GuidelineConnectionAddition(
                         source=source_guideline_id,
                         target=target_guideline_id,
-                        kind=kind,
                     ),
                 ]
             ),
@@ -838,9 +837,9 @@ class Actions:
         return client.tags.retrieve(tag_id=tag_id)
 
     @staticmethod
-    def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
+    def update_tag(ctx: click.Context, tag_id: str, name: str) -> Tag:
         client = cast(ParlantClient, ctx.obj.client)
-        client.tags.update(tag_id=tag_id, name=name)
+        return client.tags.update(tag_id=tag_id, name=name)
 
     @staticmethod
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
@@ -1235,7 +1234,6 @@ class Interface:
 
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Role": "Source" if conn.source.id == guideline.id else "Target",
                 "Peer Role": "Target" if conn.source.id == guideline.id else "Source",
                 "Peer ID": peer.id,
@@ -1246,7 +1244,6 @@ class Interface:
         def to_indirect_entailment_item(conn: GuidelineConnection) -> dict[str, str]:
             return {
                 "Connection ID": conn.id,
-                "Entailment": "Strict" if conn.kind == "entails" else "Suggestive",
                 "Source ID": conn.source.id,
                 "Source Condition": conn.source.condition,
                 "Source Action": conn.source.action,
@@ -1423,7 +1420,6 @@ class Interface:
         agent_id: str,
         source_guideline_id: str,
         target_guideline_id: str,
-        kind: str,
     ) -> None:
         try:
             connection = Actions.create_entailment(
@@ -1431,7 +1427,6 @@ class Interface:
                 agent_id,
                 source_guideline_id,
                 target_guideline_id,
-                kind,
             )
 
             Interface._write_success(f"Added connection (id={connection.connections[0].id})")
@@ -1801,7 +1796,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_customer(customers: list[Customer]) -> None:
+    def _render_customers(customers: list[Customer]) -> None:
         customer_items: list[dict[str, Any]] = [
             {
                 "ID": customer.id,
@@ -1822,7 +1817,7 @@ class Interface:
                 rich.print(Text("No customers found", style="bold yellow"))
                 return
 
-            Interface._render_customer(customers)
+            Interface._render_customers(customers)
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1839,8 +1834,10 @@ class Interface:
     @staticmethod
     def update_customer(ctx: click.Context, customer_id: str, name: str) -> None:
         try:
-            Actions.update_customer(ctx, customer_id=customer_id, name=name)
-            Interface._write_success(f"Updated customer (id={customer_id}, name={name})")
+            customer = Actions.update_customer(ctx, customer_id=customer_id, name=name)
+            Interface._write_success(f"Updated customer (id={customer_id})")
+
+            Interface._render_customers([customer])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1858,7 +1855,7 @@ class Interface:
     def view_customer(ctx: click.Context, customer_id: str) -> None:
         try:
             customer = Actions.view_customer(ctx, customer_id)
-            Interface._render_customer([customer])
+            Interface._render_customers([customer])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1902,7 +1899,7 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
-    def _render_tag(tags: list[Tag]) -> None:
+    def _render_tags(tags: list[Tag]) -> None:
         tag_items: list[dict[str, Any]] = [
             {
                 "ID": tag.id,
@@ -1921,7 +1918,7 @@ class Interface:
                 rich.print("No tags found.")
                 return
 
-            Interface._render_tag(tags)
+            Interface._render_tags(tags)
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1939,7 +1936,7 @@ class Interface:
     def view_tag(ctx: click.Context, tag_id: str) -> None:
         try:
             tag = Actions.view_tag(ctx, tag_id=tag_id)
-            Interface._render_tag([tag])
+            Interface._render_tags([tag])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1947,8 +1944,10 @@ class Interface:
     @staticmethod
     def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
         try:
-            Actions.update_tag(ctx, tag_id=tag_id, name=name)
-            Interface._write_success(f"Updated tag (id={tag_id}, name={name})")
+            tag = Actions.update_tag(ctx, tag_id=tag_id, name=name)
+            Interface._write_success(f"Updated tag (id={tag_id})")
+
+            Interface._render_tags([tag])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -2476,20 +2475,12 @@ async def async_main() -> None:
         metavar="ID",
         required=False,
     )
-    @click.option(
-        "--suggestive",
-        is_flag=True,
-        show_default=True,
-        default=False,
-        help="Make the entailment suggestive rather than definite",
-    )
     @click.option("--source", type=str, metavar="ID", help="Source guideline ID", required=True)
     @click.option("--target", type=str, metavar="ID", help="Target guideline ID", required=True)
     @click.pass_context
     def guideline_entail(
         ctx: click.Context,
         agent_id: str,
-        suggestive: bool,
         source: str,
         target: str,
     ) -> None:
@@ -2501,7 +2492,6 @@ async def async_main() -> None:
             agent_id=agent_id,
             source_guideline_id=source,
             target_guideline_id=target,
-            kind="suggests" if suggestive else "entails",
         )
 
     @guideline.command("disentail", help="Delete an entailment between two guidelines")
@@ -3042,6 +3032,23 @@ async def async_main() -> None:
     @click.pass_context
     def tag_delete(ctx: click.Context, id: str) -> None:
         Interface.delete_tag(ctx, id)
+
+    @cli.command(
+        "help",
+        context_settings={"ignore_unknown_options": True},
+        help="Show help for a command",
+    )
+    @click.argument("command", nargs=-1, required=False)
+    @click.pass_context
+    def help_command(ctx: click.Context, command: Optional[tuple[str]] = None) -> None:
+        def transform_and_exec_help(command: str) -> None:
+            new_args = [sys.argv[0]] + command.split() + ["--help"]
+            os.execvp(sys.executable, [sys.executable] + new_args)
+
+        if not command:
+            click.echo(cli.get_help(ctx))
+        else:
+            transform_and_exec_help(" ".join(command))
 
     cli()
 

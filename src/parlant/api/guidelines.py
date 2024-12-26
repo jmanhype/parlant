@@ -21,13 +21,10 @@ from pydantic import Field
 
 from parlant.api import agents, common
 from parlant.api.common import (
-    ConnectionKindDTO,
     InvoiceDataDTO,
     PayloadKindDTO,
     ToolIdDTO,
     apigen_config,
-    connection_kind_dto_to_connection_kind,
-    connection_kind_to_dto,
 )
 from parlant.api.index import InvoiceDTO
 from parlant.core.common import (
@@ -45,7 +42,6 @@ from parlant.core.evaluations import (
     PayloadKind,
 )
 from parlant.core.guideline_connections import (
-    ConnectionKind,
     GuidelineConnectionId,
     GuidelineConnectionStore,
 )
@@ -119,7 +115,6 @@ guideline_connection_dto_example: ExampleJson = {
         "condition": "when providing pricing information",
         "action": "mention any seasonal discounts",
     },
-    "kind": "suggests",
     "indirect": False,
 }
 
@@ -131,13 +126,11 @@ class GuidelineConnectionDTO(
     """
     Represents a connection between two guidelines.
 
-    The connection can be strong (with `kind`=`"entails"`) or weak (with `kind`=`"suggests"`)
     """
 
     id: GuidelineConnectionIdField
     source: GuidelineDTO
     target: GuidelineDTO
-    kind: ConnectionKindDTO
     indirect: GuidelineConnectionIndirectField
 
 
@@ -190,7 +183,6 @@ guideline_with_connections_example: ExampleJson = {
                 "condition": "when providing pricing information",
                 "action": "mention any seasonal discounts",
             },
-            "kind": "suggests",
             "indirect": False,
         }
     ],
@@ -286,7 +278,6 @@ GuidelineConnectionAdditionTargetField: TypeAlias = Annotated[
 guideline_connection_addition_example: ExampleJson = {
     "source": "guid_123xz",
     "target": "guid_789yz",
-    "kind": "suggests",
 }
 
 
@@ -298,11 +289,10 @@ class GuidelineConnectionAdditionDTO(
 
     source: GuidelineConnectionAdditionSourceField
     target: GuidelineConnectionAdditionTargetField
-    kind: ConnectionKindDTO
 
 
 guideline_connection_update_params_example: ExampleJson = {
-    "add": [{"source": "guide_123xyz", "target": "guide_789xyz", "kind": "suggests"}],
+    "add": [{"source": "guide_123xyz", "target": "guide_789xyz"}],
     "remove": ["guide_456xyz"],
 }
 
@@ -340,7 +330,7 @@ class GuidelineToolAssociationUpdateParamsDTO(
 
 guideline_update_params_example: ExampleJson = {
     "connections": {
-        "add": [{"source": "guide_123xyz", "target": "guide_789xyz", "kind": "suggests"}],
+        "add": [{"source": "guide_123xyz", "target": "guide_789xyz"}],
         "remove": ["guide_456xyz"],
     },
     "tool_associations": {
@@ -366,7 +356,6 @@ class _GuidelineConnection:
     id: GuidelineConnectionId
     source: Guideline
     target: Guideline
-    kind: ConnectionKind
 
 
 def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
@@ -451,7 +440,6 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineDa
                     target=GuidelineContent(
                         condition=prop.target.condition, action=prop.target.action
                     ),
-                    connection_kind=connection_kind_dto_to_connection_kind(prop.connection_kind),
                 )
                 for prop in dto.guideline.connection_propositions
             ]
@@ -498,7 +486,6 @@ def create_router(
                 target=await guideline_store.read_guideline(
                     guideline_set=guideline_set, guideline_id=c.target
                 ),
-                kind=c.kind,
             )
             for c in chain(
                 await guideline_connection_store.list_connections(
@@ -592,7 +579,6 @@ def create_router(
                                 condition=connection.target.content.condition,
                                 action=connection.target.content.action,
                             ),
-                            kind=connection_kind_to_dto(connection.kind),
                             indirect=indirect,
                         )
                         for connection, indirect in await get_guideline_connections(
@@ -660,7 +646,6 @@ def create_router(
                         condition=connection.target.content.condition,
                         action=connection.target.content.action,
                     ),
-                    kind=connection_kind_to_dto(connection.kind),
                     indirect=indirect,
                 )
                 for connection, indirect in connections
@@ -779,7 +764,6 @@ def create_router(
                 await guideline_connection_store.create_connection(
                     source=req.source,
                     target=req.target,
-                    kind=connection_kind_dto_to_connection_kind(req.kind),
                 )
 
         connections = await get_guideline_connections(
@@ -852,7 +836,6 @@ def create_router(
                         condition=connection.target.content.condition,
                         action=connection.target.content.action,
                     ),
-                    kind=connection_kind_to_dto(connection.kind),
                     indirect=indirect,
                 )
                 for connection, indirect in await get_guideline_connections(
