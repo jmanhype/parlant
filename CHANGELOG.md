@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Return event ID instead of correlation ID from utterance API
 
 ## [1.3.0] - 2024-12-26
 
