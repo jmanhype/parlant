@@ -24,9 +24,9 @@ Parlant is a framework that transforms how AI agents make decisions in customer-
 
 Unlike traditional approaches that rely on prompt engineering or conversation flows, Parlant implements an active control system that ensures agents follow your specific business rules.
 
-When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach as new information emerges, creating responses that precisely align with your intended behavior.
+When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges, creating responses that precisely align with your intended behavior.
 
-Parlant comes pre-built with responsive session (conversation) management, instruction-contradiction detection and coherence checks, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, and other goodies.
+Parlant comes pre-built with responsive session (conversation) management, a detection mechanism for incoherence and contradictions in guidelines, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, and other goodies.
 
 ## 📦 Quickstart
 ```bash
