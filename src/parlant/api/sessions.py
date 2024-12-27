@@ -1340,27 +1340,32 @@ def create_router(
         if params.actions:
             actions = [utterance_request_dto_to_utterance_request(a) for a in params.actions]
             correlation_id = await application.utter(session, actions)
-
+            event, *_ = await session_store.list_events(
+                session_id=session_id,
+                correlation_id=correlation_id,
+                kinds=["message"],
+            )
+            return event_to_dto(event)
         else:
             correlation_id = await application.dispatch_processing_task(session)
 
-        await session_listener.wait_for_events(
-            session_id=session_id,
-            correlation_id=correlation_id,
-            timeout=Timeout(60),
-        )
+            await session_listener.wait_for_events(
+                session_id=session_id,
+                correlation_id=correlation_id,
+                timeout=Timeout(60),
+            )
 
-        event = next(
-            iter(
-                await session_store.list_events(
-                    session_id=session_id,
-                    correlation_id=correlation_id,
-                    kinds=["status"],
+            event = next(
+                iter(
+                    await session_store.list_events(
+                        session_id=session_id,
+                        correlation_id=correlation_id,
+                        kinds=["status"],
+                    )
                 )
             )
-        )
 
-        return event_to_dto(event)
+            return event_to_dto(event)
 
     async def _add_human_agent_message_on_behalf_of_ai_agent(
         session_id: SessionIdPath,
