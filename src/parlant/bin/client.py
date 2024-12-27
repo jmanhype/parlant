@@ -923,7 +923,7 @@ class Interface:
         try:
             agent = Actions.create_agent(ctx, name, description, max_engine_iterations)
 
-            Interface._write_success(f"Added agent (id={agent.id})")
+            Interface._write_success(f"Added agent (id: {agent.id})")
             Interface._render_agents([agent])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -933,7 +933,7 @@ class Interface:
     def delete_agent(ctx: click.Context, agent_id: str) -> None:
         try:
             Actions.delete_agent(ctx, agent_id=agent_id)
-            Interface._write_success(f"Removed agent (id={agent_id})")
+            Interface._write_success(f"Removed agent (id: {agent_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -984,7 +984,7 @@ class Interface:
     ) -> None:
         try:
             agent = Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
-            Interface._write_success(f"Updated agent (id={agent_id})")
+            Interface._write_success(f"Updated agent (id: {agent_id})")
             Interface._render_agents([agent])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1058,14 +1058,14 @@ class Interface:
         title: Optional[str] = None,
     ) -> None:
         session = Actions.create_session(ctx, agent_id, customer_id, title)
-        Interface._write_success(f"Added session (id={session.id})")
+        Interface._write_success(f"Added session (id: {session.id})")
         Interface._render_sessions([session])
 
     @staticmethod
     def delete_session(ctx: click.Context, session_id: str) -> None:
         try:
             Actions.delete_session(ctx, session_id=session_id)
-            Interface._write_success(f"Removed session (id={session_id})")
+            Interface._write_success(f"Removed session (id: {session_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1078,7 +1078,7 @@ class Interface:
         consumption_offsets: Optional[int] = None,
     ) -> None:
         Actions.update_session(ctx, session_id, consumption_offsets, title)
-        Interface._write_success(f"Updated session (id={session_id})")
+        Interface._write_success(f"Updated session (id: {session_id})")
 
     @staticmethod
     def inspect_event(
@@ -1157,7 +1157,7 @@ class Interface:
             synonyms,
         )
 
-        Interface._write_success(f"Added term (id={term.id})")
+        Interface._write_success(f"Added term (id: {term.id})")
         Interface._print_table([term.__dict__])
 
     @staticmethod
@@ -1183,7 +1183,7 @@ class Interface:
             description,
             synonyms,
         )
-        Interface._write_success(f"Updated term (id={term.id})")
+        Interface._write_success(f"Updated term (id: {term.id})")
         Interface._print_table([term.__dict__])
 
     @staticmethod
@@ -1194,7 +1194,7 @@ class Interface:
     ) -> None:
         Actions.delete_term(ctx, agent_id, term_id)
 
-        Interface._write_success(f"Removed term '{term_id}'")
+        Interface._write_success(f"Removed term (id: {term_id})")
 
     @staticmethod
     def list_terms(
@@ -1290,7 +1290,7 @@ class Interface:
             )
 
             guideline = guideline_with_connections_and_associations.guideline
-            Interface._write_success(f"Added guideline (id={guideline.id})")
+            Interface._write_success(f"Added guideline (id: {guideline.id})")
             Interface._render_guideline_entailments(
                 guideline_with_connections_and_associations.guideline,
                 guideline_with_connections_and_associations.connections,
@@ -1336,7 +1336,7 @@ class Interface:
             )
 
             guideline = guideline_with_connections.guideline
-            Interface._write_success(f"Updated guideline (id={guideline.id})")
+            Interface._write_success(f"Updated guideline (id: {guideline.id})")
             Interface._render_guideline_entailments(
                 guideline_with_connections.guideline,
                 guideline_with_connections.connections,
@@ -1369,7 +1369,7 @@ class Interface:
         try:
             Actions.delete_guideline(ctx, agent_id, guideline_id)
 
-            Interface._write_success(f"Removed guideline (id={guideline_id})")
+            Interface._write_success(f"Removed guideline (id: {guideline_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1429,7 +1429,7 @@ class Interface:
                 target_guideline_id,
             )
 
-            Interface._write_success(f"Added connection (id={connection.connections[0].id})")
+            Interface._write_success(f"Added connection (id: {connection.connections[0].id})")
             Interface._print_table([connection.dict()])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1450,7 +1450,7 @@ class Interface:
                 target_guideline_id,
             )
 
-            Interface._write_success(f"Removed entailment (id={connection_id})")
+            Interface._write_success(f"Removed entailment (id: {connection_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1480,14 +1480,14 @@ class Interface:
         tool_name: str,
     ) -> None:
         try:
-            association = Actions.add_guideline_tool_association(
+            guideline = Actions.add_guideline_tool_association(
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
             Interface._write_success(
                 f"Enabled tool '{tool_name}' from service '{service_name}' for guideline '{guideline_id}'"
             )
-            Interface._render_guideline_tool_associations(association.tool_associations)
+            Interface._render_guideline_tool_associations(guideline.tool_associations)
 
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1506,7 +1506,7 @@ class Interface:
                 ctx, agent_id, guideline_id, service_name, tool_name
             )
 
-            Interface._write_success(f"Removed tool association (id={association_id})")
+            Interface._write_success(f"Removed tool association (id: {association_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1572,7 +1572,7 @@ class Interface:
             freshness_rules,
         )
 
-        Interface._write_success(f"Added variable (id={variable.id})")
+        Interface._write_success(f"Added variable (id: {variable.id})")
         Interface._render_variables([variable])
 
     @staticmethod
@@ -1590,14 +1590,14 @@ class Interface:
             ctx, agent_id, variable_id, name, description, service_name, tool_name, freshness_rules
         )
 
-        Interface._write_success(f"Updated variable (id={variable.id})")
+        Interface._write_success(f"Updated variable (id: {variable.id})")
         Interface._render_variables([variable])
 
     @staticmethod
     def delete_variable(ctx: click.Context, agent_id: str, variable_id: str) -> None:
         try:
             Actions.delete_variable(ctx, agent_id, variable_id)
-            Interface._write_success(f"Removed variable '{variable_id}'")
+            Interface._write_success(f"Removed variable (id: {variable_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1635,7 +1635,7 @@ class Interface:
                 value=value,
             )
 
-            Interface._write_success(f"Updated variable value (id={cv_value.id})")
+            Interface._write_success(f"Updated variable value (id: {cv_value.id})")
             Interface._render_variable_key_value_pairs({key: cv_value})
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1696,7 +1696,7 @@ class Interface:
     ) -> None:
         try:
             Actions.delete_variable_value(ctx, agent_id, variable_id, key)
-            Interface._write_success(f"Removed variable value with the key '{key}'")
+            Interface._write_success(f"Removed key from variable (id: {variable_id}, key: '{key}')")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1723,7 +1723,7 @@ class Interface:
 
             result = Actions.create_or_update_service(ctx, name, kind, url, source)
 
-            Interface._write_success(f"Added service '{name}'")
+            Interface._write_success(f"Added service (name: '{name}')")
             Interface._print_table([result.dict()])
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1737,7 +1737,7 @@ class Interface:
         try:
             Actions.delete_service(ctx, name)
 
-            Interface._write_success(f"Removed service '{name}'")
+            Interface._write_success(f"Removed service (name: '{name}')")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1826,7 +1826,7 @@ class Interface:
     def create_customer(ctx: click.Context, name: str) -> None:
         try:
             customer = Actions.create_customer(ctx, name)
-            Interface._write_success(f"Added customer (id={customer.id})")
+            Interface._write_success(f"Added customer (id: {customer.id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1835,7 +1835,7 @@ class Interface:
     def update_customer(ctx: click.Context, customer_id: str, name: str) -> None:
         try:
             customer = Actions.update_customer(ctx, customer_id=customer_id, name=name)
-            Interface._write_success(f"Updated customer (id={customer_id})")
+            Interface._write_success(f"Updated customer (id: {customer_id})")
 
             Interface._render_customers([customer])
         except Exception as e:
@@ -1846,7 +1846,7 @@ class Interface:
     def delete_customer(ctx: click.Context, customer_id: str) -> None:
         try:
             Actions.delete_customer(ctx, customer_id=customer_id)
-            Interface._write_success(f"Removed customer (id={customer_id})")
+            Interface._write_success(f"Removed customer (id: {customer_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1865,7 +1865,7 @@ class Interface:
         try:
             Actions.add_customer_extra(ctx, customer_id, key, value)
             Interface._write_success(
-                f"Added extra key '{key}' with value '{value}' to customer {customer_id}"
+                f"Added extra value to customer (id: {customer_id}, key: '{key}', value: '{value}')"
             )
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
@@ -1875,7 +1875,9 @@ class Interface:
     def remove_customer_extra(ctx: click.Context, customer_id: str, key: str) -> None:
         try:
             Actions.remove_customer_extra(ctx, customer_id, key)
-            Interface._write_success(f"Removed extra key '{key}' from customer {customer_id}")
+            Interface._write_success(
+                f"Removed extra value from customer (id: {customer_id}, key: '{key}')"
+            )
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1884,7 +1886,7 @@ class Interface:
     def add_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         try:
             Actions.add_customer_tag(ctx, customer_id, tag_id)
-            Interface._write_success(f"Added tag (id={tag_id}) to customer {customer_id}")
+            Interface._write_success(f"Tagged customer (id: {customer_id}, tag_id: {tag_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1893,7 +1895,7 @@ class Interface:
     def remove_customer_tag(ctx: click.Context, customer_id: str, tag_id: str) -> None:
         try:
             Actions.remove_customer_tag(ctx, customer_id, tag_id)
-            Interface._write_success(f"Removed tag (id={tag_id}) from customer {customer_id}")
+            Interface._write_success(f"Untagged customer (id: {customer_id}, tag_id: {tag_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1927,7 +1929,7 @@ class Interface:
     def create_tag(ctx: click.Context, name: str) -> None:
         try:
             tag = Actions.create_tag(ctx, name=name)
-            Interface._write_success(f"Added tag (id={tag.id})")
+            Interface._write_success(f"Added tag (id: {tag.id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -1945,7 +1947,7 @@ class Interface:
     def update_tag(ctx: click.Context, tag_id: str, name: str) -> None:
         try:
             tag = Actions.update_tag(ctx, tag_id=tag_id, name=name)
-            Interface._write_success(f"Updated tag (id={tag_id})")
+            Interface._write_success(f"Updated tag (id: {tag_id})")
 
             Interface._render_tags([tag])
         except Exception as e:
@@ -1956,7 +1958,7 @@ class Interface:
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
         try:
             Actions.delete_tag(ctx, tag_id=tag_id)
-            Interface._write_success(f"Removed tag (id={tag_id})")
+            Interface._write_success(f"Removed tag (id: {tag_id})")
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
