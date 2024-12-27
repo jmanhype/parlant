@@ -149,19 +149,19 @@ class AlphaEngine(Engine):
         interaction_state = await self._load_interaction_state(context)
         try:
             with self._logger.operation(
-                f"Uttering actions '{[r.action for r in requests]}' for session {context.session_id}"
+                f"Uttering in session {context.session_id} using actions '{[r.action for r in requests]}'"
             ):
                 await self._do_utter(context, interaction_state, event_emitter, requests)
             return True
 
         except asyncio.CancelledError:
-            self._logger.warning(f"Uttering for session {context.session_id} was cancelled.")
+            self._logger.warning(f"Uttering in session {context.session_id} was cancelled.")
             return False
 
         except Exception as exc:
             formatted_exception = traceback.format_exception(type(exc), exc, exc.__traceback__)
             self._logger.error(
-                f"Error during uttering for session {context.session_id}: {formatted_exception}"
+                f"Error during uttering in session {context.session_id}: {formatted_exception}"
             )
 
             await event_emitter.emit_status_event(
@@ -176,7 +176,7 @@ class AlphaEngine(Engine):
 
         except BaseException as exc:
             self._logger.critical(
-                f"Critical error during uttering for session {context.session_id}: "
+                f"Critical error during uttering in session {context.session_id}: "
                 f"{traceback.format_exception(type(exc), exc, exc.__traceback__)}"
             )
             raise

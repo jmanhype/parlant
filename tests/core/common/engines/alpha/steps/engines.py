@@ -14,7 +14,7 @@
 
 import asyncio
 from typing import cast
-from pytest_bdd import given, when
+from pytest_bdd import given, when, parsers
 from unittest.mock import AsyncMock
 
 from parlant.core.agents import Agent, AgentId, AgentStore
@@ -22,7 +22,7 @@ from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.engine import AlphaEngine
 from parlant.core.engines.alpha.message_event_generator import MessageEventGenerator
 from parlant.core.emissions import EmittedEvent
-from parlant.core.engines.types import Context
+from parlant.core.engines.types import Context, UtteranceReason, UtteranceRequest
 from parlant.core.emission.event_buffer import EventBuffer
 from parlant.core.sessions import SessionId, SessionStore
 
@@ -43,6 +43,26 @@ def given_a_faulty_message_production_mechanism(
 ) -> None:
     generator = context.container[MessageEventGenerator]
     generator.generate_events = AsyncMock(side_effect=Exception())  # type: ignore
+
+
+@step(
+    given,
+    parsers.parse('an utterance request "{action}", to {do_something}'),
+)
+def given_a_follow_up_utterance_request(
+    context: ContextOfTest, action: str, do_something: str
+) -> UtteranceRequest:
+    utterance_request = UtteranceRequest(
+        action=action,
+        reason={
+            "follow up with the customer": UtteranceReason.FOLLOW_UP,
+            "buy time": UtteranceReason.BUY_TIME,
+        }[do_something],
+    )
+
+    context.actions.append(utterance_request)
+
+    return utterance_request
 
 
 @step(when, "processing is triggered", target_fixture="emitted_events")

@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>A Client/Server Framework for Building Guided LLM Agents</h2>
+  <h2>Parlant: A behavioral control system for customer-facing LLM agents </h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
@@ -20,9 +20,13 @@
 </div>
 
 ## ✨ What is Parlant?
-Parlant is a fully open-source (Apache 2.0) client/server framework for building and serving guided customer-facing agents based on LLMs (Large Language Models).
+Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.
 
-It comes pre-built with responsive session (conversation) management, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, and other goodies.
+Unlike traditional approaches that rely on prompt engineering or conversational flow charts, Parlant implements a dynamic control system that ensures agents follow your specific business rules by matching and activating the appropriate combination of behavioral guidelines for every specific context.
+
+When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges. When it's time to generate a message, Parlant implements self-critique mechanisms to ensure that the agent's responses precisely align with your intended behavior as given by the contextually-matched guidelines.
+
+Parlant comes pre-built with responsive session (conversation) management, a detection mechanism for incoherence and contradictions in guidelines, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, native API clients in Python and TypeScript, and other goodies.
 
 ## 📦 Quickstart
 ```bash
@@ -36,10 +40,10 @@ $ # Open the sandbox UI at http://localhost:8000 and play
 ## 🙋‍♂️🙋‍♀️ Who Is Parlant For?
 Parlant is the right tool for the job if you're building an LLM-based chat agent, and:
 
-1. You require a high degree of behavioral precision and consistency
+1. You require a high degree of behavioral precision and consistency, particularly in customer-facing scenarios
 1. Your agent is expected to undergo many behavioral refinements and changes, and you need a way to implement those changes efficiently and confidently
-1. You would benefit from assistance in maintaining coherence and disentangling subtleties in numerous agent instructions
-1. Conversational UX and user-engagmeent is an important concern for your use case
+1. You're expected to maintain a large set of behavioral guidelines, and you want to maintain them coherently and with version-tracking
+1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily control the flow and language of conversations
 
 ## 🤔 What Makes Parlant Different?
 
@@ -94,7 +98,7 @@ By giving structure to behavioral guidelines, and _granularizing_ guidelines (i.
 
 To start learning and building with Parlant, visit our [documentation portal](https://parlant.io/docs/quickstart/introduction).
 
-Need help? Send us a message on [Discord](https://discord.gg/duxWqxKk6J). We're happy to answer questions and help you get up and running!
+Need help? Ask us anything on [Discord](https://discord.gg/duxWqxKk6J). We're happy to answer questions and help you get up and running!
 
 ## 💻 Usage Example
 Adding a guideline for an agent—for example, to ask a counter-question to get more info when a customer asks a question:
@@ -102,7 +106,7 @@ Adding a guideline for an agent—for example, to ask a counter-question to get 
 parlant guideline create \
     --agent-id CUSTOMER_SUCCESS_AGENT_ID \
     --condition "a free-tier customer is asking how to use our product" \
-    --action "first seek to understsand what they're trying to achieve"
+    --action "first seek to understand what they're trying to achieve"
 ```
 
 In Parlant, Customer-Agent interaction happens asynchronously, to enable more natural customer interactions, rather than forcing a strict and unnatural request-reply mode.

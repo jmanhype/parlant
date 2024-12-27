@@ -1033,4 +1033,5 @@ async def test_that_an_agent_message_can_be_generated_from_utterance_requests(
     )
 
     assert len(events) == 1
+    assert events[0]["id"] == event["id"]
     assert "thinking" in events[0]["data"]["message"].lower()
