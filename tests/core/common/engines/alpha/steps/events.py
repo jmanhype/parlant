@@ -20,7 +20,6 @@ from parlant.core.common import JSONSerializable
 from parlant.core.customers import CustomerStore
 from parlant.core.engines.alpha.utils import emitted_tool_event_to_dict
 from parlant.core.emissions import EmittedEvent
-from parlant.core.engines.types import UtteranceReason, UtteranceRequest
 from parlant.core.nlp.moderation import ModerationTag
 from parlant.core.sessions import (
     MessageEventData,
@@ -193,36 +192,6 @@ def given_a_flagged_customer_message(
     context.events.append(event)
 
     return session.id
-
-
-@step(
-    given,
-    parsers.parse('an utterance with action of "{action}", to follow up with the customer'),
-)
-def given_a_follow_up_utterance_request(
-    context: ContextOfTest,
-    action: str,
-) -> UtteranceRequest:
-    utterance_request = UtteranceRequest(action=action, reason=UtteranceReason.FOLLOW_UP)
-
-    context.actions.append(utterance_request)
-
-    return utterance_request
-
-
-@step(
-    given,
-    parsers.parse('an utterance with action of "{action}", to buy time'),
-)
-def given_a_buy_time_utterance_request(
-    context: ContextOfTest,
-    action: str,
-) -> UtteranceRequest:
-    utterance_request = UtteranceRequest(action=action, reason=UtteranceReason.BUY_TIME)
-
-    context.actions.append(utterance_request)
-
-    return utterance_request
 
 
 @step(
