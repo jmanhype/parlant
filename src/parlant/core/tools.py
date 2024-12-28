@@ -75,6 +75,7 @@ class ToolContext:
         self.agent_id = agent_id
         self.session_id = session_id
         self.customer_id = customer_id
+        self.plugin_data = plugin_data
         self._emit_message = emit_message
         self._emit_status = emit_status
 
