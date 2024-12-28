@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Support custom plugin data for PluginServer
 
 ## [1.3.1] - 2024-12-27
 

@@ -54,7 +54,7 @@ async def agent(container: Container) -> Agent:
 
 
 @fixture
-async def context(agent: Agent) -> ToolContext:
+async def tool_context(agent: Agent) -> ToolContext:
     return ToolContext(
         agent_id=agent.id,
         session_id="test_session",
@@ -82,16 +82,16 @@ async def test_that_a_plugin_with_no_configured_tools_returns_no_tools(
             assert not tools
 
 
-async def test_that_a_decorated_tool_can_be_called_directly(context: ToolContext) -> None:
+async def test_that_a_decorated_tool_can_be_called_directly(tool_context: ToolContext) -> None:
     @tool
     def my_tool(context: ToolContext, arg_1: int, arg_2: Optional[int]) -> ToolResult:
         """My tool's description"""
         return ToolResult(arg_1 * (arg_2 or 0))
 
-    assert my_tool(context, 2, None).data == 0
-    assert my_tool(context, 2, 1).data == 2
-    assert my_tool(context, 2, 2).data == 4
-    assert my_tool(context, arg_1=2, arg_2=3).data == 6
+    assert my_tool(tool_context, 2, None).data == 0
+    assert my_tool(tool_context, 2, 1).data == 2
+    assert my_tool(tool_context, 2, 2).data == 4
+    assert my_tool(tool_context, arg_1=2, arg_2=3).data == 6
 
 
 async def test_that_a_plugin_with_one_configured_tool_returns_that_tool(
@@ -121,7 +121,7 @@ async def test_that_a_plugin_reads_a_tool(container: Container) -> None:
             assert my_tool.tool == returned_tool
 
 
-async def test_that_a_plugin_calls_a_tool(context: ToolContext, container: Container) -> None:
+async def test_that_a_plugin_calls_a_tool(tool_context: ToolContext, container: Container) -> None:
     @tool
     def my_tool(context: ToolContext, arg_1: int, arg_2: int) -> ToolResult:
         return ToolResult(arg_1 * arg_2)
@@ -130,14 +130,14 @@ async def test_that_a_plugin_calls_a_tool(context: ToolContext, container: Conta
         async with create_client(server, container[EventBufferFactory]) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
             assert result.data == 8
 
 
 async def test_that_a_plugin_calls_an_async_tool(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
 ) -> None:
     @tool
@@ -148,14 +148,14 @@ async def test_that_a_plugin_calls_an_async_tool(
         async with create_client(server, container[EventBufferFactory]) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
             assert result.data == 8
 
 
 async def test_that_a_plugin_tool_has_access_to_the_current_session_agent_and_customer(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
 ) -> None:
     @tool
@@ -172,19 +172,19 @@ async def test_that_a_plugin_tool_has_access_to_the_current_session_agent_and_cu
         async with create_client(server, container[EventBufferFactory]) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={},
             )
 
             data = cast(Mapping[str, str], result.data)
 
-            assert data["session_id"] == context.session_id
-            assert data["agent_id"] == context.agent_id
-            assert data["customer_id"] == context.customer_id
+            assert data["session_id"] == tool_context.session_id
+            assert data["agent_id"] == tool_context.agent_id
+            assert data["customer_id"] == tool_context.customer_id
 
 
 async def test_that_a_plugin_tool_can_emit_events(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
     agent: Agent,
 ) -> None:
@@ -204,11 +204,11 @@ async def test_that_a_plugin_tool_can_emit_events(
         ) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={},
             )
 
-            emitted_events = buffers.for_session[SessionId(context.session_id)].events
+            emitted_events = buffers.for_session[SessionId(tool_context.session_id)].events
 
             assert len(emitted_events) == 3
 
@@ -231,7 +231,7 @@ async def test_that_a_plugin_tool_can_emit_events(
 
 
 async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_error(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
     agent: Agent,
 ) -> None:
@@ -252,11 +252,11 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
             with pytest.raises(ToolExecutionError):
                 await client.call_tool(
                     my_tool.tool.name,
-                    context,
+                    tool_context,
                     arguments={},
                 )
 
-            emitted_events = buffers.for_session[SessionId(context.session_id)].events
+            emitted_events = buffers.for_session[SessionId(tool_context.session_id)].events
 
             assert len(emitted_events) == 2
 
@@ -274,7 +274,7 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
 
 
 async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
     agent: Agent,
 ) -> None:
@@ -293,7 +293,7 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
             assert tools
             result = await client.call_tool(
                 my_enum_tool.tool.name,
-                context,
+                tool_context,
                 arguments={"category": "category_a"},
             )
 
@@ -301,7 +301,8 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
 
 
 async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
-    context: ToolContext, container: Container
+    tool_context: ToolContext,
+    container: Container,
 ) -> None:
     @tool
     def my_tool(context: ToolContext, arg_1: int, arg_2: Optional[int] = None) -> ToolResult:
@@ -312,14 +313,15 @@ async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
         async with create_client(server, container[EventBufferFactory]) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
             assert result.data == 8
 
 
 async def test_that_a_plugin_calls_a_tool_with_a_union_param(
-    context: ToolContext, container: Container
+    tool_context: ToolContext,
+    container: Container,
 ) -> None:
     @tool
     def my_tool(context: ToolContext, arg_1: int, arg_2: int | None = None) -> ToolResult:
@@ -330,16 +332,15 @@ async def test_that_a_plugin_calls_a_tool_with_a_union_param(
         async with create_client(server, container[EventBufferFactory]) as client:
             result = await client.call_tool(
                 my_tool.tool.name,
-                context,
+                tool_context,
                 arguments={"arg_1": 2, "arg_2": 4},
             )
             assert result.data == 8
 
 
 async def test_that_a_plugin_tool_that_returns_a_huge_payload_raises_an_error(
-    context: ToolContext,
+    tool_context: ToolContext,
     container: Container,
-    agent: Agent,
 ) -> None:
     @tool
     def huge_payload_tool(context: ToolContext) -> ToolResult:
@@ -348,10 +349,7 @@ async def test_that_a_plugin_tool_that_returns_a_huge_payload_raises_an_error(
 
     async with run_service_server([huge_payload_tool]) as server:
         async with create_client(server, container[EventBufferFactory]) as client:
-            tools = await client.list_tools()
-
-            assert tools
             with raises(ToolResultError) as exc:
-                await client.call_tool(huge_payload_tool.tool.name, context, arguments={})
+                await client.call_tool(huge_payload_tool.tool.name, tool_context, arguments={})
 
             assert "Response exceeds 16KB limit" in str(exc.value)
