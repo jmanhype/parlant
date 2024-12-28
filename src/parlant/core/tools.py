@@ -70,6 +70,7 @@ class ToolContext:
                 Awaitable[None],
             ]
         ] = None,
+        plugin_data: Mapping[str, Any] = {},
     ) -> None:
         self.agent_id = agent_id
         self.session_id = session_id

@@ -283,8 +283,10 @@ class PluginServer:
         port: int = 8089,
         host: str = "0.0.0.0",
         on_app_created: Callable[[FastAPI], Awaitable[FastAPI]] | None = None,
+        plugin_data: Mapping[str, Any] = {},
     ) -> None:
         self.tools = {entry.tool.name: entry for entry in tools}
+        self.plugin_data = plugin_data
         self.host = host
         self.port = port
         self.url = f"http://{self.host}:{self.port}"
@@ -447,6 +449,7 @@ class PluginServer:
                 customer_id=request.customer_id,
                 emit_message=emit_message,
                 emit_status=emit_status,
+                plugin_data=self.plugin_data,
             )
 
             func = self.tools[name].function
