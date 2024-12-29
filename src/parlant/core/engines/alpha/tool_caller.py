@@ -232,7 +232,7 @@ class ToolCaller:
     def _get_glossary_text(
         self,
         terms: Sequence[Term],
-    ) -> PromptBuilder:
+    ) -> str:
         terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
 
         return f"""
