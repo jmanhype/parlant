@@ -4,6 +4,7 @@ All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
 - Support custom plugin data for PluginServer
+- Allow specifying custom logger ID when creating loggers
 
 ## [1.3.1] - 2024-12-27
 

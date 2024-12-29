@@ -73,9 +73,10 @@ class CorrelationalLogger(Logger):
         self,
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
+        logger_id: str | None = None,
     ) -> None:
         self._correlator = correlator
-        self.raw_logger = logging.getLogger("parlant")
+        self.raw_logger = logging.getLogger(logger_id or "parlant")
         self.raw_logger.setLevel(log_level.to_logging_level())
 
         # Wrap it with structlog configuration
@@ -156,8 +157,9 @@ class StdoutLogger(CorrelationalLogger):
         self,
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
+        logger_id: str | None = None,
     ) -> None:
-        super().__init__(correlator, log_level)
+        super().__init__(correlator, log_level, logger_id)
 
 
 class FileLogger(CorrelationalLogger):
@@ -166,8 +168,9 @@ class FileLogger(CorrelationalLogger):
         log_file_path: Path,
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
+        logger_id: str | None = None,
     ) -> None:
-        super().__init__(correlator, log_level)
+        super().__init__(correlator, log_level, logger_id)
 
         handlers: list[logging.Handler] = [
             logging.FileHandler(log_file_path),
