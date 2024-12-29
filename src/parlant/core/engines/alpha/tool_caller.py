@@ -55,8 +55,8 @@ class ToolCallEvaluation(DefaultBaseModel):
     comparison_with_rejected_tools_including_references_to_subtleties: str
     relevant_subtleties: str
     a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety: bool
-    better_rejected_tool_name: Optional[str] = ""
-    better_rejected_tool_rationale: Optional[str] = ""
+    better_rejected_tool_name: Optional[str] = None
+    better_rejected_tool_rationale: Optional[str] = None
     should_run: bool
 
 
@@ -242,7 +242,7 @@ class ToolCaller:
 
 - **Expected Result**:
 ```json
-{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+{json.dumps(shot.expected_result.model_dump(mode="json", exclude_unset=True), indent=2)}
 ```"""
 
     def _format_tool_call_inference_prompt(
@@ -425,8 +425,6 @@ However, note that you may choose to have multiple entries in 'tool_calls_for_ca
         )
 
         prompt = builder.build()
-        with open("tool calling prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
 
     def _add_tool_definitions_section(
@@ -616,8 +614,6 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     ),
                     "relevant_subtleties": "check_balance(12345) is already staged",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": False,
                 }
             ],
@@ -674,8 +670,6 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     ),
                     "relevant_subtleties": "no subtleties were detected",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 }
             ],
@@ -706,8 +700,6 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     ),
                     "relevant_subtleties": "two products need to be checked for calories - begin with margherita",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 },
                 {
@@ -720,8 +712,6 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     ),
                     "relevant_subtleties": "two products need to be checked for calories - now check deep dish",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 },
             ],

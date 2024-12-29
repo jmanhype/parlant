@@ -301,7 +301,7 @@ class GuidelineProposer:
         formatted_shot += f"""
 - **Expected Result**:
 ```json
-{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+{json.dumps(shot.expected_result.model_dump(mode="json", exclude_unset=True), indent=2)}
 ```
 """
 
@@ -440,6 +440,8 @@ Expected Output
     ```""")
 
         prompt = builder.build()
+        with open("guideline_proposer_prompt.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
 
