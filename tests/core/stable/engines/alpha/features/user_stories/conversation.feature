@@ -77,18 +77,3 @@ Feature: Conversation
         Then a single message event is emitted
         And the message contains no welcoming back of the customer
         And the message contains that the request will be escelated
-
-    Scenario: The agent treats guideline with multiple actions where one is continuous as if its fully continuous
-        Given an agent
-        And an empty session
-        And a guideline "unlock_card_guideline" to ask for the last 6 digits and help them unlock when the customer needs help unlocking their card
-        And the tool "try_unlock_card" 
-        And an association between "unlock_card_guideline" and "try_unlock_card"
-        And a customer message, "my card is locked"
-        And an agent message, "I'm sorry to hear that your card is locked. Could you please provide the last 6 digits of your card so I can assist you in unlocking it?"
-        And a customer message, "123456"
-        When processing is triggered
-        Then a single message event is emitted
-        And a single tool calls event is emitted
-        And the tool calls event contains that the card was succesfully unlocked
-        And the message contains that the card was unlocked

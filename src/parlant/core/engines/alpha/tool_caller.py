@@ -31,7 +31,7 @@ from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, ToolResult
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection
+from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
 from parlant.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from parlant.core.emissions import EmittedEvent
 from parlant.core.logging import Logger
@@ -229,6 +229,21 @@ class ToolCaller:
 
             return tool_results
 
+    def _get_glossary_text(
+        self,
+        terms: Sequence[Term],
+    ) -> str:
+        terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
+
+        return f"""
+The following is a glossary of the business.
+In some cases, a glossary term directly overrides "common knowledge" or the most prevalent definition of that same term (or object).
+Therefore, when encountering any of these terms, prioritize the interpretation provided in the glossary over any definitions you may already know.
+Please be tolerant of possible typos by the user with regards to these terms,and let the user know if/when you assume they meant a term by their typo: ###
+{terms_string}
+###
+"""  # noqa
+
     async def shots(self) -> Sequence[ToolCallerInferenceShot]:
         return await shot_collection.list()
 
@@ -242,7 +257,7 @@ class ToolCaller:
 
 - **Expected Result**:
 ```json
-{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+{json.dumps(shot.expected_result.model_dump(mode="json", exclude_unset=True), indent=2)}
 ```"""
 
     def _format_tool_call_inference_prompt(
@@ -349,7 +364,12 @@ Example #{i}: ###
             )
         )
         builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
+        if terms:
+            builder.add_section(
+                name=BuiltInSection.GLOSSARY,
+                content=self._get_glossary_text(terms),
+                status=SectionStatus.ACTIVE,
+            )
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(
@@ -602,7 +622,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             ),
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_balance",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="check_balance(12345) is already staged",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "We need the client's current balance to respond to their question",
@@ -612,10 +632,8 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "comparison_with_rejected_tools_including_references_to_subtleties": (
                         "There are no tools in the list of rejected tools"
                     ),
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "check_balance(12345) is already staged",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": False,
                 }
             ],
@@ -632,14 +650,14 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             ),
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="ping_supervisor",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="no subtleties were detected",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "There is no reason to notify the supervisor of anything",
                     "applicability_score": 1,
                     "same_call_is_already_staged": False,
                     "comparison_with_rejected_tools_including_references_to_subtleties": "There are no tools in the list of rejected tools",
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "no subtleties were detected",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
                     "should_run": False,
                 }
@@ -660,7 +678,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             ),
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_ride_price",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="no subtleties were detected",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "We need to know the price of a ride from New York to Newark to respond to the customer",
@@ -670,10 +688,8 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "comparison_with_rejected_tools_including_references_to_subtleties": (
                         "None of the available reference tools are deemed more suitable for the candidate tool’s application"
                     ),
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "no subtleties were detected",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 }
             ],
@@ -692,7 +708,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             ),
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_calories",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="two products need to be checked for calories - margherita and deep dish",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "We need to check how many calories are in the margherita pizza",
@@ -702,10 +718,8 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "comparison_with_rejected_tools_including_references_to_subtleties": (
                         "None of the available reference tools are deemed more suitable for the candidate tool’s application"
                     ),
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "two products need to be checked for calories - begin with margherita",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 },
                 {
@@ -716,10 +730,8 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "comparison_with_rejected_tools_including_references_to_subtleties": (
                         "None of the available reference tools are deemed more suitable for the candidate tool’s application"
                     ),
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "two products need to be checked for calories - now check deep dish",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
-                    "better_rejected_tool_name": None,
-                    "better_rejected_tool_rationale": None,
                     "should_run": True,
                 },
             ],
@@ -735,7 +747,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             most_recent_customer_inquiry_or_need="Checking the price of a Harley-Davidson Street Glide motorcycle",
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_motorcycle_price",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="Both the candidate and referenc tool could apply - we need to choose the one that applies best",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "we need to check for the price of a specific motorcycle model",
@@ -745,7 +757,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "comparison_with_rejected_tools_including_references_to_subtleties": (
                         "candidate tool is more specialized for this use case than the rejected tools"
                     ),
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "Both the candidate and referenc tool could apply - we need to choose the one that applies best",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": False,
                     "better_rejected_tool_name": "check_motorcycle_price",
                     "better_rejected_tool_rationale": (
@@ -768,7 +780,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             most_recent_customer_inquiry_or_need="Checking the price of a Harley-Davidson Street Glide motorcycle",
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_vehicle_price",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="no subtleties were detected",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "we need to check for the price of a specific vehicle - a Harley-Davidson Street Glide",
@@ -776,7 +788,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "arguments": {"model": "Harley-Davidson Street Glide"},
                     "same_call_is_already_staged": False,
                     "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_motorcycle_price",
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "no subtleties were detected",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": True,
                     "better_rejected_tool_name": "check_motorcycle_price",
                     "better_rejected_tool_rationale": (
@@ -798,7 +810,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
             most_recent_customer_inquiry_or_need="Checking the current temperature in the living room",
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
             name="check_indoor_temperature",
-            subtleties_to_be_aware_of="<NOTE ANY SIGNIFICANT SUBTLETIES TO BE AWARE OF WHEN RUNNING THIS TOOL IN OUR AGENT'S CONTEXT>",
+            subtleties_to_be_aware_of="no subtleties were detected",
             tool_calls_for_candidate_tool=[
                 {
                     "applicability_rationale": "need to check the current temperature in a specific room",
@@ -806,7 +818,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                     "arguments": {"room": "living room"},
                     "same_call_is_already_staged": False,
                     "comparison_with_rejected_tools_including_references_to_subtleties": "not as good a fit as check_temperature",
-                    "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
+                    "relevant_subtleties": "no subtleties were detected",
                     "a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety": True,
                     "better_rejected_tool_name": "check_temperature",
                     "better_rejected_tool_rationale": (

@@ -301,7 +301,7 @@ class GuidelineProposer:
         formatted_shot += f"""
 - **Expected Result**:
 ```json
-{json.dumps(shot.expected_result.model_dump(mode="json"), indent=2)}
+{json.dumps(shot.expected_result.model_dump(mode="json", exclude_unset=True), indent=2)}
 ```
 """
 
