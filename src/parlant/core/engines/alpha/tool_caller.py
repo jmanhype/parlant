@@ -55,8 +55,8 @@ class ToolCallEvaluation(DefaultBaseModel):
     comparison_with_rejected_tools_including_references_to_subtleties: str
     relevant_subtleties: str
     a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety: bool
-    better_rejected_tool_name: Optional[str] = None
-    better_rejected_tool_rationale: Optional[str] = None
+    better_rejected_tool_name: Optional[str] = ""
+    better_rejected_tool_rationale: Optional[str] = ""
     should_run: bool
 
 
