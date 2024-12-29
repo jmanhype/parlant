@@ -58,14 +58,14 @@ class StyleGuideUpdateParams(TypedDict, total=False):
     examples: Sequence[StyleGuideExample]
 
 
-class _StyleGuideEventDocument(TypedDict):
+class StyleGuideEventDocument(TypedDict):
     source: EventSource
     message: str
 
 
-class _StyleGuideExampleDocument(TypedDict):
-    before: Sequence[_StyleGuideEventDocument]
-    after: Sequence[_StyleGuideEventDocument]
+class StyleGuideExampleDocument(TypedDict):
+    before: Sequence[StyleGuideEventDocument]
+    after: Sequence[StyleGuideEventDocument]
     violation: str
 
 
@@ -75,7 +75,7 @@ class _StyleGuideDocument(TypedDict, total=False):
     creation_utc: str
     style_guide_set: str
     principle: str
-    examples: Sequence[_StyleGuideExampleDocument]
+    examples: Sequence[StyleGuideExampleDocument]
 
 
 class StyleGuideStore(ABC):
@@ -137,26 +137,26 @@ class StyleGuideDocumentStore(StyleGuideStore):
     ) -> None:
         pass
 
-    def _serialize_event(self, event: StyleGuideEvent) -> _StyleGuideEventDocument:
-        return _StyleGuideEventDocument(
+    def _serialize_event(self, event: StyleGuideEvent) -> StyleGuideEventDocument:
+        return StyleGuideEventDocument(
             source=event.source,
             message=event.message,
         )
 
-    def _deserialize_event(self, doc: _StyleGuideEventDocument) -> StyleGuideEvent:
+    def _deserialize_event(self, doc: StyleGuideEventDocument) -> StyleGuideEvent:
         return StyleGuideEvent(source=doc["source"], message=doc["message"])
 
-    def _serialize_example(self, example: StyleGuideExample) -> _StyleGuideExampleDocument:
-        return _StyleGuideExampleDocument(
-            before=[self._serialize_event(evt) for evt in example.before],
-            after=[self._serialize_event(evt) for evt in example.after],
+    def _serialize_example(self, example: StyleGuideExample) -> StyleGuideExampleDocument:
+        return StyleGuideExampleDocument(
+            before=[self._serialize_event(event) for event in example.before],
+            after=[self._serialize_event(event) for event in example.after],
             violation=example.violation,
         )
 
-    def _deserialize_example(self, doc: _StyleGuideExampleDocument) -> StyleGuideExample:
+    def _deserialize_example(self, doc: StyleGuideExampleDocument) -> StyleGuideExample:
         return StyleGuideExample(
-            before=[self._deserialize_event(evt_doc) for evt_doc in doc["before"]],
-            after=[self._deserialize_event(evt_doc) for evt_doc in doc["after"]],
+            before=[self._deserialize_event(event_doc) for event_doc in doc["before"]],
+            after=[self._deserialize_event(event_doc) for event_doc in doc["after"]],
             violation=doc["violation"],
         )
 
@@ -171,7 +171,7 @@ class StyleGuideDocumentStore(StyleGuideStore):
             creation_utc=style_guide.creation_utc.isoformat(),
             style_guide_set=style_guide_set,
             principle=style_guide.content.principle,
-            examples=[self._serialize_example(ex) for ex in style_guide.content.examples],
+            examples=[self._serialize_example(example) for example in style_guide.content.examples],
         )
 
     def _deserialize(
@@ -183,7 +183,7 @@ class StyleGuideDocumentStore(StyleGuideStore):
             creation_utc=datetime.fromisoformat(doc["creation_utc"]),
             content=StyleGuideContent(
                 principle=doc["principle"],
-                examples=[self._deserialize_example(ex) for ex in doc["examples"]],
+                examples=[self._deserialize_example(example) for example in doc["examples"]],
             ),
         )
 
@@ -268,7 +268,9 @@ class StyleGuideDocumentStore(StyleGuideStore):
             if "principle" in params:
                 update_doc["principle"] = params["principle"]
             if "examples" in params:
-                update_doc["examples"] = [self._serialize_example(ex) for ex in params["examples"]]
+                update_doc["examples"] = [
+                    self._serialize_example(example) for example in params["examples"]
+                ]
 
             result = await self._collection.update_one(
                 filters={

@@ -170,6 +170,7 @@ InvoiceData: TypeAlias = Union[InvoiceGuidelineData, InvoiceStyleGuideData]
 
 # Invoice: TypeAlias = Union[GuidelineInvoice, StyleGuideInvoice]
 
+
 @dataclass(frozen=True)
 class Invoice:
     kind: PayloadKind
@@ -454,7 +455,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 checksum=invoice.checksum,
                 state_version=invoice.state_version,
                 approved=invoice.approved,
-                data=serialize_invoice_guideline_data(cast(InvoiceGuidelineData,invoice.data))
+                data=serialize_invoice_guideline_data(cast(InvoiceGuidelineData, invoice.data))
                 if invoice.data
                 else None,
                 error=invoice.error,
