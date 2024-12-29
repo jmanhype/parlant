@@ -31,7 +31,7 @@ from parlant.core.services.tools.service_registry import ServiceRegistry
 from parlant.core.sessions import Event, ToolResult
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
-from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection
+from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
 from parlant.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from parlant.core.emissions import EmittedEvent
 from parlant.core.logging import Logger
@@ -229,6 +229,21 @@ class ToolCaller:
 
             return tool_results
 
+    def _get_glossary_text(
+        self,
+        terms: Sequence[Term],
+    ) -> PromptBuilder:
+        terms_string = "\n".join(f"{i}) {repr(t)}" for i, t in enumerate(terms, start=1))
+
+        return f"""
+The following is a glossary of the business.
+In some cases, a glossary term directly overrides "common knowledge" or the most prevalent definition of that same term (or object).
+Therefore, when encountering any of these terms, prioritize the interpretation provided in the glossary over any definitions you may already know.
+Please be tolerant of possible typos by the user with regards to these terms,and let the user know if/when you assume they meant a term by their typo: ###
+{terms_string}
+###
+"""  # noqa
+
     async def shots(self) -> Sequence[ToolCallerInferenceShot]:
         return await shot_collection.list()
 
@@ -349,7 +364,12 @@ Example #{i}: ###
             )
         )
         builder.add_context_variables(context_variables)
-        builder.add_glossary(terms)
+        if terms:
+            builder.add_section(
+                name=BuiltInSection.GLOSSARY,
+                content=self._get_glossary_text(terms),
+                status=SectionStatus.ACTIVE,
+            )
         builder.add_interaction_history(interaction_event_list)
 
         builder.add_section(

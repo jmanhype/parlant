@@ -32,7 +32,7 @@ load_steps(
 
 scenarios(
     *(
-        f"core/stable/engines/alpha/features/user_stories/{feature}.feature"
+        f"core/unstable/engines/alpha/features/user_stories/{feature}.feature"
         for feature in ("conversation",)
     )
 )

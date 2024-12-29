@@ -440,6 +440,8 @@ Expected Output
     ```""")
 
         prompt = builder.build()
+        with open("guideline_proposer_prompt feature branch.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
 
