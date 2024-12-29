@@ -43,7 +43,7 @@ setup-logdir:
 @test-deterministic *specs='': setup-logdir
     mkdir -p logs/deterministric
     poetry run pytest \
-      -vv {{specs}} --plan=deterministic \
+      -vv {{specs}} --plan=deterministic --no-cache \
       --tap-combined --tap-outdir=logs/deterministic \
       --timing-file=logs/deterministic/test_timings.csv \
       --junit-xml=logs/deterministic/testresults.xml \
@@ -68,9 +68,9 @@ setup-logdir:
       --color=auto
 
 test-complete  *specs='':
-  just test-deterministic {{specs}} #(uses cache)
-  just test-core-stable {{specs}} #(no cache)
-  just test-core-unstable {{specs}} #(no cache)
+  just test-deterministic {{specs}}
+  just test-core-stable {{specs}}
+  just test-core-unstable {{specs}}
   
 
 @install:
