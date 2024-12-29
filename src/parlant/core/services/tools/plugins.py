@@ -284,11 +284,13 @@ class PluginServer:
         host: str = "0.0.0.0",
         on_app_created: Callable[[FastAPI], Awaitable[FastAPI]] | None = None,
         plugin_data: Mapping[str, Any] = {},
+        hosted: bool = False,
     ) -> None:
         self.tools = {entry.tool.name: entry for entry in tools}
         self.plugin_data = plugin_data
         self.host = host
         self.port = port
+        self.hosted = hosted
         self.url = f"http://{self.host}:{self.port}"
 
         self._on_app_created = on_app_created
@@ -337,7 +339,13 @@ class PluginServer:
 
         self._server = uvicorn.Server(config)
 
-        await self._server.serve()
+        if self.hosted:
+            # Run without capturing signals.
+            # This is because we're being hosted in another process
+            # that has its own bookkeeping on signals.
+            await self._server._serve()
+        else:
+            await self._server.serve()
 
     async def shutdown(self) -> None:
         if server := self._server:
