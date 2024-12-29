@@ -19,8 +19,9 @@ from pydantic import Field
 
 from parlant.api import common
 from parlant.api.common import (
-    CoherenceCheckDTO,
-    CoherenceCheckKindDTO,
+    EventSourceDTO,
+    GuidelinesCoherenceCheckDTO,
+    GuidelineCoherenceCheckKindDTO,
     ConnectionPropositionDTO,
     ConnectionPropositionKindDTO,
     EvaluationStatusDTO,
@@ -28,11 +29,21 @@ from parlant.api.common import (
     GuidelinePayloadDTO,
     GuidelinePayloadOperationDTO,
     GuidelineInvoiceDataDTO,
+    InvoiceDTO,
     InvoiceDataDTO,
     PayloadDTO,
     PayloadKindDTO,
+    StyleGuideCoherenceCheckDTO,
+    StyleGuideCoherenceCheckKindDTO,
+    StyleGuideContentDTO,
+    StyleGuideEventDTO,
+    StyleGuideExampleDTO,
+    StyleGuideInvoiceDataDTO,
+    StyleGuidePayloadDTO,
+    StyleGuidePayloadOperationDTO,
     apigen_config,
     ExampleJson,
+    ErrorField,
 )
 from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
@@ -45,15 +56,19 @@ from parlant.core.evaluations import (
     EvaluationStore,
     GuidelinePayload,
     InvoiceData,
+    InvoiceGuidelineData,
+    InvoiceStyleGuideData,
     Payload,
     PayloadDescriptor,
     PayloadKind,
+    StyleGuidePayload,
 )
 from parlant.core.guidelines import GuidelineContent
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
+from parlant.core.style_guides import StyleGuideContent, StyleGuideEvent, StyleGuideExample
 
 API_GROUP = "evaluations"
 
@@ -97,165 +112,138 @@ def _payload_from_dto(dto: PayloadDTO) -> Payload:
     )
 
 
+def _guideline_payload_to_dto(payload: GuidelinePayload) -> GuidelinePayloadDTO:
+    return GuidelinePayloadDTO(
+        content=GuidelineContentDTO(
+            condition=payload.content.condition,
+            action=payload.content.action,
+        ),
+        operation=GuidelinePayloadOperationDTO(payload.operation),
+        updated_id=payload.updated_id,
+        coherence_check=payload.coherence_check,
+        connection_proposition=payload.connection_proposition,
+    )
+
+
+def _style_guide_content_to_dto(content: StyleGuideContent) -> StyleGuideContentDTO:
+    def style_guide_event_to_dto(event: StyleGuideEvent) -> StyleGuideEventDTO:
+        return StyleGuideEventDTO(
+            source=EventSourceDTO[event.source],
+            message=event.message,
+        )
+
+    def style_guide_example_to_dto(example: StyleGuideExample) -> StyleGuideExampleDTO:
+        return StyleGuideExampleDTO(
+            before=[style_guide_event_to_dto(e) for e in example.before],
+            after=[style_guide_event_to_dto(e) for e in example.after],
+            violation=example.violation,
+        )
+
+    return StyleGuideContentDTO(
+        principle=content.principle,
+        examples=[style_guide_example_to_dto(e) for e in content.examples],
+    )
+
+
+def _style_guide_payload_to_dto(payload: StyleGuidePayload) -> StyleGuidePayloadDTO:
+    return StyleGuidePayloadDTO(
+        content=StyleGuideContentDTO(
+            principle=payload.content.principle,
+            examples=payload.content.examples,
+        ),
+        operation=StyleGuidePayloadOperationDTO(payload.operation),
+        updated_id=payload.updated_id,
+        coherence_check=payload.coherence_check,
+    )
+
+
 def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     if descriptor.kind == PayloadKind.GUIDELINE:
         return PayloadDTO(
             kind=PayloadKindDTO.GUIDELINE,
-            guideline=GuidelinePayloadDTO(
-                content=GuidelineContentDTO(
-                    condition=descriptor.payload.content.condition,
-                    action=descriptor.payload.content.action,
-                ),
-                operation=GuidelinePayloadOperationDTO(descriptor.payload.operation),
-                updated_id=descriptor.payload.updated_id,
-                coherence_check=descriptor.payload.coherence_check,
-                connection_proposition=descriptor.payload.connection_proposition,
-            ),
+            guideline=_guideline_payload_to_dto(cast(GuidelinePayload, descriptor.payload)),
+        )
+    elif descriptor.kind == PayloadKind.STYLE_GUIDE:
+        return PayloadDTO(
+            kind=PayloadKindDTO.STYLE_GUIDE,
+            style_guide=_style_guide_payload_to_dto(cast(StyleGuidePayload, descriptor.payload)),
         )
 
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="Unsupported descriptor kind",
+    )
+
+
+def _invoice_guideline_data_to_dto(invoice_data: InvoiceGuidelineData) -> GuidelineInvoiceDataDTO:
+    return GuidelineInvoiceDataDTO(
+        coherence_checks=[
+            GuidelinesCoherenceCheckDTO(
+                kind=GuidelineCoherenceCheckKindDTO(c.kind),
+                first=GuidelineContentDTO(
+                    condition=c.first.condition,
+                    action=c.first.action,
+                ),
+                second=GuidelineContentDTO(
+                    condition=c.second.condition,
+                    action=c.second.action,
+                ),
+                issue=c.issue,
+                severity=c.severity,
+            )
+            for c in invoice_data.coherence_checks
+        ],
+        connection_propositions=[
+            ConnectionPropositionDTO(
+                check_kind=ConnectionPropositionKindDTO(c.check_kind),
+                source=GuidelineContentDTO(
+                    condition=c.source.condition,
+                    action=c.source.action,
+                ),
+                target=GuidelineContentDTO(
+                    condition=c.target.condition,
+                    action=c.target.action,
+                ),
+            )
+            for c in invoice_data.connection_propositions
+        ]
+        if invoice_data.connection_propositions
+        else None,
+    )
+
+
+def _invoice_style_guide_data_to_dto(
+    invoice_data: InvoiceStyleGuideData,
+) -> StyleGuideInvoiceDataDTO:
+    return StyleGuideInvoiceDataDTO(
+        coherence_checks=[
+            StyleGuideCoherenceCheckDTO(
+                kind=StyleGuideCoherenceCheckKindDTO(c.kind),
+                first=_style_guide_content_to_dto(c.first),
+                second=_style_guide_content_to_dto(c.second),
+                issue=c.issue,
+                severity=c.severity,
+            )
+            for c in invoice_data.coherence_checks
+        ]
     )
 
 
 def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
     if kind == PayloadKind.GUIDELINE:
         return InvoiceDataDTO(
-            guideline=GuidelineInvoiceDataDTO(
-                coherence_checks=[
-                    CoherenceCheckDTO(
-                        kind=CoherenceCheckKindDTO(c.kind),
-                        first=GuidelineContentDTO(
-                            condition=c.first.condition,
-                            action=c.first.action,
-                        ),
-                        second=GuidelineContentDTO(
-                            condition=c.second.condition,
-                            action=c.second.action,
-                        ),
-                        issue=c.issue,
-                        severity=c.severity,
-                    )
-                    for c in invoice_data.coherence_checks
-                ],
-                connection_propositions=[
-                    ConnectionPropositionDTO(
-                        check_kind=ConnectionPropositionKindDTO(c.check_kind),
-                        source=GuidelineContentDTO(
-                            condition=c.source.condition,
-                            action=c.source.action,
-                        ),
-                        target=GuidelineContentDTO(
-                            condition=c.target.condition,
-                            action=c.target.action,
-                        ),
-                    )
-                    for c in invoice_data.connection_propositions
-                ]
-                if invoice_data.connection_propositions
-                else None,
-            )
+            guideline=_invoice_guideline_data_to_dto(cast(InvoiceGuidelineData, invoice_data))
+        )
+
+    if kind == PayloadKind.STYLE_GUIDE:
+        return InvoiceDataDTO(
+            style_guide=_invoice_style_guide_data_to_dto(cast(InvoiceStyleGuideData, invoice_data))
         )
 
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="Unsupported descriptor kind",
     )
-
-
-ChecksumField: TypeAlias = Annotated[
-    str,
-    Field(
-        description="Checksum of the invoice content",
-        examples=["abc123def456"],
-    ),
-]
-
-ApprovedField: TypeAlias = Annotated[
-    bool,
-    Field(
-        description="Whether the evaluation task the invoice represents has been approved",
-        examples=[True],
-    ),
-]
-
-
-ErrorField: TypeAlias = Annotated[
-    str,
-    Field(
-        description="Error message if the evaluation failed",
-        examples=["Failed to process evaluation due to invalid payload"],
-    ),
-]
-
-
-invoice_example: ExampleJson = {
-    "payload": {
-        "kind": "guideline",
-        "guideline": {
-            "content": {
-                "condition": "when customer asks about pricing",
-                "action": "provide current pricing information",
-            },
-            "operation": "add",
-            "updated_id": None,
-            "coherence_check": True,
-            "connection_proposition": True,
-        },
-    },
-    "checksum": "abc123def456",
-    "approved": True,
-    "data": {
-        "guideline": {
-            "coherence_checks": [
-                {
-                    "kind": "semantic_overlap",
-                    "first": {
-                        "condition": "when customer asks about pricing",
-                        "action": "provide current pricing information",
-                    },
-                    "second": {
-                        "condition": "if customer inquires about cost",
-                        "action": "share the latest pricing details",
-                    },
-                    "issue": "These guidelines handle similar scenarios",
-                    "severity": "warning",
-                }
-            ],
-            "connection_propositions": [
-                {
-                    "check_kind": "semantic_similarity",
-                    "source": {
-                        "condition": "when customer asks about pricing",
-                        "action": "provide current pricing information",
-                    },
-                    "target": {
-                        "condition": "if customer inquires about cost",
-                        "action": "share the latest pricing details",
-                    },
-                }
-            ],
-        }
-    },
-    "error": None,
-}
-
-
-class InvoiceDTO(
-    DefaultBaseModel,
-    json_schema_extra={"example": invoice_example},
-):
-    """Represents the result of evaluating a single payload in an evaluation task.
-
-    An invoice is a comprehensive record of the evaluation results for a single payload.
-    """
-
-    payload: PayloadDTO
-    checksum: ChecksumField
-    approved: ApprovedField
-    data: Optional[InvoiceDataDTO] = None
-    error: Optional[ErrorField] = None
 
 
 AgentIdField: TypeAlias = Annotated[

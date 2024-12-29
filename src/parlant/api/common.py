@@ -18,6 +18,7 @@ from typing import Annotated, Any, Mapping, Optional, Sequence, TypeAlias
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.guidelines import GuidelineId
+from parlant.core.style_guides import StyleGuideId
 
 
 def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
@@ -40,6 +41,21 @@ JSONSerializableDTO: TypeAlias = Annotated[
         examples=['"hello"', "[1, 2, 3]", '{"data"="something", "data2"="something2"}'],
     ),
 ]
+
+
+class EventSourceDTO(Enum):
+    """
+    Source of an event in the session.
+
+    Identifies who or what generated the event.
+    """
+
+    CUSTOMER = "customer"
+    CUSTOMER_UI = "customer_ui"
+    HUMAN_AGENT = "human_agent"
+    HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
+    AI_AGENT = "ai_agent"
+    SYSTEM = "system"
 
 
 class EvaluationStatusDTO(Enum):
@@ -99,7 +115,7 @@ class GuidelinePayloadOperationDTO(Enum):
     UPDATE = "update"
 
 
-class CoherenceCheckKindDTO(Enum):
+class GuidelineCoherenceCheckKindDTO(Enum):
     """
     The specific relationship between the contradicting guidelines.
     """
@@ -110,6 +126,17 @@ class CoherenceCheckKindDTO(Enum):
     )
 
 
+class StyleGuideCoherenceCheckKindDTO(Enum):
+    """
+    The specific relationship between the contradicting style guides.
+    """
+
+    CONTRADICTION_WITH_EXISTING_STYLE_GUIDE = "contradiction_with_existing_style_guide"
+    CONTRADICTION_WITH_ANOTHER_EVALUATED_STYLE_GUIDE = (
+        "contradiction_with_another_evaluated_style_guide"
+    )
+
+
 class ConnectionPropositionKindDTO(Enum):
     """
     The specific relationship between the connected guidelines.
@@ -117,16 +144,6 @@ class ConnectionPropositionKindDTO(Enum):
 
     CONNECTION_WITH_EXISTING_GUIDELINE = "connection_with_existing_guideline"
     CONNECTION_WITH_ANOTHER_EVALUATED_GUIDELINE = "connection_with_another_evaluated_guideline"
-
-
-class PayloadKindDTO(Enum):
-    """
-    The kind of payload.
-
-    At this point only `"guideline"` is supported.
-    """
-
-    GUIDELINE = "guideline"
 
 
 GuidelineIdField: TypeAlias = Annotated[
@@ -166,19 +183,6 @@ guideline_payload_example: ExampleJson = {
 }
 
 
-class GuidelinePayloadDTO(
-    DefaultBaseModel,
-    json_schema_extra={"example": guideline_payload_example},
-):
-    """Payload data for a Guideline operation"""
-
-    content: GuidelineContentDTO
-    operation: GuidelinePayloadOperationDTO
-    updated_id: Optional[GuidelineIdField] = None
-    coherence_check: GuidelinePayloadCoherenceCheckField
-    connection_proposition: GuidelinePayloadConnectionPropositionField
-
-
 payload_example: ExampleJson = {
     "kind": "guideline",
     "guideline": {
@@ -194,21 +198,20 @@ payload_example: ExampleJson = {
 }
 
 
-class PayloadDTO(
+class GuidelinePayloadDTO(
     DefaultBaseModel,
-    json_schema_extra={"example": payload_example},
+    json_schema_extra={"example": guideline_payload_example},
 ):
-    """
-    A container for a guideline payload along with its kind
+    """Payload data for a Guideline operation"""
 
-    Only `"guideline"` is available at this point.
-    """
+    content: GuidelineContentDTO
+    operation: GuidelinePayloadOperationDTO
+    updated_id: Optional[GuidelineIdField] = None
+    coherence_check: GuidelinePayloadCoherenceCheckField
+    connection_proposition: GuidelinePayloadConnectionPropositionField
 
-    kind: PayloadKindDTO
-    guideline: Optional[GuidelinePayloadDTO] = None
 
-
-CoherenceCheckIssueField: TypeAlias = Annotated[
+GuidelineCoherenceCheckIssueField: TypeAlias = Annotated[
     str,
     Field(
         description="Description of the contradiction or conflict between Guidelines",
@@ -219,7 +222,7 @@ CoherenceCheckIssueField: TypeAlias = Annotated[
     ),
 ]
 
-CoherenceCheckSeverityField: TypeAlias = Annotated[
+GuidelineCoherenceCheckSeverityField: TypeAlias = Annotated[
     int,
     Field(
         description="Numerical rating of the contradiction's severity (1-10, where 10 is most severe)",
@@ -229,8 +232,28 @@ CoherenceCheckSeverityField: TypeAlias = Annotated[
     ),
 ]
 
+StyleGuideCoherenceCheckIssueField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Description of the contradiction or conflict between StyleGuides",
+        examples=[
+            "The actions contradict each other: one suggests being formal while the other suggests being casual",
+            "The conditions overlap but lead to opposing actions",
+        ],
+    ),
+]
 
-coherence_check_example: ExampleJson = {
+StyleGuideCoherenceCheckSeverityField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Numerical rating of the contradiction's severity (1-10, where 10 is most severe)",
+        examples=[5, 8],
+        ge=1,
+        le=10,
+    ),
+]
+
+guidelines_coherence_check_example: ExampleJson = {
     "kind": "contradiction_with_existing_guideline",
     "first": {"condition": "User is frustrated", "action": "Respond with technical details"},
     "second": {"condition": "User is frustrated", "action": "Focus on emotional support first"},
@@ -239,17 +262,17 @@ coherence_check_example: ExampleJson = {
 }
 
 
-class CoherenceCheckDTO(
+class GuidelinesCoherenceCheckDTO(
     DefaultBaseModel,
-    json_schema_extra={"example": coherence_check_example},
+    json_schema_extra={"example": guidelines_coherence_check_example},
 ):
     """Potential contradiction found between guidelines"""
 
-    kind: CoherenceCheckKindDTO
+    kind: GuidelineCoherenceCheckKindDTO
     first: GuidelineContentDTO
     second: GuidelineContentDTO
-    issue: CoherenceCheckIssueField
-    severity: CoherenceCheckSeverityField
+    issue: GuidelineCoherenceCheckIssueField
+    severity: GuidelineCoherenceCheckSeverityField
 
 
 connection_proposition_example: ExampleJson = {
@@ -274,9 +297,242 @@ class ConnectionPropositionDTO(
 
 
 guideline_invoice_data_example: ExampleJson = {
-    "coherence_checks": [coherence_check_example],
+    "coherence_checks": [guidelines_coherence_check_example],
     "connection_propositions": [connection_proposition_example],
 }
+
+
+StyleGuideEventMessageField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="The message shown to the customer as part of the event.",
+        examples=["Thanks for being awesome and choosing us ;)"],
+    ),
+]
+
+StyleGuidePrincipleField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="A statement explaining the overarching style principle.",
+        examples=["Use a friendly tone with a hint of humor"],
+    ),
+]
+
+StyleGuideViolationField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Explains why the 'before' version violates or contradicts the style principle.",
+        examples=["Too formal and lacks an engaging tone"],
+    ),
+]
+
+
+class StyleGuideEventDTO(DefaultBaseModel):
+    """
+    Represents a single event within a style guide example,
+    including its source and the message to the user.
+    """
+
+    source: EventSourceDTO
+    message: StyleGuideEventMessageField
+
+
+class StyleGuideExampleDTO(DefaultBaseModel):
+    """
+    Represents a style guide example consisting of 'before' and 'after' event sequences,
+    along with a 'violation' description explaining the issue in the 'before' version.
+    """
+
+    before: Sequence[StyleGuideEventDTO]
+    after: Sequence[StyleGuideEventDTO]
+    violation: StyleGuideViolationField
+
+
+style_guide_content_example: ExampleJson = {
+    "principle": "Use inclusive language and a positive tone",
+    "examples": [
+        {
+            "before": [{"source": "ai_agent", "message": "Your request is denied. Try again."}],
+            "after": [
+                {
+                    "source": "ai_agent",
+                    "message": "Unfortunately we can’t fulfill that request right now. Let’s see what else we can do to help!",
+                }
+            ],
+            "violation": "The 'before' response is abrupt and lacks empathy.",
+        }
+    ],
+}
+
+
+class StyleGuideContentDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": style_guide_content_example},
+):
+    """
+    Represents a style guide's content, including:
+      - A 'principle' to highlight the main style guideline
+      - One or more 'examples' illustrating correct and incorrect usage
+    """
+
+    principle: StyleGuidePrincipleField
+    examples: Sequence[StyleGuideExampleDTO]
+
+
+style_guides_coherence_check_example: ExampleJson = {
+    "kind": "contradiction_with_existing_style_guide",
+    "first": {
+        "principle": "Greet with 'Howdy'",
+        "examples": [
+            {
+                "before": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Hello there, friend!",
+                    }
+                ],
+                "after": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Howdy there, friend!",
+                    }
+                ],
+                "violation": "The 'before' message doesn't align with the 'Howdy' greeting style.",
+            }
+        ],
+    },
+    "second": {
+        "principle": "Greet with 'hey'",
+        "examples": [
+            {
+                "before": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Howdy there, friend!",
+                    }
+                ],
+                "after": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Hey there, friend!",
+                    }
+                ],
+                "violation": "The 'before' message doesn't align with the 'hey' greeting style.",
+            }
+        ],
+    },
+    "issue": "Conflicting approaches to how to greet users",
+    "severity": 8,
+}
+
+
+class StyleGuideCoherenceCheckDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": style_guides_coherence_check_example},
+):
+    """
+    Indicates a potential contradiction between two different style guides.
+    Helps to identify inconsistent or conflicting style rules.
+    """
+
+    kind: StyleGuideCoherenceCheckKindDTO
+    first: StyleGuideContentDTO
+    second: StyleGuideContentDTO
+    issue: GuidelineCoherenceCheckIssueField
+    severity: GuidelineCoherenceCheckSeverityField
+
+
+style_guide_invoice_data_example: ExampleJson = {
+    "coherence_checks": [style_guides_coherence_check_example],
+}
+
+
+class StyleGuidePayloadOperationDTO(Enum):
+    """
+    The kind of operation that should be performed on the payload.
+    """
+
+    ADD = "add"
+    UPDATE = "update"
+
+
+StyleGuideIdField: TypeAlias = Annotated[
+    StyleGuideId,
+    Field(
+        description="Unique identifier for the style guide",
+        examples=["sg_abc123"],
+    ),
+]
+
+StyleGuidePayloadCoherenceCheckField: TypeAlias = Annotated[
+    bool,
+    Field(
+        description="Whether to check for contradictions with other StyleGuides",
+        examples=[True, False],
+    ),
+]
+
+style_guide_payload_example: ExampleJson = {
+    "content": {
+        "principle": "Use a cold formal tone",
+        "examples": [
+            {
+                "before": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Unfortunately we can’t fulfill that request right now. Let’s see what else we can do to help!",
+                    }
+                ],
+                "after": [
+                    {
+                        "source": "ai_agent",
+                        "message": "Your request is denied. Try again.",
+                    }
+                ],
+                "violation": "The 'before' response is abrupt and lacks empathy.",
+            }
+        ],
+    },
+    "operation": "add",
+    "updated_id": None,
+    "coherence_check": True,
+    "connection_proposition": True,
+}
+
+
+class StyleGuidePayloadDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": style_guide_payload_example},
+):
+    """Payload data for a StyleGuide operation"""
+
+    content: StyleGuideContentDTO
+    operation: StyleGuidePayloadOperationDTO
+    updated_id: Optional[StyleGuideIdField] = None
+    coherence_check: StyleGuidePayloadCoherenceCheckField
+
+
+class PayloadKindDTO(Enum):
+    """
+    The kind of payload.
+    choices are ['guideline', 'style_guide']
+    """
+
+    GUIDELINE = "guideline"
+    STYLE_GUIDE = "style_guide"
+
+
+class PayloadDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": payload_example},
+):
+    """
+    A container for a guideline OR style guide payload along with its kind
+    """
+
+    kind: PayloadKindDTO
+    guideline: Optional[GuidelinePayloadDTO] = None
+    style_guide: Optional[StyleGuidePayloadDTO] = None
 
 
 class GuidelineInvoiceDataDTO(
@@ -285,11 +541,23 @@ class GuidelineInvoiceDataDTO(
 ):
     """Evaluation results for a Guideline, including contradiction checks and connection proposals"""
 
-    coherence_checks: Sequence[CoherenceCheckDTO]
+    coherence_checks: Sequence[GuidelinesCoherenceCheckDTO]
     connection_propositions: Optional[Sequence[ConnectionPropositionDTO]] = None
 
 
-invoice_data_example: ExampleJson = {"guideline": guideline_invoice_data_example}
+class StyleGuideInvoiceDataDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": style_guide_invoice_data_example},
+):
+    """Evaluation results for a StyleGuide, including contradiction checks"""
+
+    coherence_checks: Sequence[StyleGuideCoherenceCheckDTO]
+
+
+invoice_data_example: ExampleJson = {
+    "guideline": guideline_invoice_data_example,
+    "style_guide": style_guide_invoice_data_example,
+}
 
 
 class InvoiceDataDTO(
@@ -303,6 +571,106 @@ class InvoiceDataDTO(
     """
 
     guideline: Optional[GuidelineInvoiceDataDTO] = None
+    style_guide: Optional[StyleGuideInvoiceDataDTO] = None
+
+
+ChecksumField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Checksum of the invoice content.",
+        examples=["abc123def456"],
+    ),
+]
+
+ApprovedField: TypeAlias = Annotated[
+    bool,
+    Field(
+        description="Indicates whether the evaluation task the invoice represents has been approved.",
+        examples=[True],
+    ),
+]
+
+ErrorField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Describes any error that occurred during evaluation.",
+        examples=["Failed to process evaluation due to invalid payload."],
+    ),
+]
+
+invoice_example: ExampleJson = {
+    "payload": {
+        "kind": "guideline",
+        "guideline": {
+            "content": {
+                "condition": "when customer asks about pricing",
+                "action": "provide current pricing information",
+            },
+            "operation": "add",
+            "updated_id": None,
+            "coherence_check": True,
+            "connection_proposition": True,
+        },
+    },
+    "checksum": "abc123def456",
+    "approved": True,
+    "data": {
+        "guideline": {
+            "coherence_checks": [
+                {
+                    "kind": "semantic_overlap",
+                    "first": {
+                        "condition": "when customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "second": {
+                        "condition": "if customer inquires about cost",
+                        "action": "share the latest pricing details",
+                    },
+                    "issue": "These guidelines handle similar scenarios",
+                    "severity": "warning",
+                }
+            ],
+            "connection_propositions": [
+                {
+                    "check_kind": "semantic_similarity",
+                    "source": {
+                        "condition": "when customer asks about pricing",
+                        "action": "provide current pricing information",
+                    },
+                    "target": {
+                        "condition": "if customer inquires about cost",
+                        "action": "share the latest pricing details",
+                    },
+                }
+            ],
+        }
+    },
+    "error": None,
+}
+
+
+class InvoiceDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": invoice_example},
+):
+    """
+    Represents the result of evaluating a single payload in an evaluation task.
+
+    An Invoice is a comprehensive record of the evaluation results, including:
+    - A `payload` describing what kind of data was evaluated (e.g., guideline or style_guide).
+    - A `checksum` to verify the integrity of the content.
+    - An `approved` flag indicating whether the results are finalized.
+    - An optional `data` object containing detailed findings (coherence checks, connections, etc.),
+    if the evaluation is approved.
+    - An optional `error` message if the evaluation failed.
+    """
+
+    payload: PayloadDTO
+    checksum: ChecksumField
+    approved: ApprovedField
+    data: Optional[InvoiceDataDTO] = None
+    error: Optional[ErrorField] = None
 
 
 ServiceNameField: TypeAlias = Annotated[

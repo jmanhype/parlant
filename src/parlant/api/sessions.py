@@ -20,7 +20,13 @@ from pydantic import Field
 from typing import Annotated, Mapping, Optional, Sequence, Set, TypeAlias, cast
 
 
-from parlant.api.common import GuidelineIdField, ExampleJson, JSONSerializableDTO, apigen_config
+from parlant.api.common import (
+    EventSourceDTO,
+    GuidelineIdField,
+    ExampleJson,
+    JSONSerializableDTO,
+    apigen_config,
+)
 from parlant.api.glossary import TermDTO
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.application import Application
@@ -60,21 +66,6 @@ class EventKindDTO(Enum):
     TOOL = "tool"
     STATUS = "status"
     CUSTOM = "custom"
-
-
-class EventSourceDTO(Enum):
-    """
-    Source of an event in the session.
-
-    Identifies who or what generated the event.
-    """
-
-    CUSTOMER = "customer"
-    CUSTOMER_UI = "customer_ui"
-    HUMAN_AGENT = "human_agent"
-    HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT = "human_agent_on_behalf_of_ai_agent"
-    AI_AGENT = "ai_agent"
-    SYSTEM = "system"
 
 
 class Moderation(Enum):
