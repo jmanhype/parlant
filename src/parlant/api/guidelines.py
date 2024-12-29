@@ -26,16 +26,13 @@ from parlant.api.common import (
     ToolIdDTO,
     apigen_config,
 )
-from parlant.api.index import InvoiceDTO
 from parlant.core.common import (
     DefaultBaseModel,
 )
-from parlant.api.common import (
-    ExampleJson,
-)
+from parlant.api.common import ExampleJson, InvoiceDTO
 from parlant.core.evaluations import (
-    CoherenceCheck,
-    ConnectionProposition,
+    GuidelineCoherenceCheck,
+    GuidelineConnectionProposition,
     GuidelinePayload,
     Invoice,
     InvoiceGuidelineData,
@@ -388,8 +385,6 @@ def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
         updated_id=dto.payload.guideline.updated_id,
     )
 
-    kind = PayloadKind.GUIDELINE
-
     if not dto.data:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -399,7 +394,7 @@ def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
     data = _invoice_data_dto_to_invoice_data(dto.data)
 
     return Invoice(
-        kind=kind,
+        kind=PayloadKind.GUIDELINE,
         payload=payload,
         checksum=dto.checksum,
         state_version="",  # FIXME: once state functionality will be implemented this need to be refactored
@@ -418,7 +413,7 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineDa
 
     try:
         coherence_checks = [
-            CoherenceCheck(
+            GuidelineCoherenceCheck(
                 kind=check.kind.value,
                 first=GuidelineContent(condition=check.first.condition, action=check.first.action),
                 second=GuidelineContent(
@@ -432,7 +427,7 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineDa
 
         if dto.guideline.connection_propositions:
             connection_propositions = [
-                ConnectionProposition(
+                GuidelineConnectionProposition(
                     check_kind=prop.check_kind.value,
                     source=GuidelineContent(
                         condition=prop.source.condition, action=prop.source.action

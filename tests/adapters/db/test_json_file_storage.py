@@ -30,7 +30,6 @@ from parlant.core.evaluations import (
     EvaluationDocumentStore,
     GuidelinePayload,
     Invoice,
-    InvoiceData,
     InvoiceGuidelineData,
     PayloadDescriptor,
     PayloadKind,
@@ -531,7 +530,9 @@ async def test_evaluation_creation(
 
             evaluation = await evaluation_store.create_evaluation(
                 agent_id=context.agent_id,
-                payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads],
+                payload_descriptors=[
+                    PayloadDescriptor(kind=PayloadKind.GUIDELINE, payload=p) for p in payloads
+                ],
             )
 
     with open(new_file) as f:
@@ -565,10 +566,12 @@ async def test_evaluation_update(
 
             evaluation = await evaluation_store.create_evaluation(
                 agent_id=context.agent_id,
-                payload_descriptors=[PayloadDescriptor(PayloadKind.GUIDELINE, p) for p in payloads],
+                payload_descriptors=[
+                    PayloadDescriptor(kind=PayloadKind.GUIDELINE, payload=p) for p in payloads
+                ],
             )
 
-            invoice_data: InvoiceData = InvoiceGuidelineData(
+            invoice_data = InvoiceGuidelineData(
                 coherence_checks=[],
                 connection_propositions=None,
             )

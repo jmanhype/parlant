@@ -26,7 +26,12 @@ from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentId
 from parlant.core.emissions import EventEmitterFactory
 from parlant.core.customers import CustomerId
-from parlant.core.evaluations import ConnectionProposition, Invoice
+from parlant.core.evaluations import (
+    GuidelineConnectionProposition,
+    GuidelinePayload,
+    Invoice,
+    InvoiceGuidelineData,
+)
 from parlant.core.guideline_connections import (
     GuidelineConnectionStore,
 )
@@ -170,7 +175,7 @@ class Application:
             target_key: str,
             content_guidelines: dict[str, GuidelineId],
             guideline_set: str,
-            proposition: ConnectionProposition,
+            proposition: GuidelineConnectionProposition,
         ) -> None:
             if source_key in content_guidelines:
                 source_guideline_id = content_guidelines[source_key]
@@ -194,28 +199,30 @@ class Application:
                 target=target_guideline_id,
             )
 
+        invoice_payload_list = list(map(lambda i: cast(GuidelinePayload, i.payload), invoices))
+
         content_guidelines: dict[str, GuidelineId] = {
-            f"{invoice.payload.content.condition}_{invoice.payload.content.action}": (
+            f"{payload.content.condition}_{payload.content.action}": (
                 await self._guideline_store.create_guideline(
                     guideline_set=guideline_set,
-                    condition=invoice.payload.content.condition,
-                    action=invoice.payload.content.action,
+                    condition=payload.content.condition,
+                    action=payload.content.action,
                 )
-                if invoice.payload.operation == "add"
+                if payload.operation == "add"
                 else await self._guideline_store.update_guideline(
-                    guideline_id=cast(GuidelineId, invoice.payload.updated_id),
+                    guideline_id=cast(GuidelineId, payload.updated_id),
                     params={
-                        "condition": invoice.payload.content.condition,
-                        "action": invoice.payload.content.action,
+                        "condition": payload.content.condition,
+                        "action": payload.content.action,
                     },
                 )
             ).id
-            for invoice in invoices
+            for payload in invoice_payload_list
         }
 
-        for invoice in invoices:
-            if invoice.payload.operation == "update" and invoice.payload.connection_proposition:
-                guideline_id = cast(GuidelineId, invoice.payload.updated_id)
+        for payload in invoice_payload_list:
+            if payload.operation == "update" and payload.connection_proposition:
+                guideline_id = cast(GuidelineId, payload.updated_id)
 
                 connections_to_delete = list(
                     await self._guideline_connection_store.list_connections(
@@ -233,15 +240,17 @@ class Application:
                 for conn in connections_to_delete:
                     await self._guideline_connection_store.delete_connection(conn.id)
 
-        connections: set[ConnectionProposition] = set([])
+        connections: set[GuidelineConnectionProposition] = set([])
 
-        for invoice in invoices:
-            assert invoice.data
+        invoice_data_list = list(map(lambda i: cast(InvoiceGuidelineData, i.data), invoices))
 
-            if not invoice.data.connection_propositions:
+        for data in invoice_data_list:
+            assert data
+
+            if not data.connection_propositions:
                 continue
 
-            for proposition in invoice.data.connection_propositions:
+            for proposition in data.connection_propositions:
                 source_key = f"{proposition.source.condition}_{proposition.source.action}"
                 target_key = f"{proposition.target.condition}_{proposition.target.action}"
 
