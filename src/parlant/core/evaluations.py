@@ -66,14 +66,17 @@ class PayloadKind(Enum):
 
 
 GuidelineCoherenceCheckKind = Literal[
-    "contradiction_with_existing_guideline", "contradiction_with_another_evaluated_guideline"
+    "contradiction_with_existing_guideline",
+    "contradiction_with_another_evaluated_guideline",
 ]
 GuidelineConnectionPropositionKind = Literal[
-    "connection_with_existing_guideline", "connection_with_another_evaluated_guideline"
+    "connection_with_existing_guideline",
+    "connection_with_another_evaluated_guideline",
 ]
 
 StyleGuideCoherenceCheckKind = Literal[
-    "contradiction_with_existing_style_guide", "contradiction_with_another_evaluated_style_guide"
+    "contradiction_with_existing_style_guide",
+    "contradiction_with_another_evaluated_style_guide",
 ]
 
 
@@ -333,8 +336,8 @@ class EvaluationDocumentStore(EvaluationStore):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     def _serialize_invoice(self, invoice: Invoice) -> _InvoiceDocument:
         def serialize_guideline_coherence_check(

@@ -142,8 +142,8 @@ class GlossaryVectorStore(GlossaryStore):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
         return _TermDocument(
