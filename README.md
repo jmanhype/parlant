@@ -124,7 +124,7 @@ session_id = "...";
 const customerEvent = await client.sessions.createEvent(session_id, {
    kind: "message",
    source: "customer",
-   message: "Hey, I'd like to book a room please",
+   message: "How do you use this product?",
 });
 
 // Wait for and get the agent's reply
