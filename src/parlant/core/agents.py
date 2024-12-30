@@ -109,8 +109,8 @@ class AgentDocumentStore(AgentStore):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     def _serialize(self, agent: Agent) -> _AgentDocument:
         return _AgentDocument(

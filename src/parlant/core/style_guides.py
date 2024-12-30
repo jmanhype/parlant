@@ -134,8 +134,8 @@ class StyleGuideDocumentStore(StyleGuideStore):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     def _serialize_event(self, event: StyleGuideEvent) -> StyleGuideEventDocument:
         return StyleGuideEventDocument(
