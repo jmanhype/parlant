@@ -24,7 +24,7 @@ from parlant.core.evaluations import (
     EvaluationStatus,
     EvaluationStore,
     GuidelinePayload,
-    InvoiceGuidelineData,
+    GuidelineInvoiceData,
     PayloadDescriptor,
     PayloadKind,
 )
@@ -106,7 +106,7 @@ async def test_that_an_evaluation_completes_when_all_invoices_have_data(
     assert evaluation.invoices[0].approved
 
     assert evaluation.invoices[0].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[0].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[0].data)
 
     assert invoice_data.coherence_checks == []
     assert invoice_data.connection_propositions is None
@@ -156,7 +156,7 @@ async def test_that_an_evaluation_of_a_coherent_guideline_completes_with_an_appr
     assert evaluation.invoices[0].approved
 
     assert evaluation.invoices[0].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[0].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[0].data)
 
     assert invoice_data.coherence_checks == []
     assert invoice_data.connection_propositions is None
@@ -207,7 +207,7 @@ async def test_that_an_evaluation_of_an_incoherent_guideline_completes_with_an_u
     assert not evaluation.invoices[0].approved
 
     assert evaluation.invoices[0].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[0].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[0].data)
 
     assert len(invoice_data.coherence_checks) == 1
     assert invoice_data.connection_propositions is None
@@ -319,7 +319,7 @@ async def test_that_an_evaluation_of_multiple_payloads_completes_with_an_invoice
 
         assert invoice.data
         assert invoice.data.coherence_checks == []
-        assert cast(InvoiceGuidelineData, invoice.data).connection_propositions is None
+        assert cast(GuidelineInvoiceData, invoice.data).connection_propositions is None
 
 
 async def test_that_an_evaluation_that_failed_due_to_already_running_evaluation_task_contains_its_error_details(
@@ -499,7 +499,7 @@ async def test_that_an_evaluation_completes_and_contains_a_connection_propositio
 
     assert len(evaluation.invoices) == 1
     assert evaluation.invoices[0].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[0].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[0].data)
 
     assert invoice_data.connection_propositions
     assert len(invoice_data.connection_propositions) == 1
@@ -563,7 +563,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
 
     assert len(evaluation.invoices) == 2
     assert evaluation.invoices[0].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[0].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[0].data)
 
     assert invoice_data.connection_propositions
     assert len(invoice_data.connection_propositions) == 1
@@ -580,7 +580,7 @@ async def test_that_an_evaluation_completes_and_contains_connection_proposition_
     )
 
     assert evaluation.invoices[1].data
-    invoice_data = cast(InvoiceGuidelineData, evaluation.invoices[1].data)
+    invoice_data = cast(GuidelineInvoiceData, evaluation.invoices[1].data)
 
     assert invoice_data.connection_propositions
     assert len(invoice_data.connection_propositions) == 1

@@ -30,7 +30,7 @@ from parlant.core.evaluations import (
     EvaluationDocumentStore,
     GuidelinePayload,
     Invoice,
-    InvoiceGuidelineData,
+    GuidelineInvoiceData,
     PayloadDescriptor,
     PayloadKind,
 )
@@ -571,7 +571,7 @@ async def test_evaluation_update(
                 ],
             )
 
-            invoice_data = InvoiceGuidelineData(
+            invoice_data = GuidelineInvoiceData(
                 coherence_checks=[],
                 connection_propositions=None,
             )

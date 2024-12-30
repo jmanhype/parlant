@@ -27,7 +27,7 @@ from parlant.core.evaluations import (
     EvaluationId,
     GuidelinePayload,
     Invoice,
-    InvoiceGuidelineData,
+    GuidelineInvoiceData,
     EvaluationStore,
     PayloadDescriptor,
     PayloadKind,
@@ -78,7 +78,7 @@ class GuidelineEvaluator:
         agent: Agent,
         payloads: Sequence[GuidelinePayload],
         progress_report: ProgressReport,
-    ) -> Sequence[InvoiceGuidelineData]:
+    ) -> Sequence[GuidelineInvoiceData]:
         existing_guidelines = await self._guideline_store.list_guidelines(guideline_set=agent.id)
 
         tasks: list[asyncio.Task[Any]] = []
@@ -123,7 +123,7 @@ class GuidelineEvaluator:
 
         if coherence_checks:
             return [
-                InvoiceGuidelineData(
+                GuidelineInvoiceData(
                     coherence_checks=payload_coherence_checks,
                     connection_propositions=None,
                 )
@@ -132,7 +132,7 @@ class GuidelineEvaluator:
 
         elif connection_propositions:
             return [
-                InvoiceGuidelineData(
+                GuidelineInvoiceData(
                     coherence_checks=[],
                     connection_propositions=payload_connection_propositions,
                 )
@@ -141,7 +141,7 @@ class GuidelineEvaluator:
 
         else:
             return [
-                InvoiceGuidelineData(
+                GuidelineInvoiceData(
                     coherence_checks=[],
                     connection_propositions=None,
                 )

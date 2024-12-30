@@ -125,7 +125,7 @@ class GuidelineConnectionProposition:
 
 
 @dataclass(frozen=True)
-class InvoiceGuidelineData:
+class GuidelineInvoiceData:
     coherence_checks: Sequence[GuidelineCoherenceCheck]
     connection_propositions: Optional[Sequence[GuidelineConnectionProposition]]
     _type: Literal["guideline"] = "guideline"  # Union discrimator for Pydantic
@@ -141,12 +141,12 @@ class StyleGuideCoherenceCheck:
 
 
 @dataclass(frozen=True)
-class InvoiceStyleGuideData:
+class StyleGuideInvoiceData:
     coherence_checks: Sequence[StyleGuideCoherenceCheck]
     _type: Literal["style_guide"] = "style_guide"  # Union discrimator for Pydantic
 
 
-InvoiceData: TypeAlias = Union[InvoiceGuidelineData, InvoiceStyleGuideData]
+InvoiceData: TypeAlias = Union[GuidelineInvoiceData, StyleGuideInvoiceData]
 
 
 # @dataclass(frozen=True)
@@ -373,7 +373,7 @@ class EvaluationDocumentStore(EvaluationStore):
             )
 
         def serialize_invoice_guideline_data(
-            data: InvoiceGuidelineData,
+            data: GuidelineInvoiceData,
         ) -> _InvoiceGuidelineDataDocument:
             return _InvoiceGuidelineDataDocument(
                 coherence_checks=[
@@ -420,7 +420,7 @@ class EvaluationDocumentStore(EvaluationStore):
             )
 
         def serialize_invoice_style_guide_data(
-            data: InvoiceStyleGuideData,
+            data: StyleGuideInvoiceData,
         ) -> _InvoiceStyleGuideDataDocument:
             return _InvoiceStyleGuideDataDocument(
                 coherence_checks=[
@@ -458,7 +458,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 checksum=invoice.checksum,
                 state_version=invoice.state_version,
                 approved=invoice.approved,
-                data=serialize_invoice_guideline_data(cast(InvoiceGuidelineData, invoice.data))
+                data=serialize_invoice_guideline_data(cast(GuidelineInvoiceData, invoice.data))
                 if invoice.data
                 else None,
                 error=invoice.error,
@@ -470,7 +470,7 @@ class EvaluationDocumentStore(EvaluationStore):
                 checksum=invoice.checksum,
                 state_version=invoice.state_version,
                 approved=invoice.approved,
-                data=serialize_invoice_style_guide_data(cast(InvoiceStyleGuideData, invoice.data))
+                data=serialize_invoice_style_guide_data(cast(StyleGuideInvoiceData, invoice.data))
                 if invoice.data
                 else None,
                 error=invoice.error,
@@ -523,8 +523,8 @@ class EvaluationDocumentStore(EvaluationStore):
 
         def deserialize_invoice_guideline_data(
             data_doc: _InvoiceGuidelineDataDocument,
-        ) -> InvoiceGuidelineData:
-            return InvoiceGuidelineData(
+        ) -> GuidelineInvoiceData:
+            return GuidelineInvoiceData(
                 coherence_checks=[
                     deserialize_guideline_coherence_check_document(cc_doc)
                     for cc_doc in data_doc["coherence_checks"]
@@ -570,8 +570,8 @@ class EvaluationDocumentStore(EvaluationStore):
 
         def deserialize_invoice_style_guide_data(
             data_doc: _InvoiceStyleGuideDataDocument,
-        ) -> InvoiceStyleGuideData:
-            return InvoiceStyleGuideData(
+        ) -> StyleGuideInvoiceData:
+            return StyleGuideInvoiceData(
                 coherence_checks=[
                     deserialize_style_guide_coherence_check_document(cc_doc)
                     for cc_doc in data_doc["coherence_checks"]
