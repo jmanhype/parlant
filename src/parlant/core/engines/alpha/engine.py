@@ -500,6 +500,7 @@ class AlphaEngine(Engine):
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions={},
+                style_guides=[],
                 staged_events=[],
             ):
                 message_generation_inspections.append(
