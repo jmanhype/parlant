@@ -56,8 +56,8 @@ from parlant.core.evaluations import (
     EvaluationStore,
     GuidelinePayload,
     InvoiceData,
-    InvoiceGuidelineData,
-    InvoiceStyleGuideData,
+    GuidelineInvoiceData,
+    StyleGuideInvoiceData,
     Payload,
     PayloadDescriptor,
     PayloadKind,
@@ -175,7 +175,7 @@ def _payload_descriptor_to_dto(descriptor: PayloadDescriptor) -> PayloadDTO:
     )
 
 
-def _invoice_guideline_data_to_dto(invoice_data: InvoiceGuidelineData) -> GuidelineInvoiceDataDTO:
+def _invoice_guideline_data_to_dto(invoice_data: GuidelineInvoiceData) -> GuidelineInvoiceDataDTO:
     return GuidelineInvoiceDataDTO(
         coherence_checks=[
             GuidelinesCoherenceCheckDTO(
@@ -213,7 +213,7 @@ def _invoice_guideline_data_to_dto(invoice_data: InvoiceGuidelineData) -> Guidel
 
 
 def _invoice_style_guide_data_to_dto(
-    invoice_data: InvoiceStyleGuideData,
+    invoice_data: StyleGuideInvoiceData,
 ) -> StyleGuideInvoiceDataDTO:
     return StyleGuideInvoiceDataDTO(
         coherence_checks=[
@@ -232,12 +232,12 @@ def _invoice_style_guide_data_to_dto(
 def _invoice_data_to_dto(kind: PayloadKind, invoice_data: InvoiceData) -> InvoiceDataDTO:
     if kind == PayloadKind.GUIDELINE:
         return InvoiceDataDTO(
-            guideline=_invoice_guideline_data_to_dto(cast(InvoiceGuidelineData, invoice_data))
+            guideline=_invoice_guideline_data_to_dto(cast(GuidelineInvoiceData, invoice_data))
         )
 
     if kind == PayloadKind.STYLE_GUIDE:
         return InvoiceDataDTO(
-            style_guide=_invoice_style_guide_data_to_dto(cast(InvoiceStyleGuideData, invoice_data))
+            style_guide=_invoice_style_guide_data_to_dto(cast(StyleGuideInvoiceData, invoice_data))
         )
 
     raise HTTPException(

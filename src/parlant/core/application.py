@@ -30,7 +30,7 @@ from parlant.core.evaluations import (
     GuidelineConnectionProposition,
     GuidelinePayload,
     Invoice,
-    InvoiceGuidelineData,
+    GuidelineInvoiceData,
 )
 from parlant.core.guideline_connections import (
     GuidelineConnectionStore,
@@ -242,7 +242,7 @@ class Application:
 
         connections: set[GuidelineConnectionProposition] = set([])
 
-        invoice_data_list = list(map(lambda i: cast(InvoiceGuidelineData, i.data), invoices))
+        invoice_data_list = list(map(lambda i: cast(GuidelineInvoiceData, i.data), invoices))
 
         for data in invoice_data_list:
             assert data

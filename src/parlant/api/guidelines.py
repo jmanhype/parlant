@@ -35,7 +35,7 @@ from parlant.core.evaluations import (
     GuidelineConnectionProposition,
     GuidelinePayload,
     Invoice,
-    InvoiceGuidelineData,
+    GuidelineInvoiceData,
     PayloadKind,
 )
 from parlant.core.guideline_connections import (
@@ -404,7 +404,7 @@ def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
     )
 
 
-def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineData:
+def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> GuidelineInvoiceData:
     if not dto.guideline:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -441,7 +441,7 @@ def _invoice_data_dto_to_invoice_data(dto: InvoiceDataDTO) -> InvoiceGuidelineDa
         else:
             connection_propositions = None
 
-        return InvoiceGuidelineData(
+        return GuidelineInvoiceData(
             coherence_checks=coherence_checks, connection_propositions=connection_propositions
         )
     except Exception:
