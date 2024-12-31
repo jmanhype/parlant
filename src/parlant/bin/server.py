@@ -96,8 +96,8 @@ from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
-from parlant.core.services.indexing.coherence_checker import (
-    CoherenceChecker,
+from parlant.core.services.indexing.guideline_coherence_checker import (
+    GuidelineCoherenceChecker,
     ConditionsEntailmentTestsSchema,
     ActionsContradictionTestsSchema,
 )
@@ -384,7 +384,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         c[GlossaryStore],
     )
 
-    c[CoherenceChecker] = CoherenceChecker(
+    c[GuidelineCoherenceChecker] = GuidelineCoherenceChecker(
         c[Logger],
         c[SchematicGenerator[ConditionsEntailmentTestsSchema]],
         c[SchematicGenerator[ActionsContradictionTestsSchema]],
@@ -398,7 +398,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         c[EvaluationStore],
         c[GuidelineStore],
         c[GuidelineConnectionProposer],
-        c[CoherenceChecker],
+        c[GuidelineCoherenceChecker],
     )
 
     c[MessageEventGenerator] = MessageEventGenerator(

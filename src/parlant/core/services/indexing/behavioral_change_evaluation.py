@@ -31,16 +31,21 @@ from parlant.core.evaluations import (
     EvaluationStore,
     PayloadDescriptor,
     PayloadKind,
+    StyleGuideCoherenceCheck,
+    StyleGuideInvoiceData,
+    StyleGuidePayload,
 )
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineStore, GuidelineId
-from parlant.core.services.indexing.coherence_checker import (
-    CoherenceChecker,
+from parlant.core.style_guides import StyleGuide, StyleGuideContent, StyleGuideStore, StyleGuideId
+from parlant.core.services.indexing.guideline_coherence_checker import (
+    GuidelineCoherenceChecker,
 )
 from parlant.core.services.indexing.common import ProgressReport
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
 )
 from parlant.core.logging import Logger
+from parlant.core.services.indexing.style_guide_coherence_checker import StyleGuideCoherenceChecker
 
 
 class EvaluationError(Exception):
@@ -66,7 +71,7 @@ class GuidelineEvaluator:
         logger: Logger,
         guideline_store: GuidelineStore,
         guideline_connection_proposer: GuidelineConnectionProposer,
-        coherence_checker: CoherenceChecker,
+        coherence_checker: GuidelineCoherenceChecker,
     ) -> None:
         self._logger = logger
         self._guideline_store = guideline_store
@@ -320,6 +325,166 @@ class GuidelineEvaluator:
         return connection_results_by_guideline_payload.values()
 
 
+class StyleGuideEvaluator:
+    def __init__(
+        self,
+        logger: Logger,
+        style_guide_store: StyleGuideStore,
+        coherence_checker: StyleGuideCoherenceChecker,
+    ) -> None:
+        self._logger = logger
+        self._style_guide_store = style_guide_store
+        self._coherence_checker = coherence_checker
+
+    async def evaluate(
+        self,
+        agent: Agent,
+        payloads: Sequence[StyleGuidePayload],
+        progress_report: ProgressReport,
+    ) -> Sequence[StyleGuideInvoiceData]:
+        existing_style_guides = await self._style_guide_store.list_style_guides(
+            style_guide_set=agent.id
+        )
+
+        tasks: list[asyncio.Task[Any]] = []
+        coherence_checks_task: Optional[
+            asyncio.Task[Optional[Iterable[Sequence[StyleGuideCoherenceCheck]]]]
+        ] = None
+
+        coherence_checks_task = asyncio.create_task(
+            self._check_payloads_coherence(
+                agent,
+                payloads,
+                existing_style_guides,
+                progress_report,
+            )
+        )
+        tasks.append(coherence_checks_task)
+
+        if tasks:
+            await async_utils.safe_gather(*tasks)
+
+        coherence_checks: Optional[Iterable[Sequence[StyleGuideCoherenceCheck]]] = []
+        if coherence_checks_task:
+            coherence_checks = coherence_checks_task.result()
+
+        if coherence_checks:
+            return [
+                StyleGuideInvoiceData(
+                    coherence_checks=payload_coherence_checks,
+                )
+                for payload_coherence_checks in coherence_checks
+            ]
+
+        else:
+            return [
+                StyleGuideInvoiceData(
+                    coherence_checks=[],
+                )
+                for _ in payloads
+            ]
+
+    async def _check_payloads_coherence(
+        self,
+        agent: Agent,
+        payloads: Sequence[StyleGuidePayload],
+        existing_style_guides: Sequence[StyleGuide],
+        progress_report: ProgressReport,
+    ) -> Optional[Iterable[Sequence[StyleGuideCoherenceCheck]]]:
+        style_guides_to_evaluate = [p.content for p in payloads if p.coherence_check]
+
+        style_guides_to_skip = [(p.content, False) for p in payloads if not p.coherence_check]
+
+        updated_ids = {
+            cast(StyleGuideId, p.updated_id) for p in payloads if p.operation == "update"
+        }
+
+        remaining_existing_style_guides = []
+
+        for s in existing_style_guides:
+            if s.id not in updated_ids:
+                remaining_existing_style_guides.append(
+                    (
+                        StyleGuideContent(
+                            principle=s.content.principle,
+                            examples=s.content.examples,
+                        ),
+                        True,
+                    )
+                )
+            else:
+                updated_ids.remove(s.id)
+
+        if len(updated_ids) > 0:
+            raise EvaluationError(
+                f"StyleGuide ID(s): {', '.join(list(updated_ids))} in '{agent.id}' agent do not exist."
+            )
+
+        comparison_style_guides = style_guides_to_skip + remaining_existing_style_guides
+
+        incoherences = await self._coherence_checker.propose_incoherencies(
+            agent=agent,
+            style_guides_to_evaluate=style_guides_to_evaluate,
+            comparison_style_guides=[s for s, _ in comparison_style_guides],
+            progress_report=progress_report,
+        )
+
+        if not incoherences:
+            return None
+
+        coherence_checks_by_guideline_payload: OrderedDict[str, list[StyleGuideCoherenceCheck]] = (
+            OrderedDict({f"{p.content.principle}{p.content.examples}": [] for p in payloads})
+        )
+
+        guideline_payload_is_skipped_pairs = {
+            f"{p.content.principle}{p.content.examples}": p.coherence_check for p in payloads
+        }
+
+        for c in incoherences:
+            if (
+                f"{c.style_guide_a.principle}{c.style_guide_a.examples}"
+                in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.style_guide_a.principle}{c.style_guide_a.examples}"
+                ]
+            ):
+                coherence_checks_by_guideline_payload[
+                    f"{c.style_guide_a.principle}{c.style_guide_a.examples}"
+                ].append(
+                    StyleGuideCoherenceCheck(
+                        kind="contradiction_with_another_evaluated_style_guide"
+                        if f"{c.style_guide_b.principle}{c.style_guide_b.examples}"
+                        in coherence_checks_by_guideline_payload
+                        else "contradiction_with_existing_style_guide",
+                        first=c.style_guide_a,
+                        second=c.style_guide_b,
+                        issue=c.principles_rationale,
+                        severity=c.principles_severity,
+                    )
+                )
+
+            if (
+                f"{c.style_guide_b.principle}{c.style_guide_b.examples}"
+                in coherence_checks_by_guideline_payload
+                and guideline_payload_is_skipped_pairs[
+                    f"{c.style_guide_b.principle}{c.style_guide_b.examples}"
+                ]
+            ):
+                coherence_checks_by_guideline_payload[
+                    f"{c.style_guide_b.principle}{c.style_guide_b.examples}"
+                ].append(
+                    StyleGuideCoherenceCheck(
+                        kind="contradiction_with_another_evaluated_style_guide",
+                        first=c.style_guide_a,
+                        second=c.style_guide_b,
+                        issue=c.principles_rationale,
+                        severity=c.principles_severity,
+                    )
+                )
+
+        return coherence_checks_by_guideline_payload.values()
+
+
 class BehavioralChangeEvaluator:
     def __init__(
         self,
@@ -329,7 +494,7 @@ class BehavioralChangeEvaluator:
         evaluation_store: EvaluationStore,
         guideline_store: GuidelineStore,
         guideline_connection_proposer: GuidelineConnectionProposer,
-        coherence_checker: CoherenceChecker,
+        coherence_checker: GuidelineCoherenceChecker,
     ) -> None:
         self._logger = logger
         self._background_task_service = background_task_service
