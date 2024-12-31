@@ -3,7 +3,15 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-- Remove tool metadata from prompts - it should only be accessible by inspection
+TBD
+
+
+## [1.4.1] - 2024-12-31
+
+### Changed
+- Remove tool metadata from prompts - agents are now only aware of the data itself
+
+### Fixed
 - Fix tool calling in scenarios where a guideline has multiple tools where more than one should run
 
 
