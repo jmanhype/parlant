@@ -3,15 +3,23 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
+TBD
+
+
+## [1.4.0] - 2024-12-31
+
+### Added
 - Support custom plugin data for PluginServer
 - Allow specifying custom logger ID when creating loggers
 - Add 'hosted' parameter to PluginServer, for running inside modules
+
+### Fixed
 - Fix the tool caller's few shots to include better rationales and arguments.
+
 
 ## [1.3.1] - 2024-12-27
 
 ### Changed
-
 - Return event ID instead of correlation ID from utterance API
 - Improve and normalize entity update messages in client CLI
 
