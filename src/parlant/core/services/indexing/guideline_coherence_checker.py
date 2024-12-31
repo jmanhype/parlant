@@ -83,7 +83,6 @@ class ActionsContradictionTestsSchema(DefaultBaseModel):
     action_contradictions: list[ActionsContradictionTestSchema]
 
 
-
 class GuidelineCoherenceChecker:
     def __init__(
         self,

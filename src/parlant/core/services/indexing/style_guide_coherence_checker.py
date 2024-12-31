@@ -1,4 +1,3 @@
-# style_guide_coherence_checker.py
 # Copyright 2024 Emcie Co Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,7 +131,10 @@ class StyleGuideCoherenceChecker:
         for contradiction in checker_response:
             csg = indexed_comps[contradiction.compared_style_guide_id]
 
-            if contradiction.principles_contradiction and contradiction.severity >= BASIC_CONTRADICTION_SEVERITY_THRESHOLD:
+            if (
+                contradiction.principles_contradiction
+                and contradiction.severity >= BASIC_CONTRADICTION_SEVERITY_THRESHOLD
+            ):
                 kind = (
                     IncoherenceKind.STRICT
                     if contradiction.severity >= CRITICAL_INCOHERENCE_THRESHOLD

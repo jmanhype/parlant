@@ -78,8 +78,8 @@ from parlant.core.engines.types import Engine
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
-from parlant.core.services.indexing.coherence_checker import (
-    CoherenceChecker,
+from parlant.core.services.indexing.guideline_coherence_checker import (
+    GuidelineCoherenceChecker,
     ConditionsEntailmentTestsSchema,
     ActionsContradictionTestsSchema,
 )
@@ -273,7 +273,7 @@ async def container(
 
         container[GuidelineProposer] = Singleton(GuidelineProposer)
         container[GuidelineConnectionProposer] = Singleton(GuidelineConnectionProposer)
-        container[CoherenceChecker] = Singleton(CoherenceChecker)
+        container[GuidelineCoherenceChecker] = Singleton(GuidelineCoherenceChecker)
 
         container[LocalToolService] = cast(
             LocalToolService,

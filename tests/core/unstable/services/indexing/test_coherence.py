@@ -15,8 +15,8 @@
 from parlant.core.agents import Agent
 from parlant.core.glossary import GlossaryStore
 from parlant.core.guidelines import GuidelineContent
-from parlant.core.services.indexing.coherence_checker import (
-    CoherenceChecker,
+from parlant.core.services.indexing.guideline_coherence_checker import (
+    GuidelineCoherenceChecker,
     IncoherenceKind,
 )
 
@@ -58,7 +58,7 @@ def test_that_guidelines_with_many_incoherencies_are_detected(
             )
         )
 
-    coherence_checker = context.container[CoherenceChecker]
+    coherence_checker = context.container[GuidelineCoherenceChecker]
 
     incoherence_results = list(
         context.sync_await(
@@ -91,7 +91,7 @@ def test_that_contradictory_next_message_commands_are_detected_as_incoherencies(
     context: ContextOfTest,
     agent: Agent,
 ) -> None:
-    coherence_checker = context.container[CoherenceChecker]
+    coherence_checker = context.container[GuidelineCoherenceChecker]
     guidelines_to_evaluate = [
         GuidelineContent(
             condition="a document is being discussed",

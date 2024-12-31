@@ -149,31 +149,6 @@ class StyleGuideInvoiceData:
 InvoiceData: TypeAlias = Union[GuidelineInvoiceData, StyleGuideInvoiceData]
 
 
-# @dataclass(frozen=True)
-# class GuidelineInvoice:
-#     payload: GuidelinePayload
-#     checksum: str
-#     state_version: str
-#     approved: bool
-#     data: Optional[InvoiceGuidelineData]
-#     error: Optional[str]
-#     kind: Literal[PayloadKind.GUIDELINE] = PayloadKind.GUIDELINE
-
-
-# @dataclass(frozen=True)
-# class StyleGuideInvoice:
-#     payload: StyleGuidePayload
-#     checksum: str
-#     state_version: str
-#     approved: bool
-#     data: Optional[InvoiceStyleGuideData]
-#     error: Optional[str]
-#     kind: Literal[PayloadKind.STYLE_GUIDE] = PayloadKind.STYLE_GUIDE
-
-
-# Invoice: TypeAlias = Union[GuidelineInvoice, StyleGuideInvoice]
-
-
 @dataclass(frozen=True)
 class Invoice:
     kind: PayloadKind
