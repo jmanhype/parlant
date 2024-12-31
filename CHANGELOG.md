@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Remove tool metadata from prompts - it should only be accessible by inspection
 
 
 ## [1.4.0] - 2024-12-31
