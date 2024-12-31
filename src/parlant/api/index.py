@@ -19,7 +19,6 @@ from pydantic import Field
 
 from parlant.api import common
 from parlant.api.common import (
-    EventSourceDTO,
     GuidelinesCoherenceCheckDTO,
     GuidelineCoherenceCheckKindDTO,
     ConnectionPropositionDTO,
@@ -36,14 +35,13 @@ from parlant.api.common import (
     StyleGuideCoherenceCheckDTO,
     StyleGuideCoherenceCheckKindDTO,
     StyleGuideContentDTO,
-    StyleGuideEventDTO,
-    StyleGuideExampleDTO,
     StyleGuideInvoiceDataDTO,
     StyleGuidePayloadDTO,
     StyleGuidePayloadOperationDTO,
     apigen_config,
     ExampleJson,
     ErrorField,
+    style_guide_content_to_dto,
 )
 from parlant.core.async_utils import Timeout
 from parlant.core.common import DefaultBaseModel
@@ -68,7 +66,6 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
     EvaluationValidationError,
 )
-from parlant.core.style_guides import StyleGuideContent, StyleGuideEvent, StyleGuideExample
 
 API_GROUP = "evaluations"
 
@@ -122,26 +119,6 @@ def _guideline_payload_to_dto(payload: GuidelinePayload) -> GuidelinePayloadDTO:
         updated_id=payload.updated_id,
         coherence_check=payload.coherence_check,
         connection_proposition=payload.connection_proposition,
-    )
-
-
-def _style_guide_content_to_dto(content: StyleGuideContent) -> StyleGuideContentDTO:
-    def style_guide_event_to_dto(event: StyleGuideEvent) -> StyleGuideEventDTO:
-        return StyleGuideEventDTO(
-            source=EventSourceDTO[event.source],
-            message=event.message,
-        )
-
-    def style_guide_example_to_dto(example: StyleGuideExample) -> StyleGuideExampleDTO:
-        return StyleGuideExampleDTO(
-            before=[style_guide_event_to_dto(e) for e in example.before],
-            after=[style_guide_event_to_dto(e) for e in example.after],
-            violation=example.violation,
-        )
-
-    return StyleGuideContentDTO(
-        principle=content.principle,
-        examples=[style_guide_example_to_dto(e) for e in content.examples],
     )
 
 
@@ -219,8 +196,8 @@ def _invoice_style_guide_data_to_dto(
         coherence_checks=[
             StyleGuideCoherenceCheckDTO(
                 kind=StyleGuideCoherenceCheckKindDTO(c.kind),
-                first=_style_guide_content_to_dto(c.first),
-                second=_style_guide_content_to_dto(c.second),
+                first=style_guide_content_to_dto(c.first),
+                second=style_guide_content_to_dto(c.second),
                 issue=c.issue,
                 severity=c.severity,
             )
