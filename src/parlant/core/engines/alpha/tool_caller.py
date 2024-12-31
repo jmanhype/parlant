@@ -132,32 +132,37 @@ class ToolCaller:
 
         batches: dict[tuple[ToolId, Tool], list[GuidelineProposition]] = defaultdict(list)
         services: dict[str, ToolService] = {}
-        for proposition, tool_ids in tool_enabled_guideline_propositions.items():
-            for t_id in tool_ids:
-                if t_id.service_name not in services:
-                    services[t_id.service_name] = await self._service_registry.read_tool_service(
-                        t_id.service_name
+
+        for guideline_proposition, tool_ids in tool_enabled_guideline_propositions.items():
+            for tool_id in tool_ids:
+                if tool_id.service_name not in services:
+                    services[tool_id.service_name] = await self._service_registry.read_tool_service(
+                        tool_id.service_name
                     )
 
-                batches[(t_id, await services[t_id.service_name].read_tool(t_id.tool_name))].append(
-                    proposition
-                )
+                tool = await services[tool_id.service_name].read_tool(tool_id.tool_name)
+
+                batches[(tool_id, tool)].append(guideline_proposition)
 
         t_start = time.time()
 
         with self._logger.operation(f"Tool classification processed in {len(batches)} batches)"):
             batch_tasks = [
-                self._infer_tool_call_batch(
+                self._infer_calls_for_single_tool(
                     agents=agents,
                     context_variables=context_variables,
                     interaction_history=interaction_history,
                     terms=terms,
                     ordinary_guideline_propositions=ordinary_guideline_propositions,
-                    batch=(key[0], key[1], props),
-                    reference_tools=[t for t in batches if t != key],
+                    candidate_descriptor=(tool_id, tool, props),
+                    reference_tools=[
+                        tool_descriptor
+                        for tool_descriptor in batches
+                        if tool_descriptor != (tool_id, tool)
+                    ],
                     staged_events=staged_events,
                 )
-                for key, props in batches.items()
+                for (tool_id, tool), props in batches.items()
             ]
 
             batch_generations, tool_call_batches = zip(*await async_utils.safe_gather(*batch_tasks))
@@ -171,14 +176,14 @@ class ToolCaller:
             batches=list(cast(tuple[Sequence[ToolCall]], tool_call_batches)),
         )
 
-    async def _infer_tool_call_batch(
+    async def _infer_calls_for_single_tool(
         self,
         agents: Sequence[Agent],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
-        batch: tuple[ToolId, Tool, list[GuidelineProposition]],
+        candidate_descriptor: tuple[ToolId, Tool, list[GuidelineProposition]],
         reference_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
     ) -> tuple[GenerationInfo, list[ToolCall]]:
@@ -188,25 +193,25 @@ class ToolCaller:
             interaction_history,
             terms,
             ordinary_guideline_propositions,
-            batch,
+            candidate_descriptor,
             reference_tools,
             staged_events,
             await self.shots(),
         )
 
-        with self._logger.operation(f"Tool classification for tool_id '{batch[0]}'"):
+        tool_id, _, _ = candidate_descriptor
+
+        with self._logger.operation(f"Tool classification for tool_id '{tool_id}'"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
         return generation_info, [
             ToolCall(
                 id=ToolCallId(generate_id()),
-                tool_id=batch[0],
+                tool_id=tool_id,
                 arguments=tc.arguments or {},
             )
             for tc in inference_output
-            if tc.should_run
-            and tc.applicability_score >= 6
-            and not tc.a_more_fitting_tool_was_rejected_for_some_reason_and_potentially_despite_a_found_subtlety
+            if tc.should_run and tc.applicability_score >= 6
         ]
 
     async def execute_tool_calls(
