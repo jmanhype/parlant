@@ -105,7 +105,7 @@ async def create_local_tool(
     )
 
 
-async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_parameter(
+async def test_that_a_tool_from_a_local_service_gets_called_with_an_enum_parameter(
     local_tool_service: LocalToolService,
     tool_caller: ToolCaller,
     agent: Agent,
@@ -166,9 +166,8 @@ async def test_that_a_tool_from_local_service_is_getting_called_with_an_enum_par
     assert tool_call.arguments["category"] == "peripherals"
 
 
-async def test_that_a_tool_from_plugin_is_getting_called_with_an_enum_parameter(
+async def test_that_a_tool_from_a_plugin_gets_called_with_an_enum_parameter(
     container: Container,
-    customer: Customer,
     tool_caller: ToolCaller,
     agent: Agent,
 ) -> None:
