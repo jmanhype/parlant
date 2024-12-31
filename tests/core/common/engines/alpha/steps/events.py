@@ -18,7 +18,6 @@ from pytest_bdd import given, then, parsers, when
 from parlant.core.agents import AgentId, AgentStore
 from parlant.core.common import JSONSerializable
 from parlant.core.customers import CustomerStore
-from parlant.core.engines.alpha.utils import emitted_tool_event_to_dict
 from parlant.core.emissions import EmittedEvent
 from parlant.core.nlp.moderation import ModerationTag
 from parlant.core.sessions import (
@@ -27,11 +26,10 @@ from parlant.core.sessions import (
     SessionStatus,
     SessionStore,
     StatusEventData,
+    ToolCall,
     ToolEventData,
 )
-from parlant.core.tools import ToolId
 
-from tests import tool_utilities
 from tests.core.common.engines.alpha.utils import step
 from tests.core.common.utils import ContextOfTest
 from tests.test_utilities import nlp_test
@@ -404,14 +402,19 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     assert number_of_tool_calls == len(cast(ToolEventData, tool_calls_event.data)["tool_calls"])
 
 
+def _get_tool_calls(emitted_events: list[EmittedEvent]) -> list[ToolCall]:
+    tool_calls_event = next(e for e in emitted_events if e.kind == "tool")
+    tool_calls = cast(ToolEventData, tool_calls_event.data)["tool_calls"]
+    return tool_calls
+
+
 @step(then, parsers.parse("the tool calls event contains {expected_content}"))
 def then_the_tool_calls_event_contains_expected_content(
     context: ContextOfTest,
     expected_content: str,
     emitted_events: list[EmittedEvent],
 ) -> None:
-    tool_calls_event = next(e for e in emitted_events if e.kind == "tool")
-    tool_calls = cast(ToolEventData, tool_calls_event.data)["tool_calls"]
+    tool_calls = _get_tool_calls(emitted_events)
 
     assert context.sync_await(
         nlp_test(
@@ -419,150 +422,6 @@ def then_the_tool_calls_event_contains_expected_content(
             condition=f"The calls contain {expected_content}",
         )
     )
-
-
-@step(
-    then,
-    parsers.parse(
-        "the execution result of {tool_id} is emitted in the "
-        "{tool_event_number:d}{ordinal_indicator:s} tool event"
-    ),
-)
-def then_drinks_available_in_stock_tool_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    tool_id: ToolId,
-    tool_event_number: int,
-) -> None:
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-
-    tool_event_functions = {
-        "tool_id": tool_utilities.get_available_drinks,
-        "tool_id1": tool_utilities.get_available_toppings,
-    }
-
-    assert {
-        "tool_name": tool_id.tool_name,
-        "parameters": {},
-        "result": tool_event_functions[tool_id.tool_name](),
-    } in results
-
-
-@step(
-    then,
-    parsers.parse(
-        "a tool event for product availability of {product_type} is generated "
-        "at tool event number {tool_event_number:d}"
-    ),
-)
-def then_product_availability_for_toppings_and_drinks_tools_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    product_type: str,
-    tool_event_number: int,
-) -> None:
-    types_functions = {
-        "drinks": tool_utilities.get_available_drinks,
-        "toppings": tool_utilities.get_available_toppings,
-    }
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-    assert {
-        "tool_name": "get_available_product_by_type",
-        "parameters": {"product_type": product_type},
-        "result": types_functions[product_type](),
-    } in results
-
-
-@step(
-    then,
-    parsers.parse(
-        "an add tool event is emitted with {first_num:d}, {second_num:d} numbers in "
-        "tool event number {tool_event_number:d}"
-    ),
-)
-def then_add_tool_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    first_num: int,
-    second_num: int,
-    tool_event_number: int,
-) -> None:
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-
-    assert {
-        "tool_name": "add",
-        "parameters": {
-            "first_number": first_num,
-            "second_number": second_num,
-        },
-        "result": tool_utilities.add(first_num, second_num),
-    } in results
-
-
-@step(
-    then,
-    parsers.parse(
-        "a multiply tool event is emitted with {first_num:d}, {second_num:d} "
-        "numbers in tool event number {tool_event_number:d}"
-    ),
-)
-def then_multiply_tool_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    first_num: int,
-    second_num: int,
-    tool_event_number: int,
-) -> None:
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-
-    assert {
-        "tool_name": "multiply",
-        "parameters": {
-            "first_number": first_num,
-            "second_number": second_num,
-        },
-        "result": tool_utilities.multiply(first_num, second_num),
-    } in results
-
-
-@step(
-    then,
-    parsers.parse(
-        "a get balance account tool event is emitted for the {name} account "
-        "in tool event number {tool_event_number:d}"
-    ),
-)
-def then_get_balance_account_tool_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    name: str,
-    tool_event_number: int,
-) -> None:
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-
-    assert {
-        "tool_name": "get_account_balance",
-        "parameters": {
-            "account_name": name,
-        },
-        "result": tool_utilities.get_account_balance(name),
-    } in results
-
-
-@step(
-    then,
-    "a get account loans tool event is emitted for {name} "
-    "in tool event number {tool_event_number:d}",
-)
-def then_get_account_loans_tool_event_is_emitted(
-    emitted_events: list[EmittedEvent],
-    name: str,
-    tool_event_number: int,
-) -> None:
-    results = emitted_tool_event_to_dict(emitted_events[tool_event_number - 1])["data"]
-
-    assert {
-        "tool_name": "get_account_loans",
-        "parameters": {
-            "account_name": name,
-        },
-        "result": tool_utilities.get_account_loans(name),
-    } in results
 
 
 @step(then, "the tool calls event is correlated with the message event")

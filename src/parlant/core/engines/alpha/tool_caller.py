@@ -32,7 +32,6 @@ from parlant.core.sessions import Event, ToolResult
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
-from parlant.core.engines.alpha.utils import emitted_tool_events_to_dicts
 from parlant.core.emissions import EmittedEvent
 from parlant.core.logging import Logger
 from parlant.core.tools import ToolId, ToolService
@@ -529,23 +528,12 @@ Guidelines:
         self,
         emitted_events: Sequence[EmittedEvent],
     ) -> Optional[str]:
-        staged_calls = list(
-            chain(*[e["data"] for e in emitted_tool_events_to_dicts(emitted_events)])
-        )
+        staged_calls = [PromptBuilder.adapt_event(e) for e in emitted_events if e.kind == "tool"]
 
         if not staged_calls:
             return None
 
-        return json.dumps(
-            [
-                {
-                    "tool_id": invocation["tool_id"],
-                    "arguments": invocation["arguments"],
-                    "result": invocation["result"],
-                }
-                for invocation in staged_calls
-            ]
-        )
+        return json.dumps(staged_calls)
 
     async def _run_inference(
         self,

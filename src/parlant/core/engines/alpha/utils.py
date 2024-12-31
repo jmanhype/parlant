@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import json
-from typing import Any, Sequence, cast
+from typing import Sequence
 
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.sessions import ToolEventData
-from parlant.core.emissions import EmittedEvent
 
 
 def context_variables_to_json(
@@ -32,18 +30,3 @@ def context_variables_to_json(
     }
 
     return json.dumps(context_values)
-
-
-def emitted_tool_events_to_dicts(
-    events: Sequence[EmittedEvent],
-) -> list[dict[str, Any]]:
-    return [emitted_tool_event_to_dict(e) for e in events]
-
-
-def emitted_tool_event_to_dict(event: EmittedEvent) -> dict[str, Any]:
-    assert event.kind == "tool"
-
-    return {
-        "kind": event.kind,
-        "data": cast(ToolEventData, event.data)["tool_calls"],
-    }
