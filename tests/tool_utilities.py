@@ -14,6 +14,7 @@
 
 import enum
 from typing import Optional
+import json
 
 from parlant.core.tools import ToolResult
 
@@ -37,6 +38,105 @@ class Categories(enum.Enum):
     LIGHTING = "Lighting"
     NETWORKING = "Networking"
     LAPTOP = "Laptop"
+
+
+class Tags(enum.Enum):
+    GENERAL = "General"
+    GAMING = "Gaming"
+    DISPLAYS = "Displays"
+    GRAPHICS = "Graphics"
+    COOLING = "Cooling"
+    STORAGE = "Storage"
+    CONNECTIVITY = "Connectivity"
+    POWER = "Power"
+    PERIPHERALS = "Peripherals"
+    LAPTOPS = "Laptops"
+    DESKS_AND_MOUNTS = "Desks and mounts"
+    CONTENT_CREATION = "Content creation"
+    MISC = "Miscellaneous"
+
+
+TAG_VALUES = {
+    Tags.GENERAL: [
+        "storage",
+        "portable",
+        "external",
+        "productivity",
+        "office",
+        "business",
+        "professional",
+        "mainstream",
+        "creative",
+        "studio",
+    ],
+    Tags.GAMING: [
+        "gaming",
+        "mechanical",
+        "premium",
+        "budget",
+        "rgb",
+        "lightweight",
+        "tenkeyless",
+        "compact",
+        "ergonomic",
+        "control",
+        "customization",
+    ],
+    Tags.DISPLAYS: [
+        "monitor",
+        "curved",
+        "4k",
+        "144hz",
+        "hdmi2.1",
+        "ips",
+        "eye-care",
+        "quantum-dot",
+        "calibration",
+    ],
+    Tags.GRAPHICS: [
+        "nvidia",
+        "amd",
+        "intel",
+        "high-end",
+        "high-performance",
+        "rtx4090",
+        "rtx4080",
+        "rtx4070",
+        "rtx4060ti",
+        "rtx4060",
+        "rtx4050",
+        "rtx3050",
+        "rtx3050ti",
+        "rx6600",
+        "z690",
+        "ddr5",
+        "ddr4",
+    ],
+    Tags.COOLING: ["cooling", "aio", "liquid-cooler", "case", "atx", "fans"],
+    Tags.STORAGE: ["ssd", "nvme", "hdd", "sata"],
+    Tags.CONNECTIVITY: ["wifi", "usb", "usb-c", "hdmi", "connectivity", "hub", "dock"],
+    Tags.POWER: ["psu", "modular", "gold-rated", "power", "protection", "surge"],
+    Tags.PERIPHERALS: [
+        "mousepad",
+        "desk-pad",
+        "keyboard",
+        "speakers",
+        "microphone",
+        "audio",
+        "dac",
+        "lighting",
+    ],
+    Tags.LAPTOPS: ["laptop", "ultrabook", "convertible", "macbook", "m3"],
+    Tags.DESKS_AND_MOUNTS: ["desk", "mount"],
+    Tags.CONTENT_CREATION: ["streaming", "capture", "content-creation", "interface"],
+    Tags.MISC: ["bluetooth", "comfort", "modding"],
+}
+
+
+file_path = "tests/core/data/tech_products.json"
+
+with open(file_path, "r") as file:
+    tech_products = json.load(file)
 
 
 def get_available_drinks() -> ToolResult:
@@ -167,3 +267,12 @@ def try_unlock_card(last_6_digits: Optional[str] = None) -> ToolResult:
         return ToolResult({"success": "card succesfuly unlocked"})
     except BaseException:
         return ToolResult({"failure": "system error"})
+
+
+def is_product_category_in_stock(category: Categories) -> ToolResult:
+    products = [item for item in tech_products if item["type"].lower() == category.value.lower()]
+    qty = sum(item["qty"] for item in products)
+    return ToolResult(qty)
+
+def get_products_by_tags(category: Categories, tags: Tags) -> ToolResult:
+    return ToolResult(TAG_VALUES[tags])
