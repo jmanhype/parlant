@@ -252,7 +252,7 @@ guideline_creation_result_example: ExampleJson = {
 }
 
 
-class GuidelineCreationResult(
+class GuidelineCreationResultDTO(
     DefaultBaseModel,
     json_schema_extra={"example": guideline_creation_result_example},
 ):
@@ -374,6 +374,12 @@ def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
             detail="Missing guideline payload",
         )
 
+    if not dto.data:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Missing invoice data",
+        )
+
     payload = GuidelinePayload(
         content=GuidelineContent(
             condition=dto.payload.guideline.content.condition,
@@ -384,12 +390,6 @@ def _invoice_dto_to_invoice(dto: InvoiceDTO) -> Invoice:
         connection_proposition=dto.payload.guideline.connection_proposition,
         updated_id=dto.payload.guideline.updated_id,
     )
-
-    if not dto.data:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Missing invoice data",
-        )
 
     data = _invoice_data_dto_to_invoice_data(dto.data)
 
@@ -498,7 +498,7 @@ def create_router(
         "/{agent_id}/guidelines",
         status_code=status.HTTP_201_CREATED,
         operation_id="create_guidelines",
-        response_model=GuidelineCreationResult,
+        response_model=GuidelineCreationResultDTO,
         responses={
             status.HTTP_201_CREATED: {
                 "description": "Guidelines successfully created. Returns the created guidelines with their connections and tool associations.",
@@ -514,7 +514,7 @@ def create_router(
     async def create_guidelines(
         agent_id: agents.AgentIdPath,
         params: GuidelineCreationParamsDTO,
-    ) -> GuidelineCreationResult:
+    ) -> GuidelineCreationResultDTO:
         """
         Creates new guidelines from the provided invoices.
 
@@ -553,7 +553,7 @@ def create_router(
                     )
                 )
 
-        return GuidelineCreationResult(
+        return GuidelineCreationResultDTO(
             items=[
                 GuidelineWithConnectionsAndToolAssociationsDTO(
                     guideline=GuidelineDTO(

@@ -18,7 +18,12 @@ from typing import Annotated, Any, Mapping, Optional, Sequence, TypeAlias
 
 from parlant.core.common import DefaultBaseModel
 from parlant.core.guidelines import GuidelineId
-from parlant.core.style_guides import StyleGuideId
+from parlant.core.style_guides import (
+    StyleGuideContent,
+    StyleGuideEvent,
+    StyleGuideExample,
+    StyleGuideId,
+)
 
 
 def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
@@ -671,6 +676,26 @@ class InvoiceDTO(
     approved: ApprovedField
     data: Optional[InvoiceDataDTO] = None
     error: Optional[ErrorField] = None
+
+
+def style_guide_content_to_dto(content: StyleGuideContent) -> StyleGuideContentDTO:
+    def style_guide_event_to_dto(event: StyleGuideEvent) -> StyleGuideEventDTO:
+        return StyleGuideEventDTO(
+            source=EventSourceDTO(event.source),
+            message=event.message,
+        )
+
+    def style_guide_example_to_dto(example: StyleGuideExample) -> StyleGuideExampleDTO:
+        return StyleGuideExampleDTO(
+            before=[style_guide_event_to_dto(e) for e in example.before],
+            after=[style_guide_event_to_dto(e) for e in example.after],
+            violation=example.violation,
+        )
+
+    return StyleGuideContentDTO(
+        principle=content.principle,
+        examples=[style_guide_example_to_dto(e) for e in content.examples],
+    )
 
 
 ServiceNameField: TypeAlias = Annotated[

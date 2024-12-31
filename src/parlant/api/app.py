@@ -27,6 +27,7 @@ from parlant.api import agents, index
 from parlant.api import sessions
 from parlant.api import glossary
 from parlant.api import guidelines
+from parlant.api import style_guides
 from parlant.api import context_variables as variables
 from parlant.api import services
 from parlant.api import tags
@@ -49,6 +50,7 @@ from parlant.core.services.indexing.behavioral_change_evaluation import (
 )
 from parlant.core.logging import Logger
 from parlant.core.application import Application
+from parlant.core.style_guides import StyleGuideStore
 from parlant.core.tags import TagStore
 
 ASGIApplication: TypeAlias = Callable[
@@ -90,6 +92,7 @@ async def create_api_app(container: Container) -> ASGIApplication:
     evaluation_service = container[BehavioralChangeEvaluator]
     glossary_store = container[GlossaryStore]
     guideline_store = container[GuidelineStore]
+    style_guide_store = container[StyleGuideStore]
     guideline_connection_store = container[GuidelineConnectionStore]
     guideline_tool_association_store = container[GuidelineToolAssociationStore]
     context_variable_store = container[ContextVariableStore]
@@ -154,6 +157,11 @@ async def create_api_app(container: Container) -> ASGIApplication:
             guideline_connection_store=guideline_connection_store,
             service_registry=service_registry,
             guideline_tool_association_store=guideline_tool_association_store,
+        ),
+    )
+    agent_router.include_router(
+        style_guides.create_router(
+            style_guide_store=style_guide_store,
         ),
     )
     agent_router.include_router(
