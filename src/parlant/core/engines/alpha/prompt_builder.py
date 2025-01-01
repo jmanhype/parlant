@@ -27,6 +27,9 @@ from parlant.core.engines.alpha.utils import (
     emitted_tool_events_to_dicts,
 )
 from parlant.core.emissions import EmittedEvent
+from parlant.core.style_guides import (
+    StyleGuide,
+)
 
 
 class BuiltInSection(Enum):
@@ -237,4 +240,35 @@ Use the details they offer to assist in your task: ###
                 status=SectionStatus.ACTIVE,
             )
 
+        return self
+
+    def add_style_guides(self, style_guides: Sequence[StyleGuide]) -> PromptBuilder:
+        if style_guides:
+            style_guide_text = "\n".join(
+                [
+                    f"""{i}. {sg.content.principle} \n Examples: ### {json.dumps(sg.content.examples, indent=2)} ### """
+                    for i, sg in enumerate(style_guides, start=1)
+                ]
+            )
+            self.add_section(
+                name=BuiltInSection.STYLE_GUIDES,
+                content=f"""
+The following is a list of style guides that describe the tone and approach you should use when responding to customers.
+
+Each style guide includes examples with 'before' and 'after' sections. 
+The 'before' illustrates a response that does not follow the style guide, while the 'after' demonstrates the corrected response. 
+Each example also includes a 'violation' field, explaining how the 'before' response fails to meet the style guide's expectations.
+
+Important Note: Style guides are secondary to standard guidelines and user requests.
+If a standard guideline conflicts with a style guide, the guideline takes precedence.
+Always prioritize user requests over style guides, even if it means deviating from the prescribed style.
+
+Below are the style guides to follow:
+
+
+{style_guide_text}
+###
+""",
+                status=SectionStatus.ACTIVE,
+            )
         return self
