@@ -243,19 +243,19 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         params: TDocument,
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
-        for i, d in enumerate(self.documents):
-            if matches_filters(filters, d):
-                async with self._lock.writer_lock:
+        async with self._lock.writer_lock:
+            for i, d in enumerate(self.documents):
+                if matches_filters(filters, d):
                     self.documents[i] = cast(TDocument, {**self.documents[i], **params})
 
-                await self._database.flush()
+                    await self._database.flush()
 
-                return UpdateResult(
-                    acknowledged=True,
-                    matched_count=1,
-                    modified_count=1,
-                    updated_document=self.documents[i],
-                )
+                    return UpdateResult(
+                        acknowledged=True,
+                        matched_count=1,
+                        modified_count=1,
+                        updated_document=self.documents[i],
+                    )
 
         if upsert:
             await self.insert_one(params)
@@ -279,13 +279,16 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Where,
     ) -> DeleteResult[TDocument]:
-        for i, d in enumerate(self.documents):
-            if matches_filters(filters, d):
-                async with self._lock.writer_lock:
+        async with self._lock.writer_lock:
+            for i, d in enumerate(self.documents):
+                if matches_filters(filters, d):
                     document = self.documents.pop(i)
 
-                await self._database.flush()
-                return DeleteResult(deleted_count=1, acknowledged=True, deleted_document=document)
+                    await self._database.flush()
+
+                    return DeleteResult(
+                        deleted_count=1, acknowledged=True, deleted_document=document
+                    )
 
         return DeleteResult(
             acknowledged=True,
