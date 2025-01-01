@@ -3,6 +3,12 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
+TBD
+
+
+## [1.4.2] - 2024-12-31
+
+### Fixed
 - Fix race condition in JSONFileDocumentDatabase when deleting or updating documents
 
 
