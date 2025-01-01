@@ -40,6 +40,7 @@ class BuiltInSection(Enum):
     GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
     STAGED_EVENTS = auto()
+    STYLE_GUIDES = auto()
 
 
 class SectionStatus(Enum):
