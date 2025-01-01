@@ -59,9 +59,9 @@ Feature: StyleGuide
     Scenario: The agent prioritizes guideline over style guide 1
         Given the style guide "technical_clarity"
         And a guideline "use_jargon" to assume the customer is an expert in this subject when troubleshooting issues related to the customers sound system
-        And a customer message "Hi there, I'm trying to hook up my computer at my new office, but it doesn't seem to recognize the network, like my phone does. Any idea about what could be the issue?"
+        And a customer message, "Hi there, I'm trying to hook up my computer at my new office, but it doesn't seem to recognize the network, like my phone does. Any idea about what could be the issue?"
         And an agent message, "Hi! Here are a few quick things to try: 1. Is your computer’s Wi-Fi on? Make sure it’s not turned off by accident. 2. Are you using the right network and password? Double-check you're connecting to the same Wi-Fi as your phone. 3. Restart your computer. It often fixes small problems. 4. Move closer to the Wi-Fi box. If it’s too far, the signal might be weak. Let me know if it’s still not working!"
-        And a customer message "Alright restarting the computer solved it! I'm now trying to connect my computer to my sound system. I hooked up my JBL soundbar to my computer over Bluetooth, but the sound doesn’t match the video. When I’m in a video call or gaming, there’s a delay, and sometimes it sounds like an echo."
+        And a customer message, "Alright restarting the computer solved it! I'm now trying to connect my computer to my sound system. I hooked up my JBL soundbar to my computer over Bluetooth, but the sound doesn’t match the video. When I’m in a video call or gaming, there’s a delay, and sometimes it sounds like an echo."
         When processing is triggered
         Then a single message event is emitted
         And the message contains a detailed and technical explanation about how to fix the sound system issue. The explanation should be aimed at experts, and not beginners. 
