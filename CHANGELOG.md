@@ -6,6 +6,12 @@ All notable changes to Parlant will be documented here.
 TBD
 
 
+## [1.4.3] - 2025-01-02
+
+### Fixed
+- Upgraded dependency "tiktoken" to 0.8.0 to fix installation errors on some environments
+
+
 ## [1.4.2] - 2024-12-31
 
 ### Fixed
