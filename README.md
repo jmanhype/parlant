@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>Parlant: A behavioral control framework for customer-facing LLM agents </h2>
+  <h2>Parlant: The Behavioral Control Framework for Customer-Facing LLM Agents </h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> |
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
@@ -20,9 +20,11 @@
 </div>
 
 ## ✨ What is Parlant?
-Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.
+**Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
 
-Unlike traditional approaches that rely on prompt engineering or conversational flow charts, Parlant implements a dynamic control system that ensures agents follow your specific business rules by matching and activating the appropriate combination of behavioral guidelines for every specific context.
+**With Parlant, you can not only spin up and serve an LLM agent in minutes—with a full-fledged & responsive conversation management API—but, more importantly, you can guide and improve its decision making and general behavior, easily and reliably.**
+
+Unlike traditional approaches that rely on prompt engineering or conversational flow charts, Parlant introduces a dynamic control system that ensures agents follow your specific business rules, in the form of behavioral guidelines that you provide, by matching and activating the appropriate combination of guidelines for every specific context.
 
 When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges. When it's time to generate a message, Parlant implements self-critique mechanisms to ensure that the agent's responses precisely align with your intended behavior as given by the contextually-matched guidelines.
 
@@ -40,10 +42,10 @@ $ # Open the sandbox UI at http://localhost:8000 and play
 ## 🙋‍♂️🙋‍♀️ Who Is Parlant For?
 Parlant is the right tool for the job if you're building an LLM-based chat agent, and:
 
-1. You require a high degree of behavioral precision and consistency, particularly in customer-facing scenarios
-1. Your agent is expected to undergo many behavioral refinements and changes, and you need a way to implement those changes efficiently and confidently
-1. You're expected to maintain a large set of behavioral guidelines, and you want to maintain them coherently and with version-tracking
-1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily control the flow and language of conversations
+1. Your use case places a high importance on behavioral precision and consistency, particularly in customer-facing scenarios
+1. Your agent is expected to undergo continuous behavioral refinements and changes, and you need a way to implement those changes efficiently and confidently
+1. You're expected to maintain a large set of behavioral guidelines, and you need to maintain them coherently and with version-tracking
+1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily control the flow and tone of conversations
 
 ## 🤔 What Makes Parlant Different?
 
