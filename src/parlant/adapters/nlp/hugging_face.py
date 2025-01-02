@@ -14,6 +14,7 @@
 
 from collections.abc import Mapping
 import os
+from pathlib import Path
 from typing import Any
 from typing_extensions import override
 import torch  # type: ignore
@@ -25,27 +26,77 @@ from huggingface_hub.errors import (  # type: ignore
     TextGenerationError,
 )
 
+from tempfile import gettempdir
+
 from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
 
 
+_TOKENIZER_MODELS: dict[str, AutoTokenizer] = {}
+_AUTO_MODELS: dict[str, AutoModel] = {}
+_DEVICE: torch.device | None = None
+
+
+def _model_temp_dir() -> str:
+    return str(Path(gettempdir()) / "parlant_data" / "hf_models")
+
+
+def _create_tokenizer(model_name: str) -> AutoTokenizer:
+    if model_name in _TOKENIZER_MODELS:
+        return _TOKENIZER_MODELS[model_name]
+
+    save_dir = os.environ.get("PARLANT_HOME", _model_temp_dir())
+    os.makedirs(save_dir, exist_ok=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.save_pretrained(save_dir)
+
+    _TOKENIZER_MODELS[model_name] = tokenizer
+
+    return tokenizer
+
+
+def _get_device() -> torch.device:
+    global _DEVICE
+
+    if _DEVICE:
+        return _DEVICE
+
+    if torch.backends.mps.is_available():
+        _DEVICE = torch.device("mps")
+    elif torch.cuda.is_available():
+        _DEVICE = torch.device("cuda")
+    else:
+        _DEVICE = torch.device("cpu")
+
+    return _DEVICE
+
+
+def _create_auto_model(model_name: str) -> AutoModel:
+    if model_name in _AUTO_MODELS:
+        return _AUTO_MODELS[model_name]
+
+    save_dir = os.environ.get("PARLANT_HOME", _model_temp_dir())
+    os.makedirs(save_dir, exist_ok=True)
+
+    model = AutoModel.from_pretrained(
+        pretrained_model_name_or_path=model_name,
+        attn_implementation="eager",
+    ).to(_get_device())
+
+    model.save_pretrained(save_dir)
+    model.eval()
+
+    _AUTO_MODELS[model_name] = model
+
+    return model
+
+
 class HuggingFaceEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-
-        if torch.backends.mps.is_available():
-            self._device = torch.device("mps")
-        elif torch.cuda.is_available():
-            self._device = torch.device("cuda")
-        else:
-            self._device = torch.device("cpu")
-
-        save_dir = os.environ.get("PARLANT_HOME", "/tmp")
-        os.makedirs(save_dir, exist_ok=True)
-
-        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self._tokenizer.save_pretrained(save_dir)
+        self._tokenizer = _create_tokenizer(model_name)
 
     @override
     async def estimate_token_count(self, prompt: str) -> int:
@@ -56,23 +107,7 @@ class HuggingFaceEstimatingTokenizer(EstimatingTokenizer):
 class HuggingFaceEmbedder(Embedder):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
-
-        save_dir = os.environ.get("PARLANT_HOME", "/tmp")
-        os.makedirs(save_dir, exist_ok=True)
-
-        if torch.backends.mps.is_available():
-            self._device = torch.device("mps")
-        elif torch.cuda.is_available():
-            self._device = torch.device("cuda")
-        else:
-            self._device = torch.device("cpu")
-
-        self._model = AutoModel.from_pretrained(
-            pretrained_model_name_or_path=model_name, attn_implementation="eager"
-        ).to(self._device)
-        self._model.save_pretrained(save_dir)
-        self._model.eval()
-
+        self._model = _create_auto_model(model_name)
         self._tokenizer = HuggingFaceEstimatingTokenizer(model_name=model_name)
 
     @property
@@ -112,7 +147,7 @@ class HuggingFaceEmbedder(Embedder):
         tokenized_texts = self._tokenizer._tokenizer.batch_encode_plus(
             texts, padding=True, truncation=True, return_tensors="pt"
         )
-        tokenized_texts = {key: value.to(self._device) for key, value in tokenized_texts.items()}
+        tokenized_texts = {key: value.to(_get_device()) for key, value in tokenized_texts.items()}
 
         with torch.no_grad():
             embeddings = self._model(**tokenized_texts).last_hidden_state[:, 0, :]
