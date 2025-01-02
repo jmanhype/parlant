@@ -22,7 +22,7 @@
 ## ✨ What is Parlant?
 **Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
 
-**With Parlant, you can not only spin up and serve an LLM agent in minutes—with a full-fledged & responsive conversation management API—but, more importantly, you can guide and improve its decision making and general behavior, easily and reliably.**
+**With Parlant, you can not only spin up and serve an LLM agent in minutes—with a full-fledged & responsive conversation management API—but, more importantly, you can continuously guide and improve its decision making and general behavior, easily and reliably.**
 
 Unlike traditional approaches that rely on prompt engineering or conversational flow charts, Parlant introduces a dynamic control system that ensures agents follow your specific business rules, in the form of behavioral guidelines that you provide, by matching and activating the appropriate combination of guidelines for every specific context.
 
