@@ -18,7 +18,7 @@ from itertools import chain
 import json
 import time
 import traceback
-from typing import Any, Mapping, NewType, Optional, Sequence, cast
+from typing import Any, Mapping, NewType, Optional, Sequence
 
 from parlant.core import async_utils
 from parlant.core.shots import Shot, ShotCollection
@@ -165,15 +165,17 @@ class ToolCaller:
                 for (tool_id, tool), props in batches.items()
             ]
 
-            batch_generations, tool_call_batches = zip(*await async_utils.safe_gather(*batch_tasks))
+            batch_results = list(await async_utils.safe_gather(*batch_tasks))
+            batch_generations = [generation for generation, _ in batch_results]
+            tool_call_batches = [tool_calls for _, tool_calls in batch_results]
 
         t_end = time.time()
 
         return InferenceToolCallsResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
-            batch_generations=list(cast(tuple[GenerationInfo], batch_generations)),
-            batches=list(cast(tuple[Sequence[ToolCall]], tool_call_batches)),
+            batch_generations=batch_generations,
+            batches=tool_call_batches,
         )
 
     async def _infer_calls_for_single_tool(
