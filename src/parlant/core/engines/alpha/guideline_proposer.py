@@ -293,7 +293,7 @@ class GuidelineProposer:
                 for i, g in enumerate(shot.guidelines, start=1)
             )
             formatted_shot += f"""
-- **Guidelines**: 
+- **Guidelines**:
 {formatted_guidelines}
 
 """
@@ -391,7 +391,7 @@ IMPORTANT: guidelines that only require you to say a specific thing are generall
 Conversely, actions dictating one-time behavior (e.g., "send the user our address") should be re-applied more conservatively.
 Only re-apply these if the condition ceased to be true earlier in the conversation before being fulfilled again in the current context.
 
-IMPORTANT: Some guidelines include multiple actions. If only a portion of those actions were fulfilled earlier in the conversation, output "fully" for guideline_previously_applied, and treat the guideline as though it has been fully executed. 
+IMPORTANT: Some guidelines include multiple actions. If only a portion of those actions were fulfilled earlier in the conversation, output "fully" for guideline_previously_applied, and treat the guideline as though it has been fully executed.
 In such cases, re-apply the guideline only if its condition becomes true again later in the conversation, unless it is marked as continuous.
 
 """  # noqa
@@ -510,7 +510,7 @@ example_1_expected = GuidelinePropositionsSchema(
             condition_applies=True,
             condition_application_rationale="The customer recently asked to subscribe to the pro plan. The conversation is beginning to drift elsewhere, but still deals with the pro plan",
             action="maintain a helpful tone and thank them for shopping at our store",
-            guideline_previously_applied_rationale="a helpful tone was maintained, but the agent didn't thank the customer for shoppint at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
+            guideline_previously_applied_rationale="a helpful tone was maintained, but the agent didn't thank the customer for shopping at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
             guideline_previously_applied="partially",
             guideline_is_continuous=False,
             guideline_should_reapply=False,
