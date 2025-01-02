@@ -3,7 +3,9 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Add DeepSeek provider support (via DeepSeekService)
+- Fix tool-calling test
+- Fix HuggingFace model loading issues
 
 
 ## [1.4.3] - 2025-01-02
