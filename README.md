@@ -34,7 +34,7 @@ Parlant comes pre-built with responsive session (conversation) management, a det
 ```bash
 $ pip install parlant
 $ parlant-server
-$ # Open the sandbox UI at http://localhost:8000 and play
+$ # Open the sandbox UI at http://localhost:8800 and play
 ```
 
 <img alt="Parlant Preview" src="https://github.com/emcie-co/parlant/blob/02c0e11116e03f3622077436ce9d61811bceb519/preview.gif" />
