@@ -718,18 +718,19 @@ def style_guide_content_to_dto(content: StyleGuideContent) -> StyleGuideContentD
 def style_guide_content_dto_to_content(dto: StyleGuideContentDTO) -> StyleGuideContent:
     def event_dto_to_event(dto: StyleGuideEventDTO) -> StyleGuideEvent:
         def source_dto_to_source(source: EventSourceDTO) -> EventSource:
-            if source == EventSourceDTO.CUSTOMER:
-                return "customer"
-            elif source == EventSourceDTO.CUSTOMER_UI:
-                return "customer_ui"
-            elif source == EventSourceDTO.HUMAN_AGENT:
-                return "human_agent"
-            elif source == EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
-                return "human_agent_on_behalf_of_ai_agent"
-            elif source == EventSourceDTO.AI_AGENT:
-                return "ai_agent"
-            elif source == EventSourceDTO.SYSTEM:
-                return "system"
+            match source:
+                case EventSourceDTO.CUSTOMER:
+                    return "customer"
+                case EventSourceDTO.CUSTOMER_UI:
+                    return "customer_ui"
+                case EventSourceDTO.HUMAN_AGENT:
+                    return "human_agent"
+                case EventSourceDTO.HUMAN_AGENT_ON_BEHALF_OF_AI_AGENT:
+                    return "human_agent_on_behalf_of_ai_agent"
+                case EventSourceDTO.AI_AGENT:
+                    return "ai_agent"
+                case EventSourceDTO.SYSTEM:
+                    return "system"
 
         return StyleGuideEvent(source=source_dto_to_source(dto.source), message=dto.message)
 
