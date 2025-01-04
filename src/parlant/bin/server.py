@@ -175,6 +175,12 @@ def load_cerebras() -> NLPService:
     return CerebrasService(LOGGER)
 
 
+def load_deepseek() -> NLPService:
+    from parlant.adapters.nlp.deepseek import DeepSeekService
+
+    return DeepSeekService(LOGGER)
+
+
 def load_gemini() -> NLPService:
     from parlant.adapters.nlp.gemini import GeminiService
 
@@ -310,6 +316,7 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
         "aws": load_aws,
         "azure": load_azure,
         "cerebras": load_cerebras,
+        "deepseek": load_deepseek,
         "gemini": load_gemini,
         "openai": load_openai,
         "together": load_together,
@@ -517,6 +524,12 @@ def main() -> None:
         default=True,
     )
     @click.option(
+        "--anthropic",
+        is_flag=True,
+        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
         "--aws",
         is_flag=True,
         help="Run with AWS Bedrock. The following environment variables must be set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION",
@@ -529,21 +542,21 @@ def main() -> None:
         default=False,
     )
     @click.option(
-        "--gemini",
-        is_flag=True,
-        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set",
-        default=False,
-    )
-    @click.option(
-        "--anthropic",
-        is_flag=True,
-        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set",
-        default=False,
-    )
-    @click.option(
         "--cerebras",
         is_flag=True,
         help="Run with Cerebras. The environment variable CEREBRAS_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--deepseek",
+        is_flag=True,
+        help="Run with DeepSeek. The environment variable DEEPSEEK_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--gemini",
+        is_flag=True,
+        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set",
         default=False,
     )
     @click.option(
