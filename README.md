@@ -152,3 +152,5 @@ const { trace } = await client.sessions.inspectEvent(
 We're currently finalizing our contribution guidelines. Check back soon!
 
 Can't wait to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
+
+Otherwise, feel free to start a discussion or open an issue here on GitHub—freestyle 😎.
