@@ -27,6 +27,7 @@ from parlant.api.common import (
     example_json_content,
     style_guide_content_dto_to_content,
     style_guide_content_to_dto,
+    style_guide_content_example,
 )
 from parlant.core.common import DefaultBaseModel
 from parlant.core.evaluations import (
@@ -40,32 +41,7 @@ from parlant.core.style_guides import StyleGuideStore, StyleGuideId
 
 style_guide_dto_example: ExampleJson = {
     "id": "sg_123xyz",
-    "principle": "Adopt a whimsical tone and include jokes or playful remarks.",
-    "examples": [
-        {
-            "before": [
-                {
-                    "source": "customer",
-                    "message": "Can you tell me the weather for today?",
-                },
-                {
-                    "source": "ai_agent",
-                    "message": "It's sunny and warm, about 75°F.",
-                },
-            ],
-            "after": [
-                {
-                    "source": "customer",
-                    "message": "Can you tell me the weather for today?",
-                },
-                {
-                    "source": "ai_agent",
-                    "message": "It's sunny and warm, about 75°F. Perfect weather for pretending you’re on a tropical island... even if you're just in your backyard with a kiddie pool!",
-                },
-            ],
-            "violation": "The 'before' message does not include a joke or playful remark.",
-        },
-    ],
+    "content": style_guide_content_example,
 }
 
 StyleGuideIdPath: TypeAlias = Annotated[
@@ -95,32 +71,9 @@ style_guide_creation_params_example: ExampleJson = {
             "payload": {
                 "kind": "style_guide",
                 "style_guide": {
-                    "principle": "Adopt a whimsical tone and include jokes or playful remarks.",
-                    "examples": [
-                        {
-                            "before": [
-                                {
-                                    "source": "customer",
-                                    "message": "Can you tell me the weather for today?",
-                                },
-                                {
-                                    "source": "ai_agent",
-                                    "message": "It's sunny and warm, about 75°F.",
-                                },
-                            ],
-                            "after": [
-                                {
-                                    "source": "customer",
-                                    "message": "Can you tell me the weather for today?",
-                                },
-                                {
-                                    "source": "ai_agent",
-                                    "message": "It's sunny and warm, about 75°F. Perfect weather for pretending you're on a tropical island... even if you're just in your backyard with a kiddie pool!",
-                                },
-                            ],
-                            "violation": "The 'before' message does not include a joke or playful remark.",
-                        },
-                    ],
+                    "operation": "add",
+                    "coherence_check": True,
+                    "content": style_guide_content_example,
                 },
             },
             "data": {
@@ -149,24 +102,7 @@ style_guide_creation_result_example: ExampleJson = {
     "items": [
         {
             "id": "sg_123xyz",
-            "principle": "Be friendly, casual, and helpful",
-            "examples": [
-                {
-                    "before": [
-                        {
-                            "source": "ai_agent",
-                            "message": "Your request is denied.",
-                        }
-                    ],
-                    "after": [
-                        {
-                            "source": "ai_agent",
-                            "message": "We can’t do that now, but let's see what else might help!",
-                        }
-                    ],
-                    "violation": "The 'before' message is abrupt and lacking empathy.",
-                }
-            ],
+            "content": style_guide_content_example,
         }
     ]
 }

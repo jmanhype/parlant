@@ -54,6 +54,7 @@ from parlant.client.types import (
     SdkServiceParams,
     Service,
     Session,
+    StyleGuide,
     Term,
     ToolId,
     Customer,
@@ -570,6 +571,23 @@ class Actions:
         raise ValueError(
             f"An association between {guideline_id} and the tool {tool_name} from {service_name} was not found"
         )
+
+    @staticmethod
+    def view_style_guide(
+        ctx: click.Context,
+        agent_id: str,
+        style_guide_id: str,
+    ) -> StyleGuide:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.style_guides.retrieve(agent_id, style_guide_id)
+
+    @staticmethod
+    def list_style_guides(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> list[StyleGuide]:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.style_guides.list(agent_id)
 
     @staticmethod
     def list_variables(
@@ -1507,6 +1525,71 @@ class Interface:
             )
 
             Interface._write_success(f"Removed tool association (id: {association_id})")
+        except Exception as e:
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def _render_style_guides(style_guides: list[StyleGuide]) -> None:
+        if not style_guides:
+            rich.print(Text("No style guides found", style="bold yellow"))
+            return
+
+        style_guide_items: list[dict[str, Any]] = []
+        for sg in style_guides:
+            style_guide_items.append(
+                {
+                    "ID": sg.id,
+                    "Principle": sg.content.principle,
+                    "Examples Count": len(sg.content.examples),
+                }
+            )
+
+        Interface._print_table(style_guide_items)
+
+    @staticmethod
+    def view_style_guide(
+        ctx: click.Context,
+        agent_id: str,
+        style_guide_id: str,
+    ) -> None:
+        try:
+            style_guide = Actions.view_style_guide(ctx, agent_id, style_guide_id)
+            rich.print(Text("ID:", style="bold"), style_guide.id)
+            rich.print(Text("Principle:", style="bold"), style_guide.content.principle)
+
+            if style_guide.content.examples:
+                rich.print(Text("Examples:", style="bold"))
+                for example in style_guide.content.examples:
+                    rich.print(Text("    Before:", style="bold"))
+                    for event in example.before:
+                        rich.print(Text(f"        {event.source}: {event.message}"))
+                        rich.print("\n")
+                    rich.print(Text("    After:", style="bold"))
+                    for event in example.after:
+                        rich.print(Text(f"        {event.source}: {event.message}"))
+                        rich.print("\n")
+                    rich.print(Text("    Violation:", style="bold"), example.violation)
+            else:
+                rich.print("\nNo examples available for this style guide.")
+        except Exception as e:
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def list_style_guides(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        try:
+            style_guides = Actions.list_style_guides(ctx, agent_id)
+
+            if not style_guides:
+                rich.print(Text("No data available", style="bold yellow"))
+                return
+
+            Interface._render_style_guides(style_guides)
+
         except Exception as e:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
@@ -2593,6 +2676,55 @@ async def async_main() -> None:
             guideline_id=id,
             service_name=service,
             tool_name=tool,
+        )
+
+    @cli.group(help="Manage an agent's style guides")
+    def style_guide() -> None:
+        pass
+
+    @style_guide.command("view", help="View a style guide")
+    @click.option(
+        "--agent-id",
+        type=str,
+        help="Agent ID",
+        metavar="ID",
+        required=False,
+    )
+    @click.option("--id", type=str, metavar="ID", help="StyleGuide ID", required=True)
+    @click.pass_context
+    def style_guide_view(
+        ctx: click.Context,
+        agent_id: str,
+        id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.view_style_guide(
+            ctx=ctx,
+            agent_id=agent_id,
+            style_guide_id=id,
+        )
+
+    @style_guide.command("list", help="List style guides")
+    @click.option(
+        "--agent-id",
+        type=str,
+        help="Agent ID",
+        metavar="ID",
+        required=False,
+    )
+    @click.pass_context
+    def style_guide_list(
+        ctx: click.Context,
+        agent_id: str,
+    ) -> None:
+        agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
+        assert agent_id
+
+        Interface.list_style_guides(
+            ctx=ctx,
+            agent_id=agent_id,
         )
 
     @cli.group(help="Manage an agent's context variables")
