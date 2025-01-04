@@ -595,6 +595,7 @@ def main() -> None:
         aws: bool,
         azure: bool,
         gemini: bool,
+        deepseek: bool,
         anthropic: bool,
         cerebras: bool,
         together: bool,
@@ -624,6 +625,9 @@ def main() -> None:
         elif gemini:
             nlp_service = "gemini"
             require_env_keys(["GEMINI_API_KEY"])
+        elif deepseek:
+            nlp_service = "deepseek"
+            require_env_keys(["DEEPSEEK_API_KEY"])
         elif anthropic:
             nlp_service = "anthropic"
             require_env_keys(["ANTHROPIC_API_KEY"])
