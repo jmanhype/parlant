@@ -1564,11 +1564,9 @@ class Interface:
                     rich.print(Text("    Before:", style="bold"))
                     for event in example.before:
                         rich.print(Text(f"        {event.source}: {event.message}"))
-                        rich.print("\n")
                     rich.print(Text("    After:", style="bold"))
                     for event in example.after:
                         rich.print(Text(f"        {event.source}: {event.message}"))
-                        rich.print("\n")
                     rich.print(Text("    Violation:", style="bold"), example.violation)
             else:
                 rich.print("\nNo examples available for this style guide.")
