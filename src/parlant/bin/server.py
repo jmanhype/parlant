@@ -113,7 +113,8 @@ SERVER_ADDRESS = "https://localhost"
 
 DEFAULT_NLP_SERVICE = "openai"
 
-PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", "runtime-data"))
+DEFAULT_HOME_DIR = "runtime-data" if Path("runtime-data").exists() else "parlant-data"
+PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", DEFAULT_HOME_DIR))
 PARLANT_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
 EXIT_STACK: AsyncExitStack
@@ -129,6 +130,12 @@ BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
 LOGGER.info(f"Parlant server version {VERSION}")
 LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
+
+if "PARLANT_HOME" not in os.environ and DEFAULT_HOME_DIR == "runtime-data":
+    LOGGER.warning("'runtime-data' is deprecated as the name of the default PARLANT_HOME directory")
+    LOGGER.warning(
+        "Please rename 'runtime-data' to 'parlant-data' to avoid this warning in the future."
+    )
 
 
 class StartupError(Exception):

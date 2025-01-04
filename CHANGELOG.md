@@ -6,6 +6,7 @@ All notable changes to Parlant will be documented here.
 - Add DeepSeek provider support (via DeepSeekService)
 - Fix tool-calling test
 - Fix HuggingFace model loading issues
+- Change default home dir from runtime-data to parlant-data
 
 
 ## [1.4.3] - 2025-01-02
