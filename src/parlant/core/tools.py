@@ -265,11 +265,16 @@ class LocalToolService(ToolService):
             raise ToolImportError(name) from e
 
         try:
+            tool = await self.read_tool(name)
+            validate_tool_arguments(tool, arguments)
+
             func_params = inspect.signature(func).parameters
             result: ToolResult = func(**normalize_tool_arguments(func_params, arguments))
 
             if inspect.isawaitable(result):
                 result = await result
+        except ToolError as e:
+            raise e
         except Exception as e:
             raise ToolExecutionError(name) from e
 
@@ -277,6 +282,22 @@ class LocalToolService(ToolService):
             raise ToolResultError(name, "Tool result is not an instance of ToolResult")
 
         return result
+
+
+def validate_tool_arguments(
+    tool: Tool,
+    arguments: Mapping[str, Any],
+) -> None:
+    expected = set(tool.parameters.keys())
+    received = set(arguments.keys())
+
+    extra_args = received - expected
+
+    missing_required = [p for p in tool.required if p not in arguments]
+
+    if extra_args or missing_required:
+        message = "Argument mismatch.\n" f"  - Expected parameters: {sorted(expected)}\n"
+        raise ToolError(message)
 
 
 def normalize_tool_arguments(
