@@ -296,8 +296,40 @@ def validate_tool_arguments(
     missing_required = [p for p in tool.required if p not in arguments]
 
     if extra_args or missing_required:
-        message = "Argument mismatch.\n" f"  - Expected parameters: {sorted(expected)}\n"
+        message = f"Argument mismatch.\n - Expected parameters: {sorted(expected)}"
         raise ToolError(message)
+
+    type_map = {
+        "string": str,
+        "boolean": bool,
+        "integer": int,
+        "number": float,
+    }
+
+    for param_name, arg_value in arguments.items():
+        param_def = tool.parameters[param_name]
+        param_type = param_def["type"]
+
+        if param_type == "enum":
+            allowed_values = param_def.get("enum", [])
+            if arg_value not in allowed_values:
+                message = (
+                    f"Parameter '{param_name}' must be one of {allowed_values}, "
+                    f"but got '{arg_value}'."
+                )
+                raise ToolError(tool.name, message)
+        else:
+            expected_types = type_map.get(param_type)
+            if expected_types is None:
+                raise ToolError(
+                    tool.name, f"Parameter '{param_name}' has unknown type '{param_type}'"
+                )
+            if type(arg_value) is not expected_types:
+                raise ToolError(
+                    tool.name,
+                    f"Parameter '{param_name}' must be of type {expected_types}, "
+                    f"but got {type(arg_value).__name__}: {arg_value}",
+                )
 
 
 def normalize_tool_arguments(

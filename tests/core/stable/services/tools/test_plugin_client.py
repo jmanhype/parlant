@@ -382,3 +382,33 @@ async def test_that_a_plugin_raises_tool_error_for_argument_mismatch(
 
             error_msg = str(exc_info.value)
             assert "Expected parameters" in error_msg
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"paramA": True},
+        {"paramA": "not_an_int"},
+    ],
+)
+async def test_that_a_plugin_raises_tool_error_for_type_mismatch(
+    tool_context: ToolContext,
+    container: Container,
+    arguments: dict[str, Any],
+) -> None:
+    @tool
+    def typed_tool(context: ToolContext, paramA: int) -> ToolResult:
+        return ToolResult(paramA)
+
+    async with run_service_server([typed_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            with pytest.raises(ToolError) as exc_info:
+                await client.call_tool(
+                    typed_tool.tool.name,
+                    tool_context,
+                    arguments=arguments,
+                )
+
+            error_msg = str(exc_info.value)
+            assert "paramA" in error_msg
+            assert "Expected" in error_msg or "must be" in error_msg
