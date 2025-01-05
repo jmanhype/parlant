@@ -129,15 +129,6 @@ CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
 BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
-LOGGER.info(f"Parlant server version {VERSION}")
-LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
-
-if "PARLANT_HOME" not in os.environ and DEFAULT_HOME_DIR == "runtime-data":
-    LOGGER.warning("'runtime-data' is deprecated as the name of the default PARLANT_HOME directory")
-    LOGGER.warning(
-        "Please rename 'runtime-data' to 'parlant-data' to avoid this warning in the future."
-    )
-
 
 class StartupError(Exception):
     def __init__(self, message: str) -> None:
@@ -501,6 +492,17 @@ async def start_server(params: CLIParams) -> None:
             "critical": LogLevel.CRITICAL,
         }[params.log_level],
     )
+
+    LOGGER.info(f"Parlant server version {VERSION}")
+    LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
+
+    if "PARLANT_HOME" not in os.environ and DEFAULT_HOME_DIR == "runtime-data":
+        LOGGER.warning(
+            "'runtime-data' is deprecated as the name of the default PARLANT_HOME directory"
+        )
+        LOGGER.warning(
+            "Please rename 'runtime-data' to 'parlant-data' to avoid this warning in the future."
+        )
 
     async with load_app(params) as app:
         await serve_app(
