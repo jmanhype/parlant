@@ -76,7 +76,6 @@ pytest-tap = "^3.4"
 pytest-timing = {git = "https://github.com/emcie-co/mc-spitfyre.git", subdirectory = "pytest-timing", tag = "timing_v0.1.4"}
 python-dotenv = "^1.0.1"
 ruff = "^0.5.6"
-
 types-python-dateutil = "^2.8.19.20240106"
 types-requests = "^2.32.0.20240712"
 
@@ -96,6 +95,12 @@ aws = [
 together = [
   "torch",
   "together",
+  "transformers",
+]
+
+cerebras = [
+  "cerebras-cloud-sdk",
+  "torch",
   "transformers",
 ]
 

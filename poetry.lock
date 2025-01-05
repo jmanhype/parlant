@@ -6703,6 +6703,7 @@ type = ["pytest-mypy"]
 [extras]
 anthropic = ["anthropic", "torch", "transformers"]
 aws = ["anthropic", "torch", "transformers"]
+cerebras = ["cerebras-cloud-sdk", "torch", "transformers"]
 deepseek = ["torch", "transformers"]
 gemini = ["google-cloud-aiplatform", "google-generativeai", "torch"]
 together = ["together", "torch", "transformers"]
@@ -6710,4 +6711,4 @@ together = ["together", "torch", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "26d133b802b4e5049c2256fabf7abe05187e57fe6e786c85d7ceee04d88911b2"
+content-hash = "77dedc0214985d5a6ce5138a5e40be4e4e6865a55945a7adaeb1a99d10450b05"
