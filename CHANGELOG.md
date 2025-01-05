@@ -6,6 +6,12 @@ All notable changes to Parlant will be documented here.
 TBD
 
 
+## [1.5.1] - 2025-01-05
+
+### Fixed
+- Fix server CLI boot
+
+
 ## [1.5.0] - 2025-01-04
 
 ### Added
