@@ -28,6 +28,7 @@ from parlant.core.engines.alpha.utils import (
 from parlant.core.emissions import EmittedEvent
 from parlant.core.style_guides import (
     StyleGuide,
+    StyleGuideExample,
 )
 
 
@@ -39,6 +40,7 @@ class BuiltInSection(Enum):
     GUIDELINE_DESCRIPTIONS = auto()
     GUIDELINES = auto()
     STAGED_EVENTS = auto()
+    STYLE_GUIDES = auto()
 
 
 class SectionStatus(Enum):
@@ -254,10 +256,29 @@ Use the details they offer to assist in your task: ###
         return self
 
     def add_style_guides(self, style_guides: Sequence[StyleGuide]) -> PromptBuilder:
+        def _format_examples(examples: Sequence[StyleGuideExample]) -> str:
+            examples_text = ""
+            for i, example in enumerate(examples, start=1):
+                before_example = "\n".join(
+                    [f"{message.source}: {message.message}" for message in example.before]
+                )
+                after_example = "\n".join(
+                    [f"{message.source}: {message.message}" for message in example.after]
+                )
+                examples_text += f"""
+    Example {i}:
+        Before:
+            {before_example}
+        Violation of style guide: {example.violation}
+        After:
+            {after_example}
+"""
+            return examples_text
+
         if style_guides:
             style_guide_text = "\n".join(
                 [
-                    f"""{i}. {sg.content.principle} \n Examples: ### {json.dumps(sg.content.examples, indent=2)} ### """
+                    f"""{i}. {sg.content.principle} \n Examples: ### {_format_examples(sg.content.examples)} ### """
                     for i, sg in enumerate(style_guides, start=1)
                 ]
             )

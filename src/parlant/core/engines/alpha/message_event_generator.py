@@ -140,6 +140,7 @@ class MessageEventGenerator:
                 terms=terms,
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+                style_guides=style_guides,
                 staged_events=staged_events,
                 shots=await self.shots(),
             )
@@ -250,6 +251,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        style_guides: Sequence[StyleGuide],
         staged_events: Sequence[EmittedEvent],
         shots: Sequence[MessageEventGeneratorShot],
     ) -> str:
@@ -384,6 +386,7 @@ Example {i} - {shot.description}: ###
             if ordinary_guideline_propositions or tool_enabled_guideline_propositions
             else SectionStatus.PASSIVE,
         )
+        builder.add_style_guides(style_guides=style_guides)
         builder.add_interaction_history(interaction_history)
         builder.add_staged_events(staged_events)
         builder.add_section(
@@ -394,6 +397,8 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
+        with open("message event prompt with styleguides.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
     def _get_output_format(

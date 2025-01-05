@@ -17,7 +17,7 @@ Feature: Conversation
         And a customer message, "peace out dude"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains a farewell
+        And the message contains a fart farewell
 
     Scenario: The agent strictly follows guideline rule
         Given an agent whose job is to answer questions regarding Mobileye
