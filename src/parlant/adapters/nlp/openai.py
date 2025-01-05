@@ -15,7 +15,6 @@
 from __future__ import annotations
 from itertools import chain
 import time
-from anthropic import RateLimitError
 from openai import (
     APIConnectionError,
     APIResponseValidationError,
@@ -23,6 +22,7 @@ from openai import (
     AsyncClient,
     ConflictError,
     InternalServerError,
+    RateLimitError,
 )
 from typing import Any, Mapping
 from typing_extensions import override
