@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Add shot creation helper functions under Shot
 
 
 ## [1.5.1] - 2025-01-05
