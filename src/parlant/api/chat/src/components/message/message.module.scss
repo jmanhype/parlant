@@ -5,4 +5,17 @@
     code {
         white-space: break-spaces;
     }
+    table {
+        white-space: nowrap;
+        display: block;
+        overflow: scroll;
+        scrollbar-width: auto;
+          
+        th, td {
+            // width: 100px !important;
+            // min-width: 100px !important;
+            padding-inline: 10px;
+            text-align: start;
+        }
+    }
 }
