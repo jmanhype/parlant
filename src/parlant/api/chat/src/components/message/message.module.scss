@@ -10,12 +10,32 @@
         display: block;
         overflow: scroll;
         scrollbar-width: auto;
-          
+        border-radius: 2px;
         th, td {
-            // width: 100px !important;
-            // min-width: 100px !important;
             padding-inline: 10px;
             text-align: start;
+        }
+
+        th {
+            padding: 10px;
+        }
+
+        tr:last-child td {
+            padding-bottom: 10px;
+        }
+
+        thead {
+            border: 1px solid lightgray;
+            border-bottom: none;
+            border-radius: 3px 3px 0 0;
+            padding: 10px;
+        }
+
+        tbody {
+            border: 1px solid lightgray;
+            border-top: none;
+            border-radius: 0 0 3px 3px;
+            padding: 10px;
         }
     }
 }
