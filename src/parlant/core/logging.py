@@ -17,7 +17,6 @@ import asyncio
 from contextlib import contextmanager
 from enum import Enum, auto
 import logging
-import os
 from pathlib import Path
 import structlog
 import time
@@ -25,6 +24,7 @@ import traceback
 from typing import Any, Iterator, Optional
 from typing_extensions import override, Self
 import zmq
+import zmq.asyncio
 
 from parlant.core.contextual_correlator import ContextualCorrelator
 
@@ -188,16 +188,17 @@ class ZMQLogger(CorrelationalLogger):
         self,
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
-        logger_id: str | None = None,
+        logger_id: Optional[str] = None,
+        port: int = 8779,
     ) -> None:
         super().__init__(correlator, log_level, logger_id)
 
-        self._context: zmq.Context[Any]
-        self._socket: zmq.Socket[Any]
-        self._port = os.environ.get("PARLANT_LOG_PORT", 8799)
+        self._context: zmq.asyncio.Context
+        self._socket: zmq.asyncio.Socket
+        self._port = port
 
     async def __aenter__(self) -> Self:
-        self._context = zmq.Context.instance()
+        self._context = zmq.asyncio.Context.instance()
         self._socket = self._context.socket(zmq.PUB)
         self._socket.bind(f"tcp://*:{self._port}")
         return self
@@ -212,9 +213,13 @@ class ZMQLogger(CorrelationalLogger):
         return False
 
     def _publish_message(self, level: str, message: str) -> None:
-        full_message = self._add_correlation_id(message)
-        payload = f"{level}: {full_message}"
-        self._socket.send_string(payload)
+        self._socket.send_json(
+            {
+                "level": level,
+                "correlation_id": self._correlator.correlation_id,
+                "message": message,
+            }
+        )
 
     @override
     def debug(self, message: str) -> None:
