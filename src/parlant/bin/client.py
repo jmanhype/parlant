@@ -29,7 +29,7 @@ from rich.table import Table
 from rich.text import Text
 import sys
 import time
-from typing import Any, Optional, cast
+from typing import Any, Iterator, Optional, cast
 
 from parlant.client import ParlantClient
 from parlant.client.core import ApiError
@@ -62,6 +62,7 @@ from parlant.client.types import (
     Tag,
     ConsumptionOffsetsUpdateParams,
 )
+import zmq
 
 INDENT = "  "
 
@@ -845,6 +846,51 @@ class Actions:
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
         client.tags.delete(tag_id=tag_id)
+
+    @staticmethod
+    def stream_logs(
+        ctx: click.Context, filters: list[str], operator: str, pattern: Optional[str]
+    ) -> Iterator[dict[str, Any]]:
+        try:
+            context = zmq.Context.instance()
+            sub_socket = context.socket(zmq.SUB)
+            sub_socket.connect(f"tcp://{ctx.obj.server_address}:{ctx.obj.parlant_log_port}")
+
+            sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+
+            rich.print(Text("Streaming logs...", style="bold yellow"))
+
+            while True:
+                try:
+                    message = cast(dict[str, Any], sub_socket.recv_json(flags=zmq.NOBLOCK))
+                    if Actions._log_matches_filters(message, filters, operator, pattern):
+                        yield message
+                except zmq.Again:
+                    time.sleep(0.01)
+        except KeyboardInterrupt:
+            rich.print(Text("Log streaming interrupted by user.", style="bold red"))
+        finally:
+            sub_socket.close()
+
+    @staticmethod
+    def _log_matches_filters(
+        log_entry: dict[str, Any], filters: list[str], operator: str, pattern: Optional[str]
+    ) -> bool:
+        message = log_entry.get("message", "")
+        matches_filters = []
+
+        for filter_item in filters:
+            matches_filters.append(filter_item in message)
+
+        if operator == "AND":
+            filter_match = all(matches_filters)
+        else:
+            filter_match = any(matches_filters)
+
+        if pattern:
+            return filter_match and (pattern in message)
+
+        return filter_match
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -1966,6 +2012,22 @@ class Interface:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
+    @staticmethod
+    def stream_logs(
+        ctx: click.Context,
+        filters: list[str],
+        operator: str,
+        pattern: Optional[str],
+    ) -> None:
+        try:
+            for log in Actions.stream_logs(ctx, filters, operator, pattern):
+                level = log.get("level", "")
+                message = log.get("message", "")
+                correlation_id = log.get("correlation_id", "")
+                rich.print(f"[{level}] [{correlation_id}] {message}")
+        except Exception as e:
+            Interface.write_error(f"Error while streaming logs: {e}")
+
 
 async def async_main() -> None:
     click_completion.init()  # type: ignore
@@ -1974,6 +2036,7 @@ async def async_main() -> None:
     class Config:
         server_address: str
         client: ParlantClient
+        parlant_log_port: int = 8779
 
     @click.group
     @click.option(
@@ -1984,10 +2047,21 @@ async def async_main() -> None:
         metavar="ADDRESS[:PORT]",
         default="http://localhost:8800",
     )
+    @click.option(
+        "--log-port",
+        type=str,
+        help="Server address",
+        metavar="ADDRESS[:LOG_PORT]",
+        default="8779",
+    )
     @click.pass_context
-    def cli(ctx: click.Context, server: str) -> None:
+    def cli(ctx: click.Context, server: str, log_port: str) -> None:
         if not ctx.obj:
-            ctx.obj = Config(server_address=server, client=ParlantClient(base_url=server))
+            ctx.obj = Config(
+                server_address=server,
+                client=ParlantClient(base_url=server),
+                parlant_log_port=int(log_port),
+            )
 
     @cli.command(help="Generate shell completion code")
     @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
@@ -3037,6 +3111,48 @@ async def async_main() -> None:
     @click.pass_context
     def tag_delete(ctx: click.Context, id: str) -> None:
         Interface.delete_tag(ctx, id)
+
+    @cli.command(
+        "log",
+        help="Streaming logs",
+    )
+    @click.option(
+        "--guideline-proposer", "-g", is_flag=True, help="Filter logs by [GuidelineProposer]"
+    )
+    @click.option("--tool-caller", "-t", is_flag=True, help="Filter logs by [ToolCaller]")
+    @click.option(
+        "--message-event-generator",
+        "-m",
+        is_flag=True,
+        help="Filter logs by [MessageEventGenerator]",
+    )
+    @click.option(
+        "--operator",
+        "-o",
+        type=click.Choice(["AND", "OR"], case_sensitive=False),
+        default="OR",
+        show_default=True,
+        help="Logical operator to combine filters",
+    )
+    @click.argument("pattern", required=False)
+    @click.pass_context
+    def log_view(
+        ctx: click.Context,
+        guideline_proposer: bool,
+        tool_caller: bool,
+        message_event_generator: bool,
+        operator: str,
+        pattern: Optional[str],
+    ) -> None:
+        filters = []
+        if guideline_proposer:
+            filters.append("[GuidelineProposer]")
+        if tool_caller:
+            filters.append("[ToolCaller]")
+        if message_event_generator:
+            filters.append("[MessageEventGenerator]")
+
+        Interface.stream_logs(ctx, filters, operator, pattern)
 
     @cli.command(
         "help",
