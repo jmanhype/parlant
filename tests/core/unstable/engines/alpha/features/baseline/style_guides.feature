@@ -64,7 +64,7 @@ Feature: StyleGuide
         And a customer message, "Alright restarting the computer solved it! I'm now trying to connect my computer to my sound system. I hooked up my JBL soundbar to my computer over Bluetooth, but the sound doesn’t match the video. When I’m in a video call or gaming, there’s a delay, and sometimes it sounds like an echo."
         When processing is triggered
         Then a single message event is emitted
-        And the message contains a  technical explanation about how to fix the sound system issue. The explanation should be aimed at experts, and not beginners. 
+        And the message contains an explanation about how to fix the audio delay issue, includes plenty of technical jargon
 
 
     Scenario: The agent prioritizes guideline over style guide 2
