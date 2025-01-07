@@ -14,14 +14,14 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from enum import Enum, auto
 import logging
 from pathlib import Path
 import structlog
 import time
 import traceback
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional, Sequence
 from typing_extensions import override, Self
 import zmq
 import zmq.asyncio
@@ -240,3 +240,60 @@ class ZMQLogger(CorrelationalLogger):
     @override
     def critical(self, message: str) -> None:
         self._publish_message("[CRITICAL]", message)
+
+
+class CompositeLogger(Logger):
+    def __init__(self, loggers: Sequence[Logger]) -> None:
+        self._loggers = list(loggers)
+
+    def append(self, logger: Logger) -> None:
+        self._loggers.append(logger)
+
+    @override
+    def set_level(self, log_level: LogLevel) -> None:
+        for logger in self._loggers:
+            logger.set_level(log_level)
+
+    @override
+    def debug(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.debug(message)
+
+    @override
+    def info(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.info(message)
+
+    @override
+    def warning(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.warning(message)
+
+    @override
+    def error(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.error(message)
+
+    @override
+    def critical(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.critical(message)
+
+    @override
+    @contextmanager
+    def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
+        contexts = [logger.operation(name, props) for logger in self._loggers]
+        with CompositeLogger._nested_contexts(contexts):
+            yield
+
+    @staticmethod
+    @contextmanager
+    def _nested_contexts(contexts: Sequence[AbstractContextManager[Any]]) -> Iterator[None]:
+        exits = []
+        try:
+            for context in contexts:
+                exits.append(context.__enter__())
+            yield
+        finally:
+            for context in reversed(contexts):
+                context.__exit__(None, None, None)
