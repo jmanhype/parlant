@@ -233,7 +233,7 @@ class GuidelineProposer:
             guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
-                f'[GuidelineProposer][Evaluations] Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
+                f'[GuidelineProposer][Evaluation] "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
                 f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: {proposition.guideline_is_continuous} ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
