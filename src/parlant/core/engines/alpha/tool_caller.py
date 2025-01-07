@@ -548,7 +548,7 @@ Guidelines:
         self,
         prompt: str,
     ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
-        self._logger.debug(f"[ToolCaller] Tool call inference prompt: {prompt}")
+        self._logger.debug(f"[ToolCaller][Prompt]: {prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
@@ -557,7 +557,7 @@ Guidelines:
 
         log_message = json.dumps(inference.content.model_dump(mode="json"), indent=2)
 
-        self._logger.debug(f"[ToolCaller] Tool call request results: {log_message}")
+        self._logger.debug(f"[ToolCaller][RequestResults]: {log_message}")
 
         return inference.info, inference.content.tool_calls_for_candidate_tool
 
@@ -578,7 +578,7 @@ Guidelines:
                 tool_call.arguments,
             )
             self._logger.debug(
-                f"[ToolCaller][ToolResult] Tool call returned: {tool_call.tool_id.to_string()}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
+                f"[ToolCaller][ToolResult]: {tool_call.tool_id.to_string()}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
             )
 
             return ToolCallResult(
