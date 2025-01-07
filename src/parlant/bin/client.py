@@ -854,7 +854,7 @@ class Actions:
         try:
             context = zmq.Context.instance()
             sub_socket = context.socket(zmq.SUB)
-            sub_socket.connect(f"tcp://{ctx.obj.server_address}:{ctx.obj.parlant_log_port}")
+            sub_socket.connect(f"{ctx.obj.log_server_address}")
 
             sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
@@ -2036,7 +2036,7 @@ async def async_main() -> None:
     class Config:
         server_address: str
         client: ParlantClient
-        parlant_log_port: int = 8779
+        log_server_address: str
 
     @click.group
     @click.option(
@@ -2048,19 +2048,19 @@ async def async_main() -> None:
         default="http://localhost:8800",
     )
     @click.option(
-        "--log-port",
+        "--log-server-address",
         type=str,
         help="Server address",
         metavar="ADDRESS[:LOG_PORT]",
-        default="8779",
+        default="tcp://localhost:8799",
     )
     @click.pass_context
-    def cli(ctx: click.Context, server: str, log_port: str) -> None:
+    def cli(ctx: click.Context, server: str, log_server_address: str) -> None:
         if not ctx.obj:
             ctx.obj = Config(
                 server_address=server,
                 client=ParlantClient(base_url=server),
-                parlant_log_port=int(log_port),
+                log_server_address=log_server_address,
             )
 
     @cli.command(help="Generate shell completion code")
