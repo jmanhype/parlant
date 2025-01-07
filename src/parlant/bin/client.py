@@ -849,7 +849,7 @@ class Actions:
 
     @staticmethod
     def stream_logs(
-        ctx: click.Context, filters: list[str], operator: str, pattern: Optional[str]
+        ctx: click.Context, filters: list[str], operator: str
     ) -> Iterator[dict[str, Any]]:
         try:
             context = zmq.Context.instance()
@@ -863,7 +863,7 @@ class Actions:
             while True:
                 try:
                     message = cast(dict[str, Any], sub_socket.recv_json(flags=zmq.NOBLOCK))
-                    if Actions._log_matches_filters(message, filters, operator, pattern):
+                    if Actions._log_matches_filters(message, filters, operator):
                         yield message
                 except zmq.Again:
                     time.sleep(0.01)
@@ -873,9 +873,7 @@ class Actions:
             sub_socket.close()
 
     @staticmethod
-    def _log_matches_filters(
-        log_entry: dict[str, Any], filters: list[str], operator: str, pattern: Optional[str]
-    ) -> bool:
+    def _log_matches_filters(log_entry: dict[str, Any], filters: list[str], operator: str) -> bool:
         message = log_entry.get("message", "")
         matches_filters = []
 
@@ -886,9 +884,6 @@ class Actions:
             filter_match = all(matches_filters)
         else:
             filter_match = any(matches_filters)
-
-        if pattern:
-            return filter_match and (pattern in message)
 
         return filter_match
 
@@ -2017,10 +2012,9 @@ class Interface:
         ctx: click.Context,
         filters: list[str],
         operator: str,
-        pattern: Optional[str],
     ) -> None:
         try:
-            for log in Actions.stream_logs(ctx, filters, operator, pattern):
+            for log in Actions.stream_logs(ctx, filters, operator):
                 level = log.get("level", "")
                 message = log.get("message", "")
                 correlation_id = log.get("correlation_id", "")
@@ -3151,8 +3145,10 @@ async def async_main() -> None:
             filters.append("[ToolCaller]")
         if message_event_generator:
             filters.append("[MessageEventGenerator]")
+        if pattern:
+            filters.append(pattern)
 
-        Interface.stream_logs(ctx, filters, operator, pattern)
+        Interface.stream_logs(ctx, filters, operator)
 
     @cli.command(
         "help",
