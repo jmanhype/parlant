@@ -124,7 +124,7 @@ class MessageEventGenerator:
     ) -> Sequence[MessageEventGenerationResult]:
         assert len(agents) == 1
 
-        with self._logger.operation("Message production"):
+        with self._logger.operation("[MessageEventGenerator] Message generation"):
             if (
                 not interaction_history
                 and not ordinary_guideline_propositions
@@ -133,11 +133,12 @@ class MessageEventGenerator:
                 # No interaction and no guidelines that could trigger
                 # a proactive start of the interaction
                 self._logger.info(
-                    "Skipping response; interaction is empty and there are no guidelines"
+                    "[MessageEventGenerator] Skipping response; interaction is empty and there are no guidelines"
                 )
                 return []
 
             self._logger.debug(
+<<<<<<< HEAD
                 f"""Guidelines applied: {
                     json.dumps(
                         [
@@ -155,6 +156,14 @@ class MessageEventGenerator:
                         indent=2,
                     )
                 }"""
+=======
+                f"""[MessageEventGenerator] Guidelines applied: {json.dumps([{
+                    "condition": p.guideline.content.condition,
+                    "action": p.guideline.content.action,
+                    "rationale": p.rationale,
+                    "score": p.score}
+                for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}"""
+>>>>>>> a3660ffc (Add [MessageEventGenerator] to logs in messge_event_generator)
             )
 
             prompt = self._format_prompt(
@@ -169,7 +178,7 @@ class MessageEventGenerator:
                 shots=await self.shots(),
             )
 
-            self._logger.debug(f"Message production prompt:\n{prompt}")
+            self._logger.debug(f"[MessageEventGenerator][Prompt]:\n{prompt}")
 
             last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
 
@@ -200,7 +209,7 @@ class MessageEventGenerator:
                     )
 
                     if response_message is not None:
-                        self._logger.debug(f'Message production result: "{response_message}"')
+                        self._logger.debug(f'[MessageEventGenerator][Result]: "{response_message}"')
 
                         event = await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,
@@ -209,11 +218,13 @@ class MessageEventGenerator:
 
                         return [MessageEventGenerationResult(generation_info, [event])]
                     else:
-                        self._logger.debug("Skipping response; no response deemed necessary")
+                        self._logger.debug(
+                            "[MessageEventGenerator] Skipping response; no response deemed necessary"
+                        )
                         return [MessageEventGenerationResult(generation_info, [])]
                 except Exception as exc:
                     self._logger.warning(
-                        f"Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
+                        f"[MessageEventGenerator] Generation attempt {generation_attempt} failed: {traceback.format_exception(exc)}"
                     )
                     last_generation_exception = exc
 
@@ -520,17 +531,19 @@ Produce a valid JSON object in the following format: ###
         )
 
         if not message_event_response.content.produced_reply:
-            self._logger.debug(f"MessageEventProducer produced no reply: {message_event_response}")
+            self._logger.debug(
+                f"[MessageEventGenerator] produced no reply: {message_event_response}"
+            )
             return message_event_response.info, None
 
         if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
-                "MessageEventGenerator guideline evaluations: "
+                "[MessageEventGenerator][Evaluations]: "
                 f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
-            "MessageEventGenerator revisions: "
+            "[MessageEventGenerator][Revisions]: "
             f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
 
@@ -560,12 +573,12 @@ Produce a valid JSON object in the following format: ###
         ) or final_revision.is_repeat_message:
             if not final_attempt:
                 self._logger.warning(
-                    f"Trying again after problematic message generation: {final_revision.content}"
+                    f"[MessageEventGenerator] Trying again after problematic message generation: {final_revision.content}"
                 )
                 raise Exception("Retry with another attempt")
             else:
                 self._logger.warning(
-                    f"Conceding despite problematic message generation: {final_revision.content}"
+                    f"[MessageEventGenerator] Conceding despite problematic message generation: {final_revision.content}"
                 )
 
         return message_event_response.info, str(final_revision.content)
