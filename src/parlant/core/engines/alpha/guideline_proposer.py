@@ -121,7 +121,7 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(
-            f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
+            f"[GuidelineProposer] ({len(guidelines)} guidelines processed in {len(batches)} batches)"
         ):
             batch_tasks = [
                 self._process_guideline_batch(
@@ -220,7 +220,7 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(
-            f"Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
+            f"[GuidelineProposer] Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
         ):
             propositions_generation_response = await self._schematic_generator.generate(
                 prompt=prompt,
@@ -233,7 +233,7 @@ class GuidelineProposer:
             guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
-                f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
+                f'[GuidelineProposer] Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
                 f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: {proposition.guideline_is_continuous} ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
