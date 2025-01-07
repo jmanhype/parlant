@@ -64,7 +64,7 @@ Feature: StyleGuide
         And a customer message, "Alright restarting the computer solved it! I'm now trying to connect my computer to my sound system. I hooked up my JBL soundbar to my computer over Bluetooth, but the sound doesn’t match the video. When I’m in a video call or gaming, there’s a delay, and sometimes it sounds like an echo."
         When processing is triggered
         Then a single message event is emitted
-        And the message contains a detailed and technical explanation about how to fix the sound system issue. The explanation should be aimed at experts, and not beginners. 
+        And the message contains a  technical explanation about how to fix the sound system issue. The explanation should be aimed at experts, and not beginners. 
 
 
     Scenario: The agent prioritizes guideline over style guide 2
@@ -93,3 +93,49 @@ Feature: StyleGuide
         When processing is triggered
         Then a single message event is emitted
         And the message contains the size of a football in metric units, and the height of the Burj Khalifa in imperial units
+
+    Scenario: The agent prioritizes customer request over style guide 1
+        Given an agent whose job is to provide technical support regarding android devices 
+        And the style guide "whimsical_tone"
+        And a customer message, "Why does my Android phone keep showing a 'System UI not responding' error after the latest update?"
+        And an agent message, "Oh no, your Android is playing the 'System UI not responding' game? Sounds like it's trying to take a nap when you're ready to work! This error often pops up after updates due to software conflicts or overloaded resources. Try these steps to wake it up: 1. **Restart your phone**: Sometimes, a simple reboot can do wonders. 2. **Clear the System UI cache**: Go to Settings > Apps > Show System Apps > System UI > Storage > Clear Cache. 3. **Check for app updates**: Outdated apps might not play well with the new update. 4. **Free up some space**: If your phone's storage is full, it might be struggling to keep up. If these don't work, let me know, and we can troubleshoot further. Or, maybe your phone just needs a coffee break!"
+        And a customer message, "Why are you speaking like that? Be normal! My phone storage was indeed full, how do I empty it?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains an guide for freeing storage space on a phone. The explanation is not whimsical or humorous.
+    
+    Scenario: The agent prioritizes customer request over style guide 2
+        Given an agent whose job is to help the customer prepare for a trivia competition
+        And the style guide "imperial_units"
+        And a customer message, "What's the tallest building in the world?"
+        And an agent message, "The Burj Khalifa in Dubai, UAE is the tallest building in the world, standing at 2,717 feet tall."
+        And a customer message, "How much is that in meters? I'm from Germany so I don't use feet"
+        And an agent message, "828 meters"
+        And a customer message, "What's the second tallest building btw?"        
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains measurements in meters, and not in feet
+
+    Scenario: The agent prioritizes old customer request over style guide 
+        Given an agent whose job is to help the customer prepare for a trivia competition
+        And the style guide "imperial_units"
+        And a customer message, "What's the tallest building in the world?"
+        And an agent message, "The Burj Khalifa in Dubai, UAE is the tallest building in the world, standing at 2,717 feet tall."
+        And a customer message, "How much is that in meters? I'm from Germany so I don't use feet"
+        And an agent message, "828 meters"
+        And a customer message, "What's the second tallest building btw? Don't need its height, just wondering what it is"
+        And an agent message, "The Shanghai Tower in Shanghai, China"
+        And a customer message, "Got it. I just hope I'll remember it all by the time the competition arrives"
+        And an agent message, "If you keep preparing this hard, I'm sure you'll be successful"
+        And a customer message, "You are so supportive. I wish my partner was more like that"
+        And an agent message, "I appreciate the kind words, but I want to be helpful in a more constructive way. What areas do you feel like you could improve in currently?"
+        And a customer message, "How can I remember the names of different capitals in western Africa?"
+        And an agent message, "Link each capital to a memorable personal story or vivid image that connects to something unique about its sound or the country's characteristics. Test yourself frequently by drawing a blank map and filling in capitals one by one, focusing first on the ones you find hardest to remember."
+        And a customer message, "I'll try to think of something... What's the capital of Nigeria btw?"
+        And an agent message, "The capital of Nigeria is Abuja."
+        And a customer message, "And how about the Tanzania?"
+        And an agent message, "Dodoma"
+        And a customer message, "Got it. the highest spot in Tanzania? I should probably learn that too"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains measurements in meters, and not in feet

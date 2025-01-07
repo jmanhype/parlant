@@ -259,10 +259,10 @@ Use the details they offer to assist in your task: ###
         def _format_examples(examples: Sequence[StyleGuideExample]) -> str:
             examples_text = ""
             for i, example in enumerate(examples, start=1):
-                before_example = "\n".join(
+                before_example = "\n\t\t".join(
                     [f"{message.source}: {message.message}" for message in example.before]
                 )
-                after_example = "\n".join(
+                after_example = "\n\t\t".join(
                     [f"{message.source}: {message.message}" for message in example.after]
                 )
                 examples_text += f"""
@@ -292,11 +292,9 @@ The 'before' illustrates a response that does not follow the style guide, while 
 Each example also includes a 'violation' field, explaining how the 'before' response fails to meet the style guide's expectations.
 
 Important Note: Style guides are secondary to standard guidelines and user requests.
-If a standard guideline conflicts with a style guide, the guideline takes precedence.
-Always prioritize user requests over style guides, even if it means deviating from the prescribed style.
+If a style guide conflicts either with a regular guideline or with a user request, the style guide takes lower priority.
 
 Below are the style guides to follow:
-
 
 {style_guide_text}
 ###

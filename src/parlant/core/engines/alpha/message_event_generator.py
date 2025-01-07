@@ -71,6 +71,7 @@ class MessageEventSchema(DefaultBaseModel):
     produced_reply: Optional[bool] = True
     produced_reply_rationale: Optional[str] = ""
     guidelines: list[str]
+    style_guidelines: list[str]
     insights: Optional[list[str]] = []
     evaluation_for_each_instruction: Optional[list[InstructionEvaluation]] = None
     revisions: list[Revision]
@@ -296,7 +297,8 @@ If you decide not to emit a message, output the following:
 {{
     "last_message_of_customer": None,
     "produced_reply": false,
-    "guidelines": <list of strings- a re-statement of all guidelines>, 
+    "guidelines": <list of strings- a re-statement of all guidelines>,
+    "style_guidelines": <list of strings- a re-statement of all style guidelines>, 
     "insights": <list of strings- up to 3 original insights>,
     "produced_reply_rationale": "<a few words to justify why a reply was NOT produced here>",
     "revisions": []
@@ -320,18 +322,18 @@ REVISION MECHANISM
 To craft an optimal response, you must produce incremental revisions of your reply, ensuring alignment with all provided guidelines based on the latest interaction state. 
 Each critique during the revision process should be unique to avoid redundancy.
 
-Your final reply must comply with the outlined guidelines and the instructions in this prompt. 
+Your final reply must comply with the outlined guidelines, style guidelines and the instructions in this prompt. 
 
 Before drafting replies and revisions, identify up to three key insights based on this prompt and the ongoing conversation. 
 These insights should include relevant customer requests, applicable principles from this prompt, or conclusions drawn from the interaction. 
 Do not add insights unless you believe that they are absolutely necessary. Prefer suggesting fewer insights, if at all.
-When revising, indicate whether each guideline and insight is satisfied in the suggested reply.
+When revising, indicate whether each guideline, style guideline and insight is satisfied in the suggested reply.
 
 The final output must be a JSON document detailing the message development process, including:
     - Insights to abide by,
-    - If and how each instruction (guidelines and insights) was adhered to,
+    - If and how each instruction (guidelines, style guidelines and insights) was adhered to,
     - Instances where one instruction was prioritized over another,
-    - Situations where guidelines and insights were unmet due to insufficient context or data,
+    - Situations where guidelines or insights were unmet due to insufficient context or data,
     - Justifications for all decisions made during the revision process.
     - A marking for whether the suggested response repeats previous messages. If the response is repetitive, continue revising until it is sufficiently unique.
 
@@ -340,16 +342,19 @@ Do not exceed 5 revisions. If you reach the 5th revision, stop there.
 
 PRIORITIZING INSTRUCTIONS (GUIDELINES VS. INSIGHTS)
 -----------------
-Deviating from an instruction (either guideline or insight) is acceptable only when the deviation arises from a deliberate prioritization, based on:
-    - Conflicts with a higher-priority guideline (according to their priority scores).
+Deviating from an instruction (either guideline, style guideline or insight) is acceptable only when the deviation arises from a deliberate prioritization, based on:
+    - Conflicts with a higher-priority guideline - Guidelines are prioritized based on their priority scores, and guidelines always take prescident over style guidelines.
     - Contradictions with a customer request.
     - Lack of sufficient context or data.
     - Conflicts with an insight (see below).
 In all other cases, even if you believe that a guideline's condition does not apply, you must follow it. 
 If fulfilling a guideline is not possible, explicitly justify why in your response.
 
+Guidelines vs. Style Guidelines
+If a guideline conflicts with a style guide, always prioritize the guideline.
+
 Guidelines vs. Insights:
-Sometimes, a guideline may conflict with an insight you've derived.
+Sometimes, a guideline (either a style guideline or a regular one) may conflict with an insight you've derived.
 For example, if your insight suggests "the customer is vegetarian," but a guideline instructs you to offer non-vegetarian dishes, prioritizing the insight would better align with the business's goals—since offering vegetarian options would clearly benefit the customer.
 
 However, remember that the guidelines reflect the explicit wishes of the business you represent. Deviating from them should only occur if doing so does not put the business at risk. 
@@ -393,7 +398,7 @@ Example {i} - {shot.description}: ###
             f"""
 Produce a valid JSON object in the following format: ###
 
-{self._get_output_format(interaction_history, list(chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions)))}"""
+{self._get_output_format(interaction_history, list(chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions)), style_guides)}"""
         )
 
         prompt = builder.build()
@@ -402,7 +407,10 @@ Produce a valid JSON object in the following format: ###
         return prompt
 
     def _get_output_format(
-        self, interaction_history: Sequence[Event], guidelines: Sequence[GuidelineProposition]
+        self,
+        interaction_history: Sequence[Event],
+        guidelines: Sequence[GuidelineProposition],
+        style_guides: Sequence[StyleGuide],
     ) -> str:
         last_customer_message = next(
             (
@@ -417,10 +425,10 @@ Produce a valid JSON object in the following format: ###
             "",
         )
         guidelines_list_text = ", ".join([f'"{g.guideline}"' for g in guidelines])
+        style_guides_list_text = ", ".join([f'"{sg.content.principle}"' for sg in style_guides])
         guidelines_output_format = "\n".join(
             [
-                f"""    
-        {{
+                f"""        {{
             "number": {i},
             "instruction": "{g.guideline.content.action}",
             "evaluation": "<your evaluation of how the guideline should be followed>",
@@ -429,21 +437,29 @@ Produce a valid JSON object in the following format: ###
                 for i, g in enumerate(guidelines, start=1)
             ]
         )
+        style_guidelines_output_format = "\n".join(
+            [
+                f"""        {{
+            "number": {i},
+            "instruction": "{sg.content.principle}",
+            "evaluation": "<your evaluation of how the style guideline should be followed>",
+            "data_available": "<explanation whether you are provided with the required data to follow this style guideline now>"
+        }},"""  # TODO delete data_available from style guide and insight
+                for i, sg in enumerate(style_guides, start=len(guidelines) + 1)
+            ]
+        )
 
-        if len(guidelines) == 0:
-            insights_output_format = """
-            {{
+        if len(guidelines) + len(style_guides) == 0:
+            insights_output_format = """            {{
                 "number": 1,
                 "instruction": "<Insight #1, if it exists>",
                 "evaluation": "<your evaluation of how the insight should be followed>",
                 "data_available": "<explanation whether you are provided with the required data to follow this insight now>"
             }},
             <Additional entries for all insights>
-        """
-        else:
-            insights_output_format = """
-            <Additional entries for all insights>
 """
+        else:
+            insights_output_format = """            <Additional entries for all insights>"""
 
         return f"""
 {{
@@ -451,19 +467,21 @@ Produce a valid JSON object in the following format: ###
     "produced_reply": "<BOOL, should be true unless the customer explicitly asked you not to respond>",
     "produced_reply_rationale": "<str, optional. required only if produced_reply is false>",
     "guidelines": [{guidelines_list_text}],
+    "style_guidelines": [{style_guides_list_text}],
     "insights": "<Up to 3 original insights to adhere to>", 
     "evaluation_for_each_instruction": [
 {guidelines_output_format}
+{style_guidelines_output_format}
 {insights_output_format}
     ],
     "revisions": [
     {{
         "revision_number": 1,
         "content": <response chosen after revision 1>,
-        "instructions_followed": <list of guidelines and insights that were followed>,
-        "instructions_broken": <list of guidelines and insights that were broken>,
+        "instructions_followed": <list of guidelines, style guidelines and insights that were followed>,
+        "instructions_broken": <list of guidelines, style guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
-        "followed_all_instructions": <BOOL, whether all guidelines and insights followed>,
+        "followed_all_instructions": <BOOL, whether all guidelines, style guidelines and insights followed>,
         "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
         "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
         "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
@@ -483,6 +501,9 @@ Produce a valid JSON object in the following format: ###
             prompt=prompt,
             hints={"temperature": temperature},
         )
+
+        with open("message generation response.txt", "w") as f:
+            f.write(str(message_event_response.content))
 
         if not message_event_response.content.produced_reply:
             self._logger.debug(f"MessageEventProducer produced no reply: {message_event_response}")
@@ -537,6 +558,7 @@ example_1_expected = MessageEventSchema(
     guidelines=[
         "When the customer asks for train schedules, provide them accurately and concisely."
     ],
+    style_guidelines=[],
     insights=["Use markdown format when applicable."],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
@@ -601,6 +623,7 @@ example_2_expected = MessageEventSchema(
         "When the customer chooses and orders a burger, then provide it",
         "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order",
     ],
+    style_guidelines=[],
     insights=[],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
@@ -649,6 +672,7 @@ example_2_shot = MessageEventGeneratorShot(
 example_3_expected = MessageEventSchema(
     last_message_of_customer="Hi there, can I get something to drink? What do you have on tap?",
     guidelines=["When the customer asks for a drink, check the menu and offer what's on it"],
+    style_guidelines=[],
     insights=["Do not state factual information that you do not know or are not sure about."],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
@@ -697,6 +721,7 @@ example_4_expected = MessageEventSchema(
         "When asked anything about plane tickets, suggest completing the order on our android app",
         "When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
     ],
+    style_guidelines=[],
     insights=[
         "In your generated reply to the customer, use markdown format when applicable.",
         "The customer does not have an android device and does not want to buy anything",
@@ -767,6 +792,7 @@ example_4_shot = MessageEventGeneratorShot(
 example_5_expected = MessageEventSchema(
     last_message_of_customer="This is not what I was asking for",
     guidelines=[],
+    style_guidelines=[],
     insights=[],
     evaluation_for_each_instruction=[],
     revisions=[
@@ -812,6 +838,7 @@ example_6_expected = MessageEventSchema(
         "my balance? Can I access it too?"
     ),
     guidelines=["When you need the balance of a customer, then use the 'check_balance' tool."],
+    style_guidelines=[],
     insights=["Never reveal details about the process you followed to produce your response"],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
