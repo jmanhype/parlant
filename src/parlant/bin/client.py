@@ -29,7 +29,7 @@ from rich.table import Table
 from rich.text import Text
 import sys
 import time
-from typing import Any, Iterator, Optional, cast
+from typing import Any, Iterator, Optional, Sequence, cast
 
 from parlant.client import ParlantClient
 from parlant.client.core import ApiError
@@ -848,9 +848,7 @@ class Actions:
         client.tags.delete(tag_id=tag_id)
 
     @staticmethod
-    def stream_logs(
-        ctx: click.Context, filters: list[str], operator: str
-    ) -> Iterator[dict[str, Any]]:
+    def stream_logs(ctx: click.Context, filters: list[str]) -> Iterator[dict[str, Any]]:
         try:
             context = zmq.Context.instance()
             sub_socket = context.socket(zmq.SUB)
@@ -863,7 +861,7 @@ class Actions:
             while True:
                 try:
                     message = cast(dict[str, Any], sub_socket.recv_json(flags=zmq.NOBLOCK))
-                    if Actions._log_matches_filters(message, filters, operator):
+                    if Actions._log_matches_filters(message, filters):
                         yield message
                 except zmq.Again:
                     time.sleep(0.01)
@@ -873,19 +871,14 @@ class Actions:
             sub_socket.close()
 
     @staticmethod
-    def _log_matches_filters(log_entry: dict[str, Any], filters: list[str], operator: str) -> bool:
+    def _log_matches_filters(log_entry: dict[str, Any], filters: list[str]) -> bool:
         message = log_entry.get("message", "")
         matches_filters = []
 
         for filter_item in filters:
             matches_filters.append(filter_item in message)
 
-        if operator == "AND":
-            filter_match = all(matches_filters)
-        else:
-            filter_match = any(matches_filters)
-
-        return filter_match
+        return any(matches_filters) if matches_filters else True
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -2011,10 +2004,9 @@ class Interface:
     def stream_logs(
         ctx: click.Context,
         filters: list[str],
-        operator: str,
     ) -> None:
         try:
-            for log in Actions.stream_logs(ctx, filters, operator):
+            for log in Actions.stream_logs(ctx, filters):
                 level = log.get("level", "")
                 message = log.get("message", "")
                 correlation_id = log.get("correlation_id", "")
@@ -3120,23 +3112,14 @@ async def async_main() -> None:
         is_flag=True,
         help="Filter logs by [MessageEventGenerator]",
     )
-    @click.option(
-        "--operator",
-        "-o",
-        type=click.Choice(["AND", "OR"], case_sensitive=False),
-        default="OR",
-        show_default=True,
-        help="Logical operator to combine filters",
-    )
-    @click.argument("pattern", required=False)
+    @click.argument("patterns", nargs=-1, required=False)
     @click.pass_context
     def log_view(
         ctx: click.Context,
         guideline_proposer: bool,
         tool_caller: bool,
         message_event_generator: bool,
-        operator: str,
-        pattern: Optional[str],
+        patterns: Optional[Sequence[str]],
     ) -> None:
         filters = []
         if guideline_proposer:
@@ -3145,10 +3128,10 @@ async def async_main() -> None:
             filters.append("[ToolCaller]")
         if message_event_generator:
             filters.append("[MessageEventGenerator]")
-        if pattern:
-            filters.append(pattern)
+        if patterns:
+            filters.extend(patterns)
 
-        Interface.stream_logs(ctx, filters, operator)
+        Interface.stream_logs(ctx, filters)
 
     @cli.command(
         "help",

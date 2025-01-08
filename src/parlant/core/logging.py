@@ -189,7 +189,7 @@ class ZMQLogger(CorrelationalLogger):
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
         logger_id: Optional[str] = None,
-        port: int = 8779,
+        port: int = 8799,
     ) -> None:
         super().__init__(correlator, log_level, logger_id)
 
