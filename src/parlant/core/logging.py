@@ -223,23 +223,23 @@ class ZMQLogger(CorrelationalLogger):
 
     @override
     def debug(self, message: str) -> None:
-        self._publish_message("[DEBUG]", message)
+        self._publish_message("DEBUG", message)
 
     @override
     def info(self, message: str) -> None:
-        self._publish_message("[INFO]", message)
+        self._publish_message("INFO", message)
 
     @override
     def warning(self, message: str) -> None:
-        self._publish_message("[WARNING]", message)
+        self._publish_message("WARNING", message)
 
     @override
     def error(self, message: str) -> None:
-        self._publish_message("[ERROR]", message)
+        self._publish_message("ERROR", message)
 
     @override
     def critical(self, message: str) -> None:
-        self._publish_message("[CRITICAL]", message)
+        self._publish_message("CRITICAL", message)
 
 
 class CompositeLogger(Logger):
