@@ -897,42 +897,74 @@ example_6_expected = MessageEventSchema(
 )
 
 example_6_shot = MessageEventGeneratorShot(
-    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
+    description="",
     expected_result=example_6_expected,
 )
 
 example_7_expected = MessageEventSchema(
     last_message_of_customer=(
-        "How much money do I have in my account, and how do you know it? Is there some service you use to check "
-        "my balance? Can I access it too?"
+        "I speak little English. I don't understand. How to check account type from website?"
     ),
-    guidelines=[],
-    style_guidelines=[],
-    insights=[],
+    guidelines=[
+        "when context variables determine that the customer failed to sign in then ask them for their full name to restore their account"
+    ],
+    style_guidelines=[
+        "Use a grandiose, formal tone",
+        "Do not ask users for their personal information",
+    ],
+    insights=[
+        "The customer speaks little English, and is struggling in understanding the agent's last message"
+    ],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
             number=1,
-            instruction="use the 'check_balance' tool",
-            evaluation="There's already a staged tool call with this tool, so no further action is required.",
-            data_available="Yes, I know that the customer's balance is 1,000$",
+            instruction="when context variables determine that the customer failed to sign in then ask them for their full name to restore their account",
+            evaluation="We need to ask the customer for their full name, so we could restore their account",
+            data_available="no data is required",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="Use a grandiose, formal tone",
+            evaluation="We would ordinarly need to use grandiose tone, but this contradict's the user's implicit request for us to use simpler language",
+            data_available="no data is required",
+        ),
+        InstructionEvaluation(
+            number=3,
+            instruction="Do not ask users for their personal information",
+            evaluation="We need to avoid asking for personal information, excluding the customer's full name, which ask for according to a guideline that takes a higher priority than this style guideline",
+            data_available="no data is required",
+        ),
+        InstructionEvaluation(
+            number=4,
+            instruction="The customer speaks little English, and is struggling in understanding the agent's last message",
+            evaluation="We need to use simpler language while providing our explanation. It should be understandable by someone who is not a native speaker.",
+            data_available="no data is required",
         ),
     ],
-    revisions=[
+    revisions=[  # Pray, to discern the nature of thine account, thou must first click upon the menu in the top-right corner of the home page and navigate to 'Account Settings.' However, I perceive thou art beset by difficulties in logging in. Might I request the honor of knowing thy full name, that I may assist thee in restoring access to thy account with all due haste?
         Revision(
             revision_number=1,
-            content=(""),
+            content=(
+                "To check your account type, click the menu in the top-right corner of the home page, then go to 'Account Settings.' However, I see you're having trouble logging in. Can you please share your full name so I can help you restore your account?"
+            ),
             instructions_followed=[
-                "",
+                "#1; when context variables determine that the customer failed to sign in then ask them for their full name to restore their account",
+                "#4; The customer speaks little English, and is struggling in understanding the agent's last message",
             ],
-            instructions_broken=[],
+            instructions_broken=[
+                "#2; Use a grandiose, formal tone",
+                "#3; Do not ask users for their personal information",
+            ],
+            instructions_broken_only_due_to_prioritization=True,
+            prioritization_rationale="Instruction #2 was broken because it conflicts with #4, and #4 is a user request, which takes precedent over a style guideline. ",
             is_repeat_message=False,
-            followed_all_instructions=True,
+            followed_all_instructions=False,
         )
     ],
 )
 
 example_7_shot = MessageEventGeneratorShot(
-    description="Styleguides that are overriden by a guideline and by a customer request",
+    description="Styleguides are overiden due to guidelines and customer requests. Assume the agent knows how the website operates through some other mean, and that it just tried to explain it to the user using a grandiose, formal tone.",
     expected_result=example_7_expected,
 )
 
@@ -944,6 +976,7 @@ _baseline_shots: Sequence[MessageEventGeneratorShot] = [
     example_4_shot,
     example_5_shot,
     example_6_shot,
+    example_7_shot,
 ]
 
 shot_collection = ShotCollection[MessageEventGeneratorShot](_baseline_shots)
