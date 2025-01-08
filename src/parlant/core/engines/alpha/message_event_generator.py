@@ -558,7 +558,7 @@ example_1_expected = MessageEventSchema(
     guidelines=[
         "When the customer asks for train schedules, provide them accurately and concisely."
     ],
-    style_guidelines=[],
+    style_guidelines=["Express all times using the 24-hour clock format"],
     insights=["Use markdown format when applicable."],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
@@ -569,6 +569,12 @@ example_1_expected = MessageEventSchema(
         ),
         InstructionEvaluation(
             number=2,
+            instruction="Express all times using the 24-hour clock format.",
+            evaluation="Train schedules should be returned in 24-hour clock format.",
+            data_available="Yes, the train schedule data is available.",
+        ),
+        InstructionEvaluation(
+            number=3,
             instruction="Use markdown format when applicable.",
             evaluation="Markdown formatting makes the schedule clearer and more readable.",
             data_available="Not specifically needed, but markdown format can be applied to any response.",
@@ -585,7 +591,10 @@ example_1_expected = MessageEventSchema(
             instructions_followed=[
                 "#1; When the customer asks for train schedules, provide them accurately and concisely."
             ],
-            instructions_broken=["#2; Did not use markdown format when applicable."],
+            instructions_broken=[
+                "#2; Express all times using the 24-hour clock format",
+                "#3; Did not use markdown format when applicable.",
+            ],
             is_repeat_message=False,
             followed_all_instructions=False,
             instructions_broken_due_to_missing_data=False,
@@ -597,12 +606,13 @@ example_1_expected = MessageEventSchema(
                 """
                 | Train | Departure | Arrival |
                 |-------|-----------|---------|
-                | 101   | 10:00 AM  | 12:30 PM |
-                | 205   | 1:00 PM   | 3:45 PM  |"""
+                | 101   | 10:00 AM  | 12:30 |
+                | 205   | 1:00 PM   | 15:45  |"""
             ),
             instructions_followed=[
                 "#1; When the customer asks for train schedules, provide them accurately and concisely.",
-                "#2; Use markdown format when applicable.",
+                "#2; Express all times using the 24-hour clock format",
+                "#3; Did not use markdown format when applicable.",
             ],
             instructions_broken=[],
             is_repeat_message=False,
@@ -618,10 +628,10 @@ example_1_shot = MessageEventGeneratorShot(
 
 
 example_2_expected = MessageEventSchema(
-    last_message_of_customer="<customer’s last message in the interaction>",
+    last_message_of_customer="Can I get the classic burger meal with onion jam?",
     guidelines=[
         "When the customer chooses and orders a burger, then provide it",
-        "When the customer chooses specific ingredients on the burger, only provide those ingredients if we have them fresh in stock; otherwise, reject the order",
+        "When the customer chooses specific ingredients on the burger, then only provide those ingredients if we have them fresh in stock; otherwise, reject the order",
     ],
     style_guidelines=[],
     insights=[],
@@ -664,7 +674,7 @@ example_2_expected = MessageEventSchema(
 )
 
 example_2_shot = MessageEventGeneratorShot(
-    description="A reply where one instruction was prioritized over another",
+    description="A reply where one instruction was prioritized over another. Assume that there's a staged tool call informing us that onion jam is not in stock",
     expected_result=example_2_expected,
 )
 
@@ -792,14 +802,23 @@ example_4_shot = MessageEventGeneratorShot(
 example_5_expected = MessageEventSchema(
     last_message_of_customer="This is not what I was asking for",
     guidelines=[],
-    style_guidelines=[],
+    style_guidelines=["Be concise and very matter of fact. Prefer short and direct responses."],
     insights=[],
-    evaluation_for_each_instruction=[],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="Be concise and very matter of fact. Prefer short and direct responses.",
+            evaluation="My reply should be concise and direct",
+            data_available="not needed",
+        ),
+    ],
     revisions=[
         Revision(
             revision_number=1,
             content="I apologize for the confusion. Could you please explain what I'm missing?",
-            instructions_followed=[],
+            instructions_followed=[
+                "#1; Be concise and very matter of fact. Prefer short and direct responses."
+            ],
             instructions_broken=[],
             is_repeat_message=True,
             followed_all_instructions=True,
@@ -807,7 +826,9 @@ example_5_expected = MessageEventSchema(
         Revision(
             revision_number=2,
             content="I see. What am I missing?",
-            instructions_followed=[],
+            instructions_followed=[
+                "#1; Be concise and very matter of fact. Prefer short and direct responses."
+            ],
             instructions_broken=[],
             is_repeat_message=True,
             followed_all_instructions=True,
@@ -818,7 +839,9 @@ example_5_expected = MessageEventSchema(
                 "It seems like I'm failing to assist you with your issue. "
                 "I suggest emailing our support team for further assistance."
             ),
-            instructions_followed=[],
+            instructions_followed=[
+                "#1; Be concise and very matter of fact. Prefer short and direct responses."
+            ],
             instructions_broken=[],
             is_repeat_message=False,
             followed_all_instructions=True,
@@ -848,7 +871,7 @@ example_6_expected = MessageEventSchema(
             data_available="Yes, I know that the customer's balance is 1,000$",
         ),
         InstructionEvaluation(
-            number=1,
+            number=2,
             instruction="Never reveal details about the process you followed to produce your response",
             evaluation="The reply must not reveal details about how I know the client's balance",
             data_available="Not needed",
@@ -863,8 +886,8 @@ example_6_expected = MessageEventSchema(
                 "Is there anything else I can assist you with?"
             ),
             instructions_followed=[
-                "use the 'check_balance' tool",
-                "Never reveal details about the process you followed to produce your response",
+                "#1; use the 'check_balance' tool",
+                "#2; Never reveal details about the process you followed to produce your response",
             ],
             instructions_broken=[],
             is_repeat_message=False,
@@ -876,6 +899,41 @@ example_6_expected = MessageEventSchema(
 example_6_shot = MessageEventGeneratorShot(
     description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
     expected_result=example_6_expected,
+)
+
+example_7_expected = MessageEventSchema(
+    last_message_of_customer=(
+        "How much money do I have in my account, and how do you know it? Is there some service you use to check "
+        "my balance? Can I access it too?"
+    ),
+    guidelines=[],
+    style_guidelines=[],
+    insights=[],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="use the 'check_balance' tool",
+            evaluation="There's already a staged tool call with this tool, so no further action is required.",
+            data_available="Yes, I know that the customer's balance is 1,000$",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(""),
+            instructions_followed=[
+                "",
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        )
+    ],
+)
+
+example_7_shot = MessageEventGeneratorShot(
+    description="Styleguides that are overriden by a guideline and by a customer request",
+    expected_result=example_7_expected,
 )
 
 
