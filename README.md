@@ -19,6 +19,8 @@
   </p>
 </div>
 
+**NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA). We're looking for more contributors! Please consider joining our Discord server and participating in its development.
+
 ## ✨ What is Parlant?
 **Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
 
@@ -26,11 +28,20 @@
 
 Unlike traditional approaches that rely on prompt engineering or conversational flow charts, Parlant introduces a dynamic control system that ensures agents follow your specific business rules, in the form of behavioral guidelines that you provide, by matching and activating the appropriate combination of guidelines for every specific context.
 
+```mermaid
+graph TD
+    API(Parlant REST API) -->|React to Session Trigger| Engine
+    Engine -->|Load Terms| GlossaryStore
+    Engine -->|Match Guidelines| GuidelineProposer
+    Engine -->|Infer & Call Tools| ToolCaller
+    Engine -->|Tailor Guided Message| MessageGenerator
+```
+
 When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges. When it's time to generate a message, Parlant implements self-critique mechanisms to ensure that the agent's responses precisely align with your intended behavior as given by the contextually-matched guidelines.
 
+## 📦 Quickstart
 Parlant comes pre-built with responsive session (conversation) management, a detection mechanism for incoherence and contradictions in guidelines, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, native API clients in Python and TypeScript, and other goodies.
 
-## 📦 Quickstart
 ```bash
 $ pip install parlant
 $ parlant-server
