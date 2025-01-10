@@ -31,7 +31,7 @@ Unlike traditional approaches that rely on prompt engineering or conversational 
 ```mermaid
 graph TD
     API(Parlant REST API) -->|React to Session Trigger| Engine[Response Engine]
-    Engine -->|Load Terms| GlossaryStore
+    Engine -->|Load Domain Terminology| GlossaryStore
     Engine -->|Match Guidelines| GuidelineProposer
     Engine -->|Infer & Call Tools| ToolCaller
     Engine -->|Tailor Guided Message| MessageGenerator
