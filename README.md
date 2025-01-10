@@ -30,7 +30,7 @@ Unlike traditional approaches that rely on prompt engineering or conversational 
 
 ```mermaid
 graph TD
-    API(Parlant REST API) -->|React to Session Trigger| Engine[Response Engine]
+    API(Parlant REST API) -->|React to Session Trigger| Engine[AI Response Engine]
     Engine -->|Load Domain Terminology| GlossaryStore
     Engine -->|Match Guidelines| GuidelineProposer
     Engine -->|Infer & Call Tools| ToolCaller
