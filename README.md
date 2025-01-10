@@ -19,7 +19,7 @@
   </p>
 </div>
 
-**NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA). We're looking for more contributors! Please consider joining our Discord server and participating in its development.
+**IMPORTANT NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA) from leading instutions, such as Microsoft, Check Point, and Dynamic Yield. We're looking for more contributors to help get customer-facing agents under control! Please consider joining our Discord server and participating in its development.
 
 ## ✨ What is Parlant?
 **Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
