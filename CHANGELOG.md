@@ -4,6 +4,7 @@ All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
 - Add shot creation helper functions under Shot
+- Fixed mistake in coherence checker few shots
 
 
 ## [1.5.1] - 2025-01-05
