@@ -297,7 +297,7 @@ def validate_tool_arguments(
 
     if extra_args or missing_required:
         message = f"Argument mismatch.\n - Expected parameters: {sorted(expected)}"
-        raise ToolError(message)
+        raise ToolExecutionError(message)
 
     type_map = {
         "string": str,
@@ -317,15 +317,15 @@ def validate_tool_arguments(
                     f"Parameter '{param_name}' must be one of {allowed_values}, "
                     f"but got '{arg_value}'."
                 )
-                raise ToolError(tool.name, message)
+                raise ToolExecutionError(tool.name, message)
         else:
             expected_types = type_map.get(param_type)
             if expected_types is None:
-                raise ToolError(
+                raise ToolExecutionError(
                     tool.name, f"Parameter '{param_name}' has unknown type '{param_type}'"
                 )
             if type(arg_value) is not expected_types:
-                raise ToolError(
+                raise ToolExecutionError(
                     tool.name,
                     f"Parameter '{param_name}' must be of type {expected_types}, "
                     f"but got {type(arg_value).__name__}: {arg_value}",
