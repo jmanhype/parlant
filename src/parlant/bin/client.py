@@ -1775,20 +1775,23 @@ class Interface:
             if service.tools:
                 rich.print(Text("Tools:", style="bold"))
                 for tool in service.tools:
-                    rich.print(Text("    Name:", style="bold"), tool.name)
+                    rich.print(Text("  Name:", style="bold"), tool.name)
                     if tool.description:
                         rich.print(
-                            Text("    Description:\n       ", style="bold"),
+                            Text("  Description:\n     ", style="bold"),
                             tool.description,
                         )
 
-                    if tool.parameters:
-                        rich.print(Text("    Parameters:", style="bold"))
-                        for param_name, param_desc in tool.parameters.items():
-                            rich.print(Text(f"      - {param_name}:", style="bold"), end=" ")
-                            rich.print(param_desc)
+                    rich.print(Text("  Parameters:", style="bold"))
 
-                        rich.print("\n")
+                    if tool.parameters:
+                        for param_name, param_desc in tool.parameters.items():
+                            rich.print(Text(f"    - {param_name}:", style="bold"), end=" ")
+                            rich.print(param_desc)
+                    else:
+                        rich.print("    None")
+
+                    rich.print()
             else:
                 rich.print("\nNo tools available for this service.")
         except Exception as e:

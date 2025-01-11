@@ -34,6 +34,7 @@ from parlant.core.tools import (
     ToolParameter,
     ToolParameterType,
     ToolContext,
+    validate_tool_arguments,
 )
 from parlant.core.common import ItemNotFoundError, JSONSerializable, UniqueId
 from parlant.core.tools import ToolService
@@ -211,5 +212,6 @@ class OpenAPIClient(ToolService):
         arguments: Mapping[str, JSONSerializable],
     ) -> ToolResult:
         _ = context
-        await self.read_tool(name)
+        tool = await self.read_tool(name)
+        validate_tool_arguments(tool, arguments)
         return await self._tools[name].func(**arguments)

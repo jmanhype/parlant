@@ -13,13 +13,49 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import TypeVar, Generic, Sequence
+from datetime import datetime, timezone
+from typing import TypeVar, Generic, Sequence, cast
+
+from parlant.core.common import generate_id, JSONSerializable
+from parlant.core.sessions import (
+    Event,
+    EventId,
+    EventSource,
+    MessageEventData,
+    ToolEventData,
+)
 
 
 @dataclass
 class Shot:
     description: str
     """An explanation of what makes this shot interesting"""
+
+    @staticmethod
+    def message_event(source: EventSource, data: MessageEventData) -> Event:
+        return Event(
+            id=EventId(generate_id()),
+            source=source,
+            kind="message",
+            creation_utc=datetime.now(timezone.utc),  # unused in shots
+            offset=0,  # unused in shots
+            correlation_id="<unused>",  # unused in shots
+            data=cast(JSONSerializable, data),
+            deleted=False,
+        )
+
+    @staticmethod
+    def tool_event(data: ToolEventData) -> Event:  # noqa: F821
+        return Event(
+            id=EventId(generate_id()),
+            source="system",
+            kind="tool",
+            creation_utc=datetime.now(timezone.utc),  # unused in shots
+            offset=0,  # unused in shots
+            correlation_id="<unused>",  # unused in shots
+            data=cast(JSONSerializable, data),
+            deleted=False,
+        )
 
 
 TShot = TypeVar("TShot", bound=Shot)
