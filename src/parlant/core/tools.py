@@ -300,10 +300,10 @@ def validate_tool_arguments(
         raise ToolExecutionError(message)
 
     type_map = {
-        "string": str,
-        "boolean": bool,
-        "integer": int,
-        "number": float,
+        "string": (str,),
+        "boolean": (bool,),
+        "integer": (int,),
+        "number": (int, float),
     }
 
     for param_name, arg_value in arguments.items():
@@ -324,7 +324,7 @@ def validate_tool_arguments(
                 raise ToolExecutionError(
                     tool.name, f"Parameter '{param_name}' has unknown type '{param_type}'"
                 )
-            if type(arg_value) is not expected_types:
+            if type(arg_value) not in expected_types:
                 raise ToolExecutionError(
                     tool.name,
                     f"Parameter '{param_name}' must be of type {expected_types}, "
