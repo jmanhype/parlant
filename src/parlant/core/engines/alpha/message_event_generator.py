@@ -413,8 +413,6 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
-        with open("message producer prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
 
     def _get_output_format(
