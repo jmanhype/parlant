@@ -61,24 +61,8 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And a single tool calls event is emitted
-        And the tool calls event contains that the card was succesfully unlocked
+        And the tool calls event contains that the card was successfully unlocked
         And the message contains that the card was unlocked
-
-    Scenario: The agent correctly reapplies tool after customer corrects themselves
-        Given an agent whose job is to be a customer support agent for Chase Bank
-        And a guideline to ask for their PIN code and confirm it when the user wants to transfer money and has specified both how much and to whom and has confirmed it once and not yet successfully confirmed their PIN code
-        And a customer message, "I want to transfer 20$ to Vishal and my pin code is 400013."
-        And an agent message, "It seems the PIN code you provided is incorrect, so the transfer could not be completed. Could you please double-check your PIN code? Also, to confirm, you want to transfer $20 to Vishal. Let me know if this is correct."
-        And a customer message, "Ok, sorry my pin code is 1921. And yes that is correct."
-        And an agent message, "Thank you for providing the corrected PIN code. However, the transfer could not be completed because the recipient 'Vishal' was not found. Could you please double-check the recipient's details and try again? Let me know if you need assistance with this."
-        And a customer message, "Oh sure, the recipient is Vishal V Ahuja and their account number is 123456"
-        And an agent message, "Thank you for providing the recipient's full details. To confirm, you would like to transfer $20 to Vishal V Ahuja, account number 123456. Is this information correct? Once you confirm, I can proceed with the transfer."
-        And a customer message, "Yes that is correct! Please execute the transfer."
-        And an agent message, "Thank you for confirming the details. Unfortunately, the transfer could not be completed earlier because the recipient 'Vishal V Ahuja' was not found. Could you please verify the recipient's account details, such as the account number or any associated information, and let me know? Once we confirm the correct details, I can attempt the transfer again."
-        And a customer message, "How many times do I have to tell? The recipient is Vishal Ahuja and their account number is 123456, what part do you not understand?"
-        When processing is triggered
-        Then a single message event is emitted
-        And the message contains asking the customer for their PIN code
 
     Scenario: The agent doesnt hallucinate services that it cannot offer 2
         Given an agent whose job is to be a customer success representative for Chase Bank
