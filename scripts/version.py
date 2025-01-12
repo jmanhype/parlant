@@ -121,9 +121,9 @@ def update_version(
 
     if rc:
         version = version.bump_prerelease("rc")
-    if beta:
+    elif beta:
         version = version.bump_prerelease("beta")
-    if alpha:
+    elif alpha:
         version = version.bump_prerelease("alpha")
     else:
         version = version.finalize_version()
