@@ -61,8 +61,6 @@ class Revision(DefaultBaseModel):
     instructions_followed: Optional[list[str]] = []
     instructions_broken: Optional[list[str]] = []
     is_repeat_message: Optional[bool] = False
-    business_information_provided: Optional[list[str]]
-    all_information_is_from_prompt: Optional[bool]
     followed_all_instructions: Optional[bool] = False
     instructions_broken_due_to_missing_data: Optional[bool] = False
     missing_data_rationale: Optional[str] = None
@@ -489,8 +487,6 @@ Produce a valid JSON object in the following format: ###
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
-        "business_information_provided": <list of strings, each being a piece of information outputted to the user, along with its source>
-        "all_information_is_from_prompt": <BOOL, whether all of the information from business_information_provided is grounded in the prompt or in previous messages in the interaction. If false, further revisions are needed>
         "followed_all_instructions": <BOOL, whether all guidelines and insights followed>,
         "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
         "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
