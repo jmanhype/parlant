@@ -98,3 +98,14 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains a recommendation of a Pepsi
+
+    Scenario: The agent doesnt hallucinate services that it cannot offer 1
+        Given an agent whose job is to assist customers in transfering money and stocks between accounts for HSBC UK
+        And an empty session
+        And a guideline to ask for the recipients account number and amount to transfer if it wasnt provided already when the customer asks you to make a transfer
+        And a customer message, "How can I reach out to one of your representatives?"
+        And an agent message, "You can reach out to one of our representatives by calling our customer service line or visiting your nearest HSBC UK branch. If you prefer, I can assist you further here as well. Let me know how you'd like to proceed."
+        And a customer message, "Please help me further in reaching out"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no specific information about how to reach out, like a phone number or an exact address. 

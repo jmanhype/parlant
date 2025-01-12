@@ -949,10 +949,11 @@ example_6_expected = MessageEventSchema(
     ],
 )
 
-example_7_shot = MessageEventGeneratorShot(
-    description="Not providing information outside of what's provided in the prompt: Assume the agent works for the office of public engagement. Assume no contact information was given as part of the prompt.",
+example_6_shot = MessageEventGeneratorShot(
+    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
     expected_result=example_6_expected,
 )
+
 
 example_7_expected = MessageEventSchema(
     last_message_of_customer=(
@@ -996,12 +997,12 @@ example_7_expected = MessageEventSchema(
     ],
 )
 
-example_6_shot = MessageEventGeneratorShot(
-    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
+example_7_shot = MessageEventGeneratorShot(
+    description="Not providing information outside of what's provided in the prompt: Assume the agent works for the white house's office of public engagement. Assume no contact information was given as part of the prompt.",
     expected_result=example_6_expected,
 )
 
-example_7_expected = MessageEventSchema(
+example_8_expected = MessageEventSchema(
     last_message_of_customer=("Hey, how can I contact customer support?"),
     guidelines=[],
     context_evaluation=ContextEvaluation(
@@ -1049,7 +1050,7 @@ example_7_expected = MessageEventSchema(
     ],
 )
 
-example_7_shot = MessageEventGeneratorShot(
+example_8_shot = MessageEventGeneratorShot(
     description="An insight is derived and followed on not offering to help with something you don't know about",
     expected_result=example_7_expected,
 )
@@ -1062,6 +1063,7 @@ _baseline_shots: Sequence[MessageEventGeneratorShot] = [
     example_5_shot,
     example_6_shot,
     example_7_shot,
+    example_8_shot,
 ]
 
 shot_collection = ShotCollection[MessageEventGeneratorShot](_baseline_shots)
