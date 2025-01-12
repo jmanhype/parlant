@@ -31,6 +31,7 @@ import sys
 import uvicorn
 
 from parlant.adapters.vector_db.chroma import ChromaDatabase
+from parlant.core.engines.alpha import hooks
 from parlant.core.engines.alpha import guideline_proposer
 from parlant.core.engines.alpha import tool_caller
 from parlant.core.engines.alpha import message_event_generator
@@ -368,6 +369,8 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c[ShotCollection[GuidelinePropositionShot]] = guideline_proposer.shot_collection
     c[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
     c[ShotCollection[MessageEventGeneratorShot]] = message_event_generator.shot_collection
+
+    c[hooks.LifecycleHooks] = hooks.lifecycle_hooks
 
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],

@@ -9,6 +9,7 @@ All notable changes to Parlant will be documented here.
 - Add ContextEvaluation in MessageEventGenerator
 - Fix ToolCaller false-negative argument validation from int to float
 - Fix ToolCaller accuracy
+- Add engine lifecycle hooks
 
 
 ## [1.5.1] - 2025-01-05

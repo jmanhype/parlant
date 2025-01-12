@@ -50,6 +50,7 @@ from parlant.core.sessions import (
     Term as StoredTerm,
     ToolEventData,
 )
+from parlant.core.engines.alpha.hooks import lifecycle_hooks
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionResult,
@@ -126,14 +127,16 @@ class AlphaEngine(Engine):
 
             self._logger.error(f"Processing error: {formatted_exception}")
 
-            await event_emitter.emit_status_event(
-                correlation_id=self._correlator.correlation_id,
-                data={
-                    "status": "error",
-                    "acknowledged_offset": interaction_state.last_known_event_offset,
-                    "data": {"exception": formatted_exception},
-                },
-            )
+            if await lifecycle_hooks.call_on_error(context, event_emitter, exc):
+                await event_emitter.emit_status_event(
+                    correlation_id=self._correlator.correlation_id,
+                    data={
+                        "status": "error",
+                        "acknowledged_offset": interaction_state.last_known_event_offset,
+                        "data": {"exception": formatted_exception},
+                    },
+                )
+
             return False
         except BaseException as exc:
             self._logger.critical(f"Critical processing error: {traceback.format_exception(exc)}")
@@ -200,6 +203,9 @@ class AlphaEngine(Engine):
         session = await self._session_store.read_session(context.session_id)
         customer = await self._customer_store.read_customer(session.customer_id)
 
+        if not await lifecycle_hooks.call_on_acknowledging(context, event_emitter):
+            return
+
         await event_emitter.emit_status_event(
             correlation_id=self._correlator.correlation_id,
             data={
@@ -209,7 +215,13 @@ class AlphaEngine(Engine):
             },
         )
 
+        if not await lifecycle_hooks.call_on_acknowledged(context, event_emitter):
+            return
+
         try:
+            if not await lifecycle_hooks.call_on_preparing(context, event_emitter):
+                return
+
             context_variables = await self._load_context_variables(
                 agent_id=context.agent_id, session=session, customer=customer
             )
@@ -236,6 +248,11 @@ class AlphaEngine(Engine):
             prepared_to_respond = False
 
             while not prepared_to_respond:
+                if not await lifecycle_hooks.call_on_preparation_iteration_start(
+                    context, event_emitter, all_tool_events
+                ):
+                    break
+
                 all_possible_guidelines = await self._guideline_store.list_guidelines(
                     guideline_set=agent.id,
                 )
@@ -383,7 +400,27 @@ class AlphaEngine(Engine):
                             },
                         )
 
+                if not await lifecycle_hooks.call_on_preparation_iteration_end(
+                    context,
+                    event_emitter,
+                    all_tool_events,
+                    [gp.guideline for gp in ordinary_guideline_propositions]
+                    + [gp.guideline for gp in tool_enabled_guideline_propositions.keys()],
+                ):
+                    break
+
             message_generation_inspections = []
+
+            if not await lifecycle_hooks.call_on_generating_messages(
+                context,
+                event_emitter,
+                all_tool_events,
+                [gp.guideline for gp in ordinary_guideline_propositions]
+                + [gp.guideline for gp in tool_enabled_guideline_propositions.keys()],
+            ):
+                return
+
+            all_emitted_events = [*all_tool_events]
 
             for event_generation_result in await self._message_event_generator.generate_events(
                 event_emitter=event_emitter,
@@ -408,11 +445,21 @@ class AlphaEngine(Engine):
                     )
                 )
 
+                all_emitted_events += [e for e in event_generation_result.events if e]
+
             await self._session_store.create_inspection(
                 session_id=context.session_id,
                 correlation_id=self._correlator.correlation_id,
                 preparation_iterations=preparation_iterations,
                 message_generations=message_generation_inspections,
+            )
+
+            await lifecycle_hooks.call_on_generated_messages(
+                context,
+                event_emitter,
+                all_emitted_events,
+                [gp.guideline for gp in ordinary_guideline_propositions]
+                + [gp.guideline for gp in tool_enabled_guideline_propositions.keys()],
             )
 
         except asyncio.CancelledError:
