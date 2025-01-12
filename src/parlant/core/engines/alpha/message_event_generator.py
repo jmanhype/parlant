@@ -61,6 +61,8 @@ class Revision(DefaultBaseModel):
     instructions_followed: Optional[list[str]] = []
     instructions_broken: Optional[list[str]] = []
     is_repeat_message: Optional[bool] = False
+    business_information_provided: Optional[list[str]]
+    all_information_is_from_prompt: Optional[bool]
     followed_all_instructions: Optional[bool] = False
     instructions_broken_due_to_missing_data: Optional[bool] = False
     missing_data_rationale: Optional[str] = None
@@ -295,8 +297,10 @@ Always abide by the following general principles (note these are not the "guidel
 1. GENERAL BEHAVIOR: Make your response as human-like as possible. Be concise and avoid being overly polite when not necessary.
 2. AVOID REPEATING YOURSELF: When replying— avoid repeating yourself. Instead, refer the customer to your previous answer, or choose a new approach altogether. If a conversation is looping, point that out to the customer instead of maintaining the loop.
 3. DO NOT HALLUCINATE: Do not state factual information that you do not know or are not sure about. If the customer requests information you're unsure about, state that this information is not available to you.
-4. MAINTAIN GENERATION SECRECY: Never reveal details about the process you followed to produce your response. Do not explicitly mention the tools, context variables, guidelines, glossary, or any other internal information. Present your replies as though all relevant knowledge is inherent to you, not derived from external instructions.
-5. OUTPUT FORMAT: In your generated reply to the customer, use markdown format when applicable.
+4. ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT: Do not output information or offer services based on your intrinsic knowledge - you must only represent the business according to the information provided in this prompt.
+5. REITERATE INFORMATION FROM PREVIOUS MESSAGES IF NECESSARY: If you previously suggested a solution or shared information during the interaction, you may repeat it when relevant. Your earlier response may have been based on information that is no longer available to you, so it’s important to trust that it was informed by the context at the time.
+6. MAINTAIN GENERATION SECRECY: Never reveal details about the process you followed to produce your response. Do not explicitly mention the tools, context variables, guidelines, glossary, or any other internal information. Present your replies as though all relevant knowledge is inherent to you, not derived from external instructions.
+7. OUTPUT FORMAT: In your generated reply to the customer, use markdown format when applicable. 
 """
         )
         if not interaction_history or all(
@@ -411,6 +415,8 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
+        with open("message producer prompt.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
     def _get_output_format(
@@ -483,6 +489,8 @@ Produce a valid JSON object in the following format: ###
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
+        "business_information_provided": <list of strings, each being a piece of information outputted to the user, along with its source>
+        "all_information_is_from_prompt": <BOOL, whether all of the information from business_information_provided is grounded in the prompt or in previous messages in the interaction. If false, further revisions are needed>
         "followed_all_instructions": <BOOL, whether all guidelines and insights followed>,
         "instructions_broken_due_to_missing_data": <BOOL, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>,
         "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
@@ -942,6 +950,53 @@ example_6_expected = MessageEventSchema(
             is_repeat_message=False,
             followed_all_instructions=True,
         )
+    ],
+)
+
+example_7_shot = MessageEventGeneratorShot(
+    description="Not providing information outside of what's provided in the prompt: Assume the agent works for the office of public engagement. Assume no contact information was given as part of the prompt.",
+    expected_result=example_6_expected,
+)
+
+example_7_expected = MessageEventSchema(
+    last_message_of_customer=(
+        "Alright I have the documents ready, how can I send them to you guys?"
+    ),
+    guidelines=[],
+    insights=[],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT",
+            evaluation="I must not output any contact information, since it was not provided within this prompt.",
+            data_available="Contact info is not available",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Thank you for reaching out! To ensure your documents are handled securely, please follow these steps:"
+                "Email your documents to publicengagement@whitehouse.gov."
+                "If your materials are sensitive or require encryption, let us know so we can provide additional instructions."
+            ),
+            instructions_followed=[],
+            instructions_broken=["ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                "Thank you for reaching out! Unfortunately I don’t have the specific contact information for the Department of Public Engagement. I’d suggest checking online or reaching out to your local representative—they should be able to help!"
+            ),
+            instructions_followed=["ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_due_to_missing_data=False,
+            instructions_broken_only_due_to_prioritization=False,
+        ),
     ],
 )
 

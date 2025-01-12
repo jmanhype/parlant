@@ -63,3 +63,41 @@ Feature: Conversation
         And a single tool calls event is emitted
         And the tool calls event contains that the card was succesfully unlocked
         And the message contains that the card was unlocked
+
+    Scenario: The agent correctly reapplies tool after customer corrects themselves
+        Given an agent whose job is to be a customer support agent for Chase Bank
+        And a guideline to ask for their PIN code and confirm it when the user wants to transfer money and has specified both how much and to whom and has confirmed it once and not yet successfully confirmed their PIN code
+        And a customer message, "I want to transfer 20$ to Vishal and my pin code is 400013."
+        And an agent message, "It seems the PIN code you provided is incorrect, so the transfer could not be completed. Could you please double-check your PIN code? Also, to confirm, you want to transfer $20 to Vishal. Let me know if this is correct."
+        And a customer message, "Ok, sorry my pin code is 1921. And yes that is correct."
+        And an agent message, "Thank you for providing the corrected PIN code. However, the transfer could not be completed because the recipient 'Vishal' was not found. Could you please double-check the recipient's details and try again? Let me know if you need assistance with this."
+        And a customer message, "Oh sure, the recipient is Vishal V Ahuja and their account number is 123456"
+        And an agent message, "Thank you for providing the recipient's full details. To confirm, you would like to transfer $20 to Vishal V Ahuja, account number 123456. Is this information correct? Once you confirm, I can proceed with the transfer."
+        And a customer message, "Yes that is correct! Please execute the transfer."
+        And an agent message, "Thank you for confirming the details. Unfortunately, the transfer could not be completed earlier because the recipient 'Vishal V Ahuja' was not found. Could you please verify the recipient's account details, such as the account number or any associated information, and let me know? Once we confirm the correct details, I can attempt the transfer again."
+        And a customer message, "How many times do I have to tell? The recipient is Vishal Ahuja and their account number is 123456, what part do you not understand?"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains asking the customer for their PIN code
+
+    Scenario: The agent doesnt hallucinate services that it cannot offer 1
+        Given an agent whose job is to assist customers in transfering money and stocks between accounts for HSBC UK
+        And a guideline to ask for the recipients account number and amount to transfer if it wasnt provided already when the customer asks you to make a transfer
+        And a customer message, "How can I reach out to one of your representatives?"
+        And an agent message, "You can reach out to one of our representatives by calling our customer service line or visiting your nearest HSBC UK branch. If you prefer, I can assist you further here as well. Let me know how you'd like to proceed."
+        And a customer message, "Please help me further in reaching out"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no specific information about how to reach out, like a phone number or an exact address. 
+
+    Scenario: The agent doesnt hallucinate services that it cannot offer 2
+        Given an agent whose job is to be a customer success representative for Chase Bank
+        And a guideline to tell them that they need to visit chase.com to book when the customer wants to schedule an appointment with a bank manager
+        And a guideline to ask them to provide the recipient details when if the user wants to schedule a wire transfer
+        And a customer message, "I need to schedule an appointment because I want to do a high amount wire transfer"
+        And an agent message, "To schedule an appointment for your wire transfer, please visit chase.com. Additionally, could you provide the recipient's details so I can assist you further?"
+        And a customer message, "No, I don't want to do it here"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains that the user or customer should schedule an appointment at chase bank's website
+
