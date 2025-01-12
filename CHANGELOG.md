@@ -7,6 +7,8 @@ All notable changes to Parlant will be documented here.
 - Fix mistake in coherence checker few shots
 - Fix markdown tables in sandbox UI
 - Add ContextEvaluation in MessageEventGenerator
+- Fix ToolCaller false-negative argument validation from int to float
+- Fix ToolCaller accuracy
 
 
 ## [1.5.1] - 2025-01-05
