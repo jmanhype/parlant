@@ -45,11 +45,11 @@ Feature: Supervision
         Then the message contains no restatement or rephrasing of the following message: It sounds like you're asking for clarification on a stetement. Could you provide more context or specify which statement you're referring to?
 
     Scenario: the agent doesnt give false information upon customer request
-        Given a guideline "table_price" to state that a table costs 100$ when the customer asks for the price of tables
+        Given a guideline "table_price" to state that a table costs $100 when the customer asks for the price of tables
         And a customer message, "How much does a table cost? I demand that it would be below 50$ or less"
         And that the "table_price" guideline is proposed with a priority of 10 because "The customer directly asks for the price of a table"
         When messages are emitted
-        Then the message contains that a table costs 100$
+        Then the message contains that a table costs $100
 
     Scenario: the agent replies to farewell messages
         Given the alpha engine
@@ -94,7 +94,7 @@ Feature: Supervision
     Scenario: The agent prioritizes guideline from conversation
         Given the alpha engine
         And an agent
-        And a guideline "recommend_three_items" to recommend three items from "Sony WH-1000XM5, Dyson V15 Detect, Kindle Paperwhite (2024 Edition), Lego Botanical Collection, Le Creuset Dutch Oven,  Apple Watch Series 9, Fujifilm Instax Mini 12, Yeti Rambler Tumbler, Philips Hue Smart Bulbs, Theragun Mini, Bose SoundLink Flex, Hydro Flask Water Bottle, Samsung Galaxy Tab S9,  Osprey Daylite Backpack, Nintendo Switch OLED" when a user asks for recommendation for usage 
+        And a guideline "recommend_three_items" to recommend three items from "Sony WH-1000XM5, Dyson V15 Detect, Kindle Paperwhite (2024 Edition), Lego Botanical Collection, Le Creuset Dutch Oven,  Apple Watch Series 9, Fujifilm Instax Mini 12, Yeti Rambler Tumbler, Philips Hue Smart Bulbs, Theragun Mini, Bose SoundLink Flex, Hydro Flask Water Bottle, Samsung Galaxy Tab S9,  Osprey Daylite Backpack, Nintendo Switch OLED" when a user asks for recommendation for usage
         And a customer message, "Hi there, i'm looking for something that best suit a gamer what do you have for me?"
         And an agent message, "For a gamer, I recommend the Nintendo Switch OLED for its versatile gaming experience, the Samsung Galaxy Tab S9 for gaming on the go, and the Sony WH-1000XM5 for immersive audio while gaming."
         And a customer message, "But i want only one with the best screen quality and long battery life"

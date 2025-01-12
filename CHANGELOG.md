@@ -6,6 +6,7 @@ All notable changes to Parlant will be documented here.
 - Add shot creation helper functions under Shot
 - Fix mistake in coherence checker few shots
 - Fix markdown tables in sandbox UI
+- Add ContextEvaluation in MessageEventGenerator
 
 
 ## [1.5.1] - 2025-01-05
