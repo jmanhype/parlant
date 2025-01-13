@@ -341,6 +341,7 @@ Your final reply must comply with the outlined guidelines and the instructions i
 
 Before drafting replies and revisions, identify up to three key insights based on this prompt and the ongoing conversation.
 These insights should include relevant customer requests, applicable principles from this prompt, or conclusions drawn from the interaction.
+Ensure to include any customer request as an insight, whether it's explicit or implicit.
 Do not add insights unless you believe that they are absolutely necessary. Prefer suggesting fewer insights, if at all.
 When revising, indicate whether each guideline and insight is satisfied in the suggested reply.
 
@@ -1057,11 +1058,11 @@ _baseline_shots: Sequence[MessageEventGeneratorShot] = [
     example_1_shot,
     example_2_shot,
     example_3_shot,
-    example_4_shot,
     example_5_shot,
     example_6_shot,
     example_7_shot,
     example_8_shot,
+    example_4_shot,
 ]
 
 shot_collection = ShotCollection[MessageEventGeneratorShot](_baseline_shots)
