@@ -21,7 +21,7 @@ import importlib
 import os
 import traceback
 from lagom import Container, Singleton
-from typing import AsyncIterator, Callable, Iterable
+from typing import AsyncIterator, Callable, Iterable, cast
 import toml
 from typing_extensions import NoReturn
 import click
@@ -129,15 +129,6 @@ CORRELATOR = ContextualCorrelator()
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
 BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
-LOGGER.info(f"Parlant server version {VERSION}")
-LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
-
-if "PARLANT_HOME" not in os.environ and DEFAULT_HOME_DIR == "runtime-data":
-    LOGGER.warning("'runtime-data' is deprecated as the name of the default PARLANT_HOME directory")
-    LOGGER.warning(
-        "Please rename 'runtime-data' to 'parlant-data' to avoid this warning in the future."
-    )
-
 
 class StartupError(Exception):
     def __init__(self, message: str) -> None:
@@ -152,16 +143,27 @@ class CLIParams:
     modules: list[str]
 
 
-def load_anthropic() -> NLPService:
-    from parlant.adapters.nlp.anthropic import AnthropicService
+def load_nlp_service(name: str, extra_name: str, class_name: str, module_path: str) -> NLPService:
+    try:
+        module = importlib.import_module(module_path)
+        service = getattr(module, class_name)
+        return cast(NLPService, service(LOGGER))
+    except ModuleNotFoundError as exc:
+        LOGGER.error(f"Failed to import module: {exc.name}")
+        LOGGER.critical(
+            f"{name} support is not installed. Please install it with: pip install parlant[{extra_name}]."
+        )
+        sys.exit(1)
 
-    return AnthropicService(LOGGER)
+
+def load_anthropic() -> NLPService:
+    return load_nlp_service(
+        "Anthropic", "anthropic", "AnthropicService", "parlant.adapters.nlp.anthropic"
+    )
 
 
 def load_aws() -> NLPService:
-    from parlant.adapters.nlp.aws import BedrockService
-
-    return BedrockService(LOGGER)
+    return load_nlp_service("AWS", "aws", "BedrockService", "parlant.adapters.nlp.aws")
 
 
 def load_azure() -> NLPService:
@@ -171,21 +173,19 @@ def load_azure() -> NLPService:
 
 
 def load_cerebras() -> NLPService:
-    from parlant.adapters.nlp.cerebras import CerebrasService
-
-    return CerebrasService(LOGGER)
+    return load_nlp_service(
+        "Cerebras", "cerebras", "CerebrasService", "parlant.adapters.nlp.cerebras"
+    )
 
 
 def load_deepseek() -> NLPService:
-    from parlant.adapters.nlp.deepseek import DeepSeekService
-
-    return DeepSeekService(LOGGER)
+    return load_nlp_service(
+        "DeepSeek", "deepseek", "DeepSeekService", "parlant.adapters.nlp.deepseek"
+    )
 
 
 def load_gemini() -> NLPService:
-    from parlant.adapters.nlp.gemini import GeminiService
-
-    return GeminiService(LOGGER)
+    return load_nlp_service("Gemini", "gemini", "GeminiService", "parlant.adapters.nlp.gemini")
 
 
 def load_openai() -> NLPService:
@@ -195,9 +195,9 @@ def load_openai() -> NLPService:
 
 
 def load_together() -> NLPService:
-    from parlant.adapters.nlp.together import TogetherService
-
-    return TogetherService(LOGGER)
+    return load_nlp_service(
+        "Together.ai", "together", "TogetherService", "parlant.adapters.nlp.together"
+    )
 
 
 async def create_agent_if_absent(agent_store: AgentStore) -> None:
@@ -502,6 +502,17 @@ async def start_server(params: CLIParams) -> None:
         }[params.log_level],
     )
 
+    LOGGER.info(f"Parlant server version {VERSION}")
+    LOGGER.info(f"Using home directory '{PARLANT_HOME_DIR.absolute()}'")
+
+    if "PARLANT_HOME" not in os.environ and DEFAULT_HOME_DIR == "runtime-data":
+        LOGGER.warning(
+            "'runtime-data' is deprecated as the name of the default PARLANT_HOME directory"
+        )
+        LOGGER.warning(
+            "Please rename 'runtime-data' to 'parlant-data' to avoid this warning in the future."
+        )
+
     async with load_app(params) as app:
         await serve_app(
             app,
@@ -529,13 +540,13 @@ def main() -> None:
     @click.option(
         "--anthropic",
         is_flag=True,
-        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set",
+        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set and install the extra package parlant[anthropic].",
         default=False,
     )
     @click.option(
         "--aws",
         is_flag=True,
-        help="Run with AWS Bedrock. The following environment variables must be set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION",
+        help="Run with AWS Bedrock. The following environment variables must be set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION and install the extra package parlant[aws].",
         default=False,
     )
     @click.option(
@@ -547,25 +558,25 @@ def main() -> None:
     @click.option(
         "--cerebras",
         is_flag=True,
-        help="Run with Cerebras. The environment variable CEREBRAS_API_KEY must be set",
+        help="Run with Cerebras. The environment variable CEREBRAS_API_KEY must be set and install the extra package parlant[cerebras].",
         default=False,
     )
     @click.option(
         "--deepseek",
         is_flag=True,
-        help="Run with DeepSeek. The environment variable DEEPSEEK_API_KEY must be set",
+        help="Run with DeepSeek. You must set the DEEPSEEK_API_KEY environment variable and install the extra package parlant[deepseek].",
         default=False,
     )
     @click.option(
         "--gemini",
         is_flag=True,
-        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set",
+        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set and install the extra package parlant[gemini].",
         default=False,
     )
     @click.option(
         "--together",
         is_flag=True,
-        help="Run with Together AI. The environment variable TOGETHER_API_KEY must be set",
+        help="Run with Together AI. The environment variable TOGETHER_API_KEY must be set and install the extra package parlant[together].",
         default=False,
     )
     @click.option(
