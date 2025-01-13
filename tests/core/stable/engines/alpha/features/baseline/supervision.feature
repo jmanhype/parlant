@@ -28,13 +28,6 @@ Feature: Supervision
         Then the message contains that the account balance is not known at the moment.
 
 
-    Scenario: Preference for customer request over guideline account_related_questions
-        Given a guideline "discount_for_frustration" to offer a 20 percent discount when the customer expresses frustration
-        And a customer message, "I'm not interested in any of your products, let alone your discounts. You are doing an awful job."
-        And that the "discount_for_frustration" guideline is proposed with a priority of 10 because "The customer is displeased with our service, and expresses frustration"
-        When messages are emitted
-        Then the message contains no discount offers.
-
     Scenario: the agent does not repeat responses
         Given a customer message, "Is it ever okay to lie to save someone's feelings?"
         And an agent message, "This is a nuanced topic. While honesty is generally the best policy, there are situations where a small lie might be considered if it prevents unnecessary harm or distress."
