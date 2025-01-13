@@ -61,5 +61,17 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And a single tool calls event is emitted
-        And the tool calls event contains that the card was succesfully unlocked
+        And the tool calls event contains that the card was successfully unlocked
         And the message contains that the card was unlocked
+
+    Scenario: The agent doesnt hallucinate services that it cannot offer 2
+        Given an agent whose job is to be a customer success representative for Chase Bank
+        And a guideline to tell them that they need to visit chase.com to book when the customer wants to schedule an appointment with a bank manager
+        And a guideline to ask them to provide the recipient details when if the user wants to schedule a wire transfer
+        And a customer message, "I need to schedule an appointment because I want to do a high amount wire transfer"
+        And an agent message, "To schedule an appointment for your wire transfer, please visit chase.com. Additionally, could you provide the recipient's details so I can assist you further?"
+        And a customer message, "No, I don't want to do it here"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains that the user or customer should schedule an appointment at chase bank's website
+
