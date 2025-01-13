@@ -138,12 +138,23 @@ class MessageEventGenerator:
                 return []
 
             self._logger.debug(
-                f"""Guidelines applied: {json.dumps([{
-                    "condition": p.guideline.content.condition,
-                    "action": p.guideline.content.action,
-                    "rationale": p.rationale,
-                    "score": p.score}
-                for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}"""
+                f"""Guidelines applied: {
+                    json.dumps(
+                        [
+                            {
+                                "condition": p.guideline.content.condition,
+                                "action": p.guideline.content.action,
+                                "rationale": p.rationale,
+                                "score": p.score,
+                            }
+                            for p in chain(
+                                ordinary_guideline_propositions,
+                                tool_enabled_guideline_propositions.keys(),
+                            )
+                        ],
+                        indent=2,
+                    )
+                }"""
             )
 
             prompt = self._format_prompt(
@@ -737,9 +748,7 @@ example_3_expected = MessageEventSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content=(
-                "I'm sorry, but I'm having trouble accessing our menu at the moment. " "Can I "
-            ),
+            content=("I'm sorry, but I'm having trouble accessing our menu at the moment. Can I "),
             instructions_followed=[
                 "#2; Do not state factual information that you do not know or are not sure about"
             ],
@@ -762,6 +771,221 @@ example_3_shot = MessageEventGeneratorShot(
 
 
 example_4_expected = MessageEventSchema(
+    last_message_of_customer="This is not what I was asking for",
+    guidelines=[],
+    context_evaluation=ContextEvaluation(
+        most_recent_customer_inquiries_or_needs="At this point it appears that I do not understand what the customer is asking",
+    ),
+    insights=["I should not keep repeating myself as it makes me sound robotic"],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="I should not keep repeating myself as it makes me sound robotic",
+            evaluation="If I keep repeating myself in asking for clarifications, it makes me sound robotic and unempathetic as if I'm not really tuned into the customer's vibe",
+            data_available="None needed",
+        )
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content="I apologize for the confusion. Could you please explain what I'm missing?",
+            instructions_followed=[],
+            instructions_broken=[
+                "#1; I've already apologized and asked for clarifications, and I shouldn't repeat myself"
+            ],
+            is_repeat_message=True,
+            followed_all_instructions=False,
+        ),
+        Revision(
+            revision_number=2,
+            content="I see. What am I missing?",
+            instructions_followed=[],
+            instructions_broken=[
+                "#1; Asking what I'm missing is still asking for clarifications, and I shouldn't repeat myself"
+            ],
+            is_repeat_message=True,
+            followed_all_instructions=False,
+        ),
+        Revision(
+            revision_number=3,
+            content=(
+                "It seems like I'm failing to assist you with your issue. "
+                "Let me know if there's anything else I can do for you."
+            ),
+            instructions_followed=[
+                "#1; I broke of out of the self-repeating loop by admitting that I can't seem to help"
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        ),
+    ],
+)
+
+example_4_shot = MessageEventGeneratorShot(
+    description="Avoiding repetitive responses—in this case, given that the previous response by the agent was 'I am sorry, could you please clarify your request?'",
+    expected_result=example_4_expected,
+)
+
+
+example_5_expected = MessageEventSchema(
+    last_message_of_customer=(
+        "How much money do I have in my account, and how do you know it? Is there some service you use to check "
+        "my balance? Can I access it too?"
+    ),
+    guidelines=["When you need the balance of a customer, then use the 'check_balance' tool."],
+    context_evaluation=ContextEvaluation(
+        most_recent_customer_inquiries_or_needs="Know how much money they have in their account; Knowing how and what I use to know how much money they have",
+        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="I know how much money they have based on a tool call's result",
+        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=True,
+        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=False,
+        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="Telling them how much is in their account",
+        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I should not expose my internal process, despite their request",
+    ),
+    insights=["Never reveal details about the process you followed to produce your response"],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="use the 'check_balance' tool",
+            evaluation="There's already a staged tool call with this tool, so no further action is required.",
+            data_available="Yes, I know that the customer's balance is 1,000$",
+        ),
+        InstructionEvaluation(
+            number=1,
+            instruction="Never reveal details about the process you followed to produce your response",
+            evaluation="The reply must not reveal details about how I know the client's balance",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide "
+                "accurate information. However, I’m unable to disclose details about the specific services I use. "
+                "Is there anything else I can assist you with?"
+            ),
+            instructions_followed=[
+                "#1; use the 'check_balance' tool",
+                "#2; Never reveal details about the process you followed to produce your response",
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        )
+    ],
+)
+
+example_5_shot = MessageEventGeneratorShot(
+    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
+    expected_result=example_5_expected,
+)
+
+
+example_6_expected = MessageEventSchema(
+    last_message_of_customer=(
+        "Alright I have the documents ready, how can I send them to you guys?"
+    ),
+    guidelines=[],
+    insights=[],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT",
+            evaluation="I must not output any contact information, since it was not provided within this prompt.",
+            data_available="Contact info is not available",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Thank you for reaching out! To ensure your documents are handled securely, please follow these steps:"
+                "Email your documents to publicengagement@whitehouse.gov."
+                "If your materials are sensitive or require encryption, let us know so we can provide additional instructions."
+            ),
+            instructions_followed=[],
+            instructions_broken=["#1; ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                "Thank you for reaching out! Unfortunately I don’t have the specific contact information for the Department of Public Engagement. I’d suggest checking online or reaching out to your local representative—they should be able to help!"
+            ),
+            instructions_followed=[
+                "#1; ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_due_to_missing_data=False,
+            instructions_broken_only_due_to_prioritization=False,
+        ),
+    ],
+)
+
+example_6_shot = MessageEventGeneratorShot(
+    description="Not providing information outside of what's provided in the prompt: Assume the agent works for the white house's office of public engagement. Assume no contact information was given as part of the prompt.",
+    expected_result=example_6_expected,
+)
+
+example_7_expected = MessageEventSchema(
+    last_message_of_customer=("Hey, how can I contact customer support?"),
+    guidelines=[],
+    context_evaluation=ContextEvaluation(
+        most_recent_customer_inquiries_or_needs="The customer wants to know how to contact customer support",
+        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="The system has given me no information on contacting customer support",
+        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="None in this case; I'm not authorized to offer help beyond my configured capabilities",
+        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I cannot help with contacting customer support",
+        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=False,
+        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=True,
+    ),
+    insights=["When I cannot help with a topic, I should tell the customer I can't help with it"],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When I cannot help with a topic, I should tell the customer I can't help with it",
+            evaluation="Indeed, no information on contacting customer support is provided in my context",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "Could you please provide more details on what you would need from customer support? Maybe I could help you."
+            ),
+            instructions_followed=[],
+            instructions_broken=[
+                "#1; Instead of saying I can't help, I asked for more details from the customer",
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                "Unfortunately I cannot help you with this topic as I do not have enough information on it. Is there anything else I can assist you with?"
+            ),
+            instructions_followed=[
+                "#1; I adhered to the instruction by clearly stating that I cannot help with this topic",
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+        ),
+    ],
+)
+
+example_7_shot = MessageEventGeneratorShot(
+    description="An insight is derived and followed on not offering to help with something you don't know about",
+    expected_result=example_7_expected,
+)
+
+
+example_8_expected = MessageEventSchema(
     last_message_of_customer="I don't have any android devices, and I do not want to buy a ticket at the moment. Now, what flights are there from New York to Los Angeles tomorrow?",
     guidelines=[
         "When asked anything about plane tickets, suggest completing the order on our android app",
@@ -836,233 +1060,20 @@ example_4_expected = MessageEventSchema(
     ],
 )
 
-example_4_shot = MessageEventGeneratorShot(
-    description="Applying Insight—assuming the agent is provided with a list of outgoing flights from a tool call",
-    expected_result=example_4_expected,
-)
-
-
-example_5_expected = MessageEventSchema(
-    last_message_of_customer="This is not what I was asking for",
-    guidelines=[],
-    context_evaluation=ContextEvaluation(
-        most_recent_customer_inquiries_or_needs="At this point it appears that I do not understand what the customer is asking",
-    ),
-    insights=["I should not keep repeating myself as it makes me sound robotic"],
-    evaluation_for_each_instruction=[
-        InstructionEvaluation(
-            number=1,
-            instruction="I should not keep repeating myself as it makes me sound robotic",
-            evaluation="If I keep repeating myself in asking for clarifications, it makes me sound robotic and unempathetic as if I'm not really tuned into the customer's vibe",
-            data_available="None needed",
-        )
-    ],
-    revisions=[
-        Revision(
-            revision_number=1,
-            content="I apologize for the confusion. Could you please explain what I'm missing?",
-            instructions_followed=[],
-            instructions_broken=[
-                "#1; I've already apologized and asked for clarifications, and I shouldn't repeat myself"
-            ],
-            is_repeat_message=True,
-            followed_all_instructions=False,
-        ),
-        Revision(
-            revision_number=2,
-            content="I see. What am I missing?",
-            instructions_followed=[],
-            instructions_broken=[
-                "#1; Asking what I'm missing is still asking for clarifications, and I shouldn't repeat myself"
-            ],
-            is_repeat_message=True,
-            followed_all_instructions=False,
-        ),
-        Revision(
-            revision_number=3,
-            content=(
-                "It seems like I'm failing to assist you with your issue. "
-                "Let me know if there's anything else I can do for you."
-            ),
-            instructions_followed=[
-                "#1; I broke of out of the self-repeating loop by admitting that I can't seem to help"
-            ],
-            instructions_broken=[],
-            is_repeat_message=False,
-            followed_all_instructions=True,
-        ),
-    ],
-)
-
-example_5_shot = MessageEventGeneratorShot(
-    description="Avoiding repetitive responses—in this case, given that the previous response by the agent was 'I am sorry, could you please clarify your request?'",
-    expected_result=example_5_expected,
-)
-
-
-example_6_expected = MessageEventSchema(
-    last_message_of_customer=(
-        "How much money do I have in my account, and how do you know it? Is there some service you use to check "
-        "my balance? Can I access it too?"
-    ),
-    guidelines=["When you need the balance of a customer, then use the 'check_balance' tool."],
-    context_evaluation=ContextEvaluation(
-        most_recent_customer_inquiries_or_needs="Know how much money they have in their account; Knowing how and what I use to know how much money they have",
-        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="I know how much money they have based on a tool call's result",
-        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=True,
-        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=False,
-        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="Telling them how much is in their account",
-        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I should not expose my internal process, despite their request",
-    ),
-    insights=["Never reveal details about the process you followed to produce your response"],
-    evaluation_for_each_instruction=[
-        InstructionEvaluation(
-            number=1,
-            instruction="use the 'check_balance' tool",
-            evaluation="There's already a staged tool call with this tool, so no further action is required.",
-            data_available="Yes, I know that the customer's balance is 1,000$",
-        ),
-        InstructionEvaluation(
-            number=1,
-            instruction="Never reveal details about the process you followed to produce your response",
-            evaluation="The reply must not reveal details about how I know the client's balance",
-            data_available="Not needed",
-        ),
-    ],
-    revisions=[
-        Revision(
-            revision_number=1,
-            content=(
-                "Your balance is $1,000. As a helpful assistant, I have the resources necessary to provide "
-                "accurate information. However, I’m unable to disclose details about the specific services I use. "
-                "Is there anything else I can assist you with?"
-            ),
-            instructions_followed=[
-                "use the 'check_balance' tool",
-                "Never reveal details about the process you followed to produce your response",
-            ],
-            instructions_broken=[],
-            is_repeat_message=False,
-            followed_all_instructions=True,
-        )
-    ],
-)
-
-example_6_shot = MessageEventGeneratorShot(
-    description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
-    expected_result=example_6_expected,
-)
-
-
-example_7_expected = MessageEventSchema(
-    last_message_of_customer=(
-        "Alright I have the documents ready, how can I send them to you guys?"
-    ),
-    guidelines=[],
-    insights=[],
-    evaluation_for_each_instruction=[
-        InstructionEvaluation(
-            number=1,
-            instruction="ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT",
-            evaluation="I must not output any contact information, since it was not provided within this prompt.",
-            data_available="Contact info is not available",
-        ),
-    ],
-    revisions=[
-        Revision(
-            revision_number=1,
-            content=(
-                "Thank you for reaching out! To ensure your documents are handled securely, please follow these steps:"
-                "Email your documents to publicengagement@whitehouse.gov."
-                "If your materials are sensitive or require encryption, let us know so we can provide additional instructions."
-            ),
-            instructions_followed=[],
-            instructions_broken=["ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
-            is_repeat_message=False,
-            followed_all_instructions=False,
-        ),
-        Revision(
-            revision_number=2,
-            content=(
-                "Thank you for reaching out! Unfortunately I don’t have the specific contact information for the Department of Public Engagement. I’d suggest checking online or reaching out to your local representative—they should be able to help!"
-            ),
-            instructions_followed=["ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
-            instructions_broken=[],
-            is_repeat_message=False,
-            followed_all_instructions=False,
-            instructions_broken_due_to_missing_data=False,
-            instructions_broken_only_due_to_prioritization=False,
-        ),
-    ],
-)
-
-example_7_shot = MessageEventGeneratorShot(
-    description="Not providing information outside of what's provided in the prompt: Assume the agent works for the white house's office of public engagement. Assume no contact information was given as part of the prompt.",
-    expected_result=example_6_expected,
-)
-
-example_8_expected = MessageEventSchema(
-    last_message_of_customer=("Hey, how can I contact customer support?"),
-    guidelines=[],
-    context_evaluation=ContextEvaluation(
-        most_recent_customer_inquiries_or_needs="The customer wants to know how to contact customer support",
-        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="The system has given me no information on contacting customer support",
-        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="None in this case; I'm not authorized to offer help beyond my configured capabilities",
-        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I cannot help with contacting customer support",
-        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=False,
-        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=True,
-    ),
-    insights=["When I cannot help with a topic, I should tell the customer I can't help with it"],
-    evaluation_for_each_instruction=[
-        InstructionEvaluation(
-            number=1,
-            instruction="When I cannot help with a topic, I should tell the customer I can't help with it",
-            evaluation="Indeed, no information on contacting customer support is provided in my context",
-            data_available="Not needed",
-        ),
-    ],
-    revisions=[
-        Revision(
-            revision_number=1,
-            content=(
-                "Could you please provide more details on what you would need from customer support? Maybe I could help you."
-            ),
-            instructions_followed=[],
-            instructions_broken=[
-                "#1; Instead of saying I can't help, I asked for more details from the customer",
-            ],
-            is_repeat_message=False,
-            followed_all_instructions=False,
-        ),
-        Revision(
-            revision_number=2,
-            content=(
-                "Unfortunately I cannot help you with this topic as I do not have enough information on it. Is there anything else I can assist you with?"
-            ),
-            instructions_followed=[
-                "#1; I adhered to the instruction by clearly stating that I cannot help with this topic",
-            ],
-            instructions_broken=[],
-            is_repeat_message=False,
-            followed_all_instructions=True,
-        ),
-    ],
-)
-
 example_8_shot = MessageEventGeneratorShot(
-    description="An insight is derived and followed on not offering to help with something you don't know about",
-    expected_result=example_7_expected,
+    description="Applying Insight—assuming the agent is provided with a list of outgoing flights from a tool call",
+    expected_result=example_8_expected,
 )
 
 _baseline_shots: Sequence[MessageEventGeneratorShot] = [
     example_1_shot,
     example_2_shot,
     example_3_shot,
+    example_4_shot,
     example_5_shot,
     example_6_shot,
     example_7_shot,
     example_8_shot,
-    example_4_shot,
 ]
 
 shot_collection = ShotCollection[MessageEventGeneratorShot](_baseline_shots)
