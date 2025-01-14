@@ -2,6 +2,28 @@
 
 All notable changes to Parlant will be documented here.
 
+### Added
+- **CLI Logging Commands:**
+  - Added a log command group to the CLI, allowing users to view logs in real-time with optional filters.
+  - Support for filtering logs by specific components:
+    - `--guideline-proposer` (`-g`)
+    - `--tool-caller` (`-t`)
+    - `--message-event-generator` (`-m`)
+  - Added support for additional pattern matching on log messages.
+  - Example CLI commands:
+    - **Streaming all logs:**
+      ```bash
+      parlant log
+      ```
+    - **Filter logs by component:**
+      ```bash
+      parlant log --guideline-proposer
+      ```
+
+    - **Add a pattern filter:**
+      ```bash
+      parlant log --tool-caller [ToolResult]
+
 ## [Unreleased]
 - Add shot creation helper functions under Shot
 - Fix mistake in coherence checker few shots
