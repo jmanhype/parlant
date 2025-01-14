@@ -240,8 +240,8 @@ def then_the_message_contains(
 
     assert context.sync_await(
         nlp_test(
-            context=f"Here's a message in the context of a conversation: {message}",
-            condition=f"the text contains {something}",
+            context=f"Here's a message from an AI agent to a customer, in the context of a conversation: {message}",
+            condition=f"The message contains {something}",
         )
     ), f"message: '{message}', expected to contain: '{something}'"
 
@@ -257,8 +257,8 @@ def then_the_message_mentions(
 
     assert context.sync_await(
         nlp_test(
-            context=f"Here's a message in the context of a conversation: {message}",
-            condition=f"the text mentions {something}",
+            context=f"Here's a message from an AI agent to a customer, in the context of a conversation: {message}",
+            condition=f"The message mentions {something}",
         )
     ), f"message: '{message}', expected to contain: '{something}'"
 
