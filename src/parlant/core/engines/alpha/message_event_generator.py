@@ -138,8 +138,7 @@ class MessageEventGenerator:
                 return []
 
             self._logger.debug(
-<<<<<<< HEAD
-                f"""Guidelines applied: {
+                f"""[MessageEventGenerator] Guidelines applied: {
                     json.dumps(
                         [
                             {
@@ -156,14 +155,6 @@ class MessageEventGenerator:
                         indent=2,
                     )
                 }"""
-=======
-                f"""[MessageEventGenerator] Guidelines applied: {json.dumps([{
-                    "condition": p.guideline.content.condition,
-                    "action": p.guideline.content.action,
-                    "rationale": p.rationale,
-                    "score": p.score}
-                for p in  chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions.keys())], indent=2)}"""
->>>>>>> a3660ffc (Add [MessageEventGenerator] to logs in messge_event_generator)
             )
 
             prompt = self._format_prompt(
@@ -177,8 +168,6 @@ class MessageEventGenerator:
                 staged_events=staged_events,
                 shots=await self.shots(),
             )
-
-            self._logger.debug(f"[MessageEventGenerator][Prompt]:\n{prompt}")
 
             last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
 
@@ -199,6 +188,8 @@ class MessageEventGenerator:
 
             last_generation_exception: Exception | None = None
 
+            self._logger.debug(f"[MessageEventGenerator][Prompt] \n{prompt}")
+
             for generation_attempt in range(3):
                 try:
                     generation_info, response_message = await self._generate_response_message(
@@ -209,7 +200,9 @@ class MessageEventGenerator:
                     )
 
                     if response_message is not None:
-                        self._logger.debug(f'[MessageEventGenerator][Result]: "{response_message}"')
+                        self._logger.debug(
+                            f'[MessageEventGenerator][GeneratedMessage] "{response_message}"'
+                        )
 
                         event = await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,
@@ -530,6 +523,9 @@ Produce a valid JSON object in the following format: ###
             hints={"temperature": temperature},
         )
 
+        log_message = json.dumps(message_event_response.content.model_dump(mode="json"), indent=2)
+        self._logger.debug(f"[MessageEventGenerator][Completion] \n{log_message}")
+
         if not message_event_response.content.produced_reply:
             self._logger.debug(
                 f"[MessageEventGenerator] produced no reply: {message_event_response}"
@@ -538,12 +534,12 @@ Produce a valid JSON object in the following format: ###
 
         if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
-                "[MessageEventGenerator][Evaluations]: "
+                "[MessageEventGenerator][Evaluations] "
                 f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
-            "[MessageEventGenerator][Revisions]: "
+            "[MessageEventGenerator][Revisions] "
             f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
 

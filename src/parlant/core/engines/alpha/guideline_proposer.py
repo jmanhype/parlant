@@ -222,14 +222,19 @@ class GuidelineProposer:
         with self._logger.operation(
             f"[GuidelineProposer] Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
         ):
-            propositions_generation_response = await self._schematic_generator.generate(
+            self._logger.debug(f"[GuidelineProposer][Prompt] {prompt}")
+
+            inference = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
             )
 
+            log_message = json.dumps(inference.content.model_dump(mode="json"), indent=2)
+            self._logger.debug(f"[GuidelineProposer][Completion] {log_message}")
+
         propositions = []
 
-        for proposition in propositions_generation_response.content.checks:
+        for proposition in inference.content.checks:
             guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
@@ -258,7 +263,7 @@ class GuidelineProposer:
                     )
                 )
 
-        return propositions_generation_response.info, propositions
+        return inference.info, propositions
 
     async def shots(self) -> Sequence[GuidelinePropositionShot]:
         return await shot_collection.list()

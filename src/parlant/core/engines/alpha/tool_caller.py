@@ -548,7 +548,7 @@ Guidelines:
         self,
         prompt: str,
     ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
-        self._logger.debug(f"[ToolCaller][Prompt]: {prompt}")
+        self._logger.debug(f"[ToolCaller][Prompt] \n{prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
@@ -556,8 +556,7 @@ Guidelines:
         )
 
         log_message = json.dumps(inference.content.model_dump(mode="json"), indent=2)
-
-        self._logger.debug(f"[ToolCaller][RequestResults]: {log_message}")
+        self._logger.debug(f"[ToolCaller][Completion] \n{log_message}")
 
         return inference.info, inference.content.tool_calls_for_candidate_tool
 
@@ -569,7 +568,12 @@ Guidelines:
     ) -> ToolCallResult:
         try:
             self._logger.debug(
-                f"[ToolCaller] Tool call executing: {tool_call.tool_id.to_string()}/{tool_call.id}"
+                f"[ToolCaller][ToolCall] {tool_call.tool_id.to_string()}/{tool_call.id}, "
+                + (
+                    f"arguments=\n{json.dumps(tool_call.arguments, indent=2)}"
+                    if tool_call.arguments
+                    else ""
+                )
             )
             service = await self._service_registry.read_tool_service(tool_id.service_name)
             result = await service.call_tool(
@@ -578,7 +582,7 @@ Guidelines:
                 tool_call.arguments,
             )
             self._logger.debug(
-                f"[ToolCaller][ToolResult]: {tool_call.tool_id.to_string()}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
+                f"[ToolCaller][ToolResult] {tool_call.tool_id.to_string()}/{tool_call.id}\n{json.dumps(asdict(result), indent=2)}"
             )
 
             return ToolCallResult(
@@ -592,8 +596,9 @@ Guidelines:
             )
         except Exception as e:
             self._logger.error(
-                f"[ToolCaller] Tool execution error (tool='{tool_call.tool_id.to_string()}', "
-                f"arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
+                f"[ToolCaller][ExecutionError] (tool='{tool_call.tool_id.to_string()}', "
+                f"arguments=\n{json.dumps(tool_call.arguments, indent=2)}"
+                + "\n".join(traceback.format_exception(e)),
             )
 
             return ToolCallResult(
