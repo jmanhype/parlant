@@ -1038,7 +1038,83 @@ example_8_shot = FluidMessageGeneratorShot(
     expected_result=example_8_expected,
 )
 
-_baseline_shots: Sequence[FluidMessageGeneratorShot] = [
+example_9_expected = MessageEventSchema(  # TODO use or delete
+    last_message_of_customer="",
+    guidelines=[],
+    context_evaluation=ContextEvaluation(
+        most_recent_customer_inquiries_or_needs="Gotcha. I'm looking to book something for me and my family for around either the 4th of July or Thanksgiving. When would it normally be cheaper?",
+        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="I replied earlier that the best deals are available in Summer",
+        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=True,
+        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=True,
+        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="I know which season tends to have the best deal from a previous message - summer",
+        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I do not know if there are better deals for the 4th of July or for Thanksgiving",
+    ),
+    insights=[
+        "In your generated reply to the customer, use markdown format when applicable.",
+        "The customer does not have an android device and does not want to buy anything",
+    ],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="When asked anything about plane tickets, suggest completing the order on our android app",
+            evaluation="I should suggest completing the order on our android app",
+            data_available="Yes, I know that the name of our android app is BestPlaneTickets",
+        ),
+        InstructionEvaluation(
+            number=2,
+            instruction="When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+            evaluation="Evaluating whether the 'when' condition applied is not my role. I should therefore just mention that shorter flights do not offer a complementary meal",
+            data_available="not needed",
+        ),
+        InstructionEvaluation(
+            number=3,
+            instruction="In your generated reply to the customer, use markdown format when applicable",
+            evaluation="I need to output a message in markdown format",
+            data_available="Not needed",
+        ),
+        InstructionEvaluation(
+            number=4,
+            instruction="The customer does not have an android device and does not want to buy anything",
+            evaluation="A guideline should not override a customer's request, so I should not suggest products requiring an android device",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                """
+                | Option | Departure Airport | Departure Time | Arrival Airport   |
+                |--------|-------------------|----------------|-------------------|
+                | 1      | Newark (EWR)      | 10:00 AM       | Los Angeles (LAX) |
+                | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |
+                While this flights are quite long, please note that we do not offer complementary meals on short flights."""
+            ),
+            instructions_followed=[
+                "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
+                "#3; In your generated reply to the customer, use markdown format when applicable.",
+                "#4; The customer does not have an android device and does not want to buy anything",
+            ],
+            instructions_broken=[
+                "#1; When asked anything about plane tickets, suggest completing the order on our android app."
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_only_due_to_prioritization=True,
+            prioritization_rationale=(
+                "Instructions #1 and #3 contradict each other, and customer requests take precedent "
+                "over guidelines, so instruction #1 was prioritized."
+            ),
+            instructions_broken_due_to_missing_data=False,
+        )
+    ],
+)
+
+example_9_shot = MessageEventGeneratorShot(
+    description="Referring to older answers and not providing information which does not originate from the business. Assume the agent works for a hotel booking company, that the last message from the agent to the customer was 'the best deals are usually available in summer'",
+    expected_result=example_9_expected,
+)
+_baseline_shots: Sequence[MessageEventGeneratorShot] = [
     example_1_shot,
     example_2_shot,
     example_3_shot,
