@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import ExitStack, contextmanager
 from enum import Enum, auto
 import logging
 from pathlib import Path
@@ -282,18 +282,7 @@ class CompositeLogger(Logger):
     @override
     @contextmanager
     def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
-        contexts = [logger.operation(name, props) for logger in self._loggers]
-        with CompositeLogger._nested_contexts(contexts):
+        with ExitStack() as stack:
+            for context in [logger.operation(name, props) for logger in self._loggers]:
+                stack.enter_context(context)
             yield
-
-    @staticmethod
-    @contextmanager
-    def _nested_contexts(contexts: Sequence[AbstractContextManager[Any]]) -> Iterator[None]:
-        exits = []
-        try:
-            for context in contexts:
-                exits.append(context.__enter__())
-            yield
-        finally:
-            for context in reversed(contexts):
-                context.__exit__(None, None, None)
