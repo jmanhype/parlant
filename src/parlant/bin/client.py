@@ -16,6 +16,7 @@
 
 import asyncio
 import os
+from urllib.parse import urlparse
 import click
 import click.shell_completion
 import click_completion  # type: ignore
@@ -849,9 +850,10 @@ class Actions:
 
     @staticmethod
     def stream_logs(ctx: click.Context, filters: list[str]) -> Iterator[dict[str, Any]]:
+        context = zmq.Context.instance()
+        sub_socket = context.socket(zmq.SUB)
+
         try:
-            context = zmq.Context.instance()
-            sub_socket = context.socket(zmq.SUB)
             sub_socket.connect(f"{ctx.obj.log_server_address}")
 
             sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
@@ -859,12 +861,9 @@ class Actions:
             rich.print(Text("Streaming logs...", style="bold yellow"))
 
             while True:
-                try:
-                    message = cast(dict[str, Any], sub_socket.recv_json(flags=zmq.NOBLOCK))
-                    if Actions._log_matches_filters(message, filters):
-                        yield message
-                except zmq.Again:
-                    time.sleep(0.01)
+                message = cast(dict[str, Any], sub_socket.recv_json())
+                if Actions._log_matches_filters(message, filters):
+                    yield message
         except KeyboardInterrupt:
             rich.print(Text("Log streaming interrupted by user.", style="bold red"))
         finally:
@@ -2024,7 +2023,7 @@ async def async_main() -> None:
         client: ParlantClient
         log_server_address: str
 
-    @click.group
+    @click.group()
     @click.option(
         "-s",
         "--server",
@@ -2034,15 +2033,20 @@ async def async_main() -> None:
         default="http://localhost:8800",
     )
     @click.option(
-        "--log-server-address",
-        type=str,
-        help="Server address",
-        metavar="ADDRESS[:LOG_PORT]",
-        default="tcp://localhost:8799",
+        "--log-port",
+        type=int,
+        help="Port for the log server",
+        metavar="LOG_PORT",
+        default=8799,
     )
     @click.pass_context
-    def cli(ctx: click.Context, server: str, log_server_address: str) -> None:
+    def cli(ctx: click.Context, server: str, log_port: int) -> None:
         if not ctx.obj:
+            server_url = urlparse(server)
+            server_host = server_url.hostname or "localhost"
+
+            log_server_address = f"tcp://{server_host}:{log_port}"
+
             ctx.obj = Config(
                 server_address=server,
                 client=ParlantClient(base_url=server),
