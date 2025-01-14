@@ -19,10 +19,13 @@ All notable changes to Parlant will be documented here.
       ```bash
       parlant log --guideline-proposer
       ```
-
     - **Add a pattern filter:**
       ```bash
       parlant log --tool-caller [ToolResult]
+      ```
+- **Log Port Configuration:**
+  - The log server port can now be configured using the `PARLANT_LOG_PORT` environment variable.
+
 
 ## [Unreleased]
 - Add shot creation helper functions under Shot
