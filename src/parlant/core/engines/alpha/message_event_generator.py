@@ -1087,8 +1087,8 @@ example_9_expected = MessageEventSchema(  # TODO use or delete
         what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I do not know if there are better deals for the 4th of July or for Thanksgiving",
     ),
     insights=[
-        "Prefer repeating or referring to earlier answers you provided, rather than coming up with a new response..",
-        "The customer does not have an android device and does not want to buy anything",
+        "Prefer repeating or referring to earlier answers you provided, rather than coming up with a new response.",
+        "An earlier reply dictates that ",
     ],
     evaluation_for_each_instruction=[
         InstructionEvaluation(
