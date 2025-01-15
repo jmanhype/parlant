@@ -523,23 +523,22 @@ Produce a valid JSON object in the following format: ###
             hints={"temperature": temperature},
         )
 
-        log_message = json.dumps(message_event_response.content.model_dump(mode="json"), indent=2)
-        self._logger.debug(f"[MessageEventGenerator][Completion] \n{log_message}")
+        self._logger.debug(
+            f"[MessageEventGenerator][Completion]\n{message_event_response.content.model_dump_json(indent=2)}"
+        )
 
         if not message_event_response.content.produced_reply:
-            self._logger.debug(
-                f"[MessageEventGenerator] produced no reply: {message_event_response}"
-            )
+            self._logger.debug("[MessageEventGenerator] Produced no reply")
             return message_event_response.info, None
 
         if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
-                "[MessageEventGenerator][Evaluations] "
+                "[MessageEventGenerator][Evaluations]\n"
                 f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
-            "[MessageEventGenerator][Revisions] "
+            "[MessageEventGenerator][Revisions]\n"
             f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
 
