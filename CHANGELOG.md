@@ -16,6 +16,7 @@ All notable changes to Parlant will be documented here.
 - Add a log command under client CLI for streaming logs
 - Modified ToolCaller shot schema
 - Fix ToolCaller making up argument values when it doesn't have them
+- Allow only specifying guideline condition or action when updating guideline from CLI
 
 
 ## [1.5.1] - 2025-01-05
