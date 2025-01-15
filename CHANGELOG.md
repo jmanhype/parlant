@@ -6,22 +6,34 @@ All notable changes to Parlant will be documented here.
 - **CLI Logging Commands:**
   - Added a log command group to the CLI, allowing users to view logs in real-time with optional filters.
   - Support for filtering logs by specific components:
-    - `--guideline-proposer` (`-g`)
-    - `--tool-caller` (`-t`)
-    - `--message-event-generator` (`-m`)
-  - Added support for additional pattern matching on log messages.
-  - Example CLI commands:
-    - **Streaming all logs:**
+    - `--guideline-proposer` (`-g`) to filter logs by `[GuidelineProposer]`.
+    - `--tool-caller` (`-t`) to filter logs by `[ToolCaller]`.
+    - `--message-event-generator` (`-m`) to filter logs by `[MessageEventGenerator]`.
+  - Added support for combining patterns:
+    - **Intersection Patterns (`--and`, `-a`)**:
+      - Specify patterns to intersect with. Multiple patterns can be added by repeating the option.
+      - Example: 
+        ```bash
+        parlant log --and pattern1 --and pattern2
+        ```
+    - **Union Patterns (`--or`, `-o`)**:
+      - Specify patterns to union by. Multiple patterns can be added by repeating the option.
+      - Example:
+        ```bash
+        parlant log --or pattern1 --or pattern2
+        ```
+  - Example usage:
+    - Stream all logs:
       ```bash
       parlant log
       ```
-    - **Filter logs by component:**
+    - Filter logs by `[GuidelineProposer]`:
       ```bash
       parlant log --guideline-proposer
       ```
-    - **Add a pattern filter:**
+    - Combine filters with patterns:
       ```bash
-      parlant log --tool-caller [ToolResult]
+      parlant log -g -a pattern1 -o pattern2
       ```
 - **Log Port Configuration:**
   - The log server port can now be configured using the `PARLANT_LOG_PORT` environment variable.
