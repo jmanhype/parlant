@@ -14,15 +14,17 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from enum import Enum, auto
 import logging
 from pathlib import Path
 import structlog
 import time
 import traceback
-from typing import Any, Iterator
-from typing_extensions import override
+from typing import Any, Iterator, Optional, Sequence
+from typing_extensions import override, Self
+import zmq
+import zmq.asyncio
 
 from parlant.core.contextual_correlator import ContextualCorrelator
 
@@ -179,3 +181,108 @@ class FileLogger(CorrelationalLogger):
 
         for handler in handlers:
             self.raw_logger.addHandler(handler)
+
+
+class ZMQLogger(CorrelationalLogger):
+    def __init__(
+        self,
+        correlator: ContextualCorrelator,
+        log_level: LogLevel = LogLevel.DEBUG,
+        logger_id: Optional[str] = None,
+        port: int = 8799,
+    ) -> None:
+        super().__init__(correlator, log_level, logger_id)
+
+        self._context: zmq.asyncio.Context
+        self._socket: zmq.asyncio.Socket
+        self._port = port
+
+    async def __aenter__(self) -> Self:
+        self._context = zmq.asyncio.Context.instance()
+        self._socket = self._context.socket(zmq.PUB)
+        self._socket.bind(f"tcp://*:{self._port}")
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[object],
+    ) -> bool:
+        self._socket.close()
+        return False
+
+    def _publish_message(self, level: str, message: str) -> None:
+        self._socket.send_json(
+            {
+                "level": level,
+                "correlation_id": self._correlator.correlation_id,
+                "message": message,
+            }
+        )
+
+    @override
+    def debug(self, message: str) -> None:
+        self._publish_message("DEBUG", message)
+
+    @override
+    def info(self, message: str) -> None:
+        self._publish_message("INFO", message)
+
+    @override
+    def warning(self, message: str) -> None:
+        self._publish_message("WARNING", message)
+
+    @override
+    def error(self, message: str) -> None:
+        self._publish_message("ERROR", message)
+
+    @override
+    def critical(self, message: str) -> None:
+        self._publish_message("CRITICAL", message)
+
+
+class CompositeLogger(Logger):
+    def __init__(self, loggers: Sequence[Logger]) -> None:
+        self._loggers = list(loggers)
+
+    def append(self, logger: Logger) -> None:
+        self._loggers.append(logger)
+
+    @override
+    def set_level(self, log_level: LogLevel) -> None:
+        for logger in self._loggers:
+            logger.set_level(log_level)
+
+    @override
+    def debug(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.debug(message)
+
+    @override
+    def info(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.info(message)
+
+    @override
+    def warning(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.warning(message)
+
+    @override
+    def error(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.error(message)
+
+    @override
+    def critical(self, message: str) -> None:
+        for logger in self._loggers:
+            logger.critical(message)
+
+    @override
+    @contextmanager
+    def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
+        with ExitStack() as stack:
+            for context in [logger.operation(name, props) for logger in self._loggers]:
+                stack.enter_context(context)
+            yield

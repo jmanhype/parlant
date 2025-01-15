@@ -146,7 +146,7 @@ class ToolCaller:
 
         t_start = time.time()
 
-        with self._logger.operation(f"Tool classification processed in {len(batches)} batches)"):
+        with self._logger.operation(f"[ToolCaller] Tool evaluation ({len(batches)} batches)"):
             batch_tasks = [
                 self._infer_calls_for_single_tool(
                     agents=agents,
@@ -203,7 +203,7 @@ class ToolCaller:
 
         tool_id, _, _ = candidate_descriptor
 
-        with self._logger.operation(f"Tool classification for tool_id '{tool_id}'"):
+        with self._logger.operation(f"[ToolCaller] Evaluating '{tool_id}'"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
         return generation_info, [
@@ -221,7 +221,7 @@ class ToolCaller:
         context: ToolContext,
         tool_calls: Sequence[ToolCall],
     ) -> Sequence[ToolCallResult]:
-        with self._logger.operation("Tool calls"):
+        with self._logger.operation("[ToolCaller] Executing tool calls"):
             tool_results = await async_utils.safe_gather(
                 *(
                     self._run_tool(
@@ -546,16 +546,16 @@ Guidelines:
         self,
         prompt: str,
     ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
-        self._logger.debug(f"Tool call inference prompt: {prompt}")
+        self._logger.debug(f"[ToolCaller][Inference][Prompt] \n{prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": 0.0},
         )
 
-        log_message = json.dumps(inference.content.model_dump(mode="json"), indent=2)
-
-        self._logger.debug(f"Tool call request results: {log_message}")
+        self._logger.debug(
+            f"[ToolCaller][Inference][Completion]\n{inference.content.model_dump_json(indent=2)}"
+        )
 
         return inference.info, inference.content.tool_calls_for_candidate_tool
 
@@ -567,7 +567,12 @@ Guidelines:
     ) -> ToolCallResult:
         try:
             self._logger.debug(
-                f"Tool call executing: {tool_call.tool_id.to_string()}/{tool_call.id}"
+                f"[ToolCaller][Execution] {tool_call.tool_id.to_string()}/{tool_call.id}, "
+                + (
+                    f"arguments=\n{json.dumps(tool_call.arguments, indent=2)}"
+                    if tool_call.arguments
+                    else ""
+                )
             )
             service = await self._service_registry.read_tool_service(tool_id.service_name)
             result = await service.call_tool(
@@ -576,7 +581,7 @@ Guidelines:
                 tool_call.arguments,
             )
             self._logger.debug(
-                f"Tool call returned: {tool_call.tool_id.to_string()}/{tool_call.id}: {json.dumps(asdict(result), indent=2)}"
+                f"[ToolCaller][Execution] {tool_call.tool_id.to_string()}/{tool_call.id}\n{json.dumps(asdict(result), indent=2)}"
             )
 
             return ToolCallResult(
@@ -590,8 +595,9 @@ Guidelines:
             )
         except Exception as e:
             self._logger.error(
-                f"Tool execution error (tool='{tool_call.tool_id.to_string()}', "
-                f"arguments={tool_call.arguments}): " + "\n".join(traceback.format_exception(e)),
+                f"[ToolCaller][Execution] Error while calling tool (tool='{tool_call.tool_id.to_string()}', "
+                f"arguments=\n{json.dumps(tool_call.arguments, indent=2)}"
+                + "\n".join(traceback.format_exception(e)),
             )
 
             return ToolCallResult(

@@ -105,7 +105,7 @@ from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from parlant.core.logging import FileLogger, LogLevel, Logger
+from parlant.core.logging import CompositeLogger, FileLogger, ZMQLogger, LogLevel, Logger
 from parlant.core.application import Application
 from parlant.core.version import VERSION
 
@@ -126,7 +126,10 @@ sys.path.append(PARLANT_HOME_DIR.as_posix())
 sys.path.append(".")
 
 CORRELATOR = ContextualCorrelator()
+
+PARLANT_LOG_PORT = int(os.environ.get("PARLANT_LOG_PORT", "8799"))
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", CORRELATOR, LogLevel.INFO)
+
 BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
 
@@ -251,7 +254,14 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
     c = Container()
 
     c[ContextualCorrelator] = CORRELATOR
-    c[Logger] = LOGGER
+    c[Logger] = CompositeLogger(
+        [
+            LOGGER,
+            await EXIT_STACK.enter_async_context(
+                ZMQLogger(CORRELATOR, LogLevel.INFO, port=PARLANT_LOG_PORT)
+            ),
+        ]
+    )
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")

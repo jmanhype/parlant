@@ -121,7 +121,7 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(
-            f"Guideline proposal ({len(guidelines)} guidelines processed in {len(batches)} batches)"
+            f"[GuidelineProposer] Evaluating {len(guidelines)} guidelines ({len(batches)} batches)"
         ):
             batch_tasks = [
                 self._process_guideline_batch(
@@ -220,21 +220,32 @@ class GuidelineProposer:
         )
 
         with self._logger.operation(
-            f"Guideline evaluation batch ({len(guidelines_dict)} guidelines)"
+            f"[GuidelineProposer] Evaluating batch ({len(guidelines_dict)} guidelines)"
         ):
-            propositions_generation_response = await self._schematic_generator.generate(
+            self._logger.debug(f"[GuidelineProposer][Prompt] {prompt}")
+
+            inference = await self._schematic_generator.generate(
                 prompt=prompt,
                 hints={"temperature": 0.3},
             )
 
+            self._logger.debug(
+                f"[GuidelineProposer][Completion] {inference.content.model_dump_json(indent=2)}"
+            )
+
         propositions = []
 
-        for proposition in propositions_generation_response.content.checks:
+        for proposition in inference.content.checks:
             guideline = guidelines_dict[int(proposition.guideline_number)]
 
             self._logger.debug(
-                f'Guideline evaluation for "when {guideline.content.condition} then {guideline.content.action}":\n'  # noqa
-                f'  Score: {proposition.applies_score}/10; Condition rationale: "{proposition.condition_application_rationale}"; Continuous: {proposition.guideline_is_continuous} ; Previously applied: "{proposition.guideline_previously_applied}"; Should reapply: {proposition.guideline_should_reapply};Re-application rationale: "{proposition.guideline_previously_applied_rationale}"'
+                f'[GuidelineProposer][Evaluation] "When {guideline.content.condition}; Then {guideline.content.action}":\n'
+                f"  Score: {proposition.applies_score}/10\n"
+                f'  ConditionRationale: "{proposition.condition_application_rationale}"\n'
+                f"  IsContinuous: {proposition.guideline_is_continuous}\n"
+                f'  PreviouslyApplied: "{proposition.guideline_previously_applied}"\n'
+                f"  ShouldReapply: {proposition.guideline_should_reapply}\n"
+                f'  ReapplicationRationale: "{proposition.guideline_previously_applied_rationale}"'
             )
 
             if (proposition.applies_score >= 6) and (
@@ -258,7 +269,7 @@ class GuidelineProposer:
                     )
                 )
 
-        return propositions_generation_response.info, propositions
+        return inference.info, propositions
 
     async def shots(self) -> Sequence[GuidelinePropositionShot]:
         return await shot_collection.list()

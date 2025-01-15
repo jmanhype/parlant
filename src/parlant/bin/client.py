@@ -16,6 +16,7 @@
 
 import asyncio
 import os
+from urllib.parse import urlparse
 import click
 import click.shell_completion
 import click_completion  # type: ignore
@@ -29,7 +30,7 @@ from rich.table import Table
 from rich.text import Text
 import sys
 import time
-from typing import Any, Optional, cast
+from typing import Any, Iterator, Optional, cast
 
 from parlant.client import ParlantClient
 from parlant.client.core import ApiError
@@ -62,6 +63,7 @@ from parlant.client.types import (
     Tag,
     ConsumptionOffsetsUpdateParams,
 )
+import zmq
 
 INDENT = "  "
 
@@ -845,6 +847,50 @@ class Actions:
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
         client.tags.delete(tag_id=tag_id)
+
+    @staticmethod
+    def stream_logs(
+        ctx: click.Context,
+        union_patterns: list[str],
+        intersection_patterns: list[str],
+    ) -> Iterator[dict[str, Any]]:
+        context = zmq.Context.instance()
+        sub_socket = context.socket(zmq.SUB)
+
+        try:
+            sub_socket.connect(f"{ctx.obj.log_server_address}")
+
+            sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+
+            rich.print(Text("Streaming logs...", style="bold yellow"))
+
+            while True:
+                message = cast(dict[str, Any], sub_socket.recv_json())
+                if Actions._log_entry_matches(message, union_patterns, intersection_patterns):
+                    yield message
+        except KeyboardInterrupt:
+            rich.print(Text("Log streaming interrupted by user.", style="bold red"))
+        finally:
+            sub_socket.close()
+
+    @staticmethod
+    def _log_entry_matches(
+        log_entry: dict[str, Any], union_patterns: list[str], intersection_patterns: list[str]
+    ) -> bool:
+        message = log_entry.get("message", "")
+
+        if not union_patterns and not intersection_patterns:
+            return True
+
+        if not union_patterns:
+            return all(p in message for p in intersection_patterns)
+
+        if not intersection_patterns:
+            return any(p in message for p in union_patterns)
+
+        return any(p in message for p in union_patterns) and all(
+            p in message for p in intersection_patterns
+        )
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -1966,6 +2012,21 @@ class Interface:
             Interface.write_error(f"Error: {type(e).__name__}: {e}")
             set_exit_status(1)
 
+    @staticmethod
+    def stream_logs(
+        ctx: click.Context,
+        union_patterns: list[str],
+        intersection_patterns: list[str],
+    ) -> None:
+        try:
+            for log in Actions.stream_logs(ctx, union_patterns, intersection_patterns):
+                level = log.get("level", "")
+                message = log.get("message", "")
+                correlation_id = log.get("correlation_id", "")
+                rich.print(f"[{level}] [{correlation_id}] {message}")
+        except Exception as e:
+            Interface.write_error(f"Error while streaming logs: {e}")
+
 
 async def async_main() -> None:
     click_completion.init()  # type: ignore
@@ -1974,8 +2035,9 @@ async def async_main() -> None:
     class Config:
         server_address: str
         client: ParlantClient
+        log_server_address: str
 
-    @click.group
+    @click.group()
     @click.option(
         "-s",
         "--server",
@@ -1984,10 +2046,26 @@ async def async_main() -> None:
         metavar="ADDRESS[:PORT]",
         default="http://localhost:8800",
     )
+    @click.option(
+        "--log-port",
+        type=int,
+        help="Port for the log server",
+        metavar="LOG_PORT",
+        default=8799,
+    )
     @click.pass_context
-    def cli(ctx: click.Context, server: str) -> None:
+    def cli(ctx: click.Context, server: str, log_port: int) -> None:
         if not ctx.obj:
-            ctx.obj = Config(server_address=server, client=ParlantClient(base_url=server))
+            server_url = urlparse(server)
+            server_host = server_url.hostname or "localhost"
+
+            log_server_address = f"tcp://{server_host}:{log_port}"
+
+            ctx.obj = Config(
+                server_address=server,
+                client=ParlantClient(base_url=server),
+                log_server_address=log_server_address,
+            )
 
     @cli.command(help="Generate shell completion code")
     @click.option("-s", "--shell", type=str, help="Shell program (bash, zsh, etc.)", required=True)
@@ -3037,6 +3115,58 @@ async def async_main() -> None:
     @click.pass_context
     def tag_delete(ctx: click.Context, id: str) -> None:
         Interface.delete_tag(ctx, id)
+
+    @cli.command(
+        "log",
+        help="Stream server logs",
+    )
+    @click.option(
+        "--guideline-proposer", "-g", is_flag=True, help="Filter logs by [GuidelineProposer]"
+    )
+    @click.option("--tool-caller", "-t", is_flag=True, help="Filter logs by [ToolCaller]")
+    @click.option(
+        "--message-event-generator",
+        "-m",
+        is_flag=True,
+        help="Filter logs by [MessageEventGenerator]",
+    )
+    @click.option(
+        "-a",
+        "--and",
+        "intersection_patterns",
+        multiple=True,
+        default=[],
+        metavar="PATTERN",
+        help="Patterns to intersect with. May be specified multiple times.",
+    )
+    @click.option(
+        "-o",
+        "--or",
+        "union_patterns",
+        multiple=True,
+        default=[],
+        metavar="PATTERN",
+        help="Patterns to union by. May be specified multiple times.",
+    )
+    @click.pass_context
+    def log_view(
+        ctx: click.Context,
+        guideline_proposer: bool,
+        tool_caller: bool,
+        message_event_generator: bool,
+        intersection_patterns: tuple[str],
+        union_patterns: tuple[str],
+    ) -> None:
+        union_pattern_list = list(union_patterns)
+
+        if guideline_proposer:
+            union_pattern_list.append("[GuidelineProposer]")
+        if tool_caller:
+            union_pattern_list.append("[ToolCaller]")
+        if message_event_generator:
+            union_pattern_list.append("[MessageEventGenerator]")
+
+        Interface.stream_logs(ctx, union_pattern_list, list(intersection_patterns))
 
     @cli.command(
         "help",
