@@ -30,7 +30,7 @@ from rich.table import Table
 from rich.text import Text
 import sys
 import time
-from typing import Any, Iterator, Optional, Sequence, cast
+from typing import Any, Iterator, Optional, cast
 
 from parlant.client import ParlantClient
 from parlant.client.core import ApiError
@@ -849,7 +849,11 @@ class Actions:
         client.tags.delete(tag_id=tag_id)
 
     @staticmethod
-    def stream_logs(ctx: click.Context, filters: list[str]) -> Iterator[dict[str, Any]]:
+    def stream_logs(
+        ctx: click.Context,
+        union_patterns: list[str],
+        intersection_patterns: list[str],
+    ) -> Iterator[dict[str, Any]]:
         context = zmq.Context.instance()
         sub_socket = context.socket(zmq.SUB)
 
@@ -862,7 +866,7 @@ class Actions:
 
             while True:
                 message = cast(dict[str, Any], sub_socket.recv_json())
-                if Actions._log_matches_filters(message, filters):
+                if Actions._log_entry_matches(message, union_patterns, intersection_patterns):
                     yield message
         except KeyboardInterrupt:
             rich.print(Text("Log streaming interrupted by user.", style="bold red"))
@@ -870,14 +874,23 @@ class Actions:
             sub_socket.close()
 
     @staticmethod
-    def _log_matches_filters(log_entry: dict[str, Any], filters: list[str]) -> bool:
+    def _log_entry_matches(
+        log_entry: dict[str, Any], union_patterns: list[str], intersection_patterns: list[str]
+    ) -> bool:
         message = log_entry.get("message", "")
-        matches_filters = []
 
-        for filter_item in filters:
-            matches_filters.append(filter_item in message)
+        if not union_patterns and not intersection_patterns:
+            return True
 
-        return any(matches_filters) if matches_filters else True
+        if not union_patterns:
+            return all(p in message for p in intersection_patterns)
+
+        if not intersection_patterns:
+            return any(p in message for p in union_patterns)
+
+        return any(p in message for p in union_patterns) and all(
+            p in message for p in intersection_patterns
+        )
 
 
 def raise_for_status_with_detail(response: requests.Response) -> None:
@@ -2002,10 +2015,11 @@ class Interface:
     @staticmethod
     def stream_logs(
         ctx: click.Context,
-        filters: list[str],
+        union_patterns: list[str],
+        intersection_patterns: list[str],
     ) -> None:
         try:
-            for log in Actions.stream_logs(ctx, filters):
+            for log in Actions.stream_logs(ctx, union_patterns, intersection_patterns):
                 level = log.get("level", "")
                 message = log.get("message", "")
                 correlation_id = log.get("correlation_id", "")
@@ -3104,7 +3118,7 @@ async def async_main() -> None:
 
     @cli.command(
         "log",
-        help="Streaming logs",
+        help="Stream server logs",
     )
     @click.option(
         "--guideline-proposer", "-g", is_flag=True, help="Filter logs by [GuidelineProposer]"
@@ -3116,26 +3130,43 @@ async def async_main() -> None:
         is_flag=True,
         help="Filter logs by [MessageEventGenerator]",
     )
-    @click.argument("patterns", nargs=-1, required=False)
+    @click.option(
+        "-a",
+        "--and",
+        "intersection_patterns",
+        multiple=True,
+        default=[],
+        metavar="PATTERN",
+        help="Patterns to intersect with. May be specified multiple times.",
+    )
+    @click.option(
+        "-o",
+        "--or",
+        "union_patterns",
+        multiple=True,
+        default=[],
+        metavar="PATTERN",
+        help="Patterns to union by. May be specified multiple times.",
+    )
     @click.pass_context
     def log_view(
         ctx: click.Context,
         guideline_proposer: bool,
         tool_caller: bool,
         message_event_generator: bool,
-        patterns: Optional[Sequence[str]],
+        intersection_patterns: tuple[str],
+        union_patterns: tuple[str],
     ) -> None:
-        filters = []
-        if guideline_proposer:
-            filters.append("[GuidelineProposer]")
-        if tool_caller:
-            filters.append("[ToolCaller]")
-        if message_event_generator:
-            filters.append("[MessageEventGenerator]")
-        if patterns:
-            filters.extend(patterns)
+        union_pattern_list = list(union_patterns)
 
-        Interface.stream_logs(ctx, filters)
+        if guideline_proposer:
+            union_pattern_list.append("[GuidelineProposer]")
+        if tool_caller:
+            union_pattern_list.append("[ToolCaller]")
+        if message_event_generator:
+            union_pattern_list.append("[MessageEventGenerator]")
+
+        Interface.stream_logs(ctx, union_pattern_list, list(intersection_patterns))
 
     @cli.command(
         "help",
