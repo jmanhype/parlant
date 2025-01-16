@@ -2476,7 +2476,9 @@ async def async_main() -> None:
         check: bool,
         connect: bool,
     ) -> None:
-        assert condition or action
+        if not (condition or action):
+            Interface.write_error("At least one of --condition or --action must be specified")
+            raise FastExit()
 
         agent_id = agent_id if agent_id else Interface.get_default_agent(ctx)
         assert agent_id
