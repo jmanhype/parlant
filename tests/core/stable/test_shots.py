@@ -118,6 +118,7 @@ async def test_that_appended_shot_is_displayed_in_message_generator_shots(
         expected_result=MessageEventSchema(
             last_message_of_customer="This is a very cool feature, man!",
             guidelines=[],
+            style_guidelines=[],
             insights=[],
             evaluation_for_each_instruction=[],
             revisions=[
