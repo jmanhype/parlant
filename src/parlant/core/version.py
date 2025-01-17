@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-VERSION = "1.6.0-rc.2"
+VERSION = "1.6.0-rc.3"
