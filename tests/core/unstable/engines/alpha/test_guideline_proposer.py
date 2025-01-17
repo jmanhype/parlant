@@ -186,6 +186,10 @@ GUIDELINES_DICT = {
         "condition": "the customer is thanking you for the second time in the interaction",
         "action": "compliment the customer for their manners",
     },
+    "pay_cc_bill": {
+        "condition": "the customer wants to pay their credit card bill",
+        "action": "determine which card and how much they want to pay",
+    },
 }
 
 
@@ -588,4 +592,28 @@ def test_that_guidelines_based_on_context_variables_arent_proposed_repetitively(
         conversation_guideline_names,
         [],
         context_variables=context_variables,
+    )
+
+
+def test_that_guidelines_are_not_considered_done_when_they_strictly_arent(
+    context: ContextOfTest,
+    agent: Agent,
+    customer: Customer,
+) -> None:
+    conversation_context: list[tuple[str, str]] = [
+        ("ai_agent", "Hey there, how can I help you?"),
+        ("customer", "I'd like to pay my credit card bill"),
+        ("ai_agent", "Sure thing. For which card, and how much would you like to pay right now?"),
+        ("customer", "For my amex please"),
+    ]
+
+    conversation_guideline_names: list[str] = ["pay_cc_bill"]
+
+    base_test_that_correct_guidelines_are_proposed(
+        context,
+        agent,
+        customer,
+        conversation_context,
+        conversation_guideline_names,
+        ["pay_cc_bill"],
     )

@@ -19,7 +19,7 @@ from itertools import chain
 import json
 import math
 import time
-from typing import Optional, Sequence, cast
+from typing import Literal, Optional, Sequence, cast
 
 from parlant.core import async_utils
 from parlant.core.agents import Agent
@@ -47,8 +47,10 @@ class GuidelinePropositionSchema(DefaultBaseModel):
     condition_applies: bool
     action: Optional[str] = ""
     guideline_is_continuous: Optional[bool] = False
-    guideline_previously_applied_rationale: Optional[str] = ""
+    capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls: bool = True
+    guideline_previously_applied_rationale: Optional[dict[str, str]] = {}
     guideline_previously_applied: Optional[str] = "no"
+    is_missing_part_cosmetic_or_functional: Optional[Literal["cosmetic", "functional"]] = None
     guideline_should_reapply: Optional[bool] = False
     applies_score: int
 
@@ -226,7 +228,7 @@ class GuidelineProposer:
 
             inference = await self._schematic_generator.generate(
                 prompt=prompt,
-                hints={"temperature": 0.3},
+                hints={"temperature": 0.15},
             )
 
             self._logger.debug(
@@ -262,8 +264,11 @@ class GuidelineProposer:
                         score=proposition.applies_score,
                         condition_application_rationale=proposition.condition_application_rationale,
                         guideline_previously_applied=proposition.guideline_previously_applied or "",
-                        guideline_previously_applied_rationale=proposition.guideline_previously_applied_rationale
-                        or "",
+                        guideline_previously_applied_rationale="; ".join(
+                            proposition.guideline_previously_applied_rationale.values()
+                        )
+                        if proposition.guideline_previously_applied_rationale
+                        else "",
                         guideline_should_reapply=proposition.guideline_should_reapply or False,
                         guideline_is_continuous=proposition.guideline_is_continuous or False,
                     )
@@ -339,8 +344,13 @@ class GuidelineProposer:
                 "condition_applies": "<BOOL>",
                 "action": g.content.action,
                 "guideline_is_continuous": "<BOOL: Optional, only necessary if guideline_previously_applied is true. Specifies whether the action is taken one-time, or is continuous>",
-                "guideline_previously_applied_rationale": "<str, explanation for whether and how this guideline was previously applied. Optional, necessary only if the condition applied>",
+                "capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls": True,
+                "guideline_previously_applied_rationale": {
+                    "<action_segment_1>": "<explanation of whether this action segment was already applied; to avoid pitfalls, try to use the exact same words here as the action segment to determine this. use CAPITALS to highlight the same words in the segment as in your explanation>",
+                    "<action_segment_N>": "<explanation...>",
+                },
                 "guideline_previously_applied": "<str: either 'no', 'partially' or 'fully' depanding on whether and to what degree the action was previously preformed>",
+                "is_missing_part_cosmetic_or_functional": "<str: only included if guideline_previously_applied is 'partially'. Value is either 'cosmetic' or 'functional' depending on the nature of the missing segment.",
                 "guideline_should_reapply": "<BOOL: Optional, only necessary if guideline_previously_applied is not 'no'>",
                 "applies_score": "<Relevance score of the guideline between 1 and 10. A higher score indicates that the guideline should be active>",
             }
@@ -370,14 +380,14 @@ Each guideline is composed of two parts:
 
 Task Description
 ----------------
-Your task is to evaluate the relevance and applicability of a set of provided 'when' conditions to the most recent state of an interaction between yourself (an AI assistant) and a user.
+Your task is to evaluate the relevance and applicability of a set of provided 'when' conditions to the most recent state of an interaction between yourself (an AI agent) and a user.
 These conditions, along with the interaction details, will be provided later in this message.
 For each condition that is met, determine whether its corresponding action should be taken by the agent or if it has already been addressed previously.
 
 
 Process Description
 -------------------
-a. Examine Interaction Events: Review the provided interaction events to discern the most recent state of the interaction between the user and the assistant.
+a. Examine Interaction Events: Review the provided interaction events to discern the most recent state of the interaction between the user and the agent.
 b. Evaluate Conditions: Assess the entire interaction to determine whether each condition is still relevant and directly fulfilled based on the most recent interaction state.
 c. Check for Prior Action: Determine whether the condition has already been addressed, i.e., whether it applied in an earlier state and its corresponding action has already been performed.
 d. Guideline Application: A guideline should be applied only if:
@@ -509,7 +519,10 @@ example_1_expected = GuidelinePropositionsSchema(
             condition_applies=True,
             condition_application_rationale="The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
             action="Refer the customer to our privacy policy page",
-            guideline_previously_applied_rationale="This is the first time data security has been mentioned, and the user has not been referred to the privacy policy page yet",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "REFER the customer to our privacy policy page": "This is the first time data security has been mentioned, and the user has not been REFERRED (i.e. directed) to the privacy policy page yet"
+            },
             guideline_previously_applied="no",
             guideline_is_continuous=False,
             guideline_should_reapply=False,
@@ -521,8 +534,13 @@ example_1_expected = GuidelinePropositionsSchema(
             condition_applies=True,
             condition_application_rationale="The customer recently asked to subscribe to the pro plan. The conversation is beginning to drift elsewhere, but still deals with the pro plan",
             action="maintain a helpful tone and thank them for shopping at our store",
-            guideline_previously_applied_rationale="a helpful tone was maintained, but the agent didn't thank the customer for shopping at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "MAINTAIN a helpful tone": "a helpful tone was MAINTAINED (i.e. held up)",
+                "THANK them for shopping at our store": "the agent didn't THANK (i.e. say 'thank you') the customer for shopping at our store, making the guideline partially fulfilled. By this, it should be treated as if it was fully followed",
+            },
             guideline_previously_applied="partially",
+            is_missing_part_cosmetic_or_functional="cosmetic",
             guideline_is_continuous=False,
             guideline_should_reapply=False,
             applies_score=6,
@@ -569,7 +587,10 @@ example_2_expected = GuidelinePropositionsSchema(
             condition_applies=True,
             action="ask the customer for their location",
             guideline_is_continuous=False,
-            guideline_previously_applied_rationale="The assistant asked for the customer's location earlier in the interaction. There is no need to ask for it again, as it is already known.",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "ASK the customer for their location": "The agent ASKED for the customer's location earlier in the interaction. There is no need to ASK for it again, as it is already known."
+            },
             guideline_previously_applied="fully",
             guideline_should_reapply=False,
             applies_score=3,
@@ -579,10 +600,15 @@ example_2_expected = GuidelinePropositionsSchema(
             condition="the customer asks about job openings.",
             condition_applies=True,
             condition_application_rationale="the customer asked about job openings, and the discussion still revolves around this request",
-            action="emphasize that we have plenty of positions relevant to the customer, and over 10,000 opennings overall",
+            action="emphasize that we have plenty of positions relevant to the customer, and over 10,000 openings overall",
             guideline_is_continuous=False,
-            guideline_previously_applied_rationale="The assistant already has emphasized that we have open positions, but neglected to mention that we offer 10k opennings overall. The guideline partially applies and should be treated as if it was fully applied. However, since the customer is narrowing down their search, this point should be re-emphasized to clarify that it still holds true.",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "EMPHASIZE we have plenty of relevant positions": "The agent already has EMPHASIZED (i.e. clearly stressed) that we have open positions",
+                "EMPHASIZE we have over 10,000 openings overall": "The agent neglected to EMPHASIZE (i.e. clearly stressed) that we offer 10k opennings overall. The means the guideline partially applies and should be treated as if it was fully applied. However, since the customer is narrowing down their search, this point should be EMPHASIZED again to clarify that it still holds true.",
+            },
             guideline_previously_applied="partially",
+            is_missing_part_cosmetic_or_functional="functional",
             guideline_should_reapply=True,
             applies_score=7,
         ),
@@ -593,7 +619,10 @@ example_2_expected = GuidelinePropositionsSchema(
             condition_application_rationale="the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
             action="maintain a positive, assuring tone",
             guideline_is_continuous=True,
-            guideline_previously_applied_rationale="The assistant's tone is positive already. This action describes a continuous action, so the guideline should be re-applied.",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "MAINTAIN a positive, assuring tone": "The agent's tone is already MAINTAINED (i.e. held up) as positive. But since this action describes a continuous action, the guideline should be re-applied."
+            },
             guideline_previously_applied="fully",
             guideline_should_reapply=True,
             applies_score=9,
@@ -636,7 +665,10 @@ example_3_expected = GuidelinePropositionsSchema(
             condition_applies=True,
             action="provide the price using the 'check_stock_price' tool",
             guideline_is_continuous=False,
-            guideline_previously_applied_rationale="The assistant previously reported about the price of that stock following the customer's question, but since the price might have changed since then, it should be checked again.",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "PROVIDE the price using the aforementioned tool": "Several messages ago, the agent previously PROVIDED (i.e. gave or reported) the price of that stock following the customer's question, but since the price might have changed since since those several exchanges between the agent and the customer, it should be checked and PROVIDED again."
+            },
             guideline_previously_applied="fully",
             guideline_should_reapply=True,
             applies_score=9,
@@ -653,12 +685,52 @@ example_3_expected = GuidelinePropositionsSchema(
             condition="the customer asked about the weather.",
             condition_application_rationale="The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
             condition_applies=True,
-            action="provide the customre with the temperature and the chances of precipitation",
+            action="provide the customer with the temperature and the chances of precipitation",
             guideline_is_continuous=False,
-            guideline_previously_applied_rationale="The action was partially fulfilled by reporting the temperature without the chances of precipitation. As partially fulfilled guidelines are treated as completed, this guideline is considered applied",
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "PROVIDE the temperature": "The action segment was fulfilled by PROVIDING (i.e. giving or reporting) the temperature",
+                "PROVIDE the changes of precipitation": "The agent did not PROVIDE (i.e. giving or reporting) the chances of precipitation. This means the guideline as a whole was only partially applied.",
+            },
             guideline_previously_applied="partially",
-            guideline_should_reapply=False,
-            applies_score=4,
+            is_missing_part_cosmetic_or_functional="functional",
+            guideline_should_reapply=True,
+            applies_score=6,
+        ),
+    ]
+)
+
+example_4_events = [
+    _make_event("11", "customer", "Hey there, I'd like to book an appointment please"),
+    _make_event("23", "ai_agent", "Hi, sure thing. With whom and at what time?"),
+    _make_event("11", "customer", "Great! With John D. please, thank you."),
+]
+
+example_4_guidelines = [
+    GuidelineContent(
+        condition="the customer wants to book an appointment",
+        action="get the name of the person they want to meet and the time they want to meet them",
+    ),
+]
+
+example_4_expected = GuidelinePropositionsSchema(
+    checks=[
+        GuidelinePropositionSchema(
+            guideline_number=3,
+            condition="the customer wants to book an appointment",
+            condition_application_rationale="The customer has specifically asked to book an appointment",
+            condition_applies=True,
+            action="get the name of the person they want to meet and the time they want to meet them",
+            guideline_is_continuous=False,
+            capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls=True,
+            guideline_previously_applied_rationale={
+                "GET the name of the person they want to meet": "The action segment was fulfilled by GETTING (i.e. clarifying) the person's name",
+                "GET at what time they want to meet": "The agent did not yet GET (i.e clarify) the time of the appointment. This means the guideline as a whole was only partially applied.",
+            },
+            guideline_previously_applied="partially",
+            is_missing_part_cosmetic_or_functional="functional",
+            guideline_should_reapply=True,
+            applies_score=8,
         ),
     ]
 )
@@ -682,6 +754,12 @@ _baseline_shots: Sequence[GuidelinePropositionShot] = [
         interaction_events=example_3_events,
         guidelines=example_3_guidelines,
         expected_result=example_3_expected,
+    ),
+    GuidelinePropositionShot(
+        description="",
+        interaction_events=example_4_events,
+        guidelines=example_4_guidelines,
+        expected_result=example_4_expected,
     ),
 ]
 

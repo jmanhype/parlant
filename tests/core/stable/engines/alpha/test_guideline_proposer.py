@@ -77,7 +77,7 @@ GUIDELINES_DICT = {
     "class_booking": {
         "condition": "the customer asks about booking a class or an appointment",
         "action": "Provide available times and facilitate the booking process, "
-        "ensuring to clarify any necessary details such as class type, date, and requirements.",
+        "ensuring to clarify any necessary details such as class type.",
     },
     "class_cancellation": {
         "condition": "the customer wants to cancel a class or an appointment",
@@ -352,7 +352,7 @@ def test_that_relevant_guidelines_are_proposed_parametrized_2(
         ("customer", "I suppose that could work. What do you suggest?"),
         (
             "ai_agent",
-            "How about our guided meditation session? "
+            "How about our guided meditation session every Tuesday evening at 20:00? "
             "It’s very calming and might be just what you need right now.",
         ),
         ("customer", "Alright, please book me into that. Thank you for understanding."),
