@@ -12,8 +12,9 @@ All notable changes to Parlant will be documented here.
 - Add engine lifecycle hooks
 - Split vendor dependencies to extra packages to avoid reduce installation time
 - Fix wrong import of RateLimitError
-- Reduce likelihood of agent offering hallucinated services
+- Reduced likelihood of agent offering hallucinated services
 - Add a log command under client CLI for streaming logs
+- Modified ToolCaller shot schema
 - Fix ToolCaller making up argument values when it doesn't have them
 
 
