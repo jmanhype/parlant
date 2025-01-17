@@ -341,6 +341,17 @@ def given_a_tool(
             },
             "required": [],
         },
+        "pay_cc_bill": {
+            "name": "pay_cc_bill",
+            "description": "Pay credit bard bill. Payment date is given in format DD-MM-YYYY",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "payment_date": {
+                    "type": "string",
+                },
+            },
+            "required": ["payment_date"],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

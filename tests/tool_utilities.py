@@ -167,3 +167,8 @@ def try_unlock_card(last_6_digits: Optional[str] = None) -> ToolResult:
         return ToolResult({"success": "card succesfuly unlocked"})
     except BaseException:
         return ToolResult({"failure": "system error"})
+
+
+def pay_cc_bill(payment_date: str) -> ToolResult:
+    _ = payment_date
+    return ToolResult({"result": "success"})
