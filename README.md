@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>Parlant: The Behavior Guidance Framework for Customer-Facing Agents 🧠</h2>
+  <h2>Parlant: The Behavior Guidance Framework for Customer-Facing Agents</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> —
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> —
@@ -23,7 +23,7 @@
 **IMPORTANT NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA) from leading instutions, such as Microsoft, Check Point, and Dynamic Yield. We're looking for more contributors to help get customer-facing agents under control! Please consider joining our Discord server and participating in our development.
 
 ## ✨ What is Parlant?
-**Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
+**Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.** 🧠
 
 **With Parlant, you can not only spin up and serve an LLM agent in minutes—with a full-fledged & responsive conversation management API—but, more importantly, you can continuously guide and improve its decision making and general behavior, easily and reliably.**
 
