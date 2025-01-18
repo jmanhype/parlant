@@ -815,8 +815,8 @@ class AlphaEngine(Engine):
             }
 
             conditions = {
-                UtteranceReason.BUY_TIME: "always",
-                UtteranceReason.FOLLOW_UP: "always",
+                UtteranceReason.BUY_TIME: "-- RIGHT NOW!",
+                UtteranceReason.FOLLOW_UP: "-- RIGHT NOW!",
             }
 
             return GuidelineProposition(
