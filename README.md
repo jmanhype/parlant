@@ -53,10 +53,10 @@ $ # Open the sandbox UI at http://localhost:8800 and play
 ## 🙋‍♂️🙋‍♀️ Who Is Parlant For?
 Parlant is the right tool for the job if you're building an LLM-based chat agent, and:
 
-1. Your use case places a high importance on behavioral precision and consistency, particularly in customer-facing scenarios
-1. Your agent is expected to undergo continuous behavioral refinements and changes, and you need a way to implement those changes efficiently and confidently
-1. You're expected to maintain a large set of behavioral guidelines, and you need to maintain them coherently and with version-tracking
-1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily control the flow and tone of conversations
+1. Your use case places a **high importance on behavioral precision and consistency**, particularly in customer-facing scenarios
+1. Your agent is expected to undergo **continuous behavioral refinements and changes**, and you need a way to implement those changes efficiently and confidently
+1. You're expected to maintain a **large set of behavioral guidelines**, and you need to maintain them coherently and with version-tracking
+1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily **control the flow and tone of conversations**
 
 ## ⭐ Help Us Pick Up Pace!
 [![Star History Chart](https://api.star-history.com/svg?repos=emcie-co/parlant&type=Date)](https://star-history.com/#emcie-co/parlant&Date)
