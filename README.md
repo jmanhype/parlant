@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>Parlant: The Behavior Guidance Framework for Customer-Facing Agents </h2>
+  <h2>🧭 Parlant: The Behavior Guidance Framework for Customer-Facing Agents 🧠</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> —
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> —
@@ -40,7 +40,7 @@ graph TD
 
 When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges. When it's time to generate a message, Parlant implements self-critique mechanisms to ensure that the agent's responses precisely align with your intended behavior as given by the contextually-matched guidelines.
 
-***More technical docs on the architecture and API are available under `docs/`***
+***📚 More technical docs on the architecture and API are available under `docs/`***
 
 ## 📦 Quickstart
 Parlant comes pre-built with responsive session (conversation) management, a detection mechanism for incoherence and contradictions in guidelines, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, native API clients in Python and TypeScript, and other goodies.
@@ -56,19 +56,21 @@ $ # Open the sandbox UI at http://localhost:8800 and play
 ## 🙋‍♂️🙋‍♀️ Who Is Parlant For?
 Parlant is the right tool for the job if you're building an LLM-based chat agent, and:
 
-1. Your use case places a **high importance on behavioral precision and consistency**, particularly in customer-facing scenarios
-1. Your agent is expected to undergo **continuous behavioral refinements and changes**, and you need a way to implement those changes efficiently and confidently
-1. You're expected to maintain a **large set of behavioral guidelines**, and you need to maintain them coherently and with version-tracking
-1. Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily **control the flow and tone of conversations**
+1. 🎯 Your use case places a **high importance on behavioral precision and consistency**, particularly in customer-facing scenarios
+1. 🔄 Your agent is expected to undergo **continuous behavioral refinements and changes**, and you need a way to implement those changes efficiently and confidently
+1. 📈 You're expected to maintain a **growing set of behavioral guidelines**, and you need to maintain them coherently and with version-tracking
+1. 💬 Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily **control the flow and tone of conversations**
 
 ## ⭐ Help Us Pick Up Pace!
 [![Star History Chart](https://api.star-history.com/svg?repos=emcie-co/parlant&type=Date)](https://star-history.com/#emcie-co/parlant&Date)
 
 ## 🤔 What Makes Parlant Different?
 
-In a word: _guidance._ Parlant's engine revolves around solving one key problem: how can we reliably guide customer-facing agents to behave in alignment with our needs and intentions.
+In a word: **_Guidance._** 🧭🚦🤝
 
-Hence Parlant's fundamentally different approach to agent building: [Managed Guidelines](https://www.parlant.io/docs/concepts/customization/guidelines).
+Parlant's engine revolves around solving one key problem: How can we reliably guide customer-facing agents to behave in alignment with our needs and intentions.
+
+Hence Parlant's fundamentally different approach to agent building: [Managed Guidelines](https://www.parlant.io/docs/concepts/customization/guidelines):
 
 ```bash
 $ parlant guideline create \
