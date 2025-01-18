@@ -22,8 +22,8 @@
 
 **IMPORTANT NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA) from leading instutions, such as Microsoft, Check Point, and Dynamic Yield. We're looking for more contributors to help get customer-facing agents under control! Please consider joining our Discord server and participating in our development.
 
-## ✨ What is Parlant?
-**Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.** 🧠
+## ✨ Guided and Reliable Control of AI Agent Decisions 🧠
+**Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
 
 **With Parlant, you can not only spin up and serve an LLM agent in minutes—with a full-fledged & responsive conversation management API—but, more importantly, you can continuously guide and improve its decision making and general behavior, easily and reliably.**
 
