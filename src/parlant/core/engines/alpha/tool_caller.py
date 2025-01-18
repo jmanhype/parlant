@@ -226,7 +226,9 @@ class ToolCaller:
                 else {},
             )
             for tc in inference_output
-            if tc.should_run and tc.applicability_score >= 6
+            if tc.should_run
+            and tc.applicability_score >= 6
+            and not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
         ]
 
     async def execute_tool_calls(
