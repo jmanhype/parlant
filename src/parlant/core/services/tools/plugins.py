@@ -118,7 +118,7 @@ class _ToolDecoratorParams(TypedDict, total=False):
     consequential: bool
 
 
-_ToolParameterType = Union[str, int, float, bool]
+_ToolParameterType = Union[str, int, float, bool, None]
 
 
 class _ResolvedToolParameterTyped(NamedTuple):

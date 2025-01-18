@@ -324,7 +324,7 @@ def validate_tool_arguments(
                 raise ToolExecutionError(
                     tool.name, f"Parameter '{param_name}' has unknown type '{param_type}'"
                 )
-            if type(arg_value) not in expected_types:
+            if arg_value is not None and type(arg_value) not in expected_types:
                 raise ToolExecutionError(
                     tool.name,
                     f"Parameter '{param_name}' must be of type {expected_types}, "

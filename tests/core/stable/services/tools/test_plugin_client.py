@@ -319,6 +319,26 @@ async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
             assert result.data == 8
 
 
+async def test_that_a_plugin_calls_a_tool_with_an_optional_param_and_a_None_arg(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    def my_tool(context: ToolContext, arg_1: int, arg_2: Optional[int] = None) -> ToolResult:
+        if not arg_2:
+            arg_2 = 1
+        return ToolResult(arg_1 * arg_2)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"arg_1": 2, "arg_2": None},
+            )
+            assert result.data == 2
+
+
 async def test_that_a_plugin_calls_a_tool_with_a_union_param(
     tool_context: ToolContext,
     container: Container,

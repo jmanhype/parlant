@@ -18,6 +18,7 @@ All notable changes to Parlant will be documented here.
 - Fix ToolCaller making up argument values when it doesn't have them
 - Improved GuidelineProposer's ability to handle compound actions
 - Improved GuidelineProposer's ability to distinguish between a fulfilled and unfulfilled action
+- Fix PluginServer validation for optional tool arguments when they're passed None
 
 
 ## [1.5.1] - 2025-01-05
