@@ -165,7 +165,7 @@ const { trace } = await client.sessions.inspectEvent(
 ```
 
 ## 👋 Contributing
-We use the Developer Certificate of Origin ([DCO.md](DCO.md)), this attests that you have the rights to submit your contribution under our project's license. We require all commits to be signed off with the DCO. 
+We use the Developer Certificate of Origin ([DCO.md](DCO.md)), this attests that you have the rights to submit your contribution under the Apache 2.0 license. We require all commits to be signed off with the DCO. 
 
 Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for additional details.
 
