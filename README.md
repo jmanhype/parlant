@@ -40,7 +40,7 @@ graph TD
 
 When an agent needs to respond to a customer, Parlant's engine evaluates the situation, checks relevant guidelines, gathers necessary information through your tools, and continuously re-evaluates its approach based on your guidelines as new information emerges. When it's time to generate a message, Parlant implements self-critique mechanisms to ensure that the agent's responses precisely align with your intended behavior as given by the contextually-matched guidelines.
 
-***📚 More technical docs on the architecture and API are available under `docs/`***
+***📚 More technical docs on the architecture and API are available under [docs/](./docs)***.
 
 ## 📦 Quickstart
 Parlant comes pre-built with responsive session (conversation) management, a detection mechanism for incoherence and contradictions in guidelines, content-filtering, jailbreak protection, an integrated sandbox UI for behavioral testing, native API clients in Python and TypeScript, and other goodies.
