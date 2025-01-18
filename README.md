@@ -3,17 +3,17 @@
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
   <h2>Parlant: The Behavior Guidance Framework for Customer-Facing Agents </h2>
   <p>
-    <a href="https://www.parlant.io/" target="_blank">Website</a> |
-    <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> |
-    <a href="https://www.parlant.io/docs/quickstart/installation" target="_blank">Installation</a> |
-    <a href="https://www.parlant.io/docs/tutorial/getting_started/overview" target="_blank">Tutorial</a> |
+    <a href="https://www.parlant.io/" target="_blank">Website</a> —
+    <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> —
+    <a href="https://www.parlant.io/docs/quickstart/installation" target="_blank">Installation</a> —
+    <a href="https://www.parlant.io/docs/tutorial/getting_started/overview" target="_blank">Tutorial</a> —
     <a href="https://www.parlant.io/docs/about" target="_blank">About</a>
   </p>
   <p>
     <a href="https://pypi.org/project/parlant/" alt="Parlant on PyPi"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/parlant"></a>
     <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/parlant">
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Apache 2 License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
-    <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/w/emcie-co/parlant">
+    <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/w/emcie-co/parlant?label=commits">
     <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/parlant">
     <a href="https://discord.gg/duxWqxKk6J"><img alt="Discord" src="https://img.shields.io/discord/1312378700993663007?style=flat&logo=discord&logoColor=white&label=discord">
 </a>
