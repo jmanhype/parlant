@@ -97,7 +97,7 @@ Feature: Conversation
 
     Scenario: The agent uses the freshest data when multiple sources are available
         Given an agent whose job is to be a customer success representative for Chase Bank
-        And a guideline "list_products" to recommend products using the tool get_products_by_type when the customer asks for a certain type of product 
+        And a guideline "list_products" to always check product prices using the tool get_products_by_type before replying when always 
         And the tool "get_products_by_type"
         And an association between "list_products" and "get_products_by_type"
         And a customer message, "i am interested in a product which is Monitor"
