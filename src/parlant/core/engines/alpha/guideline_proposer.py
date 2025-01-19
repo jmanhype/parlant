@@ -143,7 +143,7 @@ class GuidelineProposer:
                 *(await async_utils.safe_gather(*batch_tasks))
             )
 
-        propositions_batches: list[list[GuidelineProposition]] = []
+        proposition_batches: list[list[GuidelineProposition]] = []
 
         for batch in cast(
             tuple[list[ConditionApplicabilityEvaluation]], condition_evaluations_batches
@@ -162,7 +162,7 @@ class GuidelineProposer:
                         should_reapply=evaluation.guideline_should_reapply,
                     )
                 )
-            propositions_batches.append(guideline_propositions)
+            proposition_batches.append(guideline_propositions)
 
         t_end = time.time()
 
@@ -178,7 +178,7 @@ class GuidelineProposer:
                 "guideline_is_continuous": p.guideline_is_continuous,
                 "should_reapply": p.should_reapply,
             }
-            for p in chain.from_iterable(propositions_batches)
+            for p in chain.from_iterable(proposition_batches)
         ]
 
         self._logger.debug(
@@ -189,7 +189,7 @@ class GuidelineProposer:
             total_duration=t_end - t_start,
             batch_count=len(batches),
             batch_generations=list(cast(tuple[GenerationInfo], batch_generations)),
-            batches=propositions_batches,
+            batches=proposition_batches,
         )
 
     def _get_optimal_batch_size(self, guidelines: dict[int, Guideline]) -> int:
