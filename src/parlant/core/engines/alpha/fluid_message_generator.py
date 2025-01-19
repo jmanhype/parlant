@@ -1060,7 +1060,7 @@ example_8_shot = FluidMessageGeneratorShot(
     expected_result=example_8_expected,
 )
 
-example_9_expected = MessageEventSchema(  # TODO use or delete
+example_9_expected = MessageEventSchema(
     last_message_of_customer="Gotcha. I'm looking to book something for me and my family for around either the 4th of July or Thanksgiving. When would it normally be cheaper?",
     guidelines=[],
     context_evaluation=ContextEvaluation(

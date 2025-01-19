@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import enum
+from enum import Enum
+import json
 from typing import Optional
 
 from parlant.core.tools import ToolResult
@@ -37,6 +39,16 @@ class Categories(enum.Enum):
     LIGHTING = "Lighting"
     NETWORKING = "Networking"
     LAPTOP = "Laptop"
+
+
+class ElectronicProductType(Enum):
+    MONITOR = "Monitor"
+    KEYBOARD = "Keyboard"
+    MOUSE = "Mouse"
+    HEADSET = "Headset"
+    AUDIO = "Audio"
+    LAPTOP = "Laptop"
+    OTHER = "Other"
 
 
 def get_available_drinks() -> ToolResult:
@@ -176,3 +188,13 @@ def try_unlock_card(last_6_digits: Optional[str] = None) -> ToolResult:
 def pay_cc_bill(payment_date: str) -> ToolResult:
     _ = payment_date
     return ToolResult({"result": "success"})
+
+
+async def get_electronic_products_by_type(
+    product_type: ElectronicProductType,
+) -> ToolResult:
+    """Get all products that match the specified product type"""
+    with open("tests/data/get_products_by_type_data.json", "r") as f:
+        database = json.load(f)
+    products = [item for item in database if item["type"] == product_type.value]
+    return ToolResult({"available_products": products})
