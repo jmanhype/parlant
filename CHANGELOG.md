@@ -3,26 +3,35 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
+TBD
+
+## [1.6.0] - 2025-01-19
+
+### Added
 - Add shot creation helper functions under Shot
 - Add ContextEvaluation in MessageEventGenerator
 - Add a log command under client CLI for streaming logs
 - Add engine lifecycle hooks
+
+### Changed
 - Split vendor dependencies to extra packages to avoid reduce installation time
 - Modified ToolCaller shot schema
 - Disable coherence and connection checking by default in the CLI for now
-- Fix mistake in coherence checker few shots
-- Fix markdown tables in sandbox UI
-- Fix ToolCaller false-negative argument validation from int to float
-- Fix ToolCaller accuracy
-- Fix wrong import of RateLimitError
-- Reduced likelihood of agent offering hallucinated services
-- Fix ToolCaller making up argument values when it doesn't have them
+
+### Fixed
 - Improved GuidelineProposer's ability to handle compound actions
 - Improved GuidelineProposer's ability to distinguish between a fulfilled and unfulfilled action
-- Fix PluginServer validation for optional tool arguments when they're passed None
-- Fix some cases where the ToolCaller also calls a less-fitting tool
-- Fix utterances sometimes not producing a message
 - Improved GuidelineProposer's ability to detect a previously applied guideline's application to new information
+- Reduced likelihood of agent offering hallucinated services
+- Fix ToolCaller false-negative argument validation from int to float
+- Fix ToolCaller accuracy
+- Fix ToolCaller making up argument values when it doesn't have them
+- Fix some cases where the ToolCaller also calls a less-fitting tool
+- Fix mistake in coherence checker few shots
+- Fix markdown tables in sandbox UI
+- Fix wrong import of RateLimitError
+- Fix PluginServer validation for optional tool arguments when they're passed None
+- Fix utterances sometimes not producing a message
 
 
 ## [1.5.1] - 2025-01-05
