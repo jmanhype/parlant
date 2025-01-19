@@ -250,7 +250,7 @@ async def load_modules(
 
 
 @asynccontextmanager
-async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
+async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterator[Container]:
     c = Container()
 
     c[ContextualCorrelator] = CORRELATOR
@@ -261,6 +261,15 @@ async def setup_container(nlp_service_name: str) -> AsyncIterator[Container]:
                 ZMQLogger(CORRELATOR, LogLevel.INFO, port=PARLANT_LOG_PORT)
             ),
         ]
+    )
+    c[Logger].set_level(
+        {
+            "info": LogLevel.INFO,
+            "debug": LogLevel.DEBUG,
+            "warning": LogLevel.WARNING,
+            "error": LogLevel.ERROR,
+            "critical": LogLevel.CRITICAL,
+        }[log_level],
     )
 
     agents_db = await EXIT_STACK.enter_async_context(
@@ -445,7 +454,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
 
     EXIT_STACK = AsyncExitStack()
 
-    async with setup_container(params.nlp_service) as container, EXIT_STACK:
+    async with setup_container(params.nlp_service, params.log_level) as container, EXIT_STACK:
         modules = set(await get_module_list_from_config() + params.modules)
 
         if modules:
