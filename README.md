@@ -168,9 +168,9 @@ const { trace } = await client.sessions.inspectEvent(
 ```
 
 ## 👋 Contributing
-We use the Developer Certificate of Origin ([DCO.md](DCO.md)), this attests that you have the rights to submit your contribution under the Apache 2.0 license. We require all commits to be signed off with the DCO. 
+We use the Linux-standard Developer Certificate of Origin ([DCO.md](DCO.md)), so that, by contributing, you confirm that you have the rights to submit your contribution under the Apache 2.0 license (i.e., the code you're contributing is truly yours to share with the project).
 
-Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for additional details.
+Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 Can't wait to get involved? Join us on [Discord](https://discord.gg/duxWqxKk6J) and let's discuss how you can help shape Parlant. We're excited to work with contributors directly while we set up our formal processes!
 
