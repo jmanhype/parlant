@@ -341,6 +341,17 @@ def given_a_tool(
             },
             "required": [],
         },
+        "find_answer": {
+            "name": "find_answer",
+            "description": "Get an answer to a question",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "inquiry": {
+                    "type": "string",
+                },
+            },
+            "required": ["inquiry"],
+        },
         "pay_cc_bill": {
             "name": "pay_cc_bill",
             "description": "Pay credit bard bill. Payment date is given in format DD-MM-YYYY",

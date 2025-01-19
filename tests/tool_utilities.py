@@ -156,6 +156,10 @@ def consult_policy() -> ToolResult:
     return ToolResult(policies)
 
 
+def find_answer(inquiry: str) -> ToolResult:
+    return ToolResult(f"The answer to '{inquiry}' is — you guessed it — 42")
+
+
 def other_inquiries() -> ToolResult:
     return ToolResult("Sorry, we could not find a specific answer to your query.")
 

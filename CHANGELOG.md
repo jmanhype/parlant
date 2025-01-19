@@ -9,6 +9,7 @@ All notable changes to Parlant will be documented here.
 - Add engine lifecycle hooks
 - Split vendor dependencies to extra packages to avoid reduce installation time
 - Modified ToolCaller shot schema
+- Disable coherence and connection checking by default in the CLI for now
 - Fix mistake in coherence checker few shots
 - Fix markdown tables in sandbox UI
 - Fix ToolCaller false-negative argument validation from int to float
@@ -21,7 +22,7 @@ All notable changes to Parlant will be documented here.
 - Fix PluginServer validation for optional tool arguments when they're passed None
 - Fix some cases where the ToolCaller also calls a less-fitting tool
 - Fix utterances sometimes not producing a message
-- Disable coherence and connection checking by default in the CLI for now
+- Improved GuidelineProposer's ability to detect a previously applied guideline's application to new information
 
 
 ## [1.5.1] - 2025-01-05
