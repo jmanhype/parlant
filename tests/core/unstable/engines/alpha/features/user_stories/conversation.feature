@@ -90,7 +90,22 @@ Feature: Conversation
         And a customer message, "How many times do I have to tell? The recipient is Vishal Ahuja and their account number is 123456, what part do you not understand?"
         And an agent message, "I understand this has been frustrating, and I’m here to help. The recipient details you provided—Vishal Ahuja and account number 123456—have been noted. However, the system still cannot locate the recipient. Could you confirm if the account is at another bank or if there are additional details, such as the bank's name or branch code, that could help us complete the transfer?"
         And a customer message, "No, Vishal Ahuja has a Chase account with account number 123456"
+        When processing is triggered
         Then a single message event is emitted
         And the message contains no mention of getting back to the customer with a further response
+        # TODO add staged tool call to this test
 
-        # TODO add staged tool call to last test
+    Scenario: The agent uses the freshest data when multiple sources are available
+        Given an agent whose job is to be a customer success representative for Chase Bank
+        And a guideline "list_products" to recommend products using the tool get_products_by_type when the customer asks for a certain type of product 
+        And the tool "get_products_by_type"
+        And an association between "list_products" and "get_products_by_type"
+        And a customer message, "i am interested in a product which is Monitor"
+        And a tool event with data, {"tool_calls": [{"tool_id": "products:get_products_by_type", "arguments": {"product_type": "Monitor"}, "result": {"data": {"available_products": [{"title": "AOC 24B2XH 24\" Monitor", "type": "Monitor", "vendor": "AOC", "description": "Budget IPS monitor for productivity.", "tags": ["budget", "ips", "office"], "qty": 35, "price": 129.99}, {"title": "LG UltraGear 27GP950-B 27\" 4K Monitor", "type": "Monitor", "vendor": "LG", "description": "27-inch 4K Nano IPS gaming monitor with 144Hz refresh rate and HDMI 2.1.", "tags": ["gaming", "4k", "144hz", "hdmi2.1"], "qty": 8, "price": 799.99}, {"title": "ASUS TUF Gaming VG27AQ 27\" Monitor", "type": "Monitor", "vendor": "ASUS", "description": "1440p IPS gaming monitor with 165Hz refresh rate and ELMB-SYNC technology.", "tags": ["gaming", "1440p", "165hz"], "qty": 15, "price": 329.99}, {"title": "Samsung Odyssey G7 32\"", "type": "Monitor", "vendor": "Samsung", "description": " Curved 1440p gaming monitor with 240Hz refresh rate.", "tags": ["gaming", "curved", "240hz"], "qty": 12, "price": 699.99}, {"title": "LG 32UN650-W 32\" Monitor", "type": "Monitor", "vendor": "LG", "description": "4K UHD IPS monitor for content creation and productivity.", "tags": ["4k", "ips", "professional"], "qty": 15, "price": 499.99}, {"title": "BenQ GW2485 24\" Monitor", "type": "Monitor", "vendor": "BenQ", "description": "Eye-care monitor with ultra-slim bezels.", "tags": ["office", "eye-care", "1080p"], "qty": 40, "price": 169.99}, {"title": "MSI MAG274QRF-QD", "type": "Monitor", "vendor": "MSI", "description": "27-inch 1440p gaming monitor with Quantum Dot.", "tags": ["gaming", "1440p", "quantum-dot"], "qty": 18, "price": 449.99}]}, "metadata": {}, "control": {}}}]}
+        And an agent message, "We carry several monitors. What are you looking for in a monitor? For example, size, resolution, refresh rate, or intended use?"
+        And a customer message, "24\""
+        And an agent message, "We have two 24\" monitors:\n\n* **AOC 24B2XH:** Budget IPS monitor for productivity. Price: $129.99\n* **BenQ GW2485:** Eye-care monitor with ultra-slim bezels. Price: $169.99\n\nWhich one are you interested in?"
+        And a customer message, "budget under 140"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains that the price of the AOC 24B2XH model is 130.99
