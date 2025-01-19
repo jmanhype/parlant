@@ -21,6 +21,7 @@ All notable changes to Parlant will be documented here.
 - Fix PluginServer validation for optional tool arguments when they're passed None
 - Fix some cases where the ToolCaller also calls a less-fitting tool
 - Fix utterances sometimes not producing a message
+- Disable coherence and connection checking by default in the CLI for now
 
 
 ## [1.5.1] - 2025-01-05

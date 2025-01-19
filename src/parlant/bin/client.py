@@ -2400,14 +2400,14 @@ async def async_main() -> None:
         "--check/--no-check",
         type=bool,
         show_default=True,
-        default=True,
+        default=False,
         help="Check for contradictions with existing guidelines",
     )
     @click.option(
         "--connect/--no-connect",
         type=bool,
         show_default=True,
-        default=True,
+        default=False,
         help="Connect this guideline with causually related guidelines",
     )
     @click.pass_context
@@ -2456,14 +2456,14 @@ async def async_main() -> None:
         "--check/--no-check",
         type=bool,
         show_default=True,
-        default=True,
+        default=False,
         help="Check for contradictions with existing guidelines",
     )
     @click.option(
         "--connect/--no-connect",
         type=bool,
         show_default=True,
-        default=True,
+        default=False,
         help="Connect this guideline with causually related guidelines",
     )
     @click.pass_context
