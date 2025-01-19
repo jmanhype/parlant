@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from functools import cached_property
 from itertools import chain
@@ -165,6 +165,25 @@ class GuidelineProposer:
             propositions_batches.append(guideline_propositions)
 
         t_end = time.time()
+
+        activated_guidelines = [
+            {
+                "guideline": {
+                    "id": p.guideline.id,
+                    "content": asdict(p.guideline.content),
+                },
+                "score": p.score,
+                "rationale": p.rationale,
+                "guideline_previously_applied": p.guideline_previously_applied.name,
+                "guideline_is_continuous": p.guideline_is_continuous,
+                "should_reapply": p.should_reapply,
+            }
+            for p in chain.from_iterable(propositions_batches)
+        ]
+
+        self._logger.debug(
+            f"[GuidelineProposer][Activated] {json.dumps(activated_guidelines, indent=2) if activated_guidelines else 'No guidelines were activated.'}"
+        )
 
         return GuidelinePropositionResult(
             total_duration=t_end - t_start,

@@ -180,6 +180,19 @@ class ToolCaller:
 
         t_end = time.time()
 
+        activated_tool_calls = [
+            {
+                "id": t.id,
+                "tool_id": t.tool_id,
+                "arguments": t.arguments,
+            }
+            for t in chain.from_iterable(tool_call_batches)
+        ]
+
+        self._logger.debug(
+            f"[ToolCaller][Activated] {json.dumps(activated_tool_calls, indent=2 if activated_tool_calls else 'No tool calls were activated.')}"
+        )
+
         return InferenceToolCallsResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
