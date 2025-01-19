@@ -68,7 +68,7 @@ Parlant is the right tool for the job if you're building an LLM-based chat agent
 
 In a word: **_Guidance._** 🧭🚦🤝
 
-Parlant's engine revolves around solving one key problem: How can we reliably guide customer-facing agents to behave in alignment with our needs and intentions.
+Parlant's engine revolves around solving one key problem: How can we _reliably_ guide customer-facing agents to behave in alignment with our needs and intentions.
 
 Hence Parlant's fundamentally different approach to agent building: [Managed Guidelines](https://www.parlant.io/docs/concepts/customization/guidelines):
 
