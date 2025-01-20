@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pprint import pformat
 from typing import Optional, cast
 from pytest_bdd import given, then, parsers, when
 
@@ -383,14 +384,16 @@ def then_a_status_event_type_is_not_emitted(
 def then_no_tool_calls_event_is_emitted(
     emitted_events: list[EmittedEvent],
 ) -> None:
-    assert 0 == len([e for e in emitted_events if e.kind == "tool"])
+    tool_events = [e for e in emitted_events if e.kind == "tool"]
+    assert 0 == len(tool_events), pformat(tool_events, indent=2)
 
 
 @step(then, "a single tool calls event is emitted")
 def then_a_single_tool_event_is_emitted(
     emitted_events: list[EmittedEvent],
 ) -> None:
-    assert 1 == len([e for e in emitted_events if e.kind == "tool"])
+    tool_events = [e for e in emitted_events if e.kind == "tool"]
+    assert 1 == len(tool_events), pformat(tool_events, indent=2)
 
 
 @step(then, parsers.parse("the tool calls event contains {number_of_tool_calls:d} tool call(s)"))
@@ -399,7 +402,9 @@ def then_the_tool_calls_event_contains_n_tool_calls(
     emitted_events: list[EmittedEvent],
 ) -> None:
     tool_calls_event = next(e for e in emitted_events if e.kind == "tool")
-    assert number_of_tool_calls == len(cast(ToolEventData, tool_calls_event.data)["tool_calls"])
+    assert number_of_tool_calls == len(
+        cast(ToolEventData, tool_calls_event.data)["tool_calls"]
+    ), pformat(tool_calls_event, indent=2)
 
 
 def _get_tool_calls(emitted_events: list[EmittedEvent]) -> list[ToolCall]:
@@ -421,7 +426,7 @@ def then_the_tool_calls_event_contains_expected_content(
             context=f"The following is the result of tool (function) calls: {tool_calls}",
             condition=f"The calls contain {expected_content}",
         )
-    )
+    ), pformat(tool_calls, indent=2)
 
 
 @step(then, "the tool calls event is correlated with the message event")

@@ -66,6 +66,7 @@ class ToolCallEvaluation(DefaultBaseModel):
     a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected: bool
     potentially_better_rejected_tool_name: Optional[str] = None
     potentially_better_rejected_tool_rationale: Optional[str] = None
+    the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool: bool = False
     should_run: bool
 
 
@@ -241,7 +242,10 @@ class ToolCaller:
             for tc in inference_output
             if tc.should_run
             and tc.applicability_score >= 6
-            and not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
+            and (
+                not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
+                or tc.the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool
+            )
             and all(
                 not evaluation.is_missing
                 for argument, evaluation in (tc.argument_evaluations or {}).items()
@@ -367,12 +371,13 @@ Produce a valid JSON object according to the following format:
             "applicability_rationale": "<A FEW WORDS THAT EXPLAIN WHETHER AND HOW THE TOOL NEEDS TO BE CALLED>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "argument_evaluations": <EVALUATIONS FOR THE ARGUMENTS. CAN BE DROPPED IF THE TOOL SHOULD NOT EXECUTE>,
-            "same_call_is_already_staged": <BOOLEAN>,
+            "same_call_is_already_staged": <BOOL>,
             "comparison_with_rejected_tools_including_references_to_subtleties": "<A VERY BRIEF OVERVIEW OF HOW THIS CALL FARES AGAINST OTHER TOOLS IN APPLICABILITY>",
             "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected": <BOOLEAN>,
+            "a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected": <BOOL>,
             "potentially_better_rejected_tool_name": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS IS THE NAME OF THAT REJECTED TOOL>",
             "potentially_better_rejected_tool_rationale": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS EXPLAINS WHY>",
+            "the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool": <BOOL>,
             "should_run": <BOOL>
         }}
         ...
@@ -466,12 +471,13 @@ Given the tool, your output should adhere to the following format:
             "applicability_rationale": "<A FEW WORDS THAT EXPLAIN WHETHER, HOW, AND TO WHAT EXTENT THE TOOL NEEDS TO BE CALLED AT THIS POINT>",
             "applicability_score": <INTEGER FROM 1 TO 10>,
             "argument_evaluations": <EVALUATIONS FOR THE ARGUMENTS. CAN BE OMITTED IF THE TOOL SHOULD NOT EXECUTE>,
-            "same_call_is_already_staged": <BOOLEAN>,
+            "same_call_is_already_staged": <BOOL>,
             "comparison_with_rejected_tools_including_references_to_subtleties": "<A VERY BRIEF OVERVIEW OF HOW THIS CALL FARES AGAINST OTHER TOOLS IN APPLICABILITY>",
             "relevant_subtleties": "<IF SUBTLETIES FOUND, REFER TO THE RELEVANT ONES HERE>",
-            "a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected": <BOOLEAN>,
+            "a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected": <BOOL>,
             "potentially_better_rejected_tool_name": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS IS THE NAME OF THAT REJECTED TOOL>",
             "potentially_better_rejected_tool_rationale": "<IF CANDIDATE TOOL IS A WORSE FIT THAN A REJECTED TOOL, THIS EXPLAINS WHY>",
+            "the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool": <BOOL>,
             "should_run": <BOOL>
         }}
     ]
@@ -587,7 +593,7 @@ Guidelines:
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
-            hints={"temperature": 0.0},
+            hints={"temperature": 0.05},
         )
 
         self._logger.debug(
@@ -857,6 +863,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                         "since the candidate tool is designed specifically for motorcycle models, "
                         "and not just general vehicles."
                     ),
+                    the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool=False,
                     should_run=True,
                 )
             ],
@@ -896,6 +903,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                         "check_motorcycle_price applies specifically for motorcycles, "
                         "which is better fitting for this case compared to the more general check_vehicle_price"
                     ),
+                    the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool=False,
                     should_run=False,
                 )
             ],
@@ -935,6 +943,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                         "check_temperature is more versatile and can handle both indoor and outdoor locations "
                         "with the type parameter, making it more suitable than the room-specific tool"
                     ),
+                    the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool=False,
                     should_run=False,
                 )
             ],
@@ -976,6 +985,7 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                         "specification of technical requirements rather than relying on text search, "
                         "which will provide more accurate results for electronic products"
                     ),
+                    the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool=False,
                     should_run=False,
                 )
             ],

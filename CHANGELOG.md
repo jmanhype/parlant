@@ -6,6 +6,7 @@ All notable changes to Parlant will be documented here.
 - Fix ToolCaller not getting clear information on a parameter being optional
 - Ensure ToolCaller only calls a tool if all required args were given
 - Improve valid JSON generation likelihood in MessageEventGenerator
+- Improve ToolCaller's ability to correctly run multiple tools at once
 
 ## [1.6.0] - 2025-01-19
 
