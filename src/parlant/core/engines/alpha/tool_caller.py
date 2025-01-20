@@ -488,8 +488,12 @@ However, note that you may choose to have multiple entries in 'tool_calls_for_ca
             return {
                 "name": t_id.to_string(),
                 "description": t.description,
-                "parameters": t.parameters,
-                "required_parameters": t.required,
+                "optional_parameters": {
+                    name: spec for name, spec in t.parameters.items() if name not in t.required
+                },
+                "required_parameters": {
+                    name: spec for name, spec in t.parameters.items() if name in t.required
+                },
             }
 
         candidate_tool_spec = _get_tool_spec(candidate_tool[0], candidate_tool[1])

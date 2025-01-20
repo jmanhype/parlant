@@ -73,6 +73,20 @@ def create_client(
     )
 
 
+async def test_that_optional_tool_parameters_are_marked_as_optional() -> None:
+    @tool
+    def my_tool(
+        context: ToolContext,
+        arg_1: int,
+        arg_2: Optional[int] = None,
+        arg_3: int | None = None,
+    ) -> ToolResult:
+        return ToolResult({})
+
+    assert len(my_tool.tool.required) == 1
+    assert "arg_1" in my_tool.tool.required
+
+
 async def test_that_a_plugin_with_no_configured_tools_returns_no_tools(
     container: Container,
 ) -> None:

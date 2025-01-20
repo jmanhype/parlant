@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Fix ToolCaller not getting clear information on a parameter being optional
 
 ## [1.6.0] - 2025-01-19
 
