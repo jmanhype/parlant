@@ -242,6 +242,11 @@ class ToolCaller:
             if tc.should_run
             and tc.applicability_score >= 6
             and not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
+            and all(
+                not evaluation.is_missing
+                for argument, evaluation in (tc.argument_evaluations or {}).items()
+                if argument in candidate_descriptor[1].required
+            )
         ]
 
     async def execute_tool_calls(
