@@ -1,0 +1,114 @@
+{
+  "__schemas__": {
+    "guidelines": {
+      "module_path": "parlant.core.guidelines",
+      "model_path": "_GuidelineDocument"
+    }
+  },
+  "guidelines": [
+    {
+      "id": "DKC895ypIT",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-19T14:15:48.061346+00:00",
+      "guideline_set": "UQq93ZADaC",
+      "condition": "the user is asking for his balance info",
+      "action": "get his account balance and tell him"
+    },
+    {
+      "id": "NnZkNVJYNn",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T10:43:26.685140+00:00",
+      "guideline_set": "7mb1hOnfFI",
+      "condition": "ddf",
+      "action": "ddg"
+    },
+    {
+      "id": "819rj8O1Xn",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T10:43:34.803962+00:00",
+      "guideline_set": "7mb1hOnfFI",
+      "condition": "ff",
+      "action": "ff"
+    },
+    {
+      "id": "mI77f3BvdO",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T10:49:47.026045+00:00",
+      "guideline_set": "giVOalEIo8",
+      "condition": "a",
+      "action": "a"
+    },
+    {
+      "id": "ZHIxtxAk3b",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:14:40.274918+00:00",
+      "guideline_set": "giVOalEIo8",
+      "condition": "f",
+      "action": "f"
+    },
+    {
+      "id": "hfLDMXJzS6",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:17:59.784821+00:00",
+      "guideline_set": "wfugZwcJgp",
+      "condition": "d",
+      "action": "d"
+    },
+    {
+      "id": "TQqBJ5OhwX",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:18:16.172686+00:00",
+      "guideline_set": "wfugZwcJgp",
+      "condition": "d",
+      "action": "df"
+    },
+    {
+      "id": "dHv8iCF9o4",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:19:44.382802+00:00",
+      "guideline_set": "FSlagJP67A",
+      "condition": "ddd",
+      "action": "ddd"
+    },
+    {
+      "id": "ZMIb8-DjZQ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:19:50.540631+00:00",
+      "guideline_set": "FSlagJP67A",
+      "condition": "fff",
+      "action": "fff"
+    },
+    {
+      "id": "lPGPNVbxmo",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-29T11:20:00.713417+00:00",
+      "guideline_set": "FSlagJP67A",
+      "condition": "dd",
+      "action": "ff"
+    },
+    {
+      "id": "sIuSX81mjk",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:04:48.474696+00:00",
+      "guideline_set": "MUL51bFcDS",
+      "condition": "a customer asks a question ",
+      "action": "always use the tool and answer the question if u find the answer, else say u dont know"
+    },
+    {
+      "id": "MGBll2asut",
+      "version": "0.1.0",
+      "creation_utc": "2025-01-02T09:42:34.407388+00:00",
+      "guideline_set": "MUL51bFcDS",
+      "condition": "qr",
+      "action": "qrrr"
+    },
+    {
+      "id": "JmhosgOYMS",
+      "version": "0.1.0",
+      "creation_utc": "2025-01-05T05:59:55.615729+00:00",
+      "guideline_set": "MUL51bFcDS",
+      "condition": "q",
+      "action": "q"
+    }
+  ]
+}

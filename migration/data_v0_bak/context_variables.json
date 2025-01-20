@@ -1,0 +1,105 @@
+{
+  "__schemas__": {
+    "variables": {
+      "module_path": "parlant.core.context_variables",
+      "model_path": "_ContextVariableDocument"
+    },
+    "values": {
+      "module_path": "parlant.core.context_variables",
+      "model_path": "_ContextVariableValueDocument"
+    }
+  },
+  "variables": [
+    {
+      "id": "0bWh5zWX30",
+      "version": "0.1.0",
+      "variable_set": "Hr8bdRR-xI",
+      "name": "name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": null
+    },
+    {
+      "id": "dfaU-XkFRs",
+      "version": "0.1.0",
+      "variable_set": "qfXE4Ig607",
+      "name": "up-name",
+      "description": "up-desc",
+      "tool_id": null,
+      "freshness_rules": {}
+    },
+    {
+      "id": "rU-gaAmCQh",
+      "version": "0.1.0",
+      "variable_set": "sbvVbhn7Px",
+      "name": "up-name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": {}
+    },
+    {
+      "id": "1tc8ojKXWY",
+      "version": "0.1.0",
+      "variable_set": "q9p8BzZwbz",
+      "name": "up-name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": {}
+    },
+    {
+      "id": "3DW8RuPbAl",
+      "version": "0.1.0",
+      "variable_set": "MH1U6JIuVo",
+      "name": "up-name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": {}
+    },
+    {
+      "id": "AJ30INdPbJ",
+      "version": "0.1.0",
+      "variable_set": "F1jbgPuUn5",
+      "name": "up-name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": {}
+    },
+    {
+      "id": "2WcqYdSBzB",
+      "version": "0.1.0",
+      "variable_set": "F1jbgPuUn5",
+      "name": "name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": null
+    },
+    {
+      "id": "icKNWJiWZw",
+      "version": "0.1.0",
+      "variable_set": "0s6xMsueJ3",
+      "name": "name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": null
+    },
+    {
+      "id": "fyJ7ttf1A8",
+      "version": "0.1.0",
+      "variable_set": "LMvNqMIt2n",
+      "name": "name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": null
+    },
+    {
+      "id": "6JOdmVefmh",
+      "version": "0.1.0",
+      "variable_set": "pfJvO5n1U1",
+      "name": "name",
+      "description": "desc",
+      "tool_id": null,
+      "freshness_rules": null
+    }
+  ],
+  "values": []
+}

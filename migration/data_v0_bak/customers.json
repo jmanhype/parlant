@@ -1,0 +1,36 @@
+{
+  "__schemas__": {
+    "customers": {
+      "module_path": "parlant.core.customers",
+      "model_path": "_CustomerDocument"
+    },
+    "customer_tag_associations": {
+      "module_path": "parlant.core.customers",
+      "model_path": "_CustomerTagAssociationDocument"
+    }
+  },
+  "customers": [
+    {
+      "id": "GFiyWxjcip",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:11.141492+00:00",
+      "name": "name",
+      "extra": {}
+    },
+    {
+      "id": "PCAB6aOZ65",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.350408+00:00",
+      "name": "name",
+      "extra": {}
+    },
+    {
+      "id": "B2kG57-2KG",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.456029+00:00",
+      "name": "name",
+      "extra": {}
+    }
+  ],
+  "customer_tag_associations": []
+}

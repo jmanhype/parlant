@@ -1,0 +1,10 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "tags": {
+      "module_path": "parlant.core.documents.tags",
+      "model_path": "_TagDocument_v1"
+    }
+  },
+  "tags": []
+}

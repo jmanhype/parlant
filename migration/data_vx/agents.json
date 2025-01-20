@@ -1,0 +1,18 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "agents": {
+      "module_path": "parlant.core.documents.agents",
+      "model_path": "_AgentDocument_v1"
+    }
+  },
+  "agents": [
+    {
+      "id": "Yl2HJRNVzt",
+      "creation_utc": "2025-01-13T09:28:34.706356+00:00",
+      "name": "Default Agent",
+      "description": null,
+      "max_engine_iterations": 3
+    }
+  ]
+}

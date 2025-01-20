@@ -1,0 +1,20 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "sessions": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_SessionDocument_v1"
+    },
+    "events": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_EventDocument_v1"
+    },
+    "inspections": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_InspectionDocument_v1"
+    }
+  },
+  "sessions": [],
+  "events": [],
+  "inspections": []
+}

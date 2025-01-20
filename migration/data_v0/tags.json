@@ -1,0 +1,28 @@
+{
+  "__schemas__": {
+    "tags": {
+      "module_path": "parlant.core.tags",
+      "model_path": "_TagDocument"
+    }
+  },
+  "tags": [
+    {
+      "id": "dgvlDZOakW",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:11.126669+00:00",
+      "name": "name"
+    },
+    {
+      "id": "Z0l5kb3PrT",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.344360+00:00",
+      "name": "name"
+    },
+    {
+      "id": "qlkjcAYFDn",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.456781+00:00",
+      "name": "name"
+    }
+  ]
+}

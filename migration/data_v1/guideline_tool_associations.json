@@ -1,0 +1,10 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "associations": {
+      "module_path": "parlant.core.documents.guideline_tools_associations",
+      "model_path": "_GuidelineToolAssociationDocument_v1"
+    }
+  },
+  "associations": []
+}

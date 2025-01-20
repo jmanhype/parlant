@@ -1,0 +1,5287 @@
+{
+  "__schemas__": {
+    "sessions": {
+      "module_path": "parlant.core.sessions",
+      "model_path": "_SessionDocument"
+    },
+    "events": {
+      "module_path": "parlant.core.sessions",
+      "model_path": "_EventDocument"
+    },
+    "inspections": {
+      "module_path": "parlant.core.sessions",
+      "model_path": "_InspectionDocument"
+    }
+  },
+  "sessions": [
+    {
+      "id": "aUPpIahU6M",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-26T08:22:39.434703+00:00",
+      "customer_id": "guest",
+      "agent_id": "AZHZr6DKJ9",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "Eo0zjGLq7L",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:39:21.483905+00:00",
+      "customer_id": "guest",
+      "agent_id": "MIJXq59rHI",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "4PrITqenCv",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:41:43.703582+00:00",
+      "customer_id": "guest",
+      "agent_id": "aTGLViFKXq",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "TNhEFriEJt",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:42:55.905590+00:00",
+      "customer_id": "guest",
+      "agent_id": "ifkH3F0TeK",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "J2h7IcNkVO",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:43:58.461113+00:00",
+      "customer_id": "guest",
+      "agent_id": "VOngmPQROk",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "QFyg5EmP-L",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:24:15.449012+00:00",
+      "customer_id": "guest",
+      "agent_id": "m9EvMlvBs4",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "3mXelpYkl3",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:58:11.780374+00:00",
+      "customer_id": "guest",
+      "agent_id": "RCU9MovliZ",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "2VTg-qpTSx",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:00:01.380603+00:00",
+      "customer_id": "guest",
+      "agent_id": "IgfuDCS3Zv",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "cgvBhsq6Ie",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:04:03.619918+00:00",
+      "customer_id": "guest",
+      "agent_id": "h1Q0rXyccH",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "2qOuedLmZP",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:54:35.566299+00:00",
+      "customer_id": "guest",
+      "agent_id": "PneheacE07",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "LYYxHPjxMU",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:25.527627+00:00",
+      "customer_id": "guest",
+      "agent_id": "eKdmJkfZBa",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "SDmjUfW4Nq",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:52.643166+00:00",
+      "customer_id": "guest",
+      "agent_id": "Isqi2dnOl6",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "XQ5zUaXs4O",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:10:07.834695+00:00",
+      "customer_id": "guest",
+      "agent_id": "2i9axvgkvu",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "IVwyaZb--f",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:11.086743+00:00",
+      "customer_id": "guest",
+      "agent_id": "LMvNqMIt2n",
+      "mode": "auto",
+      "title": "title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "wCjxQHr1oT",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.392482+00:00",
+      "customer_id": "guest",
+      "agent_id": "pfJvO5n1U1",
+      "mode": "auto",
+      "title": "title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "uZIJzZcYOo",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:58:08.820112+00:00",
+      "customer_id": "guest",
+      "agent_id": "DYLYxFCGZq",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "wiuZcsas0r",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-28T05:00:26.624664+00:00",
+      "customer_id": "guest",
+      "agent_id": "t4MarG7Z5m",
+      "mode": "auto",
+      "title": "updated-title",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "y3e8EYTRqK",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:55.441153+00:00",
+      "customer_id": "guest",
+      "agent_id": "MUL51bFcDS",
+      "mode": "auto",
+      "title": "New Conversation",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "3UVc5g1tvI",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:13:46.790941+00:00",
+      "customer_id": "guest",
+      "agent_id": "MUL51bFcDS",
+      "mode": "auto",
+      "title": "New Conversation",
+      "consumption_offsets": {
+        "client": 0
+      }
+    },
+    {
+      "id": "XE7K5s1Dor",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:08.794695+00:00",
+      "customer_id": "guest",
+      "agent_id": "MUL51bFcDS",
+      "mode": "auto",
+      "title": "New Conversation",
+      "consumption_offsets": {
+        "client": 0
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "CmkoPshFIW",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-25T06:23:00.254573+00:00",
+      "session_id": "16v0yj13l9",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(fgtnO1ljOJ)::oA3ogcQK4u",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "gAotl2FGof",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-25T06:28:02.227763+00:00",
+      "session_id": "MOjYlZke97",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 3,
+      "correlation_id": "RID(uKP1Y1Jwow)::dTtZZ12mEO",
+      "data": {
+        "message": "Could you please provide more details or clarify your message? I'd be happy to assist you further.",
+        "participant": {
+          "id": "tHdGhWUF9w",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "dzBO-0SZFD",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-25T08:18:00.119302+00:00",
+      "session_id": "kancnbmexX",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(M0V4-yJlOr)::TlCYiO47jn",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "rt2ecNZ76i",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-25T14:40:17.591883+00:00",
+      "session_id": "zPSvPJMMj0",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(rcutKCDVyU)::Lc4Twgtj6F",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "0XWIhB0Tf1",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-26T05:44:00.036319+00:00",
+      "session_id": "fejFogNMDx",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(emSHLB8zAY)::TQklB5URUH",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "vxgmsu7d1Y",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-26T06:12:04.669445+00:00",
+      "session_id": "hdSYg-5j2w",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(0QmNWMv4X1)::Di1eSujgwT",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "3q-Jgc1D1B",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-26T06:45:12.392031+00:00",
+      "session_id": "jj2LDn6YpE",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(IUwxIC8X1m)::nwLmKvxVLq",
+      "data": {
+        "message": "Could you please clarify or provide more details about your request? I'd be happy to assist you further.",
+        "participant": {
+          "id": "C0UrU-UCAt",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "rTxglftK5o",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:39:22.569404+00:00",
+      "session_id": "Eo0zjGLq7L",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(jXxauDki3S)::Y6fOTnzYgl",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "B-WGILyjk8",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:39:24.545073+00:00",
+      "session_id": "Eo0zjGLq7L",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(jXxauDki3S)::Y6fOTnzYgl",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "B2Mp4-xv9L",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:41:44.346808+00:00",
+      "session_id": "4PrITqenCv",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(bMRmhQWiMP)::z03jukyPlX",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "g9K-SaJeUT",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:41:46.573910+00:00",
+      "session_id": "4PrITqenCv",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(bMRmhQWiMP)::z03jukyPlX",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "adt38jshkR",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:42:56.979694+00:00",
+      "session_id": "TNhEFriEJt",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(SzqvNDN57e)::ttg8UV8fWj",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "ETiPmp9aL2",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:42:58.771076+00:00",
+      "session_id": "TNhEFriEJt",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(SzqvNDN57e)::ttg8UV8fWj",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "ixwPSP9YDA",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:43:59.661342+00:00",
+      "session_id": "J2h7IcNkVO",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(XoYvUPhoCS)::SwNyGRwXEb",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "KLSNMSdNKo",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T05:44:01.436474+00:00",
+      "session_id": "J2h7IcNkVO",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(XoYvUPhoCS)::SwNyGRwXEb",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "FMD-1fsvJU",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:24:16.358920+00:00",
+      "session_id": "QFyg5EmP-L",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(V-Wno5YMHr)::kE0UgYFMUY",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "y3qYYyjMBJ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:24:18.758832+00:00",
+      "session_id": "QFyg5EmP-L",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(V-Wno5YMHr)::kE0UgYFMUY",
+      "data": {
+        "message": "Could you please clarify your request or provide more details so I can assist you better?",
+        "participant": {
+          "id": "m9EvMlvBs4",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "RAAyn4ncX1",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:24:18.771138+00:00",
+      "session_id": "QFyg5EmP-L",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(V-Wno5YMHr)::kE0UgYFMUY",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "N8GQs2Lz2R",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:58:12.485752+00:00",
+      "session_id": "3mXelpYkl3",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(l7vrTEuo2u)::TsOn4zInAp",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "OimzNPbUut",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T08:58:15.253932+00:00",
+      "session_id": "3mXelpYkl3",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(l7vrTEuo2u)::TsOn4zInAp",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "Ns8zzHRjYA",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:00:01.943294+00:00",
+      "session_id": "2VTg-qpTSx",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(oV5-9FtIRJ)::rMNSf051cE",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "e33VoQWdUl",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:00:04.634458+00:00",
+      "session_id": "2VTg-qpTSx",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(oV5-9FtIRJ)::rMNSf051cE",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "3J45NBXN2W",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:04:04.397975+00:00",
+      "session_id": "cgvBhsq6Ie",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(fWIy58TG7m)::DVbYt7obRh",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "IBXvzCykSk",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:04:07.007284+00:00",
+      "session_id": "cgvBhsq6Ie",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(fWIy58TG7m)::DVbYt7obRh",
+      "data": {
+        "message": "Could you please clarify your message? I'd like to assist you further.",
+        "participant": {
+          "id": "h1Q0rXyccH",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "kGHUp2IwjC",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:04:07.014152+00:00",
+      "session_id": "cgvBhsq6Ie",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(fWIy58TG7m)::DVbYt7obRh",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "IHtTuNI0XA",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:54:36.551007+00:00",
+      "session_id": "2qOuedLmZP",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(apCqn5owXA)::Ci-wTWqHbb",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "mQgQxkI9I4",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:54:38.795285+00:00",
+      "session_id": "2qOuedLmZP",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(apCqn5owXA)::Ci-wTWqHbb",
+      "data": {
+        "message": "Could you please clarify or provide more details about your request? I'd be happy to assist you further.",
+        "participant": {
+          "id": "PneheacE07",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "s8nKkhEXlA",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T09:54:38.816998+00:00",
+      "session_id": "2qOuedLmZP",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(apCqn5owXA)::Ci-wTWqHbb",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "r0indERQaJ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:26.363370+00:00",
+      "session_id": "LYYxHPjxMU",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(izSmEvp9MX)::VUGuWC9rv4",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "WcLEyiLne3",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:28.579812+00:00",
+      "session_id": "LYYxHPjxMU",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(izSmEvp9MX)::VUGuWC9rv4",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "Jd35aNmfQM",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:53.328080+00:00",
+      "session_id": "SDmjUfW4Nq",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(RV1Hf8CUA4)::NwhuhRr9yv",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "Afxyov-pO1",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:07:55.201918+00:00",
+      "session_id": "SDmjUfW4Nq",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(RV1Hf8CUA4)::NwhuhRr9yv",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "8CSjw0YDF7",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:10:08.738536+00:00",
+      "session_id": "XQ5zUaXs4O",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(VMPAj0oFSO)::WA4SA0jIPR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "Bjx26OSyCW",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T14:10:10.979875+00:00",
+      "session_id": "XQ5zUaXs4O",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(VMPAj0oFSO)::WA4SA0jIPR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "ogJkfCYD3D",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:55:53.325775+00:00",
+      "session_id": "wtHLZLXbyU",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(LZJhlpkg2m)::rt3V-Gr62E",
+      "data": {
+        "message": "Could you please clarify or expand on your message? I'd be happy to assist further.",
+        "participant": {
+          "id": "pfJvO5n1U1",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "MATRJabic2",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:11.010723+00:00",
+      "session_id": "QfForDcGRO",
+      "source": "customer",
+      "kind": "message",
+      "offset": 3,
+      "correlation_id": "RID(Y0BvYDjYlD)",
+      "data": {
+        "message": "message",
+        "participant": {
+          "id": "guest",
+          "display_name": "<guest>"
+        },
+        "flagged": false,
+        "tags": []
+      },
+      "deleted": true
+    },
+    {
+      "id": "1qcc68w8LP",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:11.119877+00:00",
+      "session_id": "IVwyaZb--f",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(5374sdZK5z)::FUKAfwFvEO",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "ogfGNYCWyl",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.434627+00:00",
+      "session_id": "wCjxQHr1oT",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 0,
+      "correlation_id": "RID(80o4Yfu0Y8)::9KPKC76fy2",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "0O6NfySmMv",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.455749+00:00",
+      "session_id": "wCjxQHr1oT",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(80o4Yfu0Y8)::9KPKC76fy2",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "IuYeIoUm8r",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:56:12.466301+00:00",
+      "session_id": "wCjxQHr1oT",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(80o4Yfu0Y8)::9KPKC76fy2",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "MJy6ILfHnU",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:58:10.771618+00:00",
+      "session_id": "uZIJzZcYOo",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 0,
+      "correlation_id": "RID(jMCicp7YOv)::IM3fOY2wfm",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "bRQnZcRBnD",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:58:12.408397+00:00",
+      "session_id": "uZIJzZcYOo",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 1,
+      "correlation_id": "RID(jMCicp7YOv)::IM3fOY2wfm",
+      "data": {
+        "message": "Could you please clarify your request so I can assist you better?",
+        "participant": {
+          "id": "DYLYxFCGZq",
+          "display_name": "test-name"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "WLmCxPF2jh",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-27T15:58:12.416627+00:00",
+      "session_id": "uZIJzZcYOo",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(jMCicp7YOv)::IM3fOY2wfm",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "DWycdCITFE",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-28T05:00:27.573331+00:00",
+      "session_id": "wiuZcsas0r",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(YNpC42cp8V)::IWhp69hBOx",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "HP0XhTn-i4",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-28T05:00:29.312780+00:00",
+      "session_id": "wiuZcsas0r",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(YNpC42cp8V)::IWhp69hBOx",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "c1Kr17Vdtw",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-28T15:01:19.438336+00:00",
+      "session_id": "Vs3QEhSigo",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(fcgC1jedtq)::AIm0gqpH2t",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "9rzLm8kBwg",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:55.469553+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(sE47F0Aath)::0Gugr3e1RK",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "DqbXzzxtCx",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:56.317878+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "customer",
+      "kind": "message",
+      "offset": 2,
+      "correlation_id": "RID(2pWz810O-A)",
+      "data": {
+        "message": "whats a bambushka?",
+        "participant": {
+          "id": "guest",
+          "display_name": "<guest>"
+        },
+        "flagged": false,
+        "tags": []
+      },
+      "deleted": false
+    },
+    {
+      "id": "MGGBcldNE2",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:56.327328+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(sE47F0Aath)::0Gugr3e1RK",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "cancelled",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "H-0X-ER1Vp",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:56.336468+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(sE47F0Aath)::0Gugr3e1RK",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "LZutRGmi7k",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:56.345929+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 5,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "a0V4UpsqCZ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:08:57.003732+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 6,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "34B7TupOaC",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:07.935050+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "tool",
+      "offset": 7,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "tool_calls": [
+          {
+            "tool_id": "qna:find_answer",
+            "arguments": {
+              "query": "bambushka"
+            },
+            "result": {
+              "data": "A bambushka is a type of banana.",
+              "metadata": {
+                "references": [
+                  {
+                    "question_id": "0MfEKPtcb7",
+                    "quotes": [
+                      "it is a type of banana"
+                    ]
+                  }
+                ],
+                "evaluation": "Based on the context provided, a legitimate answer can directly utilize the given response."
+              },
+              "control": {}
+            }
+          }
+        ]
+      },
+      "deleted": false
+    },
+    {
+      "id": "MS7IdNraXo",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:16.135636+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 8,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "s0Sihsjzhu",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:19.135515+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 9,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "message": "A bambushka is a type of banana.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "1D3N-3MDGZ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:19.147030+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 10,
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "8yhafn4aep",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:44.813436+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "customer",
+      "kind": "message",
+      "offset": 11,
+      "correlation_id": "RID(ockQmVulsQ)",
+      "data": {
+        "message": "how muc h is 1 +1 ",
+        "participant": {
+          "id": "guest",
+          "display_name": "<guest>"
+        },
+        "flagged": false,
+        "tags": []
+      },
+      "deleted": false
+    },
+    {
+      "id": "4IbwIWCZkY",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:44.826859+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 12,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "NWORLvkj2j",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:45.481503+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 13,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "1EZzq8aK6a",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:09:55.214397+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "tool",
+      "offset": 14,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "tool_calls": [
+          {
+            "tool_id": "qna:find_answer",
+            "arguments": {
+              "query": "1 + 1"
+            },
+            "result": {
+              "data": null,
+              "metadata": {
+                "references": [],
+                "evaluation": "The user is requesting a calculation, which wasn't addressed in the provided background."
+              },
+              "control": {}
+            }
+          }
+        ]
+      },
+      "deleted": true
+    },
+    {
+      "id": "KgxixN3zKB",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:10:02.750355+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 15,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "reKox6gdOE",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:10:05.883889+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 16,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "message": "1 + 1 equals 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": true
+    },
+    {
+      "id": "KBCtgZboYS",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:10:05.903605+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 17,
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "mY2UlsWbUG",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:10:53.780367+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 12,
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "csK5lrr3Kq",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:10:54.589085+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 13,
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "34zIFmoMUL",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:11:01.622032+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 14,
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "0k4ypF8-vf",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:11:04.885612+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 15,
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "data": {
+        "message": "1 + 1 equals 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "bRW70yn1ss",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:11:04.902427+00:00",
+      "session_id": "y3e8EYTRqK",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 16,
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "data": {
+        "acknowledged_offset": 11,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "acf-3EPMPp",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:13:46.835275+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(79-OX0rJk0)::MAng5kJiPC",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "AAa9eFYPHD",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:13:47.229037+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(79-OX0rJk0)::MAng5kJiPC",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "cancelled",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "DF89n9YXb8",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:13:47.241874+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 5,
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "hiZWfH3HSF",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:13:58.215440+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "tool",
+      "offset": 7,
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "data": {
+        "tool_calls": [
+          {
+            "tool_id": "qna:find_answer",
+            "arguments": {
+              "query": "how much is 1 + 1"
+            },
+            "result": {
+              "data": null,
+              "metadata": {
+                "references": [],
+                "evaluation": "The background information does not provide any details related to the given question. The answer requires mathematical computation."
+              },
+              "control": {}
+            }
+          }
+        ]
+      },
+      "deleted": false
+    },
+    {
+      "id": "WuxvagrX3d",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:08.053179+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "5pT9Wnxcuv",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:08.802704+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 0,
+      "correlation_id": "RID(zr1y6desx2)::9yKMmi35CL",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "eVd2lvfU0L",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:08.832910+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(zr1y6desx2)::9yKMmi35CL",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "KazUotRlqZ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:09.464581+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "customer",
+      "kind": "message",
+      "offset": 2,
+      "correlation_id": "RID(8xgXWIxEy1)",
+      "data": {
+        "message": "hi how muc h is 1 +1\n\n",
+        "participant": {
+          "id": "guest",
+          "display_name": "<guest>"
+        },
+        "flagged": false,
+        "tags": []
+      },
+      "deleted": false
+    },
+    {
+      "id": "tBINhM61fZ",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:09.480205+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(zr1y6desx2)::9yKMmi35CL",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "cancelled",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "2jx0Dp0cWh",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:09.486675+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(zr1y6desx2)::9yKMmi35CL",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "55-5fwl9zU",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:09.495323+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 5,
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "hIRZCWwTgT",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:10.036907+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 6,
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "Hln8xeOTh0",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:12.149838+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 5,
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "data": {
+        "message": "The answer to 1 + 1 is 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "t4CbWekKzN",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:12.169600+00:00",
+      "session_id": "3UVc5g1tvI",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 6,
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "CvhGM7xcNr",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:16.236657+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 7,
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "bvphM8uZzm",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:19.669405+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 8,
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "data": {
+        "message": "The answer to 1 + 1 is 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": true
+    },
+    {
+      "id": "pKlRmgfXSO",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:14:19.689532+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 9,
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "data": {
+        "acknowledged_offset": 4,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "ievJmH95nj",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:16:22.512193+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "HWgj5L0V5u",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:16:23.440982+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "PtiQUeFJdr",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:16:30.710723+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 5,
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "cbvZ5Ie9ke",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:16:35.128206+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 6,
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "data": {
+        "message": "The answer to 1 + 1 is 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": true
+    },
+    {
+      "id": "Bnz7M7Hdds",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:16:35.151327+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 7,
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": true
+    },
+    {
+      "id": "FSGtfOwBgt",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:17:48.938938+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 3,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "AirfGy01xr",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:17:49.600408+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "xP09Q9TKsS",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:17:58.825629+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "tool",
+      "offset": 5,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "tool_calls": [
+          {
+            "tool_id": "qna:find_answer",
+            "arguments": {
+              "query": "how much is 1 + 1"
+            },
+            "result": {
+              "data": null,
+              "metadata": {
+                "references": [],
+                "evaluation": "The question is mathematical and not addressed by the background information provided."
+              },
+              "control": {}
+            }
+          }
+        ]
+      },
+      "deleted": false
+    },
+    {
+      "id": "NENOP16rdN",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:18:09.859451+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 6,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "6j-vMHzjOx",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:18:14.112414+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 7,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "message": "I'm sorry, I couldn't find an answer to your question using my tools. However, I can confirm that 1 + 1 equals 2.",
+        "participant": {
+          "id": "MUL51bFcDS",
+          "display_name": "aaa"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "rg1P503W71",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-31T14:18:14.135650+00:00",
+      "session_id": "XE7K5s1Dor",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 8,
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "data": {
+        "acknowledged_offset": 2,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    }
+  ],
+  "inspections": [
+    {
+      "id": "uEq9BBrlli",
+      "version": "0.1.0",
+      "session_id": "QQnJ0gip4V",
+      "correlation_id": "RID(PGnJ-5mVxw)::3yrFybCHhi",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "KL1YzhDraQ",
+      "version": "0.1.0",
+      "session_id": "SXuxceigBG",
+      "correlation_id": "RID(FCD000HM1j)::NXWh2t3UL4",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "HN1eJPVPJl",
+      "version": "0.1.0",
+      "session_id": "c5jm56SM9X",
+      "correlation_id": "RID(iEBtp3llzE)::Tgx-tay-M7",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "fTD6oJsetp",
+      "version": "0.1.0",
+      "session_id": "vKa5TP4lic",
+      "correlation_id": "RID(ffLH0llyMD)::LGEtzQF26c",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "EGLAn5omyW",
+      "version": "0.1.0",
+      "session_id": "16v0yj13l9",
+      "correlation_id": "RID(Dy1f9hIQm7)::vhH3pilC1K",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Y6zsS-fgzh",
+      "version": "0.1.0",
+      "session_id": "16v0yj13l9",
+      "correlation_id": "RID(fgtnO1ljOJ)::oA3ogcQK4u",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.007934808731079,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "wL0QFpR3lu",
+      "version": "0.1.0",
+      "session_id": "MQynQtXD7M",
+      "correlation_id": "RID(44WR92OrYA)::Ymoov8PpSr",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "uBjzLYu7GL",
+      "version": "0.1.0",
+      "session_id": "MQynQtXD7M",
+      "correlation_id": "RID(asYz2yy89T)::7LS3rGBuez",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.7024524211883545,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 112,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please elaborate on your message so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ZuPvMkHTGk",
+      "version": "0.1.0",
+      "session_id": "MOjYlZke97",
+      "correlation_id": "RID(FXUfXEBZr0)::QF7wP1wl5f",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "6Rmm0NkS6h",
+      "version": "0.1.0",
+      "session_id": "MOjYlZke97",
+      "correlation_id": "RID(uKP1Y1Jwow)::dTtZZ12mEO",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.8015668392181396,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please provide more details or clarify your message? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "hFjn8-PCBJ",
+      "version": "0.1.0",
+      "session_id": "6iuNyqpn8B",
+      "correlation_id": "RID(pbGFZy34kn)::3jezErd03w",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.964090347290039,
+            "usage": {
+              "input_tokens": 4304,
+              "output_tokens": 118,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "I'm sorry, I didn't quite understand that. Could you please clarify or provide more details?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 1.7938933372497559,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-11-20",
+                  "duration": 1.7915551662445068,
+                  "usage": {
+                    "input_tokens": 4137,
+                    "output_tokens": 112,
+                    "extra": {
+                      "cached_input_tokens": 3584
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "V7MAfytEmK",
+      "version": "0.1.0",
+      "session_id": "6iuNyqpn8B",
+      "correlation_id": "RID(yBShA22ISd)::LhGpmQrv1p",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 3.506676435470581,
+            "usage": {
+              "input_tokens": 4304,
+              "output_tokens": 339,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "I'm sorry, I didn't quite understand your message. Could you please clarify or provide more details?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 1.7412919998168945,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-11-20",
+                  "duration": 1.7371721267700195,
+                  "usage": {
+                    "input_tokens": 4137,
+                    "output_tokens": 112,
+                    "extra": {
+                      "cached_input_tokens": 3968
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Cn4M3pFXNM",
+      "version": "0.1.0",
+      "session_id": "TTfzTtYbyw",
+      "correlation_id": "RID(T5GEU6Y5ru)::cXTTwCWnDD",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h5nk7XEOCt",
+      "version": "0.1.0",
+      "session_id": "TTfzTtYbyw",
+      "correlation_id": "RID(VUkTTpFIMG)::P0DeVuC8i0",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.0590293407440186,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 113,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or elaborate on your message so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "lkkLwwbtC4",
+      "version": "0.1.0",
+      "session_id": "aZhm3VHESV",
+      "correlation_id": "RID(P75H-91opm)::WZAbxfVGSh",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "7Y94DnTkwA",
+      "version": "0.1.0",
+      "session_id": "aZhm3VHESV",
+      "correlation_id": "RID(xk6pQs0lBK)::jBUVVm3W9l",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.8221895694732666,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 118,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your request? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "M7ZSGO5Wau",
+      "version": "0.1.0",
+      "session_id": "V0iycIItlW",
+      "correlation_id": "RID(lELOjDskXM)::OVpaZQZM4j",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "974YG1XSwR",
+      "version": "0.1.0",
+      "session_id": "V0iycIItlW",
+      "correlation_id": "RID(D52uSV5PFi)::bTLgqjSUjE",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.7164456844329834,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request or provide more details so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "0pBtzHh2Qi",
+      "version": "0.1.0",
+      "session_id": "KQjAlpTtRr",
+      "correlation_id": "RID(tRTDjCR4ix)::FW0gkooH6n",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 4.647864818572998,
+            "usage": {
+              "input_tokens": 4300,
+              "output_tokens": 215,
+              "extra": {
+                "cached_input_tokens": 3712
+              }
+            }
+          },
+          "messages": [
+            "Hello! How can I assist you today?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 1.9262809753417969,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-11-20",
+                  "duration": 1.9226360321044922,
+                  "usage": {
+                    "input_tokens": 4135,
+                    "output_tokens": 113,
+                    "extra": {
+                      "cached_input_tokens": 3584
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "6Zy3Z2HDAF",
+      "version": "0.1.0",
+      "session_id": "kancnbmexX",
+      "correlation_id": "RID(tMPK4OflS6)::KixiSYfFqW",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "azLJkR7rBh",
+      "version": "0.1.0",
+      "session_id": "kancnbmexX",
+      "correlation_id": "RID(M0V4-yJlOr)::TlCYiO47jn",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.854386806488037,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or expand on your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "VBSO0IHe3u",
+      "version": "0.1.0",
+      "session_id": "MJb6FcPSZI",
+      "correlation_id": "RID(TQ8kl6Pi4D)::kQHt2gQG0E",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "rbJFGicNfp",
+      "version": "0.1.0",
+      "session_id": "MJb6FcPSZI",
+      "correlation_id": "RID(9g0LAO4F76)::G2NR83tn7U",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.8284070491790771,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "KmwHdVNnwV",
+      "version": "0.1.0",
+      "session_id": "zPSvPJMMj0",
+      "correlation_id": "RID(EVo4yYByqT)::pbyYzRtrDl",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "4Og-Ihb3lf",
+      "version": "0.1.0",
+      "session_id": "zPSvPJMMj0",
+      "correlation_id": "RID(rcutKCDVyU)::Lc4Twgtj6F",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.9396841526031494,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or elaborate on your message? I'd like to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "0EZPTEmfDi",
+      "version": "0.1.0",
+      "session_id": "0eMD0qEz5q",
+      "correlation_id": "RID(4rcDyQkSRh)::xId9jj8XUl",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "AVMr64EbM5",
+      "version": "0.1.0",
+      "session_id": "0eMD0qEz5q",
+      "correlation_id": "RID(hVrtRpiCgg)::6ICRWcHhiK",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.2692341804504395,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 112,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "1fs8gArF-7",
+      "version": "0.1.0",
+      "session_id": "fejFogNMDx",
+      "correlation_id": "RID(vnVb80q2Mf)::8WcUghY7E7",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "JRE1lRiQqP",
+      "version": "0.1.0",
+      "session_id": "fejFogNMDx",
+      "correlation_id": "RID(emSHLB8zAY)::TQklB5URUH",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.2577545642852783,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "iogmE-w2U8",
+      "version": "0.1.0",
+      "session_id": "hdSYg-5j2w",
+      "correlation_id": "RID(4-64YMuBX1)::DMqscopcXK",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "dAe10a4w5q",
+      "version": "0.1.0",
+      "session_id": "hdSYg-5j2w",
+      "correlation_id": "RID(0QmNWMv4X1)::Di1eSujgwT",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.0972506999969482,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or elaborate on your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "024vtx5d6Y",
+      "version": "0.1.0",
+      "session_id": "IRau7Q4t5L",
+      "correlation_id": "RID(ncF7VmGORy)::DeTV2qTPQT",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Unvzw3aDav",
+      "version": "0.1.0",
+      "session_id": "IRau7Q4t5L",
+      "correlation_id": "RID(6xcGNAeWzG)::8Pji7isppA",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.918454885482788,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please provide more details or clarify your message? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9XYCJ56SPA",
+      "version": "0.1.0",
+      "session_id": "2brDC2gdMF",
+      "correlation_id": "RID(E26yKw2YkK)::R9Mmlrw4hO",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "MItH84hvPN",
+      "version": "0.1.0",
+      "session_id": "2brDC2gdMF",
+      "correlation_id": "RID(G-MCXtoeyP)::AhJemV8G8W",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.5179781913757324,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 114,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request or provide more details so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "U6j7gU7gn9",
+      "version": "0.1.0",
+      "session_id": "jj2LDn6YpE",
+      "correlation_id": "RID(SMpyxbTv59)::aHdzPaWTSb",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "zBOgCKMHKC",
+      "version": "0.1.0",
+      "session_id": "jj2LDn6YpE",
+      "correlation_id": "RID(IUwxIC8X1m)::nwLmKvxVLq",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.779228925704956,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 118,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your request? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9tBPEu9pAO",
+      "version": "0.1.0",
+      "session_id": "AhdBLVt2c2",
+      "correlation_id": "RID(14gj7h1Roi)::Wzi4N6uufL",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "JG72NWn8-6",
+      "version": "0.1.0",
+      "session_id": "AhdBLVt2c2",
+      "correlation_id": "RID(V6D0MBxBzB)::4kE2iMR6u4",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.0350892543792725,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 114,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request or let me know how I can assist you?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "T2C8g95VVn",
+      "version": "0.1.0",
+      "session_id": "5MrRFLowmi",
+      "correlation_id": "RID(VreWXS31O9)::TgX8NAkbOk",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.81679630279541,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 210,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Hello! How can I assist you today?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.0232503414154053,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-11-20",
+                  "duration": 2.019634962081909,
+                  "usage": {
+                    "input_tokens": 4134,
+                    "output_tokens": 95,
+                    "extra": {
+                      "cached_input_tokens": 3584
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "K6HddLpu4z",
+      "version": "0.1.0",
+      "session_id": "aUPpIahU6M",
+      "correlation_id": "RID(kthq7ZSD-p)::9VPWCCOijz",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "on3Cnn4U-1",
+      "version": "0.1.0",
+      "session_id": "aUPpIahU6M",
+      "correlation_id": "RID(A9AowBBRR4)::sW4iHdaMG4",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.862889289855957,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 114,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or expand on your message so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "PdZjzWCqer",
+      "version": "0.1.0",
+      "session_id": "Eo0zjGLq7L",
+      "correlation_id": "RID(KeLad1uuAj)::kh9BQGjqKZ",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "6-SyGrxodN",
+      "version": "0.1.0",
+      "session_id": "Eo0zjGLq7L",
+      "correlation_id": "RID(jXxauDki3S)::Y6fOTnzYgl",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.9550590515136719,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 111,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Dzh3fRFiGQ",
+      "version": "0.1.0",
+      "session_id": "4PrITqenCv",
+      "correlation_id": "RID(WVNsBZ-X33)::haBxIk251G",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "4oGc8JqMjG",
+      "version": "0.1.0",
+      "session_id": "4PrITqenCv",
+      "correlation_id": "RID(bMRmhQWiMP)::z03jukyPlX",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.211001396179199,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 114,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or elaborate on your message so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "yevns5r9oI",
+      "version": "0.1.0",
+      "session_id": "TNhEFriEJt",
+      "correlation_id": "RID(Kxe8xZo3Gp)::0IIN33ei-6",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "BUhSh9OlQG",
+      "version": "0.1.0",
+      "session_id": "TNhEFriEJt",
+      "correlation_id": "RID(SzqvNDN57e)::ttg8UV8fWj",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.7718753814697266,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 111,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your message so I can better assist you?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "wOHwb7sAMX",
+      "version": "0.1.0",
+      "session_id": "J2h7IcNkVO",
+      "correlation_id": "RID(yzAFFKerPc)::u80ea1U-ql",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "nxXrinmtgv",
+      "version": "0.1.0",
+      "session_id": "J2h7IcNkVO",
+      "correlation_id": "RID(XoYvUPhoCS)::SwNyGRwXEb",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.7628118991851807,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 113,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your message? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "2yghTdnytD",
+      "version": "0.1.0",
+      "session_id": "QFyg5EmP-L",
+      "correlation_id": "RID(bICYCOiGhK)::oGJk-BV-3U",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "hcxblg3Soc",
+      "version": "0.1.0",
+      "session_id": "QFyg5EmP-L",
+      "correlation_id": "RID(V-Wno5YMHr)::kE0UgYFMUY",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.393975257873535,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request or provide more details so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "QECGhUMa9Y",
+      "version": "0.1.0",
+      "session_id": "3mXelpYkl3",
+      "correlation_id": "RID(2Qni1u1dxG)::2tqm-kMIzR",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ENNHnEBvMf",
+      "version": "0.1.0",
+      "session_id": "3mXelpYkl3",
+      "correlation_id": "RID(l7vrTEuo2u)::TsOn4zInAp",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.7481026649475098,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your request? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "BDpPaTAtJY",
+      "version": "0.1.0",
+      "session_id": "2VTg-qpTSx",
+      "correlation_id": "RID(LYoD0CTjB5)::bCbBTAxeqV",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "8tnE0wlkeU",
+      "version": "0.1.0",
+      "session_id": "2VTg-qpTSx",
+      "correlation_id": "RID(oV5-9FtIRJ)::rMNSf051cE",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.6701908111572266,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "pX71MGYbLO",
+      "version": "0.1.0",
+      "session_id": "cgvBhsq6Ie",
+      "correlation_id": "RID(7cEs4MkNbM)::mA7zBCp4Qo",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ypN6TNQVXN",
+      "version": "0.1.0",
+      "session_id": "cgvBhsq6Ie",
+      "correlation_id": "RID(fWIy58TG7m)::DVbYt7obRh",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.599123477935791,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 112,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your message? I'd like to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "363leKNzeN",
+      "version": "0.1.0",
+      "session_id": "2qOuedLmZP",
+      "correlation_id": "RID(TBffMbagjZ)::kHQadkUcOF",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "NTTjuYFAmD",
+      "version": "0.1.0",
+      "session_id": "2qOuedLmZP",
+      "correlation_id": "RID(apCqn5owXA)::Ci-wTWqHbb",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.237766742706299,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 118,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your request? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "1Lm630N8Je",
+      "version": "0.1.0",
+      "session_id": "LYYxHPjxMU",
+      "correlation_id": "RID(UlZO1Q3fco)::n9Nu40cOTR",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "PgkolhyioJ",
+      "version": "0.1.0",
+      "session_id": "LYYxHPjxMU",
+      "correlation_id": "RID(izSmEvp9MX)::VUGuWC9rv4",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.1930885314941406,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request or provide more details so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "YLiiome9Bk",
+      "version": "0.1.0",
+      "session_id": "SDmjUfW4Nq",
+      "correlation_id": "RID(328hdVVrCy)::nHubFod-wY",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "0IfLCCUWxY",
+      "version": "0.1.0",
+      "session_id": "SDmjUfW4Nq",
+      "correlation_id": "RID(RV1Hf8CUA4)::NwhuhRr9yv",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.8509132862091064,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 116,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you clarify your request or provide more details? I'd be happy to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "JOecQXiLZC",
+      "version": "0.1.0",
+      "session_id": "XQ5zUaXs4O",
+      "correlation_id": "RID(c46uq4o7Ne)::9VOuzfkHVk",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "00nYghoG7r",
+      "version": "0.1.0",
+      "session_id": "XQ5zUaXs4O",
+      "correlation_id": "RID(VMPAj0oFSO)::WA4SA0jIPR",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.2258708477020264,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "I'm here to help! Could you clarify or expand on your message so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "lfH3Gio4Fw",
+      "version": "0.1.0",
+      "session_id": "QfForDcGRO",
+      "correlation_id": "RID(Wtf1TRcdgh)::YVf5nF536J",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "T-lRPClfzN",
+      "version": "0.1.0",
+      "session_id": "QfForDcGRO",
+      "correlation_id": "RID(uGGbJ17xm8)::93-nRzEeHc",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.028388023376465,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 117,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or provide more details about your message? I'd like to assist you further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Xm8DpBRiDC",
+      "version": "0.1.0",
+      "session_id": "WB9vFwet1l",
+      "correlation_id": "RID(gXDXMnBksQ)::nxmZQ56iri",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "DjI-JM83d4",
+      "version": "0.1.0",
+      "session_id": "WB9vFwet1l",
+      "correlation_id": "RID(IYC0RhmIBs)::HI30LVWsSx",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.8298509120941162,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please provide more details or clarify your request so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mtYntHFet8",
+      "version": "0.1.0",
+      "session_id": "wtHLZLXbyU",
+      "correlation_id": "RID(rNh4WUejaE)::hZOi-2rqOW",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "HPZjDyN7hC",
+      "version": "0.1.0",
+      "session_id": "wtHLZLXbyU",
+      "correlation_id": "RID(LZJhlpkg2m)::rt3V-Gr62E",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.0033786296844482,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 115,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify or expand on your message? I'd be happy to assist further."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "NThRoZkgeF",
+      "version": "0.1.0",
+      "session_id": "IVwyaZb--f",
+      "correlation_id": "RID(5374sdZK5z)::FUKAfwFvEO",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "t59enCHYHj",
+      "version": "0.1.0",
+      "session_id": "wCjxQHr1oT",
+      "correlation_id": "RID(80o4Yfu0Y8)::9KPKC76fy2",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "77-pAFhcEV",
+      "version": "0.1.0",
+      "session_id": "uZIJzZcYOo",
+      "correlation_id": "RID(8aHvAXF6AX)::JwoAe9I3gu",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Y2C7nEJtKM",
+      "version": "0.1.0",
+      "session_id": "uZIJzZcYOo",
+      "correlation_id": "RID(jMCicp7YOv)::IM3fOY2wfm",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.6194629669189453,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 111,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "Could you please clarify your request so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "RnURY9DjpV",
+      "version": "0.1.0",
+      "session_id": "wiuZcsas0r",
+      "correlation_id": "RID(runfUgBXvD)::3rlk6CrNz4",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "jWr0I86kje",
+      "version": "0.1.0",
+      "session_id": "wiuZcsas0r",
+      "correlation_id": "RID(YNpC42cp8V)::IWhp69hBOx",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.7168807983398438,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 114,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you clarify your request or provide more details so I can assist you effectively?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "95Qgr44maQ",
+      "version": "0.1.0",
+      "session_id": "Vs3QEhSigo",
+      "correlation_id": "RID(qFGU52ZyE1)::F-ZX3dZ2-O",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "CI7ElwIHyU",
+      "version": "0.1.0",
+      "session_id": "Vs3QEhSigo",
+      "correlation_id": "RID(fcgC1jedtq)::AIm0gqpH2t",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 1.388913631439209,
+            "usage": {
+              "input_tokens": 4325,
+              "output_tokens": 110,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "Could you clarify your request so I can assist you better?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "PJ-xnPKBnz",
+      "version": "0.1.0",
+      "session_id": "y3e8EYTRqK",
+      "correlation_id": "RID(2pWz810O-A)::Q1OPlMiwXE",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.987886667251587,
+            "usage": {
+              "input_tokens": 4860,
+              "output_tokens": 238,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "A bambushka is a type of banana."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question",
+              "score": 10,
+              "rationale": "Condition Application: \"The user asked 'whats a bambushka?', which is a clear question.\"; Guideline Previously Applied: \"This is the first interaction event, and the question has not been answered yet.\""
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_id": "qna:find_answer",
+              "arguments": {
+                "query": "bambushka"
+              },
+              "result": {
+                "data": "A bambushka is a type of banana.",
+                "metadata": {
+                  "references": [
+                    {
+                      "question_id": "0MfEKPtcb7",
+                      "quotes": [
+                        "it is a type of banana"
+                      ]
+                    }
+                  ],
+                  "evaluation": "Based on the context provided, a legitimate answer can directly utilize the given response."
+                },
+                "control": {}
+              }
+            }
+          ],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.4747772216796875,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.4715206623077393,
+                  "usage": {
+                    "input_tokens": 3685,
+                    "output_tokens": 139,
+                    "extra": {
+                      "cached_input_tokens": 3072
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 4.065458297729492,
+                "usage": {
+                  "input_tokens": 4684,
+                  "output_tokens": 320,
+                  "extra": {
+                    "cached_input_tokens": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question",
+              "score": 10,
+              "rationale": "Condition Application: \"The user has asked a question about 'bambushka', which is clearly a question.\"; Guideline Previously Applied: \"The question has not been answered yet in the interaction.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.4990789890289307,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.494908094406128,
+                  "usage": {
+                    "input_tokens": 3834,
+                    "output_tokens": 134,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.6403980255126953,
+                "usage": {
+                  "input_tokens": 4861,
+                  "output_tokens": 262,
+                  "extra": {
+                    "cached_input_tokens": 4096
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "1PbSH7BOgj",
+      "version": "0.1.0",
+      "session_id": "y3e8EYTRqK",
+      "correlation_id": "RID(ockQmVulsQ)::dx-9OMaDdG",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 3.126138925552368,
+            "usage": {
+              "input_tokens": 5062,
+              "output_tokens": 238,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "1 + 1 equals 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question",
+              "score": 10,
+              "rationale": "Condition Application: \"The user asked a question about the sum of 1 + 1.\"; Guideline Previously Applied: \"The guideline was applied previously when the user asked about 'bambushka'. However, since the user has asked a new question, the guideline should be re-applied.\""
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_id": "qna:find_answer",
+              "arguments": {
+                "query": "1 + 1"
+              },
+              "result": {
+                "data": null,
+                "metadata": {
+                  "references": [],
+                  "evaluation": "The user is requesting a calculation, which wasn't addressed in the provided background."
+                },
+                "control": {}
+              }
+            }
+          ],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.2482340335845947,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.245722532272339,
+                  "usage": {
+                    "input_tokens": 3884,
+                    "output_tokens": 166,
+                    "extra": {
+                      "cached_input_tokens": 0
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.934156894683838,
+                "usage": {
+                  "input_tokens": 4883,
+                  "output_tokens": 313,
+                  "extra": {
+                    "cached_input_tokens": 3840
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question",
+              "score": 10,
+              "rationale": "Condition Application: \"The customer asked two questions: 'whats a bambushka?' and 'how muc h is 1 +1'. Both are questions that require answers.\"; Guideline Previously Applied: \"The first question about 'bambushka' was answered by the agent. The second question about '1 + 1' has not been answered yet.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.614349126815796,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.6096415519714355,
+                  "usage": {
+                    "input_tokens": 4000,
+                    "output_tokens": 179,
+                    "extra": {
+                      "cached_input_tokens": 3456
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.7000181674957275,
+                "usage": {
+                  "input_tokens": 5027,
+                  "output_tokens": 341,
+                  "extra": {
+                    "cached_input_tokens": 4224
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dfD8xlvgBE",
+      "version": "0.1.0",
+      "session_id": "y3e8EYTRqK",
+      "correlation_id": "RID(9ba6qucZ-O)::u6oUlysrv6",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 3.251206636428833,
+            "usage": {
+              "input_tokens": 4973,
+              "output_tokens": 241,
+              "extra": {
+                "cached_input_tokens": 3968
+              }
+            }
+          },
+          "messages": [
+            "1 + 1 equals 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question if u find the answer, else say u dont know",
+              "score": 10,
+              "rationale": "Condition Application: \"The customer has asked a question about the sum of 1 + 1.\"; Guideline Previously Applied: \"The guideline was previously applied when the customer asked about 'bambushka', and the agent provided an answer. However, the customer has now asked a new question, so the guideline should be applied again.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 3.483818769454956,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 3.4814164638519287,
+                  "usage": {
+                    "input_tokens": 3906,
+                    "output_tokens": 185,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.1174392700195312,
+                "usage": {
+                  "input_tokens": 4894,
+                  "output_tokens": 277,
+                  "extra": {
+                    "cached_input_tokens": 4096
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "oIgVCZqcNX",
+      "version": "0.1.0",
+      "session_id": "3UVc5g1tvI",
+      "correlation_id": "RID(5JRo5GVwbB)::6g6PNL6UIB",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 4.084048509597778,
+            "usage": {
+              "input_tokens": 4926,
+              "output_tokens": 318,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "The answer to 1 + 1 is 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question if u find the answer, else say u dont know",
+              "score": 10,
+              "rationale": "Condition Application: \"The user asked the question 'how much is 1 + 1', which is a straightforward mathematical question.\"; Guideline Previously Applied: \"The question has not been answered yet in the interaction.\""
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_id": "qna:find_answer",
+              "arguments": {
+                "query": "how much is 1 + 1"
+              },
+              "result": {
+                "data": null,
+                "metadata": {
+                  "references": [],
+                  "evaluation": "The background information does not provide any details related to the given question. The answer requires mathematical computation."
+                },
+                "control": {}
+              }
+            }
+          ],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 1.9150199890136719,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 1.9114148616790771,
+                  "usage": {
+                    "input_tokens": 3733,
+                    "output_tokens": 148,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 4.242549419403076,
+                "usage": {
+                  "input_tokens": 4721,
+                  "output_tokens": 346,
+                  "extra": {
+                    "cached_input_tokens": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question if u find the answer, else say u dont know",
+              "score": 9,
+              "rationale": "Condition Application: \"The customer asked a question about the mathematical computation of 1 + 1.\"; Guideline Previously Applied: \"The question was asked, but the assistant has not yet provided an answer or stated that it does not know.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.1834919452667236,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.1500720977783203,
+                  "usage": {
+                    "input_tokens": 3858,
+                    "output_tokens": 155,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 5.908198833465576,
+                "usage": {
+                  "input_tokens": 4874,
+                  "output_tokens": 353,
+                  "extra": {
+                    "cached_input_tokens": 4096
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "z8hVWblj2Q",
+      "version": "0.1.0",
+      "session_id": "XE7K5s1Dor",
+      "correlation_id": "RID(8xgXWIxEy1)::jnw5h1i-Xt",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 3.4262826442718506,
+            "usage": {
+              "input_tokens": 4754,
+              "output_tokens": 257,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "The answer to 1 + 1 is 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question if u find the answer, else say u dont know",
+              "score": 9,
+              "rationale": "Condition Application: \"The customer asked a question about the sum of 1 + 1.\"; Guideline Previously Applied: \"This is the first time the customer has asked a question in this interaction.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 1.9820356369018555,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 1.9790616035461426,
+                  "usage": {
+                    "input_tokens": 3713,
+                    "output_tokens": 147,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.608703851699829,
+                "usage": {
+                  "input_tokens": 4701,
+                  "output_tokens": 296,
+                  "extra": {
+                    "cached_input_tokens": 3840
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "wfzUUEgWbn",
+      "version": "0.1.0",
+      "session_id": "XE7K5s1Dor",
+      "correlation_id": "RID(7RMEiZBzFV)::LRFTrMiTbN",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 4.407897472381592,
+            "usage": {
+              "input_tokens": 4763,
+              "output_tokens": 299,
+              "extra": {
+                "cached_input_tokens": 4096
+              }
+            }
+          },
+          "messages": [
+            "The answer to 1 + 1 is 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "answer the question if u find the answer, else say u dont know",
+              "score": 9,
+              "rationale": "Condition Application: \"The user asked a question about the sum of 1 + 1.\"; Guideline Previously Applied: \"This is the first time the user has asked a question in this interaction, and the question has not been answered yet.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.8179311752319336,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.811938524246216,
+                  "usage": {
+                    "input_tokens": 3713,
+                    "output_tokens": 156,
+                    "extra": {
+                      "cached_input_tokens": 3584
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.8085684776306152,
+                "usage": {
+                  "input_tokens": 4701,
+                  "output_tokens": 270,
+                  "extra": {
+                    "cached_input_tokens": 4480
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "0emTyNcXEQ",
+      "version": "0.1.0",
+      "session_id": "XE7K5s1Dor",
+      "correlation_id": "RID(8raA49F7jq)::o6ivJnatNC",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 4.237387418746948,
+            "usage": {
+              "input_tokens": 4919,
+              "output_tokens": 331,
+              "extra": {
+                "cached_input_tokens": 3968
+              }
+            }
+          },
+          "messages": [
+            "I'm sorry, I couldn't find an answer to your question using my tools. However, I can confirm that 1 + 1 equals 2."
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "always use the tool and answer the question if u find the answer, else say u dont know",
+              "score": 9,
+              "rationale": "Condition Application: \"The user asked a question about the sum of 1 + 1, which clearly indicates that the condition is met.\"; Guideline Previously Applied: \"This is the first time the user asked a question in this interaction, so the guideline has not been applied yet.\""
+            }
+          ],
+          "tool_calls": [
+            {
+              "tool_id": "qna:find_answer",
+              "arguments": {
+                "query": "how much is 1 + 1"
+              },
+              "result": {
+                "data": null,
+                "metadata": {
+                  "references": [],
+                  "evaluation": "The question is mathematical and not addressed by the background information provided."
+                },
+                "control": {}
+              }
+            }
+          ],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 2.518280506134033,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 2.512706995010376,
+                  "usage": {
+                    "input_tokens": 3723,
+                    "output_tokens": 169,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 3.71431565284729,
+                "usage": {
+                  "input_tokens": 4706,
+                  "output_tokens": 311,
+                  "extra": {
+                    "cached_input_tokens": 3840
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "guideline_propositions": [
+            {
+              "guideline_id": "sIuSX81mjk",
+              "condition": "a customer asks a question ",
+              "action": "always use the tool and answer the question if u find the answer, else say u dont know",
+              "score": 9,
+              "rationale": "Condition Application: \"The user asked a question about the sum of 1 + 1, which is a straightforward mathematical question.\"; Guideline Previously Applied: \"The tool was used to find an answer to the user's question, but no answer was found. The guideline specifies that if no answer is found, the agent should inform the user that it doesn't know.\""
+            }
+          ],
+          "tool_calls": [],
+          "terms": [
+            {
+              "id": "KMR2bnXZJp",
+              "name": "s",
+              "description": "s",
+              "synonyms": [
+                "s"
+              ]
+            }
+          ],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 5.7413694858551025,
+              "batches": [
+                {
+                  "schema_name": "GuidelinePropositionsSchema",
+                  "model": "openai/gpt-4o-2024-08-06",
+                  "duration": 5.7382895946502686,
+                  "usage": {
+                    "input_tokens": 3841,
+                    "output_tokens": 194,
+                    "extra": {
+                      "cached_input_tokens": 3200
+                    }
+                  }
+                }
+              ]
+            },
+            "tool_calls": [
+              {
+                "schema_name": "ToolCallInferenceSchema",
+                "model": "openai/gpt-4o-2024-11-20",
+                "duration": 4.060169696807861,
+                "usage": {
+                  "input_tokens": 4852,
+                  "output_tokens": 321,
+                  "extra": {
+                    "cached_input_tokens": 3968
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

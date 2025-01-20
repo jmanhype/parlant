@@ -1,0 +1,26 @@
+{
+  "__schemas__": {
+    "agents": {
+      "module_path": "parlant.core.agents",
+      "model_path": "_AgentDocument"
+    }
+  },
+  "agents": [
+    {
+      "id": "MUL51bFcDS",
+      "version": "0.1.0",
+      "creation_utc": "2024-12-25T07:51:57.441919+00:00",
+      "name": "Default Agent",
+      "description": "bbb",
+      "max_engine_iterations": 3
+    },
+    {
+      "id": "g-DddzDXPy",
+      "version": "0.1.0",
+      "creation_utc": "2025-01-02T16:12:28.830058+00:00",
+      "name": "Ross Geller",
+      "description": null,
+      "max_engine_iterations": 3
+    }
+  ]
+}

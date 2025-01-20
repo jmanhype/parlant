@@ -1,0 +1,10 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "guidelines": {
+      "module_path": "parlant.core.documents.guidelines",
+      "model_path": "_GuidelineDocument_v1"
+    }
+  },
+  "guidelines": []
+}

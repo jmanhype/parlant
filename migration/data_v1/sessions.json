@@ -1,0 +1,235 @@
+{
+  "__version__": 1,
+  "__schemas__": {
+    "sessions": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_SessionDocument_v1"
+    },
+    "events": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_EventDocument_v1"
+    },
+    "inspections": {
+      "module_path": "parlant.core.documents.sessions",
+      "model_path": "_InspectionDocument_v1"
+    }
+  },
+  "sessions": [
+    {
+      "id": "gXstYbeMb1",
+      "creation_utc": "2025-01-02T10:07:43.608008+00:00",
+      "customer_id": "guest",
+      "agent_id": "xOjxug03K9",
+      "mode": "auto",
+      "title": "New Conversation",
+      "consumption_offsets": {
+        "client": 0
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "3JXabxi3Tr",
+      "creation_utc": "2025-01-02T10:07:43.626364+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 0,
+      "correlation_id": "RID(ALp9L59ZOd)::ajaS3BYoem",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "2JRcg8jK0r",
+      "creation_utc": "2025-01-02T10:07:43.673939+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 1,
+      "correlation_id": "RID(ALp9L59ZOd)::ajaS3BYoem",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "QUkMC9kTdv",
+      "creation_utc": "2025-01-02T10:07:43.696922+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 2,
+      "correlation_id": "RID(ALp9L59ZOd)::ajaS3BYoem",
+      "data": {
+        "acknowledged_offset": -1,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "0B1qdSb4gk",
+      "creation_utc": "2025-01-02T10:07:44.669233+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "customer",
+      "kind": "message",
+      "offset": 3,
+      "correlation_id": "RID(vKctJAyKih)",
+      "data": {
+        "message": "qweqwe",
+        "participant": {
+          "id": "guest",
+          "display_name": "<guest>"
+        },
+        "flagged": false,
+        "tags": []
+      },
+      "deleted": false
+    },
+    {
+      "id": "Prt0AMmecJ",
+      "creation_utc": "2025-01-02T10:07:44.685572+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 4,
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "acknowledged",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "D-nVlLdZ0N",
+      "creation_utc": "2025-01-02T10:07:46.022955+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 5,
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "processing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "RqxBHRm4g9",
+      "creation_utc": "2025-01-02T10:07:46.041859+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 6,
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "typing",
+        "data": {}
+      },
+      "deleted": false
+    },
+    {
+      "id": "jL06kWkpXq",
+      "creation_utc": "2025-01-02T10:07:48.230349+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "message",
+      "offset": 7,
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "data": {
+        "message": "I'm sorry, I didn't quite understand your message. Could you please clarify or provide more details?",
+        "participant": {
+          "id": "xOjxug03K9",
+          "display_name": "Default Agent"
+        }
+      },
+      "deleted": false
+    },
+    {
+      "id": "BE27rfog-n",
+      "creation_utc": "2025-01-02T10:07:48.261432+00:00",
+      "session_id": "gXstYbeMb1",
+      "source": "ai_agent",
+      "kind": "status",
+      "offset": 8,
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "data": {
+        "acknowledged_offset": 3,
+        "status": "ready",
+        "data": {}
+      },
+      "deleted": false
+    }
+  ],
+  "inspections": [
+    {
+      "id": "QGLF6OEx4C",
+      "session_id": "gXstYbeMb1",
+      "correlation_id": "RID(ALp9L59ZOd)::ajaS3BYoem",
+      "message_generations": [],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "Zl6aXn2n-p",
+      "session_id": "gXstYbeMb1",
+      "correlation_id": "RID(vKctJAyKih)::PVoYY2e7VR",
+      "message_generations": [
+        {
+          "generation": {
+            "schema_name": "MessageEventSchema",
+            "model": "openai/gpt-4o-2024-11-20",
+            "duration": 2.1706104278564453,
+            "usage": {
+              "input_tokens": 4391,
+              "output_tokens": 120,
+              "extra": {
+                "cached_input_tokens": 0
+              }
+            }
+          },
+          "messages": [
+            "I'm sorry, I didn't quite understand your message. Could you please clarify or provide more details?"
+          ]
+        }
+      ],
+      "preparation_iterations": [
+        {
+          "guideline_propositions": [],
+          "tool_calls": [],
+          "terms": [],
+          "context_variables": [],
+          "generations": {
+            "guideline_proposition": {
+              "total_duration": 0.0,
+              "batches": []
+            },
+            "tool_calls": []
+          }
+        }
+      ]
+    }
+  ]
+}
