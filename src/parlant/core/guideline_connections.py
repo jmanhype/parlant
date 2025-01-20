@@ -15,15 +15,23 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence
-from typing_extensions import override, TypedDict, Self
+from typing import NewType, Optional, Sequence, TypedDict
+from typing_extensions import override, Self
 
 import networkx  # type: ignore
 
 from parlant.core.async_utils import ReaderWriterLock
-from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
-from parlant.core.guidelines import GuidelineId
-from parlant.core.persistence.common import ObjectId
+from parlant.core.common import (
+    SCHEMA_VERSION_UNKNOWN,
+    ItemNotFoundError,
+    UniqueId,
+    SchemaVersion,
+    Version,
+    generate_id,
+    GuidelineId,
+)
+from parlant.core.documents.guideline_connections import _GuidelineConnectionDocument_v1
+from parlant.core.persistence.common import VersionedDatabase, VersionedStore, ObjectId
 from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
@@ -68,12 +76,14 @@ class _GuidelineConnectionDocument(TypedDict, total=False):
     target: GuidelineId
 
 
-class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
-    VERSION = Version.from_string("0.1.0")
+class GuidelineConnectionDocumentStore(GuidelineConnectionStore, VersionedStore):
+    VERSION = SchemaVersion(1)
 
     def __init__(self, database: DocumentDatabase) -> None:
+        if database.version == SCHEMA_VERSION_UNKNOWN:
+            database.version = self.VERSION
         self._database = database
-        self._collection: DocumentCollection[_GuidelineConnectionDocument]
+        self._collection: DocumentCollection[_GuidelineConnectionDocument_v1]
         self._graph: networkx.DiGraph | None = None
 
         self._lock = ReaderWriterLock()
@@ -81,7 +91,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     async def __aenter__(self) -> Self:
         self._collection = await self._database.get_or_create_collection(
             name="guideline_connections",
-            schema=_GuidelineConnectionDocument,
+            schema=_GuidelineConnectionDocument_v1,
         )
         return self
 
@@ -96,10 +106,9 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     def _serialize(
         self,
         guideline_connection: GuidelineConnection,
-    ) -> _GuidelineConnectionDocument:
-        return _GuidelineConnectionDocument(
+    ) -> _GuidelineConnectionDocument_v1:
+        return _GuidelineConnectionDocument_v1(
             id=ObjectId(guideline_connection.id),
-            version=self.VERSION.to_string(),
             creation_utc=guideline_connection.creation_utc.isoformat(),
             source=guideline_connection.source,
             target=guideline_connection.target,
@@ -107,7 +116,7 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
     def _deserialize(
         self,
-        guideline_connection_document: _GuidelineConnectionDocument,
+        guideline_connection_document: _GuidelineConnectionDocument_v1,
     ) -> GuidelineConnection:
         return GuidelineConnection(
             id=GuidelineConnectionId(guideline_connection_document["id"]),
@@ -143,6 +152,11 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
             self._graph = g
 
         return self._graph
+
+    @property
+    @override
+    def versioned_database(self) -> VersionedDatabase:
+        return self._database
 
     @override
     async def create_connection(

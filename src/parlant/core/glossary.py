@@ -16,18 +16,24 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import chain
-from typing import NewType, Optional, Sequence, TypedDict
-from typing_extensions import override, Self
+from typing import Optional, Sequence, TypedDict
+from typing_extensions import Self, override
 
 from parlant.core import async_utils
 from parlant.core.async_utils import ReaderWriterLock
-from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
-from parlant.core.persistence.common import ObjectId
+from parlant.core.common import (
+    SCHEMA_VERSION_UNKNOWN,
+    ItemNotFoundError,
+    SchemaVersion,
+    TermId,
+    UniqueId,
+    Version,
+    generate_id,
+)
+from parlant.core.documents.glossary import _TermDocument_v1
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
+from parlant.core.persistence.common import ObjectId, VersionedDatabase, VersionedStore
 from parlant.core.persistence.vector_database import VectorCollection, VectorDatabase
-
-
-TermId = NewType("TermId", str)
 
 
 @dataclass(frozen=True)
@@ -112,8 +118,8 @@ class _TermDocument(TypedDict, total=False):
     content: str
 
 
-class GlossaryVectorStore(GlossaryStore):
-    VERSION = Version.from_string("0.1.0")
+class GlossaryVectorStore(GlossaryStore, VersionedStore):
+    VERSION = SchemaVersion(1)
 
     def __init__(
         self,
@@ -121,8 +127,12 @@ class GlossaryVectorStore(GlossaryStore):
         embedder_type: type[Embedder],
         embedder_factory: EmbedderFactory,
     ):
+        if vector_db.version == SCHEMA_VERSION_UNKNOWN:
+            vector_db.version = self.VERSION
+        if hasattr(vector_db, "name"):
+            setattr(vector_db, "name", "glossary")
         self._vector_db = vector_db
-        self._collection: VectorCollection[_TermDocument]
+        self._collection: VectorCollection[_TermDocument_v1]
         self._embedder = embedder_factory.create_embedder(embedder_type)
         self._embedder_type = embedder_type
 
@@ -130,8 +140,8 @@ class GlossaryVectorStore(GlossaryStore):
 
     async def __aenter__(self) -> Self:
         self._collection = await self._vector_db.get_or_create_collection(
-            name="glossary",
-            schema=_TermDocument,
+            name="glossary_v1",
+            schema=_TermDocument_v1,
             embedder_type=self._embedder_type,
         )
 
@@ -145,10 +155,9 @@ class GlossaryVectorStore(GlossaryStore):
     ) -> None:
         pass
 
-    def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
-        return _TermDocument(
+    def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument_v1:
+        return _TermDocument_v1(
             id=ObjectId(term.id),
-            version=self.VERSION.to_string(),
             term_set=term_set,
             creation_utc=term.creation_utc.isoformat(),
             name=term.name,
@@ -157,7 +166,7 @@ class GlossaryVectorStore(GlossaryStore):
             content=content,
         )
 
-    def _deserialize(self, term_document: _TermDocument) -> Term:
+    def _deserialize(self, term_document: _TermDocument_v1) -> Term:
         return Term(
             id=TermId(term_document["id"]),
             creation_utc=datetime.fromisoformat(term_document["creation_utc"]),
@@ -165,6 +174,11 @@ class GlossaryVectorStore(GlossaryStore):
             description=term_document["description"],
             synonyms=term_document["synonyms"].split(", ") if term_document["synonyms"] else [],
         )
+
+    @property
+    @override
+    def versioned_database(self) -> VersionedDatabase:
+        return self._vector_db
 
     @override
     async def create_term(
