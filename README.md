@@ -81,9 +81,9 @@ $ parlant guideline create \
 
 By giving structure to behavioral guidelines, and _granularizing_ guidelines (i.e. making each behavioral guideline a first-class entity in the engine), Parlant's engine is able to offer unprecedented control, quality, and efficiency in building LLM-based agents:
 
-1. **Reliability:** Running focused self-critique in real-time, per guideline, to ensure it is actually followed
-1. **Explainability:** Providing feedback around its interpretation of guidelines in each real-life context, which helps in troubleshooting and improvement
-1. **Maintainability:** Helping you maintain a coherent set of guidelines by detecting and alerting you to possible contradictions (gross or subtle) in your instructions
+1. 🛡️ **Reliability:** Running focused self-critique in real-time, per guideline, to ensure it is actually followed
+1. 💡 **Explainability:** Providing feedback around its interpretation of guidelines in each real-life context, which helps in troubleshooting and improvement
+1. 🔧 **Maintainability:** Helping you maintain a coherent set of guidelines by detecting and alerting you to possible contradictions (gross or subtle) in your instructions
 
 ## 🚀 Real-world impact
 
