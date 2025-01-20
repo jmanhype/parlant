@@ -20,10 +20,11 @@ from typing import Any, Optional, Sequence, cast
 from parlant.core.agents import Agent
 from parlant.core.common import generate_id
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
-from parlant.core.sessions import Event, EventSource, MessageEventData, ToolEventData
+from parlant.core.sessions import Event, EventSource, MessageEventData
 from parlant.core.glossary import Term
 from parlant.core.engines.alpha.utils import (
     context_variables_to_json,
+    emitted_tool_events_to_dicts,
 )
 from parlant.core.emissions import EmittedEvent
 
@@ -88,57 +89,6 @@ class PromptBuilder:
         else:
             return SectionStatus.NONE
 
-    @staticmethod
-    def adapt_event(e: Event | EmittedEvent) -> str:
-        data = e.data
-
-        if e.kind == "message":
-            message_data = cast(MessageEventData, e.data)
-
-            if message_data.get("flagged"):
-                data = {
-                    "participant": message_data["participant"]["display_name"],
-                    "message": "<N/A>",
-                    "censored": True,
-                    "reasons": message_data["tags"],
-                }
-            else:
-                data = {
-                    "participant": message_data["participant"]["display_name"],
-                    "message": message_data["message"],
-                }
-
-        if e.kind == "tool":
-            tool_data = cast(ToolEventData, e.data)
-
-            data = {
-                "tool_calls": [
-                    {
-                        "tool_id": tc["tool_id"],
-                        "arguments": tc["arguments"],
-                        "result": tc["result"]["data"],
-                    }
-                    for tc in tool_data["tool_calls"]
-                ]
-            }
-
-        source_map: dict[EventSource, str] = {
-            "customer": "user",
-            "customer_ui": "frontend_application",
-            "human_agent": "human_service_agent",
-            "human_agent_on_behalf_of_ai_agent": "ai_agent",
-            "ai_agent": "ai_agent",
-            "system": "system-provided",
-        }
-
-        return json.dumps(
-            {
-                "event_kind": e.kind,
-                "event_source": source_map[e.source],
-                "data": data,
-            }
-        )
-
     def add_agent_identity(
         self,
         agent: Agent,
@@ -162,8 +112,44 @@ The following is a description of your background and personality: ###
         self,
         events: Sequence[Event],
     ) -> PromptBuilder:
+        def adapt(e: Event) -> str:
+            data = e.data
+
+            if e.kind == "message":
+                message_data = cast(MessageEventData, e.data)
+
+                if message_data.get("flagged"):
+                    data = {
+                        "participant": message_data["participant"]["display_name"],
+                        "message": "<N/A>",
+                        "censored": True,
+                        "reasons": message_data["tags"],
+                    }
+                else:
+                    data = {
+                        "participant": message_data["participant"]["display_name"],
+                        "message": message_data["message"],
+                    }
+
+            source_map: dict[EventSource, str] = {
+                "customer": "user",
+                "customer_ui": "frontend_application",
+                "human_agent": "human_service_agent",
+                "human_agent_on_behalf_of_ai_agent": "ai_agent",
+                "ai_agent": "ai_agent",
+                "system": "system-provided",
+            }
+
+            return json.dumps(
+                {
+                    "event_kind": e.kind,
+                    "event_source": source_map[e.source],
+                    "data": data,
+                }
+            )
+
         if events:
-            interaction_events = [self.adapt_event(e) for e in events if e.kind != "status"]
+            interaction_events = [adapt(e) for e in events if e.kind != "status"]
 
             self.add_section(
                 name=BuiltInSection.INTERACTION_HISTORY,
@@ -216,7 +202,7 @@ The following is information that you're given about the user and context of the
             self.add_section(
                 name=BuiltInSection.GLOSSARY,
                 content=f"""
-The following is a glossary of the business.
+The following is a glossary of the business. 
 Understanding these terms, as they apply to the business, is critical for your task.
 When encountering any of these terms, prioritize the interpretation provided here over any definitions you may already know.
 Please be tolerant of possible typos by the user with regards to these terms,
@@ -234,14 +220,17 @@ and let the user know if/when you assume they meant a term by their typo: ###
         events: Sequence[EmittedEvent],
     ) -> PromptBuilder:
         if events:
-            staged_events_as_dict = [self.adapt_event(e) for e in events if e.kind == "tool"]
+            # FIXME: The following is a code-smell. We can't assume staged_events
+            #        is necessarily only composed of tool events.
+            #        Also, emitted_tool_events_to_dict() is an oddball of a function.
+            staged_events_as_dict = emitted_tool_events_to_dicts(events)
 
             self.add_section(
                 name=BuiltInSection.STAGED_EVENTS,
                 content=f"""
-Here are the most recent staged events for your reference.
-They represent interactions with external tools that perform actions or provide information.
-Prioritize their data over any other sources and use their details to complete your task: ###
+Here are some recently emitted events for your consideration.
+These events represent calls to external tools that perform real-world actions or provide useful information.
+Use the details they offer to assist in your task: ###
 {staged_events_as_dict}
 ###
 """,
