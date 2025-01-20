@@ -17,6 +17,7 @@
     "vscode": {
       "extensions": [
         "alexkrechik.cucumberautocomplete",
+        "be5invis.toml",
         "charliermarsh.ruff",
         "github.remotehub",
         "github.vscode-github-actions",

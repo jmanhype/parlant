@@ -15,6 +15,7 @@ cache/
 logs
 runtime-data
 parlant-data
+parlant.log
 /dist/
 scripts/sdks/
 scripts/fern/openapi
