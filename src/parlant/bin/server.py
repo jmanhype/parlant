@@ -15,72 +15,39 @@
 # mypy: disable-error-code=import-untyped
 
 import asyncio
-from contextlib import asynccontextmanager, AsyncExitStack
-from dataclasses import dataclass
-import importlib
-import os
-import traceback
-from lagom import Container, Singleton
-from typing import AsyncIterator, Callable, Iterable, cast
-import toml
-from typing_extensions import NoReturn
 import click
 import click_completion
+from contextlib import AsyncExitStack, asynccontextmanager
+from dataclasses import dataclass
+import importlib
+from lagom import Container, Singleton
+import os
 from pathlib import Path
 import sys
+import toml
+import traceback
+from typing import AsyncIterator, Callable, Iterable, cast
+from typing_extensions import NoReturn
 import uvicorn
 
+from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.vector_db.chroma import ChromaDatabase
-from parlant.core.engines.alpha import hooks
-from parlant.core.engines.alpha import guideline_proposer
-from parlant.core.engines.alpha import tool_caller
-from parlant.core.engines.alpha import message_event_generator
-from parlant.core.nlp.service import NLPService
-from parlant.core.shots import ShotCollection
-from parlant.core.tags import TagDocumentStore, TagStore
-from parlant.api.app import create_api_app, ASGIApplication
-from parlant.core.background_tasks import BackgroundTaskService
-from parlant.core.contextual_correlator import ContextualCorrelator
+from parlant.api.app import ASGIApplication, create_api_app
 from parlant.core.agents import AgentDocumentStore, AgentStore
+from parlant.core.application import Application
+from parlant.core.background_tasks import BackgroundTaskService
 from parlant.core.context_variables import ContextVariableDocumentStore, ContextVariableStore
+from parlant.core.contextual_correlator import ContextualCorrelator
+from parlant.core.customers import CustomerDocumentStore, CustomerStore
 from parlant.core.emission.event_publisher import EventPublisherFactory
 from parlant.core.emissions import EventEmitterFactory
-from parlant.core.customers import CustomerDocumentStore, CustomerStore
-from parlant.core.evaluations import (
-    EvaluationListener,
-    PollingEvaluationListener,
-    EvaluationDocumentStore,
-    EvaluationStatus,
-    EvaluationStore,
+from parlant.core.engines.alpha import (
+    guideline_proposer,
+    hooks,
+    message_event_generator,
+    tool_caller,
 )
-from parlant.core.guideline_connections import (
-    GuidelineConnectionDocumentStore,
-    GuidelineConnectionStore,
-)
-from parlant.core.guidelines import (
-    GuidelineDocumentStore,
-    GuidelineStore,
-)
-from parlant.adapters.db.json_file import JSONFileDocumentDatabase
-from parlant.core.nlp.embedding import EmbedderFactory
-from parlant.core.nlp.generation import SchematicGenerator
-from parlant.core.services.tools.service_registry import (
-    ServiceRegistry,
-    ServiceDocumentRegistry,
-)
-from parlant.core.sessions import (
-    PollingSessionListener,
-    SessionDocumentStore,
-    SessionListener,
-    SessionStore,
-)
-from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
 from parlant.core.engines.alpha.engine import AlphaEngine
-from parlant.core.guideline_tool_associations import (
-    GuidelineToolAssociationDocumentStore,
-    GuidelineToolAssociationStore,
-)
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema, ToolCallerInferenceShot
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionShot,
@@ -91,22 +58,75 @@ from parlant.core.engines.alpha.message_event_generator import (
     MessageEventGeneratorShot,
     MessageEventSchema,
 )
+from parlant.core.engines.alpha.tool_caller import ToolCallerInferenceShot, ToolCallInferenceSchema
 from parlant.core.engines.alpha.tool_event_generator import ToolEventGenerator
 from parlant.core.engines.types import Engine
+from parlant.core.evaluations import (
+    EvaluationDocumentStore,
+    EvaluationListener,
+    EvaluationStatus,
+    EvaluationStore,
+    PollingEvaluationListener,
+)
+from parlant.core.glossary import GlossaryStore, GlossaryVectorStore
+from parlant.core.guideline_connections import (
+    GuidelineConnectionDocumentStore,
+    GuidelineConnectionStore,
+)
+from parlant.core.guideline_tool_associations import (
+    GuidelineToolAssociationDocumentStore,
+    GuidelineToolAssociationStore,
+)
+from parlant.core.guidelines import (
+    GuidelineDocumentStore,
+    GuidelineStore,
+)
+from parlant.core.logging import CompositeLogger, FileLogger, Logger, LogLevel, ZMQLogger
+from parlant.core.nlp.embedding import EmbedderFactory
+from parlant.core.nlp.generation import SchematicGenerator
+from parlant.core.nlp.service import NLPService
+from parlant.core.persistence.common import VersionedDatabase
+from parlant.core.persistence.migration import (
+    AGENTS,
+    CONTEXT_VARIABLES,
+    CUSTOMERS,
+    EVALUATIONS,
+    GLOSSARY,
+    GUIDELINE_CONNECTIONS,
+    GUIDELINE_TOOL_ASSOCIATIONS,
+    GUIDELINES,
+    SERVICES,
+    SESSIONS,
+    TAGS,
+    STORE_SCHEMA_VERSIONS,
+    DatabaseContainer,
+    perform_migrations,
+    verify_schema_version,
+)
 from parlant.core.services.indexing.behavioral_change_evaluation import (
     BehavioralChangeEvaluator,
 )
 from parlant.core.services.indexing.coherence_checker import (
+    ActionsContradictionTestsSchema,
     CoherenceChecker,
     ConditionsEntailmentTestsSchema,
-    ActionsContradictionTestsSchema,
 )
 from parlant.core.services.indexing.guideline_connection_proposer import (
     GuidelineConnectionProposer,
     GuidelineConnectionPropositionsSchema,
 )
-from parlant.core.logging import CompositeLogger, FileLogger, ZMQLogger, LogLevel, Logger
-from parlant.core.application import Application
+from parlant.core.services.tools.service_registry import (
+    ServiceDocumentRegistry,
+    ServiceRegistry,
+)
+from parlant.core.sessions import (
+    PollingSessionListener,
+    SessionDocumentStore,
+    SessionListener,
+    SessionStore,
+)
+from parlant.core.shots import ShotCollection
+from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.core.version import VERSION
 
 DEFAULT_PORT = 8800
@@ -203,6 +223,18 @@ def load_together() -> NLPService:
     )
 
 
+NLP_SERVICE_INITIALIZER: dict[str, Callable[[], NLPService]] = {
+    "anthropic": load_anthropic,
+    "aws": load_aws,
+    "azure": load_azure,
+    "cerebras": load_cerebras,
+    "deepseek": load_deepseek,
+    "gemini": load_gemini,
+    "openai": load_openai,
+    "together": load_together,
+}
+
+
 async def create_agent_if_absent(agent_store: AgentStore) -> None:
     agents = await agent_store.list_agents()
     if not agents:
@@ -249,6 +281,59 @@ async def load_modules(
             await m.shutdown_module()
 
 
+async def setup_migration_container(nlp_service_name: str) -> AsyncIterator[Container]:
+    c = Container()
+    c[Logger] = LOGGER
+    c[ContextualCorrelator] = CORRELATOR
+
+    embedder_factory = EmbedderFactory(c)
+    database_container = DatabaseContainer(
+        agents=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (AGENTS + ".json")),
+        context_variables=JSONFileDocumentDatabase(
+            LOGGER, PARLANT_HOME_DIR / (CONTEXT_VARIABLES + ".json")
+        ),
+        customers=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (CUSTOMERS + ".json")),
+        evaluations=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (EVALUATIONS + ".json")),
+        glossary=ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
+        guideline_connections=JSONFileDocumentDatabase(
+            LOGGER, PARLANT_HOME_DIR / (GUIDELINE_CONNECTIONS + ".json")
+        ),
+        guideline_tool_associations=JSONFileDocumentDatabase(
+            LOGGER, PARLANT_HOME_DIR / (GUIDELINE_TOOL_ASSOCIATIONS + ".json")
+        ),
+        guidelines=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (GUIDELINES + ".json")),
+        services=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (SERVICES + ".json")),
+        sessions=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (SESSIONS + ".json")),
+        tags=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (TAGS + ".json")),
+    )
+    c[DatabaseContainer] = database_container
+    c[AgentStore] = AgentDocumentStore(database_container["agents"])
+    c[SessionStore] = SessionDocumentStore(database_container["sessions"])
+    c[EventEmitterFactory] = Singleton(EventPublisherFactory)
+    c[ServiceRegistry] = ServiceDocumentRegistry(
+        database=database_container["services"],
+        event_emitter_factory=c[EventEmitterFactory],
+        correlator=c[ContextualCorrelator],
+        nlp_services={nlp_service_name: NLP_SERVICE_INITIALIZER[nlp_service_name]()},
+    )
+    c[NLPService] = await c[ServiceRegistry].read_nlp_service(nlp_service_name)
+
+    verifications: list[bool] = []
+    for name, database in database_container.items():
+        verifications.append(
+            verify_schema_version(
+                LOGGER,
+                cast(VersionedDatabase, database),
+                STORE_SCHEMA_VERSIONS[name],
+                True,
+            )
+        )
+    if all(verifications):
+        raise StartupError("no migration needed")
+
+    yield c
+
+
 @asynccontextmanager
 async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterator[Container]:
     c = Container()
@@ -271,6 +356,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
             "critical": LogLevel.CRITICAL,
         }[log_level],
     )
+    embedder_factory = EmbedderFactory(c)
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
@@ -278,33 +364,57 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
     context_variables_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "context_variables.json")
     )
-    tags_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
-    )
     customers_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "customers.json")
-    )
-    sessions_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER,
-            PARLANT_HOME_DIR / "sessions.json",
-        )
-    )
-    guidelines_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
-    )
-    guideline_tool_associations_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_tool_associations.json")
-    )
-    guideline_connections_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_connections.json")
     )
     evaluations_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "evaluations.json")
     )
+    glossary_db = await EXIT_STACK.enter_async_context(
+        ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory)
+    )
+    guideline_connections_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_connections.json")
+    )
+    guideline_tool_associations_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_tool_associations.json")
+    )
+    guidelines_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
+    )
     services_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
+    sessions_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "sessions.json")
+    )
+    tags_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
+    )
+
+    verifications = [
+        verify_schema_version(LOGGER, agents_db, STORE_SCHEMA_VERSIONS[AGENTS]),
+        verify_schema_version(
+            LOGGER, context_variables_db, STORE_SCHEMA_VERSIONS[CONTEXT_VARIABLES]
+        ),
+        verify_schema_version(LOGGER, customers_db, STORE_SCHEMA_VERSIONS[CUSTOMERS]),
+        verify_schema_version(LOGGER, evaluations_db, STORE_SCHEMA_VERSIONS[EVALUATIONS]),
+        verify_schema_version(LOGGER, glossary_db, STORE_SCHEMA_VERSIONS[GLOSSARY]),
+        verify_schema_version(
+            LOGGER, guideline_connections_db, STORE_SCHEMA_VERSIONS[GUIDELINE_CONNECTIONS]
+        ),
+        verify_schema_version(
+            LOGGER,
+            guideline_tool_associations_db,
+            STORE_SCHEMA_VERSIONS[GUIDELINE_TOOL_ASSOCIATIONS],
+        ),
+        verify_schema_version(LOGGER, guidelines_db, STORE_SCHEMA_VERSIONS[GUIDELINES]),
+        verify_schema_version(LOGGER, services_db, STORE_SCHEMA_VERSIONS[SERVICES]),
+        verify_schema_version(LOGGER, sessions_db, STORE_SCHEMA_VERSIONS[SESSIONS]),
+        verify_schema_version(LOGGER, tags_db, STORE_SCHEMA_VERSIONS[TAGS]),
+    ]
+    if not all(verifications):
+        raise StartupError("schema version mismatch")
 
     c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db))
     c[ContextVariableStore] = await EXIT_STACK.enter_async_context(
@@ -331,23 +441,12 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
 
     c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
 
-    nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
-        "anthropic": load_anthropic,
-        "aws": load_aws,
-        "azure": load_azure,
-        "cerebras": load_cerebras,
-        "deepseek": load_deepseek,
-        "gemini": load_gemini,
-        "openai": load_openai,
-        "together": load_together,
-    }
-
     c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
         ServiceDocumentRegistry(
             database=services_db,
             event_emitter_factory=c[EventEmitterFactory],
             correlator=c[ContextualCorrelator],
-            nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
+            nlp_services={nlp_service_name: NLP_SERVICE_INITIALIZER[nlp_service_name]()},
         )
     )
 
@@ -355,12 +454,9 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
 
     c[NLPService] = nlp_service
 
-    embedder_factory = EmbedderFactory(c)
     c[GlossaryStore] = await EXIT_STACK.enter_async_context(
         GlossaryVectorStore(
-            await EXIT_STACK.enter_async_context(
-                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
-            ),
+            glossary_db,
             embedder_type=type(await nlp_service.get_embedder()),
             embedder_factory=embedder_factory,
         )
@@ -539,6 +635,53 @@ async def start_server(params: CLIParams) -> None:
         )
 
 
+def get_nlp_service(
+    openai: bool,
+    aws: bool,
+    azure: bool,
+    gemini: bool,
+    deepseek: bool,
+    anthropic: bool,
+    cerebras: bool,
+    together: bool,
+) -> str:
+    if sum([openai, aws, azure, gemini, deepseek, anthropic, cerebras, together]) > 2:
+        print("error: only one NLP service profile can be selected")
+        sys.exit(1)
+
+    non_default_service_selected = any(
+        (aws, azure, gemini, deepseek, anthropic, cerebras, together)
+    )
+
+    if not non_default_service_selected:
+        nlp_service = "openai"
+        require_env_keys(["OPENAI_API_KEY"])
+    elif aws:
+        nlp_service = "aws"
+        require_env_keys(["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"])
+    elif azure:
+        nlp_service = "azure"
+        require_env_keys(["AZURE_API_KEY", "AZURE_ENDPOINT"])
+    elif gemini:
+        nlp_service = "gemini"
+        require_env_keys(["GEMINI_API_KEY"])
+    elif deepseek:
+        nlp_service = "deepseek"
+        require_env_keys(["DEEPSEEK_API_KEY"])
+    elif anthropic:
+        nlp_service = "anthropic"
+        require_env_keys(["ANTHROPIC_API_KEY"])
+    elif cerebras:
+        nlp_service = "cerebras"
+        require_env_keys(["CEREBRAS_API_KEY"])
+    elif together:
+        nlp_service = "together"
+        require_env_keys(["TOGETHER_API_KEY"])
+    else:
+        assert False, "Should never get here"
+    return nlp_service
+
+
 def main() -> None:
     click_completion.init()
 
@@ -636,42 +779,23 @@ def main() -> None:
         module: tuple[str],
         version: bool,
     ) -> None:
+        if ctx.invoked_subcommand == "migrate":
+            return
+
         if version:
             print(f"Parlant v{VERSION}")
             sys.exit(0)
 
-        if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
-            print("error: only one NLP service profile can be selected")
-            sys.exit(1)
-
-        non_default_service_selected = any((aws, azure, gemini, anthropic, cerebras, together))
-
-        if not non_default_service_selected:
-            nlp_service = "openai"
-            require_env_keys(["OPENAI_API_KEY"])
-        elif aws:
-            nlp_service = "aws"
-            require_env_keys(["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"])
-        elif azure:
-            nlp_service = "azure"
-            require_env_keys(["AZURE_API_KEY", "AZURE_ENDPOINT"])
-        elif gemini:
-            nlp_service = "gemini"
-            require_env_keys(["GEMINI_API_KEY"])
-        elif deepseek:
-            nlp_service = "deepseek"
-            require_env_keys(["DEEPSEEK_API_KEY"])
-        elif anthropic:
-            nlp_service = "anthropic"
-            require_env_keys(["ANTHROPIC_API_KEY"])
-        elif cerebras:
-            nlp_service = "cerebras"
-            require_env_keys(["CEREBRAS_API_KEY"])
-        elif together:
-            nlp_service = "together"
-            require_env_keys(["TOGETHER_API_KEY"])
-        else:
-            assert False, "Should never get here"
+        nlp_service = get_nlp_service(
+            openai,
+            aws,
+            azure,
+            gemini,
+            deepseek,
+            anthropic,
+            cerebras,
+            together,
+        )
 
         ctx.obj = CLIParams(
             port=port,
@@ -681,6 +805,89 @@ def main() -> None:
         )
 
         asyncio.run(start_server(ctx.obj))
+
+    @cli.command()
+    @click.option(
+        "--openai",
+        is_flag=True,
+        help="Run with OpenAI. The environment variable OPENAI_API_KEY must be set",
+        default=True,
+    )
+    @click.option(
+        "--aws",
+        is_flag=True,
+        help="Run with AWS Bedrock. The following environment variables must be set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION",
+        default=False,
+    )
+    @click.option(
+        "--azure",
+        is_flag=True,
+        help="Run with Azure OpenAI. The following environment variables must be set: AZURE_API_KEY, AZURE_ENDPOINT",
+        default=False,
+    )
+    @click.option(
+        "--gemini",
+        is_flag=True,
+        help="Run with Gemini. The environment variable GEMINI_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--deepseek",
+        is_flag=True,
+        help="Run with DeepSeek. The environment variable DEEPSEEK_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--anthropic",
+        is_flag=True,
+        help="Run with Anthropic. The environment variable ANTHROPIC_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--cerebras",
+        is_flag=True,
+        help="Run with Cerebras. The environment variable CEREBRAS_API_KEY must be set",
+        default=False,
+    )
+    @click.option(
+        "--together",
+        is_flag=True,
+        help="Run with Together AI. The environment variable TOGETHER_API_KEY must be set",
+        default=False,
+    )
+    def migrate(
+        openai: bool,
+        aws: bool,
+        azure: bool,
+        gemini: bool,
+        deepseek: bool,
+        anthropic: bool,
+        cerebras: bool,
+        together: bool,
+    ) -> None:
+        LOGGER.info("preparing for migration")
+        nlp_service = get_nlp_service(
+            openai,
+            aws,
+            azure,
+            gemini,
+            deepseek,
+            anthropic,
+            cerebras,
+            together,
+        )
+
+        async def start_migration() -> None:
+            """internal async helper wrapper"""
+
+            migration_container = await anext(setup_migration_container(nlp_service))
+            LOGGER.info("starting migration")
+            await perform_migrations(migration_container)
+
+        asyncio.run(start_migration())
+
+        LOGGER.info("migration complete")
+        sys.exit(0)
 
     try:
         cli()
