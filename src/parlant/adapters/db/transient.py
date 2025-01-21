@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 from typing import Optional, Sequence, cast
-from typing_extensions import override
-from typing_extensions import get_type_hints
+from typing_extensions import Self, get_type_hints, override
 
-from parlant.core.persistence.common import matches_filters, Where, ObjectId, ensure_is_total
+from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SchemaVersion
+from parlant.core.persistence.common import ObjectId, Where, ensure_is_total, matches_filters
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DeleteResult,
@@ -31,7 +31,26 @@ from parlant.core.persistence.document_database import (
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
+        self._version = SCHEMA_VERSION_UNKNOWN
         self._collections: dict[str, TransientDocumentCollection[BaseDocument]] = {}
+
+    @property
+    @override
+    def version(self) -> SchemaVersion:
+        """Returns the schema version of the implementing store."""
+        return self._version
+
+    @version.setter
+    @override
+    def version(self, value: SchemaVersion) -> None:
+        """Sets the schema version of this database."""
+        self._version = value
+
+    @property
+    @override
+    def name(self) -> str:
+        """Returns the name of this database."""
+        return "Transient"
 
     @override
     async def create_collection(
@@ -84,6 +103,17 @@ class TransientDocumentDatabase(DocumentDatabase):
             del self._collections[name]
         else:
             raise ValueError(f'Collection "{name}" does not exist')
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: object | None,
+    ) -> bool:
+        return False
 
 
 class TransientDocumentCollection(DocumentCollection[TDocument]):

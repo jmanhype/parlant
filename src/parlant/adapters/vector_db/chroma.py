@@ -22,6 +22,7 @@ from typing_extensions import override, Self
 import chromadb
 
 from parlant.core.async_utils import ReaderWriterLock
+from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SCHEMA_VERSION_UNVERSIONED, SchemaVersion
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.persistence.common import Where, ensure_is_total
@@ -48,8 +49,49 @@ class ChromaDatabase(VectorDatabase):
         self._logger = logger
         self._embedder_factory = embedder_factory
 
+        self._version_file: Path = dir_path / "chroma_schema_version"
+        self._name = "chroma"
+        if not self._version_file.exists():
+            self._version = SCHEMA_VERSION_UNKNOWN
+            self._version_file.write_text(json.dumps(self._version))
+            logger.debug(
+                f"{self._version_file} does not exist, creating new collection with version: {self._version}"
+            )
+        else:
+            with open(self._version_file, mode="r") as file:
+                self._version = SCHEMA_VERSION_UNVERSIONED
+                try:
+                    self._version = json.loads(file.read())
+                    logger.debug(f"{self._version_file} found with version: {self._version}")
+                except Exception:
+                    logger.debug(
+                        f"{self._version_file} exist, but version not found. default to version: {self._version}"
+                    )
+
         self._chroma_client: chromadb.api.ClientAPI
         self._collections: dict[str, ChromaCollection[BaseDocument]] = {}
+
+    @property
+    @override
+    def version(self) -> SchemaVersion:
+        """Returns the schema version saved in the database."""
+        return self._version
+
+    @version.setter
+    @override
+    def version(self, value: SchemaVersion) -> None:
+        """Sets the schema version of this database."""
+        self._version = value
+
+    @property
+    @override
+    def name(self) -> str:
+        """Returns the name of the database."""
+        return self._name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self._name = value
 
     async def __aenter__(self) -> Self:
         self._chroma_client = chromadb.PersistentClient(str(self._dir_path))
@@ -84,8 +126,8 @@ class ChromaDatabase(VectorDatabase):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     @override
     async def create_collection(
@@ -134,8 +176,10 @@ class ChromaDatabase(VectorDatabase):
         embedder_type: type[Embedder],
     ) -> ChromaCollection[TDocument]:
         if collection := self._collections.get(name):
-            assert schema == collection._schema
-            return cast(ChromaCollection[TDocument], collection)
+            if schema == collection._schema:
+                return cast(ChromaCollection[TDocument], collection)
+            else:
+                pass
 
         self._collections[name] = ChromaCollection(
             self._logger,

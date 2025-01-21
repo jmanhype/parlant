@@ -21,6 +21,7 @@ from typing_extensions import override, Self
 
 import nano_vectordb  # type: ignore
 
+from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SchemaVersion
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.persistence.common import ensure_is_total, matches_filters, Where
@@ -47,6 +48,7 @@ class TransientVectorDatabase(VectorDatabase):
         self._embedder_factory = embedder_factory
         self._embedder_type = embedder_type
 
+        self._version = SCHEMA_VERSION_UNKNOWN
         self._database: nano_vectordb.MultiTenantNanoVDB
         self._collection_name_to_tenant_id: dict[str, str] = {}
         self._collections: dict[str, TransientVectorCollection[BaseDocument]] = {}
@@ -61,8 +63,26 @@ class TransientVectorDatabase(VectorDatabase):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
+
+    @property
+    @override
+    def version(self) -> SchemaVersion:
+        """Returns the schema version of the implementing store."""
+        return self._version
+
+    @version.setter
+    @override
+    def version(self, value: SchemaVersion) -> None:
+        """Sets the schema version of this database."""
+        self._version = value
+
+    @property
+    @override
+    def name(self) -> str:
+        """Returns the name of this database."""
+        return "Transient"
 
     @override
     async def create_collection(

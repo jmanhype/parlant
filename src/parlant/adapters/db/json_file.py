@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from __future__ import annotations
+import aiofiles
 import importlib
 import json
 import operator
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, cast
 from typing_extensions import override, Self
-import aiofiles
 
+from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion, SCHEMA_VERSION_UNKNOWN
 from parlant.core.persistence.common import Where, matches_filters, ensure_is_total
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.persistence.document_database import (
@@ -45,12 +46,44 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         self._logger = logger
         self._op_counter = 0
-
         self._lock = ReaderWriterLock()
 
         if not self.file_path.exists():
-            self.file_path.write_text(json.dumps({}))
+            self._version = SCHEMA_VERSION_UNKNOWN
+            self.file_path.write_text(json.dumps({"__version__": self._version}))
+            logger.debug(
+                f"{self.file_path} does not exist, creating new collection with version: {self._version}"
+            )
+        else:
+            with open(self.file_path, "r") as file:
+                try:
+                    data: dict[str, Any] = json.loads(file.read())
+                    self._version = data.get("__version__", SCHEMA_VERSION_UNVERSIONED)
+                    logger.debug(f"{self.file_path} found with version: {self._version}")
+                except Exception:
+                    logger.debug(
+                        f"{self.file_path} exist, but version not found. default to version: {self._version}"
+                    )
+
         self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
+
+    @property
+    @override
+    def version(self) -> SchemaVersion:
+        """Returns the schema version saved in the database."""
+        return self._version
+
+    @version.setter
+    @override
+    def version(self, value: SchemaVersion) -> None:
+        """Sets the schema version of this database."""
+        self._version = value
+
+    @property
+    @override
+    def name(self) -> str:
+        """Returns the name of this database."""
+        return self.file_path.name
 
     async def flush(self) -> None:
         async with self._lock.writer_lock:
@@ -59,6 +92,9 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def __aenter__(self) -> Self:
         async with self._lock.reader_lock:
             raw_data = await self._load_data()
+
+        self.version = raw_data.get("__version__", SCHEMA_VERSION_UNVERSIONED)
+        self._logger.debug(f"{self.file_path} ENTERED with version: {self.version}")
 
         schemas: dict[str, Any] = raw_data.get("__schemas__", {})
         self._collections = (
@@ -104,8 +140,10 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         data: Mapping[str, Sequence[Mapping[str, Any]]],
     ) -> None:
         async with aiofiles.open(self.file_path, mode="w") as file:
+            self._logger.debug(f"{self.file_path} SAVED with version: {self.version}")
             json_string = json.dumps(
                 {
+                    "__version__": self.version,
                     "__schemas__": {
                         name: {
                             "module_path": c._schema.__module__,
@@ -169,6 +207,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> None:
         if name in self._collections:
             del self._collections[name]
+            return
+
         raise ValueError(f'Collection "{name}" does not exists')
 
     async def _flush_unlocked(self) -> None:

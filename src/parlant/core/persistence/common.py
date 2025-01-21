@@ -12,8 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Mapping, NewType, Union, cast, get_type_hints
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, TypedDict, Self
+
+from parlant.core.common import SchemaVersion
+
+
+class VersionedDatabase(ABC):
+    @property
+    @abstractmethod
+    def version(self) -> SchemaVersion:
+        """Returns the schema version saved in the database."""
+        ...
+
+    @version.setter
+    @abstractmethod
+    def version(self, value: SchemaVersion) -> None:
+        """Sets the schema version of this database."""
+        ...
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Returns the name of this database."""
+        ...
+
+    @abstractmethod
+    async def __aenter__(self) -> Self: ...
+
+    @abstractmethod
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: object | None,
+    ) -> bool: ...
+
+
+class VersionedStore(ABC):
+    VERSION: SchemaVersion
+
+    @property
+    @abstractmethod
+    def versioned_database(self) -> VersionedDatabase:
+        """Returns the database of this store."""
+        ...
 
 
 ObjectId = NewType("ObjectId", str)
@@ -102,5 +146,6 @@ def matches_filters(
 def ensure_is_total(document: Mapping[str, Any], schema: type[Mapping[str, Any]]) -> None:
     type_hints = get_type_hints(schema)
 
-    if list(document.keys()) != list(type_hints):
-        raise TypeError(f"Provided TypedDict {schema.__qualname__} is missing required keys")
+    for field in type_hints:
+        if field not in document.keys():
+            raise TypeError(f"Provided TypedDict {schema.__qualname__} is missing required keys")
