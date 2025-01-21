@@ -22,7 +22,7 @@ from typing_extensions import override, Self
 
 
 from parlant.core.async_utils import ReaderWriterLock
-from parlant.core.common import SCHEMA_VERSION_UNKNOWN, ToolServiceKind, Version
+from parlant.core.common import ToolServiceKind, Version
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.documents.service_registry import _ToolServiceDocument_v1
 from parlant.core.emissions import EventEmitterFactory
@@ -106,8 +106,8 @@ class ServiceDocumentRegistry(ServiceRegistry, VersionedStore):
         correlator: ContextualCorrelator,
         nlp_services: Mapping[str, NLPService],
     ):
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._tool_services_collection: DocumentCollection[_ToolServiceDocument_v1]
 

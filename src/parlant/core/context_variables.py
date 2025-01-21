@@ -21,7 +21,6 @@ from typing_extensions import Self, TypedDict, override
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     ContextVariableId,
     ContextVariableValueId,
     ItemNotFoundError,
@@ -162,8 +161,8 @@ class ContextVariableDocumentStore(ContextVariableStore, VersionedStore):
     VERSION = SchemaVersion(1)
 
     def __init__(self, database: DocumentDatabase):
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._variable_collection: DocumentCollection[_ContextVariableDocument_v1]
         self._value_collection: DocumentCollection[_ContextVariableValueDocument_v1]

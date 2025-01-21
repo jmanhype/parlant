@@ -22,7 +22,7 @@ from typing_extensions import override, Self
 import chromadb
 
 from parlant.core.async_utils import ReaderWriterLock
-from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SCHEMA_VERSION_UNVERSIONED, SchemaVersion
+from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.persistence.common import Where, ensure_is_total
@@ -52,7 +52,7 @@ class ChromaDatabase(VectorDatabase):
         self._version_file: Path = dir_path / "chroma_schema_version"
         self._name = "chroma"
         if not self._version_file.exists():
-            self._version = SCHEMA_VERSION_UNKNOWN
+            self._version = SCHEMA_VERSION_UNVERSIONED
             self._version_file.write_text(json.dumps(self._version))
             logger.debug(
                 f"{self._version_file} does not exist, creating new collection with version: {self._version}"

@@ -21,7 +21,7 @@ from typing_extensions import override, Self
 
 import nano_vectordb  # type: ignore
 
-from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SchemaVersion
+from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.persistence.common import ensure_is_total, matches_filters, Where
@@ -48,7 +48,8 @@ class TransientVectorDatabase(VectorDatabase):
         self._embedder_factory = embedder_factory
         self._embedder_type = embedder_type
 
-        self._version = SCHEMA_VERSION_UNKNOWN
+        # self._version = SCHEMA_VERSION_UNKNOWN
+        self._version = SCHEMA_VERSION_UNVERSIONED
         self._database: nano_vectordb.MultiTenantNanoVDB
         self._collection_name_to_tenant_id: dict[str, str] = {}
         self._collections: dict[str, TransientVectorCollection[BaseDocument]] = {}

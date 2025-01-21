@@ -20,7 +20,6 @@ from typing_extensions import Self, TypedDict, override
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     ItemNotFoundError,
     SchemaVersion,
     UniqueId,
@@ -99,8 +98,8 @@ class AgentDocumentStore(AgentStore, VersionedStore):
         self,
         database: DocumentDatabase,
     ):
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._collection: DocumentCollection[_AgentDocument_v1]
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Optional, Sequence, cast
 from typing_extensions import Self, get_type_hints, override
 
-from parlant.core.common import SCHEMA_VERSION_UNKNOWN, SchemaVersion
+from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion
 from parlant.core.persistence.common import ObjectId, Where, ensure_is_total, matches_filters
 from parlant.core.persistence.document_database import (
     BaseDocument,
@@ -31,7 +31,8 @@ from parlant.core.persistence.document_database import (
 
 class TransientDocumentDatabase(DocumentDatabase):
     def __init__(self) -> None:
-        self._version = SCHEMA_VERSION_UNKNOWN
+        # self._version = SCHEMA_VERSION_UNKNOWN
+        self._version = SCHEMA_VERSION_UNVERSIONED
         self._collections: dict[str, TransientDocumentCollection[BaseDocument]] = {}
 
     @property

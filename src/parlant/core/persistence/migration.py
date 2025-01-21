@@ -18,14 +18,14 @@ from typing_extensions import override
 
 from lagom import Container
 
-from parlant.core.agents import AgentDocumentStore
+from parlant.core.agents import _AgentDocument, AgentDocumentStore
 from parlant.core.common import SchemaVersion, VersionReport
 from parlant.core.context_variables import ContextVariableDocumentStore
 from parlant.core.customers import CustomerDocumentStore
-from parlant.core.documents.agents import _AgentDocument, _AgentDocument_v1
-from parlant.core.documents.glossary import _TermDocument, _TermDocument_v1
+from parlant.core.documents.agents import _AgentDocument_v1
+from parlant.core.documents.glossary import _TermDocument_v1
 from parlant.core.evaluations import EvaluationDocumentStore
-from parlant.core.glossary import GlossaryVectorStore
+from parlant.core.glossary import GlossaryVectorStore, _TermDocument
 from parlant.core.guideline_connections import GuidelineConnectionDocumentStore
 from parlant.core.guideline_tool_associations import GuidelineToolAssociationDocumentStore
 from parlant.core.guidelines import GuidelineDocumentStore

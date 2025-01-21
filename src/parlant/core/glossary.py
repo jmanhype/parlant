@@ -22,7 +22,6 @@ from typing_extensions import Self, override
 from parlant.core import async_utils
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     ItemNotFoundError,
     SchemaVersion,
     TermId,
@@ -127,8 +126,8 @@ class GlossaryVectorStore(GlossaryStore, VersionedStore):
         embedder_type: type[Embedder],
         embedder_factory: EmbedderFactory,
     ):
-        if vector_db.version == SCHEMA_VERSION_UNKNOWN:
-            vector_db.version = self.VERSION
+        # if vector_db.version == SCHEMA_VERSION_UNKNOWN:
+        #     vector_db.version = self.VERSION
         if hasattr(vector_db, "name"):
             setattr(vector_db, "name", "glossary")
         self._vector_db = vector_db

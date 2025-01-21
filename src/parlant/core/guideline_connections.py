@@ -22,7 +22,6 @@ import networkx  # type: ignore
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     ItemNotFoundError,
     UniqueId,
     SchemaVersion,
@@ -80,8 +79,8 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore, VersionedStore)
     VERSION = SchemaVersion(1)
 
     def __init__(self, database: DocumentDatabase) -> None:
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._collection: DocumentCollection[_GuidelineConnectionDocument_v1]
         self._graph: networkx.DiGraph | None = None

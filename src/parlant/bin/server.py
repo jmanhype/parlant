@@ -307,11 +307,11 @@ async def setup_migration_container(nlp_service_name: str) -> AsyncIterator[Cont
         tags=JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / (TAGS + ".json")),
     )
     c[DatabaseContainer] = database_container
-    c[AgentStore] = AgentDocumentStore(database_container["agents"])
-    c[SessionStore] = SessionDocumentStore(database_container["sessions"])
+    c[AgentStore] = AgentDocumentStore(database_container[AGENTS])
+    c[SessionStore] = SessionDocumentStore(database_container[SESSIONS])
     c[EventEmitterFactory] = Singleton(EventPublisherFactory)
     c[ServiceRegistry] = ServiceDocumentRegistry(
-        database=database_container["services"],
+        database=database_container[SERVICES],
         event_emitter_factory=c[EventEmitterFactory],
         correlator=c[ContextualCorrelator],
         nlp_services={nlp_service_name: NLP_SERVICE_INITIALIZER[nlp_service_name]()},

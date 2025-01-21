@@ -20,7 +20,6 @@ from typing_extensions import Self, TypedDict, override
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     GuidelineId,
     GuidelineContent,
     ItemNotFoundError,
@@ -108,8 +107,8 @@ class GuidelineDocumentStore(GuidelineStore, VersionedStore):
     VERSION = SchemaVersion(1)
 
     def __init__(self, database: DocumentDatabase):
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._collection: DocumentCollection[_GuidelineDocument_v1]
 

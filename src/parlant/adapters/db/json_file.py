@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, cast
 from typing_extensions import override, Self
 
-from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion, SCHEMA_VERSION_UNKNOWN
+from parlant.core.common import SCHEMA_VERSION_UNVERSIONED, SchemaVersion
 from parlant.core.persistence.common import Where, matches_filters, ensure_is_total
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.persistence.document_database import (
@@ -49,7 +49,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self._lock = ReaderWriterLock()
 
         if not self.file_path.exists():
-            self._version = SCHEMA_VERSION_UNKNOWN
+            self._version = SCHEMA_VERSION_UNVERSIONED
             self.file_path.write_text(json.dumps({"__version__": self._version}))
             logger.debug(
                 f"{self.file_path} does not exist, creating new collection with version: {self._version}"

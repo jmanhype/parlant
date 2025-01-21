@@ -172,7 +172,7 @@ class Version:
 
 
 SchemaVersion = NewType("SchemaVersion", int)
-SCHEMA_VERSION_UNKNOWN = SchemaVersion(-1)
+# SCHEMA_VERSION_UNKNOWN = SchemaVersion(-1)
 SCHEMA_VERSION_UNVERSIONED = SchemaVersion(0)
 
 

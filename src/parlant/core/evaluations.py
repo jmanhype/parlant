@@ -31,7 +31,6 @@ from typing_extensions import Literal, Self, TypedDict, override
 
 from parlant.core.async_utils import ReaderWriterLock, Timeout
 from parlant.core.common import (
-    SCHEMA_VERSION_UNKNOWN,
     AgentId,
     CoherenceCheckKind,
     ConnectionPropositionKind,
@@ -238,8 +237,8 @@ class EvaluationDocumentStore(EvaluationStore, VersionedStore):
     VERSION = SchemaVersion(1)
 
     def __init__(self, database: DocumentDatabase):
-        if database.version == SCHEMA_VERSION_UNKNOWN:
-            database.version = self.VERSION
+        # if database.version == SCHEMA_VERSION_UNKNOWN:
+        #     database.version = self.VERSION
         self._database = database
         self._collection: DocumentCollection[_EvaluationDocument_v1]
 
