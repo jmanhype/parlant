@@ -90,7 +90,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 					<div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>
 						<div className='flex items-center w-[46px]'>
 							<div>{getTimeStr(event.creation_utc)}</div>
-							{isClient && serverStatus && <div className='w-6'>{statusIcon[serverStatus]}</div>}
+							{isClient && !!serverStatus && <div className='w-6'>{statusIcon[serverStatus]}</div>}
 						</div>
 					</div>
 				</div>

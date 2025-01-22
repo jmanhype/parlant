@@ -8,41 +8,51 @@ import styles from '../message/message.module.scss';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
 import {Checkbox} from '../ui/checkbox';
 import {Button} from '../ui/button';
-import {twJoin, twMerge} from 'tailwind-merge';
+import {twJoin} from 'tailwind-merge';
 import {RadioGroup, RadioGroupItem} from '../ui/radio-group';
 import clsx from 'clsx';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useSession} from '../chatbot/chatbot';
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuPortal,
-	DropdownMenuSeparator,
-	DropdownMenuShortcut,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
-	DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+import {DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from '../ui/dropdown-menu';
 import {Input} from '../ui/input';
+import {useLocalStorage} from '@/hooks/useLocalStorage';
 
 const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
 
-const LogFilters = ({applyFn}: {applyFn: (types: any, level: string) => void}) => {
+const LogFilters = ({
+	applyFn,
+	def,
+	filterName,
+}: {
+	applyFn: (types: any, level: string) => void;
+	filterName?: string;
+	def?: Record<string, string>;
+}) => {
+	console.log('def', def);
 	const [dropdownOpen, setDropdownOpen] = useState(false);
-	const [sources, setSources] = useState(['general', 'GuidelineProposer', 'MessageEventGenerator']);
-	const [level, setLevel] = useState('DEBUG');
-	const types = ['general', 'GuidelineProposer', 'MessageEventGenerator'];
+	const [sources, setSources] = useState(def?.types || ['general', 'GuidelineProposer', 'MessageEventGenerator']);
+	const [level, setLevel] = useState(def?.level || 'DEBUG');
+	useEffect(() => {
+		if (filterName) {
+			const types = def?.types || ['general', 'GuidelineProposer', 'MessageEventGenerator'];
+			const level = def?.level || 'DEBUG';
+			setSources(types);
+			setLevel(level);
+			applyFn(types, level);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filterName]);
+
+	const types = [
+		{label: 'General', value: 'general', defaultUnchecked: def?.types && !def.types.includes('general')},
+		{label: 'Guideline Proposer', value: 'GuidelineProposer', defaultUnchecked: def?.types && !def.types.includes('GuidelineProposer')},
+		{label: 'Message Erent Composer', value: 'MessageEventGenerator', defaultUnchecked: def?.types && !def.types.includes('MessageEventGenerator')},
+	];
 	const levels = ['WARNING', 'INFO', 'DEBUG'];
 	const changeSource = (type: string, value: boolean) => {
 		setSources((val) => {
 			if (value) val.push(type);
 			else val = val.filter((item) => item !== type);
-			console.log('newval', val);
 			return [...val];
 		});
 	};
@@ -64,10 +74,14 @@ const LogFilters = ({applyFn}: {applyFn: (types: any, level: string) => void}) =
 						<DropdownMenuSeparator />
 						<div className='flex flex-col gap-[4px] mt-[9px] pb-[11px] ps-[15px] pe-[21px]'>
 							{types.map((type) => (
-								<div key={type} className='flex items-center py-[4px] ps-[6px] space-x-2 hover:bg-[#F5F6F8] focus-within:!bg-[#EBECF0]'>
-									<Checkbox id={type} defaultChecked={true} onCheckedChange={(isChecked) => changeSource(type, !!isChecked)} />
-									<label className='text-[12px] font-normal' htmlFor={type}>
-										{type}
+								<div key={type.value} className='flex items-center py-[4px] ps-[6px] space-x-2 hover:bg-[#F5F6F8] focus-within:!bg-[#EBECF0]'>
+									<Checkbox
+										id={type.value}
+										defaultChecked={!type.defaultUnchecked}
+										onCheckedChange={(isChecked) => changeSource(type.value, !!isChecked)}
+									/>
+									<label className='text-[12px] font-normal' htmlFor={type.value}>
+										{type.label}
 									</label>
 								</div>
 							))}
@@ -152,15 +166,24 @@ const MessageLogs = ({
 }): ReactNode => {
 	const {sessionId} = useSession();
 	const [filters, setFilters] = useState({});
-	const [filterTabs, setFilterTabs] = useState(['filter_1']);
-	const [currFilterTabs, setCurrFilterTabs] = useState('filter_1');
+	// const [filterTabs, setFilterTabs] = useState(['filter_1']);
+	const [filterTabs, setFilterTabs] = useLocalStorage('filters', [{name: 'filter_1', def: null}]);
+	const [currFilterTabs, setCurrFilterTabs] = useState(filterTabs[0]);
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
 
 	useEffect(() => {
 		if (logs) {
 			if (!Object.keys(filters).length) setFilteredLogs(logs);
-			else setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters));
+			else {
+				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters));
+				setFilterTabs((tabFilters) => {
+					const tab = tabFilters.find((t) => t.name === currFilterTabs?.name);
+					if (!tab) return tabFilters;
+					tab.def = filters;
+					return [...tabFilters];
+				});
+			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [logs, filters]);
@@ -179,12 +202,14 @@ const MessageLogs = ({
 	}, [event?.correlation_id]);
 
 	const deleteFilterTab = (tab: string) => {
-		setFilterTabs((tabs) => tabs.filter((t) => t !== tab));
-		if (currFilterTabs === tab) setCurrFilterTabs(filterTabs[0]);
+		setFilterTabs((tabs) => tabs.filter((t) => t.name !== tab));
+		if (currFilterTabs?.name === tab) setCurrFilterTabs(filterTabs[0]);
 	};
 
 	const addFilter = () => {
-		setFilterTabs((tabs) => [...tabs, `filter_${tabs.length + 1}`]);
+		const val = {name: `filter_${filterTabs.length + 1}`, def: null};
+		setFilterTabs((tabs) => [...tabs, val]);
+		setCurrFilterTabs(val);
 	};
 
 	return (
@@ -225,8 +250,12 @@ const MessageLogs = ({
 			{event && !!logs.length && (
 				<div className='flex items-center filter-tabs border-b'>
 					{filterTabs.map((tab) => (
-						<div key={tab} className='flex gap-[10px] items-center p-[10px] border-e w-fit'>
-							<p>{tab}</p>
+						<div
+							key={tab.name}
+							role='button'
+							onClick={() => setCurrFilterTabs(tab)}
+							className={twJoin('flex gap-[10px] items-center p-[10px] border-e w-fit', tab.name === currFilterTabs?.name && 'font-bold')}>
+							<p>{tab.name}</p>
 							{filterTabs.length > 0 && (
 								<img
 									src='icons/close.svg'
@@ -235,7 +264,7 @@ const MessageLogs = ({
 									role='button'
 									height={10}
 									width={10}
-									onClick={() => deleteFilterTab(tab)}
+									onClick={() => deleteFilterTab(tab.name)}
 								/>
 							)}
 						</div>
@@ -245,7 +274,9 @@ const MessageLogs = ({
 					</div>
 				</div>
 			)}
-			{event && !!logs.length && <LogFilters applyFn={(types, level) => setFilters({types, level})} />}
+			{event && !!logs.length && (
+				<LogFilters filterName={currFilterTabs?.name} def={currFilterTabs?.def} applyFn={(types, level) => setFilters({types, level})} />
+			)}
 			{!event && (
 				<div className='flex flex-col m-auto justify-center items-center max-w-[378px] w-full h-full'>
 					<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
@@ -256,7 +287,7 @@ const MessageLogs = ({
 				</div>
 			)}
 			{event && !logs.length && <div className='h-full flex justify-center items-center'>Logs not found</div>}
-			{event && logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center'>No data</div>}
+			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center'>No data</div>}
 			{event && !!filteredLogs.length && (
 				<div>
 					{filteredLogs.map((log, i) => (

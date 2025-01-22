@@ -1,74 +1,74 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import {useEffect, useRef, useState, useCallback} from 'react';
 
 interface WebSocketOptions {
-  onMessage?: (message: string) => void;
-  onError?: (error: Event) => void;
-  onOpen?: () => void;
-  onClose?: (event: CloseEvent) => void;
+	onMessage?: (message: string) => void;
+	onError?: (error: Event) => void;
+	onOpen?: () => void;
+	onClose?: (event: CloseEvent) => void;
 }
 
 export const useWebSocket = (url: string, defaultRunning?: boolean, options?: WebSocketOptions) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
-  const [isRunning, setIsRunning] = useState(!!defaultRunning);
-  const socketRef = useRef<WebSocket | null>(null);
+	const [isConnected, setIsConnected] = useState(false);
+	const [lastMessage, setLastMessage] = useState<string | null>(null);
+	const [isRunning, setIsRunning] = useState(!!defaultRunning);
+	const socketRef = useRef<WebSocket | null>(null);
 
-  const sendMessage = useCallback((message: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(message);
-    } else {
-      console.warn('WebSocket is not open. Unable to send message:', message);
-    }
-  }, []);
+	const sendMessage = useCallback((message: string) => {
+		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+			socketRef.current.send(message);
+		} else {
+			console.warn('WebSocket is not open. Unable to send message:', message);
+		}
+	}, []);
 
-  const start = useCallback(() => {
-    if (isRunning) {
-      console.warn('WebSocket is already running.');
-      return;
-    }
+	const start = useCallback(() => {
+		if (isRunning) {
+			console.warn('WebSocket is already running.');
+			return;
+		}
 
-    const socket = new WebSocket(url);
-    socketRef.current = socket;
+		const socket = new WebSocket(url);
+		socketRef.current = socket;
 
-    socket.addEventListener('open', () => {
-      setIsConnected(true);
-      options?.onOpen?.();
-    });
+		socket.addEventListener('open', () => {
+			setIsConnected(true);
+			options?.onOpen?.();
+		});
 
-    socket.addEventListener('message', (event) => {
-      setLastMessage(event.data);
-      options?.onMessage?.(event.data);
-    });
+		socket.addEventListener('message', (event) => {
+			setLastMessage(event.data);
+			options?.onMessage?.(event.data);
+		});
 
-    socket.addEventListener('error', (event) => {
-      console.error('WebSocket error:', event);
-      options?.onError?.(event);
-    });
+		socket.addEventListener('error', (event) => {
+			console.error('WebSocket error:', event);
+			options?.onError?.(event);
+		});
 
-    socket.addEventListener('close', (event) => {
-      setIsConnected(false);
-      options?.onClose?.(event);
-    });
+		socket.addEventListener('close', (event) => {
+			setIsConnected(false);
+			options?.onClose?.(event);
+		});
 
-    setIsRunning(true);
-  }, [url, options, isRunning]);
+		setIsRunning(true);
+	}, [url, options, isRunning]);
 
-  const pause = useCallback(() => {
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
-    }
-    setIsConnected(false);
-    setIsRunning(false);
-  }, []);
+	const pause = useCallback(() => {
+		if (socketRef.current) {
+			socketRef.current.close();
+			socketRef.current = null;
+		}
+		setIsConnected(false);
+		setIsRunning(false);
+	}, []);
 
-  useEffect(() => {
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, []);
+	useEffect(() => {
+		return () => {
+			if (socketRef.current) {
+				socketRef.current.close();
+			}
+		};
+	}, []);
 
-  return { isConnected, lastMessage, sendMessage, start, pause, isRunning };
+	return {isConnected, lastMessage, sendMessage, start, pause, isRunning};
 };
