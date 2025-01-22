@@ -22,13 +22,7 @@ function objToUrlParams(obj: Record<string, unknown>) {
 const ABORT_REQ_CODE = 20;
 const TIMEOUT_ERROR_MESSAGE = 'Error: Gateway Timeout';
 
-export default function useFetch<T>(
-	url: string,
-	body?: Record<string, unknown>,
-	dependencies: unknown[] = [],
-	retry = false,
-	initiate = true
-): useFetchResponse<T> {
+export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false, initiate = true): useFetchResponse<T> {
 	const [data, setData] = useState<T | null>(null);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<null | {message: string}>(null);
@@ -65,7 +59,7 @@ export default function useFetch<T>(
 		setLoading(true);
 		setError(null);
 
-		fetch(`http://127.0.0.1:8800/${url}${params}`, {signal})
+		fetch(`/${url}${params}`, {signal})
 			.then(async (response) => {
 				if (!response.ok) throw new Error(`Error: ${response.statusText}`);
 				const result = await response.json();
