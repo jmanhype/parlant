@@ -64,7 +64,7 @@ export const getMessageLogsWithFilters = (correlation_id: string, filters: {leve
 		if (validLevels && !validLevels.has(log.level)) return false;
 		if (filterTypes) {
 			const match = log.message.match(/^\[([^\]]+)\]/);
-			const type = match ? match[1] : 'general';
+			const type = match ? match[1] : 'General';
 			return filterTypes.has(type);
 		}
 		return true;
@@ -81,6 +81,6 @@ export const getMessageLogsBy = (type: 'level' | 'source', correlation_id: strin
 	const values = logsJson[correlation_id];
 	return groupBy(values, (val) => {
 		const match = val.message.match(/^\[([^\]]+)\]/);
-		return match ? match[1] : 'general';
+		return match ? match[1] : 'General';
 	});
 };

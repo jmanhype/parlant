@@ -4,50 +4,60 @@ import {Button} from '../ui/button';
 import {Checkbox} from '../ui/checkbox';
 import {Input} from '../ui/input';
 
-type Type = 'general' | 'GuidelineProposer' | 'MessageEventGenerator';
+type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
 
-const ALL_TYPES: Type[] = ['general', 'GuidelineProposer', 'MessageEventGenerator'];
+const ALL_TYPES: Type[] = ['General', 'GuidelineProposer', 'MessageEventGenerator'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
 
 const typeLabels: Record<Type, string> = {
-	general: 'General',
+	General: 'General',
 	GuidelineProposer: 'Guideline Proposer',
 	MessageEventGenerator: 'Message Event Composer',
 };
 
-const LogFilters = ({applyFn, def, filterName}: {applyFn: (types: string[], level: string) => void; filterName?: string; def?: {level?: Level; types?: Type[]}}) => {
+const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level: string) => void; filterId?: number; def?: {level?: Level; types?: Type[]} | null}) => {
 	const [dropdownOpen, setDropdownOpen] = useState(false);
-	const [sources, setSources] = useState(def?.types || []);
+	const [sources, setSources] = useState(structuredClone(def?.types || []));
 	const [level, setLevel] = useState<Level>(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);
 
 	useEffect(() => {
-		if (filterName) {
-			const types = def?.types || [...ALL_TYPES];
+		if (filterId) {
+			const types = structuredClone(def?.types || ALL_TYPES);
 			const level = def?.level || ALL_LEVELS[ALL_LEVELS.length - 1];
 			setSources(types);
 			setLevel(level);
 			applyFn(types, level);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [filterName]);
+	}, [filterId]);
 
 	const changeSource = (type: Type, value: boolean) => {
 		setSources((val) => {
 			if (value) val.push(type);
 			else val = val.filter((item) => item !== type);
-			return [...val];
+			const vals = [...new Set(val)];
+			return vals;
 		});
 	};
 
 	return (
 		<div className='flex justify-between py-[10px] pe-[10px] ps-[24px]'>
-			<div className='filters-button flex items-center gap-[8px]'>
+			<div className='filters-button flex items-center gap-[8px] flex-wrap'>
 				{!!def?.types?.length &&
 					def.types.map((type) => (
-						<div className='bg-[#EBECF0] flex items-center gap-[8px] py-[5px] px-[14px] rounded-[5px]'>
-							<p key={type}>{typeLabels[type]}</p>
-							<img src='icons/close.svg' alt='close' role='button' />
+						<div key={type} className='bg-[#EBECF0] flex items-center gap-[8px] py-[5px] px-[14px] rounded-[5px]'>
+							<p className='text-nowrap'>{typeLabels[type]}</p>
+							<img
+								src='icons/close.svg'
+								alt='close'
+								className='pe-[14px]'
+								role='button'
+								onClick={() => {
+									changeSource(type, false);
+									applyFn(sources, level);
+								}}
+							/>
 						</div>
 					))}
 				<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
@@ -66,7 +76,7 @@ const LogFilters = ({applyFn, def, filterName}: {applyFn: (types: string[], leve
 						<div className='flex flex-col gap-[4px] mt-[9px] pb-[11px] ps-[15px] pe-[21px]'>
 							{ALL_TYPES.map((type) => (
 								<div key={type} className='flex items-center py-[4px] ps-[6px] space-x-2 hover:bg-[#F5F6F8] focus-within:!bg-[#EBECF0]'>
-									<Checkbox id={type} defaultChecked={def?.types && !def.types.includes(type)} onCheckedChange={(isChecked) => changeSource(type, !!isChecked)} />
+									<Checkbox id={type} defaultChecked={def?.types?.includes(type)} onCheckedChange={(isChecked) => changeSource(type, !!isChecked)} />
 									<label className='text-[12px] font-normal' htmlFor={type}>
 										{typeLabels[type]}
 									</label>
