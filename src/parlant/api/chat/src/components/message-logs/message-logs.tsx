@@ -3,6 +3,7 @@ import {Bug, Info, Plus, TriangleAlert} from 'lucide-react';
 import {ReactNode, useEffect, useState} from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import styles from '../message/message.module.scss';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
 import {Checkbox} from '../ui/checkbox';
@@ -261,7 +262,7 @@ const MessageLogs = ({
 					{filteredLogs.map((log, i) => (
 						<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px] border-t')}>
 							<div className='self-start'>{IconMap[log.level]}</div>
-							<Markdown remarkPlugins={[remarkGfm]} className={clsx(styles.markdown, 'max-w-[-webkit-fill-available] pe-[10px]')}>
+							<Markdown remarkPlugins={[remarkGfm, remarkBreaks]} className={clsx(styles.markdown, 'max-w-[-webkit-fill-available] pe-[10px]')}>
 								{log?.message}
 							</Markdown>
 							{/* <div>{log.message}</div> */}
