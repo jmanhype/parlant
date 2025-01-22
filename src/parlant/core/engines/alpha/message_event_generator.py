@@ -531,17 +531,6 @@ Produce a valid JSON object in the following format: ###
             self._logger.debug("[MessageEventGenerator] Produced no reply")
             return message_event_response.info, None
 
-        if message_event_response.content.evaluation_for_each_instruction:
-            self._logger.debug(
-                "[MessageEventGenerator][Evaluations]\n"
-                f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
-            )
-
-        self._logger.debug(
-            "[MessageEventGenerator][Revisions]\n"
-            f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
-        )
-
         if first_correct_revision := next(
             (
                 r
