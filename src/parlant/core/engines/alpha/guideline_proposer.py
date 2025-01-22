@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import cached_property
 from itertools import chain
@@ -43,9 +43,9 @@ from parlant.core.shots import Shot, ShotCollection
 class GuidelinePropositionSchema(DefaultBaseModel):
     guideline_number: int
     condition: str
+    action: Optional[str] = ""
     condition_application_rationale: str
     condition_applies: bool
-    action: Optional[str] = ""
     guideline_is_continuous: Optional[bool] = False
     capitalize_exact_words_from_action_in_the_explanations_to_avoid_semantic_pitfalls: bool = True
     guideline_current_application_refers_to_a_new_or_subtly_different_context_or_information: str = ""
@@ -166,25 +166,6 @@ class GuidelineProposer:
 
         t_end = time.time()
 
-        activated_guidelines = [
-            {
-                "guideline": {
-                    "id": p.guideline.id,
-                    "content": asdict(p.guideline.content),
-                },
-                "score": p.score,
-                "rationale": p.rationale,
-                "guideline_previously_applied": p.guideline_previously_applied.name,
-                "guideline_is_continuous": p.guideline_is_continuous,
-                "should_reapply": p.should_reapply,
-            }
-            for p in chain.from_iterable(proposition_batches)
-        ]
-
-        self._logger.debug(
-            f"[GuidelineProposer][Activated] {json.dumps(activated_guidelines, indent=2) if activated_guidelines else 'No guidelines were activated.'}"
-        )
-
         return GuidelinePropositionResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
@@ -251,29 +232,22 @@ class GuidelineProposer:
                 hints={"temperature": 0.15},
             )
 
-            self._logger.debug(
-                f"[GuidelineProposer][Completion] {inference.content.model_dump_json(indent=2)}"
+        if not inference.content.checks:
+            self._logger.warning(
+                "[GuidelineProposer][Completion] No checks generated! This shouldn't happen."
             )
 
         propositions = []
 
         for proposition in inference.content.checks:
-            guideline = guidelines_dict[int(proposition.guideline_number)]
-
-            self._logger.debug(
-                f'[GuidelineProposer][Evaluation] "When {guideline.content.condition}; Then {guideline.content.action}":\n'
-                f"  Score: {proposition.applies_score}/10\n"
-                f'  ConditionRationale: "{proposition.condition_application_rationale}"\n'
-                f"  IsContinuous: {proposition.guideline_is_continuous}\n"
-                f'  PreviouslyApplied: "{proposition.guideline_previously_applied}"\n'
-                f"  ShouldReapply: {proposition.guideline_should_reapply}\n"
-                f'  ReapplicationRationale: "{proposition.guideline_previously_applied_rationale}"'
-            )
-
             if (proposition.applies_score >= 6) and (
                 (proposition.guideline_previously_applied == "no")
                 or proposition.guideline_should_reapply
             ):
+                self._logger.debug(
+                    f"[GuidelineProposer][Completion][Activated] {proposition.model_dump_json(indent=2)}"
+                )
+
                 propositions.append(
                     ConditionApplicabilityEvaluation(
                         guideline_number=proposition.guideline_number,
@@ -292,6 +266,10 @@ class GuidelineProposer:
                         guideline_should_reapply=proposition.guideline_should_reapply or False,
                         guideline_is_continuous=proposition.guideline_is_continuous or False,
                     )
+                )
+            else:
+                self._logger.debug(
+                    f"[GuidelineProposer][Completion][Skipped] {proposition.model_dump_json(indent=2)}"
                 )
 
         return inference.info, propositions
