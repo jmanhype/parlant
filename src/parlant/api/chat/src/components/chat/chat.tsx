@@ -5,7 +5,6 @@ import {Button} from '../ui/button';
 import {BASE_URL, deleteData, postData} from '@/utils/api';
 import {groupBy} from '@/utils/obj';
 import Message from '../message/message';
-import {useSession} from '../chatbot/chatbot';
 import {EventInterface, Log, SessionInterface} from '@/utils/interfaces';
 import {getDateStr} from '@/utils/date';
 import {Spacer} from '../ui/custom/spacer';
@@ -17,6 +16,8 @@ import {useWebSocket} from '@/hooks/useWebSocket';
 import MessageLogs from '../message-logs/message-logs';
 import {handleChatLogs} from '@/utils/logs';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
+import {useAtom} from 'jotai';
+import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
 // import { useAtom } from 'jotai';
 // import { haveLogs } from '@/store';
 
@@ -34,16 +35,9 @@ const emptyPendingMessage: EventInterface = {
 
 const DateHeader = ({date, isFirst, bgColor}: {date: string | Date; isFirst: boolean; bgColor?: string}): ReactElement => {
 	return (
-		<div
-			className={twMerge(
-				'text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0',
-				isFirst && 'pt-0 !mt-0',
-				bgColor
-			)}>
+		<div className={twMerge('text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0', isFirst && 'pt-0 !mt-0', bgColor)}>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
-			<div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>
-				{getDateStr(date)}
-			</div>
+			<div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>{getDateStr(date)}</div>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
 		</div>
 	);
@@ -69,18 +63,12 @@ export default function Chat(): ReactElement {
 	// const [logChanges, setLogChanges] = useAtom(haveLogs);
 	// const [hasLogs, setHasLogs] = useState(new Set());
 
-	const {sessionId, setSessionId, agentId, newSession, setNewSession, setSessions, agents} = useSession();
-	const {
-		data: lastMessages,
-		refetch,
-		ErrorTemplate,
-	} = useFetch<EventInterface[]>(
-		`sessions/${sessionId}/events`,
-		{min_offset: lastOffset},
-		[],
-		sessionId !== NEW_SESSION_ID,
-		!!(sessionId && sessionId !== NEW_SESSION_ID)
-	);
+	const [agents] = useAtom(agentsAtom);
+	const [sessionId, setSessionId] = useAtom(sessionIdAtom);
+	const [agentId] = useAtom(agentIdIdAtom);
+	const [newSession, setNewSession] = useAtom(newSessionAtom);
+	const [, setSessions] = useAtom(sessionsAtom);
+	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID));
 
 	// useEffect(() => {
 	//     setHasLogs(new Set(Object.keys(logChanges)));
@@ -178,8 +166,7 @@ export default function Chat(): ReactElement {
 		if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);
 		setMessages((messages) => {
 			const last = messages.at(-1);
-			if (last?.source === 'customer' && correlationsMap?.[last?.correlation_id])
-				last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
+			if (last?.source === 'customer' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
 			return [...messages, ...withStatusMessages] as EventInterface[];
 		});
 
@@ -252,18 +239,12 @@ export default function Chat(): ReactElement {
 			<div className='flex items-center h-full w-full'>
 				<div className='h-full min-w-[50%] flex flex-col'>
 					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')} />
-					<div
-						className={twMerge(
-							'flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e',
-							showLogsForMessage && 'bg-main'
-						)}>
-						<div className='messages fixed-scroll flex-1 flex flex-col w-full mb-4' aria-live='polite' role='log' aria-label='Chat messages'>
+					<div className={twMerge('flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e', showLogsForMessage && 'bg-main')}>
+						<div className='messages fixed-scroll flex-1 flex flex-col w-full pb-4' aria-live='polite' role='log' aria-label='Chat messages'>
 							{ErrorTemplate && <ErrorTemplate />}
 							{visibleMessages.map((event, i) => (
 								<React.Fragment key={i}>
-									{!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) && (
-										<DateHeader date={event.creation_utc} isFirst={!i} bgColor={showLogsForMessage ? 'bg-main' : 'bg-white'} />
-									)}
+									{!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) && <DateHeader date={event.creation_utc} isFirst={!i} bgColor={showLogsForMessage ? 'bg-main' : 'bg-white'} />}
 									<div ref={lastMessageRef} className='flex flex-col'>
 										<Message
 											isRegenerateHidden={!!isMissingAgent}
@@ -301,13 +282,7 @@ export default function Chat(): ReactElement {
 									rows={1}
 									className='box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main'
 								/>
-								<Button
-									variant='ghost'
-									data-testid='submit-button'
-									className='max-w-[60px] rounded-full hover:bg-white'
-									ref={submitButtonRef}
-									disabled={!message?.trim() || !agentId || isRegenerating}
-									onClick={() => postMessage(message)}>
+								<Button variant='ghost' data-testid='submit-button' className='max-w-[60px] rounded-full hover:bg-white' ref={submitButtonRef} disabled={!message?.trim() || !agentId || isRegenerating} onClick={() => postMessage(message)}>
 									<img src='icons/send.svg' alt='Send' height={19.64} width={21.52} className='h-10' />
 								</Button>
 							</div>
@@ -316,11 +291,7 @@ export default function Chat(): ReactElement {
 					</div>
 				</div>
 				<div className='flex h-full min-w-[50%]'>
-					<MessageLogs
-						event={showLogsForMessage}
-						regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined}
-						closeLogs={() => setShowLogsForMessage(null)}
-					/>
+					<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
 				</div>
 			</div>
 		</>

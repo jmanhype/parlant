@@ -18,17 +18,7 @@ interface Props {
 }
 
 const statusIcon = {
-	pending: (
-		<video
-			src='mp4/loading.mp4'
-			autoPlay
-			loop
-			data-testid='pending'
-			height={12.2}
-			width={12.2}
-			className={'clip- ms-[4px] rounded-full ' + styles.pendingVideo}
-		/>
-	),
+	pending: <video src='mp4/loading.mp4' autoPlay loop data-testid='pending' height={12.2} width={12.2} className={'clip- ms-[4px] rounded-full ' + styles.pendingVideo} />,
 	accepted: <img src='icons/v.svg' data-testid='accepted' height={11} width={11} className='ms-[4px]' alt='accepted' />,
 	acknowledged: <img src='icons/v.svg' data-testid='acknowledged' height={11} width={11} className='ms-[4px]' alt='accepted' />,
 	processing: <img src='icons/green-v.svg' data-testid='processing' height={11} width={11} className='ms-[4px]' alt='read' />,
@@ -58,28 +48,20 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 	return (
 		<div className='group/main flex my-4 mx-0 mb-1 w-full justify-between animate-fade-in scrollbar'>
 			<Spacer />
-			<div
-				className={
-					(isClient ? 'justify-end' : 'justify-start') +
-					' flex-1 flex max-w-[1200px] items-end w-[calc(100%-412px)]  max-[1440px]:w-[calc(100%-160px)] max-[900px]:w-[calc(100%-40px)]'
-				}>
-				{!isClient && (
-					<div className='flex items-end me-[14px]'>
-						{!isContinual ? <img src='parlant-bubble-muted.svg' alt='Parlant' height={36} width={36} /> : <div className='h-[36px] w-[36px]' />}
-					</div>
-				)}
+			<div className={(isClient ? 'justify-end' : 'justify-start') + ' flex-1 flex max-w-[1200px] items-end w-[calc(100%-412px)]  max-[1440px]:w-[calc(100%-160px)] max-[900px]:w-[calc(100%-40px)]'}>
+				{!isClient && <div className='flex items-end me-[14px]'>{!isContinual ? <img src='parlant-bubble-muted.svg' alt='Parlant' height={36} width={36} /> : <div className='h-[36px] w-[36px]' />}</div>}
 				<div
 					ref={ref}
 					tabIndex={0}
 					data-testid='message'
 					onClick={() => !isClient && showLogs(event)}
 					className={twMerge(
-						isClient && 'bg-white text-black rounded-br-none rounded-tr-[22px]',
+						isClient && 'bg-white text-black !rounded-br-none !rounded-tr-[22px]',
 						isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
-						!isClient && 'rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
+						!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 						isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
 						isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
-						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-3.5px_5px_0px_0px_#151515]',
+						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#151515]',
 						'rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
 					)}>
 					<div className='markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]'>

@@ -13,6 +13,8 @@ import AgentAvatar from '../agent-avatar/agent-avatar';
 import {NEW_SESSION_ID} from '../chat-header/chat-header';
 import {spaceClick} from '@/utils/methods';
 import {twJoin} from 'tailwind-merge';
+import {useAtom} from 'jotai';
+import {agentIdIdAtom, agentsAtom, closeDialogAtom, customersAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
 
 interface Props {
 	session: SessionInterface;
@@ -24,28 +26,14 @@ interface Props {
 	tabIndex?: number;
 }
 
-export const DeleteDialog = ({
-	session,
-	closeDialog,
-	deleteClicked,
-}: {
-	session: SessionInterface;
-	closeDialog: () => void;
-	deleteClicked: (e: React.MouseEvent) => Promise<void> | undefined;
-}) => (
+export const DeleteDialog = ({session, closeDialog, deleteClicked}: {session: SessionInterface; closeDialog: () => void; deleteClicked: (e: React.MouseEvent) => Promise<void> | undefined}) => (
 	<div data-testid='deleteDialogContent'>
 		<Session session={session} disabled />
 		<div className='h-[80px] flex items-center justify-end pe-[18px]'>
-			<Button
-				data-testid='cancel-delete'
-				onClick={closeDialog}
-				className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#F2F0FC] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>
+			<Button data-testid='cancel-delete' onClick={closeDialog} className='hover:bg-[#EBE9F5] h-[46px] w-[96px] text-black bg-[#F2F0FC] rounded-[6px] py-[12px] px-[24px] me-[10px] text-[16px] font-normal'>
 				Cancel
 			</Button>
-			<Button
-				data-testid='gradient-button'
-				onClick={deleteClicked}
-				className='h-[46px] w-[161px] bg-[#213547] hover:bg-black rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>
+			<Button data-testid='gradient-button' onClick={deleteClicked} className='h-[46px] w-[161px] bg-[#213547] hover:bg-black rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>
 				Delete Session
 			</Button>
 		</div>
@@ -54,9 +42,16 @@ export const DeleteDialog = ({
 
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
 	const sessionNameRef = useRef<HTMLInputElement>(null);
-	const {setSessionId, setAgentId, setNewSession, agents, customers, setSessions, openDialog, closeDialog} = useSession();
+	const {openDialog} = useSession();
+	const [agents] = useAtom(agentsAtom);
+	const [customers] = useAtom(customersAtom);
 	const [agentsMap, setAgentsMap] = useState(new Map());
 	const [customerMap, setCustomerMap] = useState(new Map());
+	const [, setSessionId] = useAtom(sessionIdAtom);
+	const [, setAgentId] = useAtom(agentIdIdAtom);
+	const [, setNewSession] = useAtom(newSessionAtom);
+	const [, setSessions] = useAtom(sessionsAtom);
+	const [closeDialog] = useAtom(closeDialogAtom);
 
 	useEffect(() => {
 		if (!isSelected) return;
@@ -98,10 +93,15 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				});
 		};
 
-		openDialog('Delete Session', <DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session} />, {
-			height: '230px',
-			width: '480px',
-		});
+		openDialog(
+			'Delete Session',
+			<DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session} />,
+			{
+				height: '230px',
+				width: '480px',
+			},
+			() => (document.body.style.pointerEvents = 'auto')
+		);
 	};
 
 	const editTitle = async (e: React.MouseEvent) => {
@@ -159,7 +159,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			className={
 				'bg-white animate-fade-in text-[14px] font-ubuntu-sans justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' +
 				(editingTitle === session.id ? styles.editSession + ' !p-[4px_2px] ' : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') +
-				(isSelected && editingTitle !== session.id ? '!bg-[#FAF9FF]' : '') +
+				(isSelected && editingTitle !== session.id ? '!bg-[#F5F6F8]' : '') +
 				(disabled ? ' pointer-events-none' : '')
 			}>
 			<div className='flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]'>
@@ -181,14 +181,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				{editingTitle === session.id && (
 					<div className='flex items-center ps-[6px]'>
 						<div>{agent && <AgentAvatar agent={agent} />}</div>
-						<Input
-							data-testid='sessionTitle'
-							ref={sessionNameRef}
-							onKeyUp={onInputKeyUp}
-							onClick={(e) => e.stopPropagation()}
-							defaultValue={session.title}
-							className='box-shadow-none border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]'
-						/>
+						<Input data-testid='sessionTitle' ref={sessionNameRef} onKeyUp={onInputKeyUp} onClick={(e) => e.stopPropagation()} defaultValue={session.title} className='box-shadow-none border-none bg-[#F5F6F8] text-foreground h-fit p-1 ms-[6px]' />
 					</div>
 				)}
 			</div>
@@ -202,11 +195,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='start'>
 							{sessionActions.map((sessionAction) => (
-								<DropdownMenuItem
-									tabIndex={0}
-									key={sessionAction.title}
-									onClick={sessionAction.onClick}
-									className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
+								<DropdownMenuItem tabIndex={0} key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
 									<img data-testid={sessionAction.title} src={sessionAction.imgPath} height={16} width={18} className='me-[8px]' alt='' />
 									{sessionAction.title}
 								</DropdownMenuItem>

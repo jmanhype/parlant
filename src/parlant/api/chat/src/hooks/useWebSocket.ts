@@ -10,7 +10,7 @@ interface WebSocketOptions {
 export const useWebSocket = (url: string, defaultRunning?: boolean, options?: WebSocketOptions) => {
 	const [isConnected, setIsConnected] = useState(false);
 	const [lastMessage, setLastMessage] = useState<string | null>(null);
-	const [isRunning, setIsRunning] = useState(!!defaultRunning);
+	const [isRunning, setIsRunning] = useState(false);
 	const socketRef = useRef<WebSocket | null>(null);
 
 	const sendMessage = useCallback((message: string) => {
@@ -19,6 +19,10 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 		} else {
 			console.warn('WebSocket is not open. Unable to send message:', message);
 		}
+	}, []);
+
+	useEffect(() => {
+		if (defaultRunning) start();
 	}, []);
 
 	const start = useCallback(() => {

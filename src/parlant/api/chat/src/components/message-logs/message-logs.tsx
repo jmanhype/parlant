@@ -6,12 +6,13 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import styles from '../message/message.module.scss';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
-import {twJoin} from 'tailwind-merge';
+import {twJoin, twMerge} from 'tailwind-merge';
 import clsx from 'clsx';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
-import {useSession} from '../chatbot/chatbot';
 import {useLocalStorage} from '@/hooks/useLocalStorage';
 import LogFilters from '../log-filters/log-filters';
+import {useAtom} from 'jotai';
+import {sessionIdAtom} from '@/store';
 
 interface Filter {
 	id: number;
@@ -20,8 +21,71 @@ interface Filter {
 
 const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
 
+const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction}) => {
+	const [sessionId] = useAtom(sessionIdAtom);
+	return (
+		<HeaderWrapper className={twMerge('static', event && 'border-[#151515]')}>
+			{event && (
+				<div className={twMerge('flex items-center justify-between w-full pe-[20px]', event && 'bg-[#151515] text-white')}>
+					<div className='flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#656565] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
+						<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden h-[15px] w-[15px] min-w-[20px]' />
+						<p className='font-medium text-[15px]'>Regenerate Message</p>
+					</div>
+					<div className='group'>
+						<img src='icons/close-logs.svg' alt='close' role='button' className='group-hover:hidden' height={30} width={30} onClick={() => closeLogs?.()} />
+						<img src='icons/close-logs-hover.svg' alt='close' role='button' className='hidden group-hover:block' height={30} width={30} onClick={() => closeLogs?.()} />
+					</div>
+				</div>
+			)}
+		</HeaderWrapper>
+	);
+};
+
+const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTabs}) => {
+	const deleteFilterTab = (id: number) => {
+		const filteredTabs = filterTabs.filter((t) => t.id !== id);
+		setFilterTabs(filteredTabs);
+		if (currFilterTabs === id) setCurrFilterTabs(() => filteredTabs[0]?.id || null);
+	};
+
+	const addFilter = () => {
+		const val = {id: Date.now(), def: null};
+		setFilterTabs((tabs) => [...tabs, val]);
+		setCurrFilterTabs(val.id);
+	};
+
+	return (
+		<div className='flex bg-black items-center filter-tabs border-b border-[#474747] min-h-[36px] overflow-x-auto overflow-y-hidden no-scrollbar'>
+			{filterTabs.map((tab: Filter, i: number) => (
+				<div
+					key={tab.id}
+					role='button'
+					onClick={() => setCurrFilterTabs(tab.id)}
+					className={twJoin('flex min-h-[36px] justify-center bg-black text-white items-center px-[22px] p-[10px] border-e border-[#474747] w-fit', tab.id === currFilterTabs && 'bg-[#474747]', i === 0 && 'ps-[24px]')}>
+					<div className='flex items-center gap-[22px]'>
+						<p className='text-[15px]'>{`filter_${i + 1}`}</p>
+						{filterTabs.length > 0 && <img src='icons/close-white.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />}
+					</div>
+				</div>
+			))}
+			<div className='flex gap-[10px] items-center p-[10px] w-fit sticky bg-black right-0'>
+				<Plus role='button' onClick={addFilter} className='text-[#656565] hover:text-[#CDCDCD]' size={20} />
+			</div>
+		</div>
+	);
+};
+
+const UnselectedMessage = () => {
+	return (
+		<div className='flex flex-col m-auto justify-center items-center max-w-[378px] w-full h-full'>
+			<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
+			<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>No message has been selected</h2>
+			<p className='text-[15px] font-normal font-inter text-[#656565] text-center mt-[10px]'>Please select one of the messages so we can give you more information</p>
+		</div>
+	);
+};
+
 const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInterface | null; closeLogs?: VoidFunction; regenerateMessageFn?: (sessionId: string) => void}): ReactNode => {
-	const {sessionId} = useSession();
 	const [filters, setFilters] = useState({});
 	const [filterTabs, setFilterTabs] = useLocalStorage('filters', []);
 	const [currFilterTabs, setCurrFilterTabs] = useState<number | null>((filterTabs as Filter[])[0]?.id || null);
@@ -62,73 +126,27 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		setLogs(getMessageLogs(event.correlation_id));
 	}, [event?.correlation_id]);
 
-	const deleteFilterTab = (id: number) => {
-		const filteredTabs = filterTabs.filter((t) => t.id !== id);
-		setFilterTabs(filteredTabs);
-		if (currFilterTabs === id) setCurrFilterTabs(() => filteredTabs[0]?.id || null);
-	};
-
-	const addFilter = () => {
-		const val = {id: Date.now(), def: null};
-		setFilterTabs((tabs) => [...tabs, val]);
-		setCurrFilterTabs(val.id);
-	};
-
-	console.log('currr', currFilterTabs);
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-white')}>
-			<HeaderWrapper>
-				{event && (
-					<div className='flex items-center justify-between w-full pe-[30px]'>
-						<div className='flex ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] p-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
-							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden h-[15px] w-[15px] min-w-[20px]' />
-							<p className='font-medium text-[15px]'>Regenerate Message</p>
-						</div>
-						<div className='group'>
-							<img src='icons/close-logs.svg' alt='close' role='button' className='group-hover:hidden' height={30} width={30} onClick={() => closeLogs?.()} />
-							<img src='icons/close-logs-hover.svg' alt='close' role='button' className='hidden group-hover:block' height={30} width={30} onClick={() => closeLogs?.()} />
-						</div>
-					</div>
-				)}
-			</HeaderWrapper>
-			{event && !!logs.length && !!filterTabs?.length && (
-				<div className='flex bg-[#FBFBFB] items-center filter-tabs border-b min-h-[45px] overflow-x-auto overflow-y-hidden no-scrollbar'>
-					{filterTabs.map((tab: Filter, i: number) => (
-						<div
-							key={tab.id}
-							role='button'
-							onClick={() => setCurrFilterTabs(tab.id)}
-							className={twJoin('flex min-w-[125px] justify-center max-w-[125px] bg-white gap-[10px] items-center p-[10px] border-e w-fit', tab.id === currFilterTabs && 'font-bold')}>
-							<p className='text-[#656565] text[15px]'>{`filter_${i + 1}`}</p>
-							{filterTabs.length > 0 && <img src='icons/close.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />}
-						</div>
-					))}
-					<div className='flex gap-[10px] items-center p-[10px] w-fit sticky bg-[#FBFBFB] right-0'>
-						<Plus role='button' onClick={addFilter} />
-					</div>
-				</div>
-			)}
+			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} />
+			{event && !!logs.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && !!logs.length && <LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
-			{!event && (
-				<div className='flex flex-col m-auto justify-center items-center max-w-[378px] w-full h-full'>
-					<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
-					<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>No message has been selected</h2>
-					<p className='text-[15px] font-normal font-inter text-[#656565] text-center mt-[10px]'>Please select one of the messages so we can give you more information</p>
-				</div>
-			)}
+			{!event && <UnselectedMessage />}
 			{event && !logs.length && <div className='h-full flex justify-center items-center'>Logs not found</div>}
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center'>No data</div>}
 			{event && !!filteredLogs.length && (
-				<div>
-					{filteredLogs.map((log, i) => (
-						<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px] border-t')}>
-							<div className='self-start'>{IconMap[log.level]}</div>
-							<Markdown remarkPlugins={[remarkGfm, remarkBreaks]} className={clsx(styles.markdown, 'max-w-[-webkit-fill-available] pe-[10px]')}>
-								{log?.message}
-							</Markdown>
-							{/* <div>{log.message}</div> */}
-						</div>
-					))}
+				<div className='bg-[#474747] p-[14px] pt-0 h-auto overflow-auto'>
+					<div className='bg-white rounded-[5px] h-full overflow-auto'>
+						{filteredLogs.map((log, i) => (
+							<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px]')}>
+								<div className='self-start'>{IconMap[log.level]}</div>
+								<Markdown remarkPlugins={[remarkGfm, remarkBreaks]} className={clsx(styles.markdown, 'max-w-[-webkit-fill-available] pe-[10px]')}>
+									{log?.message}
+								</Markdown>
+								{/* <div>{log.message}</div> */}
+							</div>
+						))}
+					</div>
 				</div>
 			)}
 		</div>
