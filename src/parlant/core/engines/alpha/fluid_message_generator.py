@@ -54,9 +54,24 @@ class ContextEvaluation(DefaultBaseModel):
     should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs: bool = False
 
 
+class FactualInformationEvaluation:
+    fact: str
+    source: str
+    is_source_based_in_this_prompt: bool
+
+
+class OfferedServiceEvaluation:
+    service: str
+    source: str
+    is_source_based_in_this_prompt: bool
+
+
 class Revision(DefaultBaseModel):
     revision_number: int
     content: str
+    factual_information_provided = Optional[list[FactualInformationEvaluation]]
+    offered_services = Optional[list[OfferedServiceEvaluation]]
+    all_facts_and_services_sourced_from_prompt = Optional[bool] = True
     instructions_followed: Optional[list[str]] = []
     instructions_broken: Optional[list[str]] = []
     is_repeat_message: Optional[bool] = False
@@ -336,10 +351,12 @@ When revising, indicate whether each guideline and insight is satisfied in the s
 
 The final output must be a JSON document detailing the message development process, including:
     - Insights to abide by,
+    - Factual information provided in the suggested response, along with its source,
+    - Services offered to the client in the suggested response, along with their source,
     - If and how each instruction (guidelines and insights) was adhered to,
     - Instances where one instruction was prioritized over another,
     - Situations where guidelines and insights were unmet due to insufficient context or data,
-    - Justifications for all decisions made during the revision process.
+    - Justifications for all decisions made during the revision processת
     - A marking for whether the suggested response repeats previous messages. If the response is repetitive, continue revising until it is sufficiently unique.
 
 Do not exceed 5 revisions. If you reach the 5th revision, stop there.
@@ -472,6 +489,23 @@ Produce a valid JSON object in the following format: ###
     {{
         "revision_number": 1,
         "content": <response chosen after revision 1>,
+        "factual_information_provided": [
+            {{
+                fact: <str, statement of a fact in the suggested response>
+                source: <str, source of the fact - either a specific part of this prompt or something else>
+                is_source_based_in_this_prompt: <BOOL>
+            }},
+            ...
+        ]
+        "offered_services": [
+            {{
+                service: <str, statement of a fact in the suggested response>
+                source: <str, source of the fact - either a specific part of this prompt or something else>
+                is_source_based_in_this_prompt: <BOOL>
+            }},
+
+            ...
+        ]
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
