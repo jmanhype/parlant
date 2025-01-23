@@ -24,7 +24,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	const {sessionId} = useSession();
 	const [filters, setFilters] = useState({});
 	const [filterTabs, setFilterTabs] = useLocalStorage('filters', []);
-	const [currFilterTabs, setCurrFilterTabs] = useState<Filter | null>((filterTabs as Filter[])[0] || null);
+	const [currFilterTabs, setCurrFilterTabs] = useState<number | null>((filterTabs as Filter[])[0]?.id || null);
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
 
@@ -36,10 +36,10 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 				setFilterTabs((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
 						const filter = {id: Date.now(), def: filters};
-						setCurrFilterTabs(filter);
+						setCurrFilterTabs(filter.id);
 						return [filter];
 					}
-					const tab = tabFilters.find((t) => t.id === currFilterTabs?.id);
+					const tab = tabFilters.find((t) => t.id === currFilterTabs);
 					if (!tab) return tabFilters;
 					tab.def = filters;
 					return [...tabFilters];
@@ -63,16 +63,18 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	}, [event?.correlation_id]);
 
 	const deleteFilterTab = (id: number) => {
-		setFilterTabs((tabs) => tabs.filter((t, i) => t.id !== id));
-		if (currFilterTabs?.id === id) setCurrFilterTabs(filterTabs[0]);
+		const filteredTabs = filterTabs.filter((t) => t.id !== id);
+		setFilterTabs(filteredTabs);
+		if (currFilterTabs === id) setCurrFilterTabs(() => filteredTabs[0]?.id || null);
 	};
 
 	const addFilter = () => {
 		const val = {id: Date.now(), def: null};
 		setFilterTabs((tabs) => [...tabs, val]);
-		setCurrFilterTabs(val);
+		setCurrFilterTabs(val.id);
 	};
 
+	console.log('currr', currFilterTabs);
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-white')}>
 			<HeaderWrapper>
@@ -95,8 +97,8 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 						<div
 							key={tab.id}
 							role='button'
-							onClick={() => setCurrFilterTabs(tab)}
-							className={twJoin('flex min-w-[125px] justify-center max-w-[125px] bg-white gap-[10px] items-center p-[10px] border-e w-fit', tab.id === currFilterTabs?.id && 'font-bold')}>
+							onClick={() => setCurrFilterTabs(tab.id)}
+							className={twJoin('flex min-w-[125px] justify-center max-w-[125px] bg-white gap-[10px] items-center p-[10px] border-e w-fit', tab.id === currFilterTabs && 'font-bold')}>
 							<p className='text-[#656565] text[15px]'>{`filter_${i + 1}`}</p>
 							{filterTabs.length > 0 && <img src='icons/close.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />}
 						</div>
@@ -106,7 +108,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 					</div>
 				</div>
 			)}
-			{event && !!logs.length && <LogFilters filterId={currFilterTabs?.id} def={structuredClone(currFilterTabs?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
+			{event && !!logs.length && <LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
 			{!event && (
 				<div className='flex flex-col m-auto justify-center items-center max-w-[378px] w-full h-full'>
 					<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
