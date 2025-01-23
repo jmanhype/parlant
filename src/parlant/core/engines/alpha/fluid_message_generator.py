@@ -69,8 +69,8 @@ class OfferedServiceEvaluation:
 class Revision(DefaultBaseModel):
     revision_number: int
     content: str
-    factual_information_provided = Optional[list[FactualInformationEvaluation]]
-    offered_services = Optional[list[OfferedServiceEvaluation]]
+    factual_information_provided: Optional[list[FactualInformationEvaluation]] = []
+    offered_services: Optional[list[OfferedServiceEvaluation]] = []
     all_facts_and_services_sourced_from_prompt = Optional[bool] = True
     instructions_followed: Optional[list[str]] = []
     instructions_broken: Optional[list[str]] = []
