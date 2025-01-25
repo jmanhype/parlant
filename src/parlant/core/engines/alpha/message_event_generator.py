@@ -138,7 +138,7 @@ class MessageEventGenerator:
                 return []
 
             self._logger.debug(
-                f"""[MessageEventGenerator] Guidelines applied: {
+                f"""[MessageEventGenerator] Guidelines applied\n{
                     json.dumps(
                         [
                             {
@@ -188,7 +188,7 @@ class MessageEventGenerator:
 
             last_generation_exception: Exception | None = None
 
-            self._logger.debug(f"[MessageEventGenerator][Prompt] \n{prompt}")
+            self._logger.debug(f"[MessageEventGenerator][Prompt]\n{prompt}")
 
             for generation_attempt in range(3):
                 try:

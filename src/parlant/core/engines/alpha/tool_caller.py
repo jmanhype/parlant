@@ -233,7 +233,7 @@ class ToolCaller:
                 )
             ):
                 self._logger.debug(
-                    f"[ToolCaller][Completion][Activated] {tc.model_dump_json(indent=2)}"
+                    f"[ToolCaller][Completion][Activated]\n{tc.model_dump_json(indent=2)}"
                 )
 
                 tool_calls.append(
@@ -251,7 +251,7 @@ class ToolCaller:
 
             else:
                 self._logger.debug(
-                    f"[ToolCaller][Completion][Skipped] {tc.model_dump_json(indent=2)}"
+                    f"[ToolCaller][Completion][Skipped]\n{tc.model_dump_json(indent=2)}"
                 )
 
         return generation_info, tool_calls
@@ -592,7 +592,7 @@ Guidelines:
         self,
         prompt: str,
     ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
-        self._logger.debug(f"[ToolCaller][Inference][Prompt] \n{prompt}")
+        self._logger.debug(f"[ToolCaller][Inference][Prompt]\n{prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,

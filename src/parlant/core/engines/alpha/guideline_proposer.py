@@ -245,7 +245,7 @@ class GuidelineProposer:
                 or proposition.guideline_should_reapply
             ):
                 self._logger.debug(
-                    f"[GuidelineProposer][Completion][Activated] {proposition.model_dump_json(indent=2)}"
+                    f"[GuidelineProposer][Completion][Activated]\n{proposition.model_dump_json(indent=2)}"
                 )
 
                 propositions.append(
@@ -269,7 +269,7 @@ class GuidelineProposer:
                 )
             else:
                 self._logger.debug(
-                    f"[GuidelineProposer][Completion][Skipped] {proposition.model_dump_json(indent=2)}"
+                    f"[GuidelineProposer][Completion][Skipped]\n{proposition.model_dump_json(indent=2)}"
                 )
 
         return inference.info, propositions
