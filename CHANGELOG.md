@@ -3,7 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-TBD
+- Add logs for activated and skipped guidelines and tool calls in the engine processing
 
 
 ## [1.6.1] - 2025-01-20

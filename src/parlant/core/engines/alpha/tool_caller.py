@@ -181,19 +181,6 @@ class ToolCaller:
 
         t_end = time.time()
 
-        activated_tool_calls = [
-            {
-                "id": t.id,
-                "tool_id": t.tool_id,
-                "arguments": t.arguments,
-            }
-            for t in chain.from_iterable(tool_call_batches)
-        ]
-
-        self._logger.debug(
-            f"[ToolCaller][Activated] {json.dumps(activated_tool_calls, indent=2 if activated_tool_calls else 'No tool calls were activated.')}"
-        )
-
         return InferenceToolCallsResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
@@ -229,29 +216,45 @@ class ToolCaller:
         with self._logger.operation(f"[ToolCaller] Evaluating '{tool_id}'"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
-        return generation_info, [
-            ToolCall(
-                id=ToolCallId(generate_id()),
-                tool_id=tool_id,
-                arguments={
-                    name: evaluation.value for name, evaluation in tc.argument_evaluations.items()
-                }
-                if tc.argument_evaluations
-                else {},
-            )
-            for tc in inference_output
-            if tc.should_run
-            and tc.applicability_score >= 6
-            and (
-                not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
-                or tc.the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool
-            )
-            and all(
-                not evaluation.is_missing
-                for argument, evaluation in (tc.argument_evaluations or {}).items()
-                if argument in candidate_descriptor[1].required
-            )
-        ]
+        tool_calls = []
+
+        for tc in inference_output:
+            if (
+                tc.should_run
+                and tc.applicability_score >= 6
+                and (
+                    not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
+                    or tc.the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool
+                )
+                and all(
+                    not evaluation.is_missing
+                    for argument, evaluation in (tc.argument_evaluations or {}).items()
+                    if argument in candidate_descriptor[1].required
+                )
+            ):
+                self._logger.debug(
+                    f"[ToolCaller][Completion][Activated]\n{tc.model_dump_json(indent=2)}"
+                )
+
+                tool_calls.append(
+                    ToolCall(
+                        id=ToolCallId(generate_id()),
+                        tool_id=tool_id,
+                        arguments={
+                            name: evaluation.value
+                            for name, evaluation in tc.argument_evaluations.items()
+                        }
+                        if tc.argument_evaluations
+                        else {},
+                    )
+                )
+
+            else:
+                self._logger.debug(
+                    f"[ToolCaller][Completion][Skipped]\n{tc.model_dump_json(indent=2)}"
+                )
+
+        return generation_info, tool_calls
 
     async def execute_tool_calls(
         self,
@@ -589,7 +592,7 @@ Guidelines:
         self,
         prompt: str,
     ) -> tuple[GenerationInfo, Sequence[ToolCallEvaluation]]:
-        self._logger.debug(f"[ToolCaller][Inference][Prompt] \n{prompt}")
+        self._logger.debug(f"[ToolCaller][Inference][Prompt]\n{prompt}")
 
         inference = await self._schematic_generator.generate(
             prompt=prompt,
