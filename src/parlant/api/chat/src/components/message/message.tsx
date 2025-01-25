@@ -1,4 +1,4 @@
-import {ReactElement, useEffect, useRef} from 'react';
+import {ReactElement, useRef} from 'react';
 import Markdown from 'react-markdown';
 import {EventInterface} from '@/utils/interfaces';
 import {getTimeStr} from '@/utils/date';

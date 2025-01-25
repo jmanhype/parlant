@@ -18,7 +18,14 @@ import {sessionIdAtom} from '@/store';
 
 interface Filter {
 	id: number;
-	def: {level?: string; types?: string[]};
+	def: {level?: string; types?: string[]} | null;
+}
+
+interface FilterTabsFilterProps {
+	filterTabs: Filter[];
+	setCurrFilterTabs: React.Dispatch<React.SetStateAction<number | null>>;
+	setFilterTabs: React.Dispatch<React.SetStateAction<Filter[] | (() => Filter[])>>;
+	currFilterTabs: number | null;
 }
 
 const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
@@ -43,7 +50,7 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 	);
 };
 
-const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTabs}) => {
+const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTabs}: FilterTabsFilterProps) => {
 	const deleteFilterTab = (id: number) => {
 		const filteredTabs = filterTabs.filter((t) => t.id !== id);
 		setFilterTabs(filteredTabs);
@@ -51,8 +58,9 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	const addFilter = () => {
-		const val = {id: Date.now(), def: null};
-		setFilterTabs((tabs) => [...tabs, val]);
+		const val: Filter = {id: Date.now(), def: null};
+		const allTabs = [...filterTabs, val];
+		setFilterTabs(allTabs);
 		setCurrFilterTabs(val.id);
 	};
 
@@ -89,7 +97,7 @@ const UnselectedMessage = () => {
 
 const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInterface | null; closeLogs?: VoidFunction; regenerateMessageFn?: (sessionId: string) => void}): ReactNode => {
 	const [filters, setFilters] = useState({});
-	const [filterTabs, setFilterTabs] = useLocalStorage('filters', []);
+	const [filterTabs, setFilterTabs] = useLocalStorage<any>('filters', []);
 	const [currFilterTabs, setCurrFilterTabs] = useState<number | null>((filterTabs as Filter[])[0]?.id || null);
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
@@ -132,7 +140,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-white')}>
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} />
 			{event && !!logs.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
-			{event && !!logs.length && <LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
+			{event && !!logs.length && <LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
 			{!event && <UnselectedMessage />}
 			{event && !logs.length && <div className='h-full flex justify-center items-center'>Logs not found</div>}
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center'>No data</div>}

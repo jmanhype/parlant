@@ -60,8 +60,6 @@ export default function Chat(): ReactElement {
 	const [useContentFiltering] = useState(true);
 	const [showLogsForMessage, setShowLogsForMessage] = useState<EventInterface | null>(null);
 	const [isMissingAgent, setIsMissingAgent] = useState<boolean | null>(null);
-	// const [logChanges, setLogChanges] = useAtom(haveLogsAtom);
-	// const [hasLogs, setHasLogs] = useState(new Set());
 
 	const [agents] = useAtom(agentsAtom);
 	const [sessionId, setSessionId] = useAtom(sessionIdAtom);
@@ -69,10 +67,6 @@ export default function Chat(): ReactElement {
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID));
-
-	// useEffect(() => {
-	//     setHasLogs(new Set(Object.keys(logChanges)));
-	// }, [logChanges]);
 
 	useEffect(() => {
 		start();
@@ -86,7 +80,8 @@ export default function Chat(): ReactElement {
 
 	useEffect(() => {
 		if (lastMessage) {
-			const logSet = handleChatLogs(JSON.parse(lastMessage) as Log);
+			handleChatLogs(JSON.parse(lastMessage) as Log);
+			// const logSet = handleChatLogs(JSON.parse(lastMessage) as Log);
 			//    if (logSet) setHasLogs(logSet);
 			//    console.log('logSet', logSet);
 		}

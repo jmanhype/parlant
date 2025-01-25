@@ -3,17 +3,17 @@ import {groupBy} from './obj';
 
 const logLevels = ['WARNING', 'INFO', 'DEBUG'];
 
-const getLocalStorageSize = (): number => {
-	let totalBytes = 0;
+// const getLocalStorageSize = (): number => {
+// 	let totalBytes = 0;
 
-	for (let i = 0; i < localStorage.length; i++) {
-		const key = localStorage.key(i) || '';
-		const value = localStorage.getItem(key) || '';
-		totalBytes += key.length + value.length;
-	}
+// 	for (let i = 0; i < localStorage.length; i++) {
+// 		const key = localStorage.key(i) || '';
+// 		const value = localStorage.getItem(key) || '';
+// 		totalBytes += key.length + value.length;
+// 	}
 
-	return totalBytes / (1024 * 1024);
-};
+// 	return totalBytes / (1024 * 1024);
+// };
 
 const setLocalStorageItem = (logsJson: Record<string, string>, recursive?: boolean): boolean | void => {
 	try {
@@ -76,10 +76,10 @@ export const getMessageLogsBy = (type: 'level' | 'source', correlation_id: strin
 	if (!correlation_id) return {};
 	const logsJson = JSON.parse(localStorage.logs || '{}');
 	if (type === 'level') {
-		return groupBy(logsJson[correlation_id], (val) => val.level);
+		return groupBy(logsJson[correlation_id], (val: Log) => val.level);
 	}
 	const values = logsJson[correlation_id];
-	return groupBy(values, (val) => {
+	return groupBy(values, (val: Log) => {
 		const match = val.message.match(/^\[([^\]]+)\]/);
 		return match ? match[1] : 'General';
 	});

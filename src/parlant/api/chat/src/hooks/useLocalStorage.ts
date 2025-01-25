@@ -15,7 +15,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
 	const addVal = () => {
 		try {
-			if (storedValue?.length > LIMIT) storedValue.shift();
+			if (Array.isArray(storedValue) && storedValue?.length > LIMIT) storedValue.shift();
 			localStorage.setItem(key, JSON.stringify(storedValue));
 		} catch (e) {
 			console.error('Error writing to localStorage', e);
@@ -33,6 +33,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
 	useEffect(() => {
 		addVal();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [key, storedValue]);
 
 	return [storedValue, setStoredValue];

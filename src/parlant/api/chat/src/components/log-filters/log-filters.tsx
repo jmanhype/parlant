@@ -46,7 +46,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		});
 	};
 
-	const TypeChip = ({type}) => {
+	const TypeChip = ({type}: {type: Type}) => {
 		return (
 			<div key={type} className='bg-[#EBECF0] h-[30px] flex items-center gap-[8px] py-[5px] ps-[14px] rounded-[5px]'>
 				<p className='text-nowrap font-medium text-[14px]'>{typeLabels[type]}</p>
@@ -172,7 +172,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 				<h2 className='text-[20px] font-normal'>Filter By Content</h2>
 				<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
 					<p className='ps-[10px] text-[12px] text-[#151515] capitalize'>{type}:</p>
-					<Input onClick={(e) => e.target.focus()} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
+					<Input name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
 				</div>
 				<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
 					<Button variant='outline' onClick={closeDialog} className='h-[38px] w-[84px] !bg-white text-[#656565] hover:text-[#151515]'>

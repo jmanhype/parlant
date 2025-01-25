@@ -114,7 +114,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 		if (title) {
 			if (session.id === NEW_SESSION_ID) {
 				setEditingTitle?.(null);
-				setNewSession((session) => (session ? {...session, title} : session));
+				setNewSession((session: SessionInterface | null) => (session ? {...session, title} : session));
 				toast.success('title changed successfully', {closeButton: true});
 				return;
 			}

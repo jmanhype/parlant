@@ -8,6 +8,6 @@ export const agentsAtom = atom<AgentInterface[]>([]);
 export const customersAtom = atom<CustomerInterface[]>([]);
 export const sessionIdAtom = atom<string | null>(null);
 export const agentIdIdAtom = atom<string | null>(null);
-export const newSessionAtom = atom(null);
+export const newSessionAtom = atom<SessionInterface | null>(null);
 export const sessionsAtom = atom<SessionInterface[]>([]);
 export const dialogAtom = atom<{openDialog: (title: string | null, content: ReactNode, dimensions: Dimensions, dialogClosed?: () => void) => void; closeDialog: () => void}>({closeDialog: () => null, openDialog: () => null});

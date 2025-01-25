@@ -23,6 +23,7 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 
 	useEffect(() => {
 		if (defaultRunning) start();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const start = useCallback(() => {
