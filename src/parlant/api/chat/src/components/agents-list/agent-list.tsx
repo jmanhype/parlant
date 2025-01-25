@@ -1,13 +1,12 @@
 import {SessionInterface} from '@/utils/interfaces';
 import {ReactNode, useEffect, useState} from 'react';
-import {useSession} from '../chatbot/chatbot';
 
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import {spaceClick} from '@/utils/methods';
 import {DialogDescription, DialogHeader, DialogTitle} from '../ui/dialog';
 import clsx from 'clsx';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, closeDialogAtom, customersAtom, newSessionAtom, sessionIdAtom} from '@/store';
+import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionIdAtom} from '@/store';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
 
@@ -20,14 +19,13 @@ const newSessionObj: SessionInterface = {
 };
 
 const AgentList = (): ReactNode => {
-	// const {closeDialog} = useSession();
 	const [, setSessionId] = useAtom(sessionIdAtom);
 	const [, setAgentId] = useAtom(agentIdIdAtom);
 	const [agent, setAgent] = useState('');
 	const [agents] = useAtom(agentsAtom);
 	const [customers] = useAtom(customersAtom);
 	const [, setNewSession] = useAtom(newSessionAtom);
-	const [closeDialog] = useAtom(closeDialogAtom);
+	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (agents?.length && agents.length === 1) selectAgent(agents[0].id);
@@ -44,7 +42,7 @@ const AgentList = (): ReactNode => {
 		setAgentId(agent || agentId || '');
 		setNewSession({...newSessionObj, agent_id: agent, customer_id: customerId});
 		setSessionId(newSessionObj.id);
-		closeDialog();
+		dialog.closeDialog();
 	};
 
 	return (
@@ -53,7 +51,7 @@ const AgentList = (): ReactNode => {
 				<DialogTitle>
 					<div className='h-[68px] w-full flex justify-between items-center ps-[30px] pe-[20px] border-b-[#EBECF0] border-b-[0.6px]'>
 						<DialogDescription className='text-[16px] font-bold'>{agent ? 'Select a Customer' : 'Select an Agent'}</DialogDescription>
-						<img role='button' tabIndex={0} onKeyDown={spaceClick} onClick={closeDialog} className='cursor-pointer rounded-full hover:bg-[#F5F6F8] p-[10px]' src='icons/close.svg' alt='close' height={30} width={30} />
+						<img role='button' tabIndex={0} onKeyDown={spaceClick} onClick={dialog.closeDialog} className='cursor-pointer rounded-full hover:bg-[#F5F6F8] p-[10px]' src='icons/close.svg' alt='close' height={30} width={30} />
 					</div>
 				</DialogTitle>
 			</DialogHeader>

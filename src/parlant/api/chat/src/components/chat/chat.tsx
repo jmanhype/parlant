@@ -19,7 +19,7 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
 // import { useAtom } from 'jotai';
-// import { haveLogs } from '@/store';
+// import { haveLogsAtom } from '@/store';
 
 const emptyPendingMessage: EventInterface = {
 	kind: 'message',
@@ -60,7 +60,7 @@ export default function Chat(): ReactElement {
 	const [useContentFiltering] = useState(true);
 	const [showLogsForMessage, setShowLogsForMessage] = useState<EventInterface | null>(null);
 	const [isMissingAgent, setIsMissingAgent] = useState<boolean | null>(null);
-	// const [logChanges, setLogChanges] = useAtom(haveLogs);
+	// const [logChanges, setLogChanges] = useAtom(haveLogsAtom);
 	// const [hasLogs, setHasLogs] = useState(new Set());
 
 	const [agents] = useAtom(agentsAtom);

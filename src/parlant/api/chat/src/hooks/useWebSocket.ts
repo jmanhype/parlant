@@ -40,6 +40,7 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 		});
 
 		socket.addEventListener('message', (event) => {
+			console.info('WebSocket message:', event.data);
 			setLastMessage(event.data);
 			options?.onMessage?.(event.data);
 		});
@@ -50,6 +51,7 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 		});
 
 		socket.addEventListener('close', (event) => {
+			console.info('WebSocket closed:', event);
 			setIsConnected(false);
 			options?.onClose?.(event);
 		});

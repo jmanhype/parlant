@@ -1,3 +1,4 @@
+import {BASE_URL} from '@/utils/api';
 import {useState, useEffect, useCallback, ReactElement} from 'react';
 
 interface useFetchResponse<T> {
@@ -59,7 +60,7 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
 		setLoading(true);
 		setError(null);
 
-		fetch(`http://127.0.0.1:8800/${url}${params}`, {signal})
+		fetch(`${BASE_URL}/${url}${params}`, {signal})
 			.then(async (response) => {
 				if (!response.ok) throw new Error(`Error: ${response.statusText}`);
 				const result = await response.json();

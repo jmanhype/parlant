@@ -4,7 +4,6 @@ import Tooltip from '../ui/custom/tooltip';
 import {Button} from '../ui/button';
 import {deleteData, patchData} from '@/utils/api';
 import {toast} from 'sonner';
-import {useSession} from '../chatbot/chatbot';
 import {SessionInterface} from '@/utils/interfaces';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from '../ui/dropdown-menu';
 import {getDateStr, getTimeStr} from '@/utils/date';
@@ -14,7 +13,7 @@ import {NEW_SESSION_ID} from '../chat-header/chat-header';
 import {spaceClick} from '@/utils/methods';
 import {twJoin} from 'tailwind-merge';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, closeDialogAtom, customersAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
 
 interface Props {
 	session: SessionInterface;
@@ -42,7 +41,6 @@ export const DeleteDialog = ({session, closeDialog, deleteClicked}: {session: Se
 
 export default function Session({session, isSelected, refetch, editingTitle, setEditingTitle, tabIndex, disabled}: Props): ReactElement {
 	const sessionNameRef = useRef<HTMLInputElement>(null);
-	const {openDialog} = useSession();
 	const [agents] = useAtom(agentsAtom);
 	const [customers] = useAtom(customersAtom);
 	const [agentsMap, setAgentsMap] = useState(new Map());
@@ -51,7 +49,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 	const [, setAgentId] = useAtom(agentIdIdAtom);
 	const [, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
-	const [closeDialog] = useAtom(closeDialogAtom);
+	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (!isSelected) return;
@@ -71,7 +69,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 		e.stopPropagation();
 
 		const deleteClicked = (e: React.MouseEvent) => {
-			closeDialog();
+			dialog.closeDialog();
 			e.stopPropagation();
 			if (session.id === NEW_SESSION_ID) {
 				setNewSession(null);
@@ -93,9 +91,9 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				});
 		};
 
-		openDialog(
+		dialog.openDialog(
 			'Delete Session',
-			<DeleteDialog closeDialog={closeDialog} deleteClicked={deleteClicked} session={session} />,
+			<DeleteDialog closeDialog={dialog.closeDialog} deleteClicked={deleteClicked} session={session} />,
 			{
 				height: '230px',
 				width: '480px',

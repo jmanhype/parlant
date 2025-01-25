@@ -1,6 +1,5 @@
 import {ReactNode, useEffect, useState} from 'react';
 import Tooltip from '../ui/custom/tooltip';
-import {useSession} from '../chatbot/chatbot';
 import {spaceClick} from '@/utils/methods';
 import AgentList from '../agents-list/agent-list';
 import {Menu} from 'lucide-react';
@@ -8,16 +7,16 @@ import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTri
 import Sessions from '../sessions/sessions';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, sessionIdAtom} from '@/store';
+import {agentIdIdAtom, dialogAtom, sessionIdAtom} from '@/store';
 // import DarkModeToggle from '../dark-mode-toggle/dark-mode-toggle';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
 
 const ChatHeader = (): ReactNode => {
-	const {openDialog} = useSession();
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const [sessionId] = useAtom(sessionIdAtom);
 	const [, setAgentId] = useAtom(agentIdIdAtom);
+	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (sheetOpen) setSheetOpen(false);
@@ -26,7 +25,7 @@ const ChatHeader = (): ReactNode => {
 
 	const createNewSession = () => {
 		setAgentId(null);
-		openDialog('', <AgentList />, {height: '536px', width: '604px'});
+		dialog.openDialog('', <AgentList />, {height: '536px', width: '604px'});
 	};
 
 	return (

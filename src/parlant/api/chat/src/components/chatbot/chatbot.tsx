@@ -1,26 +1,15 @@
-import {createContext, lazy, ReactElement, ReactNode, Suspense, useContext, useEffect, useState} from 'react';
+import {createContext, lazy, ReactElement, Suspense, useEffect, useState} from 'react';
 import Sessions from '../sessions/sessions';
 import ErrorBoundary from '../error-boundary/error-boundary';
 import ChatHeader from '../chat-header/chat-header';
-import {Dimensions, useDialog} from '@/hooks/useDialog';
+import {useDialog} from '@/hooks/useDialog';
 import {Helmet} from 'react-helmet';
 import {NEW_SESSION_ID} from '../agents-list/agent-list';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {closeDialogAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {dialogAtom, sessionIdAtom, sessionsAtom} from '@/store';
 
-interface SessionContext {
-	openDialog: (title: string | null, content: ReactNode, dimensions: Dimensions, dialogClosed?: (() => void) | null) => void;
-	closeDialog: () => void;
-}
-
-export const SessionProvider = createContext<SessionContext>({
-	openDialog: () => null,
-	closeDialog: () => null,
-});
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useSession = () => useContext(SessionProvider);
+export const SessionProvider = createContext({});
 
 export default function Chatbot(): ReactElement {
 	const Chat = lazy(() => import('../chat/chat'));
@@ -28,7 +17,7 @@ export default function Chatbot(): ReactElement {
 	const {openDialog, DialogComponent, closeDialog} = useDialog();
 	const [sessionId] = useAtom(sessionIdAtom);
 	const [sessions] = useAtom(sessionsAtom);
-	const [, setCloseDialog] = useAtom(closeDialogAtom);
+	const [, setDialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (sessionId) {
@@ -41,17 +30,12 @@ export default function Chatbot(): ReactElement {
 	}, [sessionId, sessions]);
 
 	useEffect(() => {
-		if (closeDialog) setCloseDialog(closeDialog);
+		setDialog({openDialog, closeDialog});
 	}, []);
-
-	const provideObj = {
-		openDialog,
-		closeDialog,
-	};
 
 	return (
 		<ErrorBoundary>
-			<SessionProvider.Provider value={provideObj}>
+			<SessionProvider.Provider value={{}}>
 				<Helmet defaultTitle={`${sessionName}`} />
 				<div data-testid='chatbot' className='main bg-main h-screen flex flex-col'>
 					<div className='hidden max-mobile:block'>
