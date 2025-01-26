@@ -528,7 +528,7 @@ Produce a valid JSON object in the following format: ###
             }},
             ...
         ],
-        "all_facts_and_services_sourced_from_prompt"=<BOOL>,
+        "all_facts_and_services_sourced_from_prompt": <BOOL>,
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
@@ -741,7 +741,7 @@ example_1_shot = FluidMessageGeneratorShot(
 )
 
 
-example_2_expected = MessageEventSchema(
+example_2_expected = FluidMessageSchema(
     last_message_of_customer="Alright, can I get the American burger with cheese?",
     guidelines=[
         "When the customer chooses and orders a burger, then provide it",
@@ -1229,7 +1229,7 @@ example_8_shot = FluidMessageGeneratorShot(
     expected_result=example_8_expected,
 )
 
-_baseline_shots: Sequence[MessageEventGeneratorShot] = [
+_baseline_shots: Sequence[FluidMessageGeneratorShot] = [
     example_1_shot,
     example_2_shot,
     example_3_shot,
