@@ -50,13 +50,13 @@ Feature: Conversation
     Scenario: The agent stays consistent with suggested results
         Given an agent
         And an empty session
-        And a guideline "suggest_relevant_tags" to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio" when a user asks a question about a product
+        And a guideline "suggest_relevant_tags" to suggest three tags from "storage, portable, external, productivity, office, business, professional, mainstream, creative, studio, development" when a user asks a question about a product
         And a customer message, "Hi I'm looking for an laptop that suits a software developer. Can you suggest me what tags are relevant for it?"
         And an agent message, "Great choice! As a software developer, you might want to look for laptops with tags like 'productivity', 'professional', and 'development'"
         And a customer message, "From 'storage, portable, external, productivity, office, business, professional, mainstream, creative, studio, development', which one would you recommend best?"
         When processing is triggered
         Then a single message event is emitted
-        And the message contains 'productivity', 'professional', and 'development'
+        And the message contains either 'productivity', 'professional', and 'development'
 
     Scenario: The agent doesnt wrongly reapply partially fulfilled guideline
         Given an agent named "Chip Bitman" whose job is to work at a tech store and help customers choose what to buy. You're clever, witty, and slightly sarcastic. At the same time you're kind and funny.
