@@ -648,7 +648,7 @@ def main() -> None:
             print(f"Parlant v{VERSION}")
             sys.exit(0)
 
-        if sum([openai, aws, azure, gemini, anthropic, cerebras, together]) > 2:
+        if sum([openai, aws, azure, deepseek, gemini, anthropic, cerebras, together]) > 2:
             print("error: only one NLP service profile can be selected")
             sys.exit(1)
 
