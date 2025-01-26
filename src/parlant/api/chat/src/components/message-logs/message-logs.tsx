@@ -147,10 +147,10 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
 			{event && !!filteredLogs.length && (
 				<div className='bg-white p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div className='bg-white rounded-[5px] h-full overflow-auto'>
+					<div className='rounded-[5px] p-[10px] h-full overflow-auto bg-[#F3F4F8]'>
 						{filteredLogs.map((log, i) => (
-							<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px]')}>
-								<div className='self-start'>{IconMap[log.level]}</div>
+							<div key={i} className={twJoin('flex items-center gap-[5px] px-[20px] p-[5px] hover:bg-white')}>
+								{/* <div className='self-start'>{IconMap[log.level]}</div> */}
 								<Markdown className={clsx('max-w-[-webkit-fill-available] pe-[10px]')}>{log?.message}</Markdown>
 							</div>
 						))}
