@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Optional, Sequence, cast
+from typing import Awaitable, Callable, Optional, Sequence, cast
 from typing_extensions import override
 from typing_extensions import get_type_hints
 
@@ -53,6 +53,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def get_collection(
         self,
         name: str,
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientDocumentCollection[TDocument]:
         if name in self._collections:
             return cast(TransientDocumentCollection[TDocument], self._collections[name])
@@ -63,6 +64,7 @@ class TransientDocumentDatabase(DocumentDatabase):
         self,
         name: str,
         schema: type[TDocument],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(TransientDocumentCollection[TDocument], collection)

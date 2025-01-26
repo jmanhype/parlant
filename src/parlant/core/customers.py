@@ -15,14 +15,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Mapping, NewType, Optional, Sequence
+from typing import Mapping, NewType, Optional, Sequence, cast
 from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 
 CustomerId = NewType("CustomerId", str)
 
@@ -136,14 +140,28 @@ class CustomerDocumentStore(CustomerStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _customers_document_loader(self, doc: BaseDocument) -> Optional[_CustomerDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_CustomerDocument, doc)
+        return None
+
+    async def _customer_tag_document_loader(
+        self, doc: BaseDocument
+    ) -> Optional[_CustomerTagAssociationDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_CustomerTagAssociationDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._customers_collection = await self._database.get_or_create_collection(
             name="customers",
             schema=_CustomerDocument,
+            document_loader=self._customers_document_loader,
         )
         self._customer_tag_association_collection = await self._database.get_or_create_collection(
             name="customer_tag_associations",
             schema=_CustomerTagAssociationDocument,
+            document_loader=self._customer_tag_document_loader,
         )
         return self
 

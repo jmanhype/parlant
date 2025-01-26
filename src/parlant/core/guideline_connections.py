@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, cast
 from typing_extensions import override, TypedDict, Self
 
 import networkx  # type: ignore
@@ -24,7 +24,11 @@ from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.guidelines import GuidelineId
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 
 GuidelineConnectionId = NewType("GuidelineConnectionId", str)
 
@@ -78,10 +82,16 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _document_loader(self, doc: BaseDocument) -> Optional[_GuidelineConnectionDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_GuidelineConnectionDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._collection = await self._database.get_or_create_collection(
             name="guideline_connections",
             schema=_GuidelineConnectionDocument,
+            document_loader=self._document_loader,
         )
         return self
 

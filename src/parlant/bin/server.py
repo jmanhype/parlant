@@ -39,7 +39,6 @@ from parlant.core.engines.alpha.hooks import LifecycleHooks
 from parlant.core.engines.alpha.message_assembler import AssembledMessageSchema
 from parlant.core.fragments import FragmentDocumentStore, FragmentStore
 from parlant.core.nlp.service import NLPService
-from parlant.core.persistence.converters import DocumentConverterRegistry, DocumentConverterService
 from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.api.app import create_api_app, ASGIApplication
@@ -280,62 +279,38 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
     )
     await c[BackgroundTaskService].start(c[WebSocketLogger].start(), tag="websocket-logger")
 
-    c[DocumentConverterService] = DocumentConverterService(c[Logger], DocumentConverterRegistry())
-
     agents_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "agents.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
     )
     context_variables_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "context_variables.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "context_variables.json")
     )
     tags_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "tags.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
     )
     customers_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "customers.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "customers.json")
     )
     sessions_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "sessions.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "sessions.json")
     )
     fragments_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "fragments.json")
     )
     guidelines_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "guidelines.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
     )
     guideline_tool_associations_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER,
-            PARLANT_HOME_DIR / "guideline_tool_associations.json",
-            c[DocumentConverterService],
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_tool_associations.json")
     )
     guideline_connections_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "guideline_connections.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_connections.json")
     )
     evaluations_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "evaluations.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "evaluations.json")
     )
     services_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(
-            LOGGER, PARLANT_HOME_DIR / "services.json", c[DocumentConverterService]
-        )
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
 
     c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db))

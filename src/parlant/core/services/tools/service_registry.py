@@ -33,7 +33,11 @@ from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import LocalToolService, ToolService
 from parlant.core.common import ItemNotFoundError, Version, UniqueId
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 
 
 ToolServiceKind = Literal["openapi", "sdk", "local"]
@@ -134,10 +138,16 @@ class ServiceDocumentRegistry(ServiceRegistry):
         else:
             return cast(PluginClient, service)
 
+    async def _document_loader(self, doc: BaseDocument) -> Optional[_ToolServiceDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_ToolServiceDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._tool_services_collection = await self._database.get_or_create_collection(
             name="tool_services",
             schema=_ToolServiceDocument,
+            document_loader=self._document_loader,
         )
 
         self._moderation_services = {

@@ -15,14 +15,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, cast
 from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 from parlant.core.tools import ToolId
 
 GuidelineToolAssociationId = NewType("GuidelineToolAssociationId", str)
@@ -81,9 +85,19 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _document_loader(
+        self,
+        doc: BaseDocument,
+    ) -> Optional[_GuidelineToolAssociationDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_GuidelineToolAssociationDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._collection = await self._database.get_or_create_collection(
-            name="associations", schema=_GuidelineToolAssociationDocument
+            name="associations",
+            schema=_GuidelineToolAssociationDocument,
+            document_loader=self._document_loader,
         )
         return self
 

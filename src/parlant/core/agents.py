@@ -21,7 +21,11 @@ from typing_extensions import override, TypedDict, Self
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 
 AgentId = NewType("AgentId", str)
 
@@ -107,10 +111,16 @@ class AgentDocumentStore(AgentStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _document_loader(self, doc: BaseDocument) -> Optional[_AgentDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_AgentDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._collection = await self._database.get_or_create_collection(
             name="agents",
             schema=_AgentDocument,
+            document_loader=self._document_loader,
         )
         return self
 

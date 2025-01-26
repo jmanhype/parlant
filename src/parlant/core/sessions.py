@@ -43,7 +43,11 @@ from parlant.core.customers import CustomerId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.common import ObjectId, Where
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 from parlant.core.glossary import TermId
 from parlant.core.fragments import FragmentId
 
@@ -388,18 +392,36 @@ class SessionDocumentStore(SessionStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _session_document_loader(self, doc: BaseDocument) -> Optional[_SessionDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_SessionDocument, doc)
+        return None
+
+    async def _event_document_loader(self, doc: BaseDocument) -> Optional[_EventDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_EventDocument, doc)
+        return None
+
+    async def _inspecion_document_loader(self, doc: BaseDocument) -> Optional[_InspectionDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_InspectionDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._session_collection = await self._database.get_or_create_collection(
             name="sessions",
             schema=_SessionDocument,
+            document_loader=self._session_document_loader,
         )
         self._event_collection = await self._database.get_or_create_collection(
             name="events",
             schema=_EventDocument,
+            document_loader=self._event_document_loader,
         )
         self._inspection_collection = await self._database.get_or_create_collection(
             name="inspections",
             schema=_InspectionDocument,
+            document_loader=self._inspecion_document_loader,
         )
         return self
 

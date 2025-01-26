@@ -15,7 +15,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Optional, Sequence, TypeVar, TypedDict
+from typing import Awaitable, Callable, Generic, Optional, Sequence, TypeVar, TypedDict
 
 from parlant.core.common import Version
 from parlant.core.nlp.embedding import Embedder
@@ -78,6 +78,7 @@ class VectorDatabase(ABC):
     async def get_collection(
         self,
         name: str,
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> VectorCollection[TDocument]: ...
 
     @abstractmethod
@@ -86,6 +87,7 @@ class VectorDatabase(ABC):
         name: str,
         schema: type[TDocument],
         embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> VectorCollection[TDocument]: ...
 
     @abstractmethod

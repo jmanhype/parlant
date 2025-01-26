@@ -75,7 +75,7 @@ from parlant.core.sessions import (
 )
 from parlant.core.tools import LocalToolService, ToolId, ToolResult
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentCollection
+from parlant.core.persistence.document_database import BaseDocument, DocumentCollection
 
 T = TypeVar("T")
 GLOBAL_CACHE_FILE = Path("schematic_generation_test_cache.json")
@@ -490,10 +490,16 @@ class CachedSchematicGenerator(SchematicGenerator[TBaseModel]):
 async def create_schematic_generation_result_collection(
     logger: Logger,
 ) -> AsyncIterator[DocumentCollection[SchematicGenerationResultDocument]]:
+    async def _document_loader(doc: BaseDocument) -> Optional[SchematicGenerationResultDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(SchematicGenerationResultDocument, doc)
+        return None
+
     async with JSONFileDocumentDatabase(logger, GLOBAL_CACHE_FILE) as db:
         yield await db.get_or_create_collection(
             name="schematic_generation_result_cache",
             schema=SchematicGenerationResultDocument,
+            document_loader=_document_loader,
         )
 
 

@@ -28,7 +28,11 @@ from parlant.core.common import (
     generate_id,
 )
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 from parlant.core.tools import ToolId
 
 ContextVariableId = NewType("ContextVariableId", str)
@@ -163,15 +167,31 @@ class ContextVariableDocumentStore(ContextVariableStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _variable_document_loader(
+        self, doc: BaseDocument
+    ) -> Optional[_ContextVariableDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_ContextVariableDocument, doc)
+        return None
+
+    async def _value_document_loader(
+        self, doc: BaseDocument
+    ) -> Optional[_ContextVariableValueDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_ContextVariableValueDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._variable_collection = await self._database.get_or_create_collection(
             name="variables",
             schema=_ContextVariableDocument,
+            document_loader=self._variable_document_loader,
         )
 
         self._value_collection = await self._database.get_or_create_collection(
             name="values",
             schema=_ContextVariableValueDocument,
+            document_loader=self._value_document_loader,
         )
         return self
 
