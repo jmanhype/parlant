@@ -53,6 +53,7 @@ class TransientDocumentDatabase(DocumentDatabase):
     async def get_collection(
         self,
         name: str,
+        schema: type[TDocument],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientDocumentCollection[TDocument]:
         if name in self._collections:

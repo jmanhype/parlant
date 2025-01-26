@@ -77,6 +77,7 @@ class DocumentDatabase(ABC):
     async def get_collection(
         self,
         name: str,
+        schema: type[TDocument],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> DocumentCollection[TDocument]:
         """

@@ -706,7 +706,9 @@ async def test_failed_migration_collection(
 
             assert len(documents) == 0
 
-            failed_migrations_collection = await db.get_collection("failed_migrations", noop_loader)
+            failed_migrations_collection = await db.get_collection(
+                "failed_migrations", BaseDocument, noop_loader
+            )
             failed_docs = await failed_migrations_collection.find({})
 
             assert len(failed_docs) == 1

@@ -145,10 +145,19 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     async def get_collection(
         self,
         name: str,
+        schema: type[TDocument],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
+        elif name in self._raw_data:
+            self._collections[name] = JSONFileDocumentCollection(
+                database=self,
+                name=name,
+                schema=schema,
+                data=await self.load_documents_with_loader(name, document_loader),
+            )
+            return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
         raise ValueError(f'Collection "{name}" does not exists')
 
@@ -161,13 +170,19 @@ class JSONFileDocumentDatabase(DocumentDatabase):
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(JSONFileDocumentCollection[TDocument], collection)
-
-        self._collections[name] = JSONFileDocumentCollection(
-            database=self,
-            name=name,
-            schema=schema,
-            data=await self.load_documents_with_loader(name, document_loader),
-        )
+        elif name in self._raw_data:
+            self._collections[name] = JSONFileDocumentCollection(
+                database=self,
+                name=name,
+                schema=schema,
+                data=await self.load_documents_with_loader(name, document_loader),
+            )
+        else:
+            self._collections[name] = JSONFileDocumentCollection(
+                database=self,
+                name=name,
+                schema=schema,
+            )
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
