@@ -72,7 +72,8 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 					<X
 						role='button'
 						className='invisible min-w-[18px] size-[18px] group-hover:visible hover:bg-[#656565] hover:text-white rounded-[3px]'
-						onClick={() => {
+						onClick={(e) => {
+							e.stopPropagation();
 							const content = contentConditions?.filter((_, i) => i !== index);
 							setContentConditions(content);
 							applyFn(sources, level, content);
