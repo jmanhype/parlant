@@ -93,34 +93,31 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	});
 
-	const FilterDialog = ({contentChanged, content}: {contentChanged: (text: string) => void; content: string[]}) => {
-		const {closeDialog} = useDialog();
-		const FilterDialogContent = memo(() => {
-			const [inputVal, setInputVal] = useState('');
-			const onApplyClick = () => {
-				const trimmed = inputVal.trim();
-				if (trimmed) contentChanged(inputVal);
-				// setContentConditions((val) => [...val, inputVal]);
-				// closeDialog();
-			};
-			return (
-				<div className='px-[40px] py-[42px] flex flex-col gap-[22px]'>
-					<h2 className='text-[20px] font-normal'>Filter By Content</h2>
-					<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
-						<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
-					</div>
-					<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
-						<Button variant='outline' onClick={closeDialog} className='h-[38px] w-[84px] !bg-white text-[#656565] hover:text-[#151515]'>
-							Cancel
-						</Button>
-						<DialogClose onClick={onApplyClick} className='bg-blue-main text-white h-[38px] w-[79px] hover:bg-[#1000EB]'>
-							Apply
-						</DialogClose>
-					</div>
-				</div>
-			);
-		});
+	const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (text: string) => void; defaultValue?: string}) => {
+		const [inputVal, setInputVal] = useState(defaultValue || '');
 
+		const onApplyClick = () => {
+			const trimmed = inputVal.trim();
+			if (trimmed) contentChanged(inputVal);
+		};
+
+		return (
+			<div className='px-[40px] py-[42px] flex flex-col gap-[22px]'>
+				<h2 className='text-[20px] font-normal'>Filter By Content</h2>
+				<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
+					<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
+				</div>
+				<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
+					<DialogClose className='h-[38px] w-[84px] !bg-white text-[#656565] hover:text-[#151515]'>Cancel</DialogClose>
+					<DialogClose onClick={onApplyClick} className='bg-blue-main text-white h-[38px] w-[79px] hover:bg-[#1000EB]'>
+						Apply
+					</DialogClose>
+				</div>
+			</div>
+		);
+	};
+
+	const FilterDialog = ({contentChanged, content}: {contentChanged: (text: string) => void; content: string[]}) => {
 		return (
 			<Dialog>
 				<DialogTrigger>
@@ -133,7 +130,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 					<DialogContent className='p-0' aria-hidden={false}>
 						<DialogTitle className='hidden'>Filter By Content</DialogTitle>
 						<DialogDescription className='hidden'>Filter By Content</DialogDescription>
-						<FilterDialogContent />
+						<FilterDialogContent contentChanged={contentChanged} />
 					</DialogContent>
 				</DialogPortal>
 			</Dialog>
@@ -227,7 +224,25 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 			<div className='filters-button flex items-center gap-[8px] flex-wrap'>
 				{!!def?.types?.length && def.types.map((type) => <TypeChip key={type} type={type} />)}
 				{def?.content?.map((c: string, index: number) => (
-					<CondChip key={c} text={c} index={index} />
+					<Dialog key={c}>
+						<DialogTrigger>
+							<CondChip key={c} text={c} index={index} />
+						</DialogTrigger>
+						<DialogPortal>
+							<DialogContent className='p-0'>
+								<DialogTitle hidden>Filter By Content</DialogTitle>
+								<DialogDescription hidden>Filter By Content</DialogDescription>
+								<FilterDialogContent
+									defaultValue={c}
+									contentChanged={(text) => {
+										const updatedContent = contentConditions.map((item, i) => (i === index ? text : item));
+										applyFn(sources, level, updatedContent);
+									}}
+								/>
+							</DialogContent>
+						</DialogPortal>
+					</Dialog>
+					// <CondChip key={c} text={c} index={index} />
 				))}
 				<DropDownFilter />
 			</div>
