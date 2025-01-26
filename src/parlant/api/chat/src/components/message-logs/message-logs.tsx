@@ -1,12 +1,6 @@
 import {EventInterface, Log} from '@/utils/interfaces';
 import {Bug, Info, Plus, TriangleAlert} from 'lucide-react';
 import {ReactNode, useEffect, useState} from 'react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
-import remarkBreaks from 'remark-breaks';
-import styles from '../message/message.module.scss';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
 import {twJoin, twMerge} from 'tailwind-merge';
 import clsx from 'clsx';
@@ -15,6 +9,7 @@ import {useLocalStorage} from '@/hooks/useLocalStorage';
 import LogFilters from '../log-filters/log-filters';
 import {useAtom} from 'jotai';
 import {sessionIdAtom} from '@/store';
+import Markdown from '../markdown/markdown';
 
 interface Filter {
 	id: number;
@@ -150,10 +145,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px]')}>
 								<div className='self-start'>{IconMap[log.level]}</div>
-								<Markdown remarkPlugins={[remarkGfm, remarkBreaks, rehypeHighlight]} className={clsx(styles.markdown, 'max-w-[-webkit-fill-available] pe-[10px]')}>
-									{log?.message}
-								</Markdown>
-								{/* <div>{log.message}</div> */}
+								<Markdown className={clsx('max-w-[-webkit-fill-available] pe-[10px]')}>{log?.message}</Markdown>
 							</div>
 						))}
 					</div>

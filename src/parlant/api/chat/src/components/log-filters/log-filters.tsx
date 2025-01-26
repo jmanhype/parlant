@@ -7,11 +7,11 @@ import {useDialog} from '@/hooks/useDialog';
 import {Dialog, DialogContent, DialogDescription, DialogPortal, DialogTitle, DialogTrigger} from '../ui/dialog';
 import {twMerge} from 'tailwind-merge';
 
-type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator';
+type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
 type Text = 'and' | 'or';
 
-const ALL_TYPES: Type[] = ['General', 'GuidelineProposer', 'MessageEventGenerator'];
+const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
 const TEXT_FILTERS: Text[] = ['and', 'or'];
 
@@ -19,6 +19,7 @@ const typeLabels: Record<Type, string> = {
 	General: 'General',
 	GuidelineProposer: 'Guideline Proposer',
 	MessageEventGenerator: 'Message Event Composer',
+	ToolCaller: 'Tool Caller',
 };
 
 const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level: string) => void; filterId?: number; def?: {level?: Level; types?: Type[]} | null}) => {

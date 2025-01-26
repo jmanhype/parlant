@@ -1,11 +1,10 @@
 import {ReactElement, useRef} from 'react';
-import Markdown from 'react-markdown';
 import {EventInterface} from '@/utils/interfaces';
 import {getTimeStr} from '@/utils/date';
 import styles from './message.module.scss';
 import {Spacer} from '../ui/custom/spacer';
 import {twMerge} from 'tailwind-merge';
-import remarkGfm from 'remark-gfm';
+import Markdown from '../markdown/markdown';
 // import MessageLogs from '../message-logs/message-logs';
 
 interface Props {
@@ -65,9 +64,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 						'rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
 					)}>
 					<div className='markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]'>
-						<Markdown remarkPlugins={[remarkGfm]} className={styles.markdown}>
-							{event?.data?.message}
-						</Markdown>
+						<Markdown>{event?.data?.message}</Markdown>
 					</div>
 					<div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>
 						<div className='flex items-center w-[46px]'>

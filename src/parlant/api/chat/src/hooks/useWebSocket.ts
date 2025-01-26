@@ -41,7 +41,7 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 		});
 
 		socket.addEventListener('message', (event) => {
-			console.info('WebSocket message:', event.data);
+			// console.info('WebSocket message:', event.data);
 			setLastMessage(event.data);
 			options?.onMessage?.(event.data);
 		});

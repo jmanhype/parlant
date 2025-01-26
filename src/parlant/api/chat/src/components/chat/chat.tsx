@@ -92,6 +92,7 @@ export default function Chat(): ReactElement {
 		setLastOffset(0);
 		setMessages([]);
 		setShowTyping(false);
+		setShowLogsForMessage(null);
 	};
 
 	const regenerateMessageDialog = (index: number) => (sessionId: string) => {
@@ -226,7 +227,7 @@ export default function Chat(): ReactElement {
 
 	const showLogs = (i: number) => (event: EventInterface) => {
 		event.index = i;
-		setShowLogsForMessage(event);
+		setShowLogsForMessage(event.id === showLogsForMessage?.id ? null : event);
 	};
 
 	return (
