@@ -1,31 +1,27 @@
-# Copyright 2024 Emcie Co Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-from typing import cast
-from lagom import Container
 from pytest import fixture, raises
+from typing import AsyncIterator
+
+from lagom import Container
+
 from parlant.adapters.db.transient import TransientDocumentDatabase
+from parlant.adapters.vector_db.transient import TransientVectorDatabase
 from parlant.core.common import Version
 from parlant.core.logging import Logger
+from parlant.core.nlp.embedding import Embedder, EmbedderFactory
+from parlant.core.nlp.service import NLPService
+from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.document_database import BaseDocument
+from parlant.core.persistence.vector_database import (
+    BaseDocument as VectorBaseDocument,
+    VectorDatabase,
+)
 from parlant.core.persistence.converters import (
-    Converter,
     DocumentConverterRegistry,
     DocumentConverterService,
-)
-from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import (
-    BaseDocument,
+    VectorConverterRegistry,
+    VectorConverterService,
+    conversion,
+    vector_conversion,
 )
 
 
@@ -45,54 +41,53 @@ class DummyDocumentV3(BaseDocument):
     new_field: str
 
 
-class ConverterV1ToV2(Converter):
-    @property
-    def from_version(self) -> Version.String:
-        return Version.String("1.0.0")
-
-    @property
-    def to_version(self) -> Version.String:
-        return Version.String("2.0.0")
-
-    async def convert(self, entity: BaseDocument) -> DummyDocumentV2:
-        dummy_doc = cast(DummyDocument, entity)
-        return DummyDocumentV2(
-            id=dummy_doc["id"],
-            version=self.to_version,
-            name=dummy_doc["name"],
-            description=dummy_doc["description"],
-            new_field="default value",
-        )
+class DummyVectorDocument(VectorBaseDocument):
+    name: str
+    description: str
 
 
-class ConverterV2ToV3(Converter):
-    @property
-    def from_version(self) -> Version.String:
-        return Version.String("2.0.0")
+class DummyVectorDocumentV2(VectorBaseDocument):
+    name: str
+    description: str
+    new_field: str
 
-    @property
-    def to_version(self) -> Version.String:
-        return Version.String("3.0.0")
 
-    async def convert(self, entity: BaseDocument) -> DummyDocumentV3:
-        dummy_doc = cast(DummyDocumentV2, entity)
-        return DummyDocumentV3(
-            id=dummy_doc["id"],
-            version=self.to_version,
-            name=dummy_doc["name"],
-            new_field=dummy_doc["new_field"],
-        )
+class DummyVectorDocumentV3(VectorBaseDocument):
+    name: str
+    new_field: str
+
+
+@fixture
+async def transient_db() -> TransientDocumentDatabase:
+    return TransientDocumentDatabase()
+
+
+@fixture
+async def embedder_type(container: Container) -> type[Embedder]:
+    return type(await container[NLPService].get_embedder())
+
+
+@fixture
+async def transient_vector_db(
+    container: Container,
+    embedder_type: type[Embedder],
+) -> AsyncIterator[TransientVectorDatabase]:
+    embedder_factory = EmbedderFactory(container)
+
+    async with TransientVectorDatabase(
+        container[Logger],
+        embedder_factory=embedder_factory,
+        embedder_type=embedder_type,
+    ) as db:
+        yield db
 
 
 @fixture
 def document_converter_registry() -> DocumentConverterRegistry:
-    database = TransientDocumentDatabase()
-    registry = DocumentConverterRegistry(database)
-
-    # Register converters
+    registry = DocumentConverterRegistry()
     registry.converters["dummy_collection"] = [
-        ConverterV1ToV2(),
-        ConverterV2ToV3(),
+        convert_dummy_v1_to_v2,
+        convert_dummy_v2_to_v3,
     ]
     return registry
 
@@ -103,86 +98,263 @@ def document_converter_service(
     document_converter_registry: DocumentConverterRegistry,
 ) -> DocumentConverterService:
     logger = container[Logger]
-    database = document_converter_registry._database
-    return DocumentConverterService(logger, database, document_converter_registry)
+    return DocumentConverterService(logger, document_converter_registry)
 
 
-async def test_get_converters_returns_correct_path(
+@fixture
+def vector_converter_registry() -> VectorConverterRegistry:
+    registry = VectorConverterRegistry()
+    registry.converters["dummy_vector_collection"] = [
+        convert_vector_dummy_v1_to_v2,
+        convert_vector_dummy_v2_to_v3,
+    ]
+    return registry
+
+
+@fixture
+def vector_converter_service(
+    container: Container,
+    vector_converter_registry: VectorConverterRegistry,
+) -> VectorConverterService:
+    logger = container[Logger]
+    return VectorConverterService(logger, vector_converter_registry)
+
+
+@conversion
+async def convert_dummy_v1_to_v2(doc: DummyDocument) -> DummyDocumentV2:
+    return DummyDocumentV2(
+        id=doc["id"],
+        version=Version.String("2"),
+        name=doc["name"],
+        description=doc["description"],
+        new_field="default value",
+    )
+
+
+@conversion
+async def convert_dummy_v2_to_v3(doc: DummyDocumentV2) -> DummyDocumentV3:
+    return DummyDocumentV3(
+        id=doc["id"],
+        version=Version.String("2"),
+        name=doc["name"],
+        new_field=doc["new_field"],
+    )
+
+
+@vector_conversion
+async def convert_vector_dummy_v1_to_v2(doc: DummyVectorDocument) -> DummyVectorDocumentV2:
+    return DummyVectorDocumentV2(
+        id=doc["id"],
+        version=Version.String("2"),
+        content=doc["content"],
+        name=doc["name"],
+        description=doc["description"],
+        new_field="default vector value",
+    )
+
+
+@vector_conversion
+async def convert_vector_dummy_v2_to_v3(doc: DummyVectorDocumentV2) -> DummyVectorDocumentV3:
+    return DummyVectorDocumentV3(
+        id=doc["id"],
+        version=Version.String("2"),
+        content=doc["content"],
+        name=doc["name"],
+        new_field=doc["new_field"],
+    )
+
+
+async def test_that_get_converters_returns_correct_schemas(
     document_converter_registry: DocumentConverterRegistry,
 ) -> None:
-    converters = await document_converter_registry.get_converters(
-        "dummy_collection", Version.String("1.0.0")
-    )
+    converters = await document_converter_registry.get_converters("dummy_collection", DummyDocument)
+
     assert len(converters) == 2
-    assert converters[0].from_version == Version.String("1.0.0")
-    assert converters[1].from_version == Version.String("2.0.0")
+
+    assert converters[0].input_schema == DummyDocument
+    assert converters[0].output_schema == DummyDocumentV2
+
+    assert converters[1].input_schema == DummyDocumentV2
+    assert converters[1].output_schema == DummyDocumentV3
 
 
-async def test_successful_conversion(document_converter_service: DocumentConverterService) -> None:
+async def test_that_document_entities_are_converted_to_final_output_schema(
+    document_converter_service: DocumentConverterService,
+    transient_db: TransientDocumentDatabase,
+) -> None:
     documents = [
         DummyDocument(
             id=ObjectId("1"),
-            version=Version.from_string("1.0.0").to_string(),
+            version=Version.String("1"),
             name="Test Document",
-            description="This is a test document.",
+            description="A description",
         )
     ]
 
-    converted_documents = await document_converter_service.convert(
-        "dummy_collection", documents, DummyDocumentV3
+    result = await document_converter_service.convert(
+        transient_db, "dummy_collection", DummyDocument, documents
     )
 
-    assert len(converted_documents) == 1
-    assert converted_documents[0].get("id") == ObjectId("1")
-    assert converted_documents[0].get("version") == "3.0.0"
-    assert converted_documents[0].get("name") == "Test Document"
+    assert result.schema == DummyDocumentV3
+    assert len(result.entities) == 1
+
+    final_doc = result.entities[0]
+    assert final_doc["id"] == ObjectId("1")
+    assert final_doc.get("name") == "Test Document"
+    assert final_doc.get("new_field") == "default value"
 
 
-async def test_conversion_path_not_found(
-    document_converter_registry: DocumentConverterRegistry,
+async def test_that_when_no_document_converters_are_found_entities_and_schema_are_returned_as_input(
+    document_converter_service: DocumentConverterService,
+    transient_db: TransientDocumentDatabase,
 ) -> None:
-    with raises(ValueError, match="No converters found starting from version 4.0.0."):
-        await document_converter_registry.get_converters(
-            "dummy_collection", Version.String("4.0.0")
+    documents = [
+        DummyDocument(
+            id=ObjectId("1"),
+            version=Version.String("1"),
+            name="Test Document",
+            description="A description",
         )
+    ]
+
+    result = await document_converter_service.convert(
+        transient_db, "nonexistent_collection", DummyDocument, documents
+    )
+
+    assert result.schema == DummyDocument
+    assert result.entities == documents
 
 
-async def test_failed_conversion_is_logged_and_stored(
+async def test_that_unsuccessful_entities_are_stored_during_conversion(
     document_converter_service: DocumentConverterService,
     document_converter_registry: DocumentConverterRegistry,
+    transient_db: TransientDocumentDatabase,
 ) -> None:
     documents = [
         DummyDocument(
             id=ObjectId("1"),
-            version=Version.from_string("2.0.0").to_string(),
+            version=Version.String("1"),
             name="Test Document",
-            description="This is a test document.",
+            description="A description",
         )
     ]
 
-    class FailingConverter(Converter):
-        @property
-        def from_version(self) -> Version.String:
-            return Version.String("2.0.0")
+    @conversion
+    async def failing_conversion(doc: DummyDocument) -> DummyDocumentV2:
+        raise RuntimeError("Conversion failed")
 
-        @property
-        def to_version(self) -> Version.String:
-            return Version.String("3.0.0")
+    document_converter_registry.converters["dummy_collection"] = [failing_conversion]
 
-        async def convert(self, entity: BaseDocument) -> DummyDocumentV3:
-            raise RuntimeError("Conversion failed.")
-
-    document_converter_registry.converters["dummy_collection"] = [FailingConverter()]
-
-    converted_documents = await document_converter_service.convert(
-        "dummy_collection", documents, DummyDocumentV3
+    result = await document_converter_service.convert(
+        transient_db, "dummy_collection", DummyDocument, documents
     )
 
-    assert len(converted_documents) == 0
+    assert len(result.entities) == 0
 
-    unsuccessful_collection = await document_converter_service._database.get_or_create_collection(
-        "unsuccessful_dummy_collection", DummyDocument
+    unsuccessful_collection = await transient_db.get_or_create_collection(
+        "unsuccessful_dummy_collection_DummyDocument", DummyDocument
     )
     unsuccessful_entities = await unsuccessful_collection.find({})
     assert len(unsuccessful_entities) == 1
-    assert unsuccessful_entities[0].get("id") == "1"
+    assert unsuccessful_entities[0]["id"] == ObjectId("1")
+
+
+async def test_that_get_converters_returns_complete_conversion_chain(
+    vector_converter_registry: VectorConverterRegistry,
+) -> None:
+    converters = await vector_converter_registry.get_converters(
+        "dummy_vector_collection", DummyVectorDocument
+    )
+
+    assert len(converters) == 2
+
+    assert converters[0].input_schema == DummyVectorDocument
+    assert converters[0].output_schema == DummyVectorDocumentV2
+
+    assert converters[1].input_schema == DummyVectorDocumentV2
+    assert converters[1].output_schema == DummyVectorDocumentV3
+
+
+async def test_that_vector_entities_are_converted_to_final_output_schema(
+    vector_converter_service: VectorConverterService,
+    transient_vector_db: VectorDatabase,
+    embedder_type: type[Embedder],
+) -> None:
+    documents = [
+        DummyVectorDocument(
+            id=ObjectId("v1"),
+            version=Version.String("1"),
+            content="A vector content",
+            name="Test Vector Document",
+            description="A vector description",
+        )
+    ]
+
+    result = await vector_converter_service.convert(
+        transient_vector_db,
+        embedder_type,
+        "dummy_vector_collection",
+        DummyVectorDocument,
+        documents,
+    )
+
+    assert result.schema == DummyVectorDocumentV3
+    assert len(result.entities) == 1
+
+    final_doc = result.entities[0]
+    assert final_doc["id"] == ObjectId("v1")
+    assert final_doc.get("name") == "Test Vector Document"
+    assert final_doc.get("new_field") == "default vector value"
+
+
+async def test_vector_conversion_path_not_found(
+    vector_converter_registry: VectorConverterRegistry,
+) -> None:
+    with raises(
+        ValueError, match="No vector-converters found starting from schema DummyVectorDocumentV3."
+    ):
+        await vector_converter_registry.get_converters(
+            "dummy_vector_collection", DummyVectorDocumentV3
+        )
+
+
+async def test_vector_failed_conversion_is_logged_and_stored(
+    vector_converter_service: VectorConverterService,
+    vector_converter_registry: VectorConverterRegistry,
+    transient_vector_db: VectorDatabase,
+    embedder_type: type[Embedder],
+) -> None:
+    documents = [
+        DummyVectorDocument(
+            id=ObjectId("v100"),
+            version=Version.String("1"),
+            content="Failing vector content",
+            name="Failing Vector Document",
+            description="Will fail",
+        )
+    ]
+
+    @vector_conversion
+    async def failing_conversion(doc: DummyVectorDocument) -> DummyVectorDocumentV2:
+        raise RuntimeError("Conversion failed")
+
+    vector_converter_registry.converters["dummy_vector_collection"] = [failing_conversion]
+
+    result = await vector_converter_service.convert(
+        transient_vector_db,
+        embedder_type,
+        "dummy_vector_collection",
+        DummyVectorDocument,
+        documents,
+    )
+
+    assert len(result.entities) == 0
+
+    unsuccessful_collection = await transient_vector_db.get_or_create_collection(
+        "unsuccessful_dummy_vector_collection_DummyVectorDocument",
+        DummyVectorDocument,
+        embedder_type,
+    )
+    unsuccessful_entities = await unsuccessful_collection.find({})
+    assert len(unsuccessful_entities) == 1
+    assert unsuccessful_entities[0]["id"] == ObjectId("v100")

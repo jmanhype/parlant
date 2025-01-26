@@ -23,6 +23,7 @@ import aiofiles
 
 from parlant.core.persistence.common import Where, matches_filters, ensure_is_total
 from parlant.core.async_utils import ReaderWriterLock
+from parlant.core.persistence.converters import DocumentConverterService
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DeleteResult,
@@ -40,9 +41,11 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         self,
         logger: Logger,
         file_path: Path,
+        converter_service: DocumentConverterService | None = None,
     ) -> None:
         self.file_path = file_path
 
+        self._converter_service = converter_service
         self._logger = logger
         self._op_counter = 0
 
@@ -50,7 +53,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({}))
-        self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]]
+        self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]] = {}
 
     async def flush(self) -> None:
         async with self._lock.writer_lock:
@@ -60,22 +63,32 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         async with self._lock.reader_lock:
             raw_data = await self._load_data()
 
-        schemas: dict[str, Any] = raw_data.get("__schemas__", {})
-        self._collections = (
-            {
-                c_name: JSONFileDocumentCollection(
-                    database=self,
-                    name=c_name,
-                    schema=operator.attrgetter(c_schema["model_path"])(
-                        importlib.import_module(c_schema["module_path"])
-                    ),
-                    data=raw_data[c_name],
+        if raw_data:
+            schemas: dict[str, Any] = raw_data["__schemas__"]
+            for c_name, c_schema in schemas.items():
+                input_schema = operator.attrgetter(c_schema["model_path"])(
+                    importlib.import_module(c_schema["module_path"])
                 )
-                for c_name, c_schema in schemas.items()
-            }
-            if raw_data
-            else {}
-        )
+                if self._converter_service:
+                    conversion_result = await self._converter_service.convert(
+                        self, c_name, input_schema, raw_data[c_name]
+                    )
+                    self._collections[c_name] = JSONFileDocumentCollection(
+                        database=self,
+                        name=c_name,
+                        schema=conversion_result.schema,
+                        data=conversion_result.entities,
+                    )
+                else:
+                    self._collections[c_name] = JSONFileDocumentCollection(
+                        database=self,
+                        name=c_name,
+                        schema=input_schema,
+                        data=raw_data[c_name],
+                    )
+        else:
+            self._collections = {}
+
         return self
 
     async def __aexit__(
@@ -184,7 +197,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
         database: JSONFileDocumentDatabase,
         name: str,
         schema: type[TDocument],
-        data: Optional[Sequence[Mapping[str, Any]]] = None,
+        data: Sequence[TDocument] | None = None,
     ) -> None:
         self._database = database
         self._name = name
@@ -193,7 +206,7 @@ class JSONFileDocumentCollection(DocumentCollection[TDocument]):
 
         self._lock = ReaderWriterLock()
 
-        self.documents = [cast(TDocument, doc) for doc in data] if data else []
+        self.documents = list(data) if data else []
 
     @override
     async def find(
