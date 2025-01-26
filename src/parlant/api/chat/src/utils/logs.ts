@@ -54,15 +54,20 @@ export const getMessageLogs = (correlation_id: string): Log[] => {
 	return logsJson[correlation_id] || [];
 };
 
-export const getMessageLogsWithFilters = (correlation_id: string, filters: {level: string; types?: string[]}): Log[] => {
+export const getMessageLogsWithFilters = (correlation_id: string, filters: {level: string; types?: string[]; content?: string[]}): Log[] => {
 	const logs = getMessageLogs(correlation_id);
-
+	const escapedWords = filters?.content?.map((word) => word.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, '\\$1'));
+	const pattern = escapedWords && escapedWords.map((word) => `\\[?${word}\\]?`).join('[\\s\\S]*');
 	const levelIndex = filters.level ? logLevels.indexOf(filters.level) : null;
 	const validLevels = filters.level ? new Set(logLevels.filter((_, i) => i <= (levelIndex as number))) : null;
 	const filterTypes = filters.types?.length ? new Set(filters.types) : null;
 
 	const filteredLogs = logs.filter((log) => {
 		if (validLevels && !validLevels.has(log.level)) return false;
+		if (pattern) {
+			const regex = new RegExp(pattern, 'i');
+			if (!regex.test(log.message)) return false;
+		}
 		if (filterTypes) {
 			const match = log.message.match(/^\[([^\]]+)\]/);
 			const type = match ? match[1] : 'General';

@@ -10,11 +10,9 @@ import {ListFilter, X} from 'lucide-react';
 
 type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
-type Text = 'and' | 'or';
 
 const ALL_TYPES: Type[] = ['General', 'GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
-const TEXT_FILTERS: Text[] = ['and', 'or'];
 
 const typeLabels: Record<Type, string> = {
 	General: 'General',
@@ -23,10 +21,9 @@ const typeLabels: Record<Type, string> = {
 	ToolCaller: 'Tool Caller',
 };
 
-const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level: string, and: string[], or: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; and: string[]; or: string[]} | null}) => {
+const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level: string, content: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; content: string[]} | null}) => {
 	const [sources, setSources] = useState(structuredClone(def?.types || []));
-	const [andConditions, setAndConditions] = useState(structuredClone(def?.and || []));
-	const [orConditions, setOrConditions] = useState(structuredClone(def?.or || []));
+	const [contentConditions, setContentConditions] = useState(structuredClone(def?.content || []));
 	const [level, setLevel] = useState<Level>(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);
 	const {openDialog, closeDialog, DialogComponent} = useDialog();
 
@@ -34,13 +31,11 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		if (filterId) {
 			const types = structuredClone(def?.types || ALL_TYPES);
 			const level = def?.level || ALL_LEVELS[ALL_LEVELS.length - 1];
-			const and = def?.and || [];
-			const or = def?.or || [];
+			const content = def?.content || [];
 			setSources(types);
 			setLevel(level);
-			setAndConditions(and);
-			setOrConditions(or);
-			applyFn(types, level, and, or);
+			setContentConditions(content);
+			applyFn(types, level, content);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [filterId]);
@@ -48,14 +43,15 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 	useEffect(() => {
 		setSources(def?.types || []);
 		setLevel(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);
+		setContentConditions(def?.content || []);
 	}, [def]);
 
-	const changeSource = (type: Type, value: boolean, cb?: (sources: Type[], level: Level, and: string[], or: string[]) => void) => {
+	const changeSource = (type: Type, value: boolean, cb?: (sources: Type[], level: Level, contentConditions: string[]) => void) => {
 		setSources((val) => {
 			if (value) val.push(type);
 			else val = val.filter((item) => item !== type);
 			const vals = [...new Set(val)];
-			cb?.(vals, level, andConditions, orConditions);
+			cb?.(vals, level, contentConditions);
 			return vals;
 		});
 	};
@@ -69,12 +65,20 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	};
 
-	const CondChip = memo(({text}: {text: string}) => {
+	const CondChip = memo(({text, index}: {text: string; index: number}) => {
 		return (
 			<div key={text} className='bg-white border-[#656565] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center'>
 				<div className='group flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] gap-[8px] bg-white border border-[#CDCDCD]'>
 					<p className='text-nowrap font-normal text-[14px]'>{text}</p>
-					<X role='button' className='invisible me-[8px] size-[20px] group-hover:visible' />
+					<X
+						role='button'
+						className='invisible me-[8px] size-[20px] group-hover:visible'
+						onClick={() => {
+							const content = contentConditions?.filter((_, i) => i !== index);
+							setContentConditions(content);
+							applyFn(sources, level, content);
+						}}
+					/>
 					{/* <img
 						src='icons/close-white.svg'
 						alt='close'
@@ -135,33 +139,31 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 					</div>
 					<DropdownMenuSeparator className='bg-[#EBECF0]' />
 					<div className={'inputs flex flex-col gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
-						{TEXT_FILTERS.map((text: 'and' | 'or') => (
-							<Dialog key={text} aria-hidden={false}>
-								<DialogTrigger>
-									<div className='group border rounded-[3px] h-[22px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
-										<p className='ps-[10px] text-[12px] capitalize'>{text}:</p>
-										<Input onClick={() => dialogOpen(text)} className='h-[20px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
-									</div>
-								</DialogTrigger>
-								<DialogPortal aria-hidden={false}>
-									<DialogContent className='p-0' aria-hidden={false}>
-										<DialogTitle className='hidden'>Filter By Content</DialogTitle>
-										<DialogDescription className='hidden'>Filter By Content</DialogDescription>
-										<FilterDialogContent type={text} />
-									</DialogContent>
-								</DialogPortal>
-							</Dialog>
-						))}
+						<Dialog aria-hidden={false}>
+							<DialogTrigger>
+								<div className='group border rounded-[3px] h-[22px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
+									<p className='ps-[10px] text-[12px] capitalize'>Content:</p>
+									<Input onClick={() => dialogOpen()} className='h-[20px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
+								</div>
+							</DialogTrigger>
+							<DialogPortal aria-hidden={false}>
+								<DialogContent className='p-0' aria-hidden={false}>
+									<DialogTitle className='hidden'>Filter By Content</DialogTitle>
+									<DialogDescription className='hidden'>Filter By Content</DialogDescription>
+									<FilterDialogContent />
+								</DialogContent>
+							</DialogPortal>
+						</Dialog>
 					</div>
 					<DropdownMenuSeparator className='bg-[#EBECF0]' />
 					<div className='buttons flex items-center'>
-						<Button onClick={() => applyFn([], 'DEBUG', [], [])} variant='ghost' className='flex-1 text-[12px] font-normal text-[#656565] h-[35px] w-[95px]'>
+						<Button onClick={() => applyFn([], 'DEBUG', [])} variant='ghost' className='flex-1 text-[12px] font-normal text-[#656565] h-[35px] w-[95px]'>
 							Clear all
 						</Button>
 						<Button
 							variant='ghost'
 							onClick={() => {
-								applyFn(sources, level, andConditions, orConditions);
+								applyFn(sources, level, contentConditions);
 								setDropdownOpen(false);
 							}}
 							className='flex-1 text-[12px] font-normal !text-white bg-blue-main h-[35px] w-[95px] hover:bg-[#1000EB]'>
@@ -173,18 +175,16 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	};
 
-	const FilterDialogContent = memo(({type}: {type: 'and' | 'or'}) => {
+	const FilterDialogContent = memo(() => {
 		const [inputVal, setInputVal] = useState('');
 		const onApplyClick = () => {
-			console.log(inputVal);
-			applyFn(sources, level, type === 'and' ? [...andConditions, inputVal] : andConditions, type === 'or' ? [...orConditions, inputVal] : orConditions);
+			applyFn(sources, level, [...contentConditions, inputVal]);
 			closeDialog();
 		};
 		return (
 			<div className='px-[40px] py-[42px] flex flex-col gap-[22px]'>
 				<h2 className='text-[20px] font-normal'>Filter By Content</h2>
 				<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
-					<p className='ps-[10px] text-[12px] text-[#151515] capitalize'>{type}:</p>
 					<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
 				</div>
 				<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
@@ -199,19 +199,16 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	});
 
-	const dialogOpen = (type: 'and' | 'or') => {
-		openDialog(null, <FilterDialogContent type={type} />, {width: '580px', height: '236px'});
+	const dialogOpen = () => {
+		openDialog(null, <FilterDialogContent />, {width: '580px', height: '236px'});
 	};
 
 	return (
 		<div className='flex justify-between py-[10px] pe-[10px] ps-[24px] bg-white min-h-fit h-[70px]'>
 			<div className='filters-button flex items-center gap-[8px] flex-wrap'>
 				{!!def?.types?.length && def.types.map((type) => <TypeChip key={type} type={type} />)}
-				{def?.and.map((and: string) => (
-					<CondChip key={`And:${and}`} text={`And:${and}`} />
-				))}
-				{def?.or.map((or: string) => (
-					<CondChip key={`Or:${or}`} text={`Or:${or}`} />
+				{def?.content?.map((c: string, index: number) => (
+					<CondChip key={c} text={c} index={index} />
 				))}
 				<DropDownFilter />
 			</div>

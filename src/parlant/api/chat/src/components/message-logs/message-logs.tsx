@@ -98,7 +98,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		if (logs) {
 			if (!Object.keys(filters).length) setFilteredLogs(logs);
 			else {
-				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]}));
+				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]; content?: string[]}));
 				setFilterTabs((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
 						const filter = {id: Date.now(), def: filters};
@@ -133,7 +133,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} />
 			{event && !!logs.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && !!logs.length && (
-				<LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level, and, or) => setFilters({types, level, and, or})} />
+				<LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level, content) => setFilters({types, level, content})} />
 			)}
 			{!event && <UnselectedMessage />}
 			{event && !logs.length && <div className='h-full flex justify-center items-center flex-1'>Logs not found</div>}
