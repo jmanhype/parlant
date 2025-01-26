@@ -1,5 +1,4 @@
-import {memo, useEffect, useState} from 'react';
-import {DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from '../ui/dropdown-menu';
+import {memo, useEffect, useRef, useState} from 'react';
 import {Button} from '../ui/button';
 import {Checkbox} from '../ui/checkbox';
 import {Input} from '../ui/input';
@@ -7,6 +6,7 @@ import {useDialog} from '@/hooks/useDialog';
 import {Dialog, DialogContent, DialogDescription, DialogPortal, DialogTitle, DialogTrigger} from '../ui/dialog';
 import {twMerge} from 'tailwind-merge';
 import {ListFilter, X} from 'lucide-react';
+import {getDistanceToRight} from '@/utils/methods';
 
 type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
@@ -97,6 +97,8 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 	const DropDownFilter = () => {
 		const [dropdownOpen, setDropdownOpen] = useState(false);
 		const [sources, setSources] = useState<Type[]>(def?.types || []);
+		const wrapperRef = useRef<HTMLDivElement>(null);
+		const [usePopupToLeft, setUsePopupToLeft] = useState(false);
 
 		const changeSource = (type: Type, value: boolean) => {
 			setSources((val) => {
@@ -106,27 +108,40 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 				return vals;
 			});
 		};
+
+		useEffect(() => {
+			if (wrapperRef?.current) {
+				console.log('getDistanceToRight(wrapperRef.current) < 218', getDistanceToRight(wrapperRef.current) < 218);
+				if (getDistanceToRight(wrapperRef.current) < 218) setUsePopupToLeft(true);
+				else setUsePopupToLeft(false);
+			}
+		}, [wrapperRef?.current?.scrollWidth, dropdownOpen]);
+
 		return (
-			<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-				<DropdownMenuTrigger asChild>
-					{!def?.types?.length || dropdownOpen ? (
-						<Button variant='outline' className='flex items-center gap-[6px] h-[30px] px-[14px] bg-white hover:bg-[#E1E2E6]'>
+			<div className='wrapper relative' ref={wrapperRef}>
+				<div>
+					{!def?.types?.length ? (
+						<div onClick={() => setDropdownOpen(true)} role='button' className='flex hover:bg-[#E1E2E6] rounded-[5px] border items-center gap-[6px] h-[30px] px-[14px]'>
 							<ListFilter className='[stroke-width:2px] size-[16px]' />
-							{/* <img src='icons/filter.svg' alt='' /> */}
 							<p className='text-[14px] font-medium'>Filters</p>
-						</Button>
+						</div>
 					) : (
-						<Button variant='outline' className='flex bg-white hover:bg-[#E1E2E6] items-center gap-[6px] w-[32px] h-[30px] p-0'>
+						<Button onClick={() => setDropdownOpen(true)} variant='outline' className='flex bg-white hover:bg-[#E1E2E6] items-center gap-[6px] w-[32px] h-[30px] p-0'>
 							<img src='icons/filter.svg' alt='' />
 						</Button>
 					)}
-				</DropdownMenuTrigger>
-				<DropdownMenuContent className='font-ubuntu-sans font-normal bg-white w-[218px]'>
-					<DropdownMenuLabel className='flex items-center justify-between py-[2px]'>
-						<p className='text-[15px] text-[#A9A9A9] font-normal'>Filter...</p>
-						<img src='icons/close-white.svg' alt='close' role='button' onClick={() => setDropdownOpen(false)} />
-					</DropdownMenuLabel>
-					<DropdownMenuSeparator className='bg-[#EBECF0]' />
+				</div>
+				<div className={twMerge('hidden border rounded-[5px] absolute top-0 left-0 w-[218px] bg-white', dropdownOpen && 'block', usePopupToLeft ? 'right-0 left-[unset]' : '')}>
+					<div className='flex justify-between items-center'>
+						<div className='flex items-center gap-[6px] h-[30px] px-[14px]'>
+							<ListFilter className='[stroke-width:2px] size-[16px]' />
+							<p className='text-[14px] font-medium'>Filters</p>
+						</div>
+						<div role='button' onClick={() => setDropdownOpen(false)} className='hover:bg-[#EBECF0] flex h-[24px] w-[24px] items-center me-[2px] justify-center'>
+							<img src='icons/close.svg' alt='close' />
+						</div>
+					</div>
+					<hr className='bg-[#EBECF0]' />
 					<div className='flex flex-col gap-[4px] mt-[9px] pb-[11px] ps-[15px] pe-[21px]'>
 						{ALL_TYPES.map((type) => (
 							<div key={type} className={twMerge('flex items-center py-[4px] ps-[6px] space-x-2 hover:bg-[#F5F6F8]', sources.includes(type) && 'bg-[#EBECF0]')}>
@@ -137,13 +152,13 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 							</div>
 						))}
 					</div>
-					<DropdownMenuSeparator className='bg-[#EBECF0]' />
+					<hr className='bg-[#EBECF0]' />
 					<div className={'inputs flex flex-col gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
-						<Dialog aria-hidden={false}>
+						<Dialog>
 							<DialogTrigger>
 								<div className='group border rounded-[3px] h-[24px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
 									<p className='ps-[10px] text-[12px] capitalize'>Content:</p>
-									<Input onClick={() => dialogOpen()} className='h-[22px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
+									<Input className='h-[22px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
 								</div>
 							</DialogTrigger>
 							<DialogPortal aria-hidden={false}>
@@ -155,7 +170,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 							</DialogPortal>
 						</Dialog>
 					</div>
-					<DropdownMenuSeparator className='bg-[#EBECF0]' />
+					<hr className='bg-[#EBECF0]' />
 					<div className='buttons flex items-center'>
 						<Button onClick={() => applyFn([], 'DEBUG', [])} variant='ghost' className='flex-1 text-[12px] font-normal text-[#656565] h-[35px] w-[95px]'>
 							Clear all
@@ -170,8 +185,8 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 							Apply
 						</Button>
 					</div>
-				</DropdownMenuContent>
-			</DropdownMenu>
+				</div>
+			</div>
 		);
 	};
 
