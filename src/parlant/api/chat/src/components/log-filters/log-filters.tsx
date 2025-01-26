@@ -6,12 +6,13 @@ import {Input} from '../ui/input';
 import {useDialog} from '@/hooks/useDialog';
 import {Dialog, DialogContent, DialogDescription, DialogPortal, DialogTitle, DialogTrigger} from '../ui/dialog';
 import {twMerge} from 'tailwind-merge';
+import {X} from 'lucide-react';
 
 type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
 type Text = 'and' | 'or';
 
-const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
+const ALL_TYPES: Type[] = ['General', 'GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
 const TEXT_FILTERS: Text[] = ['and', 'or'];
 
@@ -38,11 +39,17 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [filterId]);
 
-	const changeSource = (type: Type, value: boolean) => {
+	useEffect(() => {
+		setSources(def?.types || []);
+		setLevel(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);
+	}, [def]);
+
+	const changeSource = (type: Type, value: boolean, cb?: (sources: Type[], level: Level) => void) => {
 		setSources((val) => {
 			if (value) val.push(type);
 			else val = val.filter((item) => item !== type);
 			const vals = [...new Set(val)];
+			cb?.(vals, level);
 			return vals;
 		});
 	};
@@ -51,16 +58,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		return (
 			<div key={type} className='bg-[#EBECF0] h-[30px] flex items-center gap-[8px] py-[5px] ps-[14px] rounded-[5px]'>
 				<p className='text-nowrap font-medium text-[14px]'>{typeLabels[type]}</p>
-				<img
-					src='icons/close.svg'
-					alt='close'
-					className='pe-[12px]'
-					role='button'
-					onClick={() => {
-						changeSource(type, false);
-						applyFn(sources, level);
-					}}
-				/>
+				<X role='button' className='pe-[12px] size-[28px]' onClick={() => changeSource(type, false, applyFn)} />
 			</div>
 		);
 	};
@@ -70,7 +68,8 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 			<div key={text} className='bg-[#716f6f] border-[#EBECF0] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center'>
 				<div className='flex items-center justify-center text-white rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] gap-[8px] bg-[#656565] border border-[#A9A9A9]'>
 					<p className='text-nowrap font-normal text-[14px]'>{text}</p>
-					<img
+					<X role='button' className='me-[8px] size-[20px] text-white' />
+					{/* <img
 						src='icons/close-white.svg'
 						alt='close'
 						className='pe-[12px]'
@@ -79,7 +78,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						// 	changeSource(type, false);
 						// 	applyFn(sources, level);
 						// }}
-					/>
+					/> */}
 				</div>
 			</div>
 		);

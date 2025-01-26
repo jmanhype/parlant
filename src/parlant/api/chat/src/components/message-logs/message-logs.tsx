@@ -66,7 +66,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 					key={tab.id}
 					role='button'
 					onClick={() => setCurrFilterTabs(tab.id)}
-					className={twJoin('flex min-h-[36px] justify-center bg-black text-white items-center px-[22px] p-[10px] border-e border-[#474747] w-fit', tab.id === currFilterTabs && 'bg-[#474747]', i === 0 && 'ps-[24px]')}>
+					className={twJoin('flex min-h-[36px] justify-center bg-black text-white items-center px-[22px] p-[10px] border-e border-[#474747] w-fit', tab.id === currFilterTabs && '!bg-[#474747]', i === 0 && 'ps-[24px]')}>
 					<div className='flex items-center gap-[22px]'>
 						<p className='text-[15px]'>{`filter_${i + 1}`}</p>
 						{filterTabs.length > 0 && <img src='icons/close-white.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />}
@@ -137,10 +137,10 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && !!logs.length && <LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level) => setFilters({types, level})} />}
 			{!event && <UnselectedMessage />}
-			{event && !logs.length && <div className='h-full flex justify-center items-center'>Logs not found</div>}
-			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center'>No data</div>}
+			{event && !logs.length && <div className='h-full flex justify-center items-center flex-1'>Logs not found</div>}
+			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
 			{event && !!filteredLogs.length && (
-				<div className='bg-[#474747] p-[14px] pt-0 h-auto overflow-auto'>
+				<div className='bg-[#474747] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div className='bg-white rounded-[5px] h-full overflow-auto'>
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex items-center gap-[5px] p-[5px]')}>
