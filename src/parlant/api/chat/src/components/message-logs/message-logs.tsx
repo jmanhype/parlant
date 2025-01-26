@@ -61,17 +61,24 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	return (
-		<div className='flex bg-[#fbfbfb] items-center filter-tabs border-b min-h-[36px] overflow-x-auto overflow-y-hidden no-scrollbar'>
+		<div className='flex bg-[#fbfbfb] items-center filter-tabs border-b min-h-[36px] max-h-[36px] overflow-x-auto overflow-y-hidden no-scrollbar'>
 			{filterTabs.map((tab: Filter, i: number) => (
-				<div key={tab.id} role='button' onClick={() => setCurrFilterTabs(tab.id)} className={twJoin('flex min-h-[36px] justify-center items-center px-[22px] p-[10px] border-e w-fit', tab.id === currFilterTabs && '!bg-white', i === 0 && 'ps-[24px]')}>
-					<div className='flex items-center gap-[22px]'>
+				<div
+					key={tab.id}
+					role='button'
+					onClick={() => setCurrFilterTabs(tab.id)}
+					className={twJoin('group flex min-h-[36px] max-h-[36px] justify-center items-center ps-[14px] pe-[8px] p-[10px] border-e w-fit', tab.id === currFilterTabs && '!bg-white', i === 0 && 'ps-[24px]')}>
+					<div className='flex items-center gap-[8px]'>
 						<p className='text-[15px]'>{`filter_${i + 1}`}</p>
-						{filterTabs.length > 0 && <img src='icons/close.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />}
+						{filterTabs.length > 0 && (
+							<X role='button' className={twJoin('size-[18px] group-hover:visible hover:bg-[#656565] hover:text-white rounded-[3px]', tab.id !== currFilterTabs && 'invisible group-hover:visible')} onClick={() => deleteFilterTab(tab.id)} />
+						)}
+						{/* {filterTabs.length > 0 && <img src='icons/close.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />} */}
 					</div>
 				</div>
 			))}
-			<div className='flex gap-[10px] items-center p-[10px] w-fit sticky bg-[#fbfbfb] right-0'>
-				<Plus role='button' onClick={addFilter} className='text-[#656565] hover:text-[#CDCDCD]' size={20} />
+			<div className='flex gap-[10px] ms-[6px] items-center rounded-[2px] p-[4px] w-fit sticky right-0 text-[#656565] hover:text-[#151515] hover:bg-[#EBECF0]' role='button' onClick={addFilter}>
+				<Plus size={16} />
 			</div>
 		</div>
 	);
