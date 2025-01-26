@@ -58,21 +58,21 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 
 	const TypeChip = ({type}: {type: Type}) => {
 		return (
-			<div key={type} className='group bg-[#EBECF0] h-[30px] flex items-center gap-[8px] pt-[6px] pb-[5px] ps-[14px] rounded-[5px] hover:bg-[#DDDEE2]'>
+			<div key={type} className='group cursor-pointer bg-[#EBECF0] h-[30px] flex items-center gap-[8px] pt-[6px] pb-[5px] ps-[14px] rounded-[5px] pe-[8px] hover:bg-[#DDDEE2]'>
 				<p className='text-nowrap font-normal text-[14px]'>{typeLabels[type]}</p>
-				<X role='button' className='invisible pe-[12px] size-[28px] group-hover:visible' onClick={() => changeSource(type, false, applyFn)} />
+				<X role='button' className='invisible size-[18px] group-hover:visible hover:bg-[#656565] hover:text-white rounded-[3px]' onClick={() => changeSource(type, false, applyFn)} />
 			</div>
 		);
 	};
 
 	const CondChip = memo(({text, index}: {text: string; index: number}) => {
 		return (
-			<div key={text} className='bg-white border-[#656565] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center'>
-				<div className='group flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] gap-[8px] bg-white border border-[#CDCDCD]'>
+			<div key={text} className='group cursor-pointer bg-white border-[#656565] hover:border-[#CDCDCD] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center'>
+				<div className='flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#CDCDCD] group-hover:border-[#656565]'>
 					<p className='text-nowrap font-normal text-[14px]'>{text}</p>
 					<X
 						role='button'
-						className='invisible me-[8px] size-[20px] group-hover:visible'
+						className='invisible min-w-[18px] size-[18px] group-hover:visible hover:bg-[#656565] hover:text-white rounded-[3px]'
 						onClick={() => {
 							const content = contentConditions?.filter((_, i) => i !== index);
 							setContentConditions(content);
@@ -141,9 +141,9 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 					<div className={'inputs flex flex-col gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
 						<Dialog aria-hidden={false}>
 							<DialogTrigger>
-								<div className='group border rounded-[3px] h-[22px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
+								<div className='group border rounded-[3px] h-[24px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
 									<p className='ps-[10px] text-[12px] capitalize'>Content:</p>
-									<Input onClick={() => dialogOpen()} className='h-[20px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
+									<Input onClick={() => dialogOpen()} className='h-[22px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' />
 								</div>
 							</DialogTrigger>
 							<DialogPortal aria-hidden={false}>

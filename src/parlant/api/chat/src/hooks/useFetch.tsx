@@ -23,7 +23,7 @@ function objToUrlParams(obj: Record<string, unknown>) {
 const ABORT_REQ_CODE = 20;
 const TIMEOUT_ERROR_MESSAGE = 'Error: Gateway Timeout';
 
-export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false, initiate = true): useFetchResponse<T> {
+export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false, initiate = true, checkErr = true): useFetchResponse<T> {
 	const [data, setData] = useState<T | null>(null);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<null | {message: string}>(null);
@@ -67,9 +67,10 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
 				setData(result);
 			})
 			.catch((err) => {
-				if (err.code !== ABORT_REQ_CODE) setError({message: err.message});
+				if (checkErr && err.code !== ABORT_REQ_CODE) setError({message: err.message});
+				else if (err.code !== ABORT_REQ_CODE && retry) fetchData();
 			})
-			.finally(() => setLoading(false));
+			.finally(() => checkErr && setLoading(false));
 
 		return () => controller.abort();
 		// eslint-disable-next-line react-hooks/exhaustive-deps

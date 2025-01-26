@@ -66,7 +66,7 @@ export default function Chat(): ReactElement {
 	const [agentId] = useAtom(agentIdIdAtom);
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
-	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID));
+	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID), false);
 
 	useEffect(() => {
 		start();
