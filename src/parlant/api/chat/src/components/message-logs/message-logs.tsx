@@ -53,7 +53,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	const addFilter = () => {
-		const val: Filter = {id: Date.now(), def: null};
+		const val: Filter = {id: Date.now(), def: {level: 'DEBUG', types: []}};
 		const allTabs = [...filterTabs, val];
 		setFilterTabs(allTabs);
 		setCurrFilterTabs(val.id);
