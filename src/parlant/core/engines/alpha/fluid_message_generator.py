@@ -526,10 +526,9 @@ Produce a valid JSON object in the following format: ###
                 source: <str, source of the fact - either a specific part of this prompt or something else>
                 is_source_based_in_this_prompt: <BOOL>
             }},
-
             ...
         ],
-        all_facts_and_services_sourced_from_prompt=<BOOL>
+        all_facts_and_services_sourced_from_prompt=<BOOL>,
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
@@ -1037,12 +1036,12 @@ example_6_expected = FluidMessageSchema(
                 OfferedServiceEvaluation(
                     service="We receive documents at publicengagement@whitehouse.gov",
                     source="Not from this prompt",
-                    OfferedServiceEvaluation=False,
+                    is_source_based_in_this_prompt=False,
                 ),
                 OfferedServiceEvaluation(
                     service="Additional instructions can be provided if sensitive materials need to be shipped to us",
                     source="Not from this prompt",
-                    OfferedServiceEvaluation=False,
+                    is_source_based_in_this_prompt=False,
                 ),
             ],
             all_facts_and_services_sourced_from_prompt=False,

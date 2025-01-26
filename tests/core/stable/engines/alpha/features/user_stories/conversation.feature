@@ -77,3 +77,15 @@ Feature: Conversation
         Then a single message event is emitted
         And the message contains no welcoming back of the customer
         And the message contains that the request will be escelated
+
+    Scenario: The agent replies politely when its nagged with the same question
+        Given an agent
+        And an empty session
+        And a guideline to reply that we are open Monday through Friday, from 9 AM to 5 PM Eastern Time when the customer asks about our openning hours
+        And a customer message, "what time do you open"
+        And an agent message, "We're open Monday through Friday, 9 AM to 5 PM Eastern Time"
+        And a customer message, "what time are you open \nwhat time are you open\nwhat time are you open"
+        When processing is triggered
+        Then a single message event is emitted
+        And the message contains no rudeness
+        And the message contains that the store is open from 9 AM to 5 PM, Monday through Friday
