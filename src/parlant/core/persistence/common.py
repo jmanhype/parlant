@@ -100,7 +100,11 @@ def matches_filters(
 
 
 def ensure_is_total(document: Mapping[str, Any], schema: type[Mapping[str, Any]]) -> None:
-    type_hints = get_type_hints(schema)
+    required_keys = get_type_hints(schema).keys()
+    missing_keys = [key for key in required_keys if key not in document]
 
-    if list(document.keys()) != list(type_hints):
-        raise TypeError(f"Provided TypedDict {schema.__qualname__} is missing required keys")
+    if missing_keys:
+        raise TypeError(
+            f"Provided TypedDict '{schema.__qualname__}' is missing required keys: {missing_keys}. "
+            f"Expected at least the keys: {list(required_keys)}."
+        )
