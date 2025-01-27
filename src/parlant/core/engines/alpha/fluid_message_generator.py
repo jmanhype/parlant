@@ -449,8 +449,6 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
-        with open("message event generator prompt.txt", "w") as f:
-            f.write(prompt)
         return prompt
 
     def _get_output_format(
@@ -582,23 +580,6 @@ Produce a valid JSON object in the following format: ###
             "[MessageEventGenerator][Revisions]\n"
             f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
-
-        with open("message event generator response.txt", "w") as f:
-            f.write(
-                json.dumps(
-                    [
-                        e.model_dump(mode="json")
-                        for e in message_event_response.content.evaluation_for_each_instruction
-                    ],
-                    indent=2,
-                )
-            )
-            f.write(
-                json.dumps(
-                    [r.model_dump(mode="json") for r in message_event_response.content.revisions],
-                    indent=2,
-                )
-            )
         if first_correct_revision := next(
             (
                 r
