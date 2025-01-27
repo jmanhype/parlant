@@ -93,10 +93,12 @@ class ChromaDatabase(VectorDatabase):
 
                 else:
                     self._logger.warning(f'Failed to load document "{doc}"')
+                    chroma_collection.delete(where={"id": doc["id"]})
                     failed_migrations.append(prospective_doc)
 
             except Exception as e:
-                self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
+                self._logger.error(f"Failed to load document '{doc}'. error: {e}.")
+                chroma_collection.delete(where={"id": doc["id"]})
                 failed_migrations.append(prospective_doc)
 
         if failed_migrations:
@@ -112,7 +114,7 @@ class ChromaDatabase(VectorDatabase):
                     ids=[failed_doc["id"]],
                     documents=[failed_doc["content"]],
                     metadatas=[cast(chromadb.Metadata, failed_doc)],
-                    embeddings=[],
+                    embeddings=[0],
                 )
 
         return chroma_collection

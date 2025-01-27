@@ -377,3 +377,172 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
                 assert any(t == kazoo for t in terms)
                 assert any(t == shazoo for t in terms)
                 assert any(t == bazoo for t in terms)
+
+
+async def test_that_document_loader_updates_documents_in_current_chroma_collection(
+    context: _TestContext,
+) -> None:
+    class _TestDocumentV2(BaseDocument):
+        name: str
+
+    async with create_database(context) as chroma_database:
+
+        async def _document_loader(doc: BaseDocument) -> _TestDocumentV2:
+            doc_1 = cast(_TestDocument, doc)
+
+            if doc_1["content"] == "strawberry":
+                return _TestDocumentV2(
+                    id=doc_1["id"],
+                    version=Version.String("2"),
+                    content="banana",
+                    name=doc_1["name"],
+                )
+            return _TestDocumentV2(
+                id=doc_1["id"],
+                version=Version.String("2"),
+                content=doc_1["content"],
+                name=doc_1["name"],
+            )
+
+        collection = await chroma_database.get_or_create_collection(
+            "test_collection",
+            _TestDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        documents = [
+            _TestDocument(
+                id=ObjectId("1"),
+                version=Version.String("1"),
+                content="strawberry",
+                name="Document 1",
+            ),
+            _TestDocument(
+                id=ObjectId("2"),
+                version=Version.String("1"),
+                content="apple",
+                name="Document 2",
+            ),
+            _TestDocument(
+                id=ObjectId("3"),
+                version=Version.String("1"),
+                content="cherry",
+                name="Document 3",
+            ),
+        ]
+
+        for doc in documents:
+            await collection.insert_one(doc)
+
+        query = "strawberry"
+        first_result = [s.document for s in await collection.find_similar_documents({}, query, k=1)]
+
+        assert len(first_result) == 1
+        first_result_doc = first_result[0]
+        assert first_result_doc["id"] == ObjectId("1")
+        assert first_result_doc["content"] == "strawberry"
+        assert first_result_doc["name"] == "Document 1"
+
+        assert first_result_doc["content"] == "strawberry"
+
+    async with create_database(context) as chroma_database:
+        collection_with_loader = await chroma_database.get_or_create_collection(
+            "test_collection",
+            _TestDocumentV2,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_document_loader,
+        )
+
+        query = "banana"
+        second_result = [
+            s.document for s in await collection_with_loader.find_similar_documents({}, query, k=1)
+        ]
+
+        assert len(second_result) == 1
+        second_result_doc = second_result[0]
+        assert second_result_doc["id"] == ObjectId("1")
+        assert second_result_doc["content"] == "banana"
+        assert second_result_doc["name"] == "Document 1"
+
+        assert second_result_doc["content"] == "banana"
+
+
+async def test_that_failed_migrations_are_stored_in_failed_migrations_collection(
+    context: _TestContext,
+) -> None:
+    class _TestDocumentV2(BaseDocument):
+        name: str
+
+    async with create_database(context) as chroma_database:
+
+        async def _document_loader(doc: BaseDocument) -> Optional[_TestDocumentV2]:
+            doc_1 = cast(_TestDocument, doc)
+            if doc_1["content"] == "invalid":
+                return None
+            return _TestDocumentV2(
+                id=doc_1["id"],
+                version=Version.String("2"),
+                content=doc_1["content"],
+                name=doc_1["name"],
+            )
+
+        collection = await chroma_database.get_or_create_collection(
+            "test_collection",
+            _TestDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        documents = [
+            _TestDocument(
+                id=ObjectId("1"),
+                version=Version.String("1"),
+                content="valid content",
+                name="Valid Document",
+            ),
+            _TestDocument(
+                id=ObjectId("2"),
+                version=Version.String("1"),
+                content="invalid",
+                name="Invalid Document",
+            ),
+            _TestDocument(
+                id=ObjectId("3"),
+                version=Version.String("1"),
+                content="another valid content",
+                name="Another Valid Document",
+            ),
+        ]
+
+        for doc in documents:
+            await collection.insert_one(doc)
+
+    async with create_database(context) as chroma_database:
+        collection_with_loader = await chroma_database.get_or_create_collection(
+            "test_collection",
+            _TestDocumentV2,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_document_loader,
+        )
+
+        valid_documents = await collection_with_loader.find({})
+        assert len(valid_documents) == 2
+        valid_contents = {doc["content"] for doc in valid_documents}
+        assert "valid content" in valid_contents
+        assert "another valid content" in valid_contents
+        assert "invalid" not in valid_contents
+
+        failed_migrations_collection = await chroma_database.get_or_create_collection(
+            "failed_migrations",
+            _TestDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        failed_migrations = await failed_migrations_collection.find({})
+        assert len(failed_migrations) == 1
+        failed_doc = failed_migrations[0]
+        assert failed_doc["id"] == ObjectId("2")
+        assert failed_doc["content"] == "invalid"
+        assert failed_doc["name"] == "Invalid Document"
