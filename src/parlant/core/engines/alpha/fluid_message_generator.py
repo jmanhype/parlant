@@ -71,7 +71,6 @@ class Revision(DefaultBaseModel):
     content: str
     factual_information_provided: Optional[list[FactualInformationEvaluation]] = []
     offered_services: Optional[list[OfferedServiceEvaluation]] = []
-    all_facts_and_services_sourced_from_prompt: Optional[bool] = True
     instructions_followed: Optional[list[str]] = []
     instructions_broken: Optional[list[str]] = []
     is_repeat_message: Optional[bool] = False
@@ -80,6 +79,8 @@ class Revision(DefaultBaseModel):
     missing_data_rationale: Optional[str] = None
     instructions_broken_only_due_to_prioritization: Optional[bool] = False
     prioritization_rationale: Optional[str] = None
+    all_facts_and_services_sourced_from_prompt: Optional[bool] = True
+    further_revisions_required: Optional[bool] = False
 
 
 class InstructionEvaluation(DefaultBaseModel):
@@ -358,9 +359,9 @@ To generate an optimal response that aligns with all guidelines and the current 
 
 3. REVISION CRITERIA
    The response requires further revision if any of these conditions are met:
-   - Facts or services are offered without clear sourcing from this prompt
-   - Guidelines or insights are broken (except when properly prioritized, or when broken due to insufficient data)
-   - The response repeats previous messages
+   - Facts or services are offered without clear sourcing from this prompt - deonted by all_facts_and_services_sourced_from_prompt being false
+   - Guidelines or insights are broken (except when properly prioritized, or when broken due to insufficient data) - denoted by 
+   - The response repeats previous messages - denoted by is_repeat_message being true.
 
 4. REVISION DOCUMENTATION
    Document each revision in JSON format including:
@@ -449,6 +450,8 @@ Produce a valid JSON object in the following format: ###
         )
 
         prompt = builder.build()
+        with open("fluid prompt.txt", "w") as f:
+            f.write(prompt)
         return prompt
 
     def _get_output_format(
@@ -535,7 +538,6 @@ Produce a valid JSON object in the following format: ###
             }},
             ...
         ],
-        "all_facts_and_services_sourced_from_prompt": <BOOL>,
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
         "is_repeat_message": <BOOL, indicating whether "content" is a repeat of a previous message by the agent>,
@@ -544,6 +546,8 @@ Produce a valid JSON object in the following format: ###
         "missing_data_rationale": <STR, optional. Necessary only if instructions_broken_due_to_missing_data is true>,
         "instructions_broken_only_due_to_prioritization": <BOOL, optional. Necessary only if followed_all_instructions is true>,
         "prioritization_rationale": <STR, optional. Necessary only if instructions_broken_only_due_to_prioritization is true>
+        "all_facts_and_services_sourced_from_prompt": <BOOL, if false, you must produce further revisions>,
+        "further_revisions_required": <BOOL, true iff either instructions were broken due to invalid reasons, if is_repeat_message is true, or if all_facts_and_services_sourced_from_prompt is false>
     }},
     ...
     ]
@@ -572,14 +576,28 @@ Produce a valid JSON object in the following format: ###
 
         if message_event_response.content.evaluation_for_each_instruction:
             self._logger.debug(
-                "[MessageEventGenerator][Evaluations]\n"
+                "[FluidMessageGenerator][Evaluations]\n"
                 f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
             )
 
         self._logger.debug(
-            "[MessageEventGenerator][Revisions]\n"
+            "[FluidMessageGenerator][Revisions]\n"
             f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
         )
+
+        # TODO delete
+        with open("fluid response.txt", "w") as f:
+            if message_event_response.content.evaluation_for_each_instruction:
+                f.write(
+                    "[FluidMessageGenerator][Evaluations]\n"
+                    f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
+                )
+
+            f.write(
+                "[FluidMessageGenerator][Revisions]\n"
+                f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
+            )
+
         if first_correct_revision := next(
             (
                 r
@@ -676,7 +694,6 @@ example_1_expected = FluidMessageSchema(
                 ),
             ],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; When the customer asks for train schedules, provide them accurately and concisely."
             ],
@@ -688,6 +705,8 @@ example_1_expected = FluidMessageSchema(
             followed_all_instructions=False,
             instructions_broken_due_to_missing_data=False,
             instructions_broken_only_due_to_prioritization=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=True,
         ),
         Revision(
             revision_number=2,
@@ -713,7 +732,6 @@ example_1_expected = FluidMessageSchema(
                 ),
             ],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; When the customer asks for train schedules, provide them accurately and concisely.",
                 "#2; Use markdown format when applicable.",
@@ -722,6 +740,8 @@ example_1_expected = FluidMessageSchema(
             instructions_broken=[],
             is_repeat_message=False,
             followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         ),
     ],
 )
@@ -781,7 +801,6 @@ example_2_expected = FluidMessageSchema(
                     is_source_based_in_this_prompt=True,
                 ),
             ],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#2; upheld food quality and did not go on to preparing the burger without fresh toppings."
             ],
@@ -796,6 +815,8 @@ example_2_expected = FluidMessageSchema(
                 "standards before serving the burger is prioritized over immediate service."
             ),
             instructions_broken_due_to_missing_data=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         )
     ],
 )
@@ -848,7 +869,6 @@ example_3_expected = FluidMessageSchema(
                 ),
             ],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#2; Do not state factual information that you do not know or are not sure about"
             ],
@@ -860,6 +880,8 @@ example_3_expected = FluidMessageSchema(
             missing_data_rationale="Menu data was missing",
             instructions_broken_due_to_missing_data=True,
             instructions_broken_only_due_to_prioritization=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         )
     ],
 )
@@ -892,12 +914,13 @@ example_4_expected = FluidMessageSchema(
             factual_information_provided=[],
             offered_services=[],
             instructions_followed=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_broken=[
                 "#1; I've already apologized and asked for clarifications, and I shouldn't repeat myself"
             ],
             is_repeat_message=True,
             followed_all_instructions=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=True,
         ),
         Revision(
             revision_number=2,
@@ -905,12 +928,13 @@ example_4_expected = FluidMessageSchema(
             factual_information_provided=[],
             offered_services=[],
             instructions_followed=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_broken=[
                 "#1; Asking what I'm missing is still asking for clarifications, and I shouldn't repeat myself"
             ],
             is_repeat_message=True,
             followed_all_instructions=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=True,
         ),
         Revision(
             revision_number=3,
@@ -920,13 +944,14 @@ example_4_expected = FluidMessageSchema(
             ),
             factual_information_provided=[],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; I broke of out of the self-repeating loop by admitting that I can't seem to help"
             ],
             instructions_broken=[],
             is_repeat_message=False,
             followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         ),
     ],
 )
@@ -982,7 +1007,6 @@ example_5_expected = FluidMessageSchema(
                 )
             ],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; use the 'check_balance' tool",
                 "#2; Never reveal details about the process you followed to produce your response",
@@ -990,6 +1014,8 @@ example_5_expected = FluidMessageSchema(
             instructions_broken=[],
             is_repeat_message=False,
             followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         )
     ],
 )
@@ -1026,20 +1052,21 @@ example_6_expected = FluidMessageSchema(
             offered_services=[
                 OfferedServiceEvaluation(
                     service="We receive documents at publicengagement@whitehouse.gov",
-                    source="Not from this prompt",
+                    source="General knowledge about the public engagement office",
                     is_source_based_in_this_prompt=False,
                 ),
                 OfferedServiceEvaluation(
                     service="Additional instructions can be provided if sensitive materials need to be shipped to us",
-                    source="Not from this prompt",
+                    source="Assumption about proper procedure",
                     is_source_based_in_this_prompt=False,
                 ),
             ],
-            all_facts_and_services_sourced_from_prompt=False,
             instructions_followed=[],
             instructions_broken=["#1; ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"],
             is_repeat_message=False,
             followed_all_instructions=False,
+            all_facts_and_services_sourced_from_prompt=False,
+            further_revisions_required=True,
         ),
         Revision(
             revision_number=2,
@@ -1048,7 +1075,6 @@ example_6_expected = FluidMessageSchema(
             ),
             factual_information_provided=[],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; ONLY OFFER SERVICES AND INFORMATION PROVIDED IN THIS PROMPT"
             ],
@@ -1057,6 +1083,8 @@ example_6_expected = FluidMessageSchema(
             followed_all_instructions=False,
             instructions_broken_due_to_missing_data=False,
             instructions_broken_only_due_to_prioritization=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         ),
     ],
 )
@@ -1094,13 +1122,14 @@ example_7_expected = FluidMessageSchema(
             ),
             factual_information_provided=[],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[],
             instructions_broken=[
                 "#1; Instead of saying I can't help, I asked for more details from the customer",
             ],
             is_repeat_message=False,
             followed_all_instructions=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=True,
         ),
         Revision(
             revision_number=2,
@@ -1109,13 +1138,14 @@ example_7_expected = FluidMessageSchema(
             ),
             factual_information_provided=[],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#1; I adhered to the instruction by clearly stating that I cannot help with this topic",
             ],
             instructions_broken=[],
             is_repeat_message=False,
             followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         ),
     ],
 )
@@ -1194,7 +1224,6 @@ example_8_expected = FluidMessageSchema(
                 ),
             ],
             offered_services=[],
-            all_facts_and_services_sourced_from_prompt=True,
             instructions_followed=[
                 "#2; When asked about first-class tickets, mention that shorter flights do not offer a complementary meal",
                 "#3; In your generated reply to the customer, use markdown format when applicable.",
@@ -1211,6 +1240,8 @@ example_8_expected = FluidMessageSchema(
                 "over guidelines, so instruction #1 was prioritized."
             ),
             instructions_broken_due_to_missing_data=False,
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
         )
     ],
 )
@@ -1218,6 +1249,105 @@ example_8_expected = FluidMessageSchema(
 example_8_shot = FluidMessageGeneratorShot(
     description="Applying Insight—assuming the agent is provided with a list of outgoing flights from a tool call",
     expected_result=example_8_expected,
+)
+
+example_9_expected = FluidMessageSchema(
+    last_message_of_customer=("You are not being helpful. Transfer me to a human."),
+    guidelines=[],
+    context_evaluation=ContextEvaluation(
+        most_recent_customer_inquiries_or_needs="The customer wants to be transfered to a human",
+        parts_of_the_context_i_have_here_if_any_with_specific_information_on_how_to_address_these_needs="The system has given me no information on how to transfer a customer to a human representitive",
+        topics_for_which_i_have_sufficient_information_and_can_therefore_help_with="None, I can only apologize and explain myself",
+        what_i_do_not_have_enough_information_to_help_with_with_based_on_the_provided_information_that_i_have="I lack information on how to transfer the customer to a human representitive",
+        was_i_given_specific_information_here_on_how_to_address_some_of_these_specific_needs=False,
+        should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs=True,
+    ),
+    insights=[
+        "The customer is dissatisfied with my service, meaning I should apologize and attempt to assist them with their issue"
+    ],
+    evaluation_for_each_instruction=[
+        InstructionEvaluation(
+            number=1,
+            instruction="The customer is dissatisfied with my service, meaning I should apologize and attempt to assist them with their issue",
+            evaluation="I should apologize and attempt to medigate the issue",
+            data_available="Not needed",
+        ),
+    ],
+    revisions=[
+        Revision(
+            revision_number=1,
+            content=(
+                "I apologize for the inconvenience. Unfortunately I cannot transfer you to a human representitive at this moment. I'd recommend calling us by phone, hopefuly they'd be able to help you there."
+            ),
+            factual_information_provided=[],
+            offered_services=[
+                OfferedServiceEvaluation(
+                    service="suggested calling our store by phone",
+                    source="General knowledge regarding electronic stores",
+                    is_source_based_in_this_prompt=False,
+                )
+            ],
+            instructions_followed=[
+                "#1; The customer is dissatisfied with my service, meaning I should apologize and attempt to assist them with their issue"
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=False,
+            further_revisions_required=True,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                "I apologize for the inconvenience. Unfortunately I cannot transfer you to a human representitive at this moment. I recommend visiting one of our branches, and getting help from a human representative there"
+            ),
+            factual_information_provided=[],
+            offered_services=[
+                OfferedServiceEvaluation(
+                    service="suggested visiting one of our branches",
+                    source="General knowledge regarding electronic stores",
+                    is_source_based_in_this_prompt=False,
+                )
+            ],
+            instructions_followed=[
+                "#1; The customer is dissatisfied with my service, meaning I should apologize and attempt to assist them with their issue"
+            ],
+            instructions_broken=[],
+            is_repeat_message=False,
+            followed_all_instructions=True,
+            all_facts_and_services_sourced_from_prompt=False,
+            further_revisions_required=True,
+        ),
+        Revision(
+            revision_number=2,
+            content=(
+                "I'm really sorry I couldn’t provide the help you needed. Unfortunately, I don’t have the option to transfer you to a human representative. If there’s anything else I can try to assist with, feel free to let me know."
+            ),
+            factual_information_provided=[],
+            offered_services=[
+                OfferedServiceEvaluation(
+                    service="general assistance",
+                    source="the description of my role",
+                    is_source_based_in_this_prompt=True,
+                )
+            ],
+            instructions_followed=[],
+            instructions_broken=[
+                "#1; The customer is dissatisfied with my service, meaning I should apologize and attempt to assist them with their issue"
+            ],
+            is_repeat_message=False,
+            followed_all_instructions=False,
+            instructions_broken_due_to_missing_data=True,
+            missing_data_rationale="I lack information about how to transfer the customer to a human representative",
+            all_facts_and_services_sourced_from_prompt=True,
+            further_revisions_required=False,
+        ),
+    ],
+)
+
+example_9_shot = FluidMessageGeneratorShot(
+    description="Handling a frustrated customer when no options for assistance are available to the agent. Assume the agent works for a large electronic store, and that its role (as described in its prompt) is to assist potential customers. Assume the prompt did not specify a method for transfering customers to human representatives",
+    expected_result=example_7_expected,
 )
 
 _baseline_shots: Sequence[FluidMessageGeneratorShot] = [
@@ -1229,6 +1359,7 @@ _baseline_shots: Sequence[FluidMessageGeneratorShot] = [
     example_6_shot,
     example_7_shot,
     example_8_shot,
+    example_9_shot,
 ]
 
 shot_collection = ShotCollection[FluidMessageGeneratorShot](_baseline_shots)
