@@ -915,7 +915,7 @@ async def test_that_a_message_is_generated_using_the_active_nlp_service(
     message_generation_inspections = inspection_data["message_generations"]
     assert len(message_generation_inspections) >= 1
 
-    assert message_generation_inspections[0]["generation"]["schema_name"] == "MessageEventSchema"
+    assert message_generation_inspections[0]["generation"]["schema_name"] == "FluidMessageSchema"
 
     schematic_generator = await nlp_service.get_schematic_generator(FluidMessageSchema)
     assert message_generation_inspections[0]["generation"]["model"] == schematic_generator.id
