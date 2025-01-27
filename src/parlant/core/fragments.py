@@ -16,14 +16,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import NewType, Optional, Sequence
+from typing import NewType, Optional, Sequence, cast
 from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.common import ObjectId
-from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentDatabase,
+    DocumentCollection,
+)
 
 FragmentId = NewType("FragmentId", str)
 
@@ -138,14 +142,28 @@ class FragmentDocumentStore(FragmentStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _fragment_document_store(self, doc: BaseDocument) -> Optional[_FragmentDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_FragmentDocument, doc)
+        return None
+
+    async def _fragment_tag_association_document_store(
+        self, doc: BaseDocument
+    ) -> Optional[_FragmentTagAssociationDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_FragmentTagAssociationDocument, doc)
+        return None
+
     async def __aenter__(self) -> Self:
         self._fragments_collection = await self._database.get_or_create_collection(
             name="fragments",
             schema=_FragmentDocument,
+            document_loader=self._fragment_document_store,
         )
         self._fragment_tag_association_collection = await self._database.get_or_create_collection(
             name="fragment_tag_associations",
             schema=_FragmentTagAssociationDocument,
+            document_loader=self._fragment_tag_association_document_store,
         )
         return self
 
