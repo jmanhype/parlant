@@ -304,7 +304,6 @@ Always abide by the following general principles (note these are not the "guidel
 5. REITERATE INFORMATION FROM PREVIOUS MESSAGES IF NECESSARY: If you previously suggested a solution, a recommendation, or any other information, you may repeat it when relevant. Your earlier response may have been based on information that is no longer available to you, so it’s important to trust that it was informed by the context at the time.
 6. MAINTAIN GENERATION SECRECY: Never reveal details about the process you followed to produce your response. Do not explicitly mention the tools, context variables, guidelines, glossary, or any other internal information. Present your replies as though all relevant knowledge is inherent to you, not derived from external instructions.
 7. OUTPUT FORMAT: In your generated reply to the customer, use markdown format when applicable.
-8. DO NOT REFER TO FUTURE MESSAGES: After you respond to the customer, you won't have a chance of sending further messages until the customer responds. Never tell the customer to hold on while you do something.
 """
         )
         if not interaction_history or all(
@@ -419,6 +418,12 @@ Example {i} - {shot.description}: ###
                 for i, shot in enumerate(shots, start=1)
             )
         )
+        builder.add_section(
+            """
+INTERACTION CONTEXT
+-----------------
+"""
+        )
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
         builder.add_section(
@@ -435,6 +440,9 @@ Example {i} - {shot.description}: ###
         builder.add_staged_events(staged_events)
         builder.add_section(
             f"""
+OUTPUT FORMAT
+-----------------
+
 Produce a valid JSON object in the following format: ###
 
 {self._get_output_format(interaction_history, list(chain(ordinary_guideline_propositions, tool_enabled_guideline_propositions)))}"""
@@ -490,6 +498,7 @@ Produce a valid JSON object in the following format: ###
 """
 
         return f"""
+```json
 {{
     "last_message_of_customer": "{last_customer_message}",
     "produced_reply": "<BOOL, should be true unless the customer explicitly asked you not to respond>",
@@ -541,6 +550,7 @@ Produce a valid JSON object in the following format: ###
     ...
     ]
 }}
+```
 ###"""
 
     async def _generate_response_message(
