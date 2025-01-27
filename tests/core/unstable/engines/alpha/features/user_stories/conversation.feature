@@ -78,7 +78,6 @@ Feature: Conversation
     Scenario: The agent doesnt postpone replying when its inappropriate
         Given an agent whose job is to represent a bank, and to help customers with performing transactions 
         And a guideline to transfer money to the recipient and confirm the transaction providing its ID when user wants to transfer money and has successfully confirmed their PIN code
-        And the tool "???"
         And a customer message, "I want to transfer 20$ to Vishal and my pin code is 400013."
         And an agent message, "It seems the PIN code you provided is incorrect, so the transfer could not be completed. Could you please double-check your PIN code? Also, to confirm, you want to transfer $20 to Vishal. Let me know if this is correct."
         And a customer message, "Ok, sorry my pin code is 1921. And yes that is correct."
@@ -93,7 +92,6 @@ Feature: Conversation
         When processing is triggered
         Then a single message event is emitted
         And the message contains no mention of getting back to the customer with a further response
-        # TODO add staged tool call to this test
 
     Scenario: The agent uses the freshest data when multiple sources are available
         Given an agent
