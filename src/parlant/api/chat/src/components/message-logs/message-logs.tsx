@@ -147,7 +147,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
 			{event && !!filteredLogs.length && (
 				<div className='bg-white p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div className='rounded-[5px] p-[10px] h-full overflow-auto bg-[#F3F4F8]'>
+					<div className='rounded-[5px] border-[10px] border-[#F3F4F8] h-full overflow-auto bg-[#F3F4F8]'>
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex items-center gap-[5px] px-[20px] p-[5px] hover:bg-white')}>
 								{/* <div className='self-start'>{IconMap[log.level]}</div> */}

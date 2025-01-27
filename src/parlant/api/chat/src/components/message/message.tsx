@@ -1,4 +1,4 @@
-import {ReactElement, useRef} from 'react';
+import {ReactElement, useEffect, useRef, useState} from 'react';
 import {EventInterface} from '@/utils/interfaces';
 import {getTimeStr} from '@/utils/date';
 import styles from './message.module.scss';
@@ -29,8 +29,16 @@ const statusIcon = {
 
 export default function Message({event, isContinual, showLogs, showLogsForMessage}: Props): ReactElement {
 	const ref = useRef<HTMLDivElement>(null);
+	const markdownRef = useRef<HTMLSpanElement>(null);
+	const [rowCount, setRowCount] = useState(1);
 	const isClient = event.source === 'customer' || event.source === 'customer_ui';
 	const serverStatus = event.serverStatus;
+
+	useEffect(() => {
+		if (!markdownRef?.current) return;
+		const rowCount = Math.floor(markdownRef.current.offsetHeight / 24);
+		setRowCount(rowCount);
+	}, [markdownRef]);
 
 	// useEffect(() => {
 	// 	if (ref.current) {
@@ -63,8 +71,10 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#151515]',
 						'rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
 					)}>
-					<div className='markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] pt-[18px] pb-[22px] ps-[32px] pe-[24px]'>
-						<Markdown>{event?.data?.message}</Markdown>
+					<div className={twMerge('markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] ps-[34px] pe-[24px]', rowCount === 1 ? 'py-[16px]' : 'pb-[24px] pt-[20px]')}>
+						<span ref={markdownRef}>
+							<Markdown>{event?.data?.message}</Markdown>
+						</span>
 					</div>
 					<div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>
 						<div className='flex items-center w-[46px]'>

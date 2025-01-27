@@ -4,13 +4,13 @@ import {Checkbox} from '../ui/checkbox';
 import {Input} from '../ui/input';
 import {Dialog, DialogClose, DialogContent, DialogDescription, DialogPortal, DialogTitle, DialogTrigger} from '../ui/dialog';
 import {twMerge} from 'tailwind-merge';
-import {ListFilter, X} from 'lucide-react';
+import {ListFilter, Plus, X} from 'lucide-react';
 import {getDistanceToRight} from '@/utils/methods';
 
 type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
 
-const ALL_TYPES: Type[] = ['General', 'GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
+const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
 
 const typeLabels: Record<Type, string> = {
@@ -48,10 +48,11 @@ const FilterDialog = ({contentChanged, content}: {contentChanged: (text: string)
 	return (
 		<Dialog>
 			<DialogTrigger>
-				<div className='group border rounded-[3px] h-[24px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
+				<Plus />
+				{/* <div className='group border rounded-[3px] h-[24px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
 					<p className='ps-[10px] text-[12px] capitalize'>Content:</p>
 					<Input readOnly className='h-[22px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' value={content?.join(';') || ''} />
-				</div>
+				</div> */}
 			</DialogTrigger>
 			<DialogPortal aria-hidden={false}>
 				<DialogContent className='p-0' aria-hidden={false}>
@@ -107,9 +108,9 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	};
 
-	const CondChip = memo(({text, index}: {text: string; index: number}) => {
+	const CondChip = memo(({text, index, apply, deleted}: {text: string; index: number; apply?: boolean; deleted?: (content: string[]) => void}) => {
 		return (
-			<div key={text} className='group cursor-pointer bg-white border-[#656565] hover:border-[#CDCDCD] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center'>
+			<div key={text} className='group cursor-pointer bg-white border-[#656565] hover:border-[#CDCDCD] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center w-fit'>
 				<div className='flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#CDCDCD] group-hover:border-[#656565]'>
 					<p className='text-nowrap font-normal text-[14px]'>{text}</p>
 					<X
@@ -118,8 +119,11 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						onClick={(e) => {
 							e.stopPropagation();
 							const content = contentConditions?.filter((_, i) => i !== index);
-							setContentConditions(content);
-							applyFn(sources, level, content);
+							if (apply) {
+								setContentConditions(content);
+								applyFn(sources, level, content);
+							}
+							deleted?.(content);
 						}}
 					/>
 				</div>
@@ -142,6 +146,13 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 				return vals;
 			});
 		};
+
+		useEffect(() => {
+			if (!dropdownOpen) {
+				setSources(def?.types || []);
+				setContent(def?.content || []);
+			}
+		}, [dropdownOpen]);
 
 		useEffect(() => {
 			if (wrapperRef?.current) {
@@ -186,7 +197,10 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						))}
 					</div>
 					<hr className='bg-[#EBECF0]' />
-					<div className={'inputs flex flex-col gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
+					<div className={'inputs flex flex-wrap gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
+						{content?.map((item, i) => (
+							<CondChip text={item} index={i} apply={false} deleted={(content) => setContent(content)} />
+						))}
 						<FilterDialog contentChanged={(inputVal) => setContent((val) => [...val, inputVal])} content={content} />
 					</div>
 					<hr className='bg-[#EBECF0]' />
@@ -216,7 +230,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 				{def?.content?.map((c: string, index: number) => (
 					<Dialog key={c}>
 						<DialogTrigger>
-							<CondChip key={c} text={c} index={index} />
+							<CondChip key={c} text={c} index={index} apply={true} />
 						</DialogTrigger>
 						<DialogPortal>
 							<DialogContent className='p-0'>

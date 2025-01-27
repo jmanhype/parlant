@@ -8,7 +8,7 @@ import {twJoin} from 'tailwind-merge';
 
 const Markdown = ({children, className}: {children: string; className?: string}) => {
 	return (
-		<ReactMarkdown rehypePlugins={[rehypeHighlight]} remarkPlugins={[remarkGfm, remarkBreaks]} className={twJoin(styles.markdown, className)}>
+		<ReactMarkdown components={{p: 'div'}} rehypePlugins={[rehypeHighlight]} remarkPlugins={[remarkGfm, remarkBreaks]} className={twJoin('leading-[28px]', styles.markdown, className)}>
 			{children}
 		</ReactMarkdown>
 	);
