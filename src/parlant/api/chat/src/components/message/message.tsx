@@ -69,7 +69,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 						isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
 						isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
 						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#151515]',
-						'rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
+						'rounded-[26px] [transition:box-shadow_0.5s] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
 					)}>
 					<div className={twMerge('markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] ps-[34px] pe-[24px]', rowCount === 1 ? 'py-[16px]' : 'pb-[24px] pt-[20px]')}>
 						<span ref={markdownRef}>

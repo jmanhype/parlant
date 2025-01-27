@@ -1,4 +1,4 @@
-import {memo, useEffect, useRef, useState} from 'react';
+import {memo, ReactNode, useEffect, useRef, useState} from 'react';
 import {Button} from '../ui/button';
 import {Checkbox} from '../ui/checkbox';
 import {Input} from '../ui/input';
@@ -18,6 +18,17 @@ const typeLabels: Record<Type, string> = {
 	GuidelineProposer: 'Guideline Proposer',
 	MessageEventGenerator: 'Message Event Composer',
 	ToolCaller: 'Tool Caller',
+};
+
+const AddFilterChip = () => {
+	return (
+		<div className='group cursor-pointer bg-[#F5F6F8] hover:bg-[#EBECF0] h-[30px] rounded-[3px] flex items-center w-full'>
+			<div className='flex items-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[8px] pe-[6px] gap-[8px]'>
+				<Plus role='button' className='min-w-[18px] size-[18px] hover:bg-[#656565] hover:text-white rounded-[3px]' />
+				<p className='text-nowrap font-normal text-[14px]'>Add Custom Filter</p>
+			</div>
+		</div>
+	);
 };
 
 const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (text: string) => void; defaultValue?: string}) => {
@@ -44,11 +55,12 @@ const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (t
 	);
 };
 
-const FilterDialog = ({contentChanged, content}: {contentChanged: (text: string) => void; content: string[]}) => {
+const FilterDialog = ({contentChanged, content, children}: {contentChanged: (text: string) => void; content?: string; children?: ReactNode}) => {
 	return (
 		<Dialog>
-			<DialogTrigger>
-				<Plus />
+			<DialogTrigger className='w-full'>
+				{children || <AddFilterChip />}
+
 				{/* <div className='group border rounded-[3px] h-[24px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8]'>
 					<p className='ps-[10px] text-[12px] capitalize'>Content:</p>
 					<Input readOnly className='h-[22px] !ring-0 !ring-offset-0 border-none text-[12px] bg-[#FBFBFB] hover:bg-[#F5F6F8]' value={content?.join(';') || ''} />
@@ -58,7 +70,7 @@ const FilterDialog = ({contentChanged, content}: {contentChanged: (text: string)
 				<DialogContent className='p-0' aria-hidden={false}>
 					<DialogTitle className='hidden'>Filter By Content</DialogTitle>
 					<DialogDescription className='hidden'>Filter By Content</DialogDescription>
-					<FilterDialogContent contentChanged={contentChanged} />
+					<FilterDialogContent contentChanged={contentChanged} defaultValue={content || ''} />
 				</DialogContent>
 			</DialogPortal>
 		</Dialog>
@@ -108,7 +120,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		);
 	};
 
-	const CondChip = memo(({text, index, apply, deleted}: {text: string; index: number; apply?: boolean; deleted?: (content: string[]) => void}) => {
+	const CondChip = ({text, index, apply, deleted}: {text: string; index: number; apply?: boolean; deleted?: (content: string[]) => void}) => {
 		return (
 			<div key={text} className='group cursor-pointer bg-white border-[#656565] hover:border-[#CDCDCD] border-[1px] h-[30px] rounded-[5px] flex justify-center items-center w-fit'>
 				<div className='flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#CDCDCD] group-hover:border-[#656565]'>
@@ -129,7 +141,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 				</div>
 			</div>
 		);
-	});
+	};
 
 	const DropDownFilter = () => {
 		const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -149,8 +161,8 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 
 		useEffect(() => {
 			if (!dropdownOpen) {
-				setSources(def?.types || []);
-				setContent(def?.content || []);
+				setSources(structuredClone(def?.types || []));
+				setContent(structuredClone(def?.content || []));
 			}
 		}, [dropdownOpen]);
 
@@ -199,9 +211,19 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 					<hr className='bg-[#EBECF0]' />
 					<div className={'inputs flex flex-wrap gap-[6px] px-[21px] pb-[14px] pt-[11px]'}>
 						{content?.map((item, i) => (
-							<CondChip text={item} index={i} apply={false} deleted={(content) => setContent(content)} />
+							<FilterDialog
+								key={item}
+								content={item}
+								contentChanged={(inputVal) => {
+									setContent((c) => {
+										c[i] = inputVal;
+										return [...c];
+									});
+								}}>
+								<CondChip text={item} index={i} apply={false} deleted={(content) => setContent(content)} />
+							</FilterDialog>
 						))}
-						<FilterDialog contentChanged={(inputVal) => setContent((val) => [...val, inputVal])} content={content} />
+						<FilterDialog contentChanged={(inputVal) => setContent((val) => [...val, inputVal])} />
 					</div>
 					<hr className='bg-[#EBECF0]' />
 					<div className='buttons flex items-center h-[47px] p-[6px]'>
