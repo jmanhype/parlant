@@ -125,10 +125,14 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         collection_documents = self._raw_data.get(name, [])
 
         for doc in collection_documents:
-            if loaded_doc := await document_loader(doc):
-                data.append(loaded_doc)
-            else:
-                self._logger.warning(f'Failed to load document "{doc}"')
+            try:
+                if loaded_doc := await document_loader(doc):
+                    data.append(loaded_doc)
+                else:
+                    self._logger.warning(f'Failed to load document "{doc}"')
+                    failed_migrations.append(doc)
+            except Exception as e:
+                self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
                 failed_migrations.append(doc)
 
         if failed_migrations:

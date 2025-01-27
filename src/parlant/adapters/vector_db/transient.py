@@ -15,7 +15,7 @@
 from __future__ import annotations
 import asyncio
 import json
-from typing import Any, Generic, Mapping, Optional, Sequence, cast
+from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, Sequence, cast
 import numpy as np
 from typing_extensions import override, Self
 
@@ -91,6 +91,8 @@ class TransientVectorDatabase(VectorDatabase):
     async def get_collection(
         self,
         name: str,
+        embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientVectorCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(TransientVectorCollection[TDocument], collection)
@@ -103,6 +105,7 @@ class TransientVectorDatabase(VectorDatabase):
         name: str,
         schema: type[TDocument],
         embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientVectorCollection[TDocument]:
         if collection := self._collections.get(name):
             assert schema == collection._schema

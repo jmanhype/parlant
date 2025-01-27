@@ -16,7 +16,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import chain
-from typing import NewType, Optional, Sequence, TypedDict
+from typing import NewType, Optional, Sequence, TypedDict, cast
 from typing_extensions import override, Self
 
 from parlant.core import async_utils
@@ -24,7 +24,7 @@ from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.persistence.common import ObjectId
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
-from parlant.core.persistence.vector_database import VectorCollection, VectorDatabase
+from parlant.core.persistence.vector_database import BaseDocument, VectorCollection, VectorDatabase
 
 
 TermId = NewType("TermId", str)
@@ -128,11 +128,18 @@ class GlossaryVectorStore(GlossaryStore):
 
         self._lock = ReaderWriterLock()
 
+    async def _document_loader(self, document: BaseDocument) -> Optional[_TermDocument]:
+        if document["version"] == "0.1.0":
+            return cast(_TermDocument, document)
+
+        return None
+
     async def __aenter__(self) -> Self:
         self._collection = await self._vector_db.get_or_create_collection(
             name="glossary",
             schema=_TermDocument,
             embedder_type=self._embedder_type,
+            document_loader=self._document_loader,
         )
 
         return self

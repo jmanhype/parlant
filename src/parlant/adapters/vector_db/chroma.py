@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from __future__ import annotations
-import importlib
 import json
-import operator
 from pathlib import Path
-from typing import Generic, Optional, Sequence, cast
+from typing import Awaitable, Callable, Generic, Optional, Sequence, cast
 from typing_extensions import override, Self
 import chromadb
 
@@ -34,6 +32,7 @@ from parlant.core.persistence.vector_database import (
     VectorCollection,
     VectorDatabase,
     TDocument,
+    noop_loader,
 )
 
 
@@ -53,30 +52,6 @@ class ChromaDatabase(VectorDatabase):
 
     async def __aenter__(self) -> Self:
         self._chroma_client = chromadb.PersistentClient(str(self._dir_path))
-        for chromadb_collection in self._chroma_client.list_collections():
-            embedder_module = importlib.import_module(
-                chromadb_collection.metadata["embedder_module_path"]
-            )
-            embedder_type = getattr(
-                embedder_module,
-                chromadb_collection.metadata["embedder_type_path"],
-            )
-            embedder = self._embedder_factory.create_embedder(embedder_type)
-
-            chroma_collection = self._chroma_client.get_collection(
-                name=chromadb_collection.name,
-                embedding_function=None,
-            )
-
-            self._collections[chromadb_collection.name] = ChromaCollection(
-                logger=self._logger,
-                chromadb_collection=chroma_collection,
-                name=chromadb_collection.name,
-                schema=operator.attrgetter(chromadb_collection.metadata["schema_model_path"])(
-                    importlib.import_module(chromadb_collection.metadata["schema_module_path"])
-                ),
-                embedder=embedder,
-            )
         return self
 
     async def __aexit__(
@@ -86,6 +61,61 @@ class ChromaDatabase(VectorDatabase):
         traceback: Optional[object],
     ) -> None:
         pass
+
+    async def load_documents_to_chroma_collection_with_loader(
+        self,
+        chroma_collection: chromadb.Collection,
+        embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
+    ) -> chromadb.Collection:
+        failed_migrations: list[BaseDocument] = []
+
+        collection_documents = chroma_collection.get()["metadatas"]
+
+        if not collection_documents:
+            return chroma_collection
+
+        embedder = self._embedder_factory.create_embedder(embedder_type)
+
+        for doc in collection_documents:
+            prospective_doc = cast(BaseDocument, doc)
+            try:
+                if loaded_doc := await document_loader(prospective_doc):
+                    if loaded_doc != prospective_doc:
+                        embeddings = list((await embedder.embed([loaded_doc["content"]])).vectors)
+
+                        chroma_collection.update(
+                            ids=[prospective_doc["id"]],
+                            documents=[loaded_doc["content"]],
+                            metadatas=[cast(chromadb.Metadata, loaded_doc)],
+                            embeddings=embeddings,
+                        )
+
+                else:
+                    self._logger.warning(f'Failed to load document "{doc}"')
+                    failed_migrations.append(prospective_doc)
+
+            except Exception as e:
+                self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
+                failed_migrations.append(prospective_doc)
+
+        if failed_migrations:
+            failed_migrations_collection = await self.get_or_create_collection(
+                "failed_migrations",
+                BaseDocument,
+                embedder_type,
+                noop_loader,
+            )
+
+            for failed_doc in failed_migrations:
+                failed_migrations_collection.chroma_collection.add(
+                    ids=[failed_doc["id"]],
+                    documents=[failed_doc["content"]],
+                    metadatas=[cast(chromadb.Metadata, failed_doc)],
+                    embeddings=[],
+                )
+
+        return chroma_collection
 
     @override
     async def create_collection(
@@ -101,12 +131,6 @@ class ChromaDatabase(VectorDatabase):
             self._logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
-                metadata={
-                    "schema_module_path": schema.__module__,
-                    "schema_model_path": schema.__qualname__,
-                    "embedder_module_path": embedder_type.__module__,
-                    "embedder_type_path": embedder_type.__qualname__,
-                },
                 embedding_function=None,
             ),
             name=name,
@@ -120,9 +144,24 @@ class ChromaDatabase(VectorDatabase):
     async def get_collection(
         self,
         name: str,
+        embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> ChromaCollection[TDocument]:
         if collection := self._collections.get(name):
             return cast(ChromaCollection[TDocument], collection)
+        elif chroma_collection := next(
+            (col for col in self._chroma_client.list_collections() if col.name == name), None
+        ):
+            self._collections[name] = ChromaCollection(
+                self._logger,
+                chromadb_collection=await self.load_documents_to_chroma_collection_with_loader(
+                    chroma_collection, embedder_type=embedder_type, document_loader=document_loader
+                ),
+                name=name,
+                schema=BaseDocument,
+                embedder=self._embedder_factory.create_embedder(embedder_type),
+            )
+            return cast(ChromaCollection[TDocument], self._collections[name])
 
         raise ValueError(f'ChromaDB collection "{name}" not found.')
 
@@ -132,21 +171,28 @@ class ChromaDatabase(VectorDatabase):
         name: str,
         schema: type[TDocument],
         embedder_type: type[Embedder],
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> ChromaCollection[TDocument]:
         if collection := self._collections.get(name):
-            assert schema == collection._schema
             return cast(ChromaCollection[TDocument], collection)
+        elif chroma_collection := next(
+            (col for col in self._chroma_client.list_collections() if col.name == name), None
+        ):
+            self._collections[name] = ChromaCollection(
+                self._logger,
+                chromadb_collection=await self.load_documents_to_chroma_collection_with_loader(
+                    chroma_collection, embedder_type=embedder_type, document_loader=document_loader
+                ),
+                name=name,
+                schema=BaseDocument,
+                embedder=self._embedder_factory.create_embedder(embedder_type),
+            )
+            return cast(ChromaCollection[TDocument], self._collections[name])
 
         self._collections[name] = ChromaCollection(
             self._logger,
             chromadb_collection=self._chroma_client.create_collection(
                 name=name,
-                metadata={
-                    "schema_module_path": schema.__module__,
-                    "schema_model_path": schema.__qualname__,
-                    "embedder_module_path": embedder_type.__module__,
-                    "embedder_type_path": embedder_type.__qualname__,
-                },
                 embedding_function=None,
             ),
             name=name,
@@ -182,7 +228,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         self._embedder = embedder
 
         self._lock = ReaderWriterLock()
-        self._chroma_collection = chromadb_collection
+        self.chroma_collection = chromadb_collection
 
     @override
     async def find(
@@ -190,9 +236,9 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         filters: Where,
     ) -> Sequence[TDocument]:
         async with self._lock.reader_lock:
-            if metadatas := self._chroma_collection.get(
-                where=cast(chromadb.Where, filters) or None
-            )["metadatas"]:
+            if metadatas := self.chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
+                "metadatas"
+            ]:
                 return [cast(TDocument, m) for m in metadatas]
 
         return []
@@ -203,9 +249,9 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         filters: Where,
     ) -> Optional[TDocument]:
         async with self._lock.reader_lock:
-            if metadatas := self._chroma_collection.get(
-                where=cast(chromadb.Where, filters) or None
-            )["metadatas"]:
+            if metadatas := self.chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
+                "metadatas"
+            ]:
                 return cast(TDocument, {k: v for k, v in metadatas[0].items()})
 
         return None
@@ -220,7 +266,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         embeddings = list((await self._embedder.embed([document["content"]])).vectors)
 
         async with self._lock.writer_lock:
-            self._chroma_collection.add(
+            self.chroma_collection.add(
                 ids=[document["id"]],
                 documents=[document["content"]],
                 metadatas=[cast(chromadb.Metadata, document)],
@@ -237,7 +283,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         upsert: bool = False,
     ) -> UpdateResult[TDocument]:
         async with self._lock.writer_lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
+            if docs := self.chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
                 "metadatas"
             ]:
                 doc = docs[0]
@@ -251,7 +297,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
 
                 updated_document = {**doc, **params}
 
-                self._chroma_collection.update(
+                self.chroma_collection.update(
                     ids=[str(doc["id"])],
                     documents=[document],
                     metadatas=[cast(chromadb.Metadata, updated_document)],
@@ -270,7 +316,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
 
                 embeddings = list((await self._embedder.embed([params["content"]])).vectors)
 
-                self._chroma_collection.add(
+                self.chroma_collection.add(
                     ids=[params["id"]],
                     documents=[params["content"]],
                     metadatas=[cast(chromadb.Metadata, params)],
@@ -297,7 +343,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         filters: Where,
     ) -> DeleteResult[TDocument]:
         async with self._lock.writer_lock:
-            if docs := self._chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
+            if docs := self.chroma_collection.get(where=cast(chromadb.Where, filters) or None)[
                 "metadatas"
             ]:
                 if len(docs) > 1:
@@ -306,7 +352,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
                     )
                 deleted_document = docs[0]
 
-                self._chroma_collection.delete(where=cast(chromadb.Where, filters) or None)
+                self.chroma_collection.delete(where=cast(chromadb.Where, filters) or None)
 
                 return DeleteResult(
                     deleted_count=1,
@@ -330,7 +376,7 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         async with self._lock.reader_lock:
             query_embeddings = list((await self._embedder.embed([query])).vectors)
 
-            docs = self._chroma_collection.query(
+            docs = self.chroma_collection.query(
                 where=cast(chromadb.Where, filters) or None,
                 query_embeddings=query_embeddings,
                 n_results=k,

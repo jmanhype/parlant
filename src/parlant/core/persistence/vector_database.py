@@ -31,6 +31,10 @@ class BaseDocument(TypedDict, total=False):
 TDocument = TypeVar("TDocument", bound=BaseDocument)
 
 
+async def noop_loader(doc: BaseDocument) -> BaseDocument:
+    return doc
+
+
 @dataclass(frozen=True)
 class InsertResult:
     acknowledged: bool
@@ -78,6 +82,7 @@ class VectorDatabase(ABC):
     async def get_collection(
         self,
         name: str,
+        embedder_type: type[Embedder],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> VectorCollection[TDocument]: ...
 

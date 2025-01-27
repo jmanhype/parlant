@@ -15,7 +15,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import tempfile
-from typing import AsyncIterator, Iterator, TypedDict
+from typing import AsyncIterator, Iterator, Optional, TypedDict, cast
 from lagom import Container
 from pytest import fixture
 
@@ -29,6 +29,7 @@ from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
 from parlant.core.persistence.common import ObjectId
 
+from parlant.core.persistence.vector_database import BaseDocument
 from tests.test_utilities import SyncAwaiter
 
 
@@ -84,6 +85,10 @@ def create_database(context: _TestContext) -> ChromaDatabase:
     )
 
 
+async def _noop_loader(doc: BaseDocument) -> Optional[_TestDocument]:
+    return cast(_TestDocument, doc)
+
+
 @fixture
 async def chroma_collection(
     chroma_database: ChromaDatabase,
@@ -92,6 +97,7 @@ async def chroma_collection(
         "test_collection",
         _TestDocument,
         embedder_type=OpenAITextEmbedding3Large,
+        document_loader=_noop_loader,
     )
     yield collection
     await chroma_database.delete_collection("test_collection")
@@ -300,6 +306,7 @@ async def test_loading_collections(
             "test_collection",
             _TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
         )
 
         document = _TestDocument(
@@ -313,7 +320,9 @@ async def test_loading_collections(
 
     async with create_database(context) as second_db:
         fetched_collection: ChromaCollection[_TestDocument] = await second_db.get_collection(
-            "test_collection"
+            "test_collection",
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
         )
 
         result = await fetched_collection.find({"id": {"$eq": "1"}})
