@@ -21,7 +21,7 @@ from typing_extensions import override, TypedDict, Self
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.tags import TagId
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
-from parlant.core.persistence.common import ObjectId, VersionMismatchError
+from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
@@ -125,7 +125,7 @@ class _CustomerTagAssociationDocument(TypedDict, total=False):
     tag_id: TagId
 
 
-class _MetaDocument(TypedDict, total=False):
+class _MetadataDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
 
@@ -133,24 +133,20 @@ class _MetaDocument(TypedDict, total=False):
 class CustomerDocumentStore(CustomerStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(
-        self,
-        database: DocumentDatabase,
-        migrate: bool = False,
-    ) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = True) -> None:
         self._database = database
         self._customers_collection: DocumentCollection[_CustomerDocument]
         self._customer_tag_association_collection: DocumentCollection[
             _CustomerTagAssociationDocument
         ]
-        self._meta_collection: DocumentCollection[_MetaDocument]
+        self._meta_collection: DocumentCollection[_MetadataDocument]
 
         self._migrate = migrate
         self._lock = ReaderWriterLock()
 
-    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetaDocument]:
-        if doc["version"] == self.VERSION.to_string():
-            return cast(_MetaDocument, doc)
+    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
+        if doc["version"] == "0.1.0":
+            return cast(_MetadataDocument, doc)
 
         if not self._migrate:
             raise VersionMismatchError(
@@ -158,16 +154,6 @@ class CustomerDocumentStore(CustomerStore):
             )
 
         return None
-
-    async def _ensure_meta_document(self) -> None:
-        async with self._lock.writer_lock:
-            existing_meta = await self._meta_collection.find_one({})
-            if not existing_meta:
-                meta_document = _MetaDocument(
-                    id=ObjectId(generate_id()),
-                    version=self.VERSION.to_string(),
-                )
-                await self._meta_collection.insert_one(meta_document)
 
     async def _customers_document_loader(self, doc: BaseDocument) -> Optional[_CustomerDocument]:
         if doc["version"] == "0.1.0":
@@ -184,10 +170,17 @@ class CustomerDocumentStore(CustomerStore):
     async def __aenter__(self) -> Self:
         self._meta_collection = await self._database.get_or_create_collection(
             name="metadata",
-            schema=_MetaDocument,
+            schema=_MetadataDocument,
             document_loader=self._meta_document_loader,
         )
-        await self._ensure_meta_document()
+
+        async with self._lock.reader_lock:
+            existing_meta = await self._meta_collection.find_one({})
+            if not existing_meta:
+                if not self._migrate:
+                    raise MigrationRequiredError(
+                        "Migration is required to proceed with initialization."
+                    )
 
         self._customers_collection = await self._database.get_or_create_collection(
             name="customers",
@@ -199,6 +192,15 @@ class CustomerDocumentStore(CustomerStore):
             schema=_CustomerTagAssociationDocument,
             document_loader=self._customer_tag_document_loader,
         )
+
+        async with self._lock.writer_lock:
+            if not existing_meta:
+                meta_document = _MetadataDocument(
+                    id=ObjectId(generate_id()),
+                    version=CustomerDocumentStore.VERSION.to_string(),
+                )
+                await self._meta_collection.insert_one(meta_document)
+
         return self
 
     async def __aexit__(

@@ -19,9 +19,19 @@ from typing_extensions import Literal, TypedDict
 ObjectId = NewType("ObjectId", str)
 
 
-class VersionMismatchError(Exception):
+class MigrationError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class VersionMismatchError(MigrationError):
     def __init__(self, message: Optional[str] = None) -> None:
         super().__init__(message or "A version mismatch occurred.")
+
+
+class MigrationRequiredError(MigrationError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
 
 
 # Metadata Query Grammar

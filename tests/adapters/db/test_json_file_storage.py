@@ -43,14 +43,14 @@ from parlant.core.guidelines import (
     GuidelineId,
 )
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
-from parlant.core.persistence.common import VersionMismatchError
+from parlant.core.persistence.common import MigrationRequiredError, VersionMismatchError
 from parlant.core.persistence.document_database import BaseDocument, DocumentCollection, noop_loader
 from parlant.core.sessions import SessionDocumentStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
 from parlant.core.logging import Logger
-from parlant.core.tags import _MetaDocument, TagDocumentStore
+from parlant.core.tags import _MetadataDocument, TagDocumentStore
 from parlant.core.tools import ToolId
 
 from tests.test_utilities import SyncAwaiter
@@ -720,7 +720,7 @@ async def test_failed_migration_collection(
             assert failed_doc.get("name") == "Unmigratable Document"
 
 
-async def test_that_version_mismatch_raises_error_when_migration_is_disabled(
+async def test_that_version_mismatch_raises_error_when_migration_is_required_but_disabled(
     context: _TestContext,
     new_file: Path,
 ) -> None:
@@ -742,10 +742,44 @@ async def test_that_version_mismatch_raises_error_when_migration_is_disabled(
                 pass
 
         assert "Version mismatch" in str(exc_info.value)
-        assert "Expected '0.1.0', but got 'NotRealVersion'" in str(exc_info.value)
+        assert (
+            f"Expected '{TagDocumentStore.VERSION.to_string()}', but got 'NotRealVersion'"
+            in str(exc_info.value)
+        )
 
 
-async def test_that_version_match_does_not_raise_error_when_migration_is_disabled(
+async def test_that_migrate_flag_is_required_when_metadata_is_missing(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    logger = context.container[Logger]
+
+    with open(new_file, "w") as f:
+        json.dump(
+            {
+                "tags": [
+                    {
+                        "id": "term_1",
+                        "version": "NotRealVersion",
+                        "creation_utc": datetime.now(timezone.utc).isoformat(),
+                        "name": "Test Term",
+                        "description": "A term for testing",
+                        "synonyms": "example",
+                    }
+                ]
+            },
+            f,
+        )
+
+    async with JSONFileDocumentDatabase(logger, new_file) as db:
+        with raises(MigrationRequiredError) as exc_info:
+            async with TagDocumentStore(db, migrate=False) as _:
+                pass
+
+        assert "Migration is required to proceed with initialization." in str(exc_info.value)
+
+
+async def test_that_version_match_does_not_raise_error_when_migration_is_not_required_and_disabled(
     context: _TestContext,
     new_file: Path,
 ) -> None:
@@ -765,7 +799,7 @@ async def test_that_version_match_does_not_raise_error_when_migration_is_disable
         async with TagDocumentStore(db, migrate=False) as store:
             meta_collection = await db.get_or_create_collection(
                 name="metadata",
-                schema=_MetaDocument,
+                schema=_MetadataDocument,
                 document_loader=store._meta_document_loader,
             )
             meta_document = await meta_collection.find_one({})

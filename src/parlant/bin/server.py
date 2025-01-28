@@ -39,6 +39,7 @@ from parlant.core.engines.alpha.hooks import LifecycleHooks
 from parlant.core.engines.alpha.message_assembler import AssembledMessageSchema
 from parlant.core.fragments import FragmentDocumentStore, FragmentStore
 from parlant.core.nlp.service import NLPService
+from parlant.core.persistence.common import MigrationError
 from parlant.core.shots import ShotCollection
 from parlant.core.tags import TagDocumentStore, TagStore
 from parlant.api.app import create_api_app, ASGIApplication
@@ -316,68 +317,82 @@ async def setup_container(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
 
-    c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db, migrate))
-    c[ContextVariableStore] = await EXIT_STACK.enter_async_context(
-        ContextVariableDocumentStore(context_variables_db, migrate)
-    )
-    c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db, migrate))
-    c[CustomerStore] = await EXIT_STACK.enter_async_context(CustomerDocumentStore(customers_db, migrate))
-    c[FragmentStore] = await EXIT_STACK.enter_async_context(FragmentDocumentStore(fragments_db, migrate))
-    c[GuidelineStore] = await EXIT_STACK.enter_async_context(GuidelineDocumentStore(guidelines_db, migrate))
-    c[GuidelineToolAssociationStore] = await EXIT_STACK.enter_async_context(
-        GuidelineToolAssociationDocumentStore(guideline_tool_associations_db, migrate)
-    )
-    c[GuidelineConnectionStore] = await EXIT_STACK.enter_async_context(
-        GuidelineConnectionDocumentStore(guideline_connections_db, migrate)
-    )
-    c[SessionStore] = await EXIT_STACK.enter_async_context(
-        SessionDocumentStore(sessions_db, migrate)
-    )
-    c[SessionListener] = PollingSessionListener
-
-    c[EvaluationStore] = await EXIT_STACK.enter_async_context(
-        EvaluationDocumentStore(evaluations_db, migrate)
-    )
-    c[EvaluationListener] = PollingEvaluationListener
-
-    c[EventEmitterFactory] = Singleton(EventPublisherFactory)
-
-    nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
-        "anthropic": load_anthropic,
-        "aws": load_aws,
-        "azure": load_azure,
-        "cerebras": load_cerebras,
-        "deepseek": load_deepseek,
-        "gemini": load_gemini,
-        "openai": load_openai,
-        "together": load_together,
-    }
-
-    c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
-        ServiceDocumentRegistry(
-            database=services_db,
-            event_emitter_factory=c[EventEmitterFactory],
-            logger=c[Logger],
-            correlator=c[ContextualCorrelator],
-            nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
-            migrate=migrate,
+    try:
+        c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db, migrate))
+        c[ContextVariableStore] = await EXIT_STACK.enter_async_context(
+            ContextVariableDocumentStore(context_variables_db)
         )
-    )
-
-    nlp_service = await c[ServiceRegistry].read_nlp_service(nlp_service_name)
-
-    c[NLPService] = nlp_service
-
-    embedder_factory = EmbedderFactory(c)
-    c[GlossaryStore] = await EXIT_STACK.enter_async_context(
-        GlossaryVectorStore(
-            await EXIT_STACK.enter_async_context(
-                ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
-            ),
-            embedder_type=type(await nlp_service.get_embedder()),
-            embedder_factory=embedder_factory,
+        c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db, migrate))
+        c[CustomerStore] = await EXIT_STACK.enter_async_context(
+            CustomerDocumentStore(customers_db, migrate)    
         )
-    )
+        c[FragmentStore] = await EXIT_STACK.enter_async_context(
+            FragmentDocumentStore(fragments_db, migrate)
+        )
+        c[GuidelineStore] = await EXIT_STACK.enter_async_context(
+            GuidelineDocumentStore(guidelines_db, migrate)
+        )
+        c[GuidelineToolAssociationStore] = await EXIT_STACK.enter_async_context(
+            GuidelineToolAssociationDocumentStore(guideline_tool_associations_db, migrate)
+        )
+        c[GuidelineConnectionStore] = await EXIT_STACK.enter_async_context(
+            GuidelineConnectionDocumentStore(guideline_connections_db, migrate)
+        )
+        c[SessionStore] = await EXIT_STACK.enter_async_context(
+            SessionDocumentStore(sessions_db, migrate)
+        )
+        c[SessionListener] = PollingSessionListener
+
+        c[EvaluationStore] = await EXIT_STACK.enter_async_context(
+            EvaluationDocumentStore(evaluations_db, migrate)
+        )
+        c[EvaluationListener] = PollingEvaluationListener
+
+        c[EventEmitterFactory] = Singleton(EventPublisherFactory)
+
+        c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
+
+        nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
+            "anthropic": load_anthropic,
+            "aws": load_aws,
+            "azure": load_azure,
+            "cerebras": load_cerebras,
+            "deepseek": load_deepseek,
+            "gemini": load_gemini,
+            "openai": load_openai,
+            "together": load_together,
+        }
+
+        c[ServiceRegistry] = await EXIT_STACK.enter_async_context(
+            ServiceDocumentRegistry(
+                database=services_db,
+                event_emitter_factory=c[EventEmitterFactory],
+                correlator=c[ContextualCorrelator],
+                nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
+                logger=c[Logger],
+                migrate=migrate,
+            )
+        )
+
+        nlp_service = await c[ServiceRegistry].read_nlp_service(nlp_service_name)
+
+        c[NLPService] = nlp_service
+
+        embedder_factory = EmbedderFactory(c)
+        c[GlossaryStore] = await EXIT_STACK.enter_async_context(
+            GlossaryVectorStore(
+                await EXIT_STACK.enter_async_context(
+                    ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory),
+                ),
+                embedder_type=type(await nlp_service.get_embedder()),
+                embedder_factory=embedder_factory,
+                migrate=migrate,
+            )
+        )
+    except MigrationError as e:
+        c[Logger].critical(str(e))
+        c[Logger].critical("The `--migrate` flag is required to run migrations. ")
+        sys.exit(1)
 
     c[SchematicGenerator[GuidelinePropositionsSchema]] = await nlp_service.get_schematic_generator(
         GuidelinePropositionsSchema

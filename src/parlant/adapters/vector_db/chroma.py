@@ -22,7 +22,7 @@ import chromadb
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
-from parlant.core.persistence.common import Where, ensure_is_total
+from parlant.core.persistence.common import VersionMismatchError, Where, ensure_is_total
 from parlant.core.persistence.vector_database import (
     BaseDocument,
     DeleteResult,
@@ -96,6 +96,8 @@ class ChromaDatabase(VectorDatabase):
                     chroma_collection.delete(where={"id": doc["id"]})
                     failed_migrations.append(prospective_doc)
 
+            except VersionMismatchError as e:
+                raise e
             except Exception as e:
                 self._logger.error(f"Failed to load document '{doc}'. error: {e}.")
                 chroma_collection.delete(where={"id": doc["id"]})

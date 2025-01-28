@@ -17,7 +17,7 @@ from pathlib import Path
 import tempfile
 from typing import AsyncIterator, Iterator, Optional, TypedDict, cast
 from lagom import Container
-from pytest import fixture
+from pytest import fixture, raises
 
 from parlant.adapters.nlp.openai import OpenAITextEmbedding3Large
 from parlant.adapters.vector_db.chroma import ChromaCollection, ChromaDatabase
@@ -27,9 +27,10 @@ from parlant.core.glossary import GlossaryVectorStore
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
-from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
 
 from parlant.core.persistence.vector_database import BaseDocument
+from parlant.core.glossary import _MetadataDocument
 from tests.test_utilities import SyncAwaiter
 
 
@@ -546,3 +547,98 @@ async def test_that_failed_migrations_are_stored_in_failed_migrations_collection
         assert failed_doc["id"] == ObjectId("2")
         assert failed_doc["content"] == "invalid"
         assert failed_doc["name"] == "Invalid Document"
+
+
+async def test_that_version_match_in_chroma_metadata_does_not_raise_error_when_migration_is_disabled(
+    context: _TestContext,
+) -> None:
+    async with create_database(context) as chroma_db:
+        metadata_collection = await chroma_db.get_or_create_collection(
+            "metadata",
+            schema=_MetadataDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        valid_meta_document = _MetadataDocument(
+            id=ObjectId("meta_id"),
+            version=Version.String("0.1.0"),
+            content="valid metadata",
+        )
+        await metadata_collection.insert_one(valid_meta_document)
+
+        async with GlossaryVectorStore(
+            vector_db=chroma_db,
+            embedder_factory=EmbedderFactory(context.container),
+            embedder_type=OpenAITextEmbedding3Large,
+            migrate=False,
+        ) as _:
+            loaded_meta_document = await metadata_collection.find_one({})
+            assert loaded_meta_document
+            assert loaded_meta_document["version"] == "0.1.0"
+
+
+async def test_that_version_mismatch_in_chroma_metadata_raises_error_when_migration_is_required_but_disabled(
+    context: _TestContext,
+) -> None:
+    async with create_database(context) as chroma_db:
+        metadata_collection = await chroma_db.get_or_create_collection(
+            "metadata",
+            schema=_MetadataDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        invalid_meta_document = _MetadataDocument(
+            id=ObjectId("meta_id"),
+            version=Version.String("NotRealVersion"),
+            content="invalid metadata",
+        )
+        await metadata_collection.insert_one(invalid_meta_document)
+
+    async with create_database(context) as chroma_db:
+        with raises(VersionMismatchError) as exc_info:
+            async with GlossaryVectorStore(
+                vector_db=chroma_db,
+                embedder_factory=EmbedderFactory(context.container),
+                embedder_type=OpenAITextEmbedding3Large,
+                migrate=False,
+            ):
+                pass
+
+        assert "Version mismatch" in str(exc_info.value)
+        assert (
+            f"Expected '{GlossaryVectorStore.VERSION.to_string()}', but got 'NotRealVersion'"
+            in str(exc_info.value)
+        )
+
+
+async def test_that_migrate_flag_is_required_when_metadata_is_missing_in_chroma(
+    context: _TestContext,
+) -> None:
+    async with create_database(context) as chroma_db:
+        term_collection = await chroma_db.get_or_create_collection(
+            "glossary",
+            schema=_TestDocument,
+            embedder_type=OpenAITextEmbedding3Large,
+            document_loader=_noop_loader,
+        )
+
+        document_with_version = _TestDocument(
+            id=ObjectId("term_1"),
+            version=Version.String("NotRealVersion"),
+            content="Test term content",
+            name="Test Term",
+        )
+        await term_collection.insert_one(document_with_version)
+
+        with raises(MigrationRequiredError) as exc_info:
+            async with GlossaryVectorStore(
+                vector_db=chroma_db,
+                embedder_factory=EmbedderFactory(context.container),
+                embedder_type=OpenAITextEmbedding3Large,
+                migrate=False,
+            ):
+                pass
+
+        assert "Migration is required to proceed with initialization." in str(exc_info.value)
