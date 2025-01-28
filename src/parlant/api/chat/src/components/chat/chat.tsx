@@ -241,13 +241,13 @@ export default function Chat(): ReactElement {
 					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')}>
 						{session?.id && (
 							<div className='w-full flex items-center h-full'>
-								<div className='h-full flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
+								<div className='h-full border-e flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
 									<div className='font-medium text-[16px] text-[#656565]'>{session?.title}</div>
 									<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
 										<CopyText text={`Session ID: (${session?.id})`} textToCopy={session?.id} />
 									</div>
 								</div>
-								<div className='h-full flex-1 flex items-center'>
+								<div className='h-full flex-1 flex items-center ps-[24px]'>
 									<AgentAvatar agent={agent as AgentInterface} />
 									<div>
 										<div>{agent?.name}</div>

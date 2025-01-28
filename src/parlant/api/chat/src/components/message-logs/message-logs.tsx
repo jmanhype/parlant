@@ -39,7 +39,7 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}
 						</div>
 						<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
-							<CopyText textToCopy={event.correlation_id} text={`Message ID: (${event.correlation_id})`} />
+							<CopyText textToCopy={event.id} text={`Message ID: (${event.id})`} />
 						</div>
 					</div>
 					<div className='group'>
