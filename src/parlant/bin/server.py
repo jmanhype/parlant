@@ -146,6 +146,7 @@ class CLIParams:
     nlp_service: str
     log_level: str
     modules: list[str]
+    migrate: bool
 
 
 def load_nlp_service(name: str, extra_name: str, class_name: str, module_path: str) -> NLPService:
@@ -254,7 +255,9 @@ async def load_modules(
 
 
 @asynccontextmanager
-async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterator[Container]:
+async def setup_container(
+    nlp_service_name: str, log_level: str, migrate: bool
+) -> AsyncIterator[Container]:
     c = Container()
 
     c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
@@ -313,25 +316,27 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
 
-    c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db))
+    c[AgentStore] = await EXIT_STACK.enter_async_context(AgentDocumentStore(agents_db, migrate))
     c[ContextVariableStore] = await EXIT_STACK.enter_async_context(
-        ContextVariableDocumentStore(context_variables_db)
+        ContextVariableDocumentStore(context_variables_db, migrate)
     )
-    c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db))
-    c[CustomerStore] = await EXIT_STACK.enter_async_context(CustomerDocumentStore(customers_db))
-    c[FragmentStore] = await EXIT_STACK.enter_async_context(FragmentDocumentStore(fragments_db))
-    c[GuidelineStore] = await EXIT_STACK.enter_async_context(GuidelineDocumentStore(guidelines_db))
+    c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db, migrate))
+    c[CustomerStore] = await EXIT_STACK.enter_async_context(CustomerDocumentStore(customers_db, migrate))
+    c[FragmentStore] = await EXIT_STACK.enter_async_context(FragmentDocumentStore(fragments_db, migrate))
+    c[GuidelineStore] = await EXIT_STACK.enter_async_context(GuidelineDocumentStore(guidelines_db, migrate))
     c[GuidelineToolAssociationStore] = await EXIT_STACK.enter_async_context(
-        GuidelineToolAssociationDocumentStore(guideline_tool_associations_db)
+        GuidelineToolAssociationDocumentStore(guideline_tool_associations_db, migrate)
     )
     c[GuidelineConnectionStore] = await EXIT_STACK.enter_async_context(
-        GuidelineConnectionDocumentStore(guideline_connections_db)
+        GuidelineConnectionDocumentStore(guideline_connections_db, migrate)
     )
-    c[SessionStore] = await EXIT_STACK.enter_async_context(SessionDocumentStore(sessions_db))
+    c[SessionStore] = await EXIT_STACK.enter_async_context(
+        SessionDocumentStore(sessions_db, migrate)
+    )
     c[SessionListener] = PollingSessionListener
 
     c[EvaluationStore] = await EXIT_STACK.enter_async_context(
-        EvaluationDocumentStore(evaluations_db)
+        EvaluationDocumentStore(evaluations_db, migrate)
     )
     c[EvaluationListener] = PollingEvaluationListener
 
@@ -355,6 +360,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
             logger=c[Logger],
             correlator=c[ContextualCorrelator],
             nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
+            migrate=migrate,
         )
     )
 
@@ -465,7 +471,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
     EXIT_STACK = AsyncExitStack()
 
     async with (
-        setup_container(params.nlp_service, params.log_level) as base_container,
+        setup_container(params.nlp_service, params.log_level, params.migrate) as base_container,
         EXIT_STACK,
     ):
         modules = set(await get_module_list_from_config() + params.modules)
@@ -637,6 +643,14 @@ def main() -> None:
         is_flag=True,
         help="Print server version and exit",
     )
+    @click.option(
+        "--migrate",
+        is_flag=True,
+        help=(
+            "Enable to migrate the database schema to the latest version. "
+            "Disable to exit if the database schema is not up-to-date."
+        ),
+    )
     @click.pass_context
     def cli(
         ctx: click.Context,
@@ -652,6 +666,7 @@ def main() -> None:
         log_level: str,
         module: tuple[str],
         version: bool,
+        migrate: bool,
     ) -> None:
         if version:
             print(f"Parlant v{VERSION}")
@@ -697,6 +712,7 @@ def main() -> None:
             nlp_service=nlp_service,
             log_level=log_level,
             modules=list(module),
+            migrate=migrate,
         )
 
         asyncio.run(start_server(ctx.obj))

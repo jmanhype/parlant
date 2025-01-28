@@ -20,7 +20,7 @@ from typing import Any, AsyncIterator, Optional, Sequence, cast
 from typing_extensions import Self
 import tempfile
 from lagom import Container
-from pytest import fixture, mark
+from pytest import fixture, mark, raises
 
 from parlant.core.agents import AgentDocumentStore, AgentId, AgentStore
 from parlant.core.common import Version
@@ -43,12 +43,14 @@ from parlant.core.guidelines import (
     GuidelineId,
 )
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
+from parlant.core.persistence.common import VersionMismatchError
 from parlant.core.persistence.document_database import BaseDocument, DocumentCollection, noop_loader
 from parlant.core.sessions import SessionDocumentStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
 from parlant.core.logging import Logger
+from parlant.core.tags import _MetaDocument, TagDocumentStore
 from parlant.core.tools import ToolId
 
 from tests.test_utilities import SyncAwaiter
@@ -716,3 +718,57 @@ async def test_failed_migration_collection(
             assert failed_doc["id"] == "invalid_dummy_id"
             assert failed_doc["version"] == "3.0"
             assert failed_doc.get("name") == "Unmigratable Document"
+
+
+async def test_that_version_mismatch_raises_error_when_migration_is_disabled(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    logger = context.container[Logger]
+
+    with open(new_file, "w") as f:
+        json.dump(
+            {
+                "metadata": [
+                    {"id": "meta_id", "version": "NotRealVersion"},
+                ]
+            },
+            f,
+        )
+
+    async with JSONFileDocumentDatabase(logger, new_file) as db:
+        with raises(VersionMismatchError) as exc_info:
+            async with TagDocumentStore(db, migrate=False) as _:
+                pass
+
+        assert "Version mismatch" in str(exc_info.value)
+        assert "Expected '0.1.0', but got 'NotRealVersion'" in str(exc_info.value)
+
+
+async def test_that_version_match_does_not_raise_error_when_migration_is_disabled(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    logger = context.container[Logger]
+
+    with open(new_file, "w") as f:
+        json.dump(
+            {
+                "metadata": [
+                    {"id": "meta_id", "version": "0.1.0"},
+                ]
+            },
+            f,
+        )
+
+    async with JSONFileDocumentDatabase(logger, new_file) as db:
+        async with TagDocumentStore(db, migrate=False) as store:
+            meta_collection = await db.get_or_create_collection(
+                name="metadata",
+                schema=_MetaDocument,
+                document_loader=store._meta_document_loader,
+            )
+            meta_document = await meta_collection.find_one({})
+
+            assert meta_document
+            assert meta_document["version"] == "0.1.0"

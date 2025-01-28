@@ -23,7 +23,7 @@ import networkx  # type: ignore
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.guidelines import GuidelineId
-from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.common import ObjectId, VersionMismatchError
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
@@ -72,15 +72,45 @@ class _GuidelineConnectionDocument(TypedDict, total=False):
     target: GuidelineId
 
 
+class _MetaDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+
+
 class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
+
         self._collection: DocumentCollection[_GuidelineConnectionDocument]
         self._graph: networkx.DiGraph | None = None
 
+        self._meta_collection: DocumentCollection[_MetaDocument]
+        self._migrate = migrate
+
         self._lock = ReaderWriterLock()
+
+    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetaDocument]:
+        if doc["version"] == self.VERSION.to_string():
+            return cast(_MetaDocument, doc)
+
+        if not self._migrate:
+            raise VersionMismatchError(
+                f"Version mismatch in 'GuidelineConnectionDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
+            )
+
+        return None
+
+    async def _ensure_meta_document(self) -> None:
+        async with self._lock.writer_lock:
+            existing_meta = await self._meta_collection.find_one({})
+            if not existing_meta:
+                meta_document = _MetaDocument(
+                    id=ObjectId(generate_id()),
+                    version=self.VERSION.to_string(),
+                )
+                await self._meta_collection.insert_one(meta_document)
 
     async def _document_loader(self, doc: BaseDocument) -> Optional[_GuidelineConnectionDocument]:
         if doc["version"] == "0.1.0":
@@ -88,6 +118,13 @@ class GuidelineConnectionDocumentStore(GuidelineConnectionStore):
         return None
 
     async def __aenter__(self) -> Self:
+        self._meta_collection = await self._database.get_or_create_collection(
+            name="metadata",
+            schema=_MetaDocument,
+            document_loader=self._meta_document_loader,
+        )
+        await self._ensure_meta_document()
+
         self._collection = await self._database.get_or_create_collection(
             name="guideline_connections",
             schema=_GuidelineConnectionDocument,

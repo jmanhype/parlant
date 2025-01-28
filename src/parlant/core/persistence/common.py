@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Mapping, NewType, Union, cast, get_type_hints
+from typing import Any, Callable, Mapping, NewType, Optional, Union, cast, get_type_hints
 from typing_extensions import Literal, TypedDict
 
 
 ObjectId = NewType("ObjectId", str)
+
+
+class VersionMismatchError(Exception):
+    def __init__(self, message: Optional[str] = None) -> None:
+        super().__init__(message or "A version mismatch occurred.")
+
 
 # Metadata Query Grammar
 LiteralValue = Union[str, int, float, bool]

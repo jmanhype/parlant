@@ -20,7 +20,7 @@ from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, generate_id, UniqueId
-from parlant.core.persistence.common import ObjectId
+from parlant.core.persistence.common import ObjectId, VersionMismatchError
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentCollection,
@@ -82,26 +82,63 @@ class _TagDocument(TypedDict, total=False):
     name: str
 
 
+class _MetaDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+
+
 class TagDocumentStore(TagStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
         self._collection: DocumentCollection[_TagDocument]
+        self._meta_collection: DocumentCollection[_MetaDocument]
+
+        self._migrate = migrate
 
         self._lock = ReaderWriterLock()
+
+    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetaDocument]:
+        if doc["version"] == self.VERSION.to_string():
+            return cast(_MetaDocument, doc)
+
+        if not self._migrate:
+            raise VersionMismatchError(
+                f"Version mismatch in 'TagDocumentStore': Expected '{self.VERSION.to_string()}', but got '{doc['version']}'."
+            )
+
+        return None
 
     async def _document_loader(self, doc: BaseDocument) -> Optional[_TagDocument]:
         if doc["version"] == "0.1.0":
             return cast(_TagDocument, doc)
         return None
 
+    async def _ensure_meta_document(self) -> None:
+        async with self._lock.writer_lock:
+            existing_meta = await self._meta_collection.find_one({})
+            if not existing_meta:
+                meta_document = _MetaDocument(
+                    id=ObjectId(generate_id()),
+                    version=self.VERSION.to_string(),
+                )
+                await self._meta_collection.insert_one(meta_document)
+
     async def __aenter__(self) -> Self:
+        self._meta_collection = await self._database.get_or_create_collection(
+            name="metadata",
+            schema=_MetaDocument,
+            document_loader=self._meta_document_loader,
+        )
+        await self._ensure_meta_document()
+
         self._collection = await self._database.get_or_create_collection(
             name="tags",
             schema=_TagDocument,
             document_loader=self._document_loader,
         )
+
         return self
 
     async def __aexit__(

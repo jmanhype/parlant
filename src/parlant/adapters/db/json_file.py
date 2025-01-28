@@ -19,7 +19,12 @@ from typing import Any, Awaitable, Callable, Mapping, Optional, Sequence, cast
 from typing_extensions import override, Self
 import aiofiles
 
-from parlant.core.persistence.common import Where, matches_filters, ensure_is_total
+from parlant.core.persistence.common import (
+    VersionMismatchError,
+    Where,
+    matches_filters,
+    ensure_is_total,
+)
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.persistence.document_database import (
     BaseDocument,
@@ -131,6 +136,8 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 else:
                     self._logger.warning(f'Failed to load document "{doc}"')
                     failed_migrations.append(doc)
+            except VersionMismatchError as e:
+                raise e
             except Exception as e:
                 self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
                 failed_migrations.append(doc)

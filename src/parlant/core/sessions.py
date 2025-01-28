@@ -42,7 +42,7 @@ from parlant.core.context_variables import ContextVariableId
 from parlant.core.customers import CustomerId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
-from parlant.core.persistence.common import ObjectId, Where
+from parlant.core.persistence.common import ObjectId, VersionMismatchError, Where
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
@@ -381,16 +381,44 @@ class _InspectionDocument(TypedDict, total=False):
     preparation_iterations: Sequence[_PreparationIterationDocument]
 
 
+class _MetaDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+
+
 class SessionDocumentStore(SessionStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase):
+    def __init__(self, database: DocumentDatabase, migrate: bool = False):
         self._database = database
         self._session_collection: DocumentCollection[_SessionDocument]
         self._event_collection: DocumentCollection[_EventDocument]
         self._inspection_collection: DocumentCollection[_InspectionDocument]
+        self._meta_collection: DocumentCollection[_MetaDocument]
+        self._migrate = migrate
 
         self._lock = ReaderWriterLock()
+
+    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetaDocument]:
+        if doc["version"] == self.VERSION.to_string():
+            return cast(_MetaDocument, doc)
+
+        if not self._migrate:
+            raise VersionMismatchError(
+                f"Version mismatch in 'SessionDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
+            )
+
+        return None
+
+    async def _ensure_meta_document(self) -> None:
+        async with self._lock.writer_lock:
+            existing_meta = await self._meta_collection.find_one({})
+            if not existing_meta:
+                meta_document = _MetaDocument(
+                    id=ObjectId(generate_id()),
+                    version=self.VERSION.to_string(),
+                )
+                await self._meta_collection.insert_one(meta_document)
 
     async def _session_document_loader(self, doc: BaseDocument) -> Optional[_SessionDocument]:
         if doc["version"] == "0.1.0":
@@ -408,6 +436,13 @@ class SessionDocumentStore(SessionStore):
         return None
 
     async def __aenter__(self) -> Self:
+        self._meta_collection = await self._database.get_or_create_collection(
+            name="metadata",
+            schema=_MetaDocument,
+            document_loader=self._meta_document_loader,
+        )
+        await self._ensure_meta_document()
+
         self._session_collection = await self._database.get_or_create_collection(
             name="sessions",
             schema=_SessionDocument,
