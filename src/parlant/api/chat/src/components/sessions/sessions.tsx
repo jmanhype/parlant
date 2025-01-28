@@ -4,11 +4,11 @@ import Session from '../session/session';
 import {AgentInterface, SessionInterface} from '@/utils/interfaces';
 import VirtualScroll from '../virtual-scroll/virtual-scroll';
 import {useAtom} from 'jotai';
-import {agentsAtom, customersAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {agentsAtom, customersAtom, sessionAtom, sessionsAtom} from '@/store';
 
 export default function Sessions(): ReactElement {
 	const [editingTitle, setEditingTitle] = useState<string | null>(null);
-	const [sessionId] = useAtom(sessionIdAtom);
+	const [session] = useAtom(sessionAtom);
 	const {data, ErrorTemplate, loading, refetch} = useFetch<SessionInterface[]>('sessions');
 	const {data: agentsData} = useFetch<AgentInterface[]>('agents');
 	const {data: customersData} = useFetch<AgentInterface[]>('customers');
@@ -40,8 +40,8 @@ export default function Sessions(): ReactElement {
 			<div data-testid='sessions' className='bg-white flex-1 justify-center w-[332px] overflow-auto'>
 				{loading && !sessions?.length && <div>loading...</div>}
 				<VirtualScroll height='80px' className='flex flex-col-reverse'>
-					{sessions.map((session, i) => (
-						<Session data-testid='session' tabIndex={sessions.length - i} editingTitle={editingTitle} setEditingTitle={setEditingTitle} isSelected={session.id === sessionId} refetch={refetch} session={session} key={session.id} />
+					{sessions.map((s, i) => (
+						<Session data-testid='session' tabIndex={sessions.length - i} editingTitle={editingTitle} setEditingTitle={setEditingTitle} isSelected={s.id === session?.id} refetch={refetch} session={s} key={s.id} />
 					))}
 				</VirtualScroll>
 				{ErrorTemplate && <ErrorTemplate />}

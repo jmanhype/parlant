@@ -13,7 +13,7 @@ import {NEW_SESSION_ID} from '../chat-header/chat-header';
 import {spaceClick} from '@/utils/methods';
 import {twJoin} from 'tailwind-merge';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 
 interface Props {
 	session: SessionInterface;
@@ -45,7 +45,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 	const [customers] = useAtom(customersAtom);
 	const [agentsMap, setAgentsMap] = useState(new Map());
 	const [customerMap, setCustomerMap] = useState(new Map());
-	const [, setSessionId] = useAtom(sessionIdAtom);
+	const [, setSession] = useAtom(sessionAtom);
 	const [, setAgentId] = useAtom(agentIdIdAtom);
 	const [, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
@@ -73,7 +73,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			e.stopPropagation();
 			if (session.id === NEW_SESSION_ID) {
 				setNewSession(null);
-				setSessionId(null);
+				setSession(null);
 				setAgentId(null);
 				return;
 			}
@@ -81,7 +81,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				.then(() => {
 					setSessions((sessions) => sessions.filter((s) => s.id !== session.id));
 					if (isSelected) {
-						setSessionId(null);
+						setSession(null);
 						document.title = 'Parlant';
 					}
 					toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
@@ -152,7 +152,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			role='button'
 			tabIndex={tabIndex}
 			onKeyDown={spaceClick}
-			onClick={() => !disabled && !editingTitle && setSessionId(session.id)}
+			onClick={() => !disabled && !editingTitle && setSession(session)}
 			key={session.id}
 			className={
 				'bg-white animate-fade-in text-[14px] font-ubuntu-sans justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' +

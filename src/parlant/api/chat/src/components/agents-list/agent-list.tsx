@@ -6,7 +6,7 @@ import {spaceClick} from '@/utils/methods';
 import {DialogDescription, DialogHeader, DialogTitle} from '../ui/dialog';
 import clsx from 'clsx';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionIdAtom} from '@/store';
+import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom} from '@/store';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
 
@@ -19,7 +19,7 @@ const newSessionObj: SessionInterface = {
 };
 
 const AgentList = (): ReactNode => {
-	const [, setSessionId] = useAtom(sessionIdAtom);
+	const [, setSession] = useAtom(sessionAtom);
 	const [, setAgentId] = useAtom(agentIdIdAtom);
 	const [agent, setAgent] = useState('');
 	const [agents] = useAtom(agentsAtom);
@@ -41,7 +41,7 @@ const AgentList = (): ReactNode => {
 	const selectCustomer = (customerId: string, agentId?: string) => {
 		setAgentId(agent || agentId || '');
 		setNewSession({...newSessionObj, agent_id: agent, customer_id: customerId});
-		setSessionId(newSessionObj.id);
+		setSession(newSessionObj);
 		dialog.closeDialog();
 	};
 

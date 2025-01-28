@@ -7,7 +7,7 @@ import {Helmet} from 'react-helmet';
 import {NEW_SESSION_ID} from '../agents-list/agent-list';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {dialogAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {dialogAtom, sessionAtom, sessionsAtom} from '@/store';
 
 export const SessionProvider = createContext({});
 
@@ -15,19 +15,19 @@ export default function Chatbot(): ReactElement {
 	const Chat = lazy(() => import('../chat/chat'));
 	const [sessionName, setSessionName] = useState<string | null>('');
 	const {openDialog, DialogComponent, closeDialog} = useDialog();
-	const [sessionId] = useAtom(sessionIdAtom);
+	const [session] = useAtom(sessionAtom);
 	const [sessions] = useAtom(sessionsAtom);
 	const [, setDialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
-		if (sessionId) {
-			if (sessionId === NEW_SESSION_ID) setSessionName('Parlant | New Session');
+		if (session?.id) {
+			if (session?.id === NEW_SESSION_ID) setSessionName('Parlant | New Session');
 			else {
-				const sessionTitle = sessions?.find((session) => session.id === sessionId)?.title;
+				const sessionTitle = sessions?.find((session) => session.id === session?.id)?.title;
 				if (sessionTitle) setSessionName(`Parlant | ${sessionTitle}`);
 			}
 		} else setSessionName('Parlant');
-	}, [sessionId, sessions]);
+	}, [session?.id, sessions]);
 
 	useEffect(() => {
 		setDialog({openDialog, closeDialog});
@@ -47,7 +47,7 @@ export default function Chatbot(): ReactElement {
 							<Sessions />
 						</div>
 						<div className='h-full w-[calc(100vw-332px)] max-w-[calc(100vw-332px)] max-[750px]:max-w-full max-[750px]:w-full '>
-							{sessionId ? (
+							{session?.id ? (
 								<Suspense>
 									<Chat />
 								</Suspense>

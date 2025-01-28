@@ -8,7 +8,7 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useLocalStorage} from '@/hooks/useLocalStorage';
 import LogFilters from '../log-filters/log-filters';
 import {useAtom} from 'jotai';
-import {sessionIdAtom} from '@/store';
+import {sessionAtom} from '@/store';
 import Markdown from '../markdown/markdown';
 import CopyText from '../ui/custom/copy-text';
 
@@ -27,13 +27,13 @@ interface FilterTabsFilterProps {
 const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
 
 const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction}) => {
-	const [sessionId] = useAtom(sessionIdAtom);
+	const [session] = useAtom(sessionAtom);
 	return (
 		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && 'border-transparent')}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex items-center gap-[12px]'>
-						<div className='group flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
+						<div className='group flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(session?.id as string)}>
 							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden' />
 							<img src='icons/regenerate-arrow-hover.svg' alt='regenerate' className='hidden group-hover:block' />
 							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}

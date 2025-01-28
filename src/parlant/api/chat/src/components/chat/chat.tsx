@@ -17,7 +17,7 @@ import MessageLogs from '../message-logs/message-logs';
 import {handleChatLogs} from '@/utils/logs';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
 // import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
 // import {Menu} from 'lucide-react';
@@ -63,14 +63,13 @@ export default function Chat(): ReactElement {
 	const [useContentFiltering] = useState(true);
 	const [showLogsForMessage, setShowLogsForMessage] = useState<EventInterface | null>(null);
 	const [isMissingAgent, setIsMissingAgent] = useState<boolean | null>(null);
-	const [sessionDetails, setSessionDetails] = useState<SessionInterface | null>(null);
 
 	const [agents] = useAtom(agentsAtom);
-	const [sessionId, setSessionId] = useAtom(sessionIdAtom);
+	const [session, setSession] = useAtom(sessionAtom);
 	const [agentId] = useAtom(agentIdIdAtom);
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
-	const [sessions, setSessions] = useAtom(sessionsAtom);
-	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID), false);
+	const [, setSessions] = useAtom(sessionsAtom);
+	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${session?.id}/events`, {min_offset: lastOffset}, [], session?.id !== NEW_SESSION_ID, !!(session?.id && session?.id !== NEW_SESSION_ID), false);
 
 	useEffect(() => {
 		start();
@@ -81,11 +80,6 @@ export default function Chat(): ReactElement {
 			setIsMissingAgent(!agents?.find((agent) => agent.id === agentId));
 		}
 	}, [agents, agentId]);
-
-	useEffect(() => {
-		const session = sessions?.find((session) => session.id === sessionId);
-		if (session) setSessionDetails(session);
-	}, [sessionId]);
 
 	useEffect(() => {
 		if (lastMessage) {
@@ -147,15 +141,15 @@ export default function Chat(): ReactElement {
 
 	useEffect(() => {
 		setIsFirstScroll(true);
-		if (newSession && sessionId !== NEW_SESSION_ID) setNewSession(null);
+		if (newSession && session?.id !== NEW_SESSION_ID) setNewSession(null);
 		resetChat();
-		if (sessionId !== NEW_SESSION_ID) refetch();
+		if (session?.id !== NEW_SESSION_ID) refetch();
 		textareaRef?.current?.focus();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [sessionId]);
+	}, [session?.id]);
 
 	useEffect(() => {
-		if (sessionId === NEW_SESSION_ID) return;
+		if (session?.id === NEW_SESSION_ID) return;
 		const lastEvent = lastMessages?.at(-1);
 		if (!lastEvent) return;
 		const offset = lastEvent?.offset;
@@ -195,7 +189,7 @@ export default function Chat(): ReactElement {
 		return postData('sessions?allow_greeting=true', {customer_id, agent_id: agentId, title} as object)
 			.then((res: SessionInterface) => {
 				if (newSession) {
-					setSessionId(res.id);
+					setSession(res);
 					setNewSession(null);
 				}
 				setSessions((sessions) => [...sessions, res]);
@@ -210,7 +204,7 @@ export default function Chat(): ReactElement {
 	const postMessage = async (content: string): Promise<void> => {
 		setPendingMessage((pendingMessage) => ({...pendingMessage, data: {message: content}}));
 		setMessage('');
-		const eventSession = newSession ? (await createSession())?.id : sessionId;
+		const eventSession = newSession ? (await createSession())?.id : session?.id;
 		const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
 		postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, {kind: 'message', message: content, source: 'customer'})
 			.then(() => {
@@ -232,7 +226,7 @@ export default function Chat(): ReactElement {
 		return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
 	};
 
-	const visibleMessages = sessionId !== NEW_SESSION_ID && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
+	const visibleMessages = session?.id !== NEW_SESSION_ID && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
 
 	const showLogs = (i: number) => (event: EventInterface) => {
 		event.index = i;
@@ -244,12 +238,12 @@ export default function Chat(): ReactElement {
 			<div className='flex items-center h-full w-full'>
 				<div className='h-full min-w-[50%] flex flex-col'>
 					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')}>
-						{sessionId && (
+						{session?.id && (
 							<div className='w-full flex items-center h-full'>
 								<div className='h-full flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
-									<div className='font-medium text-[16px] text-[#656565]'>{sessionDetails?.title}</div>
+									<div className='font-medium text-[16px] text-[#656565]'>{session?.title}</div>
 									<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
-										<CopyText text={`Session ID: (${sessionDetails?.id})`} textToCopy={sessionDetails?.id} />
+										<CopyText text={`Session ID: (${session?.id})`} textToCopy={session?.id} />
 									</div>
 								</div>
 								<div className='h-full flex-1'></div>
