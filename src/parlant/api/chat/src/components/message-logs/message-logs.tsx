@@ -28,7 +28,7 @@ const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
 const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction}) => {
 	const [sessionId] = useAtom(sessionIdAtom);
 	return (
-		<HeaderWrapper className={twMerge('static')}>
+		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]')}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
@@ -61,7 +61,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	return (
-		<div className='flex bg-[#fbfbfb] items-center filter-tabs border-b min-h-[36px] max-h-[36px] overflow-x-auto overflow-y-hidden no-scrollbar'>
+		<div className='flex bg-[#EFEFEF] items-center filter-tabs border-b min-h-[36px] max-h-[36px] overflow-x-auto overflow-y-hidden no-scrollbar'>
 			{filterTabs.map((tab: Filter, i: number) => (
 				<div
 					key={tab.id}
@@ -77,7 +77,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 					</div>
 				</div>
 			))}
-			<div className='flex gap-[10px] ms-[6px] items-center rounded-[2px] p-[4px] w-fit sticky right-0 text-[#656565] hover:text-[#151515] hover:bg-[#EBECF0]' role='button' onClick={addFilter}>
+			<div className='flex gap-[10px] ms-[6px] items-center rounded-[2px] p-[4px] w-fit sticky right-0 text-[#151515] hover:text-[#151515] hover:bg-[#EBECF0]' role='button' onClick={addFilter}>
 				<Plus size={16} />
 			</div>
 		</div>
@@ -146,10 +146,10 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !logs.length && <div className='h-full flex justify-center items-center flex-1'>Logs not found</div>}
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
 			{event && !!filteredLogs.length && (
-				<div className='bg-white p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div className='rounded-[5px] border-[10px] border-[#F3F4F8] h-full overflow-auto bg-[#F3F4F8]'>
+				<div className='bg-[#E0E0E0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
+					<div className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
 						{filteredLogs.map((log, i) => (
-							<div key={i} className={twJoin('flex items-center gap-[5px] px-[20px] p-[5px] hover:bg-white')}>
+							<div key={i} className={twJoin('flex rounded-[8px] items-center gap-[5px] px-[20px] p-[5px] border-white border hover:border-[#EDEDED] hover:bg-[#F8F8F8]')}>
 								{/* <div className='self-start'>{IconMap[log.level]}</div> */}
 								<Markdown className={clsx('max-w-[-webkit-fill-available] pe-[10px]')}>{log?.message}</Markdown>
 							</div>
