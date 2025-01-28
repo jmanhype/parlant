@@ -5,7 +5,7 @@ import {Button} from '../ui/button';
 import {BASE_URL, deleteData, postData} from '@/utils/api';
 import {groupBy} from '@/utils/obj';
 import Message from '../message/message';
-import {EventInterface, Log, SessionInterface} from '@/utils/interfaces';
+import {AgentInterface, EventInterface, Log, SessionInterface} from '@/utils/interfaces';
 import {getDateStr} from '@/utils/date';
 import {Spacer} from '../ui/custom/spacer';
 import {toast} from 'sonner';
@@ -19,6 +19,7 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
+import AgentAvatar from '../agent-avatar/agent-avatar';
 // import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
 // import {Menu} from 'lucide-react';
 // import { useAtom } from 'jotai';
@@ -246,7 +247,15 @@ export default function Chat(): ReactElement {
 										<CopyText text={`Session ID: (${session?.id})`} textToCopy={session?.id} />
 									</div>
 								</div>
-								<div className='h-full flex-1'></div>
+								<div className='h-full flex-1 flex items-center'>
+									<AgentAvatar agent={agent as AgentInterface} />
+									<div>
+										<div>{agent?.name}</div>
+										<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
+											<CopyText text={`Agent ID: ${agent?.id}`} textToCopy={agent?.id} />
+										</div>
+									</div>
+								</div>
 							</div>
 						)}
 					</HeaderWrapper>
