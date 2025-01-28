@@ -537,7 +537,9 @@ class AlphaEngine(Engine):
 
             message_generation_inspections = []
 
-            for event_generation_result in await self._get_message_composer(agent).generate_events(
+            for event_generation_result in await self._get_message_composer(
+                agent
+            ).generate_events(  # TODO possibly change to its own class, or alternatively pass parameter
                 event_emitter=event_emitter,
                 agents=[agent],
                 customer=customer,
