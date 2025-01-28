@@ -31,10 +31,10 @@ export default function CopyText({text, textToCopy, className, element}: Props):
 
 	return (
 		<div className={twJoin('group flex gap-[3px] items-center cursor-pointer', className)} onKeyDown={spaceClick} onClick={copyClicked}>
-			<div role='button' tabIndex={0}>
+			<div>{text}</div>
+			<div className='hidden group-hover:block' role='button' tabIndex={0}>
 				<Copy size={16} />
 			</div>
-			<div className='group-hover:underline'>{text}</div>
 		</div>
 	);
 }

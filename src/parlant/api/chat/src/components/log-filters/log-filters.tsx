@@ -47,7 +47,7 @@ const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (t
 			</div>
 			<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
 				<DialogClose className='h-[38px] w-[84px] !bg-white text-[#656565] hover:text-[#151515] rounded-[5px] border'>Cancel</DialogClose>
-				<DialogClose onClick={onApplyClick} className='bg-blue-main text-white h-[38px] w-[79px] hover:bg-[#1000EB] rounded-[5px]'>
+				<DialogClose onClick={onApplyClick} className='bg-[#151515] text-white h-[38px] w-[79px] hover:bg-black rounded-[5px]'>
 					Apply
 				</DialogClose>
 			</div>
@@ -197,12 +197,12 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 			<div className='wrapper relative' ref={wrapperRef}>
 				<div>
 					{!def?.types?.length ? (
-						<div onClick={() => setDropdownOpen(true)} role='button' className={twMerge('flex bg-[#EDEDED] hover:bg-[#F5F6F8] rounded-[5px] border items-center gap-[6px] h-[30px] px-[14px]', dropdownOpen && 'bg-[#CDCDCD]')}>
+						<div onClick={() => setDropdownOpen(true)} role='button' className={twMerge('flex bg-[#EDEDED] hover:bg-[#F5F6F8] rounded-[5px] items-center gap-[6px] h-[30px] px-[14px]', dropdownOpen && 'bg-[#CDCDCD]')}>
 							<ListFilter className='[stroke-width:2px] size-[16px]' />
 							<p className='text-[14px] font-medium'>Filters</p>
 						</div>
 					) : (
-						<Button onClick={() => setDropdownOpen(true)} variant='outline' className={twMerge('flex bg-[#EDEDED] hover:bg-[#F5F6F8] items-center gap-[6px] w-[32px] h-[30px] p-0', dropdownOpen && 'bg-[#CDCDCD]')}>
+						<Button onClick={() => setDropdownOpen(true)} variant='ghost' className={twMerge('flex bg-[#EDEDED] hover:bg-[#F5F6F8] items-center gap-[6px] w-[32px] h-[30px] p-0', dropdownOpen && 'bg-[#CDCDCD]')}>
 							<img src='icons/filter.svg' alt='' />
 						</Button>
 					)}
@@ -267,7 +267,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 								applyFn(sources, level, content);
 								setDropdownOpen(false);
 							}}
-							className='flex-1 text-[12px] font-normal !text-white bg-blue-main h-[35px] w-[95px] hover:bg-[#1000EB]'>
+							className='flex-1 text-[12px] font-normal !text-white bg-[#151515] h-[35px] w-[95px] hover:bg-black'>
 							Apply
 						</Button>
 					</div>
@@ -277,7 +277,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 	};
 
 	return (
-		<div className='flex justify-between py-[10px] pe-[10px] ps-[24px] bg-[#E0E0E0] min-h-fit h-[70px]'>
+		<div className='flex justify-between py-[10px] pe-[10px] ps-[24px] bg-[#EBECF0] min-h-fit h-[70px]'>
 			<div className='filters-button flex items-center gap-[8px] flex-wrap'>
 				{!!def?.types?.length && def.types.map((type) => <TypeChip key={type} type={type} />)}
 				{def?.content?.map((c: string, index: number) => (
