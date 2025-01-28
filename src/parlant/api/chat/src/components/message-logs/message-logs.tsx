@@ -1,6 +1,6 @@
 import {EventInterface, Log} from '@/utils/interfaces';
 import {Bug, Info, Plus, TriangleAlert, X} from 'lucide-react';
-import {ReactNode, useEffect, useState} from 'react';
+import {ReactNode, useEffect, useRef, useState} from 'react';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
 import {twJoin, twMerge} from 'tailwind-merge';
 import clsx from 'clsx';
@@ -33,16 +33,17 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex items-center gap-[12px]'>
-						<div className='flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
-							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden h-[15px] w-[15px] min-w-[20px]' />
-							<p className='font-medium text-[15px]'>Regenerate Message</p>
+						<div className='group flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
+							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden' />
+							<img src='icons/regenerate-arrow-hover.svg' alt='regenerate' className='hidden group-hover:block' />
+							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}
 						</div>
 						<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
 							<CopyText textToCopy={event.correlation_id} text={`Message ID: (${event.correlation_id})`} />
 						</div>
 					</div>
 					<div className='group'>
-						<div role='button' className='p-[5px] group-hover:bg-[#ebecf0]' onClick={() => closeLogs?.()}>
+						<div role='button' className='p-[5px]' onClick={() => closeLogs?.()}>
 							<X height={20} width={20} />
 						</div>
 					</div>
@@ -108,6 +109,11 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	const [currFilterTabs, setCurrFilterTabs] = useState<number | null>((filterTabs as Filter[])[0]?.id || null);
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
+	const messagesRef = useRef<HTMLDivElement | null>(null);
+
+	// useEffect(() => {
+	// 	if (messagesRef.current) messagesRef.current.scrollTo(0, messagesRef.current.scrollHeight);
+	// }, [messagesRef?.current]);
 
 	useEffect(() => {
 		if (logs) {
@@ -155,7 +161,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
+					<div ref={messagesRef} className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex rounded-[8px] items-center gap-[5px] px-[20px] p-[5px] border-white border transition-all hover:border-[#EDEDED] hover:bg-[#F5F6F8]')}>
 								{/* <div className='self-start'>{IconMap[log.level]}</div> */}

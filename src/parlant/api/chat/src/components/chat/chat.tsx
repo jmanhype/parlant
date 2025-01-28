@@ -18,6 +18,9 @@ import {handleChatLogs} from '@/utils/logs';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionIdAtom, sessionsAtom} from '@/store';
+import CopyText from '../ui/custom/copy-text';
+// import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
+// import {Menu} from 'lucide-react';
 // import { useAtom } from 'jotai';
 // import { haveLogsAtom } from '@/store';
 
@@ -35,7 +38,7 @@ const emptyPendingMessage: EventInterface = {
 
 const DateHeader = ({date, isFirst, bgColor}: {date: string | Date; isFirst: boolean; bgColor?: string}): ReactElement => {
 	return (
-		<div className={twMerge('text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-0', isFirst && 'pt-0 !mt-0', bgColor)}>
+		<div className={twMerge('text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-[0px]', isFirst && 'pt-0 !mt-0', bgColor)}>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
 			<div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>{getDateStr(date)}</div>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
@@ -60,12 +63,13 @@ export default function Chat(): ReactElement {
 	const [useContentFiltering] = useState(true);
 	const [showLogsForMessage, setShowLogsForMessage] = useState<EventInterface | null>(null);
 	const [isMissingAgent, setIsMissingAgent] = useState<boolean | null>(null);
+	const [sessionDetails, setSessionDetails] = useState<SessionInterface | null>(null);
 
 	const [agents] = useAtom(agentsAtom);
 	const [sessionId, setSessionId] = useAtom(sessionIdAtom);
 	const [agentId] = useAtom(agentIdIdAtom);
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
-	const [, setSessions] = useAtom(sessionsAtom);
+	const [sessions, setSessions] = useAtom(sessionsAtom);
 	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${sessionId}/events`, {min_offset: lastOffset}, [], sessionId !== NEW_SESSION_ID, !!(sessionId && sessionId !== NEW_SESSION_ID), false);
 
 	useEffect(() => {
@@ -77,6 +81,11 @@ export default function Chat(): ReactElement {
 			setIsMissingAgent(!agents?.find((agent) => agent.id === agentId));
 		}
 	}, [agents, agentId]);
+
+	useEffect(() => {
+		const session = sessions?.find((session) => session.id === sessionId);
+		if (session) setSessionDetails(session);
+	}, [sessionId]);
 
 	useEffect(() => {
 		if (lastMessage) {
@@ -234,7 +243,20 @@ export default function Chat(): ReactElement {
 		<>
 			<div className='flex items-center h-full w-full'>
 				<div className='h-full min-w-[50%] flex flex-col'>
-					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')} />
+					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')}>
+						{sessionId && (
+							<div className='w-full flex items-center h-full'>
+								<div className='h-full flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
+									<div className='font-medium text-[16px] text-[#656565]'>{sessionDetails?.title}</div>
+									<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
+										<CopyText text={`Session ID: (${sessionDetails?.id})`} textToCopy={sessionDetails?.id} />
+									</div>
+								</div>
+								<div className='h-full flex-1'></div>
+							</div>
+						)}
+					</HeaderWrapper>
+					<div className='h-[21px] bg-white border-e border-t-0'></div>
 					<div className={twMerge('flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e', showLogsForMessage && 'bg-main')}>
 						<div className='messages fixed-scroll flex-1 flex flex-col w-full pb-4' aria-live='polite' role='log' aria-label='Chat messages'>
 							{ErrorTemplate && <ErrorTemplate />}
@@ -286,6 +308,15 @@ export default function Chat(): ReactElement {
 						</div>
 					</div>
 				</div>
+				{/* <Sheet open={!!showLogsForMessage} modal={false}>
+					<SheetContent side='right' className='!max-w-[unset] w-[min(90vw,1000px)] p-0'>
+						<SheetHeader>
+							<SheetTitle className='text-center'></SheetTitle>
+							<SheetDescription />
+						</SheetHeader>
+						<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
+					</SheetContent>
+				</Sheet> */}
 				<div className='flex h-full min-w-[50%]'>
 					<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
 				</div>

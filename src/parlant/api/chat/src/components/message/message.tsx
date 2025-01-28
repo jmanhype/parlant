@@ -63,7 +63,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 					data-testid='message'
 					onClick={() => !isClient && showLogs(event)}
 					className={twMerge(
-						isClient && 'bg-white text-black !rounded-br-none !rounded-tr-[22px]',
+						isClient && 'text-black !rounded-br-none !rounded-tr-[22px]',
 						isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
 						!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 						isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
