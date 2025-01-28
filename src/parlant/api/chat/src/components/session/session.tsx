@@ -13,7 +13,7 @@ import {NEW_SESSION_ID} from '../chat-header/chat-header';
 import {spaceClick} from '@/utils/methods';
 import {twJoin} from 'tailwind-merge';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
+import {agentAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 
 interface Props {
 	session: SessionInterface;
@@ -46,16 +46,16 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 	const [agentsMap, setAgentsMap] = useState(new Map());
 	const [customerMap, setCustomerMap] = useState(new Map());
 	const [, setSession] = useAtom(sessionAtom);
-	const [, setAgentId] = useAtom(agentIdIdAtom);
+	const [, setAgent] = useAtom(agentAtom);
 	const [, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (!isSelected) return;
-		if (session.id === NEW_SESSION_ID && !session.agent_id) setAgentId(null);
-		else setAgentId(session.agent_id);
-	}, [isSelected, setAgentId, session.id, session.agent_id, session.title]);
+		if (session.id === NEW_SESSION_ID && !session.agent_id) setAgent(null);
+		else setAgent(agents?.find((a) => a.id === session.agent_id) || null);
+	}, [isSelected, setAgent, session.id, session.agent_id, session.title]);
 
 	useEffect(() => {
 		if (agents) setAgentsMap(new Map(agents.map((agent) => [agent.id, agent])));
@@ -74,7 +74,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			if (session.id === NEW_SESSION_ID) {
 				setNewSession(null);
 				setSession(null);
-				setAgentId(null);
+				setAgent(null);
 				return;
 			}
 			return deleteData(`sessions/${session.id}`)

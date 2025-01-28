@@ -17,7 +17,7 @@ import MessageLogs from '../message-logs/message-logs';
 import {handleChatLogs} from '@/utils/logs';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
+import {agentAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
 // import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
 // import {Menu} from 'lucide-react';
@@ -66,7 +66,7 @@ export default function Chat(): ReactElement {
 
 	const [agents] = useAtom(agentsAtom);
 	const [session, setSession] = useAtom(sessionAtom);
-	const [agentId] = useAtom(agentIdIdAtom);
+	const [agent] = useAtom(agentAtom);
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${session?.id}/events`, {min_offset: lastOffset}, [], session?.id !== NEW_SESSION_ID, !!(session?.id && session?.id !== NEW_SESSION_ID), false);
@@ -76,10 +76,10 @@ export default function Chat(): ReactElement {
 	}, []);
 
 	useEffect(() => {
-		if (agents && agentId) {
-			setIsMissingAgent(!agents?.find((agent) => agent.id === agentId));
+		if (agents && agent?.id) {
+			setIsMissingAgent(!agents?.find((a) => a.id === agent?.id));
 		}
-	}, [agents, agentId]);
+	}, [agents, agent?.id]);
 
 	useEffect(() => {
 		if (lastMessage) {
@@ -186,7 +186,7 @@ export default function Chat(): ReactElement {
 	const createSession = async (): Promise<SessionInterface | undefined> => {
 		if (!newSession) return;
 		const {customer_id, title} = newSession;
-		return postData('sessions?allow_greeting=true', {customer_id, agent_id: agentId, title} as object)
+		return postData('sessions?allow_greeting=true', {customer_id, agent_id: agent?.id, title} as object)
 			.then((res: SessionInterface) => {
 				if (newSession) {
 					setSession(res);
@@ -294,7 +294,7 @@ export default function Chat(): ReactElement {
 									rows={1}
 									className='box-shadow-none resize-none border-none h-full rounded-none min-h-[unset] p-0 whitespace-nowrap no-scrollbar font-inter font-light text-[16px] leading-[18px] bg-white group-hover:bg-main'
 								/>
-								<Button variant='ghost' data-testid='submit-button' className='max-w-[60px] rounded-full hover:bg-white' ref={submitButtonRef} disabled={!message?.trim() || !agentId || isRegenerating} onClick={() => postMessage(message)}>
+								<Button variant='ghost' data-testid='submit-button' className='max-w-[60px] rounded-full hover:bg-white' ref={submitButtonRef} disabled={!message?.trim() || !agent?.id || isRegenerating} onClick={() => postMessage(message)}>
 									<img src='icons/send.svg' alt='Send' height={19.64} width={21.52} className='h-10' />
 								</Button>
 							</div>

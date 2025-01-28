@@ -7,7 +7,7 @@ import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTri
 import Sessions from '../sessions/sessions';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, dialogAtom, sessionAtom} from '@/store';
+import {agentAtom, dialogAtom, sessionAtom} from '@/store';
 // import DarkModeToggle from '../dark-mode-toggle/dark-mode-toggle';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
@@ -15,7 +15,7 @@ export const NEW_SESSION_ID = 'NEW_SESSION';
 const ChatHeader = (): ReactNode => {
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const [session] = useAtom(sessionAtom);
-	const [, setAgentId] = useAtom(agentIdIdAtom);
+	const [, setAgent] = useAtom(agentAtom);
 	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
@@ -24,7 +24,7 @@ const ChatHeader = (): ReactNode => {
 	}, [session]);
 
 	const createNewSession = () => {
-		setAgentId(null);
+		setAgent(null);
 		dialog.openDialog('', <AgentList />, {height: '536px', width: '604px'});
 	};
 

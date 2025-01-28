@@ -7,7 +7,7 @@ export const haveLogsAtom = atom(JSON.parse(localStorage.logs || '{}'));
 export const agentsAtom = atom<AgentInterface[]>([]);
 export const customersAtom = atom<CustomerInterface[]>([]);
 export const sessionAtom = atom<SessionInterface | null>(null);
-export const agentIdIdAtom = atom<string | null>(null);
+export const agentAtom = atom<AgentInterface | null>(null);
 export const newSessionAtom = atom<SessionInterface | null>(null);
 export const sessionsAtom = atom<SessionInterface[]>([]);
 export const dialogAtom = atom<{openDialog: (title: string | null, content: ReactNode, dimensions: Dimensions, dialogClosed?: () => void) => void; closeDialog: () => void}>({closeDialog: () => null, openDialog: () => null});

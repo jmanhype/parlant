@@ -1,12 +1,12 @@
-import {SessionInterface} from '@/utils/interfaces';
-import {ReactNode, useEffect, useState} from 'react';
+import {AgentInterface, SessionInterface} from '@/utils/interfaces';
+import {ReactNode, useEffect} from 'react';
 
 import AgentAvatar from '../agent-avatar/agent-avatar';
 import {spaceClick} from '@/utils/methods';
 import {DialogDescription, DialogHeader, DialogTitle} from '../ui/dialog';
 import clsx from 'clsx';
 import {useAtom} from 'jotai';
-import {agentIdIdAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom} from '@/store';
+import {agentAtom, agentsAtom, customersAtom, dialogAtom, newSessionAtom, sessionAtom} from '@/store';
 
 export const NEW_SESSION_ID = 'NEW_SESSION';
 
@@ -20,26 +20,25 @@ const newSessionObj: SessionInterface = {
 
 const AgentList = (): ReactNode => {
 	const [, setSession] = useAtom(sessionAtom);
-	const [, setAgentId] = useAtom(agentIdIdAtom);
-	const [agent, setAgent] = useState('');
+	const [agent, setAgent] = useAtom(agentAtom);
 	const [agents] = useAtom(agentsAtom);
 	const [customers] = useAtom(customersAtom);
 	const [, setNewSession] = useAtom(newSessionAtom);
 	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
-		if (agents?.length && agents.length === 1) selectAgent(agents[0].id);
+		if (agents?.length && agents.length === 1) selectAgent(agents[0]);
 	}, []);
 
-	const selectAgent = (agentId: string): void => {
-		setAgent(agentId);
+	const selectAgent = (agent: AgentInterface): void => {
+		setAgent(agent);
 		if (customers.length < 2) {
-			selectCustomer(customers?.[0]?.id, agentId);
+			selectCustomer(customers?.[0]?.id, agent);
 		}
 	};
 
-	const selectCustomer = (customerId: string, agentId?: string) => {
-		setAgentId(agent || agentId || '');
+	const selectCustomer = (customerId: string, currAgent?: AgentInterface) => {
+		setAgent(agent || currAgent || null);
 		setNewSession({...newSessionObj, agent_id: agent, customer_id: customerId});
 		setSession(newSessionObj);
 		dialog.closeDialog();
@@ -62,7 +61,7 @@ const AgentList = (): ReactNode => {
 						tabIndex={0}
 						onKeyDown={spaceClick}
 						role='button'
-						onClick={() => (agent ? selectCustomer(entity.id) : selectAgent(entity.id))}
+						onClick={() => (agent ? selectCustomer(entity.id) : selectAgent(entity))}
 						key={entity.id}
 						className={clsx('cursor-pointer hover:bg-[#FBFBFB] min-h-[78px] h-[78px] w-full border-b-[0.6px] border-b-solid border-b-[#EBECF0] flex items-center ps-[30px] pe-[20px]', entity.name === '<guest>' && 'border-b-[#e1e2e3] border-b-[2px]')}>
 						<AgentAvatar agent={entity} tooltip={false} />
