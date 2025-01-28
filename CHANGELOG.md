@@ -3,8 +3,9 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
-- Add logs for activated and skipped guidelines and tool calls in the engine processing
-
+- Lowered likelihood of the agent hallucinating facts in fluid mode
+- Lowered likelihood of the agent offering services that were not specifically mentioned by the business
+- Made the agent slightly more polite, following user feedback
 
 ## [1.6.1] - 2025-01-20
 
