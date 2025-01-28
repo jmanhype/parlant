@@ -229,7 +229,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						))}
 					</div>
 					<hr className='bg-[#EBECF0]' />
-					<div className={'inputs flex flex-wrap gap-[6px] px-[6px] pb-[14px] pt-[11px]'}>
+					<div className={twMerge('inputs flex flex-wrap gap-[6px] px-[6px] pb-[14px] pt-[11px]', !content?.length && 'h-0 p-0')}>
 						{content?.map((item, i) => (
 							<FilterDialog
 								key={item}

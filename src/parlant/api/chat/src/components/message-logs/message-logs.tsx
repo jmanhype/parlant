@@ -10,6 +10,7 @@ import LogFilters from '../log-filters/log-filters';
 import {useAtom} from 'jotai';
 import {sessionIdAtom} from '@/store';
 import Markdown from '../markdown/markdown';
+import CopyText from '../ui/custom/copy-text';
 
 interface Filter {
 	id: number;
@@ -31,9 +32,14 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]')}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
-					<div className='flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
-						<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden h-[15px] w-[15px] min-w-[20px]' />
-						<p className='font-medium text-[15px]'>Regenerate Message</p>
+					<div className='flex items-center gap-[12px]'>
+						<div className='flex rounded-[5px] ms-[14px] items-center gap-[7px] hover:bg-[#F5F6F8] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(sessionId as string)}>
+							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden h-[15px] w-[15px] min-w-[20px]' />
+							<p className='font-medium text-[15px]'>Regenerate Message</p>
+						</div>
+						<div className='group flex items-center gap-[3px] text-[#A9A9A9] hover:text-[#151515]'>
+							<CopyText textToCopy={event.correlation_id} text={`(id=${event.correlation_id})`} />
+						</div>
 					</div>
 					<div className='group'>
 						<div role='button' className='p-[5px] group-hover:bg-[#ebecf0]' onClick={() => closeLogs?.()}>
