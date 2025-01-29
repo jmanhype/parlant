@@ -40,12 +40,6 @@ ToolCallId = NewType("ToolCallId", str)
 ToolResultId = NewType("ToolResultId", str)
 
 
-@dataclass(frozen=True)
-class ToolEventGenerationsResult:
-    generations: Sequence[GenerationInfo]
-    events: Sequence[Optional[EmittedEvent]]
-
-
 class ArgumentEvaluation(DefaultBaseModel):
     evaluate_is_it_provided_in_the_context: str
     evaluate_should_this_argument_in_principle_be_provided_by_the_customer_and_why: str

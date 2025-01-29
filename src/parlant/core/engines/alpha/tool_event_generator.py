@@ -33,7 +33,7 @@ from parlant.core.tools import ToolId
 
 
 @dataclass(frozen=True)
-class ToolEventGenerationsResult:
+class ToolEventGenerationResult:
     generations: Sequence[GenerationInfo]
     events: Sequence[Optional[EmittedEvent]]
 
@@ -64,7 +64,7 @@ class ToolEventGenerator:
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
-    ) -> Optional[ToolEventGenerationsResult]:
+    ) -> Optional[ToolEventGenerationResult]:
         assert len(agents) == 1
 
         if not tool_enabled_guideline_propositions:
@@ -83,7 +83,7 @@ class ToolEventGenerator:
 
         tool_calls = list(chain.from_iterable(inference_tool_calls_result.batches))
         if not tool_calls:
-            return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [])
+            return ToolEventGenerationResult(inference_tool_calls_result.batch_generations, [])
 
         tool_results = await self.tool_caller.execute_tool_calls(
             ToolContext(
@@ -95,7 +95,7 @@ class ToolEventGenerator:
         )
 
         if not tool_results:
-            return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [])
+            return ToolEventGenerationResult(inference_tool_calls_result.batch_generations, [])
 
         event_data: ToolEventData = {
             "tool_calls": [
@@ -113,4 +113,4 @@ class ToolEventGenerator:
             data=event_data,
         )
 
-        return ToolEventGenerationsResult(inference_tool_calls_result.batch_generations, [event])
+        return ToolEventGenerationResult(inference_tool_calls_result.batch_generations, [event])
