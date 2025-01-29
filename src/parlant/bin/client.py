@@ -3165,7 +3165,7 @@ async def async_main() -> None:
         ctx: click.Context,
         guideline_proposer: bool,
         tool_caller: bool,
-        message_event_generator: bool,
+        message_event_composer: bool,
         intersection_patterns: tuple[str],
         union_patterns: tuple[str],
     ) -> None:
@@ -3175,7 +3175,7 @@ async def async_main() -> None:
             union_pattern_list.append("[GuidelineProposer]")
         if tool_caller:
             union_pattern_list.append("[ToolCaller]")
-        if message_event_generator:
+        if message_event_composer:
             union_pattern_list.append("[MessageEventComposer]")
 
         Interface.stream_logs(ctx, union_pattern_list, list(intersection_patterns))
