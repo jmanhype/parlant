@@ -248,7 +248,7 @@ export default function Chat(): ReactElement {
 									</div>
 								</div>
 								<div className='h-full flex-1 flex items-center ps-[24px]'>
-									<AgentAvatar agent={agent as AgentInterface} />
+									<AgentAvatar agent={agent as AgentInterface} tooltip={false} />
 									<div>
 										<div>{agent?.name}</div>
 										<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
@@ -259,7 +259,7 @@ export default function Chat(): ReactElement {
 							</div>
 						)}
 					</HeaderWrapper>
-					<div className='h-[21px] bg-white border-e border-t-0'></div>
+					<div className={twMerge('h-[21px] bg-white border-e border-t-0', showLogsForMessage && 'bg-main')}></div>
 					<div className={twMerge('flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e', showLogsForMessage && 'bg-main')}>
 						<div className='messages fixed-scroll flex-1 flex flex-col w-full pb-4' aria-live='polite' role='log' aria-label='Chat messages'>
 							{ErrorTemplate && <ErrorTemplate />}

@@ -7,7 +7,7 @@ import {Helmet} from 'react-helmet';
 import {NEW_SESSION_ID} from '../agents-list/agent-list';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
-import {dialogAtom, sessionAtom, sessionsAtom} from '@/store';
+import {dialogAtom, sessionAtom} from '@/store';
 
 export const SessionProvider = createContext({});
 
@@ -16,18 +16,18 @@ export default function Chatbot(): ReactElement {
 	const [sessionName, setSessionName] = useState<string | null>('');
 	const {openDialog, DialogComponent, closeDialog} = useDialog();
 	const [session] = useAtom(sessionAtom);
-	const [sessions] = useAtom(sessionsAtom);
 	const [, setDialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (session?.id) {
 			if (session?.id === NEW_SESSION_ID) setSessionName('Parlant | New Session');
 			else {
-				const sessionTitle = sessions?.find((session) => session.id === session?.id)?.title;
+				const sessionTitle = session?.title;
 				if (sessionTitle) setSessionName(`Parlant | ${sessionTitle}`);
 			}
 		} else setSessionName('Parlant');
-	}, [session?.id, sessions]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [session?.id]);
 
 	useEffect(() => {
 		setDialog({openDialog, closeDialog});
