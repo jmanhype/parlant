@@ -46,7 +46,7 @@ ToolParameterType = Literal[
 EnumValueType = Union[str, int]
 
 
-class ToolParameter(TypedDict):
+class ToolParameterDescriptor(TypedDict):
     type: ToolParameterType
     description: NotRequired[str]
     enum: NotRequired[list[EnumValueType]]
@@ -108,7 +108,7 @@ class Tool:
     name: str
     creation_utc: datetime
     description: str
-    parameters: dict[str, ToolParameter]
+    parameters: dict[str, ToolParameterDescriptor]
     required: list[str]
     consequential: bool
 
@@ -186,7 +186,7 @@ class _LocalTool:
     creation_utc: datetime
     module_path: str
     description: str
-    parameters: dict[str, ToolParameter]
+    parameters: dict[str, ToolParameterDescriptor]
     required: list[str]
     consequential: bool
 
@@ -212,7 +212,7 @@ class LocalToolService(ToolService):
         name: str,
         module_path: str,
         description: str,
-        parameters: Mapping[str, ToolParameter],
+        parameters: Mapping[str, ToolParameterDescriptor],
         required: Sequence[str],
         consequential: bool = False,
     ) -> Tool:

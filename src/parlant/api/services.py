@@ -21,7 +21,7 @@ from pydantic import Field
 from parlant.api.common import apigen_config, ExampleJson, ServiceNameField, ToolNameField
 from parlant.core.common import DefaultBaseModel
 from parlant.core.services.tools.plugins import PluginClient
-from parlant.core.tools import Tool, ToolParameter
+from parlant.core.tools import Tool, ToolParameterDescriptor
 from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.service_registry import ServiceRegistry, ToolServiceKind
 from parlant.core.tools import ToolService
@@ -336,7 +336,7 @@ class ServiceDTO(
     tools: Optional[ServiceToolsField] = None
 
 
-def _tool_parameters_to_dto(parameters: ToolParameter) -> ToolParameterDTO:
+def _tool_parameters_to_dto(parameters: ToolParameterDescriptor) -> ToolParameterDTO:
     return ToolParameterDTO(
         type=ToolParameterTypeDTO(parameters["type"]),
         description=parameters["description"] if "description" in parameters else None,

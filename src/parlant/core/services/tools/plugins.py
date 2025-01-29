@@ -48,7 +48,7 @@ from parlant.core.agents import AgentId
 from parlant.core.tools import (
     Tool,
     ToolError,
-    ToolParameter,
+    ToolParameterDescriptor,
     ToolParameterType,
     ToolResult,
     ToolContext,
@@ -188,7 +188,7 @@ def _tool_decorator_impl(
                     type(e.value) in get_args(EnumValueType) for e in param_type.t
                 ), f"{param.name}: {param_type.t.__name__}: Enum values must be in {[t.__name__ for t in get_args(EnumValueType)]}"
 
-    def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameter]:
+    def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameterDescriptor]:
         type_to_param_type: dict[type[_ToolParameterType], ToolParameterType] = {
             str: "string",
             int: "integer",
@@ -206,9 +206,11 @@ def _tool_decorator_impl(
             param_type = param_type_info.t
 
             if param_type in type_to_param_type:
-                tool_param = ToolParameter(type=type_to_param_type[param_type])
+                tool_param = ToolParameterDescriptor(type=type_to_param_type[param_type])
             elif issubclass(param_type, enum.Enum):
-                tool_param = ToolParameter(type="string", enum=[e.value for e in param_type])
+                tool_param = ToolParameterDescriptor(
+                    type="string", enum=[e.value for e in param_type]
+                )
             else:
                 raise ValueError(f"Unsupported parameter type: {param_type}")
 
