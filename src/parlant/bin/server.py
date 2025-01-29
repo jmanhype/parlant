@@ -656,7 +656,9 @@ def main() -> None:
             print("error: only one NLP service profile can be selected")
             sys.exit(1)
 
-        non_default_service_selected = any((aws, azure, gemini, anthropic, cerebras, together))
+        non_default_service_selected = any(
+            (aws, azure, deepseek, gemini, anthropic, cerebras, together)
+        )
 
         if not non_default_service_selected:
             nlp_service = "openai"
