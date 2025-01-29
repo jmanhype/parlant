@@ -7,6 +7,13 @@ All notable changes to Parlant will be documented here.
 - Lowered likelihood of the agent offering services that were not specifically mentioned by the business
 - Made the agent slightly more polite, following user feedback
 
+
+## [1.6.2] - 2025-01-29
+
+### Fixed
+- Fix loading DeepSeek service during server boot
+
+
 ## [1.6.1] - 2025-01-20
 
 ### Fixed
