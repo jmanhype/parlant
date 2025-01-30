@@ -24,7 +24,7 @@ import CopyText from '../ui/custom/copy-text';
 // import { useAtom } from 'jotai';
 // import { haveLogsAtom } from '@/store';
 
-const emptyPendingMessage: EventInterface = {
+const emptyPendingMessage: () => EventInterface = () => ({
 	kind: 'message',
 	source: 'customer',
 	creation_utc: new Date(),
@@ -34,7 +34,7 @@ const emptyPendingMessage: EventInterface = {
 	data: {
 		message: '',
 	},
-};
+});
 
 const DateHeader = ({date, isFirst, bgColor}: {date: string | Date; isFirst: boolean; bgColor?: string}): ReactElement => {
 	return (
@@ -53,7 +53,7 @@ export default function Chat(): ReactElement {
 	const {lastMessage, start} = useWebSocket(`${BASE_URL}/logs`);
 
 	const [message, setMessage] = useState('');
-	const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage);
+	const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage());
 	const [lastOffset, setLastOffset] = useState(0);
 	const [messages, setMessages] = useState<EventInterface[]>([]);
 	const [showTyping, setShowTyping] = useState(false);

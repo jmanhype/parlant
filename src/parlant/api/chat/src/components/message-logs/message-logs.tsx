@@ -14,6 +14,7 @@ import CopyText from '../ui/custom/copy-text';
 
 interface Filter {
 	id: number;
+	name: string;
 	def: {level?: string; types?: string[]} | null;
 }
 
@@ -52,6 +53,8 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 };
 
 const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTabs}: FilterTabsFilterProps) => {
+	const [isEditing, setIsEditing] = useState(false);
+	const [inputVal, setInputVal] = useState('');
 	const deleteFilterTab = (id: number) => {
 		const filteredTabs = filterTabs.filter((t) => t.id !== id);
 		setFilterTabs(filteredTabs);
@@ -63,10 +66,39 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	const addFilter = () => {
-		const val: Filter = {id: Date.now(), def: {level: 'DEBUG', types: []}};
+		const val: Filter = {id: Date.now(), name: 'untitled', def: {level: 'DEBUG', types: []}};
 		const allTabs = [...filterTabs, val];
 		setFilterTabs(allTabs);
 		setCurrFilterTabs(val.id);
+	};
+
+	const clicked = (e: MouseEvent, tab: Filter) => {
+		e.stopPropagation();
+		setIsEditing(true);
+		setInputVal(tab.name);
+		function selectText() {
+			const range = document.createRange();
+			const selection = window.getSelection();
+			if (!e.target) return;
+			range.selectNodeContents(e.target as any);
+			selection?.removeAllRanges();
+			selection?.addRange(range);
+		}
+		selectText();
+	};
+
+	const editFinished = (e, tab: Filter) => {
+		setIsEditing(false);
+		if (!e.target.textContent) e.target.textContent = inputVal || tab.name;
+		tab.name = e.target.textContent;
+		localStorage.setItem('filters', JSON.stringify(filterTabs));
+		e.target.blur();
+	};
+
+	const editCancelled = (e, tab: Filter) => {
+		setIsEditing(false);
+		e.target.textContent = tab.name;
+		e.target.blur();
 	};
 
 	return (
@@ -75,11 +107,33 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 				<div
 					key={tab.id}
 					role='button'
-					onClick={() => setCurrFilterTabs(tab.id)}
-					className={twJoin('group flex min-h-[36px] max-h-[36px] justify-center items-center ps-[14px] pe-[8px] p-[10px] border-e w-fit', tab.id === currFilterTabs && '!bg-white', i === 0 && 'ps-[24px]')}>
-					<div className='flex items-center gap-[8px]'>
-						<p className='text-[15px]'>{`filter_${i + 1}`}</p>
-						{filterTabs.length > 0 && <X role='button' className={twJoin('size-[18px] group-hover:visible rounded-[3px]', tab.id !== currFilterTabs && 'invisible group-hover:visible')} onClick={() => deleteFilterTab(tab.id)} />}
+					onClick={() => {
+						setIsEditing(false);
+						setCurrFilterTabs(tab.id);
+					}}
+					className={twJoin(
+						'group flex min-h-[36px] max-h-[36px] justify-center border border-transparent items-center ps-[14px] pe-[8px] p-[10px] border-e w-fit',
+						tab.id === currFilterTabs && '!bg-white',
+						i === 0 && 'ps-[24px]',
+						tab.id === currFilterTabs && isEditing && 'border-b-black ms-[3px] min-h-[28px] max-h-[28px] -me-[3px] !border-[#151515] h-full rounded-[2px]'
+					)}>
+					<div className={twMerge('flex items-center gap-[8px] relative')}>
+						<p
+							onClick={(e) => tab.id === currFilterTabs && clicked(e, tab)}
+							contentEditable={tab.id === currFilterTabs}
+							suppressContentEditableWarning
+							onKeyDown={(e) => (e.key === 'Enter' ? editFinished(e, tab) : e.key === 'Escape' && editCancelled(e, tab))}
+							onBlur={(e) => editFinished(e, tab)}
+							className={twMerge('text-[15px] h-[28px] ps-[10px] outline-none pe-[6px] flex items-center border border-transparent', tab.id === currFilterTabs && !isEditing && 'hover:border-gray-200')}>
+							{tab.name}
+						</p>
+						{filterTabs.length > 0 && (
+							<X
+								role='button'
+								className={twJoin('size-[18px] group-hover:visible rounded-[3px]', tab.id !== currFilterTabs && 'invisible group-hover:visible', tab.id === currFilterTabs && isEditing && '!invisible')}
+								onClick={() => (tab.id !== currFilterTabs || !isEditing) && deleteFilterTab(tab.id)}
+							/>
+						)}
 						{/* {filterTabs.length > 0 && <img src='icons/close.svg' alt='close' className='h-[20px]' role='button' height={10} width={10} onClick={() => deleteFilterTab(tab.id)} />} */}
 					</div>
 				</div>
@@ -120,7 +174,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]; content?: string[]}));
 				setFilterTabs((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
-						const filter = {id: Date.now(), def: filters};
+						const filter = {id: Date.now(), def: filters, name: 'untitled'};
 						setCurrFilterTabs(filter.id);
 						return [filter];
 					}
