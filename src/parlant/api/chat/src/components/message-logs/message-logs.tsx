@@ -1,8 +1,8 @@
 import {EventInterface, Log} from '@/utils/interfaces';
-import {Bug, Info, Plus, TriangleAlert, X} from 'lucide-react';
+import {Plus, X} from 'lucide-react';
 import {ReactNode, useEffect, useRef, useState} from 'react';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
-import {twJoin, twMerge} from 'tailwind-merge';
+import {ClassNameValue, twJoin, twMerge} from 'tailwind-merge';
 import clsx from 'clsx';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useLocalStorage} from '@/hooks/useLocalStorage';
@@ -24,8 +24,6 @@ interface FilterTabsFilterProps {
 	currFilterTabs: number | null;
 }
 
-const IconMap = {INFO: <Info />, DEBUG: <Bug />, WARNING: <TriangleAlert />};
-
 const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction}) => {
 	const [session] = useAtom(sessionAtom);
 	return (
@@ -38,8 +36,8 @@ const Header = ({event, regenerateMessageFn, closeLogs}: {event: EventInterface 
 							<img src='icons/regenerate-arrow-hover.svg' alt='regenerate' className='hidden group-hover:block' />
 							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}
 						</div>
-						<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
-							<CopyText textToCopy={event.id} text={`Message ID: (${event.id})`} />
+						<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
+							<CopyText preText='Message ID:' textToCopy={event.id} text={` ${event.id}`} />
 						</div>
 					</div>
 					<div className='group'>
@@ -93,12 +91,12 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	);
 };
 
-const UnselectedMessage = () => {
+const EmptyState = ({title, subTitle, className}: {title: string; subTitle?: string; className?: ClassNameValue}) => {
 	return (
-		<div className='flex flex-col m-auto justify-center items-center max-w-[378px] w-full h-full'>
+		<div className={twMerge('flex flex-col m-auto justify-center items-center w-full h-full', className)}>
 			<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
-			<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>No message has been selected</h2>
-			<p className='text-[15px] font-normal font-inter text-[#656565] text-center mt-[10px]'>Please select one of the messages so we can give you more information</p>
+			<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>{title}</h2>
+			{subTitle && <p className='text-[15px] font-normal max-w-[378px] font-inter text-[#656565] text-center mt-[10px]'>{subTitle}</p>}
 		</div>
 	);
 };
@@ -153,18 +151,22 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} />
 			{event && !!logs.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
-			{event && !!logs.length && (
-				<LogFilters filterId={currFilterTabs || undefined} def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)} applyFn={(types, level, content) => setFilters({types, level, content})} />
+			{event && (
+				<LogFilters
+					className={event && !filteredLogs?.length && 'bg-[#f5f6f8]'}
+					filterId={currFilterTabs || undefined}
+					def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)}
+					applyFn={(types, level, content) => setFilters({types, level, content})}
+				/>
 			)}
-			{!event && <UnselectedMessage />}
-			{event && !logs.length && <div className='h-full flex justify-center items-center flex-1'>Logs not found</div>}
-			{event && !!logs.length && !filteredLogs.length && <div className='h-full flex justify-center items-center flex-1'>No data</div>}
+			{!event && <EmptyState title='No message has been selected' subTitle='Please select one of the messages so we can give you more information' />}
+			{event && !logs.length && <EmptyState title='No Logs Found' subTitle='Please select a different message in the session.' className='bg-[#f5f6f8]' />}
+			{event && !!logs.length && !filteredLogs.length && <EmptyState title='No Data' className='bg-[#f5f6f8]' />}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div ref={messagesRef} className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex rounded-[8px] items-center gap-[5px] px-[20px] p-[5px] border-white border transition-all hover:border-[#EDEDED] hover:bg-[#F5F6F8]')}>
-								{/* <div className='self-start'>{IconMap[log.level]}</div> */}
 								<Markdown className={clsx('max-w-[-webkit-fill-available] pe-[10px]')}>{log?.message}</Markdown>
 							</div>
 						))}

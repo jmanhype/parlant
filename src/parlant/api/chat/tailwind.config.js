@@ -6,6 +6,7 @@ module.exports = {
 		extend: {
 			screens: {
 				mobile: '751px',
+				tablet: '1080px',
 			},
 			keyframes: {
 				'fade-in': {

@@ -19,7 +19,6 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
-import AgentAvatar from '../agent-avatar/agent-avatar';
 // import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
 // import {Menu} from 'lucide-react';
 // import { useAtom } from 'jotai';
@@ -39,7 +38,7 @@ const emptyPendingMessage: EventInterface = {
 
 const DateHeader = ({date, isFirst, bgColor}: {date: string | Date; isFirst: boolean; bgColor?: string}): ReactElement => {
 	return (
-		<div className={twMerge('text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky top-[0px]', isFirst && 'pt-0 !mt-0', bgColor)}>
+		<div className={twMerge('text-center flex min-h-[30px] z-[1] bg-main h-[30px] pb-[4px] mb-[60px] pt-[4px] mt-[76px] sticky -top-[1px]', isFirst && 'pt-[1px] !mt-0', bgColor)}>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
 			<div className='w-[136px] border-[0.6px] border-muted font-light text-[12px] bg-white text-[#656565] flex items-center justify-center rounded-[6px]'>{getDateStr(date)}</div>
 			<hr className='h-full -translate-y-[-50%] flex-1' />
@@ -243,16 +242,15 @@ export default function Chat(): ReactElement {
 							<div className='w-full flex items-center h-full'>
 								<div className='h-full border-e flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
 									<div className='font-medium text-[16px] text-[#656565]'>{session?.title}</div>
-									<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
-										<CopyText text={`Session ID: (${session?.id})`} textToCopy={session?.id} />
+									<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
+										<CopyText preText='Session ID:' text={` ${session?.id}`} textToCopy={session?.id} />
 									</div>
 								</div>
 								<div className='h-full flex-1 flex items-center ps-[24px]'>
-									<AgentAvatar agent={agent as AgentInterface} tooltip={false} />
 									<div>
 										<div>{agent?.name}</div>
-										<div className='group flex items-center gap-[3px] text-[14px] font-normal text-[#A9A9A9] hover:text-[#656565]'>
-											<CopyText text={`Agent ID: ${agent?.id}`} textToCopy={agent?.id} />
+										<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
+											<CopyText preText='Agent ID:' text={` ${agent?.id}`} textToCopy={agent?.id} />
 										</div>
 									</div>
 								</div>
@@ -312,7 +310,7 @@ export default function Chat(): ReactElement {
 					</div>
 				</div>
 				{/* <Sheet open={!!showLogsForMessage} modal={false}>
-					<SheetContent side='right' className='!max-w-[unset] w-[min(90vw,1000px)] p-0'>
+					<SheetContent side='right' className='!max-w-[unset] w-[min(90vw,1000px)] p-0 max-tablet:block hidden'>
 						<SheetHeader>
 							<SheetTitle className='text-center'></SheetTitle>
 							<SheetDescription />

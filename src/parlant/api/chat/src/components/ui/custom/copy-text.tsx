@@ -1,4 +1,3 @@
-import {Copy} from 'lucide-react';
 import {ReactNode} from 'react';
 import {toast} from 'sonner';
 import {twJoin} from 'tailwind-merge';
@@ -8,11 +7,12 @@ import {fallbackCopyText} from '@/lib/utils';
 interface Props {
 	text: string;
 	textToCopy?: string;
+	preText?: string;
 	className?: string;
 	element?: HTMLElement;
 }
 
-export default function CopyText({text, textToCopy, className, element}: Props): ReactNode {
+export default function CopyText({text, textToCopy, preText, className, element}: Props): ReactNode {
 	if (!textToCopy) textToCopy = text;
 
 	const copyClicked = (e: React.MouseEvent) => {
@@ -30,10 +30,13 @@ export default function CopyText({text, textToCopy, className, element}: Props):
 	};
 
 	return (
-		<div className={twJoin('group flex gap-[3px] items-center cursor-pointer', className)} onKeyDown={spaceClick} onClick={copyClicked}>
-			<div>{text}</div>
-			<div className='hidden group-hover:block' role='button' tabIndex={0}>
-				<Copy size={16} />
+		<div className={twJoin('group flex gap-[3px] items-center cursor-pointer text-[#A9A9A9]', className)} onKeyDown={spaceClick} onClick={copyClicked}>
+			<div>
+				{preText && <span>{preText}</span>}
+				<span className='group-hover:text-[#656565]'>{text}</span>
+			</div>
+			<div className='hidden group-hover:block group-hover:text-[#656565]' role='button' tabIndex={0}>
+				<img src='icons/copy.svg' alt='' />
 			</div>
 		</div>
 	);

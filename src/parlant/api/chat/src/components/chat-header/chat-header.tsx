@@ -14,7 +14,7 @@ export const NEW_SESSION_ID = 'NEW_SESSION';
 
 const ChatHeader = (): ReactNode => {
 	const [sheetOpen, setSheetOpen] = useState(false);
-	const [session] = useAtom(sessionAtom);
+	const [session, setSession] = useAtom(sessionAtom);
 	const [, setAgent] = useAtom(agentAtom);
 	const [dialog] = useAtom(dialogAtom);
 
@@ -24,6 +24,7 @@ const ChatHeader = (): ReactNode => {
 	}, [session]);
 
 	const createNewSession = () => {
+		setSession(null);
 		setAgent(null);
 		dialog.openDialog('', <AgentList />, {height: '536px', width: '604px'});
 	};

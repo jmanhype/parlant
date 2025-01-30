@@ -6,6 +6,7 @@ import {Dialog, DialogClose, DialogContent, DialogDescription, DialogPortal, Dia
 import {ClassNameValue, twMerge} from 'tailwind-merge';
 import {ListFilter, Plus, X} from 'lucide-react';
 import {getDistanceToRight} from '@/utils/methods';
+import Tooltip from '../ui/custom/tooltip';
 
 type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
@@ -23,7 +24,7 @@ const typeLabels: Record<Type, string> = {
 const AddFilterChip = ({className}: {className?: ClassNameValue}) => {
 	return (
 		<div className={twMerge('group cursor-pointer bg-[#F5F6F8] hover:bg-[#EBECF0] h-[30px] rounded-[3px] flex items-center w-full', className)}>
-			<div className='flex items-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[8px] pe-[6px] gap-[8px]'>
+			<div className='flex items-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] px-[8px] pe-[6px] gap-[8px]'>
 				<Plus role='button' className='min-w-[18px] size-[18px] rounded-[3px]' />
 				<p className='text-nowrap font-normal text-[14px]'>Add Custom Filter</p>
 			</div>
@@ -45,7 +46,7 @@ const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (t
 			<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
 				<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[16px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
 			</div>
-			<div className='buttons flex items-center gap-[24px] justify-end text-[16px] font-normal font-ubuntu-sans'>
+			<div className='buttons flex items-center gap-[16px] justify-end text-[16px] font-normal font-ubuntu-sans'>
 				<DialogClose className='h-[38px] w-[84px] !bg-white text-[#656565] hover:text-[#151515] rounded-[5px] border'>Cancel</DialogClose>
 				<DialogClose onClick={onApplyClick} className='bg-[#151515] text-white h-[38px] w-[79px] hover:bg-black rounded-[5px]'>
 					Apply
@@ -67,7 +68,7 @@ const FilterDialog = ({contentChanged, content, children, className}: {contentCh
 				</div> */}
 			</DialogTrigger>
 			<DialogPortal aria-hidden={false}>
-				<DialogContent className='p-0' aria-hidden={false}>
+				<DialogContent className='p-0' aria-hidden={false} className='[&>button]:hidden'>
 					<DialogTitle className='hidden'>Filter By Content</DialogTitle>
 					<DialogDescription className='hidden'>Filter By Content</DialogDescription>
 					<FilterDialogContent contentChanged={contentChanged} defaultValue={content || ''} />
@@ -77,7 +78,7 @@ const FilterDialog = ({contentChanged, content, children, className}: {contentCh
 	);
 };
 
-const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level: string, content: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; content: string[]} | null}) => {
+const LogFilters = ({applyFn, def, filterId, className}: {applyFn: (types: string[], level: string, content: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; content: string[]} | null; className?: ClassNameValue}) => {
 	const [sources, setSources] = useState(structuredClone(def?.types || []));
 	const [contentConditions, setContentConditions] = useState(structuredClone(def?.content || []));
 	const [level, setLevel] = useState<Level>(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);
@@ -138,28 +139,30 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 		deleteButtonClassName?: ClassNameValue;
 	}) => {
 		return (
-			<div key={text} className={twMerge('group cursor-pointer bg-[#F5F6F8] hover:bg-white border-[#A9A9A9] hover:border-[#D7D7D7] border h-[30px] rounded-[5px] flex justify-center items-center w-fit', wrapperClassName)}>
-				<div
-					className={twMerge(
-						'flex items-center justify-center rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#D7D7D7] group-hover:border-[#A9A9A9]',
-						className
-					)}>
-					<p className='text-nowrap font-normal text-[14px]'>{text}</p>
-					<X
-						role='button'
-						className={twMerge('invisible min-w-[18px] size-[18px] group-hover:visible rounded-[3px]', deleteButtonClassName)}
-						onClick={(e) => {
-							e.stopPropagation();
-							const content = contentConditions?.filter((_, i) => i !== index);
-							if (apply) {
-								setContentConditions(content);
-								applyFn(sources, level, content);
-							}
-							deleted?.(content);
-						}}
-					/>
+			<Tooltip value={text} side='top' delayDuration={1000}>
+				<div key={text} className={twMerge('group max-w-[320px] cursor-pointer bg-[#F5F6F8] hover:bg-white border-[#A9A9A9] hover:border-[#D7D7D7] border h-[30px] rounded-[5px] flex justify-center items-center w-fit', wrapperClassName)}>
+					<div
+						className={twMerge(
+							'flex items-center justify-center max-w-full rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#D7D7D7] group-hover:border-[#A9A9A9]',
+							className
+						)}>
+						<p className='text-nowrap max-w-full overflow-hidden text-ellipsis font-normal text-[14px]'>{text}</p>
+						<X
+							role='button'
+							className={twMerge('invisible min-w-[18px] size-[18px] group-hover:visible rounded-[3px]', deleteButtonClassName)}
+							onClick={(e) => {
+								e.stopPropagation();
+								const content = contentConditions?.filter((_, i) => i !== index);
+								if (apply) {
+									setContentConditions(content);
+									applyFn(sources, level, content);
+								}
+								deleted?.(content);
+							}}
+						/>
+					</div>
 				</div>
-			</div>
+			</Tooltip>
 		);
 	};
 
@@ -207,21 +210,21 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						</Button>
 					)}
 				</div>
-				<div className={twMerge('hidden border rounded-[5px] absolute top-[40px] left-0 w-[218px] bg-white', dropdownOpen && 'block', usePopupToLeft ? 'right-0 left-[unset]' : '')}>
+				<div className={twMerge('hidden border rounded-[7px] absolute top-[38px] left-0 w-[218px] bg-white', dropdownOpen && 'block', usePopupToLeft ? 'right-0 left-[unset]' : '')}>
 					<div className='flex justify-between items-center'>
-						<div className='flex items-center gap-[6px] h-[30px] px-[14px]'>
+						<div className='flex items-center gap-[6px] h-[35px] px-[14px]'>
 							{/* <ListFilter className='[stroke-width:2px] size-[16px]' /> */}
-							<p className='text-[14px] font-medium'>Filter</p>
+							<p className='text-[14px] font-normal'>Filter</p>
 						</div>
 						<div role='button' onClick={() => setDropdownOpen(false)} className='flex h-[24px] w-[24px] items-center me-[2px] justify-center'>
 							<img src='icons/close.svg' alt='close' />
 						</div>
 					</div>
 					<hr className='bg-[#EBECF0]' />
-					<div className='flex flex-col gap-[4px] mt-[9px] pb-[11px] px-[6px]'>
+					<div className='flex flex-col gap-[4px] mt-[9px] pb-[11px] px-[8px]'>
 						{ALL_TYPES.map((type) => (
 							<div key={type} className={twMerge('flex items-center py-[4px] ps-[6px] space-x-2 hover:bg-[#F5F6F8]', sources.includes(type) && 'bg-[#EBECF0]')}>
-								<Checkbox id={type} defaultChecked={def?.types?.includes(type)} className='border-black !bg-white' onCheckedChange={(isChecked) => changeSource(type, !!isChecked)} />
+								<Checkbox id={type} defaultChecked={def?.types?.includes(type)} className='border-black rounded-[2px] !bg-white' onCheckedChange={(isChecked) => changeSource(type, !!isChecked)} />
 								<label className='text-[12px] font-normal w-full cursor-pointer' htmlFor={type}>
 									{typeLabels[type]}
 								</label>
@@ -229,7 +232,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						))}
 					</div>
 					<hr className='bg-[#EBECF0]' />
-					<div className={twMerge('inputs flex flex-wrap gap-[6px] px-[6px] pb-[14px] pt-[11px]', !content?.length && 'h-0 p-0')}>
+					<div className={twMerge('inputs flex flex-wrap gap-[6px] px-[14px] pb-[14px] pt-[11px]', !content?.length && 'h-0 p-0')}>
 						{content?.map((item, i) => (
 							<FilterDialog
 								key={item}
@@ -253,7 +256,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 						))}
 					</div>
 					{!!content?.length && <hr className='bg-[#EBECF0] w-full' />}
-					<div className='px-[6px] h-[54px] flex items-center'>
+					<div className='px-[14px] h-[54px] flex items-center'>
 						<FilterDialog contentChanged={(inputVal) => setContent((val) => [...val, inputVal])} />
 					</div>
 					<hr className='bg-[#EBECF0]' />
@@ -277,7 +280,7 @@ const LogFilters = ({applyFn, def, filterId}: {applyFn: (types: string[], level:
 	};
 
 	return (
-		<div className='flex justify-between py-[10px] pe-[10px] ps-[24px] bg-[#EBECF0] min-h-fit h-[70px]'>
+		<div className={twMerge('flex justify-between py-[10px] pe-[10px] ps-[14px] bg-[#EBECF0] min-h-fit h-[58px]', (!!def?.types?.length || !!def?.content?.length) && 'h-[50px]', className)}>
 			<div className='filters-button flex items-center gap-[8px] flex-wrap'>
 				{!!def?.types?.length && def.types.map((type) => <TypeChip key={type} type={type} />)}
 				{def?.content?.map((c: string, index: number) => (
