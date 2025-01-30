@@ -112,9 +112,9 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 						setCurrFilterTabs(tab.id);
 					}}
 					className={twJoin(
-						'group flex min-h-[36px] max-h-[36px] justify-center border border-transparent items-center ps-[14px] pe-[8px] p-[10px] border-e w-fit',
+						'group flex min-h-[36px] max-h-[36px] justify-center leading-[18px] text-[15px] border border-transparent items-center ps-[8px] pe-[8px] p-[10px] border-e w-fit',
 						tab.id === currFilterTabs && '!bg-white',
-						i === 0 && 'ps-[24px]',
+						i === 0 && 'ps-[16px]',
 						tab.id === currFilterTabs && isEditing && 'border-b-black ms-[3px] min-h-[28px] max-h-[28px] -me-[3px] !border-[#151515] h-full rounded-[2px]'
 					)}>
 					<div className={twMerge('flex items-center gap-[8px] relative')}>
@@ -124,7 +124,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 							suppressContentEditableWarning
 							onKeyDown={(e) => (e.key === 'Enter' ? editFinished(e, tab) : e.key === 'Escape' && editCancelled(e, tab))}
 							onBlur={(e) => editFinished(e, tab)}
-							className={twMerge('text-[15px] h-[28px] ps-[10px] outline-none pe-[6px] flex items-center border border-transparent', tab.id === currFilterTabs && !isEditing && 'hover:border-gray-200')}>
+							className={twMerge('text-[15px] h-[28px] px-[8px] outline-none flex items-center border border-transparent', tab.id === currFilterTabs && !isEditing && 'hover:border-gray-200')}>
 							{tab.name}
 						</p>
 						{filterTabs.length > 0 && (
