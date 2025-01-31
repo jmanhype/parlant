@@ -81,6 +81,7 @@ class CerebrasSchematicGenerator(SchematicGenerator[T]):
                     },
                 }
             ],
+            tool_choice="required",
             **cerebras_api_arguments,
         )
         t_end = time.time()
