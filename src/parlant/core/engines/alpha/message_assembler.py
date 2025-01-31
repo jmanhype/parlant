@@ -34,7 +34,7 @@ from parlant.core.engines.alpha.guideline_proposition import GuidelinePropositio
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.emissions import EmittedEvent, EventEmitter
-from parlant.core.sessions import Event
+from parlant.core.sessions import Event, MessageEventData
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.shots import Shot, ShotCollection
@@ -111,6 +111,12 @@ class MessageAssemblerShot(Shot):
     expected_result: AssembledMessageSchema
 
 
+@dataclass(frozen=True)
+class MessageAssemblyGenerationResult:
+    message: str
+    fragmens: list[Fragment]
+
+
 class MessageAssembler(MessageEventComposer):
     def __init__(
         self,
@@ -143,6 +149,7 @@ class MessageAssembler(MessageEventComposer):
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]:
         assert len(agents) == 1
+        agent = agents[0]
 
         with self._logger.operation("[MessageEventComposer][Assembly] Message generation"):
             if (
@@ -170,7 +177,7 @@ class MessageAssembler(MessageEventComposer):
                 staged_events=staged_events,
                 tool_insights=tool_insights,
                 fragments=fragments,
-                shots=await self.shots(agents[0].composition_mode),
+                shots=await self.shots(agent.composition_mode),
             )
 
             last_known_event_offset = interaction_history[-1].offset if interaction_history else -1
@@ -196,19 +203,26 @@ class MessageAssembler(MessageEventComposer):
 
             for generation_attempt in range(3):
                 try:
-                    generation_info, response_message = await self._generate_response_message(
+                    generation_info, assembly_result = await self._generate_response_message(
                         prompt,
                         fragments,
-                        agents[0].composition_mode,
+                        agent.composition_mode,
                         temperature=generation_attempt_temperatures[generation_attempt],
                         final_attempt=(generation_attempt + 1)
                         == len(generation_attempt_temperatures),
                     )
 
-                    if response_message is not None:
+                    if assembly_result is not None:
                         event = await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,
-                            data=response_message,
+                            data=MessageEventData(
+                                message=assembly_result.message,
+                                participant={
+                                    "id": agent.id,
+                                    "display_name": agent.name,
+                                },
+                                fragments=[f.id for f in assembly_result.fragmens],
+                            ),
                         )
 
                         return [MessageEventComposition(generation_info, [event])]
@@ -332,8 +346,9 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         shots: Sequence[MessageAssemblerShot],
     ) -> str:
         assert len(agents) == 1
+        agent = agents[0]
 
-        can_suggest_fragments = agents[0].composition_mode == "fluid-assembly"
+        can_suggest_fragments = agent.composition_mode == "fluid-assembly"
 
         builder = PromptBuilder()
 
@@ -349,7 +364,7 @@ Later in this prompt, you'll be provided with behavioral guidelines and other co
 """
         )
 
-        builder.add_agent_identity(agents[0])
+        builder.add_agent_identity(agent)
         builder.add_section(
             """
 TASK DESCRIPTION:
@@ -627,7 +642,7 @@ Produce a valid JSON object in the following format: ###
         composition_mode: CompositionMode,
         temperature: float,
         final_attempt: bool,
-    ) -> tuple[GenerationInfo, Optional[str]]:
+    ) -> tuple[GenerationInfo, Optional[MessageAssemblyGenerationResult]]:
         message_event_response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": temperature},
@@ -697,6 +712,7 @@ Produce a valid JSON object in the following format: ###
                 "[MessageEventComposer][Assembly] Selected list of content fragments diverges from list of rendered fragments"
             )
 
+        fragments = []
         for index, materialized_fragment in enumerate(final_revision.content_fragments):
             if materialized_fragment.fragment_id == "<auto>":
                 continue
@@ -733,12 +749,18 @@ Produce a valid JSON object in the following format: ###
                         f"[MessageEventComposer][Assembly] Fragment rendering hallucination. ID={materialized_fragment.fragment_id}; ExpectedContent={materialized_fragment.raw_content}; HallucinatedContent={final_revision.sequenced_rendered_content_fragments[index]}"
                     )
 
+            fragments.append(fragment)
+
         match composition_mode:
             case "fluid-assembly" | "composited-assembly":
-                return message_event_response.info, str(final_revision.composited_fragment_sequence)
+                return message_event_response.info, MessageAssemblyGenerationResult(
+                    message=str(final_revision.composited_fragment_sequence),
+                    fragmens=fragments,
+                )
             case "strict-assembly":
-                return message_event_response.info, "".join(
-                    final_revision.sequenced_rendered_content_fragments
+                return message_event_response.info, MessageAssemblyGenerationResult(
+                    message="".join(final_revision.sequenced_rendered_content_fragments),
+                    fragmens=fragments,
                 )
 
         raise Exception("Unsupported composition mode")

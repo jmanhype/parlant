@@ -45,6 +45,7 @@ from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.common import ObjectId, Where
 from parlant.core.persistence.document_database import DocumentDatabase, DocumentCollection
 from parlant.core.glossary import TermId
+from parlant.core.fragments import FragmentId
 
 SessionId = NewType("SessionId", str)
 
@@ -99,6 +100,7 @@ class MessageEventData(TypedDict):
     participant: Participant
     flagged: NotRequired[bool]
     tags: NotRequired[list[str]]
+    fragments: NotRequired[list[FragmentId]]
 
 
 class ControlOptions(TypedDict, total=False):
