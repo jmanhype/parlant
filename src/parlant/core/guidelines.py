@@ -117,7 +117,7 @@ class GuidelineDocumentStore(GuidelineStore):
     def __init__(self, database: DocumentDatabase, migrate: bool = True) -> None:
         self._database = database
         self._collection: DocumentCollection[_GuidelineDocument]
-        self._meta_collection: DocumentCollection[_MetadataDocument]
+        self._metadata_collection: DocumentCollection[_MetadataDocument]
         self._migrate = migrate
 
         self._lock = ReaderWriterLock()
@@ -139,13 +139,13 @@ class GuidelineDocumentStore(GuidelineStore):
         return None
 
     async def __aenter__(self) -> Self:
-        self._meta_collection = await self._database.get_or_create_collection(
+        self._metadata_collection = await self._database.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
             document_loader=self._meta_document_loader,
         )
         async with self._lock.reader_lock:
-            existing_meta = await self._meta_collection.find_one({})
+            existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
                     raise MigrationRequiredError(
@@ -164,7 +164,7 @@ class GuidelineDocumentStore(GuidelineStore):
                     id=ObjectId(generate_id()),
                     version=GuidelineDocumentStore.VERSION.to_string(),
                 )
-                await self._meta_collection.insert_one(meta_document)
+                await self._metadata_collection.insert_one(meta_document)
 
         return self
 

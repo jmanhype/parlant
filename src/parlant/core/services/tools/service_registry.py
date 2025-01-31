@@ -122,7 +122,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
     ):
         self._database = database
         self._tool_services_collection: DocumentCollection[_ToolServiceDocument]
-        self._meta_collection: DocumentCollection[_MetadataDocument]
+        self._metadata_collection: DocumentCollection[_MetadataDocument]
 
         self._event_emitter_factory = event_emitter_factory
         self._logger = logger
@@ -163,13 +163,13 @@ class ServiceDocumentRegistry(ServiceRegistry):
         return None
 
     async def __aenter__(self) -> Self:
-        self._meta_collection = await self._database.get_or_create_collection(
+        self._metadata_collection = await self._database.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
             document_loader=self._meta_document_loader,
         )
         async with self._lock.reader_lock:
-            existing_meta = await self._meta_collection.find_one({})
+            existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
                     raise MigrationRequiredError(
@@ -188,7 +188,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
                     id=ObjectId(generate_id()),
                     version=ServiceDocumentRegistry.VERSION.to_string(),
                 )
-                await self._meta_collection.insert_one(meta_document)
+                await self._metadata_collection.insert_one(meta_document)
 
         self._moderation_services = {
             name: await nlp_service.get_moderation_service()

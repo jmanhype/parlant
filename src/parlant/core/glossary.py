@@ -130,7 +130,7 @@ class GlossaryVectorStore(GlossaryStore):
     ):
         self._vector_db = vector_db
         self._collection: VectorCollection[_TermDocument]
-        self._meta_collection: VectorCollection[_MetadataDocument]
+        self._metadata_collection: VectorCollection[_MetadataDocument]
         self._migrate = migrate
         self._embedder = embedder_factory.create_embedder(embedder_type)
         self._embedder_type = embedder_type
@@ -155,7 +155,7 @@ class GlossaryVectorStore(GlossaryStore):
         return None
 
     async def __aenter__(self) -> Self:
-        self._meta_collection = await self._vector_db.get_or_create_collection(
+        self._metadata_collection = await self._vector_db.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
             embedder_type=self._embedder_type,
@@ -163,7 +163,7 @@ class GlossaryVectorStore(GlossaryStore):
         )
 
         async with self._lock.reader_lock:
-            existing_meta = await self._meta_collection.find_one({})
+            existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
                     raise MigrationRequiredError(
@@ -184,7 +184,7 @@ class GlossaryVectorStore(GlossaryStore):
                     version=GlossaryVectorStore.VERSION.to_string(),
                     content="1",
                 )
-                await self._meta_collection.insert_one(meta_document)
+                await self._metadata_collection.insert_one(meta_document)
 
         return self
 
