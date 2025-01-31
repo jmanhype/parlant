@@ -414,13 +414,13 @@ files = [
 
 [[package]]
 name = "cerebras-cloud-sdk"
-version = "1.16.0"
+version = "1.19.0"
 description = "The official Python library for the cerebras API"
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "cerebras_cloud_sdk-1.16.0-py3-none-any.whl", hash = "sha256:677e2324bdb4feee0f32abc9904e25a6adbfccb12f2f6e2d0c3347b27cb95346"},
-    {file = "cerebras_cloud_sdk-1.16.0.tar.gz", hash = "sha256:b34f4c579c2a2d7040854ce45cb77e29bd2f524405afb1700aa4356f7a5c76cb"},
+    {file = "cerebras_cloud_sdk-1.19.0-py3-none-any.whl", hash = "sha256:783dea26b72e9e6e545d5b49f4ccfe43595976af5ee4492db55ab5c8237a1144"},
+    {file = "cerebras_cloud_sdk-1.19.0.tar.gz", hash = "sha256:7e4efc55799141bb29114d97e42da83024019c0be278d2f63135991fd1e2fe76"},
 ]
 
 [package.dependencies]
@@ -6837,4 +6837,4 @@ together = ["together", "torch", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "394f95c3fe2767c2a66dd705f8298eb9a470fe1ff0c6ee1d36b5903b84125ffd"
+content-hash = "c9af9a6e9a2a8e788e94253678ff4543bbc4c0911bcdf82314d2de92a4f0d46f"
