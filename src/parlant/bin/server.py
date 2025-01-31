@@ -30,6 +30,7 @@ from pathlib import Path
 import sys
 import uvicorn
 
+from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.adapters.loggers.websocket import WebSocketLogger
 from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.engines.alpha import guideline_proposer
@@ -298,9 +299,6 @@ async def setup_container(
     sessions_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "sessions.json")
     )
-    fragments_db = await EXIT_STACK.enter_async_context(
-        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "fragments.json")
-    )
     guidelines_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
     )
@@ -324,10 +322,10 @@ async def setup_container(
         )
         c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db, migrate))
         c[CustomerStore] = await EXIT_STACK.enter_async_context(
-            CustomerDocumentStore(customers_db, migrate)    
+            CustomerDocumentStore(customers_db, migrate)
         )
         c[FragmentStore] = await EXIT_STACK.enter_async_context(
-            FragmentDocumentStore(fragments_db, migrate)
+            FragmentDocumentStore(TransientDocumentDatabase())
         )
         c[GuidelineStore] = await EXIT_STACK.enter_async_context(
             GuidelineDocumentStore(guidelines_db, migrate)
