@@ -14,12 +14,18 @@
 
 import asyncio
 import enum
-from typing import Any, Mapping, Optional, cast
+from typing import Annotated, Any, Mapping, Optional, cast
 from lagom import Container
 from pytest import fixture, raises
 import pytest
 
-from parlant.core.tools import ToolContext, ToolError, ToolResult, ToolResultError
+from parlant.core.tools import (
+    ToolContext,
+    ToolError,
+    ToolParameterOptions,
+    ToolResult,
+    ToolResultError,
+)
 from parlant.core.services.tools.plugins import PluginServer, tool
 from parlant.core.agents import Agent, AgentId, AgentStore
 from parlant.core.contextual_correlator import ContextualCorrelator
@@ -290,7 +296,6 @@ async def test_that_a_plugin_tool_can_emit_events_and_ultimately_fail_with_an_er
 async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
     tool_context: ToolContext,
     container: Container,
-    agent: Agent,
 ) -> None:
     class ProductCategory(enum.Enum):
         CATEGORY_A = "category_a"
@@ -359,6 +364,105 @@ async def test_that_a_plugin_calls_a_tool_with_a_union_param(
 ) -> None:
     @tool
     def my_tool(context: ToolContext, arg_1: int, arg_2: int | None = None) -> ToolResult:
+        assert arg_2
+        return ToolResult(arg_1 * arg_2)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"arg_1": 2, "arg_2": 4},
+            )
+            assert result.data == 8
+
+
+async def test_that_a_plugin_tool_with_an_annotated_enum_parameter_can_be_called(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    class ProductCategory(enum.Enum):
+        CATEGORY_A = "category_a"
+        CATEGORY_B = "category_b"
+
+    @tool
+    async def my_enum_tool(
+        context: ToolContext,
+        category: Annotated[ProductCategory, ToolParameterOptions()],
+    ) -> ToolResult:
+        return ToolResult(category.value)
+
+    async with run_service_server([my_enum_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_enum_tool.tool.name,
+                tool_context,
+                arguments={"category": "category_a"},
+            )
+
+            assert result.data == "category_a"
+
+
+async def test_that_a_plugin_calls_a_tool_with_an_annotated_optional_param(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    def my_tool(
+        context: ToolContext,
+        arg_1: int,
+        arg_2: Annotated[Optional[int], ToolParameterOptions()] = None,
+    ) -> ToolResult:
+        assert arg_2
+        return ToolResult(arg_1 * arg_2)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"arg_1": 2, "arg_2": 4},
+            )
+            assert result.data == 8
+
+
+async def test_that_a_plugin_calls_a_tool_with_an_annotated_optional_param_and_a_None_arg(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    def my_tool(
+        context: ToolContext,
+        arg_1: int,
+        arg_2: Annotated[Optional[int], ToolParameterOptions()] = None,
+    ) -> ToolResult:
+        if not arg_2:
+            arg_2 = 1
+        return ToolResult(arg_1 * arg_2)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"arg_1": 2, "arg_2": None},
+            )
+            assert result.data == 2
+
+
+async def test_that_a_plugin_calls_a_tool_with_an_annotated_union_param(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    def my_tool(
+        context: ToolContext,
+        arg_1: int,
+        arg_2: Annotated[int | None, ToolParameterOptions()] = None,
+    ) -> ToolResult:
         assert arg_2
         return ToolResult(arg_1 * arg_2)
 

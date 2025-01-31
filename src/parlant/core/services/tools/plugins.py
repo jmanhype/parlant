@@ -128,8 +128,13 @@ class _ResolvedToolParameterTyped(NamedTuple):
 
 def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
     try:
-        if args := get_args(param.annotation):
-            if getattr(param.annotation, "__name__", None) != "Optional":
+        parameter_type = param.annotation
+
+        if getattr(parameter_type, "__name__", None) == "Annotated":
+            parameter_type = get_args(parameter_type)[0]
+
+        if args := get_args(parameter_type):
+            if getattr(parameter_type, "__name__", None) != "Optional":
                 if len(args) != 2:
                     raise Exception()
                 if type(None) not in args:
@@ -138,12 +143,12 @@ def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped
                     raise Exception()
 
             return _ResolvedToolParameterTyped(
-                t=get_args(param.annotation)[0],
+                t=get_args(parameter_type)[0],
                 is_optional=True,
             )
         else:
             return _ResolvedToolParameterTyped(
-                t=param.annotation,
+                t=parameter_type,
                 is_optional=False,
             )
     except Exception:
