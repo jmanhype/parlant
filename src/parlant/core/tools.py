@@ -30,6 +30,7 @@ from typing import (
     Sequence,
     TypeAlias,
     Union,
+    get_args,
 )
 from typing_extensions import override, TypedDict, NotRequired
 
@@ -101,6 +102,26 @@ class ToolResult:
     data: JSONSerializable
     metadata: Mapping[str, JSONSerializable] = field(default_factory=dict)
     control: ControlOptions = field(default_factory=lambda: ControlOptions())
+
+
+@dataclass(frozen=True)
+class ToolParameterOptions:
+    hidden: bool = field(default=False)
+    """If true, this parameter is not exposed in tool insights and message generation;
+    meaning, agents would not be able to inform customers when it is missing and required."""
+
+    source: Literal["any", "context", "customer"] = field(default="any")
+    """Describes what is the expected source for the argument. This can help agents understand
+    whether to ask for it directly from the customer, or to seek it elsewhere in the context."""
+
+    description: Optional[str] = field(default=None)
+    """A description of this parameter which should help agents understand how to extract arguments properly."""
+
+    examples: list[Any] = field(default_factory=list)
+    """Examples of arguments which should help agents understand how to extract arguments properly."""
+
+    adapter: Optional[Callable[[Any], Awaitable[Any]]] = field(default=None)
+    """A custom adapter function to convert the inferred value to a type."""
 
 
 @dataclass(frozen=True)
@@ -343,6 +364,8 @@ def normalize_tool_arguments(
 
 
 def normalize_tool_argument(parameter_type: Any, argument: Any) -> Any:
+    if getattr(parameter_type, "__name__", None) == "Annotated":
+        parameter_type = get_args(parameter_type)[0]
     if inspect.isclass(parameter_type) and issubclass(parameter_type, enum.Enum):
         return parameter_type(argument)
     return argument
