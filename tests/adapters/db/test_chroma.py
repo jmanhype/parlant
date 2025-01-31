@@ -380,12 +380,13 @@ async def test_that_glossary_chroma_store_correctly_finds_relevant_terms_from_la
                 assert any(t == bazoo for t in terms)
 
 
+class _TestDocumentV2(BaseDocument):
+    name: str
+
+
 async def test_that_document_loader_updates_documents_in_current_chroma_collection(
     context: _TestContext,
 ) -> None:
-    class _TestDocumentV2(BaseDocument):
-        name: str
-
     async with create_database(context) as chroma_database:
 
         async def _document_loader(doc: BaseDocument) -> _TestDocumentV2:
