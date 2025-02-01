@@ -30,6 +30,7 @@ from typing_extensions import override
 
 from parlant.core.tools import (
     Tool,
+    ToolParameterOptions,
     ToolResult,
     ToolParameterDescriptor,
     ToolParameterType,
@@ -148,8 +149,11 @@ class OpenAPIClient(ToolService):
                     creation_utc=datetime.now(timezone.utc),
                     description=operation.description or "",
                     parameters={
-                        **parameter_spec.query_parameters,
-                        **parameter_spec.body_parameters,
+                        name: (value, ToolParameterOptions())
+                        for name, value in {
+                            **parameter_spec.query_parameters,
+                            **parameter_spec.body_parameters,
+                        }.items()
                     },
                     required=parameter_spec.required,
                     consequential=False,

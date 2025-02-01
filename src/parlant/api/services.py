@@ -349,7 +349,10 @@ def _tool_to_dto(tool: Tool) -> ToolDTO:
         creation_utc=tool.creation_utc,
         name=tool.name,
         description=tool.description,
-        parameters={k: _tool_parameters_to_dto(p) for k, p in tool.parameters.items()},
+        parameters={
+            name: _tool_parameters_to_dto(descriptor)
+            for name, (descriptor, _) in tool.parameters.items()
+        },
         required=tool.required,
     )
 

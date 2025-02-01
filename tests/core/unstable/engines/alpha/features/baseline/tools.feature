@@ -66,3 +66,15 @@ Feature: Tools
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains a call to "find_answer" with an inquiry about a situation in which a card is lost
+
+    Scenario: Message generator understands and communicates that required information is missing
+        Given a customer with the name "Vax"
+        And an empty session
+        And a guideline "pay_cc_bill_guideline" to help a customer make the payment when they want to pay their credit card bill
+        And the tool "pay_cc_bill"
+        And an association between "pay_cc_bill_guideline" and "pay_cc_bill"
+        And a customer message, "Let's please pay my credit card bill."
+        When processing is triggered
+        Then no tool calls event is emitted
+        And a single message event is emitted
+        And the message mentions that a date is missing

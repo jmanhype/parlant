@@ -118,6 +118,9 @@ class ToolParameterOptions:
     description: Optional[str] = field(default=None)
     """A description of this parameter which should help agents understand how to extract arguments properly."""
 
+    significance: Optional[str] = field(default=None)
+    """A description of the significance of this parameter for the tool call — why is it needed?"""
+
     examples: list[Any] = field(default_factory=list)
     """Examples of arguments which should help agents understand how to extract arguments properly."""
 
@@ -130,7 +133,7 @@ class Tool:
     name: str
     creation_utc: datetime
     description: str
-    parameters: dict[str, ToolParameterDescriptor]
+    parameters: dict[str, tuple[ToolParameterDescriptor, ToolParameterOptions]]
     required: list[str]
     consequential: bool
 
@@ -224,7 +227,10 @@ class LocalToolService(ToolService):
             creation_utc=local_tool.creation_utc,
             name=local_tool.name,
             description=local_tool.description,
-            parameters=local_tool.parameters,
+            parameters={
+                name: (descriptor, ToolParameterOptions())
+                for name, descriptor in local_tool.parameters.items()
+            },
             required=local_tool.required,
             consequential=local_tool.consequential,
         )
@@ -329,7 +335,7 @@ def validate_tool_arguments(
     }
 
     for param_name, arg_value in arguments.items():
-        param_def = tool.parameters[param_name]
+        param_def, _ = tool.parameters[param_name]
         param_type = param_def["type"]
 
         if param_type == "enum":
