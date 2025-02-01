@@ -32,7 +32,7 @@ from typing import (
     Union,
     get_args,
 )
-from typing_extensions import override, TypedDict, NotRequired
+from typing_extensions import override, TypedDict
 
 from parlant.core.common import ItemNotFoundError, JSONSerializable, UniqueId
 
@@ -47,10 +47,11 @@ ToolParameterType = Literal[
 EnumValueType = Union[str, int]
 
 
-class ToolParameterDescriptor(TypedDict):
+class ToolParameterDescriptor(TypedDict, total=False):
     type: ToolParameterType
-    description: NotRequired[str]
-    enum: NotRequired[list[EnumValueType]]
+    enum: list[EnumValueType]
+    description: str
+    examples: list[str]
 
 
 # These two aliases are redefined here to avoid a circular reference.
