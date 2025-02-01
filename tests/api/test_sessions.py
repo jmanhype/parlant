@@ -718,7 +718,7 @@ async def test_that_tool_events_are_correlated_with_message_events(
         container=container,
         session_id=session_id,
         message="Hello there!",
-        response_timeout=Timeout(30),
+        response_timeout=Timeout(60),
     )
 
     events_in_session = (

@@ -579,6 +579,24 @@ class PluginClient(ToolService):
         await self._http_client.__aexit__(exc_type, exc_value, traceback)
         return False
 
+    def _translate_parameters(
+        self,
+        parameters: dict[str, Any],
+    ) -> dict[str, tuple[ToolParameterDescriptor, ToolParameterOptions]]:
+        return {
+            name: (
+                descriptor,
+                ToolParameterOptions(
+                    hidden=options["hidden"],
+                    source=options["source"],
+                    description=options["description"],
+                    significance=options["significance"],
+                    examples=options["examples"],
+                ),
+            )
+            for name, (descriptor, options) in parameters.items()
+        }
+
     @override
     async def list_tools(self) -> Sequence[Tool]:
         response = await self._http_client.get(self._get_url("/tools"))
@@ -588,7 +606,7 @@ class PluginClient(ToolService):
                 name=t["name"],
                 creation_utc=dateutil.parser.parse(t["creation_utc"]),
                 description=t["description"],
-                parameters=t["parameters"],
+                parameters=self._translate_parameters(t["parameters"]),
                 required=t["required"],
                 consequential=t["consequential"],
             )
@@ -601,14 +619,14 @@ class PluginClient(ToolService):
         if response.status_code == status.HTTP_404_NOT_FOUND:
             raise ItemNotFoundError(UniqueId(name))
         content = response.json()
-        tool = content["tool"]
+        t = content["tool"]
         return Tool(
-            name=tool["name"],
-            creation_utc=dateutil.parser.parse(tool["creation_utc"]),
-            description=tool["description"],
-            parameters=tool["parameters"],
-            required=tool["required"],
-            consequential=tool["consequential"],
+            name=t["name"],
+            creation_utc=dateutil.parser.parse(t["creation_utc"]),
+            description=t["description"],
+            parameters=self._translate_parameters(t["parameters"]),
+            required=t["required"],
+            consequential=t["consequential"],
         )
 
     @override
