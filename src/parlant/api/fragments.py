@@ -310,6 +310,13 @@ def create_router(
         "",
         operation_id="list_fragments",
         response_model=Sequence[FragmentDTO],
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all fragments in the system",
+                "content": example_json_content([fragment_example]),
+            }
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list"),
     )
     async def list_fragments() -> Sequence[FragmentDTO]:
         fragments = await fragment_store.list_fragments()
@@ -329,6 +336,19 @@ def create_router(
         "/{fragment_id}",
         operation_id="update_fragment",
         response_model=FragmentDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Fragment successfully updated. Returns the updated Fragment object.",
+                "content": example_json_content(fragment_example),
+            },
+            status.HTTP_404_NOT_FOUND: {
+                "description": "Fragment not found. The specified fragment_id does not exist"
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in update parameters"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="update"),
     )
     async def update_fragment(
         fragment_id: FragmentIdField, params: FragmentUpdateParamsDTO
@@ -376,6 +396,15 @@ def create_router(
         "/{fragment_id}",
         operation_id="delete_fragment",
         status_code=status.HTTP_204_NO_CONTENT,
+        responses={
+            status.HTTP_204_NO_CONTENT: {
+                "description": "Fragment successfully deleted. No content returned."
+            },
+            status.HTTP_404_NOT_FOUND: {
+                "description": "Fragment not found. The specified fragment_id does not exist"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="delete"),
     )
     async def delete_fragment(fragment_id: FragmentIdField) -> None:
         await fragment_store.delete_fragment(fragment_id)
