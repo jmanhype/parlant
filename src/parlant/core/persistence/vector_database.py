@@ -31,7 +31,7 @@ class BaseDocument(TypedDict, total=False):
 TDocument = TypeVar("TDocument", bound=BaseDocument)
 
 
-async def noop_loader(doc: BaseDocument) -> BaseDocument:
+async def identity_loader(doc: BaseDocument) -> BaseDocument:
     return doc
 
 

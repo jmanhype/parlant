@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Mapping, NewType, Optional, Union, cast, get_type_hints
+from typing import Any, Callable, Mapping, NewType, Union, cast, get_type_hints
 from typing_extensions import Literal, TypedDict
 
 
@@ -21,16 +21,6 @@ ObjectId = NewType("ObjectId", str)
 
 class MigrationError(Exception):
     def __init__(self, message: str):
-        super().__init__(message)
-
-
-class VersionMismatchError(MigrationError):
-    def __init__(self, message: Optional[str] = None) -> None:
-        super().__init__(message or "A version mismatch occurred.")
-
-
-class MigrationRequiredError(MigrationError):
-    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 

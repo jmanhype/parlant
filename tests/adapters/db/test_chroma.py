@@ -27,7 +27,7 @@ from parlant.core.glossary import GlossaryVectorStore
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.logging import Logger
 from parlant.core.nlp.service import NLPService
-from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
+from parlant.core.persistence.common import MigrationError, ObjectId
 
 from parlant.core.persistence.vector_database import BaseDocument
 from parlant.core.glossary import _MetadataDocument
@@ -86,7 +86,7 @@ def create_database(context: _TestContext) -> ChromaDatabase:
     )
 
 
-async def _noop_loader(doc: BaseDocument) -> Optional[_TestDocument]:
+async def _identity_loader(doc: BaseDocument) -> Optional[_TestDocument]:
     return cast(_TestDocument, doc)
 
 
@@ -98,7 +98,7 @@ async def chroma_collection(
         "test_collection",
         _TestDocument,
         embedder_type=OpenAITextEmbedding3Large,
-        document_loader=_noop_loader,
+        document_loader=_identity_loader,
     )
     yield collection
     await chroma_database.delete_collection("test_collection")
@@ -307,7 +307,7 @@ async def test_loading_collections(
             "test_collection",
             _TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         document = _TestDocument(
@@ -323,7 +323,7 @@ async def test_loading_collections(
         fetched_collection: ChromaCollection[_TestDocument] = await second_db.get_collection(
             "test_collection",
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         result = await fetched_collection.find({"id": {"$eq": "1"}})
@@ -384,6 +384,28 @@ class _TestDocumentV2(BaseDocument):
     name: str
 
 
+async def test_that_migration_is_not_required_when_no_documents_in_store_and_migration_is_disabled(
+    context: _TestContext,
+) -> None:
+    async with create_database(context) as chroma_db:
+        async with GlossaryVectorStore(
+            vector_db=chroma_db,
+            embedder_factory=EmbedderFactory(context.container),
+            embedder_type=OpenAITextEmbedding3Large,
+            migrate=False,
+        ) as store:
+            meta_collection = await chroma_db.get_or_create_collection(
+                name="metadata",
+                schema=_MetadataDocument,
+                document_loader=store._metadata_document_loader,
+                embedder_type=OpenAITextEmbedding3Large,
+            )
+            meta_document = await meta_collection.find_one({})
+
+            assert meta_document
+            assert meta_document["version"] == "0.1.0"
+
+
 async def test_that_document_loader_updates_documents_in_current_chroma_collection(
     context: _TestContext,
 ) -> None:
@@ -410,7 +432,7 @@ async def test_that_document_loader_updates_documents_in_current_chroma_collecti
             "test_collection",
             _TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         documents = [
@@ -493,7 +515,7 @@ async def test_that_failed_migrations_are_stored_in_failed_migrations_collection
             "test_collection",
             _TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         documents = [
@@ -539,7 +561,7 @@ async def test_that_failed_migrations_are_stored_in_failed_migrations_collection
             "failed_migrations",
             _TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         failed_migrations = await failed_migrations_collection.find({})
@@ -558,7 +580,7 @@ async def test_that_version_match_in_chroma_metadata_does_not_raise_error_when_m
             "metadata",
             schema=_MetadataDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         valid_meta_document = _MetadataDocument(
@@ -587,7 +609,7 @@ async def test_that_version_mismatch_in_chroma_metadata_raises_error_when_migrat
             "metadata",
             schema=_MetadataDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         invalid_meta_document = _MetadataDocument(
@@ -598,7 +620,7 @@ async def test_that_version_mismatch_in_chroma_metadata_raises_error_when_migrat
         await metadata_collection.insert_one(invalid_meta_document)
 
     async with create_database(context) as chroma_db:
-        with raises(VersionMismatchError) as exc_info:
+        with raises(MigrationError) as exc_info:
             async with GlossaryVectorStore(
                 vector_db=chroma_db,
                 embedder_factory=EmbedderFactory(context.container),
@@ -622,7 +644,7 @@ async def test_that_migrate_flag_is_required_when_metadata_is_missing_in_chroma(
             "glossary",
             schema=_TestDocument,
             embedder_type=OpenAITextEmbedding3Large,
-            document_loader=_noop_loader,
+            document_loader=_identity_loader,
         )
 
         document_with_version = _TestDocument(
@@ -633,7 +655,7 @@ async def test_that_migrate_flag_is_required_when_metadata_is_missing_in_chroma(
         )
         await term_collection.insert_one(document_with_version)
 
-        with raises(MigrationRequiredError) as exc_info:
+        with raises(MigrationError) as exc_info:
             async with GlossaryVectorStore(
                 vector_db=chroma_db,
                 embedder_factory=EmbedderFactory(context.container),

@@ -20,11 +20,12 @@ from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, generate_id, UniqueId
-from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
+from parlant.core.persistence.common import MigrationError, ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentCollection,
     DocumentDatabase,
+    identity_loader,
 )
 from parlant.core.common import Version
 
@@ -90,7 +91,7 @@ class _MetadataDocument(TypedDict, total=False):
 class TagDocumentStore(TagStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = True) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
         self._collection: DocumentCollection[_TagDocument]
         self._metadata_collection: DocumentCollection[_MetadataDocument]
@@ -99,12 +100,12 @@ class TagDocumentStore(TagStore):
 
         self._lock = ReaderWriterLock()
 
-    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
+    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
         if doc["version"] == "0.1.0":
             return cast(_MetadataDocument, doc)
 
         if not self._migrate:
-            raise VersionMismatchError(
+            raise MigrationError(
                 f"Version mismatch in 'TagDocumentStore': Expected '{self.VERSION.to_string()}', but got '{doc['version']}'."
             )
 
@@ -115,34 +116,57 @@ class TagDocumentStore(TagStore):
             return cast(_TagDocument, doc)
         return None
 
+    async def _is_migration_required(self) -> bool:
+        self._metadata_collection = await self._database.get_or_create_collection(
+            name="metadata",
+            schema=BaseDocument,
+            document_loader=identity_loader,
+        )
+
+        async with self._lock.writer_lock:
+            existing_meta = await self._metadata_collection.find_one({})
+            if not existing_meta:
+                _collection = await self._database.get_or_create_collection(
+                    name="tags",
+                    schema=BaseDocument,
+                    document_loader=identity_loader,
+                )
+
+                collection_doc = await _collection.find_one({})
+                if collection_doc:  # Existing persistence
+                    if collection_doc["version"] != TagDocumentStore.VERSION.to_string():
+                        # Create metadata with the document version
+                        meta_document = _MetadataDocument(
+                            id=ObjectId(generate_id()),
+                            version=collection_doc["version"],
+                        )
+                        await self._metadata_collection.insert_one(meta_document)
+                        return True
+                else:  # New store
+                    # Create metadata with the store version
+                    meta_document = _MetadataDocument(
+                        id=ObjectId(generate_id()),
+                        version=TagDocumentStore.VERSION.to_string(),
+                    )
+                    await self._metadata_collection.insert_one(meta_document)
+
+        return False
+
     async def __aenter__(self) -> Self:
+        if await self._is_migration_required() and not self._migrate:
+            raise MigrationError("Migration required for TagDocumentStore.")
+
         self._metadata_collection = await self._database.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
-            document_loader=self._meta_document_loader,
+            document_loader=self._metadata_document_loader,
         )
-
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationRequiredError(
-                        "Migration is required to proceed with initialization."
-                    )
 
         self._collection = await self._database.get_or_create_collection(
             name="tags",
             schema=_TagDocument,
             document_loader=self._document_loader,
         )
-
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=TagDocumentStore.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
 
         return self
 

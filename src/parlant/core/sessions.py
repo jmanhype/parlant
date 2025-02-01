@@ -43,9 +43,8 @@ from parlant.core.customers import CustomerId
 from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.common import (
-    MigrationRequiredError,
     ObjectId,
-    VersionMismatchError,
+    MigrationError,
     Where,
 )
 from parlant.core.persistence.document_database import (
@@ -404,12 +403,12 @@ class SessionDocumentStore(SessionStore):
 
         self._lock = ReaderWriterLock()
 
-    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
+    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
         if doc["version"] == "0.1.0":
             return cast(_MetadataDocument, doc)
 
         if not self._migrate:
-            raise VersionMismatchError(
+            raise MigrationError(
                 f"Version mismatch in 'SessionDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
             )
 
@@ -434,15 +433,13 @@ class SessionDocumentStore(SessionStore):
         self._metadata_collection = await self._database.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
-            document_loader=self._meta_document_loader,
+            document_loader=self._metadata_document_loader,
         )
         async with self._lock.reader_lock:
             existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
-                    raise MigrationRequiredError(
-                        "Migration is required to proceed with initialization."
-                    )
+                    raise MigrationError("Migration is required to proceed with initialization.")
 
         self._session_collection = await self._database.get_or_create_collection(
             name="sessions",

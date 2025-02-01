@@ -21,7 +21,7 @@ from typing_extensions import override, TypedDict, Self
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
 from parlant.core.guidelines import GuidelineId
-from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
+from parlant.core.persistence.common import MigrationError, ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
@@ -92,12 +92,12 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         self._migrate = migrate
         self._lock = ReaderWriterLock()
 
-    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
+    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
         if doc["version"] == "0.1.0":
             return cast(_MetadataDocument, doc)
 
         if not self._migrate:
-            raise VersionMismatchError(
+            raise MigrationError(
                 f"Version mismatch in 'GuidelineToolAssociationDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
             )
 
@@ -115,16 +115,14 @@ class GuidelineToolAssociationDocumentStore(GuidelineToolAssociationStore):
         self._metadata_collection = await self._database.get_or_create_collection(
             name="metadata",
             schema=_MetadataDocument,
-            document_loader=self._meta_document_loader,
+            document_loader=self._metadata_document_loader,
         )
 
         async with self._lock.reader_lock:
             existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
-                    raise MigrationRequiredError(
-                        "Migration is required to proceed with initialization."
-                    )
+                    raise MigrationError("Migration is required to proceed with initialization.")
 
         self._collection = await self._database.get_or_create_collection(
             name="associations",

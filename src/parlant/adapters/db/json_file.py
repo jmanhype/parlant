@@ -216,11 +216,13 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
         self._collections[name] = JSONFileDocumentCollection(
-                database=self,
-                name=name,
-                schema=schema,
-                data=await self.load_documents_with_loader(name, document_loader) if name in self._raw_data else [],
-            )
+            database=self,
+            name=name,
+            schema=schema,
+            data=await self.load_documents_with_loader(name, document_loader)
+            if name in self._raw_data
+            else [],
+        )
         self._collection_types[name] = schema
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])

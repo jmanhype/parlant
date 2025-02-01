@@ -22,7 +22,7 @@ import chromadb
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.logging import Logger
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
-from parlant.core.persistence.common import VersionMismatchError, Where, ensure_is_total
+from parlant.core.persistence.common import MigrationError, Where, ensure_is_total
 from parlant.core.persistence.vector_database import (
     BaseDocument,
     DeleteResult,
@@ -32,7 +32,7 @@ from parlant.core.persistence.vector_database import (
     VectorCollection,
     VectorDatabase,
     TDocument,
-    noop_loader,
+    identity_loader,
 )
 
 
@@ -62,7 +62,7 @@ class ChromaDatabase(VectorDatabase):
     ) -> None:
         pass
 
-    async def load_documents_to_chroma_collection_with_loader(
+    async def _load_documents_to_chroma_collection_with_loader(
         self,
         chroma_collection: chromadb.Collection,
         embedder_type: type[Embedder],
@@ -96,7 +96,7 @@ class ChromaDatabase(VectorDatabase):
                     chroma_collection.delete(where={"id": doc["id"]})
                     failed_migrations.append(prospective_doc)
 
-            except VersionMismatchError as e:
+            except MigrationError as e:
                 raise e
             except Exception as e:
                 self._logger.error(f"Failed to load document '{doc}'. error: {e}.")
@@ -108,7 +108,7 @@ class ChromaDatabase(VectorDatabase):
                 "failed_migrations",
                 BaseDocument,
                 embedder_type,
-                noop_loader,
+                identity_loader,
             )
 
             for failed_doc in failed_migrations:
@@ -158,7 +158,7 @@ class ChromaDatabase(VectorDatabase):
         ):
             self._collections[name] = ChromaCollection(
                 self._logger,
-                chromadb_collection=await self.load_documents_to_chroma_collection_with_loader(
+                chromadb_collection=await self._load_documents_to_chroma_collection_with_loader(
                     chroma_collection, embedder_type=embedder_type, document_loader=document_loader
                 ),
                 name=name,
@@ -184,7 +184,7 @@ class ChromaDatabase(VectorDatabase):
         ):
             self._collections[name] = ChromaCollection(
                 self._logger,
-                chromadb_collection=await self.load_documents_to_chroma_collection_with_loader(
+                chromadb_collection=await self._load_documents_to_chroma_collection_with_loader(
                     chroma_collection, embedder_type=embedder_type, document_loader=document_loader
                 ),
                 name=name,

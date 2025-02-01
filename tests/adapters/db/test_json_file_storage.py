@@ -43,8 +43,12 @@ from parlant.core.guidelines import (
     GuidelineId,
 )
 from parlant.adapters.db.json_file import JSONFileDocumentDatabase
-from parlant.core.persistence.common import MigrationRequiredError, VersionMismatchError
-from parlant.core.persistence.document_database import BaseDocument, DocumentCollection, noop_loader
+from parlant.core.persistence.common import MigrationError
+from parlant.core.persistence.document_database import (
+    BaseDocument,
+    DocumentCollection,
+    identity_loader,
+)
 from parlant.core.sessions import SessionDocumentStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
@@ -682,6 +686,25 @@ async def test_document_upgrade_during_loading(
             assert upgraded_doc["additional_field"] == "default_value"
 
 
+async def test_that_migration_is_not_required_when_no_documents_in_store_and_migration_is_disabled(
+    context: _TestContext,
+    new_file: Path,
+) -> None:
+    logger = context.container[Logger]
+
+    async with JSONFileDocumentDatabase(logger, new_file) as db:
+        async with TagDocumentStore(db, migrate=False) as store:
+            meta_collection = await db.get_or_create_collection(
+                name="metadata",
+                schema=_MetadataDocument,
+                document_loader=store._metadata_document_loader,
+            )
+            meta_document = await meta_collection.find_one({})
+
+            assert meta_document
+            assert meta_document["version"] == "0.1.0"
+
+
 async def test_failed_migration_collection(
     container: Container,
     new_file: Path,
@@ -709,7 +732,7 @@ async def test_failed_migration_collection(
             assert len(documents) == 0
 
             failed_migrations_collection = await db.get_collection(
-                "failed_migrations", BaseDocument, noop_loader
+                "failed_migrations", BaseDocument, identity_loader
             )
             failed_docs = await failed_migrations_collection.find({})
 
@@ -737,7 +760,7 @@ async def test_that_version_mismatch_raises_error_when_migration_is_required_but
         )
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        with raises(VersionMismatchError) as exc_info:
+        with raises(MigrationError) as exc_info:
             async with TagDocumentStore(db, migrate=False) as _:
                 pass
 
@@ -772,7 +795,7 @@ async def test_that_migrate_flag_is_required_when_metadata_is_missing(
         )
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        with raises(MigrationRequiredError) as exc_info:
+        with raises(MigrationError) as exc_info:
             async with TagDocumentStore(db, migrate=False) as _:
                 pass
 
@@ -800,7 +823,7 @@ async def test_that_version_match_does_not_raise_error_when_migration_is_not_req
             meta_collection = await db.get_or_create_collection(
                 name="metadata",
                 schema=_MetadataDocument,
-                document_loader=store._meta_document_loader,
+                document_loader=store._metadata_document_loader,
             )
             meta_document = await meta_collection.find_one({})
 

@@ -22,7 +22,7 @@ from typing_extensions import override, Self
 from parlant.core import async_utils
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
-from parlant.core.persistence.common import MigrationRequiredError, ObjectId, VersionMismatchError
+from parlant.core.persistence.common import MigrationError, ObjectId
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.persistence.vector_database import BaseDocument, VectorCollection, VectorDatabase
 
@@ -137,12 +137,12 @@ class GlossaryVectorStore(GlossaryStore):
 
         self._lock = ReaderWriterLock()
 
-    async def _meta_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
+    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
         if doc["version"] == "0.1.0":
             return cast(_MetadataDocument, doc)
 
         if not self._migrate:
-            raise VersionMismatchError(
+            raise MigrationError(
                 f"Version mismatch in 'GlossaryVectorStore': Expected '{self.VERSION.to_string()}', but got '{doc['version']}'."
             )
 
@@ -159,16 +159,14 @@ class GlossaryVectorStore(GlossaryStore):
             name="metadata",
             schema=_MetadataDocument,
             embedder_type=self._embedder_type,
-            document_loader=self._meta_document_loader,
+            document_loader=self._metadata_document_loader,
         )
 
         async with self._lock.reader_lock:
             existing_meta = await self._metadata_collection.find_one({})
             if not existing_meta:
                 if not self._migrate:
-                    raise MigrationRequiredError(
-                        "Migration is required to proceed with initialization."
-                    )
+                    raise MigrationError("Migration is required to proceed with initialization.")
 
         self._collection = await self._vector_db.get_or_create_collection(
             name="glossary",
