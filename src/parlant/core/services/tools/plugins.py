@@ -36,6 +36,7 @@ from typing import (
     get_args,
     overload,
 )
+from pydantic import TypeAdapter
 from typing_extensions import Unpack, override
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -49,6 +50,7 @@ from parlant.core.tools import (
     Tool,
     ToolError,
     ToolParameterDescriptor,
+    ToolParameterOptions,
     ToolParameterType,
     ToolResult,
     ToolContext,
@@ -121,17 +123,25 @@ class _ToolDecoratorParams(TypedDict, total=False):
 _ToolParameterType = Union[str, int, float, bool, None]
 
 
-class _ResolvedToolParameterTyped(NamedTuple):
-    t: type[_ToolParameterType]
+class _ToolParameterInfo(NamedTuple):
+    raw_type: type
+    resolved_type: type[_ToolParameterType]
+    options: Optional[ToolParameterOptions]
     is_optional: bool
 
 
-def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped:
+def _resolve_param_info(param: inspect.Parameter) -> _ToolParameterInfo:
     try:
         parameter_type = param.annotation
+        parameter_options: Optional[ToolParameterOptions] = None
 
         if getattr(parameter_type, "__name__", None) == "Annotated":
-            parameter_type = get_args(parameter_type)[0]
+            annotation_params = get_args(parameter_type)
+            parameter_type = annotation_params[0]
+            annotation_value = annotation_params[1]
+
+            if isinstance(annotation_value, ToolParameterOptions):
+                parameter_options = annotation_value
 
         if args := get_args(parameter_type):
             if getattr(parameter_type, "__name__", None) != "Optional":
@@ -142,17 +152,38 @@ def _resolve_param_type(param: inspect.Parameter) -> _ResolvedToolParameterTyped
                 if all(t is None for t in args):
                     raise Exception()
 
-            return _ResolvedToolParameterTyped(
-                t=get_args(parameter_type)[0],
+            return _ToolParameterInfo(
+                raw_type=parameter_type,
+                resolved_type=get_args(parameter_type)[0],
+                options=parameter_options,
                 is_optional=True,
             )
         else:
-            return _ResolvedToolParameterTyped(
-                t=parameter_type,
+            return _ToolParameterInfo(
+                raw_type=parameter_type,
+                resolved_type=parameter_type,
+                options=parameter_options,
                 is_optional=False,
             )
     except Exception:
         raise TypeError(f"Parameter type '{param.annotation}' is not supported in tool functions")
+
+
+async def adapt_tool_arguments(
+    parameters: Mapping[str, inspect.Parameter],
+    arguments: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    adapted_arguments = {}
+
+    for name, argument in arguments.items():
+        parameter_info = _resolve_param_info(parameters[name])
+
+        if parameter_info.options and parameter_info.options.adapter:
+            adapted_arguments[name] = await parameter_info.options.adapter(argument)
+        else:
+            adapted_arguments[name] = TypeAdapter(parameter_info.raw_type).validate_python(argument)
+
+    return adapted_arguments
 
 
 def _tool_decorator_impl(
@@ -179,19 +210,12 @@ def _tool_decorator_impl(
         ), "A tool function must return a ToolResult object"
 
         for param in parameters[1:]:
-            param_type = _resolve_param_type(param)
+            param_info = _resolve_param_info(param)
 
-            if param_type.t not in get_args(_ToolParameterType) and not issubclass(
-                param_type.t, enum.Enum
-            ):
-                raise AssertionError(
-                    f"{param.name}: {param_type.t.__name__}: parameter type must be in {[t.__name__ for t in get_args(_ToolParameterType)]} or be a valid Enum type"
-                )
-
-            if issubclass(param_type.t, enum.Enum):
+            if issubclass(param_info.resolved_type, enum.Enum):
                 assert all(
-                    type(e.value) in get_args(EnumValueType) for e in param_type.t
-                ), f"{param.name}: {param_type.t.__name__}: Enum values must be in {[t.__name__ for t in get_args(EnumValueType)]}"
+                    type(e.value) in get_args(EnumValueType) for e in param_info.resolved_type
+                ), f"{param.name}: {param_info.resolved_type.__name__}: Enum values must be in {[t.__name__ for t in get_args(EnumValueType)]}"
 
     def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameterDescriptor]:
         type_to_param_type: dict[type[_ToolParameterType], ToolParameterType] = {
@@ -204,29 +228,37 @@ def _tool_decorator_impl(
         parameters = list(inspect.signature(func).parameters.values())
         parameters = parameters[1:]  # Skip tool context parameter
 
-        param_descriptions = {}
+        param_descriptors = {}
 
         for p in parameters:
-            param_type_info = _resolve_param_type(p)
-            param_type = param_type_info.t
+            param_info = _resolve_param_info(p)
+            param_type = param_info.resolved_type
+
+            param_descriptor: ToolParameterDescriptor = {}
 
             if param_type in type_to_param_type:
-                tool_param = ToolParameterDescriptor(type=type_to_param_type[param_type])
+                param_descriptor["type"] = type_to_param_type[param_type]
             elif issubclass(param_type, enum.Enum):
-                tool_param = ToolParameterDescriptor(
-                    type="string", enum=[e.value for e in param_type]
-                )
+                param_descriptor["type"] = "string"
+                param_descriptor["enum"] = [e.value for e in param_type]
             else:
-                raise ValueError(f"Unsupported parameter type: {param_type}")
+                # Do a best-effort with the string type
+                param_descriptor["type"] = "string"
 
-            param_descriptions[p.name] = tool_param
+            if options := param_info.options:
+                if options.description:
+                    param_descriptor["description"] = options.description
+                if options.examples:
+                    param_descriptor["examples"] = options.examples
 
-        return param_descriptions
+            param_descriptors[p.name] = param_descriptor
+
+        return param_descriptors
 
     def _find_required_params(func: ToolFunction) -> list[str]:
         parameters = list(inspect.signature(func).parameters.values())
         parameters = parameters[1:]  # Skip tool context parameter
-        resolved_params = {p.name: _resolve_param_type(p) for p in parameters}
+        resolved_params = {p.name: _resolve_param_info(p) for p in parameters}
         return [name for name, type in resolved_params.items() if not type.is_optional]
 
     def decorator(func: ToolFunction) -> ToolEntry:
@@ -471,13 +503,11 @@ class PluginServer:
             func = self.tools[name].function
 
             try:
-                result = self.tools[name].function(
-                    context,
-                    **normalize_tool_arguments(
-                        inspect.signature(func).parameters,
-                        request.arguments,
-                    ),
-                )  # type: ignore
+                tool_params = inspect.signature(func).parameters
+                normalized_args = normalize_tool_arguments(tool_params, request.arguments)
+                adapted_args = await adapt_tool_arguments(tool_params, normalized_args)
+
+                result = self.tools[name].function(context, **adapted_args)  # type: ignore
             except BaseException:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

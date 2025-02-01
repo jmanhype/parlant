@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+from datetime import datetime
 import enum
 from typing import Annotated, Any, Mapping, Optional, cast
 from lagom import Container
@@ -317,6 +318,28 @@ async def test_that_a_plugin_tool_with_enum_parameter_can_be_called(
             )
 
             assert result.data == "category_a"
+
+
+async def test_that_a_plugin_tool_with_datetime_parameter_can_be_called(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    async def my_tool(context: ToolContext, date: datetime) -> ToolResult:
+        return ToolResult(date.day)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"date": "2025-01-01"},
+            )
+
+            assert result.data == 1
 
 
 async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
