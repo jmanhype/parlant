@@ -15,8 +15,10 @@
 import asyncio
 from datetime import datetime
 import enum
+import json
 from typing import Annotated, Any, Mapping, Optional, cast
 from lagom import Container
+from pydantic import BaseModel
 from pytest import fixture, raises
 import pytest
 
@@ -342,6 +344,32 @@ async def test_that_a_plugin_tool_with_datetime_parameter_can_be_called(
             assert result.data == 1
 
 
+async def test_that_a_plugin_tool_with_basemodel_parameter_can_be_called(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    class Person(BaseModel):
+        name: str
+        age: int
+
+    @tool
+    async def my_tool(context: ToolContext, person: Person) -> ToolResult:
+        return ToolResult(f"{person.name} {person.age}")
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"person": json.dumps({"name": "Dor", "age": 32})},
+            )
+
+            assert result.data == "Dor 32"
+
+
 async def test_that_a_plugin_calls_a_tool_with_an_optional_param(
     tool_context: ToolContext,
     container: Container,
@@ -379,6 +407,59 @@ async def test_that_a_plugin_calls_a_tool_with_an_optional_param_and_a_None_arg(
                 arguments={"arg_1": 2, "arg_2": None},
             )
             assert result.data == 2
+
+
+async def test_that_a_plugin_tool_with_an_optional_basemodel_parameter_can_be_called(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    class Person(BaseModel):
+        name: str
+        age: int
+
+    @tool
+    async def my_tool(context: ToolContext, person: Optional[Person] = None) -> ToolResult:
+        assert person
+        return ToolResult(f"{person.name} {person.age}")
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"person": json.dumps({"name": "Dor", "age": 32})},
+            )
+
+            assert result.data == "Dor 32"
+
+
+async def test_that_a_plugin_tool_with_an_optional_basemodel_parameter_and_a_None_value_can_be_called(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    class Person(BaseModel):
+        name: str
+        age: int
+
+    @tool
+    async def my_tool(context: ToolContext, person: Optional[Person] = None) -> ToolResult:
+        return ToolResult(person is None)
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            tools = await client.list_tools()
+
+            assert tools
+            result = await client.call_tool(
+                my_tool.tool.name,
+                tool_context,
+                arguments={"person": None},
+            )
+
+            assert result.data
 
 
 async def test_that_a_plugin_calls_a_tool_with_a_union_param(
