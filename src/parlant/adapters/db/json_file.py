@@ -20,7 +20,7 @@ from typing_extensions import override, Self
 import aiofiles
 
 from parlant.core.persistence.common import (
-    VersionMismatchError,
+    MigrationError,
     Where,
     matches_filters,
     ensure_is_total,
@@ -34,7 +34,7 @@ from parlant.core.persistence.document_database import (
     InsertResult,
     TDocument,
     UpdateResult,
-    noop_loader,
+    identity_loader,
 )
 from parlant.core.logging import Logger
 
@@ -57,6 +57,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         self._raw_data: dict[str, Any] = {}
         self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]] = {}
+        self._collection_types: dict[str, type[BaseDocument]] = {}
 
     async def flush(self) -> None:
         async with self._lock.writer_lock:
@@ -103,6 +104,40 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             )
             await file.write(json_string)
 
+    async def load_documents_with_loader(
+        self,
+        name: str,
+        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
+        documents: Sequence[BaseDocument] | None = None,
+    ) -> Sequence[TDocument]:
+        data: list[TDocument] = []
+        failed_migrations: list[BaseDocument] = []
+
+        collection_documents = documents or self._raw_data.get(name, [])
+
+        for doc in collection_documents:
+            try:
+                if loaded_doc := await document_loader(doc):
+                    data.append(loaded_doc)
+                else:
+                    self._logger.warning(f'Failed to load document "{doc}"')
+                    failed_migrations.append(doc)
+            except MigrationError as e:
+                raise e
+            except Exception as e:
+                self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
+                failed_migrations.append(doc)
+
+        if failed_migrations:
+            failed_migrations_collection = await self.get_or_create_collection(
+                "failed_migrations", BaseDocument, identity_loader
+            )
+
+            for doc in failed_migrations:
+                await failed_migrations_collection.insert_one(doc)
+
+        return data
+
     @override
     async def create_collection(
         self,
@@ -116,41 +151,9 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             name=name,
             schema=schema,
         )
+        self._collection_types[name] = schema
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
-
-    async def load_documents_with_loader(
-        self,
-        name: str,
-        document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
-    ) -> Sequence[TDocument]:
-        data: list[TDocument] = []
-        failed_migrations: list[BaseDocument] = []
-
-        collection_documents = self._raw_data.get(name, [])
-
-        for doc in collection_documents:
-            try:
-                if loaded_doc := await document_loader(doc):
-                    data.append(loaded_doc)
-                else:
-                    self._logger.warning(f'Failed to load document "{doc}"')
-                    failed_migrations.append(doc)
-            except VersionMismatchError as e:
-                raise e
-            except Exception as e:
-                self._logger.error(f"Failed to load document '{doc}' with error: {e}.")
-                failed_migrations.append(doc)
-
-        if failed_migrations:
-            failed_migrations_collection = await self.get_or_create_collection(
-                "failed_migrations", BaseDocument, noop_loader
-            )
-
-            for doc in failed_migrations:
-                await failed_migrations_collection.insert_one(doc)
-
-        return data
 
     @override
     async def get_collection(
@@ -160,7 +163,22 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return cast(JSONFileDocumentCollection[TDocument], collection)
+            if self._collection_types[name] == schema:
+                return cast(JSONFileDocumentCollection[TDocument], collection)
+            else:
+                self._collections[name] = JSONFileDocumentCollection(
+                    database=self,
+                    name=name,
+                    schema=schema,
+                    data=await self.load_documents_with_loader(
+                        name,
+                        document_loader,
+                        documents=(await self._collections[name].find({})),
+                    ),
+                )
+                self._collection_types[name] = schema
+            return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
+
         elif name in self._raw_data:
             self._collections[name] = JSONFileDocumentCollection(
                 database=self,
@@ -168,6 +186,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 schema=schema,
                 data=await self.load_documents_with_loader(name, document_loader),
             )
+            self._collection_types[name] = schema
             return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
         raise ValueError(f'Collection "{name}" does not exists')
@@ -180,20 +199,29 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            return cast(JSONFileDocumentCollection[TDocument], collection)
-        elif name in self._raw_data:
-            self._collections[name] = JSONFileDocumentCollection(
+            if self._collection_types[name] == schema:
+                return cast(JSONFileDocumentCollection[TDocument], collection)
+            else:
+                self._collections[name] = JSONFileDocumentCollection(
+                    database=self,
+                    name=name,
+                    schema=schema,
+                    data=await self.load_documents_with_loader(
+                        name,
+                        document_loader,
+                        documents=self._collections[name].documents,
+                    ),
+                )
+                self._collection_types[name] = schema
+                return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
+
+        self._collections[name] = JSONFileDocumentCollection(
                 database=self,
                 name=name,
                 schema=schema,
-                data=await self.load_documents_with_loader(name, document_loader),
+                data=await self.load_documents_with_loader(name, document_loader) if name in self._raw_data else [],
             )
-        else:
-            self._collections[name] = JSONFileDocumentCollection(
-                database=self,
-                name=name,
-                schema=schema,
-            )
+        self._collection_types[name] = schema
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
