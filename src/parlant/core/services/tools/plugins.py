@@ -255,6 +255,11 @@ def _tool_decorator_impl(
                 # Do a best-effort with the string type
                 param_descriptor["type"] = "string"
 
+            if issubclass(param_info.resolved_type, BaseModel):
+                param_descriptor["description"] = json.dumps(
+                    {"json_schema": param_info.resolved_type.model_json_schema()}
+                )
+
             if options := param_info.options:
                 if options.description:
                     param_descriptor["description"] = options.description
