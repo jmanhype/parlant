@@ -227,7 +227,9 @@ def _tool_decorator_impl(
                     type(e.value) in get_args(EnumValueType) for e in param_info.resolved_type
                 ), f"{param.name}: {param_info.resolved_type.__name__}: Enum values must be in {[t.__name__ for t in get_args(EnumValueType)]}"
 
-    def _describe_parameters(func: ToolFunction) -> dict[str, ToolParameterDescriptor]:
+    def _describe_parameters(
+        func: ToolFunction,
+    ) -> dict[str, tuple[ToolParameterDescriptor, ToolParameterOptions]]:
         type_to_param_type: dict[type[_ToolParameterType], ToolParameterType] = {
             str: "string",
             int: "integer",
@@ -266,7 +268,10 @@ def _tool_decorator_impl(
                 if options.examples:
                     param_descriptor["examples"] = options.examples
 
-            param_descriptors[p.name] = param_descriptor
+            param_descriptors[p.name] = (
+                param_descriptor,
+                param_info.options or ToolParameterOptions(),
+            )
 
         return param_descriptors
 

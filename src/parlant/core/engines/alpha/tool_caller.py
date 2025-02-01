@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from itertools import chain
 import json
 import time
@@ -98,11 +98,25 @@ class ToolCallResult:
 
 
 @dataclass(frozen=True)
+class MissingToolData:
+    parameter: str
+    significance: Optional[str] = field(default=None)
+    description: Optional[str] = field(default=None)
+    examples: Optional[Sequence[str]] = field(default=None)
+
+
+@dataclass(frozen=True)
+class ToolInsights:
+    missing_data: Sequence[MissingToolData] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class InferenceToolCallsResult:
     total_duration: float
     batch_count: int
     batch_generations: Sequence[GenerationInfo]
     batches: Sequence[Sequence[ToolCall]]
+    insights: ToolInsights
 
 
 class ToolCaller:
@@ -132,6 +146,7 @@ class ToolCaller:
                 batch_count=0,
                 batch_generations=[],
                 batches=[],
+                insights=ToolInsights(),
             )
 
         batches: dict[tuple[ToolId, Tool], list[GuidelineProposition]] = defaultdict(list)
@@ -170,16 +185,23 @@ class ToolCaller:
             ]
 
             batch_results = list(await async_utils.safe_gather(*batch_tasks))
-            batch_generations = [generation for generation, _ in batch_results]
-            tool_call_batches = [tool_calls for _, tool_calls in batch_results]
+            batch_generations = [generation for generation, _, _ in batch_results]
+            tool_call_batches = [tool_calls for _, tool_calls, _ in batch_results]
 
         t_end = time.time()
+
+        total_missing_data: list[MissingToolData] = []
+
+        for _, _, missing_data_for_single_tool in batch_results:
+            for missing_data_for_single_call in missing_data_for_single_tool:
+                total_missing_data.append(missing_data_for_single_call)
 
         return InferenceToolCallsResult(
             total_duration=t_end - t_start,
             batch_count=len(batches),
             batch_generations=batch_generations,
             batches=tool_call_batches,
+            insights=ToolInsights(missing_data=total_missing_data),
         )
 
     async def _infer_calls_for_single_tool(
@@ -192,7 +214,7 @@ class ToolCaller:
         candidate_descriptor: tuple[ToolId, Tool, list[GuidelineProposition]],
         reference_tools: Sequence[tuple[ToolId, Tool]],
         staged_events: Sequence[EmittedEvent],
-    ) -> tuple[GenerationInfo, list[ToolCall]]:
+    ) -> tuple[GenerationInfo, list[ToolCall], list[MissingToolData]]:
         inference_prompt = self._format_tool_call_inference_prompt(
             agents,
             context_variables,
@@ -205,50 +227,64 @@ class ToolCaller:
             await self.shots(),
         )
 
-        tool_id, _, _ = candidate_descriptor
+        tool_id, tool, _ = candidate_descriptor
 
         with self._logger.operation(f"[ToolCaller] Evaluating '{tool_id}'"):
             generation_info, inference_output = await self._run_inference(inference_prompt)
 
         tool_calls = []
+        missing_data = []
 
         for tc in inference_output:
-            if (
-                tc.should_run
-                and tc.applicability_score >= 6
-                and (
-                    not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
-                    or tc.the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool
-                )
-                and all(
+            if tc.applicability_score >= 6 and (
+                not tc.a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected
+                or tc.the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool
+            ):
+                if tc.should_run and all(
                     not evaluation.is_missing
                     for argument, evaluation in (tc.argument_evaluations or {}).items()
                     if argument in candidate_descriptor[1].required
-                )
-            ):
-                self._logger.debug(
-                    f"[ToolCaller][Completion][Activated]\n{tc.model_dump_json(indent=2)}"
-                )
-
-                tool_calls.append(
-                    ToolCall(
-                        id=ToolCallId(generate_id()),
-                        tool_id=tool_id,
-                        arguments={
-                            name: evaluation.value
-                            for name, evaluation in tc.argument_evaluations.items()
-                        }
-                        if tc.argument_evaluations
-                        else {},
+                ):
+                    self._logger.debug(
+                        f"[ToolCaller][Completion][Activated]\n{tc.model_dump_json(indent=2)}"
                     )
-                )
+
+                    tool_calls.append(
+                        ToolCall(
+                            id=ToolCallId(generate_id()),
+                            tool_id=tool_id,
+                            arguments={
+                                name: evaluation.value
+                                for name, evaluation in tc.argument_evaluations.items()
+                            }
+                            if tc.argument_evaluations
+                            else {},
+                        )
+                    )
+                elif tc.applicability_score >= 8:
+                    for argument, evaluation in (tc.argument_evaluations or {}).items():
+                        if argument not in tool.parameters:
+                            self._logger.error(
+                                f"[ToolCaller][Completion] Argument {argument} not found in tool parameters"
+                            )
+                            continue
+
+                        _, tool_options = tool.parameters[argument]
+
+                        if not evaluation.is_optional and evaluation.is_missing:
+                            missing_data.append(
+                                MissingToolData(
+                                    parameter=argument,
+                                    significance=tool_options.significance,
+                                )
+                            )
 
             else:
                 self._logger.debug(
                     f"[ToolCaller][Completion][Skipped]\n{tc.model_dump_json(indent=2)}"
                 )
 
-        return generation_info, tool_calls
+        return generation_info, tool_calls, missing_data
 
     async def execute_tool_calls(
         self,

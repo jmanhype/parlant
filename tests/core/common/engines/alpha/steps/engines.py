@@ -24,6 +24,7 @@ from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.alpha.fluid_message_generator import FluidMessageGenerator
 from parlant.core.engines.alpha.message_assembler import MessageAssembler
 from parlant.core.engines.alpha.message_event_composer import MessageEventComposer
+from parlant.core.engines.alpha.tool_caller import ToolInsights
 from parlant.core.engines.types import Context, UtteranceReason, UtteranceRequest
 from parlant.core.emission.event_buffer import EventBuffer
 from parlant.core.sessions import SessionId, SessionStore
@@ -162,6 +163,7 @@ def when_messages_are_emitted(
             terms=[],
             ordinary_guideline_propositions=list(context.guideline_propositions.values()),
             tool_enabled_guideline_propositions={},
+            tool_insights=ToolInsights(),
             staged_events=[],
         )
     )

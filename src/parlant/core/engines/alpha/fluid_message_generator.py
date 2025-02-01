@@ -27,6 +27,7 @@ from parlant.core.engines.alpha.message_event_composer import (
     MessageEventComposer,
     MessageEventComposition,
 )
+from parlant.core.engines.alpha.tool_caller import ToolInsights
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
@@ -130,6 +131,7 @@ class FluidMessageGenerator(MessageEventComposer):
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        tool_insights: ToolInsights,
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]:
         assert len(agents) == 1
@@ -156,6 +158,7 @@ class FluidMessageGenerator(MessageEventComposer):
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                 staged_events=staged_events,
+                tool_insights=tool_insights,
                 shots=await self.shots(),
             )
 
@@ -273,6 +276,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
+        tool_insights: ToolInsights,
         shots: Sequence[FluidMessageGeneratorShot],
     ) -> str:
         assert len(agents) == 1
@@ -360,7 +364,7 @@ To generate an optimal response that aligns with all guidelines and the current 
 3. REVISION CRITERIA
    The response requires further revision if any of these conditions are met:
    - Facts or services are offered without clear sourcing from this prompt - deonted by all_facts_and_services_sourced_from_prompt being false
-   - Guidelines or insights are broken (except when properly prioritized, or when broken due to insufficient data) - denoted by 
+   - Guidelines or insights are broken (except when properly prioritized, or when broken due to insufficient data) - denoted by
    - The response repeats previous messages - denoted by is_repeat_message being true.
 
 4. REVISION DOCUMENTATION
@@ -439,6 +443,24 @@ INTERACTION CONTEXT
         )
         builder.add_interaction_history(interaction_history)
         builder.add_staged_events(staged_events)
+
+        if tool_insights.missing_data:
+            builder.add_section(f"""
+MISSING DATA FOR TOOL REQUIRED CALLS:
+-------------------------------------
+The following is a description of missing data that has been deemed necessary
+in order to run tools. The tools would have run, if they only had this data available.
+You must inform the customer about this missing data: ###
+{json.dumps([{
+    "datum_name": d.parameter,
+    **({"description": d.description} if d.description else {}),
+    **({"significance": d.significance} if d.significance else {}),
+    **({"examples": d.examples} if d.examples else {}),
+} for d in tool_insights.missing_data])}
+###
+
+""")
+
         builder.add_section(
             f"""
 OUTPUT FORMAT

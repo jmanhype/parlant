@@ -33,6 +33,7 @@ from parlant.core.customers import Customer, CustomerStore
 from parlant.core.engines.alpha.fluid_message_generator import FluidMessageGenerator
 from parlant.core.engines.alpha.message_assembler import MessageAssembler
 from parlant.core.engines.alpha.message_event_composer import MessageEventComposer
+from parlant.core.engines.alpha.tool_caller import ToolInsights
 from parlant.core.guidelines import Guideline, GuidelineId, GuidelineContent, GuidelineStore
 from parlant.core.guideline_connections import GuidelineConnectionStore
 from parlant.core.guideline_tool_associations import (
@@ -249,6 +250,7 @@ class AlphaEngine(Engine):
             )
 
             all_tool_events: list[EmittedEvent] = []
+            tool_insights: ToolInsights = ToolInsights()
             preparation_iterations: list[PreparationIteration] = []
             prepared_to_respond = False
 
@@ -304,6 +306,8 @@ class AlphaEngine(Engine):
                     tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                     staged_events=all_tool_events,
                 )
+
+                tool_insights = tool_event_generation_result.insights
 
                 tool_events = (
                     [e for e in tool_event_generation_result.events if e]
@@ -436,6 +440,7 @@ class AlphaEngine(Engine):
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
+                tool_insights=tool_insights,
                 staged_events=all_tool_events,
             ):
                 message_generation_inspections.append(
@@ -546,6 +551,7 @@ class AlphaEngine(Engine):
                 terms=list(terms),
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions={},
+                tool_insights=ToolInsights(),
                 staged_events=[],
             ):
                 message_generation_inspections.append(

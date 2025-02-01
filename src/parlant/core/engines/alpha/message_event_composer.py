@@ -19,6 +19,7 @@ from typing import Mapping, Optional, Sequence
 from parlant.core.agents import Agent
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
 from parlant.core.customers import Customer
+from parlant.core.engines.alpha.tool_caller import ToolInsights
 from parlant.core.nlp.generation import GenerationInfo
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.glossary import Term
@@ -50,5 +51,6 @@ class MessageEventComposer:
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        tool_insights: ToolInsights,
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]: ...

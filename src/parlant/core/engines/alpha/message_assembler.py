@@ -27,6 +27,7 @@ from parlant.core.engines.alpha.message_event_composer import (
     MessageEventComposer,
     MessageEventComposition,
 )
+from parlant.core.engines.alpha.tool_caller import ToolInsights
 from parlant.core.fragments import Fragment, FragmentStore
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
@@ -138,6 +139,7 @@ class MessageAssembler(MessageEventComposer):
         terms: Sequence[Term],
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
+        tool_insights: ToolInsights,
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]:
         assert len(agents) == 1
@@ -166,6 +168,7 @@ class MessageAssembler(MessageEventComposer):
                 ordinary_guideline_propositions=ordinary_guideline_propositions,
                 tool_enabled_guideline_propositions=tool_enabled_guideline_propositions,
                 staged_events=staged_events,
+                tool_insights=tool_insights,
                 fragments=fragments,
                 shots=await self.shots(agents[0].composition_mode),
             )
@@ -328,6 +331,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         ordinary_guideline_propositions: Sequence[GuidelineProposition],
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
+        tool_insights: ToolInsights,
         fragments: Sequence[Fragment],
         shots: Sequence[MessageAssemblerShot],
     ) -> str:
@@ -489,6 +493,24 @@ Example {i} - {shot.description}: ###
         )
         builder.add_interaction_history(interaction_history)
         builder.add_staged_events(staged_events)
+
+        if tool_insights.missing_data:
+            builder.add_section(f"""
+MISSING DATA FOR TOOL REQUIRED CALLS:
+-------------------------------------
+The following is a description of missing data that has been deemed necessary
+in order to run tools. The tools would have run, if they only had this data available.
+You must inform the customer about this missing data: ###
+{json.dumps([{
+    "datum_name": d.parameter,
+    **({"description": d.description} if d.description else {}),
+    **({"significance": d.significance} if d.significance else {}),
+    **({"examples": d.examples} if d.examples else {}),
+} for d in tool_insights.missing_data])}
+###
+
+""")
+
         builder.add_section(
             f"""
 Produce a valid JSON object in the following format: ###
