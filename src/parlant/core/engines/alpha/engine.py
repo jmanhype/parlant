@@ -46,6 +46,7 @@ from parlant.core.sessions import (
     Event,
     GuidelineProposition as StoredGuidelineProposition,
     GuidelinePropositionInspection,
+    MessageEventData,
     MessageGenerationInspection,
     PreparationIteration,
     PreparationIterationGenerations,
@@ -447,7 +448,7 @@ class AlphaEngine(Engine):
                     MessageGenerationInspection(
                         generation=event_generation_result.generation_info,
                         messages=[
-                            e.data["message"]
+                            cast(MessageEventData, e.data)
                             if e and e.kind == "message" and isinstance(e.data, dict)
                             else None
                             for e in event_generation_result.events

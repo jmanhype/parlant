@@ -712,7 +712,7 @@ Produce a valid JSON object in the following format: ###
                 "[MessageEventComposer][Assembly] Selected list of content fragments diverges from list of rendered fragments"
             )
 
-        fragments = []
+        content_fragments = []
         for index, materialized_fragment in enumerate(final_revision.content_fragments):
             if materialized_fragment.fragment_id == "<auto>":
                 continue
@@ -749,18 +749,18 @@ Produce a valid JSON object in the following format: ###
                         f"[MessageEventComposer][Assembly] Fragment rendering hallucination. ID={materialized_fragment.fragment_id}; ExpectedContent={materialized_fragment.raw_content}; HallucinatedContent={final_revision.sequenced_rendered_content_fragments[index]}"
                     )
 
-            fragments.append(fragment)
+            content_fragments.append(fragment)
 
         match composition_mode:
             case "fluid-assembly" | "composited-assembly":
                 return message_event_response.info, MessageAssemblyGenerationResult(
                     message=str(final_revision.composited_fragment_sequence),
-                    fragmens=fragments,
+                    fragmens=content_fragments,
                 )
             case "strict-assembly":
                 return message_event_response.info, MessageAssemblyGenerationResult(
                     message="".join(final_revision.sequenced_rendered_content_fragments),
-                    fragmens=fragments,
+                    fragmens=content_fragments,
                 )
 
         raise Exception("Unsupported composition mode")

@@ -165,7 +165,7 @@ class ContextVariable(TypedDict):
 @dataclass(frozen=True)
 class MessageGenerationInspection:
     generation: GenerationInfo
-    messages: Sequence[Optional[str]]
+    messages: Sequence[Optional[MessageEventData]]
 
 
 @dataclass(frozen=True)
@@ -357,7 +357,7 @@ class _PreparationIterationGenerationsDocument(TypedDict):
 
 class _MessageGenerationInspectionDocument(TypedDict):
     generation: _GenerationInfoDocument
-    messages: Sequence[Optional[str]]
+    messages: Sequence[Optional[MessageEventData]]
 
 
 class _PreparationIterationDocument(TypedDict):
