@@ -197,7 +197,7 @@ async def container(
         )
 
         await container[BackgroundTaskService].start(
-            container[WebSocketLogger].flush(), tag="websocket-logger"
+            container[WebSocketLogger].start(), tag="websocket-logger"
         )
 
         container[AgentStore] = await stack.enter_async_context(
@@ -299,6 +299,8 @@ async def container(
         container[Application] = Application(container)
 
         yield container
+
+        await container[BackgroundTaskService].cancel_all()
 
 
 @fixture

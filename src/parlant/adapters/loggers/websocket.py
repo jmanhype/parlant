@@ -1,4 +1,6 @@
 import asyncio
+from collections import deque
+from dataclasses import dataclass
 from typing import Any
 from fastapi import WebSocket
 from typing_extensions import override
@@ -6,6 +8,12 @@ from typing_extensions import override
 from parlant.core.common import UniqueId, generate_id
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.logging import CorrelationalLogger, LogLevel
+
+
+@dataclass(frozen=True)
+class WebSocketSubscription:
+    socket: WebSocket
+    expiration: asyncio.Event
 
 
 class WebSocketLogger(CorrelationalLogger):
@@ -17,11 +25,10 @@ class WebSocketLogger(CorrelationalLogger):
     ) -> None:
         super().__init__(correlator, log_level, logger_id)
 
-        self._messages: asyncio.Queue[Any] = asyncio.Queue()
-        self._web_sockets: dict[UniqueId, WebSocket] = {}
-
-    def message_queue(self) -> asyncio.Queue[Any]:
-        return self._messages
+        self._message_queue = deque[Any]()
+        self._messages_in_queue = asyncio.Semaphore(0)
+        self._socket_subscriptions: dict[UniqueId, WebSocketSubscription] = {}
+        self._lock = asyncio.Lock()
 
     def _enqueue_message(self, level: str, message: str) -> None:
         payload = {
@@ -29,15 +36,19 @@ class WebSocketLogger(CorrelationalLogger):
             "correlation_id": self._correlator.correlation_id,
             "message": message,
         }
-        self._messages.put_nowait(payload)
 
-    def append(self, web_socket: WebSocket) -> UniqueId:
-        uid = generate_id()
-        self._web_sockets[uid] = web_socket
-        return uid
+        self._message_queue.append(payload)
+        self._messages_in_queue.release()
 
-    def remove(self, web_socket_id: UniqueId) -> WebSocket:
-        return self._web_sockets.pop(web_socket_id)
+    async def subscribe(self, web_socket: WebSocket) -> WebSocketSubscription:
+        socket_id = generate_id()
+
+        subscription = WebSocketSubscription(web_socket, asyncio.Event())
+
+        async with self._lock:
+            self._socket_subscriptions[socket_id] = subscription
+
+        return subscription
 
     @override
     def debug(self, message: str) -> None:
@@ -59,21 +70,31 @@ class WebSocketLogger(CorrelationalLogger):
     def critical(self, message: str) -> None:
         self._enqueue_message("CRITICAL", message)
 
-    async def flush(self) -> None:
-        while True:
-            try:
-                payload = await self._messages.get()
-                stale_ids = []
+    async def start(self) -> None:
+        try:
+            while True:
+                try:
+                    await self._messages_in_queue.acquire()
+                    payload = self._message_queue.popleft()
 
-                for ws_id, ws in self._web_sockets.items():
-                    try:
-                        await ws.send_json(payload)
-                    except Exception:
-                        stale_ids.append(ws_id)
+                    async with self._lock:
+                        socket_subscriptions = dict(self._socket_subscriptions)
 
-                for ws_id in stale_ids:
-                    self.remove(ws_id)
+                    expired_ids = set()
 
-                await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
-                break
+                    for socket_id, subscription in socket_subscriptions.items():
+                        try:
+                            await subscription.socket.send_json(payload)
+                        except Exception:
+                            expired_ids.add(socket_id)
+
+                    async with self._lock:
+                        for socket_id in expired_ids:
+                            subscription = self._socket_subscriptions.pop(socket_id)
+                            subscription.expiration.set()
+                except asyncio.CancelledError:
+                    return
+        finally:
+            async with self._lock:
+                for socket_id, subscription in self._socket_subscriptions.items():
+                    subscription.expiration.set()

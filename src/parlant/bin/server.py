@@ -276,7 +276,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
             "critical": LogLevel.CRITICAL,
         }[log_level],
     )
-    await c[BackgroundTaskService].start(c[WebSocketLogger].flush(), tag="websocket-logger")
+    await c[BackgroundTaskService].start(c[WebSocketLogger].start(), tag="websocket-logger")
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
