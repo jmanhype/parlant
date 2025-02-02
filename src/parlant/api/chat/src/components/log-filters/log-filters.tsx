@@ -41,7 +41,7 @@ const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (t
 	};
 
 	return (
-		<div className='px-[40px] py-[42px] flex flex-col gap-[22px]'>
+		<div className='px-[39px] py-[42px] flex flex-col gap-[22px]'>
 			<h2 className='text-[20px] font-normal'>Filter By Content</h2>
 			<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
 				<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[16px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
@@ -68,7 +68,7 @@ const FilterDialog = ({contentChanged, content, children, className}: {contentCh
 				</div> */}
 			</DialogTrigger>
 			<DialogPortal aria-hidden={false}>
-				<DialogContent className='p-0' aria-hidden={false} className='[&>button]:hidden'>
+				<DialogContent aria-hidden={false} className='p-0 [&>button]:hidden'>
 					<DialogTitle className='hidden'>Filter By Content</DialogTitle>
 					<DialogDescription className='hidden'>Filter By Content</DialogDescription>
 					<FilterDialogContent contentChanged={contentChanged} defaultValue={content || ''} />
@@ -140,12 +140,9 @@ const LogFilters = ({applyFn, def, filterId, className}: {applyFn: (types: strin
 	}) => {
 		return (
 			<Tooltip value={text} side='top' delayDuration={1000}>
-				<div key={text} className={twMerge('group max-w-[320px] cursor-pointer bg-[#F5F6F8] hover:bg-white border-[#A9A9A9] hover:border-[#D7D7D7] border h-[30px] rounded-[5px] flex justify-center items-center w-fit', wrapperClassName)}>
+				<div key={text} className={twMerge('group px-[2px] max-w-[320px] cursor-pointer bg-[#F5F6F8] hover:bg-white border-[#A9A9A9] hover:border-[#D7D7D7] border h-[30px] rounded-[5px] flex justify-center items-center w-fit', wrapperClassName)}>
 					<div
-						className={twMerge(
-							'flex items-center justify-center max-w-full rounded-[3px] h-[calc(100%-4px)] w-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#D7D7D7] group-hover:border-[#A9A9A9]',
-							className
-						)}>
+						className={twMerge('flex items-center justify-center max-w-full rounded-[3px] h-[calc(100%-4px)] py-[5px] ps-[14px] pe-[6px] gap-[8px] bg-white group-hover:bg-[#F5F6F8] border border-[#D7D7D7] group-hover:border-[#A9A9A9]', className)}>
 						<p className='text-nowrap max-w-full overflow-hidden text-ellipsis font-normal text-[14px]'>{text}</p>
 						<X
 							role='button'

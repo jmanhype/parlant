@@ -37,6 +37,13 @@ module.exports = {
 				foreground: 'hsl(var(--foreground))',
 				main: 'var(--main)',
 				'blue-main': '#1E00FF',
+				'black-main': '#151515',
+				'gray-0': '#656565',
+				'gray-1': '#A9A9A9',
+				'gray-2': '#CDCDCD',
+				'gray-3': '#EBECF0',
+				'gray-4': '#F5F6F8',
+				'gray-5': '#FBFBFB',
 				muted: '#EBECF0',
 				card: {
 					DEFAULT: 'hsl(var(--card))',
@@ -75,6 +82,7 @@ module.exports = {
 			},
 			fontFamily: {
 				'ubuntu-sans': 'Ubuntu Sans',
+				'ubuntu-mono': 'Ubuntu Mono',
 				inter: 'inter',
 			},
 		},
