@@ -5,7 +5,7 @@ import {Button} from '../ui/button';
 import {BASE_URL, deleteData, postData} from '@/utils/api';
 import {groupBy} from '@/utils/obj';
 import Message from '../message/message';
-import {AgentInterface, EventInterface, Log, SessionInterface} from '@/utils/interfaces';
+import {EventInterface, Log, SessionInterface} from '@/utils/interfaces';
 import {getDateStr} from '@/utils/date';
 import {Spacer} from '../ui/custom/spacer';
 import {toast} from 'sonner';

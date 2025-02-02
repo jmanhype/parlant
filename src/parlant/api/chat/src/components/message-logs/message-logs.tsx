@@ -21,7 +21,7 @@ interface Filter {
 interface FilterTabsFilterProps {
 	filterTabs: Filter[];
 	setCurrFilterTabs: React.Dispatch<React.SetStateAction<number | null>>;
-	setFilterTabs: React.Dispatch<React.SetStateAction<Filter[]>>;
+	setFilterTabs: any;
 	currFilterTabs: number | null;
 }
 
@@ -87,7 +87,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 		selectText();
 	};
 
-	const editFinished = (e, tab: Filter) => {
+	const editFinished = (e: any, tab: Filter) => {
 		setIsEditing(false);
 		if (!e.target.textContent) e.target.textContent = inputVal || tab.name;
 		tab.name = e.target.textContent;
@@ -95,7 +95,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 		e.target.blur();
 	};
 
-	const editCancelled = (e, tab: Filter) => {
+	const editCancelled = (e: any, tab: Filter) => {
 		setIsEditing(false);
 		e.target.textContent = tab.name;
 		e.target.blur();
@@ -177,7 +177,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			if (!Object.keys(filters).length) setFilteredLogs(logs);
 			else {
 				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]; content?: string[]}));
-				setFilterTabs((tabFilters: Filter[]) => {
+				(setFilterTabs as any)((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
 						const filter = {id: Date.now(), def: filters, name: 'untitled'};
 						setCurrFilterTabs(filter.id);
@@ -214,7 +214,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 				<LogFilters
 					className={twMerge(!filteredLogs?.length && 'bg-[#f5f6f8]', !logs?.length && 'absolute')}
 					filterId={currFilterTabs || undefined}
-					def={structuredClone(filterTabs.find((t: Filter) => currFilterTabs === t.id)?.def || null)}
+					def={structuredClone((filterTabs as any).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
