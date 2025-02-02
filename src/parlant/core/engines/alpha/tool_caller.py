@@ -271,7 +271,11 @@ class ToolCaller:
 
                         _, tool_options = tool.parameters[argument]
 
-                        if not evaluation.is_optional and evaluation.is_missing:
+                        if (
+                            evaluation.is_missing
+                            and not evaluation.is_optional
+                            and not tool_options.hidden
+                        ):
                             missing_data.append(
                                 MissingToolData(
                                     parameter=argument,
