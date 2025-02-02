@@ -68,8 +68,7 @@ Feature: Tools
         And the tool calls event contains a call to "find_answer" with an inquiry about a situation in which a card is lost
 
     Scenario: Message generator understands and communicates that required information is missing
-        Given a customer with the name "Vax"
-        And an empty session
+        Given an empty session
         And a guideline "pay_cc_bill_guideline" to help a customer make the payment when they want to pay their credit card bill
         And the tool "pay_cc_bill"
         And an association between "pay_cc_bill_guideline" and "pay_cc_bill"
