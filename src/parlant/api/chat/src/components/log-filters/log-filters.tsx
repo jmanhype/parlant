@@ -8,16 +8,15 @@ import {ListFilter, Plus, X} from 'lucide-react';
 import {getDistanceToRight} from '@/utils/methods';
 import Tooltip from '../ui/custom/tooltip';
 
-type Type = 'General' | 'GuidelineProposer' | 'MessageEventGenerator' | 'ToolCaller';
+type Type = 'GuidelineProposer' | 'MessageEventComposer' | 'ToolCaller';
 type Level = 'WARNING' | 'INFO' | 'DEBUG';
 
-const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventGenerator'];
+const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventComposer'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
 
 const typeLabels: Record<Type, string> = {
-	General: 'General',
 	GuidelineProposer: 'Guideline Proposer',
-	MessageEventGenerator: 'Message Event Composer',
+	MessageEventComposer: 'Message Event Composer',
 	ToolCaller: 'Tool Caller',
 };
 

@@ -116,7 +116,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 							'group flex min-h-[36px] max-w-[200px] max-h-[36px] justify-center leading-[18px] text-[15px] border border-transparent items-center ps-[8px] pe-[8px] p-[10px] border-e w-fit',
 							tab.id === currFilterTabs && '!bg-white',
 							i === 0 && 'ps-[16px]',
-							tab.id === currFilterTabs && isEditing && 'border-b-black min-h-[28px] max-h-[28px] !border-[#151515] h-full rounded-[2px]'
+							tab.id === currFilterTabs && isEditing && 'border-b-black border-b-[2px] min-h-[28px] max-h-[28px] !border-[#151515] h-full rounded-[2px]'
 						)}>
 						<div className={twMerge('flex items-center gap-[8px] relative max-w-full')}>
 							<p
@@ -126,7 +126,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 								onKeyDown={(e) => (e.key === 'Enter' ? editFinished(e, tab) : e.key === 'Escape' && editCancelled(e, tab))}
 								onBlur={(e) => editFinished(e, tab)}
 								className={twMerge(
-									'text-[15px] flex-1 overflow-hidden [justify-content:left] whitespace-nowrap text-ellipsis h-[28px] px-[8px] outline-none flex items-center border border-transparent',
+									'text-[15px] flex-1 overflow-hidden [justify-content:left] whitespace-nowrap text-ellipsis h-[28px] px-[8px] outline-none flex items-center border border-transparent flex justify-start',
 									tab.id === currFilterTabs && !isEditing && 'hover:border-gray-200'
 								)}>
 								{tab.name}
@@ -167,10 +167,6 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	const [logs, setLogs] = useState<Log[] | null>(null);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
 	const messagesRef = useRef<HTMLDivElement | null>(null);
-
-	// useEffect(() => {
-	// 	if (messagesRef.current) messagesRef.current.scrollTo(0, messagesRef.current.scrollHeight);
-	// }, [messagesRef?.current]);
 
 	useEffect(() => {
 		if (logs) {

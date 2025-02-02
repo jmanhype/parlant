@@ -5,7 +5,6 @@ import styles from './message.module.scss';
 import {Spacer} from '../ui/custom/spacer';
 import {twJoin, twMerge} from 'tailwind-merge';
 import Markdown from '../markdown/markdown';
-// import MessageLogs from '../message-logs/message-logs';
 
 interface Props {
 	event: EventInterface;
@@ -40,18 +39,6 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 		setRowCount(rowCount + 1);
 	}, [markdownRef]);
 
-	// useEffect(() => {
-	// 	if (ref.current) {
-	// 		const lineHeight = parseFloat(getComputedStyle(ref.current).lineHeight);
-	// 		const height = ref.current.clientHeight;
-	// 		const lines = height / lineHeight;
-	// 		if (lines > 1) {
-	// 			ref.current.className += ` multi-line`;
-	// 			console.log('multiline');
-	// 		} else console.log('singleline')
-	// 	}
-	// }, []);
-
 	const isOneLiner = rowCount === 1;
 
 	return (
@@ -85,33 +72,6 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 						</div>
 					</div>
 				</div>
-				{/* <div
-					className={twMerge(
-						'self-stretch items-center px-[16px] flex justify-center gap-[5px] invisible peer-hover:visible group-hover:visible group-hover/main:visible hover:visible',
-						isRegenerateHidden && 'hidden'
-					)}>
-					{!isClient && (
-						<Tooltip value='Regenerate' side='top'>
-							<div
-								data-testid='regenerate-button'
-								role='button'
-								onClick={() => regenerateMessageFn?.(sessionId as string)}
-								className='group cursor-pointer'>
-								<img src='icons/regenerate.svg' alt='regenerate' className='block group-hover:hidden h-[36px] min-w-[20px]' />
-								<img src='icons/regenerate-filled.svg' alt='regenerate' className='hidden group-hover:block h-[36px] min-w-[20px]' />
-							</div>
-						</Tooltip>
-					)}
-					<Tooltip value='logs' side='top'>
-						<div
-							data-testid='message-logs-button'
-							role='button'
-							onClick={() => showLogs(event)}
-							className='cursor-pointer border rounded-[10px] size-[36px] flex justify-center'>
-							<Logs className='block group-hover:hidden h-[36px] min-w-[20px]' />
-						</div>
-					</Tooltip>
-				</div> */}
 			</div>
 			<Spacer />
 		</div>

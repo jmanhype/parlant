@@ -19,10 +19,6 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentAtom, agentsAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
-// import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger} from '../ui/sheet';
-// import {Menu} from 'lucide-react';
-// import { useAtom } from 'jotai';
-// import { haveLogsAtom } from '@/store';
 
 const emptyPendingMessage: () => EventInterface = () => ({
 	kind: 'message',
@@ -84,9 +80,6 @@ export default function Chat(): ReactElement {
 	useEffect(() => {
 		if (lastMessage) {
 			handleChatLogs(JSON.parse(lastMessage) as Log);
-			// const logSet = handleChatLogs(JSON.parse(lastMessage) as Log);
-			//    if (logSet) setHasLogs(logSet);
-			//    console.log('logSet', logSet);
 		}
 	}, [lastMessage]);
 
@@ -309,15 +302,6 @@ export default function Chat(): ReactElement {
 						</div>
 					</div>
 				</div>
-				{/* <Sheet open={!!showLogsForMessage} modal={false}>
-					<SheetContent side='right' className='!max-w-[unset] w-[min(90vw,1000px)] p-0 max-tablet:block hidden'>
-						<SheetHeader>
-							<SheetTitle className='text-center'></SheetTitle>
-							<SheetDescription />
-						</SheetHeader>
-						<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
-					</SheetContent>
-				</Sheet> */}
 				<div className='flex h-full min-w-[50%]'>
 					<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
 				</div>

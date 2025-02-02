@@ -38,10 +38,7 @@ export const handleChatLogs = (log: Log) => {
 		eventsChanged = true;
 		logsJson[log.correlation_id] = [];
 	}
-	// console.log('size', getLocalStorageSize());
-	// if (getLocalStorageSize() >= 5) {
-	//     console.log('localstorage should bre clean');
-	// }
+
 	logsJson[log.correlation_id].push(log);
 	const setStorage = setLocalStorageItem(logsJson);
 	eventsChanged ||= !!setStorage;
