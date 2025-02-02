@@ -10,6 +10,7 @@ All notable changes to Parlant will be documented here.
 - Made the agent slightly more polite, following user feedback
 - Allow only specifying guideline condition or action when updating guideline from CLI
 - Add WebSocket logger feature for streaming logs in real time
+- Add a log viewer to the sandbox UI
 
 
 ## [1.6.2] - 2025-01-29
