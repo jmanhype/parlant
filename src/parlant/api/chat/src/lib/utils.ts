@@ -6,6 +6,19 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+export const copy = (text: string) => {
+	if (navigator.clipboard && navigator.clipboard.writeText) {
+		navigator.clipboard
+			.writeText(text)
+			.then(() => text?.length < 100 && toast.info(`Copied text: ${text}`))
+			.catch(() => {
+				fallbackCopyText(text);
+			});
+	} else {
+		fallbackCopyText(text);
+	}
+};
+
 export const fallbackCopyText = (text: string, element?: HTMLElement) => {
 	const textarea = document.createElement('textarea');
 	textarea.value = text;

@@ -1,5 +1,5 @@
 import {EventInterface, Log} from '@/utils/interfaces';
-import {Plus, X} from 'lucide-react';
+import {Copy, Fullscreen, Plus, X} from 'lucide-react';
 import React, {ReactNode, useEffect, useRef, useState} from 'react';
 import {getMessageLogs, getMessageLogsWithFilters} from '@/utils/logs';
 import {ClassNameValue, twJoin, twMerge} from 'tailwind-merge';
@@ -8,9 +8,10 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useLocalStorage} from '@/hooks/useLocalStorage';
 import LogFilters from '../log-filters/log-filters';
 import {useAtom} from 'jotai';
-import {sessionAtom} from '@/store';
-import Markdown from '../markdown/markdown';
+import {dialogAtom, sessionAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
+import Tooltip from '../ui/custom/tooltip';
+import {copy} from '@/lib/utils';
 
 interface Filter {
 	id: number;
@@ -116,7 +117,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 							'group flex min-h-[36px] max-w-[200px] max-h-[36px] justify-center leading-[18px] text-[15px] border border-transparent items-center ps-[8px] pe-[8px] p-[10px] border-e w-fit',
 							tab.id === currFilterTabs && '!bg-white',
 							i === 0 && 'ps-[16px]',
-							tab.id === currFilterTabs && isEditing && 'border-b-black border-b-[2px] min-h-[28px] max-h-[28px] !border-[#151515] h-full rounded-[2px]'
+							tab.id === currFilterTabs && isEditing && 'border-b-black border-b-[2px] min-h-[28px] max-h-[28px] !border-[#151515] h-full rounded-[5px]'
 						)}>
 						<div className={twMerge('flex items-center gap-[8px] relative max-w-full')}>
 							<p
@@ -167,6 +168,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	const [logs, setLogs] = useState<Log[] | null>(null);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
 	const messagesRef = useRef<HTMLDivElement | null>(null);
+	const [dialog] = useAtom(dialogAtom);
 
 	useEffect(() => {
 		if (logs) {
@@ -202,6 +204,25 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		setLogs(getMessageLogs(event.correlation_id));
 	}, [event?.correlation_id]);
 
+	const openLogs = (text: string) => {
+		const element = (
+			<pre className='group px-[30px] py-[10px] text-wrap text-[#333] relative overflow-auto h-[100%]'>
+				<div className='invisble group-hover:visible flex sticky top-[10px] right-[20px] justify-end'>
+					<div className='flex justify-end bg-white p-[10px] gap-[20px] rounded-lg'>
+						<Tooltip value='Copy' side='top'>
+							<Copy onClick={() => copy(text)} size={18} className='cursor-pointer' />
+						</Tooltip>
+						<Tooltip value='Close' side='top'>
+							<X onClick={() => dialog.closeDialog()} size={18} className='cursor-pointer' />
+						</Tooltip>
+					</div>
+				</div>
+				<div>{text}</div>
+			</pre>
+		);
+		dialog.openDialog('', element, {height: '90vh', width: '90vw'});
+	};
+
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')} />
@@ -221,8 +242,16 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div ref={messagesRef} className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
 						{filteredLogs.map((log, i) => (
-							<div key={i} className={twJoin('flex font-ubuntu-mono rounded-[8px] items-center gap-[5px] px-[20px] p-[14px] border-white border transition-all hover:border-[#EDEDED] hover:bg-[#F5F6F8]')}>
-								<Markdown className={clsx('max-w-[-webkit-fill-available] pe-[10px]')}>{log?.message}</Markdown>
+							<div key={i} className={twJoin('flex group relative font-ubuntu-mono rounded-[8px] items-center gap-[5px] px-[20px] p-[14px] border-white border text-[14px] transition-all hover:border-[#EDEDED] hover:bg-[#F5F6F8]')}>
+								<div className='absolute hidden group-hover:flex right-[10px] top-[10px] gap-[10px]'>
+									<Tooltip value='Copy' side='top'>
+										<Copy size={18} onClick={() => copy(log?.message || '')} className='cursor-pointer' />
+									</Tooltip>
+									<Tooltip value='Full screen' side='top'>
+										<Fullscreen size={20} className='cursor-pointer' onClick={() => openLogs(log?.message || '')} />
+									</Tooltip>
+								</div>
+								<pre className={clsx('max-w-[-webkit-fill-available] pe-[10px] text-wrap')}>{log?.message}</pre>
 							</div>
 						))}
 					</div>
