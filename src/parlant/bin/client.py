@@ -17,6 +17,7 @@
 import asyncio
 import json
 import os
+from pathlib import Path
 from urllib.parse import urlparse
 import click
 import click.shell_completion
@@ -63,6 +64,9 @@ from parlant.client.types import (
     CustomerTagUpdateParams,
     Tag,
     ConsumptionOffsetsUpdateParams,
+    Fragment,
+    Slot,
+    FragmentTagUpdateParams,
 )
 from websocket import WebSocketConnectionClosedException, create_connection
 
@@ -856,6 +860,33 @@ class Actions:
     def delete_tag(ctx: click.Context, tag_id: str) -> None:
         client = cast(ParlantClient, ctx.obj.client)
         client.tags.delete(tag_id=tag_id)
+
+    @staticmethod
+    def load_fragments(ctx: click.Context, path: Path) -> list[Fragment]:
+        with open(path, "r") as file:
+            data = json.load(file)
+
+        client = cast(ParlantClient, ctx.obj.client)
+        fragments = []
+        for fragment_data in data.get("fragments", []):
+            value = fragment_data["value"]
+            assert value
+
+            slots = [Slot(**slot) for slot in fragment_data.get("slots", [])]
+
+            fragment = client.fragments.create(
+                value=value,
+                slots=slots,
+            )
+
+            if tag_ids := fragment_data.get("tags", []):
+                client.fragments.update(
+                    fragment_id=fragment.id, tags=FragmentTagUpdateParams(add=tag_ids)
+                )
+
+            fragments.append(fragment)
+
+        return fragments
 
     @staticmethod
     def stream_logs(
@@ -2022,6 +2053,36 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def _render_fragments(fragments: list[Fragment]) -> None:
+        fragment_items = [
+            {
+                "ID": f.id,
+                "Value": f.value,
+                "Slots": [
+                    f"name: {s.name}, description: {s.description}, examples: {s.examples}"
+                    for s in f.slots
+                ]
+                or "",
+                "Tags": f.tags or "",
+                "Creation Date": reformat_datetime(f.creation_utc),
+            }
+            for f in fragments
+        ]
+
+        Interface._print_table(fragment_items)
+
+    @staticmethod
+    def load_fragments(ctx: click.Context, path: Path) -> None:
+        try:
+            fragments = Actions.load_fragments(ctx, path)
+
+            Interface._write_success(f"Loaded {len(fragments)} fragments from {path}")
+            Interface._render_fragments(fragments)
+        except Exception as e:
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def stream_logs(
         ctx: click.Context,
         union_patterns: list[str],
@@ -3128,6 +3189,54 @@ async def async_main() -> None:
     @click.pass_context
     def tag_delete(ctx: click.Context, id: str) -> None:
         Interface.delete_tag(ctx, id)
+
+    @cli.group(help="Manage fragments")
+    def fragment() -> None:
+        pass
+
+    @fragment.command("init", help="Initialize a sample fragments JSON file.")
+    @click.argument("file", type=click.Path(dir_okay=False, writable=True))
+    def fragment_init(file: str) -> None:
+        sample_data = {
+            "fragments": [
+                {
+                    "value": "Hello, {username}!",
+                    "slots": [
+                        {
+                            "name": "username",
+                            "description": "The user's name",
+                            "examples": ["Alice", "Bob"],
+                        }
+                    ],
+                    "tags": ["tgId123", "tgId32"],
+                },
+                {
+                    "value": "Your balance is {balance}",
+                    "slots": [
+                        {
+                            "name": "balance",
+                            "description": "Account balance",
+                            "examples": ["1000", "9999"],
+                        }
+                    ],
+                },
+            ]
+        }
+
+        path = Path(file).resolve()
+        if path.exists():
+            rich.print(Text(f"Overwriting existing file at {path}", style="bold yellow"))
+
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(sample_data, f, indent=2)
+
+        rich.print(Text(f"Created sample fragment data at {path}", style="bold green"))
+
+    @fragment.command("load", help="Load fragments from a JSON file.")
+    @click.argument("file", type=click.Path(exists=True, dir_okay=False))
+    @click.pass_context
+    def fragment_load(ctx: click.Context, file: str) -> None:
+        Interface.load_fragments(ctx, Path(file))
 
     @cli.command(
         "log",
