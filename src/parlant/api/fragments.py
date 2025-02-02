@@ -15,7 +15,7 @@
 from datetime import datetime
 from typing import Annotated, Optional, Sequence, TypeAlias
 import dateutil
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import Field
 
 from parlant.core.common import DefaultBaseModel
@@ -243,6 +243,12 @@ def _slot_to_dto(slot: Slot) -> SlotDTO:
     )
 
 
+TagsQuery: TypeAlias = Annotated[
+    Sequence[TagId],
+    Query(description="Filter fragments by tags", example=["tag1", "tag2"]),
+]
+
+
 def create_router(
     fragment_store: FragmentStore,
 ) -> APIRouter:
@@ -318,7 +324,7 @@ def create_router(
         },
         **apigen_config(group_name=API_GROUP, method_name="list"),
     )
-    async def list_fragments() -> Sequence[FragmentDTO]:
+    async def list_fragments(tags: TagsQuery = []) -> Sequence[FragmentDTO]:
         fragments = await fragment_store.list_fragments()
 
         return [
@@ -330,6 +336,7 @@ def create_router(
                 tags=f.tags,
             )
             for f in fragments
+            if (any(tag in f.tags for tag in tags) if tags else True)
         ]
 
     @router.patch(

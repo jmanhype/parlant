@@ -182,3 +182,52 @@ async def test_that_a_tag_can_be_removed_from_a_fragment(
 
     updated_fragment = await fragment_store.read_fragment(fragment.id)
     assert tag.id not in updated_fragment.tags
+
+
+async def test_that_fragments_can_be_filtered_by_tags(
+    async_client: httpx.AsyncClient,
+    container: Container,
+) -> None:
+    fragment_store = container[FragmentStore]
+    tag_store = container[TagStore]
+
+    tag_vip = await tag_store.create_tag(name="VIP")
+    tag_finance = await tag_store.create_tag(name="Finance")
+    tag_greeting = await tag_store.create_tag(name="Greeting")
+
+    first_fragment = await fragment_store.create_fragment(
+        value="Welcome {username}!",
+        slots=[Slot(name="username", description="User's name", examples=["Alice", "Bob"])],
+    )
+    await fragment_store.add_tag(first_fragment.id, tag_greeting.id)
+
+    second_fragment = await fragment_store.create_fragment(
+        value="Your balance is {balance}",
+        slots=[Slot(name="balance", description="Account balance", examples=["5000", "10000"])],
+    )
+    await fragment_store.add_tag(second_fragment.id, tag_finance.id)
+
+    third_fragment = await fragment_store.create_fragment(
+        value="Exclusive VIP offer for {username}",
+        slots=[Slot(name="username", description="VIP customer", examples=["Charlie"])],
+    )
+    await fragment_store.add_tag(third_fragment.id, tag_vip.id)
+
+    response = await async_client.get(f"/fragments?tags={tag_greeting.id}")
+    assert response.status_code == status.HTTP_200_OK
+    fragments = response.json()
+    assert len(fragments) == 1
+    assert fragments[0]["value"] == "Welcome {username}!"
+
+    response = await async_client.get(f"/fragments?tags={tag_finance.id}&tags={tag_vip.id}")
+    assert response.status_code == status.HTTP_200_OK
+    fragments = response.json()
+    assert len(fragments) == 2
+    values = {f["value"] for f in fragments}
+    assert "Your balance is {balance}" in values
+    assert "Exclusive VIP offer for {username}" in values
+
+    response = await async_client.get("/fragments?tags=non_existent_tag")
+    assert response.status_code == status.HTTP_200_OK
+    fragments = response.json()
+    assert len(fragments) == 0
