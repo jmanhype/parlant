@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 from lagom import Container
 
+from parlant.adapters.loggers.websocket import WebSocketLogger
 from parlant.api import agents, index
 from parlant.api import sessions
 from parlant.api import glossary
@@ -31,6 +32,7 @@ from parlant.api import context_variables as variables
 from parlant.api import services
 from parlant.api import tags
 from parlant.api import customers
+from parlant.api import logs
 from parlant.core.context_variables import ContextVariableStore
 from parlant.core.contextual_correlator import ContextualCorrelator
 from parlant.core.agents import AgentStore
@@ -79,6 +81,7 @@ class AppWrapper:
 
 async def create_api_app(container: Container) -> ASGIApplication:
     logger = container[Logger]
+    websocket_logger = container[WebSocketLogger]
     correlator = container[ContextualCorrelator]
     agent_store = container[AgentStore]
     customer_store = container[CustomerStore]
@@ -122,6 +125,9 @@ async def create_api_app(container: Container) -> ASGIApplication:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        if request.url.path.startswith("/chat/"):
+            return await call_next(request)
+
         request_id = generate_id()
         with correlator.correlation_scope(f"RID({request_id})"):
             with logger.operation(f"HTTP Request: {request.method} {request.url.path}"):
@@ -221,6 +227,12 @@ async def create_api_app(container: Container) -> ASGIApplication:
         router=customers.create_router(
             customer_store=customer_store,
         ),
+    )
+
+    api_app.include_router(
+        router=logs.create_router(
+            websocket_logger,
+        )
     )
 
     return AppWrapper(api_app)

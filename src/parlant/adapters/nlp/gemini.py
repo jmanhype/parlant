@@ -40,7 +40,7 @@ from parlant.core.nlp.generation import (
 from parlant.core.logging import Logger
 
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))  # type: ignore
 
 
 class GoogleEstimatingTokenizer(EstimatingTokenizer):
@@ -64,7 +64,7 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         self.model_name = model_name
         self._logger = logger
 
-        self._model = genai.GenerativeModel(model_name)
+        self._model = genai.GenerativeModel(model_name)  # type: ignore
 
         self._tokenizer = GoogleEstimatingTokenizer(model_name=self.model_name)
 
@@ -101,7 +101,7 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         t_start = time.time()
         response = await self._model.generate_content_async(
             contents=prompt,
-            generation_config=gemini_api_arguments,
+            generation_config=gemini_api_arguments,  # type: ignore
         )
         t_end = time.time()
 
@@ -204,7 +204,7 @@ class GoogleEmbedder(Embedder):
     ) -> EmbeddingResult:
         gemini_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
-        response = await genai.embed_content_async(
+        response = await genai.embed_content_async(  # type: ignore
             model=self.model_name,
             content=texts,
             **gemini_api_arguments,
