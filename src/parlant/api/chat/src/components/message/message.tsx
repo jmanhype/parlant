@@ -3,7 +3,7 @@ import {EventInterface} from '@/utils/interfaces';
 import {getTimeStr} from '@/utils/date';
 import styles from './message.module.scss';
 import {Spacer} from '../ui/custom/spacer';
-import {twMerge} from 'tailwind-merge';
+import {twJoin, twMerge} from 'tailwind-merge';
 import Markdown from '../markdown/markdown';
 // import MessageLogs from '../message-logs/message-logs';
 
@@ -37,7 +37,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 	useEffect(() => {
 		if (!markdownRef?.current) return;
 		const rowCount = Math.floor(markdownRef.current.offsetHeight / 24);
-		setRowCount(rowCount);
+		setRowCount(rowCount + 1);
 	}, [markdownRef]);
 
 	// useEffect(() => {
@@ -51,6 +51,8 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 	// 		} else console.log('singleline')
 	// 	}
 	// }, []);
+
+	const isOneLiner = rowCount === 1;
 
 	return (
 		<div className='group/main flex my-4 mx-0 mb-1 w-full justify-between animate-fade-in scrollbar'>
@@ -69,15 +71,15 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 						isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
 						isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
 						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#DBDCE0]',
-						'rounded-[26px] peer w-fit max-w-[min(564px,85%)] flex gap-1 items-center relative border-[1.3px] border-muted border-solid'
+						'rounded-[26px] max-w-fit peer w-fit flex items-center relative border-[1.3px] border-muted border-solid'
 					)}>
-					<div className={twMerge('markdown overflow-auto relative max-w-[inherit] [word-break:break-word] font-light text-[16px] ps-[34px] pe-[24px]', rowCount === 1 ? 'py-[16px]' : 'pb-[24px] pt-[20px]')}>
+					<div className={twMerge('markdown overflow-auto relative max-w-[608px] [word-break:break-word] font-light text-[16px] ps-[32px] pe-[38px]', isOneLiner ? '!pb-[22px] !pt-[18px]' : 'pb-[24px] pt-[20px]')}>
 						<span ref={markdownRef}>
-							<Markdown>{event?.data?.message}</Markdown>
+							<Markdown className={twJoin(!isOneLiner && 'leading-[26px]')}>{event?.data?.message}</Markdown>
 						</span>
 					</div>
-					<div className='flex h-full font-normal text-[11px] text-[#AEB4BB] pt-[36px] pb-[10px] pe-[12px] font-inter self-end items-end whitespace-nowrap'>
-						<div className='flex items-center w-[46px]'>
+					<div className={twMerge('flex h-full font-normal text-[11px] text-[#AEB4BB] pb-[16px] pe-[20px] font-inter self-end items-end whitespace-nowrap leading-[14px]', isOneLiner ? '!pb-[10px] ps-[12px]' : '')}>
+						<div className={twJoin('flex items-center', isClient && 'w-[46px]')}>
 							<div>{getTimeStr(event.creation_utc)}</div>
 							{isClient && !!serverStatus && <div className='w-6'>{statusIcon[serverStatus]}</div>}
 						</div>
