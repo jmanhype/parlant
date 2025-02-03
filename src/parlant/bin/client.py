@@ -985,13 +985,16 @@ class Interface:
     def _print_table(data: list[dict[str, Any]]) -> None:
         table = Table(box=box.ROUNDED, border_style="bright_green")
 
-        headers = list(data[0].keys())
+        table.add_column("#", header_style="bright_green", overflow="fold")
+
+        headers = list(data[0].keys()) if data else []
 
         for header in headers:
             table.add_column(header, header_style="bright_green", overflow="fold")
 
-        for row in data:
-            table.add_row(*list(map(str, row.values())))
+        for idx, row in enumerate(data, start=1):
+            row_values = [str(row.get(h, "")) for h in headers]
+            table.add_row(str(idx), *row_values)
 
         rich.print(table)
 
