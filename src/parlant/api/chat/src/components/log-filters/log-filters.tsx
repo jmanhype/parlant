@@ -68,8 +68,8 @@ const FilterDialog = ({contentChanged, content, children, className}: {contentCh
 			</DialogTrigger>
 			<DialogPortal aria-hidden={false}>
 				<DialogContent aria-hidden={false} className='p-0 [&>button]:hidden'>
-					<DialogTitle className='hidden'>Filter By Content</DialogTitle>
-					<DialogDescription className='hidden'>Filter By Content</DialogDescription>
+					<DialogTitle className='hidden'>Filter by content</DialogTitle>
+					<DialogDescription className='hidden'>Filter by content</DialogDescription>
 					<FilterDialogContent contentChanged={contentChanged} defaultValue={content || ''} />
 				</DialogContent>
 			</DialogPortal>
@@ -286,8 +286,8 @@ const LogFilters = ({applyFn, def, filterId, className}: {applyFn: (types: strin
 						</DialogTrigger>
 						<DialogPortal>
 							<DialogContent className='p-0'>
-								<DialogTitle hidden>Filter By Content</DialogTitle>
-								<DialogDescription hidden>Filter By Content</DialogDescription>
+								<DialogTitle hidden>Filter by content</DialogTitle>
+								<DialogDescription hidden>Filter by content</DialogDescription>
 								<FilterDialogContent
 									defaultValue={c}
 									contentChanged={(text) => {
