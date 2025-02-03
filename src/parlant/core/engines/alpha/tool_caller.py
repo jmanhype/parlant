@@ -948,23 +948,23 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
     ),
     ToolCallerInferenceShot(
         description=(
-            "the candidate tool is check_indoor_temperature(room: str), and reference tool is check_temperature(location: str, type: str)"
+            "the candidate tool is check_temperature(location: str), and reference tool is check_indoor_temperature(room: str)"
         ),
         expected_result=ToolCallInferenceSchema(
             last_customer_message="What's the temperature in the living room right now?",
             most_recent_customer_inquiry_or_need="Checking the current temperature in the living room",
             most_recent_customer_inquiry_or_need_was_already_resolved=False,
-            name="check_indoor_temperature",
+            name="check_temperature",
             subtleties_to_be_aware_of="no subtleties were detected",
             tool_calls_for_candidate_tool=[
                 ToolCallEvaluation(
-                    applicability_rationale="need to check the current temperature in a specific room",
-                    applicability_score=7,
+                    applicability_rationale="need to check the current temperature in the living room",
+                    applicability_score=8,
                     argument_evaluations={
-                        "room": ArgumentEvaluation(
-                            evaluate_is_it_provided_in_the_context="Yes; the customer asked about a specific room",
-                            evaluate_should_this_argument_in_principle_be_provided_by_the_customer_and_why="Checking room temperature could come either directly from the customer, or even if I wanted to check room temperatures to help with some other inquiry",
-                            evaluate_was_it_already_provided_and_should_it_be_provided_again="The customer asked about a specific room",
+                        "location": ArgumentEvaluation(
+                            evaluate_is_it_provided_in_the_context="Yes; the customer asked about the living room",
+                            evaluate_should_this_argument_in_principle_be_provided_by_the_customer_and_why="Checking the temperature at some location could come either directly from the customer, or even if I wanted to check room temperatures to help with some other inquiry",
+                            evaluate_was_it_already_provided_and_should_it_be_provided_again="The customer asked about a specific location",
                             evaluate_is_it_potentially_problematic_to_guess_what_the_value_is_if_it_isnt_provided="It would be absurd to provide unsolicited information on some random room, but I don't need to guess here since the customer provided it",
                             is_missing=False,
                             is_optional=False,
@@ -972,13 +972,13 @@ _baseline_shots: Sequence[ToolCallerInferenceShot] = [
                         )
                     },
                     same_call_is_already_staged=False,
-                    comparison_with_rejected_tools_including_references_to_subtleties="not as good a fit as check_temperature",
+                    comparison_with_rejected_tools_including_references_to_subtleties="check_indoor_temperature is a better fit for this usecase, as it's more specific",
                     relevant_subtleties="no subtleties were detected",
                     a_rejected_tool_would_have_been_a_better_fit_if_it_werent_already_rejected=True,
-                    potentially_better_rejected_tool_name="check_temperature",
+                    potentially_better_rejected_tool_name="check_indoor_temperature",
                     potentially_better_rejected_tool_rationale=(
-                        "check_temperature is more versatile and can handle both indoor and outdoor locations "
-                        "with the type parameter, making it more suitable than the room-specific tool"
+                        "check_temperature is a more general case of check_indoor_temperature. "
+                        "Here, since the customer inquired about the temperature of a specific room, the check_indoor_temperature is more fitting."
                     ),
                     the_better_rejected_tool_should_clearly_be_run_in_tandem_with_the_candidate_tool=False,
                     should_run=False,
