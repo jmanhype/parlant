@@ -192,7 +192,7 @@ class MessageAssembler(MessageEventComposer):
 
             last_generation_exception: Exception | None = None
 
-            self._logger.debug(f"[MessageEventComposer][Assembly][Prompt] \n{prompt}")
+            self._logger.debug(f"[MessageEventComposer][Assembly][Prompt]\n{prompt}")
 
             for generation_attempt in range(3):
                 try:
@@ -206,10 +206,6 @@ class MessageAssembler(MessageEventComposer):
                     )
 
                     if response_message is not None:
-                        self._logger.debug(
-                            f'[MessageEventComposer][Assembly][GeneratedMessage] "{response_message}"'
-                        )
-
                         event = await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,
                             data=response_message,

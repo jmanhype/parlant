@@ -41,7 +41,7 @@ const FilterDialogContent = ({contentChanged, defaultValue}: {contentChanged: (t
 
 	return (
 		<div className='px-[39px] py-[42px] flex flex-col gap-[22px]'>
-			<h2 className='text-[20px] font-normal'>Filter By Content</h2>
+			<h2 className='text-[20px] font-normal'>Filter by content</h2>
 			<div className='border rounded-[5px] h-[38px] flex items-center bg-[#FBFBFB] hover:bg-[#F5F6F8] focus-within:!bg-white'>
 				<Input value={inputVal} onChange={(e) => setInputVal(e.target.value)} name='filter' className='h-[36px] !ring-0 !ring-offset-0 border-none text-[16px] bg-[#FBFBFB] hover:bg-[#F5F6F8] focus:!bg-white' />
 			</div>

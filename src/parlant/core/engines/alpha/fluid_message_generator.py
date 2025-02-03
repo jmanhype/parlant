@@ -181,7 +181,7 @@ class FluidMessageGenerator(MessageEventComposer):
 
             last_generation_exception: Exception | None = None
 
-            self._logger.debug(f"[MessageEventComposer][Fluid][Prompt] \n{prompt}")
+            self._logger.debug(f"[MessageEventComposer][Fluid][Prompt]\n{prompt}")
 
             for generation_attempt in range(3):
                 try:
@@ -193,10 +193,6 @@ class FluidMessageGenerator(MessageEventComposer):
                     )
 
                     if response_message is not None:
-                        self._logger.debug(
-                            f'[MessageEventComposer][Fluid][GeneratedMessage] "{response_message}"'
-                        )
-
                         event = await event_emitter.emit_message_event(
                             correlation_id=self._correlator.correlation_id,
                             data=response_message,
@@ -593,17 +589,6 @@ Produce a valid JSON object in the following format: ###
         if not message_event_response.content.produced_reply:
             self._logger.debug("[MessageEventComposer][Fluid] Produced no reply")
             return message_event_response.info, None
-
-        if message_event_response.content.evaluation_for_each_instruction:
-            self._logger.debug(
-                "[FluidMessageGenerator][Evaluations]\n"
-                f"{json.dumps([e.model_dump(mode='json') for e in message_event_response.content.evaluation_for_each_instruction], indent=2)}"
-            )
-
-        self._logger.debug(
-            "[FluidMessageGenerator][Revisions]\n"
-            f"{json.dumps([r.model_dump(mode='json') for r in message_event_response.content.revisions], indent=2)}"
-        )
 
         if first_correct_revision := next(
             (

@@ -225,7 +225,7 @@ class GuidelineProposer:
         with self._logger.operation(
             f"[GuidelineProposer] Evaluating batch ({len(guidelines_dict)} guidelines)"
         ):
-            self._logger.debug(f"[GuidelineProposer][Prompt] {prompt}")
+            self._logger.debug(f"[GuidelineProposer][Prompt]\n{prompt}")
 
             inference = await self._schematic_generator.generate(
                 prompt=prompt,
@@ -234,7 +234,7 @@ class GuidelineProposer:
 
         if not inference.content.checks:
             self._logger.warning(
-                "[GuidelineProposer][Completion] No checks generated! This shouldn't happen."
+                "[GuidelineProposer][Completion]\nNo checks generated! This shouldn't happen."
             )
 
         propositions = []
