@@ -1,12 +1,21 @@
 import {useState} from 'react';
 import {ClassNameValue, twMerge} from 'tailwind-merge';
-import MessageFragment from '../message-fragment/message-fragment';
-import ErrorBoundary from '../error-boundary/error-boundary';
+import Tooltip from '../ui/custom/tooltip';
+import {copy} from '@/lib/utils';
 
 export interface Fragment {
 	id: string;
 	value: string;
 }
+
+const TooltipComponent = ({fragmentId}: {fragmentId: string}) => {
+	return (
+		<div className='group flex gap-[4px] text-[#CDCDCD] hover:text-[#151515]' role='button' onClick={() => copy(fragmentId)}>
+			<div>Fragment ID: {fragmentId}</div>
+			<img src='icons/copy.svg' alt='' className='invisible group-hover:visible' />
+		</div>
+	);
+};
 
 const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; className?: ClassNameValue}) => {
 	const [isOpen, setIsOpen] = useState(false);
@@ -23,13 +32,15 @@ const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; clas
 			</summary>
 			<div className='p-[14px] pt-[10px]'>
 				<div className='rounded-[14px] bg-white p-[10px]'>
-					<div className='overflow-auto fixed-scroll max-h-[308px]'>
-						<ErrorBoundary component={<div>Could not load fragments</div>}>
-							{fragmentIds.map((fragmentId) => (
-								<MessageFragment key={fragmentId} fragmentId={fragmentId} />
-							))}
-						</ErrorBoundary>
-					</div>
+					{fragmentIds.map((fragmentId) => (
+						<Tooltip key={fragmentId} value={<TooltipComponent fragmentId={fragmentId} />} side='top' align='start' className='rounded-[6px] rounded-bl-[0px] ml-[21px] -mb-[8px] font-medium font-ubuntu-sans'>
+							<div className='group rounded-[8px] hover:bg-[#F5F6F8] hover:border-[#EDEDED] border border-transparent flex gap-[17px] text-[#656565] py-[8px] px-[15px]'>
+								<img src='icons/puzzle.svg' alt='' className='group-hover:hidden w-[16px]' />
+								<img src='icons/puzzle-hover.svg' alt='' className='hidden group-hover:block w-[16px]' />
+								<div>{fragmentId}</div>
+							</div>
+						</Tooltip>
+					))}
 				</div>
 			</div>
 		</details>
