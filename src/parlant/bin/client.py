@@ -862,6 +862,17 @@ class Actions:
         client.tags.delete(tag_id=tag_id)
 
     @staticmethod
+    def list_fragments(ctx: click.Context) -> list[Fragment]:
+        client = cast(ParlantClient, ctx.obj.client)
+        client.fragments.list()
+        return client.fragments.list()
+
+    @staticmethod
+    def view_fragment(ctx: click.Context, fragment_id: str) -> Fragment:
+        client = cast(ParlantClient, ctx.obj.client)
+        return client.fragments.retrieve(fragment_id=fragment_id)
+
+    @staticmethod
     def load_fragments(ctx: click.Context, path: Path) -> list[Fragment]:
         with open(path, "r") as file:
             data = json.load(file)
@@ -2083,6 +2094,28 @@ class Interface:
             set_exit_status(1)
 
     @staticmethod
+    def list_fragments(ctx: click.Context) -> None:
+        try:
+            fragments = Actions.list_fragments(ctx)
+            if not fragments:
+                rich.print("No fragments found.")
+                return
+
+            Interface._render_fragments(fragments)
+        except Exception as e:
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
+    def view_fragment(ctx: click.Context, fragment_id: str) -> None:
+        try:
+            fragment = Actions.view_fragment(ctx, fragment_id=fragment_id)
+            Interface._render_fragments([fragment])
+        except Exception as e:
+            Interface.write_error(f"Error: {type(e).__name__}: {e}")
+            set_exit_status(1)
+
+    @staticmethod
     def stream_logs(
         ctx: click.Context,
         union_patterns: list[str],
@@ -3230,13 +3263,24 @@ async def async_main() -> None:
         with path.open("w", encoding="utf-8") as f:
             json.dump(sample_data, f, indent=2)
 
-        rich.print(Text(f"Created sample fragment data at {path}", style="bold green"))
+        Interface._write_success(f"Created sample fragment data at {path}")
 
     @fragment.command("load", help="Load fragments from a JSON file.")
     @click.argument("file", type=click.Path(exists=True, dir_okay=False))
     @click.pass_context
     def fragment_load(ctx: click.Context, file: str) -> None:
         Interface.load_fragments(ctx, Path(file))
+
+    @fragment.command("list", help="List fragments")
+    @click.pass_context
+    def fragment_list(ctx: click.Context) -> None:
+        Interface.list_fragments(ctx)
+
+    @fragment.command("view", help="View a fragment")
+    @click.option("--id", type=str, metavar="ID", help="Fragment ID", required=True)
+    @click.pass_context
+    def fragment_view(ctx: click.Context, id: str) -> None:
+        Interface.view_fragment(ctx, id)
 
     @cli.command(
         "log",
