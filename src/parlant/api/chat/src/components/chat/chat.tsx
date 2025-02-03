@@ -250,13 +250,13 @@ export default function Chat(): ReactElement {
 							</div>
 						)}
 					</HeaderWrapper>
-					<div className={twMerge('h-[21px] bg-white border-e border-t-0', showLogsForMessage && 'bg-main')}></div>
-					<div className={twMerge('flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e', showLogsForMessage && 'bg-main')}>
+					<div className={twMerge('h-[21px] bg-white border-e border-t-0 bg-main')}></div>
+					<div className={twMerge('flex flex-col items-center bg-white h-[calc(100%-70px)] mx-auto w-full flex-1 overflow-auto border-e bg-main')}>
 						<div className='messages fixed-scroll flex-1 flex flex-col w-full pb-4' aria-live='polite' role='log' aria-label='Chat messages'>
 							{ErrorTemplate && <ErrorTemplate />}
 							{visibleMessages.map((event, i) => (
 								<React.Fragment key={i}>
-									{!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) && <DateHeader date={event.creation_utc} isFirst={!i} bgColor={showLogsForMessage ? 'bg-main' : 'bg-white'} />}
+									{!isSameDay(messages[i - 1]?.creation_utc, event.creation_utc) && <DateHeader date={event.creation_utc} isFirst={!i} bgColor="bg-main" />}
 									<div ref={lastMessageRef} className='flex flex-col'>
 										<Message
 											isRegenerateHidden={!!isMissingAgent}

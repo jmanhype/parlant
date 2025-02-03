@@ -29,7 +29,7 @@ interface FilterTabsFilterProps {
 const Header = ({event, regenerateMessageFn, closeLogs, className}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction; className?: ClassNameValue}) => {
 	const [session] = useAtom(sessionAtom);
 	return (
-		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && 'border-transparent bg-[#f5f6f8]', className)}>
+		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && '!border-transparent bg-[#f5f6f8]', className)}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex items-center gap-[12px] mb-[1px]'>
@@ -67,7 +67,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 	};
 
 	const addFilter = () => {
-		const val: Filter = {id: Date.now(), name: 'untitled', def: {level: 'DEBUG', types: []}};
+		const val: Filter = {id: Date.now(), name: 'Logs', def: {level: 'DEBUG', types: []}};
 		const allTabs = [...filterTabs, val];
 		setFilterTabs(allTabs);
 		setCurrFilterTabs(val.id);
@@ -179,7 +179,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]; content?: string[]}));
 				(setFilterTabs as any)((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
-						const filter = {id: Date.now(), def: filters, name: 'untitled'};
+						const filter = {id: Date.now(), def: filters, name: 'Logs'};
 						setCurrFilterTabs(filter.id);
 						return [filter];
 					}
@@ -231,15 +231,15 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs?.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs as any} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && (
 				<LogFilters
-					className={twMerge(!filteredLogs?.length && 'bg-[#f5f6f8]', !logs?.length && 'absolute')}
+					className={twMerge(!filteredLogs?.length && '', !logs?.length && 'absolute')}
 					filterId={currFilterTabs || undefined}
 					def={structuredClone((filterTabs as any).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
-			{!event && <EmptyState title='No message has been selected' subTitle='Please select one of the messages so we can give you more information' className='bg-[#f5f6f8]' />}
-			{event && logs && !logs?.length && <EmptyState title='No Logs Found' subTitle='Please select a different message in the session.' className='bg-[#f5f6f8]' />}
-			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No Data' className='bg-[#f5f6f8]' />}
+			{!event && <EmptyState title='Feeling curious?' subTitle='Select an agent message for additional actions and information about its generation process.' className='bg-[#f5f6f8]' />}
+			{event && logs && !logs?.length && <EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." className='bg-[#f5f6f8]' />}
+			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs current filters' className='bg-[#ebecf0]' />}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div ref={messagesRef} className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
