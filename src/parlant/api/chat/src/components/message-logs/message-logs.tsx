@@ -29,7 +29,7 @@ interface FilterTabsFilterProps {
 const Header = ({event, regenerateMessageFn, closeLogs, className}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction; className?: ClassNameValue}) => {
 	const [session] = useAtom(sessionAtom);
 	return (
-		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && 'border-transparent', className)}>
+		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && 'border-transparent bg-[#f5f6f8]', className)}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex items-center gap-[12px] mb-[1px]'>
@@ -127,7 +127,7 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 								onKeyDown={(e) => (e.key === 'Enter' ? editFinished(e, tab) : e.key === 'Escape' && editCancelled(e, tab))}
 								onBlur={(e) => editFinished(e, tab)}
 								className={twMerge(
-									'text-[15px] flex-1 overflow-hidden [justify-content:left] whitespace-nowrap text-ellipsis h-[28px] px-[8px] outline-none flex items-center border border-transparent flex justify-start',
+									'text-[15px] flex-1 overflow-hidden whitespace-nowrap text-ellipsis h-[28px] px-[8px] outline-none items-center border border-transparent flex !justify-start',
 									tab.id === currFilterTabs && !isEditing && 'hover:border-gray-200'
 								)}>
 								{tab.name}
@@ -154,9 +154,11 @@ const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTab
 const EmptyState = ({title, subTitle, className}: {title: string; subTitle?: string; className?: ClassNameValue}) => {
 	return (
 		<div className={twMerge('flex flex-col m-auto justify-center items-center w-full h-full', className)}>
-			<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
-			<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>{title}</h2>
-			{subTitle && <p className='text-[15px] font-normal max-w-[378px] font-inter text-[#656565] text-center mt-[10px]'>{subTitle}</p>}
+			<div className='flex flex-col justify-center items-center -translate-y-[70px]'>
+				<img className='size-[224px] rounded-full' src='emcie-placeholder.svg' alt='' />
+				<h2 className='text-[20px] font-medium font-inter text-[#656565] mt-[30px]'>{title}</h2>
+				{subTitle && <p className='text-[15px] font-normal max-w-[378px] font-inter text-[#656565] text-center mt-[10px]'>{subTitle}</p>}
+			</div>
 		</div>
 	);
 };
@@ -235,7 +237,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
-			{!event && <EmptyState title='No message has been selected' subTitle='Please select one of the messages so we can give you more information' />}
+			{!event && <EmptyState title='No message has been selected' subTitle='Please select one of the messages so we can give you more information' className='bg-[#f5f6f8]' />}
 			{event && logs && !logs?.length && <EmptyState title='No Logs Found' subTitle='Please select a different message in the session.' className='bg-[#f5f6f8]' />}
 			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No Data' className='bg-[#f5f6f8]' />}
 			{event && !!filteredLogs.length && (

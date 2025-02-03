@@ -230,7 +230,7 @@ export default function Chat(): ReactElement {
 		<>
 			<div className='flex items-center h-full w-full'>
 				<div className='h-full min-w-[50%] flex flex-col'>
-					<HeaderWrapper className={twJoin(showLogsForMessage && 'border-e')}>
+					<HeaderWrapper className={twJoin('border-e')}>
 						{session?.id && (
 							<div className='w-full flex items-center h-full'>
 								<div className='h-full border-e flex-1 flex flex-col gap-[5px] ps-[23px] pt-[13px] leading-[20px]'>
