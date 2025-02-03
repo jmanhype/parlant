@@ -198,3 +198,22 @@ async def get_electronic_products_by_type(
         database = json.load(f)
     products = [item for item in database if item["type"] == product_type.value]
     return ToolResult({"available_products": products})
+
+
+def get_bookings(customer_id: str) -> ToolResult:
+    if customer_id == "j2T3F00":
+        return ToolResult(
+            {
+                "bookings": """| Booking ID | Start Date  | End Date    | From         | To           |
+|------------|-------------|-------------|--------------|--------------|
+| PUDW600P   | 2025-07-04  | 2025-07-10  | Los Angeles  | Denver       |
+| CLPAJIHO   | 2025-07-01  | 2025-07-10  | Los Angeles  | Miami        |
+| 47U0BZFO   | 2025-07-05  | 2025-07-15  | Houston      | Miami        |
+| NOK9EHX0   | 2025-08-19  | 2025-08-22  | Phoenix      | Denver       |
+| XRT125KL   | 2025-03-15  | 2025-03-20  | Seattle      | Chicago      |
+| LMN789PQ   | 2025-04-01  | 2025-04-05  | Boston       | San Francisco|
+| WYZ456AB   | 2025-06-22  | 2025-06-30  | Atlanta      | Las Vegas    |"""
+            }
+        )
+    else:
+        return ToolResult({"bookings:No bookings found"})
