@@ -162,9 +162,14 @@ class ContextVariableCreationParamsDTO(
 
 context_variable_update_params_example = {
     "name": "CustomerBalance",
+    "description": "Stores the account balances of users",
     "freshness_rules": {
         "hours": [8, 12, 16],
         "minutes": [0],
+    },
+    "tool_id": {
+        "service_name": "finance_service",
+        "tool_name": "balance_checker",
     },
 }
 
