@@ -6,23 +6,30 @@ import {ClassNameValue, twJoin, twMerge} from 'tailwind-merge';
 import clsx from 'clsx';
 import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useLocalStorage} from '@/hooks/useLocalStorage';
-import LogFilters from '../log-filters/log-filters';
+import LogFilters, {Level, Type} from '../log-filters/log-filters';
 import {useAtom} from 'jotai';
 import {dialogAtom, sessionAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
 import Tooltip from '../ui/custom/tooltip';
 import {copy} from '@/lib/utils';
+import MessageFragments from '../message-fragments/message-fragments';
+
+interface DefInterface {
+	level?: Level;
+	types?: Type[];
+	content?: string[];
+}
 
 interface Filter {
 	id: number;
 	name: string;
-	def: {level?: string; types?: string[]} | null;
+	def: DefInterface | null;
 }
 
 interface FilterTabsFilterProps {
 	filterTabs: Filter[];
 	setCurrFilterTabs: React.Dispatch<React.SetStateAction<number | null>>;
-	setFilterTabs: any;
+	setFilterTabs: React.Dispatch<React.SetStateAction<Filter[]>>;
 	currFilterTabs: number | null;
 }
 
@@ -178,7 +185,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			if (!Object.keys(filters).length) setFilteredLogs(logs);
 			else {
 				setFilteredLogs(getMessageLogsWithFilters(event?.correlation_id as string, filters as {level: string; types?: string[]; content?: string[]}));
-				(setFilterTabs as any)((tabFilters: Filter[]) => {
+				(setFilterTabs as React.Dispatch<React.SetStateAction<Filter[]>>)((tabFilters: Filter[]) => {
 					if (!tabFilters.length) {
 						const filter = {id: Date.now(), def: filters, name: 'Logs'};
 						setCurrFilterTabs(filter.id);
@@ -226,15 +233,18 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 		dialog.openDialog('', element, {height: '90vh', width: '90vw'});
 	};
 
+	const shouldRenderTabs = event && !!logs?.length && !!filterTabs?.length;
+
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')} />
-			{event && !!logs?.length && !!filterTabs?.length && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs as any} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
+			{true && <MessageFragments fragmentIds={[]} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
+			{shouldRenderTabs && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && (
 				<LogFilters
 					className={twMerge(!filteredLogs?.length && '', !logs?.length && 'absolute')}
 					filterId={currFilterTabs || undefined}
-					def={structuredClone((filterTabs as any).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
+					def={structuredClone((filterTabs as Filter[]).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
