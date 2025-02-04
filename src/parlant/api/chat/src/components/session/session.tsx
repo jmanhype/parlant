@@ -90,7 +90,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 						setSession(null);
 						document.title = 'Parlant';
 					}
-					toast.success(`Session "${session.title}" deleted successfully`, {closeButton: true});
+					toast.success(`Session "${session.title}" deleted successfully`);
 				})
 				.catch(() => {
 					toast.error('Something went wrong');
@@ -121,14 +121,14 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			if (session.id === NEW_SESSION_ID) {
 				setEditingTitle?.(null);
 				setNewSession((session: SessionInterface | null) => (session ? {...session, title} : session));
-				toast.success('title changed successfully', {closeButton: true});
+				toast.success('title changed successfully');
 				return;
 			}
 			patchData(`sessions/${session.id}`, {title})
 				.then(() => {
 					setEditingTitle?.(null);
 					refetch?.();
-					toast.success('title changed successfully', {closeButton: true});
+					toast.success('title changed successfully');
 				})
 				.catch(() => {
 					toast.error('Something went wrong');
@@ -152,7 +152,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				e.stopPropagation();
 				copy(session.id);
 			},
-			imgPath: 'icons/copy.svg',
+			imgPath: 'icons/copy-session.svg',
 		},
 		{title: 'rename', onClick: editTitle, imgPath: 'icons/rename.svg'},
 		{title: 'delete', onClick: deleteSession, imgPath: 'icons/delete.svg'},
@@ -200,14 +200,14 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			<div className='h-[39px] flex items-center'>
 				{!disabled && editingTitle !== session.id && (
 					<DropdownMenu>
-						<DropdownMenuTrigger disabled={!!editingTitle} data-testid='menu-button' tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+						<DropdownMenuTrigger disabled={!!editingTitle} className='outline-none' data-testid='menu-button' tabIndex={-1} onClick={(e) => e.stopPropagation()}>
 							<div tabIndex={tabIndex} role='button' className='rounded-full me-[24px]' onClick={(e) => e.stopPropagation()}>
 								<img src='icons/more.svg' alt='more' height={14} width={14} />
 							</div>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align='start'>
+						<DropdownMenuContent side='right' align='start' className='-ms-[10px] flex flex-col gap-[8px] py-[14px] px-[10px] border-none w-[168px] [box-shadow:_0px_8px_20px_-8px_#00000012] rounded-[8px]'>
 							{sessionActions.map((sessionAction) => (
-								<DropdownMenuItem tabIndex={0} key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-medium text-[14px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
+								<DropdownMenuItem tabIndex={0} key={sessionAction.title} onClick={sessionAction.onClick} className='gap-0 font-normal text-[14px] px-[20px] font-ubuntu-sans capitalize hover:!bg-[#FAF9FF]'>
 									<img data-testid={sessionAction.title} src={sessionAction.imgPath} height={16} width={18} className='me-[8px]' alt='' />
 									{sessionAction.title}
 								</DropdownMenuItem>

@@ -244,7 +244,7 @@ export default function Chat(): ReactElement {
 								</div>
 								<div className='h-full flex-1 flex items-center ps-[24px]'>
 									<div>
-										<div>{customer?.id == 'guest' && 'Guest' || customer?.name}</div>
+										<div>{(customer?.id == 'guest' && 'Guest') || customer?.name}</div>
 										<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
 											<CopyText preText='Customer ID:' text={` ${customer?.id}`} textToCopy={customer?.id} />
 										</div>

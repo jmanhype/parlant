@@ -265,7 +265,6 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 									</Tooltip>
 								</div>
 								<pre className={clsx('max-w-[-webkit-fill-available] pe-[10px] text-wrap [mask-image:linear-gradient(to_bottom,white_60px,_transparent)]')}>
-									{' '}
 									{log?.level ? `[${log.level}]` : ''}
 									{log?.message}
 								</pre>
