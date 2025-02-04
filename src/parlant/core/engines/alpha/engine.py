@@ -636,7 +636,7 @@ class AlphaEngine(Engine):
                         session=session,
                         variable_id=variable.id,
                         key=key,
-                        current_time=datetime.now(),
+                        current_time=datetime.now(timezone.utc),
                     )
                     break
 
@@ -648,7 +648,7 @@ class AlphaEngine(Engine):
                     session=session,
                     variable_id=variable.id,
                     key=key,
-                    current_time=datetime.now(),
+                    current_time=datetime.now(timezone.utc),
                 )
                 if generated_value:
                     value = generated_value
