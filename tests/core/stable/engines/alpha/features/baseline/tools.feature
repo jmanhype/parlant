@@ -308,4 +308,3 @@ Feature: Tools
         Then no tool calls event is emitted
         And a single message event is emitted
         And the message mentions that a date is missing
-
