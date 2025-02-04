@@ -475,7 +475,7 @@ Produce a valid JSON object in the following format: ###
     ) -> str:
         last_customer_message = next(
             (
-                event.data["message"]
+                event.data["message"] if not event.data.get("flagged", False) else "<N/A>"
                 for event in reversed(interaction_history)
                 if (
                     event.kind == "message"
