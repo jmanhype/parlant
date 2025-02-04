@@ -112,7 +112,7 @@ class MessageAssemblerShot(Shot):
 
 
 @dataclass(frozen=True)
-class MessageAssemblyGenerationResult:
+class _MessageAssemblyGenerationResult:
     message: str
     fragmens: list[Fragment]
 
@@ -639,7 +639,7 @@ Produce a valid JSON object in the following format: ###
         composition_mode: CompositionMode,
         temperature: float,
         final_attempt: bool,
-    ) -> tuple[GenerationInfo, Optional[MessageAssemblyGenerationResult]]:
+    ) -> tuple[GenerationInfo, Optional[_MessageAssemblyGenerationResult]]:
         message_event_response = await self._schematic_generator.generate(
             prompt=prompt,
             hints={"temperature": temperature},
@@ -750,12 +750,12 @@ Produce a valid JSON object in the following format: ###
 
         match composition_mode:
             case "fluid-assembly" | "composited-assembly":
-                return message_event_response.info, MessageAssemblyGenerationResult(
+                return message_event_response.info, _MessageAssemblyGenerationResult(
                     message=str(final_revision.composited_fragment_sequence),
                     fragmens=content_fragments,
                 )
             case "strict-assembly":
-                return message_event_response.info, MessageAssemblyGenerationResult(
+                return message_event_response.info, _MessageAssemblyGenerationResult(
                     message="".join(final_revision.sequenced_rendered_content_fragments),
                     fragmens=content_fragments,
                 )
