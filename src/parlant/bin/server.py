@@ -229,7 +229,7 @@ async def get_module_list_from_config() -> list[str]:
 async def load_modules(
     container: Container,
     modules: Iterable[str],
-) -> AsyncIterator[None]:
+) -> AsyncIterator[Container]:
     imported_modules = []
 
     for module_path in modules:
@@ -242,10 +242,12 @@ async def load_modules(
 
     for m in imported_modules:
         LOGGER.info(f"Initializing module '{m.__name__}'")
-        await m.initialize_module(container)
+
+        if new_container := await m.initialize_module(container):
+            container = new_container
 
     try:
-        yield
+        yield container
     finally:
         for m in reversed(imported_modules):
             LOGGER.info(f"Shutting down module '{m.__name__}'")
@@ -464,22 +466,28 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
 
     EXIT_STACK = AsyncExitStack()
 
-    async with setup_container(params.nlp_service, params.log_level) as container, EXIT_STACK:
+    async with (
+        setup_container(params.nlp_service, params.log_level) as base_container,
+        EXIT_STACK,
+    ):
         modules = set(await get_module_list_from_config() + params.modules)
 
         if modules:
-            await EXIT_STACK.enter_async_context(load_modules(container, modules))
+            # Allow modules to return a different container
+            actual_container = await EXIT_STACK.enter_async_context(
+                load_modules(base_container, modules),
+            )
         else:
             LOGGER.info("No external modules selected")
 
         await recover_server_tasks(
-            evaluation_store=container[EvaluationStore],
-            evaluator=container[BehavioralChangeEvaluator],
+            evaluation_store=actual_container[EvaluationStore],
+            evaluator=actual_container[BehavioralChangeEvaluator],
         )
 
-        await create_agent_if_absent(container[AgentStore])
+        await create_agent_if_absent(actual_container[AgentStore])
 
-        yield await create_api_app(container)
+        yield await create_api_app(actual_container)
 
 
 async def serve_app(

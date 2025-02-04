@@ -3,6 +3,7 @@
 All notable changes to Parlant will be documented here.
 
 ## [Unreleased]
+- Allow returning a new (modified) container in modules
 - Improved tool parameter flexibility: custom types, Pydantic models, and annotated ToolParameterOptions
 - Added Tool Insights
 - Lowered likelihood of the agent hallucinating facts in fluid mode
