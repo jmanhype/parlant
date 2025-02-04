@@ -379,11 +379,12 @@ def given_a_tool(
             "name": "get_bookings",
             "description": "Gets all flight bookings for a customer",
             "module_path": "tests.tool_utilities",
-            "parameteres": {
+            "parameters": {
                 "customer_id": {
                     "type": "string",
                 }
             },
+            "required": ["customer_id"],
         },
     }
 

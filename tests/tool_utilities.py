@@ -201,7 +201,7 @@ async def get_electronic_products_by_type(
 
 
 def get_bookings(customer_id: str) -> ToolResult:
-    if customer_id == "j2T3F00":
+    if customer_id == "J2T3F00":
         return ToolResult(
             {
                 "bookings": """| Booking ID | Start Date  | End Date    | From         | To           |
