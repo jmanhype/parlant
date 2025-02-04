@@ -243,7 +243,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs current filters' className='bg-[#ebecf0]' />}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div ref={messagesRef} className='rounded-[14px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
+					<div ref={messagesRef} className='rounded-[8px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
 						{filteredLogs.map((log, i) => (
 							<div key={i} className={twJoin('flex max-h-[30%] overflow-hidden group relative font-ubuntu-mono rounded-[8px] gap-[5px] px-[20px] p-[14px] border-white border text-[14px] transition-all hover:border-[#EDEDED] hover:bg-[#F5F6F8]')}>
 								<div className='absolute hidden group-hover:flex right-[10px] top-[10px] gap-[10px]'>
