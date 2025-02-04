@@ -1,0 +1,28 @@
+import useFetch from '@/hooks/useFetch';
+import Tooltip from '../ui/custom/tooltip';
+import {copy} from '@/lib/utils';
+
+const TooltipComponent = ({fragmentId}: {fragmentId: string}) => {
+	return (
+		<div className='group flex gap-[4px] text-[#CDCDCD] hover:text-[#151515]' role='button' onClick={() => copy(fragmentId)}>
+			<div>Fragment ID: {fragmentId}</div>
+			<img src='icons/copy.svg' alt='' className='invisible group-hover:visible' />
+		</div>
+	);
+};
+
+const MessageFragment = ({fragmentId}: {fragmentId: string}) => {
+	const {data} = useFetch<{value: string}>(`fragments/${fragmentId}`);
+
+	return (
+		<Tooltip value={<TooltipComponent fragmentId={fragmentId} />} side='top' align='start' className='rounded-[6px] rounded-bl-[0px] ml-[23px] -mb-[10px] font-medium font-ubuntu-sans'>
+			<div className='group rounded-[8px] hover:bg-[#F5F6F8] hover:border-[#EDEDED] border border-transparent flex gap-[17px] text-[#656565] py-[8px] ps-[15px] pe-[38px]'>
+				<img src='icons/puzzle.svg' alt='' className='group-hover:hidden w-[16px] min-w-[16px] self-start' />
+				<img src='icons/puzzle-hover.svg' alt='' className='hidden group-hover:block w-[16px] min-w-[16px] self-start' />
+				<div>{data?.value}</div>
+			</div>
+		</Tooltip>
+	);
+};
+
+export default MessageFragment;

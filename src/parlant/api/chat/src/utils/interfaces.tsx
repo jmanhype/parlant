@@ -27,6 +27,7 @@ export interface EventInterface {
 	creation_utc: Date;
 	data: {
 		status?: ServerStatus;
+		fragments?: string[];
 		message: string;
 	};
 	index?: number;
