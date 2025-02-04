@@ -10,7 +10,7 @@ export interface Fragment {
 const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; className?: ClassNameValue}) => {
 	const [isOpen, setIsOpen] = useState(false);
 
-	const onToggle = (e) => {
+	const onToggle = (e: any) => {
 		setIsOpen(e.target.open);
 	};
 
