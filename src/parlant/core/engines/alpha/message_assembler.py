@@ -34,7 +34,7 @@ from parlant.core.engines.alpha.guideline_proposition import GuidelinePropositio
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
 from parlant.core.glossary import Term
 from parlant.core.emissions import EmittedEvent, EventEmitter
-from parlant.core.sessions import Event, MessageEventData
+from parlant.core.sessions import Event, MessageEventData, Participant
 from parlant.core.common import DefaultBaseModel
 from parlant.core.logging import Logger
 from parlant.core.shots import Shot, ShotCollection
@@ -217,10 +217,7 @@ class MessageAssembler(MessageEventComposer):
                             correlation_id=self._correlator.correlation_id,
                             data=MessageEventData(
                                 message=assembly_result.message,
-                                participant={
-                                    "id": agent.id,
-                                    "display_name": agent.name,
-                                },
+                                participant=Participant(id=agent.id, display_name=agent.name),
                                 fragments=[f.id for f in assembly_result.fragmens],
                             ),
                         )
