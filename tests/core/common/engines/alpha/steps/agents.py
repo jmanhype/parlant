@@ -37,6 +37,7 @@ def given_an_agent_with_description(
         context.container[AgentStore].create_agent(
             name="test-agent",
             description=f"Your job is {description}",
+            max_engine_iterations=2,
         )
     )
     return agent.id
@@ -56,6 +57,7 @@ def given_an_agent_with_description_and_name(
         context.container[AgentStore].create_agent(
             name=name,
             description=f"Your job is {description}",
+            max_engine_iterations=2,
         )
     )
     return agent.id

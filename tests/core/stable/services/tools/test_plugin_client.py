@@ -59,7 +59,10 @@ class SessionBuffers(EventEmitterFactory):
 
 @fixture
 async def agent(container: Container) -> Agent:
-    return await container[AgentStore].create_agent(name="Test Agent")
+    return await container[AgentStore].create_agent(
+        name="Test Agent",
+        max_engine_iterations=2,
+    )
 
 
 @fixture
