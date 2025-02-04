@@ -12,6 +12,8 @@ All notable changes to Parlant will be documented here.
 - Allow only specifying guideline condition or action when updating guideline from CLI
 - Add WebSocket logger feature for streaming logs in real time
 - Add a log viewer to the sandbox UI
+- Add API and CLI to Fragments
+- Changed message inspection to return message event data for displaying more information, such as fragments in the inspection
 
 
 ## [1.6.2] - 2025-01-29
