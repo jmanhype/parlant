@@ -238,7 +238,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
 			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')} />
-			{true && <MessageFragments fragmentIds={[]} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
+			{!!event && <MessageFragments fragmentIds={[]} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
 			{shouldRenderTabs && <FilterTabs currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && (
 				<LogFilters

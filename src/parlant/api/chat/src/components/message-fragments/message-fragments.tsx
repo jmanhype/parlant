@@ -29,8 +29,8 @@ const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; clas
 	};
 
 	return (
-		<details onToggle={onToggle} className={twMerge(isOpen && 'bg-[#F5F6F8]', className)}>
-			<summary className={twMerge('h-[36px] flex items-center justify-between ms-[24px] me-[30px] cursor-pointer text-[16px] bg-[#FBFBFB] hover:bg-white text-[#656565] hover:text-[#151515]', isOpen && '!bg-[#F5F6F8] !text-[#656565]')}>
+		<details onToggle={onToggle} open className={twMerge(isOpen && 'bg-[#F5F6F8]', className)}>
+			<summary className={twMerge('h-[34px] flex items-center justify-between ms-[24px] me-[30px] cursor-pointer text-[16px] bg-[#FBFBFB] hover:bg-white text-[#656565] hover:text-[#151515]', isOpen && '!bg-[#F5F6F8] !text-[#656565]')}>
 				<span>Fragments</span>
 				<img src='icons/arrow-down.svg' alt='' style={{rotate: isOpen ? '0deg' : '180deg'}} />
 			</summary>
