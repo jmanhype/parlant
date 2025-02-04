@@ -375,6 +375,17 @@ def given_a_tool(
             },
             "required": ["product_type"],
         },
+        "get_bookings": {
+            "name": "get_bookings",
+            "description": "Gets all flight bookings for a customer",
+            "module_path": "tests.tool_utilities",
+            "parameters": {
+                "customer_id": {
+                    "type": "string",
+                }
+            },
+            "required": ["customer_id"],
+        },
     }
 
     tool = context.sync_await(create_tool(**tools[tool_name]))

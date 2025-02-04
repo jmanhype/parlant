@@ -89,3 +89,19 @@ Feature: Conversation
         Then a single message event is emitted
         And the message contains no rudeness
         And the message contains that the store is open from 9 AM to 5 PM, Monday through Friday
+
+    Scenario: Message generator correctly filters tool results according to customer request
+        Given an empty session
+        And a context variable "customer_id" set to "J2T3F00"
+        And a guideline "get_bookings_guideline" to present all relvant bookings to the customer when the customer asks to modify a booking
+        And the tool "get_bookings"
+        And an association between "get_bookings_guideline" and "get_bookings"
+        And a customer message, "Hey there, I want to modify my flight bookings, I think it's one from the second half of 2025"
+        When processing is triggered
+        Then a single tool calls event is emitted
+        And a single message event is emitted
+        And the message contains these flights:
+            | PUDW600P | 2025-07-04 | 2025-07-10 | Los Angeles | Denver |
+            | CLPAJIHO | 2025-07-01 | 2025-07-10 | Los Angeles | Miami  |
+            | 47U0BZFO | 2025-07-05 | 2025-07-15 | Houston     | Miami  |
+            | NOK9EHX0 | 2025-08-19 | 2025-08-22 | Phoenix     | Denver |
