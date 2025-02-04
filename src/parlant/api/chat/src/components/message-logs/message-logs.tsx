@@ -250,7 +250,7 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 			)}
 			{!event && <EmptyState title='Feeling curious?' subTitle='Select an agent message for additional actions and information about its generation process.' className='bg-[#f5f6f8]' />}
 			{event && logs && !logs?.length && <EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." className='bg-[#f5f6f8]' />}
-			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs current filters' className='bg-[#ebecf0]' />}
+			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' className='bg-[#ebecf0]' />}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div ref={messagesRef} className='rounded-[8px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
