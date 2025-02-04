@@ -20,7 +20,7 @@ export default function CopyText({text, textToCopy, preText, className, element}
 		if (navigator.clipboard && navigator.clipboard.writeText) {
 			navigator.clipboard
 				.writeText(textToCopy)
-				.then(() => toast.info(`Copied text: ${textToCopy}`, {closeButton: true}))
+				.then(() => toast.info(`Copied text: ${textToCopy}`))
 				.catch(() => {
 					fallbackCopyText(textToCopy, element);
 				});
