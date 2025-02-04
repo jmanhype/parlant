@@ -478,6 +478,7 @@ async def load_app(params: CLIParams) -> AsyncIterator[ASGIApplication]:
                 load_modules(base_container, modules),
             )
         else:
+            actual_container = base_container
             LOGGER.info("No external modules selected")
 
         await recover_server_tasks(
