@@ -67,7 +67,7 @@ async def test_that_an_agent_can_be_created_without_max_engine_iterations(
     agent = response.json()
 
     assert agent["name"] == "test-agent"
-    assert agent["max_engine_iterations"] == 3
+    assert agent["max_engine_iterations"] == 1
 
 
 async def test_that_an_agent_can_be_created_with_max_engine_iterations(
