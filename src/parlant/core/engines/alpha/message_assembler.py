@@ -750,9 +750,7 @@ Produce a valid JSON object in the following format: ###
                         f"[MessageEventComposer][Assembly] Fragment rendering hallucination. ID={materialized_fragment.fragment_id}; ExpectedContent={materialized_fragment.raw_content}; HallucinatedContent={final_revision.sequenced_rendered_content_fragments[index]}"
                     )
 
-                used_fragments[fragment.id] = final_revision.sequenced_rendered_content_fragments[
-                    index
-                ]
+                used_fragments[fragment.id] = fragment.value
             else:
                 used_fragments[fragment.id] = "<error: index mismatch>"
 
