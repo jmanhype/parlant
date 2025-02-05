@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from pytest import fixture, raises
 import pytest
 
+from parlant.core.logging import StdoutLogger
 from parlant.core.tools import (
     ToolContext,
     ToolError,
@@ -78,10 +79,13 @@ def create_client(
     server: PluginServer,
     event_emitter_factory: EventEmitterFactory,
 ) -> PluginClient:
+    correlator = ContextualCorrelator()
+    logger = StdoutLogger(correlator)
     return PluginClient(
         url=server.url,
         event_emitter_factory=event_emitter_factory,
-        correlator=ContextualCorrelator(),
+        logger=logger,
+        correlator=correlator,
     )
 
 
@@ -160,6 +164,28 @@ async def test_that_a_plugin_calls_a_tool(tool_context: ToolContext, container: 
                 arguments={"arg_1": 2, "arg_2": 4},
             )
             assert result.data == 8
+
+
+async def test_that_a_plugin_raises_an_informative_exception_if_tool_call_failed_on_server_side(
+    tool_context: ToolContext,
+    container: Container,
+) -> None:
+    @tool
+    def my_tool(context: ToolContext, arg_1: int, arg_2: int) -> ToolResult:
+        raise Exception("Bananas are tasty")
+
+    async with run_service_server([my_tool]) as server:
+        async with create_client(server, container[EventBufferFactory]) as client:
+            try:
+                await client.call_tool(
+                    my_tool.tool.name,
+                    tool_context,
+                    arguments={"arg_1": 2, "arg_2": 4},
+                )
+            except Exception as exc:
+                assert "Bananas are tasty" in str(exc)
+                return
+            assert False, "Expected exception was not raised"
 
 
 async def test_that_a_plugin_calls_an_async_tool(

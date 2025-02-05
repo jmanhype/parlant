@@ -355,6 +355,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
         ServiceDocumentRegistry(
             database=services_db,
             event_emitter_factory=c[EventEmitterFactory],
+            logger=c[Logger],
             correlator=c[ContextualCorrelator],
             nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
         )

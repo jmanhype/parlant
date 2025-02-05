@@ -239,6 +239,7 @@ async def container(
             ServiceDocumentRegistry(
                 database=TransientDocumentDatabase(),
                 event_emitter_factory=container[EventEmitterFactory],
+                logger=container[Logger],
                 correlator=container[ContextualCorrelator],
                 nlp_services={"default": OpenAIService(container[Logger])},
             )

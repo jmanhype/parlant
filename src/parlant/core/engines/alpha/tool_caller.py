@@ -647,22 +647,27 @@ Guidelines:
     ) -> ToolCallResult:
         try:
             self._logger.debug(
-                f"[ToolCaller][Execution] {tool_call.tool_id.to_string()}/{tool_call.id}, "
-                + (
-                    f"arguments=\n{json.dumps(tool_call.arguments, indent=2)}"
-                    if tool_call.arguments
-                    else ""
+                f"[ToolCaller][Execution][Invocation] ({tool_call.tool_id.to_string()}/{tool_call.id})"
+                + (f"\n{json.dumps(tool_call.arguments, indent=2)}" if tool_call.arguments else "")
+            )
+
+            try:
+                service = await self._service_registry.read_tool_service(tool_id.service_name)
+
+                result = await service.call_tool(
+                    tool_id.tool_name,
+                    context,
+                    tool_call.arguments,
                 )
-            )
-            service = await self._service_registry.read_tool_service(tool_id.service_name)
-            result = await service.call_tool(
-                tool_id.tool_name,
-                context,
-                tool_call.arguments,
-            )
-            self._logger.debug(
-                f"[ToolCaller][Execution] {tool_call.tool_id.to_string()}/{tool_call.id}\n{json.dumps(asdict(result), indent=2)}"
-            )
+
+                self._logger.debug(
+                    f"[ToolCaller][Execution][Result] Tool call succeeded ({tool_call.tool_id.to_string()}/{tool_call.id})\n{json.dumps(asdict(result), indent=2)}"
+                )
+            except Exception as exc:
+                self._logger.error(
+                    f"[ToolCaller][Execution][Result] Tool call failed ({tool_id.to_string()}/{tool_call.id})\n{traceback.format_exception(exc)}"
+                )
+                raise
 
             return ToolCallResult(
                 id=ToolResultId(generate_id()),

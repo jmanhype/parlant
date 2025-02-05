@@ -46,6 +46,7 @@ from urllib.parse import urljoin
 import uvicorn
 
 from parlant.core.agents import AgentId
+from parlant.core.logging import Logger
 from parlant.core.tools import (
     Tool,
     ToolError,
@@ -528,10 +529,10 @@ class PluginServer:
                 adapted_args = await adapt_tool_arguments(tool_params, normalized_args)
 
                 result = self.tools[name].function(context, **adapted_args)  # type: ignore
-            except BaseException:
+            except BaseException as exc:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=traceback.format_exc(),
+                    detail=traceback.format_exception(exc),
                 )
 
             result_future: asyncio.Future[ToolResult]
@@ -557,10 +558,12 @@ class PluginClient(ToolService):
         self,
         url: str,
         event_emitter_factory: EventEmitterFactory,
+        logger: Logger,
         correlator: ContextualCorrelator,
     ) -> None:
         self.url = url
         self._event_emitter_factory = event_emitter_factory
+        self._logger = logger
         self._correlator = correlator
 
     async def __aenter__(self) -> PluginClient:
@@ -654,10 +657,30 @@ class PluginClient(ToolService):
                     raise ItemNotFoundError(UniqueId(name))
 
                 if response.is_error:
-                    raise ToolExecutionError(
-                        tool_name=name,
-                        message=f"url='{self.url}', arguments='{arguments}'",
-                    )
+                    err: ToolExecutionError
+
+                    try:
+                        detail = json.loads(await response.aread())["detail"]
+
+                        self._logger.error(
+                            f"[PluginClient] Tool call error (url={self.url}, tool={tool.name}):\n{detail}"
+                        )
+
+                        err = ToolExecutionError(
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}', detail={detail}",
+                        )
+                    except Exception:
+                        self._logger.error(
+                            f"[PluginClient] Tool call error (url={self.url}, tool={tool.name})"
+                        )
+
+                        err = ToolExecutionError(
+                            tool_name=name,
+                            message=f"url='{self.url}', arguments='{arguments}'",
+                        )
+
+                    raise err
 
                 event_emitter = await self._event_emitter_factory.create_event_emitter(
                     emitting_agent_id=AgentId(context.agent_id),
