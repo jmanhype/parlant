@@ -2085,7 +2085,7 @@ async def test_that_fragments_can_be_initialized(context: ContextOfTest) -> None
 
         assert (
             await run_cli_and_get_exit_status(
-                "fragments",
+                "fragment",
                 "init",
                 tmp_file_path,
             )
@@ -2096,7 +2096,7 @@ async def test_that_fragments_can_be_initialized(context: ContextOfTest) -> None
             data = json.load(f)
 
         assert len(data.get("fragments", [])) > 0
-        assert all("value" in fragment for fragment in data)
+        assert all("value" in f for f in data["fragments"])
 
         os.remove(tmp_file_path)
 
@@ -2143,7 +2143,7 @@ async def test_that_fragments_can_be_loaded(context: ContextOfTest) -> None:
 
         assert (
             await run_cli_and_get_exit_status(
-                "fragments",
+                "fragment",
                 "load",
                 tmp_file_path,
             )
@@ -2151,7 +2151,7 @@ async def test_that_fragments_can_be_loaded(context: ContextOfTest) -> None:
         )
 
         fragments_in_system = await context.api.list_fragments()
-        assert len(fragments_in_system) == 2
+        assert len(fragments_in_system) == 3
 
         first = fragments_in_system[0]
         assert first["value"] == "Hello, {username}!"

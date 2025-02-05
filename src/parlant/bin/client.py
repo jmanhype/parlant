@@ -878,6 +878,10 @@ class Actions:
             data = json.load(file)
 
         client = cast(ParlantClient, ctx.obj.client)
+
+        for fragment in client.fragments.list():
+            client.fragments.delete(fragment_id=fragment.id)
+
         fragments = []
         for fragment_data in data.get("fragments", []):
             value = fragment_data["value"]
