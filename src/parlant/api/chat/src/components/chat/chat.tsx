@@ -47,7 +47,7 @@ export default function Chat(): ReactElement {
 	const lastMessageRef = useRef<HTMLDivElement>(null);
 	const submitButtonRef = useRef<HTMLButtonElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const {lastMessage, start} = useWebSocket(`${BASE_URL}/logs`);
+	const {lastMessage} = useWebSocket(`${BASE_URL}/logs`, true);
 
 	const [message, setMessage] = useState('');
 	const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage());
@@ -68,10 +68,6 @@ export default function Chat(): ReactElement {
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${session?.id}/events`, {min_offset: lastOffset}, [], session?.id !== NEW_SESSION_ID, !!(session?.id && session?.id !== NEW_SESSION_ID), false);
-
-	useEffect(() => {
-		start();
-	}, []);
 
 	useEffect(() => {
 		if (agents && agent?.id) {

@@ -21,17 +21,27 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 		}
 	}, []);
 
+	const reconnect = () => {
+		start();
+		setTimeout(() => {
+			if (!socketRef?.current?.readyState || !{[socketRef.current.OPEN]: true, [socketRef.current?.CONNECTING]: true}[socketRef.current.readyState]) {
+				reconnect();
+			}
+		}, 5000);
+	};
+
 	useEffect(() => {
 		if (defaultRunning) start();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const start = useCallback(() => {
-		if (isRunning) {
+		if (isRunning || (socketRef.current?.readyState != null && {[socketRef.current.OPEN]: true, [socketRef.current?.CONNECTING]: false}[socketRef.current.readyState])) {
 			console.warn('WebSocket is already running.');
 			return;
 		}
 
+		if ((socketRef.current && socketRef.current.readyState === socketRef.current.OPEN) || (socketRef.current && socketRef.current.readyState === socketRef.current?.CONNECTING)) socketRef.current.close();
 		const socket = new WebSocket(url);
 		socketRef.current = socket;
 
@@ -55,6 +65,10 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 			console.info('WebSocket closed:', event);
 			setIsConnected(false);
 			options?.onClose?.(event);
+			setTimeout(() => {
+				if (socketRef?.current?.readyState === 0 || socketRef?.current?.readyState === 1) return;
+				reconnect();
+			}, 5000);
 		});
 
 		setIsRunning(true);
