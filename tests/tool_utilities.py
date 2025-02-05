@@ -216,4 +216,4 @@ def get_bookings(customer_id: str) -> ToolResult:
             }
         )
     else:
-        return ToolResult({"bookings:No bookings found"})
+        return ToolResult({"bookings": "No bookings found"})
