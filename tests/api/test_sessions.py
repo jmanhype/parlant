@@ -79,7 +79,7 @@ async def strict_agent_id(
     agent_store = container[AgentStore]
     agent = await agent_store.create_agent(name="strict_test_agent")
     await agent_store.update_agent(
-        agent.id, params=AgentUpdateParams(composition_mode="strict-assembly")
+        agent.id, params=AgentUpdateParams(composition_mode="strict_assembly")
     )
     return agent.id
 

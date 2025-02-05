@@ -2,7 +2,7 @@ Feature: Strict Assembly
     Background:
         Given the alpha engine
         And an agent
-        And that the agent uses the strict-assembly message composition mode
+        And that the agent uses the strict_assembly message composition mode
         And an empty session
 
     Scenario: The agent has no option to greet the customer (strict assembly)

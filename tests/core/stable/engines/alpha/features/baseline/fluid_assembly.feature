@@ -2,7 +2,7 @@ Feature: Fluid Assembly
     Background:
         Given the alpha engine
         And an agent
-        And that the agent uses the fluid-assembly message composition mode
+        And that the agent uses the fluid_assembly message composition mode
         And an empty session
 
     Scenario: The agent greets the customer (fluid assembly)

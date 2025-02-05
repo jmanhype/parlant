@@ -27,9 +27,9 @@ AgentId = NewType("AgentId", str)
 
 CompositionMode: TypeAlias = Literal[
     "fluid",
-    "strict-assembly",
-    "composited-assembly",
-    "fluid-assembly",
+    "strict_assembly",
+    "composited_assembly",
+    "fluid_assembly",
 ]
 
 

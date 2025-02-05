@@ -345,7 +345,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         assert len(agents) == 1
         agent = agents[0]
 
-        can_suggest_fragments = agent.composition_mode == "fluid-assembly"
+        can_suggest_fragments = agent.composition_mode == "fluid_assembly"
 
         builder = PromptBuilder()
 
@@ -694,7 +694,7 @@ Produce a valid JSON object in the following format: ###
                 )
 
         if (
-            composition_mode in ["strict-assembly", "composited-assembly"]
+            composition_mode in ["strict_assembly", "composited_assembly"]
             and not final_revision.content_fragments
         ):
             self._logger.warning(
@@ -749,12 +749,12 @@ Produce a valid JSON object in the following format: ###
             content_fragments.append(fragment)
 
         match composition_mode:
-            case "fluid-assembly" | "composited-assembly":
+            case "fluid_assembly" | "composited_assembly":
                 return message_event_response.info, _MessageAssemblyGenerationResult(
                     message=str(final_revision.composited_fragment_sequence),
                     fragmens=content_fragments,
                 )
-            case "strict-assembly":
+            case "strict_assembly":
                 return message_event_response.info, _MessageAssemblyGenerationResult(
                     message="".join(final_revision.sequenced_rendered_content_fragments),
                     fragmens=content_fragments,
@@ -895,7 +895,7 @@ Here's the relevant train schedule:
 )
 
 example_1_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="A reply that took critique in a few revisions to get right",
     expected_result=example_1_expected,
 )
@@ -999,7 +999,7 @@ example_2_expected = AssembledMessageSchema(
 )
 
 example_2_shot = MessageAssemblerShot(
-    composition_modes=["fluid-assembly"],
+    composition_modes=["fluid_assembly"],
     description="A reply where one instruction was prioritized over another",
     expected_result=example_2_expected,
 )
@@ -1085,7 +1085,7 @@ example_3_expected = AssembledMessageSchema(
 )
 
 example_3_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="Non-Adherence Due to Missing Data",
     expected_result=example_3_expected,
 )
@@ -1180,7 +1180,7 @@ example_4_expected = AssembledMessageSchema(
 )
 
 example_4_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="Avoiding repetitive responses—in this case, given that the previous response by the agent was 'I am sorry, could you please clarify your request?'",
     expected_result=example_4_expected,
 )
@@ -1265,7 +1265,7 @@ example_5_expected = AssembledMessageSchema(
 )
 
 example_5_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="Not exposing thought process: Assume a tool call for 'check_balance' with a returned value of 1,000$ is staged",
     expected_result=example_5_expected,
 )
@@ -1378,7 +1378,7 @@ example_6_expected = AssembledMessageSchema(
 )
 
 example_6_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="An insight is derived and followed on not offering to help with something you don't know about",
     expected_result=example_6_expected,
 )
@@ -1520,7 +1520,7 @@ Here are the flights from New York to Los Angeles tomorrow:
 )
 
 example_7_shot = MessageAssemblerShot(
-    composition_modes=["strict-assembly", "composited-assembly", "fluid-assembly"],
+    composition_modes=["strict_assembly", "composited_assembly", "fluid_assembly"],
     description="Applying Insight—assuming the agent is provided with a list of outgoing flights from a tool call",
     expected_result=example_7_expected,
 )

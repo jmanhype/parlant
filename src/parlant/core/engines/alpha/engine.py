@@ -601,7 +601,7 @@ class AlphaEngine(Engine):
         match agent.composition_mode:
             case "fluid":
                 return self._fluid_message_generator
-            case "strict-assembly" | "composited-assembly" | "fluid-assembly":
+            case "strict_assembly" | "composited_assembly" | "fluid_assembly":
                 return self._message_assembler
 
     async def _load_context_variables(
