@@ -19,6 +19,7 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentAtom, agentsAtom, customerAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
+import ErrorBoundary from '../error-boundary/error-boundary';
 
 const emptyPendingMessage: () => EventInterface = () => ({
 	kind: 'message',
@@ -46,7 +47,7 @@ export default function Chat(): ReactElement {
 	const lastMessageRef = useRef<HTMLDivElement>(null);
 	const submitButtonRef = useRef<HTMLButtonElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const {lastMessage, start} = useWebSocket(`${BASE_URL}/logs`);
+	const {lastMessage} = useWebSocket(`${BASE_URL}/logs`, true);
 
 	const [message, setMessage] = useState('');
 	const [pendingMessage, setPendingMessage] = useState<EventInterface>(emptyPendingMessage());
@@ -67,10 +68,6 @@ export default function Chat(): ReactElement {
 	const [newSession, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const {data: lastMessages, refetch, ErrorTemplate} = useFetch<EventInterface[]>(`sessions/${session?.id}/events`, {min_offset: lastOffset}, [], session?.id !== NEW_SESSION_ID, !!(session?.id && session?.id !== NEW_SESSION_ID), false);
-
-	useEffect(() => {
-		start();
-	}, []);
 
 	useEffect(() => {
 		if (agents && agent?.id) {
@@ -244,7 +241,7 @@ export default function Chat(): ReactElement {
 								</div>
 								<div className='h-full flex-1 flex items-center ps-[24px]'>
 									<div>
-										<div>{customer?.id == 'guest' && 'Guest' || customer?.name}</div>
+										<div>{(customer?.id == 'guest' && 'Guest') || customer?.name}</div>
 										<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
 											<CopyText preText='Customer ID:' text={` ${customer?.id}`} textToCopy={customer?.id} />
 										</div>
@@ -305,9 +302,11 @@ export default function Chat(): ReactElement {
 						</div>
 					</div>
 				</div>
-				<div className='flex h-full min-w-[50%]'>
-					<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
-				</div>
+				<ErrorBoundary component={<div className='flex h-full min-w-[50%] justify-center items-center text-[20px]'>Failed to load logs</div>}>
+					<div className='flex h-full min-w-[50%]'>
+						<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
+					</div>
+				</ErrorBoundary>
 			</div>
 		</>
 	);

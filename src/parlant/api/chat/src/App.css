@@ -7,11 +7,11 @@
 .fixed-scroll {
 	overflow: scroll;
 	scrollbar-width: thin;
-	scrollbar-color: #F5F6F8 transparent;
+	scrollbar-color: #ebecf0 transparent;
 }
 
 .fixed-scroll:hover {
-	scrollbar-color: #EBECF0 transparent;
+	scrollbar-color: #cdcdcd transparent;
 }
 
 .fixed-scroll::-webkit-scrollbar {

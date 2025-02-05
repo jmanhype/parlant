@@ -8,8 +8,8 @@ import {ListFilter, Plus, X} from 'lucide-react';
 import {getDistanceToRight} from '@/utils/methods';
 import Tooltip from '../ui/custom/tooltip';
 
-type Type = 'GuidelineProposer' | 'MessageEventComposer' | 'ToolCaller';
-type Level = 'WARNING' | 'INFO' | 'DEBUG';
+export type Type = 'GuidelineProposer' | 'MessageEventComposer' | 'ToolCaller';
+export type Level = 'WARNING' | 'INFO' | 'DEBUG';
 
 const ALL_TYPES: Type[] = ['GuidelineProposer', 'ToolCaller', 'MessageEventComposer'];
 const ALL_LEVELS: Level[] = ['WARNING', 'INFO', 'DEBUG'];
@@ -77,7 +77,7 @@ const FilterDialog = ({contentChanged, content, children, className}: {contentCh
 	);
 };
 
-const LogFilters = ({applyFn, def, filterId, className}: {applyFn: (types: string[], level: string, content: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; content: string[]} | null; className?: ClassNameValue}) => {
+const LogFilters = ({applyFn, def, filterId, className}: {applyFn: (types: string[], level: string, content: string[]) => void; filterId?: number; def?: {level?: Level; types?: Type[]; content?: string[]} | null; className?: ClassNameValue}) => {
 	const [sources, setSources] = useState(structuredClone(def?.types || []));
 	const [contentConditions, setContentConditions] = useState(structuredClone(def?.content || []));
 	const [level, setLevel] = useState<Level>(def?.level || ALL_LEVELS[ALL_LEVELS.length - 1]);

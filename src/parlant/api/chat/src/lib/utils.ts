@@ -10,7 +10,7 @@ export const copy = (text: string) => {
 	if (navigator.clipboard && navigator.clipboard.writeText) {
 		navigator.clipboard
 			.writeText(text)
-			.then(() => text?.length < 100 && toast.info(`Copied text: ${text}`))
+			.then(() => toast.info(text?.length < 100 ? `Copied text: ${text}` : 'Text copied'))
 			.catch(() => {
 				fallbackCopyText(text);
 			});
