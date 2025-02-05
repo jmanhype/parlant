@@ -19,6 +19,7 @@ import HeaderWrapper from '../header-wrapper/header-wrapper';
 import {useAtom} from 'jotai';
 import {agentAtom, agentsAtom, customerAtom, newSessionAtom, sessionAtom, sessionsAtom} from '@/store';
 import CopyText from '../ui/custom/copy-text';
+import ErrorBoundary from '../error-boundary/error-boundary';
 
 const emptyPendingMessage: () => EventInterface = () => ({
 	kind: 'message',
@@ -305,9 +306,11 @@ export default function Chat(): ReactElement {
 						</div>
 					</div>
 				</div>
-				<div className='flex h-full min-w-[50%]'>
-					<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
-				</div>
+				<ErrorBoundary component={<div className='flex h-full min-w-[50%] justify-center items-center text-[20px]'>Failed to load logs</div>}>
+					<div className='flex h-full min-w-[50%]'>
+						<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
+					</div>
+				</ErrorBoundary>
 			</div>
 		</>
 	);

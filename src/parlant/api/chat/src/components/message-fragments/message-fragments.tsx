@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {ClassNameValue, twMerge} from 'tailwind-merge';
 import MessageFragment from '../message-fragment/message-fragment';
+import ErrorBoundary from '../error-boundary/error-boundary';
 
 export interface Fragment {
 	id: string;
@@ -23,9 +24,11 @@ const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; clas
 			<div className='p-[14px] pt-[10px]'>
 				<div className='rounded-[14px] bg-white p-[10px]'>
 					<div className='overflow-auto fixed-scroll max-h-[308px]'>
-						{fragmentIds.map((fragmentId) => (
-							<MessageFragment key={fragmentId} fragmentId={fragmentId} />
-						))}
+						<ErrorBoundary component={<div>Could not load fragments</div>}>
+							{fragmentIds.map((fragmentId) => (
+								<MessageFragment key={fragmentId} fragmentId={fragmentId} />
+							))}
+						</ErrorBoundary>
 					</div>
 				</div>
 			</div>

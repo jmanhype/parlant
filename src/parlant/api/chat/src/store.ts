@@ -3,7 +3,17 @@ import {AgentInterface, CustomerInterface, SessionInterface} from './utils/inter
 import {ReactNode} from 'react';
 import {Dimensions} from './hooks/useDialog';
 
-export const haveLogsAtom = atom(JSON.parse(localStorage.logs || '{}'));
+const getLogs = () => {
+	try {
+		return JSON.parse(localStorage.logs || '{}');
+	} catch (e) {
+		console.error(e);
+		localStorage.removeItem('logs');
+		return {};
+	}
+};
+
+export const haveLogsAtom = atom(getLogs());
 export const agentsAtom = atom<AgentInterface[]>([]);
 export const customersAtom = atom<CustomerInterface[]>([]);
 export const customerAtom = atom<CustomerInterface | null>(null);
