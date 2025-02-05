@@ -28,7 +28,7 @@ from parlant.core.engines.alpha.message_event_composer import (
     MessageEventComposition,
 )
 from parlant.core.engines.alpha.tool_caller import ToolInsights
-from parlant.core.fragments import Fragment, FragmentStore
+from parlant.core.fragments import Fragment, FragmentId, FragmentStore
 from parlant.core.nlp.generation import GenerationInfo, SchematicGenerator
 from parlant.core.engines.alpha.guideline_proposition import GuidelineProposition
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder, BuiltInSection, SectionStatus
@@ -114,7 +114,7 @@ class MessageAssemblerShot(Shot):
 @dataclass(frozen=True)
 class _MessageAssemblyGenerationResult:
     message: str
-    fragmens: list[Fragment]
+    fragments: dict[FragmentId, str]
 
 
 class MessageAssembler(MessageEventComposer):
@@ -218,7 +218,9 @@ class MessageAssembler(MessageEventComposer):
                             data=MessageEventData(
                                 message=assembly_result.message,
                                 participant=Participant(id=agent.id, display_name=agent.name),
-                                fragments=[f.id for f in assembly_result.fragmens],
+                                fragments={
+                                    id: value for id, value in assembly_result.fragments.items()
+                                },
                             ),
                         )
 
@@ -709,9 +711,11 @@ Produce a valid JSON object in the following format: ###
                 "[MessageEventComposer][Assembly] Selected list of content fragments diverges from list of rendered fragments"
             )
 
-        content_fragments = []
+        used_fragments = {}
+
         for index, materialized_fragment in enumerate(final_revision.content_fragments):
             if materialized_fragment.fragment_id == "<auto>":
+                used_fragments[Fragment.TRANSIENT_ID] = materialized_fragment.raw_content
                 continue
 
             fragment = next(
@@ -727,8 +731,8 @@ Produce a valid JSON object in the following format: ###
                 self._logger.error(
                     f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; Slots={materialized_fragment.slots}"
                 )
-
-            assert fragment
+                used_fragments[Fragment.INVALID_ID] = materialized_fragment.raw_content
+                continue
 
             if materialized_fragment.raw_content.lower() != fragment.value.lower():
                 self._logger.error(
@@ -742,22 +746,26 @@ Produce a valid JSON object in the following format: ###
                     materialized_fragment.raw_content.lower()
                     not in final_revision.sequenced_rendered_content_fragments[index].lower()
                 ):
-                    self._logger.error(
+                    self._logger.warning(
                         f"[MessageEventComposer][Assembly] Fragment rendering hallucination. ID={materialized_fragment.fragment_id}; ExpectedContent={materialized_fragment.raw_content}; HallucinatedContent={final_revision.sequenced_rendered_content_fragments[index]}"
                     )
 
-            content_fragments.append(fragment)
+                used_fragments[fragment.id] = final_revision.sequenced_rendered_content_fragments[
+                    index
+                ]
+            else:
+                used_fragments[fragment.id] = "<error: index mismatch>"
 
         match composition_mode:
             case "fluid_assembly" | "composited_assembly":
                 return message_event_response.info, _MessageAssemblyGenerationResult(
                     message=str(final_revision.composited_fragment_sequence),
-                    fragmens=content_fragments,
+                    fragments=used_fragments,
                 )
             case "strict_assembly":
                 return message_event_response.info, _MessageAssemblyGenerationResult(
                     message="".join(final_revision.sequenced_rendered_content_fragments),
-                    fragmens=content_fragments,
+                    fragments=used_fragments,
                 )
 
         raise Exception("Unsupported composition mode")

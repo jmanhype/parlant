@@ -99,8 +99,8 @@ class MessageEventData(TypedDict):
     message: str
     participant: Participant
     flagged: NotRequired[bool]
-    tags: NotRequired[list[str]]
-    fragments: NotRequired[list[FragmentId]]
+    tags: NotRequired[Sequence[str]]
+    fragments: NotRequired[Mapping[FragmentId, str]]
 
 
 class ControlOptions(TypedDict, total=False):

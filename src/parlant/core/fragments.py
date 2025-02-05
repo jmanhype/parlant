@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -36,6 +37,9 @@ class Slot:
 
 @dataclass(frozen=True)
 class Fragment:
+    TRANSIENT_ID = FragmentId("<transient>")
+    INVALID_ID = FragmentId("<invalid>")
+
     id: FragmentId
     creation_utc: datetime
     value: str
