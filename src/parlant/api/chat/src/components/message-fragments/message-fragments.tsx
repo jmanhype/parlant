@@ -8,7 +8,7 @@ export interface Fragment {
 	value: string;
 }
 
-const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; className?: ClassNameValue}) => {
+const MessageFragments = ({fragments, className}: {fragments: {id: string; value: string}[]; className?: ClassNameValue}) => {
 	const [isOpen, setIsOpen] = useState(false);
 
 	const onToggle = (e: any) => {
@@ -25,8 +25,8 @@ const MessageFragments = ({fragmentIds, className}: {fragmentIds: string[]; clas
 				<div className='rounded-[14px] bg-white p-[10px]'>
 					<div className='overflow-auto fixed-scroll max-h-[308px]'>
 						<ErrorBoundary component={<div>Could not load fragments</div>}>
-							{fragmentIds.map((fragmentId) => (
-								<MessageFragment key={fragmentId} fragmentId={fragmentId} />
+							{fragments.map((fragment) => (
+								<MessageFragment key={fragment.id} fragment={fragment} />
 							))}
 						</ErrorBoundary>
 					</div>
