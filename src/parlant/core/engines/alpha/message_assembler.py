@@ -685,14 +685,9 @@ Produce a valid JSON object in the following format: ###
                 for e in message_event_response.content.evaluation_for_each_instruction
             ):
                 pass
-            elif not final_attempt:
-                self._logger.warning(
-                    f"[MessageEventComposer][Assembly] Trying again after problematic message generation: {final_revision.composited_fragment_sequence}"
-                )
-                raise Exception("Retry with another attempt")
             else:
                 self._logger.warning(
-                    f"[MessageEventComposer][Assembly] Conceding despite problematic message generation: {final_revision.composited_fragment_sequence}"
+                    f"[MessageEventComposer][Assembly] Conceding despite problematic message generation (review completion): {final_revision.composited_fragment_sequence}"
                 )
 
         if (
