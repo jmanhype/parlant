@@ -729,11 +729,6 @@ Produce a valid JSON object in the following format: ###
                 used_fragments[Fragment.INVALID_ID] = materialized_fragment.raw_content
                 continue
 
-            if materialized_fragment.raw_content.lower() != fragment.value.lower():
-                self._logger.error(
-                    f"[MessageEventComposer][Assembly] Fragment selection hallucination. ID={materialized_fragment.fragment_id}; ExpectedContent={fragment.value}; HallucinatedContent={materialized_fragment.raw_content}"
-                )
-
             if index < len(final_revision.sequenced_rendered_content_fragments):
                 # This check is inside the 'if' to account for possible (erroneous)
                 # divergences between the selected fragments and the list of rendered ones.
