@@ -41,7 +41,7 @@ SlotDescriptionField: TypeAlias = Annotated[
     Field(
         description="A description of the slot.",
         examples=["User's name", "Geographical location"],
-        min_length=1,
+        min_length=0,
     ),
 ]
 
@@ -50,7 +50,7 @@ SlotExampleField: TypeAlias = Annotated[
     Field(
         description="An example value for the slot.",
         examples=["Alice", "New York"],
-        min_length=1,
+        min_length=0,
     ),
 ]
 
