@@ -147,6 +147,7 @@ class Actions:
         name: Optional[str] = None,
         description: Optional[str] = None,
         max_engine_iterations: Optional[int] = None,
+        composition_mode: Optional[str] = None,
     ) -> Agent:
         client = cast(ParlantClient, ctx.obj.client)
 
@@ -155,6 +156,7 @@ class Actions:
             name=name,
             description=description,
             max_engine_iterations=max_engine_iterations,
+            composition_mode=composition_mode,
         )
 
     @staticmethod
@@ -1011,6 +1013,7 @@ class Interface:
                 "Creation Date": reformat_datetime(a.creation_utc),
                 "Description": a.description or "",
                 "Max Engine Iterations": a.max_engine_iterations,
+                "Composition Mode": a.composition_mode.replace("_", "-"),
             }
             for a in agents
         ]
@@ -1085,9 +1088,12 @@ class Interface:
         name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
+        composition_mode: Optional[str],
     ) -> None:
         try:
-            agent = Actions.update_agent(ctx, agent_id, name, description, max_engine_iterations)
+            agent = Actions.update_agent(
+                ctx, agent_id, name, description, max_engine_iterations, composition_mode
+            )
             Interface._write_success(f"Updated agent (id: {agent_id})")
             Interface._render_agents([agent])
         except Exception as e:
@@ -2247,6 +2253,13 @@ async def async_main() -> None:
         help="Max engine iterations",
         required=False,
     )
+    @click.option(
+        "--composition-mode",
+        "-c",
+        type=click.Choice(["fluid", "strict-assembly", "loose-assembly", "composited-assembly"]),
+        help="Composition mode",
+        required=False,
+    )
     @click.pass_context
     def agent_update(
         ctx: click.Context,
@@ -2254,11 +2267,15 @@ async def async_main() -> None:
         name: Optional[str],
         description: Optional[str],
         max_engine_iterations: Optional[int],
+        composition_mode: Optional[str],
     ) -> None:
         id = id if id else Interface.get_default_agent(ctx)
         assert id
 
-        Interface.update_agent(ctx, id, name, description, max_engine_iterations)
+        if composition_mode:
+            composition_mode = composition_mode.replace("-", "_")
+
+        Interface.update_agent(ctx, id, name, description, max_engine_iterations, composition_mode)
 
     @cli.group(help="Manage sessions")
     def session() -> None:
