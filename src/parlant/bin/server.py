@@ -30,7 +30,6 @@ from pathlib import Path
 import sys
 import uvicorn
 
-from parlant.adapters.db.transient import TransientDocumentDatabase
 from parlant.adapters.loggers.websocket import WebSocketLogger
 from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.core.engines.alpha import hooks
@@ -298,6 +297,9 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
             PARLANT_HOME_DIR / "sessions.json",
         )
     )
+    fragments_db = await EXIT_STACK.enter_async_context(
+        JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "fragments.json")
+    )
     guidelines_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
     )
@@ -320,9 +322,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
     )
     c[TagStore] = await EXIT_STACK.enter_async_context(TagDocumentStore(tags_db))
     c[CustomerStore] = await EXIT_STACK.enter_async_context(CustomerDocumentStore(customers_db))
-    c[FragmentStore] = await EXIT_STACK.enter_async_context(
-        FragmentDocumentStore(TransientDocumentDatabase())
-    )
+    c[FragmentStore] = await EXIT_STACK.enter_async_context(FragmentDocumentStore(fragments_db))
     c[GuidelineStore] = await EXIT_STACK.enter_async_context(GuidelineDocumentStore(guidelines_db))
     c[GuidelineToolAssociationStore] = await EXIT_STACK.enter_async_context(
         GuidelineToolAssociationDocumentStore(guideline_tool_associations_db)

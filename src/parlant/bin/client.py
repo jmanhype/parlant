@@ -2111,7 +2111,7 @@ class Interface:
         try:
             fragments = Actions.list_fragments(ctx)
             if not fragments:
-                rich.print("No fragments found.")
+                rich.print("No fragments found")
                 return
 
             Interface._render_fragments(fragments)
