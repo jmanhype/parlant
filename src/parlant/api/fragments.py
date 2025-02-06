@@ -245,7 +245,7 @@ def _slot_to_dto(slot: Slot) -> SlotDTO:
 
 TagsQuery: TypeAlias = Annotated[
     Sequence[TagId],
-    Query(description="Filter fragments by tags", example=["tag1", "tag2"]),
+    Query(description="Filter fragments by tags", examples=["tag1", "tag2"]),
 ]
 
 
