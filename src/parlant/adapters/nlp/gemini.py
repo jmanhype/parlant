@@ -23,7 +23,6 @@ from pydantic import ValidationError
 from vertexai.preview import tokenization  # type: ignore
 
 from parlant.adapters.nlp.common import normalize_json_output
-from parlant.core.engines.alpha.tool_caller import ToolCallInferenceSchema
 from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
@@ -157,7 +156,7 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
 class Gemini_2_0_Flash(GeminiSchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-2.0",
             logger=logger,
         )
 
@@ -251,13 +250,11 @@ class GeminiService(NLPService):
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> GeminiSchematicGenerator[T]:
-        if t == ToolCallInferenceSchema:
-            return FallbackSchematicGenerator(
-                Gemini_1_5_Flash[t](self._logger),  # type: ignore
-                Gemini_1_5_Pro[t](self._logger),  # type: ignore
-                logger=self._logger,
-            )
-        return Gemini_1_5_Pro[t](self._logger)  # type: ignore
+        return FallbackSchematicGenerator[t](  # type: ignore
+            Gemini_2_0_Flash[t](self._logger),  # type: ignore
+            Gemini_1_5_Pro[t](self._logger),  # type: ignore
+            logger=self._logger,
+        )
 
     @override
     async def get_embedder(self) -> Embedder:
