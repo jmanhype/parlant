@@ -65,12 +65,12 @@ class MaterializedFragment(DefaultBaseModel):
     fragment_id: str
     raw_content: str
     fragment_fields: Optional[dict[str, MaterializedFragmentField]] = {}
-    rationale: str
+    justification: str
 
 
 class Revision(DefaultBaseModel):
     revision_number: int
-    content_fragments: list[MaterializedFragment]
+    selected_content_fragments: list[MaterializedFragment]
     sequenced_rendered_content_fragments: list[str]
     composited_fragment_sequence: str
     instructions_followed: Optional[list[str]] = []
@@ -598,7 +598,7 @@ Produce a valid JSON object in the following format: ###
     "revisions": [
     {{
         "revision_number": 1,
-        "content_fragments": [
+        "selected_content_fragments": [
             {{
                 "fragment_id": "<chosen fragment_id from bank>{' or <auto> if you suggested this fragment yourself' if allow_suggestions else ''}",
                 "raw_content": "<raw fragment content>",
@@ -608,7 +608,7 @@ Produce a valid JSON object in the following format: ###
                         "value": "<fragment field value>"
                     }}
                 }},
-                "rationale": "<brief justification for choosing this fragment here>"
+                "justification": "<brief justification for choosing this fragment here>"
             }},
             ...
         ],
@@ -686,14 +686,14 @@ Produce a valid JSON object in the following format: ###
 
         if (
             composition_mode in ["strict_assembly", "composited_assembly"]
-            and not final_revision.content_fragments
+            and not final_revision.selected_content_fragments
         ):
             self._logger.warning(
                 "[MessageEventComposer][Assembly] No relevant fragments in the bank to generate a sensible response"
             )
             return message_event_response.info, None
 
-        if len(final_revision.content_fragments) != len(
+        if len(final_revision.selected_content_fragments) != len(
             final_revision.sequenced_rendered_content_fragments
         ):
             self._logger.error(
@@ -702,7 +702,7 @@ Produce a valid JSON object in the following format: ###
 
         used_fragments = {}
 
-        for index, materialized_fragment in enumerate(final_revision.content_fragments):
+        for index, materialized_fragment in enumerate(final_revision.selected_content_fragments):
             if materialized_fragment.fragment_id == "<auto>":
                 used_fragments[Fragment.TRANSIENT_ID] = materialized_fragment.raw_content
                 continue
@@ -800,7 +800,7 @@ example_1_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
@@ -811,7 +811,7 @@ example_1_expected = AssembledMessageSchema(
                             "Train 205 departs at 1:00 PM and arrives at 3:45 PM.",
                         )
                     },
-                    rationale="Render the train schedule",
+                    justification="Render the train schedule",
                 )
             ],
             sequenced_rendered_content_fragments=[
@@ -838,7 +838,7 @@ example_1_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
@@ -852,7 +852,7 @@ example_1_expected = AssembledMessageSchema(
 | 205   | 1:00 PM   | 3:45 PM  |""",
                         )
                     },
-                    rationale="Render the train schedule",
+                    justification="Render the train schedule",
                 )
             ],
             sequenced_rendered_content_fragments=[
@@ -927,26 +927,26 @@ example_2_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'd be happy",
-                    rationale="Manners",
+                    justification="Manners",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="to",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="prepare your burger",
-                    rationale="Customer request",
+                    justification="Customer request",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="as soon as we",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
@@ -957,7 +957,7 @@ example_2_expected = AssembledMessageSchema(
                             value="Requested toppings",
                         )
                     },
-                    rationale="Requested toppings aren't in stock",
+                    justification="Requested toppings aren't in stock",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1030,16 +1030,16 @@ example_3_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm sorry",
-                    rationale="Apologize for not having the required info",
+                    justification="Apologize for not having the required info",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="but",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
@@ -1050,7 +1050,7 @@ example_3_expected = AssembledMessageSchema(
                             value="Our menu",
                         )
                     },
-                    rationale="Lacking menu information in context (note that I can still fill out this fragment field accordingly)",
+                    justification="Lacking menu information in context (note that I can still fill out this fragment field accordingly)",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1101,7 +1101,7 @@ example_4_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
@@ -1111,12 +1111,12 @@ example_4_expected = AssembledMessageSchema(
                             value="the confusion",
                         )
                     },
-                    rationale="Customer is upset",
+                    justification="Customer is upset",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="Could you please explain what I'm missing?",
-                    rationale="I can't see what I did wrong",
+                    justification="I can't see what I did wrong",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1133,7 +1133,7 @@ example_4_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
@@ -1143,12 +1143,12 @@ example_4_expected = AssembledMessageSchema(
                             value="Failing to assist you with your issue",
                         )
                     },
-                    rationale="I've failed to understand and help the customer",
+                    justification="I've failed to understand and help the customer",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="If there's anything else I can do for you, please let me know",
-                    rationale="I don't want to keep repeating myself asking for clarifications",
+                    justification="I don't want to keep repeating myself asking for clarifications",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1212,7 +1212,7 @@ example_5_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Your balance is {balance}",
@@ -1222,17 +1222,17 @@ example_5_expected = AssembledMessageSchema(
                             value="$1,000",
                         )
                     },
-                    rationale="Customer requested this information",
+                    justification="Customer requested this information",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="however",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm unable to disclose details about the specific services I use.",
-                    rationale="I should not reveal my thought process",
+                    justification="I should not reveal my thought process",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1286,7 +1286,7 @@ example_6_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Could you please provide more details on {something}",
@@ -1296,17 +1296,17 @@ example_6_expected = AssembledMessageSchema(
                             value="What you would need from customer support?",
                         )
                     },
-                    rationale="Customer requested this information",
+                    justification="Customer requested this information",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="maybe",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I could help you",
-                    rationale="Offer to help",
+                    justification="Offer to help",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1326,11 +1326,11 @@ example_6_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="unfortunately",
-                    rationale="Manners",
+                    justification="Manners",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
@@ -1341,12 +1341,12 @@ example_6_expected = AssembledMessageSchema(
                             value="This topic",
                         )
                     },
-                    rationale="I cannot help with this topic",
+                    justification="I cannot help with this topic",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Is there anything else I can assist you with?",
-                    rationale="Offer to help",
+                    justification="Offer to help",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1429,7 +1429,7 @@ example_7_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="""\
@@ -1459,12 +1459,12 @@ Here are the flights from {origin} to {destination} {when}:
 | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |""",
                         ),
                     },
-                    rationale="Customer asks to depart from New York to Los Angeles tomorrow",
+                    justification="Customer asks to depart from New York to Los Angeles tomorrow",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="While some of these flights are quite long, please note that we do not offer complementary meals on short flights.",
-                    rationale="Important to keep in mind",
+                    justification="Important to keep in mind",
                 ),
             ],
             sequenced_rendered_content_fragments=[
