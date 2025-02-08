@@ -32,10 +32,10 @@ import uvicorn
 
 from parlant.adapters.loggers.websocket import WebSocketLogger
 from parlant.adapters.vector_db.chroma import ChromaDatabase
-from parlant.core.engines.alpha import hooks
 from parlant.core.engines.alpha import guideline_proposer
 from parlant.core.engines.alpha import tool_caller
 from parlant.core.engines.alpha import fluid_message_generator
+from parlant.core.engines.alpha.hooks import LifecycleHooks
 from parlant.core.engines.alpha.message_assembler import AssembledMessageSchema
 from parlant.core.fragments import FragmentDocumentStore, FragmentStore
 from parlant.core.nlp.service import NLPService
@@ -402,7 +402,7 @@ async def setup_container(nlp_service_name: str, log_level: str) -> AsyncIterato
     c[ShotCollection[ToolCallerInferenceShot]] = tool_caller.shot_collection
     c[ShotCollection[FluidMessageGeneratorShot]] = fluid_message_generator.shot_collection
 
-    c[hooks.LifecycleHooks] = hooks.lifecycle_hooks
+    c[LifecycleHooks] = LifecycleHooks()
 
     c[GuidelineProposer] = GuidelineProposer(
         c[Logger],
