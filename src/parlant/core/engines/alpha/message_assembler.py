@@ -256,21 +256,21 @@ FRAGMENT BANK:
         for fragment in fragments:
             fragment_dict: dict[str, Any] = {"fragment_id": fragment.id, "value": fragment.value}
 
-            if fragment.slots:
-                fragment_dict["slots"] = {}
+            if fragment.fragment_fields:
+                fragment_dict["fields"] = {}
 
-                for slot in fragment.slots:
-                    slot_description = slot.description
+                for field in fragment.fragment_fields:
+                    field_description = field.description
 
-                    if slot.examples:
+                    if field.examples:
                         examples = []
 
-                        for i, example in enumerate(slot.examples, start=1):
+                        for i, example in enumerate(field.examples, start=1):
                             examples.append(f"{i}) {example}")
 
-                        slot_description += f" -- Examples: {'; '.join(examples)}"
+                        field_description += f" -- Examples: {'; '.join(examples)}"
 
-                    fragment_dict["slots"][slot.name] = slot_description
+                    fragment_dict["fields"][field.name] = field_description
 
             rendered_fragments.append(str(fragment_dict))
 
@@ -718,7 +718,7 @@ Produce a valid JSON object in the following format: ###
 
             if not fragment:
                 self._logger.error(
-                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; Slots={materialized_fragment.slots}"
+                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; FragmentFields={materialized_fragment.slots}"
                 )
                 used_fragments[Fragment.INVALID_ID] = materialized_fragment.raw_content
                 continue

@@ -2110,7 +2110,7 @@ async def test_that_fragments_can_be_loaded(context: ContextOfTest) -> None:
             "fragments": [
                 {
                     "value": "Hello, {username}!",
-                    "slots": [
+                    "fragment_fields": [
                         {
                             "name": "username",
                             "description": "The user's name",
@@ -2121,7 +2121,7 @@ async def test_that_fragments_can_be_loaded(context: ContextOfTest) -> None:
                 },
                 {
                     "value": "Your balance is {balance}.",
-                    "slots": [
+                    "fragment_fields": [
                         {
                             "name": "balance",
                             "description": "Account balance",
@@ -2156,6 +2156,6 @@ async def test_that_fragments_can_be_loaded(context: ContextOfTest) -> None:
         first = fragments_in_system[0]
         assert first["value"] == "Hello, {username}!"
         assert "tags" in first
-        assert "slots" in first
+        assert "fragment_fields" in first
 
         os.remove(tmp_file_path)

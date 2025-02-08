@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import Field
 
 from parlant.core.common import DefaultBaseModel
-from parlant.core.fragments import FragmentId, FragmentStore, FragmentUpdateParams, Slot
+from parlant.core.fragments import FragmentId, FragmentStore, FragmentUpdateParams, FragmentField
 from parlant.core.tags import TagId
 from parlant.api.common import ExampleJson, apigen_config, example_json_content
 
@@ -27,53 +27,53 @@ from parlant.api.common import ExampleJson, apigen_config, example_json_content
 API_GROUP = "fragments"
 
 
-SlotNameField: TypeAlias = Annotated[
+FragmentFieldNameField: TypeAlias = Annotated[
     str,
     Field(
-        description="The name of the slot.",
+        description="The name of the fragment field.",
         examples=["username", "location"],
         min_length=1,
     ),
 ]
 
-SlotDescriptionField: TypeAlias = Annotated[
+FragmentFieldDescriptionField: TypeAlias = Annotated[
     str,
     Field(
-        description="A description of the slot.",
+        description="A description of the fragment field.",
         examples=["User's name", "Geographical location"],
         min_length=0,
     ),
 ]
 
-SlotExampleField: TypeAlias = Annotated[
+FragmentFieldExampleField: TypeAlias = Annotated[
     str,
     Field(
-        description="An example value for the slot.",
+        description="An example value for the fragment field.",
         examples=["Alice", "New York"],
         min_length=0,
     ),
 ]
 
-slot_example: ExampleJson = {
-    "description": "An example value for the slot.",
+fragment_field_example: ExampleJson = {
+    "description": "An example value for the fragment field.",
     "examples": ["Alice", "New York"],
     "min_length": 1,
 }
 
 
-class SlotDTO(
+class FragmentFieldDTO(
     DefaultBaseModel,
-    json_schema_extra={"example": slot_example},
+    json_schema_extra={"example": fragment_field_example},
 ):
-    name: SlotNameField
-    description: SlotDescriptionField
-    examples: list[SlotExampleField]
+    name: FragmentFieldNameField
+    description: FragmentFieldDescriptionField
+    examples: list[FragmentFieldExampleField]
 
 
-SlotSequenceField: TypeAlias = Annotated[
-    Sequence[SlotDTO],
+FragmentFieldSequenceField: TypeAlias = Annotated[
+    Sequence[FragmentFieldDTO],
     Field(
-        description="A sequence of slots associated with the fragment.",
+        description="A sequence of fragment fields associated with the fragment.",
         examples=[
             [{"name": "username", "description": "User's name", "examples": ["Alice", "Bob"]}]
         ],
@@ -125,7 +125,9 @@ fragment_example: ExampleJson = {
     "id": "frag123",
     "creation_utc": "2024-03-24T12:00:00Z",
     "value": "Your account balance is {balance}",
-    "slots": [{"name": "balance", "description": "Account's balance", "examples": [9000]}],
+    "fragment_fields": [
+        {"name": "balance", "description": "Account's balance", "examples": [9000]}
+    ],
     "tags": ["private", "office"],
 }
 
@@ -137,13 +139,13 @@ class FragmentDTO(
     id: FragmentIdField
     creation_utc: FragmentCreationUTCField
     value: FragmentValueField
-    slots: SlotSequenceField
+    fragment_fields: FragmentFieldSequenceField
     tags: TagIdSequenceField
 
 
 fragment_creation_params_example: ExampleJson = {
     "value": "Your account balance is {balance}",
-    "slots": [
+    "fragment_fields": [
         {
             "name": "balance",
             "description": "Account's balance",
@@ -160,7 +162,7 @@ class FragmentCreationParamsDTO(
     """Parameters for creating a new fragment."""
 
     value: FragmentValueField
-    slots: SlotSequenceField
+    fragment_fields: FragmentFieldSequenceField
 
 
 FragmentTagUpdateAddField: TypeAlias = Annotated[
@@ -206,7 +208,7 @@ class FragmentTagUpdateParamsDTO(
 
 fragment_update_params_example: ExampleJson = {
     "value": "Your updated balance is {balance}",
-    "slots": [
+    "fragment_fields": [
         {
             "name": "balance",
             "description": "Updated account balance",
@@ -223,23 +225,23 @@ class FragmentUpdateParamsDTO(
     """Parameters for updating an existing fragment."""
 
     value: Optional[FragmentValueField] = None
-    slots: Optional[SlotSequenceField] = None
+    fragment_fields: Optional[FragmentFieldSequenceField] = None
     tags: Optional[FragmentTagUpdateParamsDTO] = None
 
 
-def _slot_dto_to_slot(dto: SlotDTO) -> Slot:
-    return Slot(
+def _dto_to_fragment_field(dto: FragmentFieldDTO) -> FragmentField:
+    return FragmentField(
         name=dto.name,
         description=dto.description,
         examples=dto.examples,
     )
 
 
-def _slot_to_dto(slot: Slot) -> SlotDTO:
-    return SlotDTO(
-        name=slot.name,
-        description=slot.description,
-        examples=slot.examples,
+def _fragment_field_to_dto(fragment_field: FragmentField) -> FragmentFieldDTO:
+    return FragmentFieldDTO(
+        name=fragment_field.name,
+        description=fragment_field.description,
+        examples=fragment_field.examples,
     )
 
 
@@ -272,14 +274,14 @@ def create_router(
     ) -> FragmentDTO:
         fragment = await fragment_store.create_fragment(
             value=params.value,
-            slots=[_slot_dto_to_slot(s) for s in params.slots],
+            fragment_fields=[_dto_to_fragment_field(s) for s in params.fragment_fields],
         )
 
         return FragmentDTO(
             id=fragment.id,
             creation_utc=fragment.creation_utc,
             value=fragment.value,
-            slots=[_slot_to_dto(s) for s in fragment.slots],
+            fragment_fields=[_fragment_field_to_dto(s) for s in fragment.fragment_fields],
             tags=fragment.tags,
         )
 
@@ -308,7 +310,7 @@ def create_router(
             id=fragment.id,
             creation_utc=fragment.creation_utc,
             value=fragment.value,
-            slots=[_slot_to_dto(s) for s in fragment.slots],
+            fragment_fields=[_fragment_field_to_dto(s) for s in fragment.fragment_fields],
             tags=fragment.tags,
         )
 
@@ -332,7 +334,7 @@ def create_router(
                 id=f.id,
                 creation_utc=f.creation_utc,
                 value=f.value,
-                slots=[_slot_to_dto(s) for s in f.slots],
+                fragment_fields=[_fragment_field_to_dto(s) for s in f.fragment_fields],
                 tags=f.tags,
             )
             for f in fragments
@@ -367,16 +369,20 @@ def create_router(
         The fragment's ID and creation timestamp cannot be modified.
         Extra metadata and tags can be added or removed independently.
         """
-        if params.slots and not params.value:
+        if params.fragment_fields and not params.value:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Slots cannot be updated without providing a new value.",
+                detail="Fragment fields cannot be updated without providing a new value.",
             )
 
         if params.value:
             update_params: FragmentUpdateParams = {
                 "value": params.value,
-                "slots": ([_slot_dto_to_slot(s) for s in params.slots] if params.slots else []),
+                "fragment_fields": (
+                    [_dto_to_fragment_field(s) for s in params.fragment_fields]
+                    if params.fragment_fields
+                    else []
+                ),
             }
 
             await fragment_store.update_fragment(fragment_id, update_params)
@@ -395,7 +401,7 @@ def create_router(
             id=updated_fragment.id,
             creation_utc=updated_fragment.creation_utc,
             value=updated_fragment.value,
-            slots=[_slot_to_dto(s) for s in updated_fragment.slots],
+            fragment_fields=[_fragment_field_to_dto(s) for s in updated_fragment.fragment_fields],
             tags=updated_fragment.tags,
         )
 
