@@ -124,7 +124,7 @@ class FluidMessageGenerator(MessageEventComposer):
     async def generate_events(
         self,
         event_emitter: EventEmitter,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -134,8 +134,6 @@ class FluidMessageGenerator(MessageEventComposer):
         tool_insights: ToolInsights,
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]:
-        assert len(agents) == 1
-
         with self._logger.operation("[MessageEventComposer][Fluid] Message generation"):
             if (
                 not interaction_history
@@ -150,7 +148,7 @@ class FluidMessageGenerator(MessageEventComposer):
                 return []
 
             prompt = self._format_prompt(
-                agents=agents,
+                agent=agent,
                 context_variables=context_variables,
                 customer=customer,
                 interaction_history=interaction_history,
@@ -264,7 +262,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
 
     def _format_prompt(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -275,7 +273,6 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         tool_insights: ToolInsights,
         shots: Sequence[FluidMessageGeneratorShot],
     ) -> str:
-        assert len(agents) == 1
         builder = PromptBuilder()
 
         builder.add_section(
@@ -290,7 +287,7 @@ Later in this prompt, you'll be provided with behavioral guidelines and other co
 """
         )
 
-        builder.add_agent_identity(agents[0])
+        builder.add_agent_identity(agent)
         builder.add_section(
             """
 TASK DESCRIPTION:

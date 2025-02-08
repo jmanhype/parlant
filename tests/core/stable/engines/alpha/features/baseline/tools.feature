@@ -13,7 +13,7 @@ Feature: Tools
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains Sprite and Coca Cola as available drinks
-        
+
     Scenario: Single tool get_available_toppings is being called once
         Given the guideline called "check_toppings_in_stock"
         And the tool "get_available_toppings"
@@ -23,13 +23,13 @@ Feature: Tools
         Then a single tool calls event is emitted
         And the tool calls event contains 1 tool call(s)
         And the tool calls event contains Mushrooms and Olives as available toppings
-        
+
     Scenario: Single tool is being called multiple times
         Given a guideline "sell_pizza" to sell pizza when interacting with customers
         And a guideline "check_stock" to check if toppings or drinks are available in stock when a client asks for toppings or drinks
         And the tool "get_available_product_by_type"
         And an association between "check_stock" and "get_available_product_by_type"
-        And a customer message, "Hey, Can I order large pepperoni pizza with Sprite?"
+        And a customer message, "Hey, Can I order a large pizza with pepperoni and Sprite on the side?"
         When processing is triggered
         Then a single tool calls event is emitted
         And the tool calls event contains 2 tool call(s)
@@ -174,7 +174,7 @@ Feature: Tools
     Scenario: The agent correctly chooses to call the right tool
         Given an agent whose job is to sell groceries
         And the term "carrot" defined as a kind of fruit
-        And a guideline "check_prices" to reply with the price of the item when a customer asks about an items price 
+        And a guideline "check_prices" to reply with the price of the item when a customer asks about an items price
         And the tool "check_fruit_price"
         And the tool "check_vegetable_price"
         And an association between "check_prices" and "check_fruit_price"

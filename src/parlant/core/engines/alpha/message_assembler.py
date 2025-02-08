@@ -138,7 +138,7 @@ class MessageAssembler(MessageEventComposer):
     async def generate_events(
         self,
         event_emitter: EventEmitter,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -148,9 +148,6 @@ class MessageAssembler(MessageEventComposer):
         tool_insights: ToolInsights,
         staged_events: Sequence[EmittedEvent],
     ) -> Sequence[MessageEventComposition]:
-        assert len(agents) == 1
-        agent = agents[0]
-
         with self._logger.operation("[MessageEventComposer][Assembly] Message generation"):
             if (
                 not interaction_history
@@ -167,7 +164,7 @@ class MessageAssembler(MessageEventComposer):
             fragments = await self._fragment_store.list_fragments()
 
             prompt = self._format_prompt(
-                agents=agents,
+                agent=agent,
                 context_variables=context_variables,
                 customer=customer,
                 interaction_history=interaction_history,
@@ -332,7 +329,7 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
 
     def _format_prompt(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -344,9 +341,6 @@ Do not disregard a guideline because you believe its 'when' condition or rationa
         fragments: Sequence[Fragment],
         shots: Sequence[MessageAssemblerShot],
     ) -> str:
-        assert len(agents) == 1
-        agent = agents[0]
-
         can_suggest_fragments = agent.composition_mode == "fluid_assembly"
 
         builder = PromptBuilder()

@@ -103,7 +103,7 @@ class GuidelineProposer:
 
     async def propose_guidelines(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         guidelines: Sequence[Guideline],
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
@@ -128,7 +128,7 @@ class GuidelineProposer:
         ):
             batch_tasks = [
                 self._process_guideline_batch(
-                    agents,
+                    agent,
                     customer,
                     context_variables,
                     interaction_history,
@@ -203,7 +203,7 @@ class GuidelineProposer:
 
     async def _process_guideline_batch(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -212,7 +212,7 @@ class GuidelineProposer:
         guidelines_dict: dict[int, Guideline],
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
-            agents,
+            agent,
             customer,
             context_variables=context_variables,
             interaction_history=interaction_history,
@@ -323,7 +323,7 @@ class GuidelineProposer:
 
     def _format_prompt(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -332,8 +332,6 @@ class GuidelineProposer:
         guidelines: dict[int, Guideline],
         shots: Sequence[GuidelinePropositionShot],
     ) -> str:
-        assert len(agents) == 1
-
         result_structure = [
             {
                 "guideline_number": i,
@@ -430,7 +428,7 @@ Example #{i}: ###
                 for i, shot in enumerate(shots, start=1)
             )
         )
-        builder.add_agent_identity(agents[0])
+        builder.add_agent_identity(agent)
         builder.add_context_variables(context_variables)
         builder.add_glossary(terms)
         builder.add_interaction_history(interaction_history)

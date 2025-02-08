@@ -57,7 +57,7 @@ class ToolEventGenerator:
         self,
         event_emitter: EventEmitter,
         session_id: SessionId,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
@@ -66,14 +66,12 @@ class ToolEventGenerator:
         tool_enabled_guideline_propositions: Mapping[GuidelineProposition, Sequence[ToolId]],
         staged_events: Sequence[EmittedEvent],
     ) -> ToolEventGenerationResult:
-        assert len(agents) == 1
-
         if not tool_enabled_guideline_propositions:
             self._logger.debug("Skipping tool calling; no tools associated with guidelines found")
             return ToolEventGenerationResult(generations=[], events=[], insights=ToolInsights())
 
         inference_result = await self.tool_caller.infer_tool_calls(
-            agents,
+            agent,
             context_variables,
             interaction_history,
             terms,
@@ -93,7 +91,7 @@ class ToolEventGenerator:
 
         tool_results = await self.tool_caller.execute_tool_calls(
             ToolContext(
-                agent_id=agents[0].id,
+                agent_id=agent.id,
                 session_id=session_id,
                 customer_id=customer.id,
             ),

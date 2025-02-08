@@ -156,7 +156,7 @@ def when_messages_are_emitted(
     result = context.sync_await(
         message_event_composer.generate_events(
             event_emitter=event_buffer,
-            agents=[agent],
+            agent=agent,
             customer=customer,
             context_variables=[],
             interaction_history=context.events,

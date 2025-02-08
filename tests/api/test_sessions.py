@@ -1050,7 +1050,7 @@ async def test_that_an_agent_message_can_be_generated_from_utterance_requests(
     assert "thinking" in events[0]["data"]["message"].lower()
 
 
-async def test_that_a_fragments_can_be_inspected(
+async def test_that_fragments_can_be_inspected(
     async_client: httpx.AsyncClient,
     container: Container,
     strict_agent_id: AgentId,

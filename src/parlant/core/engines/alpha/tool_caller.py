@@ -132,7 +132,7 @@ class ToolCaller:
 
     async def infer_tool_calls(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -168,7 +168,7 @@ class ToolCaller:
         with self._logger.operation(f"[ToolCaller] Tool evaluation ({len(batches)} batches)"):
             batch_tasks = [
                 self._infer_calls_for_single_tool(
-                    agents=agents,
+                    agent=agent,
                     context_variables=context_variables,
                     interaction_history=interaction_history,
                     terms=terms,
@@ -206,7 +206,7 @@ class ToolCaller:
 
     async def _infer_calls_for_single_tool(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
         terms: Sequence[Term],
@@ -216,7 +216,7 @@ class ToolCaller:
         staged_events: Sequence[EmittedEvent],
     ) -> tuple[GenerationInfo, list[ToolCall], list[MissingToolData]]:
         inference_prompt = self._format_tool_call_inference_prompt(
-            agents,
+            agent,
             context_variables,
             interaction_history,
             terms,
@@ -342,7 +342,7 @@ Please be tolerant of possible typos by the user with regards to these terms,and
 
     def _format_tool_call_inference_prompt(
         self,
-        agents: Sequence[Agent],
+        agent: Agent,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_event_list: Sequence[Event],
         terms: Sequence[Term],
@@ -352,8 +352,6 @@ Please be tolerant of possible typos by the user with regards to these terms,and
         staged_events: Sequence[EmittedEvent],
         shots: Sequence[ToolCallerInferenceShot],
     ) -> str:
-        assert len(agents) == 1
-
         staged_calls = self._get_staged_calls(staged_events)
 
         builder = PromptBuilder()
@@ -376,7 +374,7 @@ These calls do not require to be re-run at this time, unless you identify a vali
 
 """
         )
-        builder.add_agent_identity(agents[0])
+        builder.add_agent_identity(agent)
         builder.add_section(
             f"""
 -----------------

@@ -44,7 +44,7 @@ class MessageEventComposer:
     async def generate_events(
         self,
         event_emitter: EventEmitter,
-        agents: Sequence[Agent],
+        agent: Agent,
         customer: Customer,
         context_variables: Sequence[tuple[ContextVariable, ContextVariableValue]],
         interaction_history: Sequence[Event],
