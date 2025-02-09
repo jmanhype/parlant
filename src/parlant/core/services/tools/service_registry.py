@@ -31,12 +31,14 @@ from parlant.core.nlp.service import NLPService
 from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import LocalToolService, ToolService
-from parlant.core.common import ItemNotFoundError, Version, UniqueId, generate_id
+from parlant.core.common import ItemNotFoundError, Version, UniqueId
 from parlant.core.persistence.common import MigrationError, ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
+    check_migration_required,
+    update_metadata_version,
 )
 
 
@@ -103,11 +105,6 @@ class _ToolServiceDocument(TypedDict, total=False):
     source: Optional[str]
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class ServiceDocumentRegistry(ServiceRegistry):
     VERSION = Version.from_string("0.1.0")
 
@@ -118,11 +115,10 @@ class ServiceDocumentRegistry(ServiceRegistry):
         logger: Logger,
         correlator: ContextualCorrelator,
         nlp_services: Mapping[str, NLPService],
-        migrate: bool = True,
+        migrate: bool = False,
     ):
         self._database = database
         self._tool_services_collection: DocumentCollection[_ToolServiceDocument]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
 
         self._event_emitter_factory = event_emitter_factory
         self._logger = logger
@@ -146,33 +142,18 @@ class ServiceDocumentRegistry(ServiceRegistry):
         else:
             return cast(PluginClient, service)
 
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'ServiceDocumentRegistry': Expected '{self.VERSION}', but got '{doc['version']}'."
-            )
-
-        return None
-
     async def _document_loader(self, doc: BaseDocument) -> Optional[_ToolServiceDocument]:
         if doc["version"] == "0.1.0":
             return cast(_ToolServiceDocument, doc)
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
+
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for ServiceDocumentRegistry.")
 
         self._tool_services_collection = await self._database.get_or_create_collection(
             name="tool_services",
@@ -180,13 +161,8 @@ class ServiceDocumentRegistry(ServiceRegistry):
             document_loader=self._document_loader,
         )
 
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=ServiceDocumentRegistry.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
 
         self._moderation_services = {
             name: await nlp_service.get_moderation_service()

@@ -27,6 +27,8 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
+    check_migration_required,
+    update_metadata_version,
 )
 
 FragmentId = NewType("FragmentId", str)
@@ -135,34 +137,22 @@ class _MetadataDocument(TypedDict, total=False):
 class FragmentDocumentStore(FragmentStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = True) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
         self._fragments_collection: DocumentCollection[_FragmentDocument]
         self._fragment_tag_association_collection: DocumentCollection[
             _FragmentTagAssociationDocument
         ]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
-
         self._migrate = migrate
         self._lock = ReaderWriterLock()
 
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'FragmentDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
-            )
-
-        return None
-
-    async def _fragment_document_store(self, doc: BaseDocument) -> Optional[_FragmentDocument]:
+    async def _document_loader(self, doc: BaseDocument) -> Optional[_FragmentDocument]:
         if doc["version"] == "0.1.0":
             return cast(_FragmentDocument, doc)
+
         return None
 
-    async def _fragment_tag_association_document_store(
+    async def _association_document_loader(
         self, doc: BaseDocument
     ) -> Optional[_FragmentTagAssociationDocument]:
         if doc["version"] == "0.1.0":
@@ -170,36 +160,26 @@ class FragmentDocumentStore(FragmentStore):
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
 
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for FragmentDocumentStore.")
 
         self._fragments_collection = await self._database.get_or_create_collection(
             name="fragments",
             schema=_FragmentDocument,
-            document_loader=self._fragment_document_store,
+            document_loader=self._document_loader,
         )
         self._fragment_tag_association_collection = await self._database.get_or_create_collection(
             name="fragment_tag_associations",
             schema=_FragmentTagAssociationDocument,
-            document_loader=self._fragment_tag_association_document_store,
+            document_loader=self._association_document_loader,
         )
 
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=FragmentDocumentStore.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
 
         return self
 

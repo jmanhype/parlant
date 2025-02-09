@@ -57,7 +57,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
 
         self._raw_data: dict[str, Any] = {}
         self._collections: dict[str, JSONFileDocumentCollection[BaseDocument]] = {}
-        self._collection_types: dict[str, type[BaseDocument]] = {}
 
     async def flush(self) -> None:
         async with self._lock.writer_lock:
@@ -151,7 +150,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
             name=name,
             schema=schema,
         )
-        self._collection_types[name] = schema
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
@@ -163,21 +161,7 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            if self._collection_types[name] == schema:
-                return cast(JSONFileDocumentCollection[TDocument], collection)
-            else:
-                self._collections[name] = JSONFileDocumentCollection(
-                    database=self,
-                    name=name,
-                    schema=schema,
-                    data=await self.load_documents_with_loader(
-                        name,
-                        document_loader,
-                        documents=(await self._collections[name].find({})),
-                    ),
-                )
-                self._collection_types[name] = schema
-            return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
+            return cast(JSONFileDocumentCollection[TDocument], collection)
 
         elif name in self._raw_data:
             self._collections[name] = JSONFileDocumentCollection(
@@ -186,7 +170,6 @@ class JSONFileDocumentDatabase(DocumentDatabase):
                 schema=schema,
                 data=await self.load_documents_with_loader(name, document_loader),
             )
-            self._collection_types[name] = schema
             return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
         raise ValueError(f'Collection "{name}" does not exists')
@@ -199,31 +182,23 @@ class JSONFileDocumentDatabase(DocumentDatabase):
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> JSONFileDocumentCollection[TDocument]:
         if collection := self._collections.get(name):
-            if self._collection_types[name] == schema:
-                return cast(JSONFileDocumentCollection[TDocument], collection)
-            else:
-                self._collections[name] = JSONFileDocumentCollection(
-                    database=self,
-                    name=name,
-                    schema=schema,
-                    data=await self.load_documents_with_loader(
-                        name,
-                        document_loader,
-                        documents=self._collections[name].documents,
-                    ),
-                )
-                self._collection_types[name] = schema
-                return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
+            return cast(JSONFileDocumentCollection[TDocument], collection)
+
+        elif name in self._raw_data:
+            self._collections[name] = JSONFileDocumentCollection(
+                database=self,
+                name=name,
+                schema=schema,
+                data=await self.load_documents_with_loader(name, document_loader),
+            )
+            return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 
         self._collections[name] = JSONFileDocumentCollection(
             database=self,
             name=name,
             schema=schema,
-            data=await self.load_documents_with_loader(name, document_loader)
-            if name in self._raw_data
-            else [],
+            data=await self.load_documents_with_loader(name, document_loader),
         )
-        self._collection_types[name] = schema
 
         return cast(JSONFileDocumentCollection[TDocument], self._collections[name])
 

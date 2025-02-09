@@ -51,6 +51,8 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
+    check_migration_required,
+    update_metadata_version,
 )
 from parlant.core.glossary import TermId
 from parlant.core.fragments import FragmentId
@@ -385,34 +387,17 @@ class _InspectionDocument(TypedDict, total=False):
     preparation_iterations: Sequence[_PreparationIterationDocument]
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class SessionDocumentStore(SessionStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = True):
+    def __init__(self, database: DocumentDatabase, migrate: bool = False):
         self._database = database
         self._session_collection: DocumentCollection[_SessionDocument]
         self._event_collection: DocumentCollection[_EventDocument]
         self._inspection_collection: DocumentCollection[_InspectionDocument]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
         self._migrate = migrate
 
         self._lock = ReaderWriterLock()
-
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'SessionDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
-            )
-
-        return None
 
     async def _session_document_loader(self, doc: BaseDocument) -> Optional[_SessionDocument]:
         if doc["version"] == "0.1.0":
@@ -424,22 +409,18 @@ class SessionDocumentStore(SessionStore):
             return cast(_EventDocument, doc)
         return None
 
-    async def _inspecion_document_loader(self, doc: BaseDocument) -> Optional[_InspectionDocument]:
+    async def _inspection_document_loader(self, doc: BaseDocument) -> Optional[_InspectionDocument]:
         if doc["version"] == "0.1.0":
             return cast(_InspectionDocument, doc)
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
+
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for SessionDocumentStore.")
 
         self._session_collection = await self._database.get_or_create_collection(
             name="sessions",
@@ -454,16 +435,12 @@ class SessionDocumentStore(SessionStore):
         self._inspection_collection = await self._database.get_or_create_collection(
             name="inspections",
             schema=_InspectionDocument,
-            document_loader=self._inspecion_document_loader,
+            document_loader=self._inspection_document_loader,
         )
 
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=SessionDocumentStore.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
+
         return self
 
     async def __aexit__(

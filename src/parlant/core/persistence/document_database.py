@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import asyncio
 from dataclasses import dataclass
 from typing import (
     Awaitable,
@@ -27,7 +28,7 @@ from typing import (
 )
 
 from parlant.core.persistence.common import ObjectId, Where
-from parlant.core.common import Version
+from parlant.core.common import Version, generate_id
 
 
 class BaseDocument(TypedDict, total=False):
@@ -36,6 +37,71 @@ class BaseDocument(TypedDict, total=False):
 
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
+
+
+class _MetadataDocument(TypedDict, total=False):
+    id: ObjectId
+    version: Version.String
+
+
+async def check_migration_required(
+    database: DocumentDatabase, store_version: Version.String
+) -> bool:
+    """
+    Helper function to check if migration is required by comparing the version in metadata
+    with the current store version.
+    In case metadata is not found, it is created with the given store version.
+    """
+    lock = asyncio.Lock()
+
+    metadata_collection = await database.get_or_create_collection(
+        "metadata",
+        _MetadataDocument,
+        identity_loader,
+    )
+
+    async with lock:
+        if metadata := await metadata_collection.find_one({}):
+            return metadata["version"] != store_version
+        else:
+            await metadata_collection.insert_one(
+                {
+                    "id": ObjectId(generate_id()),
+                    "version": store_version,
+                }
+            )
+            return False  # No migration is required for a new store
+
+
+async def update_metadata_version(
+    database: DocumentDatabase, store_version: Version.String
+) -> None:
+    """
+    Helper function to update the version in metadata for all documents in the database.
+    """
+    metadata_collection = await database.get_or_create_collection(
+        "metadata",
+        _MetadataDocument,
+        identity_loader,
+    )
+
+    for doc in await metadata_collection.find({}):
+        await metadata_collection.update_one(
+            filters={"id": {"$eq": doc["id"]}},
+            params={"version": store_version},
+        )
+
+
+@dataclass
+class MigrationContext:
+    """
+    Context class to help with managing migrations across different versions.
+    """
+
+    from_version: Version
+    to_version: Version
+    collection: DocumentCollection
+    metadata_collection: DocumentCollection
 
 
 @dataclass(frozen=True)

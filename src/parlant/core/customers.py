@@ -26,6 +26,8 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
+    check_migration_required,
+    update_metadata_version,
 )
 
 CustomerId = NewType("CustomerId", str)
@@ -125,42 +127,25 @@ class _CustomerTagAssociationDocument(TypedDict, total=False):
     tag_id: TagId
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class CustomerDocumentStore(CustomerStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = True) -> None:
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
         self._customers_collection: DocumentCollection[_CustomerDocument]
         self._customer_tag_association_collection: DocumentCollection[
             _CustomerTagAssociationDocument
         ]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
-
         self._migrate = migrate
         self._lock = ReaderWriterLock()
 
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'CustomerDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
-            )
-
-        return None
-
-    async def _customers_document_loader(self, doc: BaseDocument) -> Optional[_CustomerDocument]:
+    async def _document_loader(self, doc: BaseDocument) -> Optional[_CustomerDocument]:
         if doc["version"] == "0.1.0":
             return cast(_CustomerDocument, doc)
+
         return None
 
-    async def _customer_tag_document_loader(
+    async def _association_document_loader(
         self, doc: BaseDocument
     ) -> Optional[_CustomerTagAssociationDocument]:
         if doc["version"] == "0.1.0":
@@ -168,36 +153,26 @@ class CustomerDocumentStore(CustomerStore):
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
 
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for CustomerDocumentStore.")
 
         self._customers_collection = await self._database.get_or_create_collection(
             name="customers",
             schema=_CustomerDocument,
-            document_loader=self._customers_document_loader,
+            document_loader=self._document_loader,
         )
         self._customer_tag_association_collection = await self._database.get_or_create_collection(
             name="customer_tag_associations",
             schema=_CustomerTagAssociationDocument,
-            document_loader=self._customer_tag_document_loader,
+            document_loader=self._association_document_loader,
         )
 
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=CustomerDocumentStore.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
 
         return self
 

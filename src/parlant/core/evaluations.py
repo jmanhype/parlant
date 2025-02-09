@@ -44,6 +44,8 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
+    check_migration_required,
+    update_metadata_version,
 )
 
 EvaluationId = NewType("EvaluationId", str)
@@ -231,50 +233,28 @@ class _EvaluationDocument(TypedDict, total=False):
     progress: float
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class EvaluationDocumentStore(EvaluationStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = True):
+    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
         self._database = database
         self._collection: DocumentCollection[_EvaluationDocument]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
         self._migrate = migrate
-
         self._lock = ReaderWriterLock()
-
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'EvaluationDocumentStore': Expected '{self.VERSION}', but got '{doc['version']}'."
-            )
-
-        return None
 
     async def document_loader(self, doc: BaseDocument) -> Optional[_EvaluationDocument]:
         if doc["version"] == "0.1.0":
             return cast(_EvaluationDocument, doc)
+
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
 
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for EvaluationDocumentStore.")
 
         self._collection = await self._database.get_or_create_collection(
             name="evaluations",
@@ -282,13 +262,8 @@ class EvaluationDocumentStore(EvaluationStore):
             document_loader=self.document_loader,
         )
 
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=EvaluationDocumentStore.VERSION.to_string(),
-                )
-                await self._metadata_collection.insert_one(meta_document)
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
 
         return self
 

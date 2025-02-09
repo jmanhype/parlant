@@ -28,7 +28,8 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
-    identity_loader,
+    check_migration_required,
+    update_metadata_version,
 )
 
 AgentId = NewType("AgentId", str)
@@ -103,84 +104,38 @@ class _AgentDocument(TypedDict, total=False):
     composition_mode: CompositionMode
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class AgentDocumentStore(AgentStore):
     VERSION = Version.from_string("0.1.0")
 
     def __init__(self, database: DocumentDatabase, migrate: bool = False):
         self._database = database
         self._collection: DocumentCollection[_AgentDocument]
-        self._metadata_collection: DocumentCollection[_MetadataDocument]
         self._migrate = migrate
 
         self._lock = ReaderWriterLock()
 
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        return None
-
     async def _document_loader(self, doc: BaseDocument) -> Optional[_AgentDocument]:
         if doc["version"] == "0.1.0":
             return cast(_AgentDocument, doc)
+
         return None
 
-    async def _is_migration_required(self) -> bool:
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=BaseDocument,
-            document_loader=identity_loader,
-        )
-
-        async with self._lock.writer_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                _collection = await self._database.get_or_create_collection(
-                    name="agents",
-                    schema=BaseDocument,
-                    document_loader=identity_loader,
-                )
-
-                collection_doc = await _collection.find_one({})
-                if collection_doc:  # Existing persistence
-                    if collection_doc["version"] != AgentDocumentStore.VERSION.to_string():
-                        # Create metadata with the document version
-                        meta_document = _MetadataDocument(
-                            id=ObjectId(generate_id()),
-                            version=collection_doc["version"],
-                        )
-                        await self._metadata_collection.insert_one(meta_document)
-                        return True
-                else:  # New store
-                    # Create metadata with the store version
-                    meta_document = _MetadataDocument(
-                        id=ObjectId(generate_id()),
-                        version=AgentDocumentStore.VERSION.to_string(),
-                    )
-                    await self._metadata_collection.insert_one(meta_document)
-
-        return False
-
     async def __aenter__(self) -> Self:
-        if await self._is_migration_required() and not self._migrate:
-            raise MigrationError("Migration required for AgentDocumentStore.")
-
-        self._metadata_collection = await self._database.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
-            document_loader=self._metadata_document_loader,
+        is_migration_required = await check_migration_required(
+            self._database, self.VERSION.to_string()
         )
+
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for AgentDocumentStore.")
 
         self._collection = await self._database.get_or_create_collection(
             name="agents",
             schema=_AgentDocument,
             document_loader=self._document_loader,
         )
+
+        if is_migration_required:
+            await update_metadata_version(self._database, self.VERSION.to_string())
 
         return self
 

@@ -48,13 +48,14 @@ from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentCollection,
     identity_loader,
+    check_migration_required,
+    update_metadata_version,
 )
 from parlant.core.sessions import SessionDocumentStore
 from parlant.core.guideline_tool_associations import (
     GuidelineToolAssociationDocumentStore,
 )
 from parlant.core.logging import Logger
-from parlant.core.tags import _MetadataDocument, TagDocumentStore
 from parlant.core.tools import ToolId
 
 from tests.test_utilities import SyncAwaiter
@@ -617,9 +618,10 @@ class DummyStore:
         name: str
         additional_field: str
 
-    def __init__(self, database: JSONFileDocumentDatabase):
+    def __init__(self, database: JSONFileDocumentDatabase, migrate: bool = True):
         self._database = database
         self._collection: DocumentCollection[DummyStore.DummyDocumentV2]
+        self._migrate = migrate
 
     async def _document_loader(self, doc: BaseDocument) -> Optional[DummyDocumentV2]:
         if doc["version"] == "1.0":
@@ -635,11 +637,21 @@ class DummyStore:
         return None
 
     async def __aenter__(self) -> Self:
+        is_migration_required = await check_migration_required(
+            self._database, Version.String("2.0")
+        )
+
+        if is_migration_required and not self._migrate:
+            raise MigrationError("Migration required for DummyStore.")
+
         self._collection = await self._database.get_or_create_collection(
             name="dummy_collection",
             schema=DummyStore.DummyDocumentV2,
             document_loader=self._document_loader,
         )
+
+        if is_migration_required:
+            await update_metadata_version(self._database, Version.String("2.0"))
 
         return self
 
@@ -662,13 +674,19 @@ async def test_document_upgrade_during_loading(
     with open(new_file, "w") as f:
         json.dump(
             {
+                "metadata": [
+                    {
+                        "id": "123",
+                        "version": "1.0",
+                    }
+                ],
                 "dummy_collection": [
                     {
                         "id": "dummy_id",
                         "version": "1.0",
                         "name": "Test Document",
                     }
-                ]
+                ],
             },
             f,
         )
@@ -676,7 +694,7 @@ async def test_document_upgrade_during_loading(
     logger = container[Logger]
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        async with DummyStore(db) as store:
+        async with DummyStore(db, migrate=True) as store:
             documents = await store.list_dummy()
 
             assert len(documents) == 1
@@ -686,23 +704,21 @@ async def test_document_upgrade_during_loading(
             assert upgraded_doc["additional_field"] == "default_value"
 
 
-async def test_that_migration_is_not_required_when_no_documents_in_store_and_migration_is_disabled(
+async def test_that_migration_is_not_needed_for_new_store(
     context: _TestContext,
     new_file: Path,
 ) -> None:
     logger = context.container[Logger]
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        async with TagDocumentStore(db, migrate=False) as store:
+        async with DummyStore(db, migrate=False):
             meta_collection = await db.get_or_create_collection(
-                name="metadata",
-                schema=_MetadataDocument,
-                document_loader=store._metadata_document_loader,
+                name="metadata", schema=BaseDocument, document_loader=identity_loader
             )
             meta_document = await meta_collection.find_one({})
 
             assert meta_document
-            assert meta_document["version"] == "0.1.0"
+            assert meta_document["version"] == "2.0"
 
 
 async def test_failed_migration_collection(
@@ -712,13 +728,19 @@ async def test_failed_migration_collection(
     with open(new_file, "w") as f:
         json.dump(
             {
+                "metadata": [
+                    {
+                        "id": "meta_id",
+                        "version": "1.0",
+                    },
+                ],
                 "dummy_collection": [
                     {
                         "id": "invalid_dummy_id",
                         "version": "3.0",
                         "name": "Unmigratable Document",
                     }
-                ]
+                ],
             },
             f,
         )
@@ -726,7 +748,7 @@ async def test_failed_migration_collection(
     logger = container[Logger]
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        async with DummyStore(db) as store:
+        async with DummyStore(db, migrate=True) as store:
             documents = await store.list_dummy()
 
             assert len(documents) == 0
@@ -761,48 +783,13 @@ async def test_that_version_mismatch_raises_error_when_migration_is_required_but
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
         with raises(MigrationError) as exc_info:
-            async with TagDocumentStore(db, migrate=False) as _:
+            async with DummyStore(db, migrate=False) as _:
                 pass
 
-        assert "Version mismatch" in str(exc_info.value)
-        assert (
-            f"Expected '{TagDocumentStore.VERSION.to_string()}', but got 'NotRealVersion'"
-            in str(exc_info.value)
-        )
+        assert "Migration required for DummyStore." in str(exc_info.value)
 
 
-async def test_that_migrate_flag_is_required_when_metadata_is_missing(
-    context: _TestContext,
-    new_file: Path,
-) -> None:
-    logger = context.container[Logger]
-
-    with open(new_file, "w") as f:
-        json.dump(
-            {
-                "tags": [
-                    {
-                        "id": "term_1",
-                        "version": "NotRealVersion",
-                        "creation_utc": datetime.now(timezone.utc).isoformat(),
-                        "name": "Test Term",
-                        "description": "A term for testing",
-                        "synonyms": "example",
-                    }
-                ]
-            },
-            f,
-        )
-
-    async with JSONFileDocumentDatabase(logger, new_file) as db:
-        with raises(MigrationError) as exc_info:
-            async with TagDocumentStore(db, migrate=False) as _:
-                pass
-
-        assert "Migration is required to proceed with initialization." in str(exc_info.value)
-
-
-async def test_that_version_match_does_not_raise_error_when_migration_is_not_required_and_disabled(
+async def test_that_persistence_and_store_version_match_allows_store_to_open_when_migrate_is_disabled(
     context: _TestContext,
     new_file: Path,
 ) -> None:
@@ -812,20 +799,20 @@ async def test_that_version_match_does_not_raise_error_when_migration_is_not_req
         json.dump(
             {
                 "metadata": [
-                    {"id": "meta_id", "version": "0.1.0"},
+                    {"id": "meta_id", "version": "2.0"},
                 ]
             },
             f,
         )
 
     async with JSONFileDocumentDatabase(logger, new_file) as db:
-        async with TagDocumentStore(db, migrate=False) as store:
+        async with DummyStore(db, migrate=False):
             meta_collection = await db.get_or_create_collection(
                 name="metadata",
-                schema=_MetadataDocument,
-                document_loader=store._metadata_document_loader,
+                schema=BaseDocument,
+                document_loader=identity_loader,
             )
             meta_document = await meta_collection.find_one({})
 
             assert meta_document
-            assert meta_document["version"] == "0.1.0"
+            assert meta_document["version"] == "2.0"
