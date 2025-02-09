@@ -156,7 +156,7 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
 class Gemini_2_0_Flash(GeminiSchematicGenerator[T]):
     def __init__(self, logger: Logger) -> None:
         super().__init__(
-            model_name="gemini-2.0",
+            model_name="gemini-2.0-flash",
             logger=logger,
         )
 
