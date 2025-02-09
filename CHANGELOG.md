@@ -14,6 +14,7 @@ All notable changes to Parlant will be documented here.
 - Add a log viewer to the sandbox UI
 - Add API and CLI to Fragments
 - Changed message inspection to return message event data for displaying more information, such as fragments in the inspection
+- Rename Slot (in Fragment) with FragmentField
 
 
 ## [1.6.2] - 2025-01-29
