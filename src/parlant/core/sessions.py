@@ -44,18 +44,16 @@ from parlant.core.guidelines import GuidelineId
 from parlant.core.nlp.generation import GenerationInfo, UsageInfo
 from parlant.core.persistence.common import (
     ObjectId,
-    MigrationError,
     Where,
 )
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
-    check_migration_required,
-    update_metadata_version,
 )
 from parlant.core.glossary import TermId
 from parlant.core.fragments import FragmentId
+from parlant.core.persistence.document_database_helper import MigrationHelper
 
 SessionId = NewType("SessionId", str)
 
@@ -390,12 +388,12 @@ class _InspectionDocument(TypedDict, total=False):
 class SessionDocumentStore(SessionStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = False):
+    def __init__(self, database: DocumentDatabase, allow_migration: bool = False):
         self._database = database
         self._session_collection: DocumentCollection[_SessionDocument]
         self._event_collection: DocumentCollection[_EventDocument]
         self._inspection_collection: DocumentCollection[_InspectionDocument]
-        self._migrate = migrate
+        self._allow_migration = allow_migration
 
         self._lock = ReaderWriterLock()
 
@@ -415,31 +413,26 @@ class SessionDocumentStore(SessionStore):
         return None
 
     async def __aenter__(self) -> Self:
-        is_migration_required = await check_migration_required(
-            self._database, self.VERSION.to_string()
-        )
-
-        if is_migration_required and not self._migrate:
-            raise MigrationError("Migration required for SessionDocumentStore.")
-
-        self._session_collection = await self._database.get_or_create_collection(
-            name="sessions",
-            schema=_SessionDocument,
-            document_loader=self._session_document_loader,
-        )
-        self._event_collection = await self._database.get_or_create_collection(
-            name="events",
-            schema=_EventDocument,
-            document_loader=self._event_document_loader,
-        )
-        self._inspection_collection = await self._database.get_or_create_collection(
-            name="inspections",
-            schema=_InspectionDocument,
-            document_loader=self._inspection_document_loader,
-        )
-
-        if is_migration_required:
-            await update_metadata_version(self._database, self.VERSION.to_string())
+        async with MigrationHelper(
+            store=self,
+            database=self._database,
+            allow_migration=self._allow_migration,
+        ):
+            self._session_collection = await self._database.get_or_create_collection(
+                name="sessions",
+                schema=_SessionDocument,
+                document_loader=self._session_document_loader,
+            )
+            self._event_collection = await self._database.get_or_create_collection(
+                name="events",
+                schema=_EventDocument,
+                document_loader=self._event_document_loader,
+            )
+            self._inspection_collection = await self._database.get_or_create_collection(
+                name="inspections",
+                schema=_InspectionDocument,
+                document_loader=self._inspection_document_loader,
+            )
 
         return self
 

@@ -27,14 +27,13 @@ from parlant.core.common import (
     Version,
     generate_id,
 )
-from parlant.core.persistence.common import MigrationError, ObjectId
+from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
-    check_migration_required,
-    update_metadata_version,
 )
+from parlant.core.persistence.document_database_helper import MigrationHelper
 from parlant.core.tools import ToolId
 
 ContextVariableId = NewType("ContextVariableId", str)
@@ -162,11 +161,11 @@ class _ContextVariableValueDocument(TypedDict, total=False):
 class ContextVariableDocumentStore(ContextVariableStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = False):
+    def __init__(self, database: DocumentDatabase, allow_migration: bool = False):
         self._database = database
         self._variable_collection: DocumentCollection[_ContextVariableDocument]
         self._value_collection: DocumentCollection[_ContextVariableValueDocument]
-        self._migrate = migrate
+        self._allow_migration = allow_migration
 
         self._lock = ReaderWriterLock()
 
@@ -185,28 +184,22 @@ class ContextVariableDocumentStore(ContextVariableStore):
         return None
 
     async def __aenter__(self) -> Self:
-        is_migration_required = await check_migration_required(
-            self._database, self.VERSION.to_string()
-        )
+        async with MigrationHelper(
+            store=self,
+            database=self._database,
+            allow_migration=self._allow_migration,
+        ):
+            self._variable_collection = await self._database.get_or_create_collection(
+                name="variables",
+                schema=_ContextVariableDocument,
+                document_loader=self._variable_document_loader,
+            )
 
-        if is_migration_required and not self._migrate:
-            raise MigrationError("Migration required for ContextVariableDocumentStore.")
-
-        self._variable_collection = await self._database.get_or_create_collection(
-            name="variables",
-            schema=_ContextVariableDocument,
-            document_loader=self._variable_document_loader,
-        )
-
-        self._value_collection = await self._database.get_or_create_collection(
-            name="values",
-            schema=_ContextVariableValueDocument,
-            document_loader=self._value_document_loader,
-        )
-
-        if is_migration_required:
-            await update_metadata_version(self._database, self.VERSION.to_string())
-
+            self._value_collection = await self._database.get_or_create_collection(
+                name="values",
+                schema=_ContextVariableValueDocument,
+                document_loader=self._value_document_loader,
+            )
         return self
 
     async def __aexit__(

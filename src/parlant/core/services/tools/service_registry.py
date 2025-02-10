@@ -28,17 +28,16 @@ from parlant.core.emissions import EventEmitterFactory
 from parlant.core.logging import Logger
 from parlant.core.nlp.moderation import ModerationService
 from parlant.core.nlp.service import NLPService
+from parlant.core.persistence.document_database_helper import MigrationHelper
 from parlant.core.services.tools.openapi import OpenAPIClient
 from parlant.core.services.tools.plugins import PluginClient
 from parlant.core.tools import LocalToolService, ToolService
 from parlant.core.common import ItemNotFoundError, Version, UniqueId
-from parlant.core.persistence.common import MigrationError, ObjectId
+from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
-    check_migration_required,
-    update_metadata_version,
 )
 
 
@@ -115,7 +114,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
         logger: Logger,
         correlator: ContextualCorrelator,
         nlp_services: Mapping[str, NLPService],
-        migrate: bool = False,
+        allow_migration: bool = False,
     ):
         self._database = database
         self._tool_services_collection: DocumentCollection[_ToolServiceDocument]
@@ -130,7 +129,7 @@ class ServiceDocumentRegistry(ServiceRegistry):
         self._running_services: dict[str, ToolService] = {}
         self._service_sources: dict[str, str] = {}
 
-        self._migrate = migrate
+        self._allow_migration = allow_migration
         self._lock = ReaderWriterLock()
 
     def _cast_to_specific_tool_service_class(
@@ -148,21 +147,16 @@ class ServiceDocumentRegistry(ServiceRegistry):
         return None
 
     async def __aenter__(self) -> Self:
-        is_migration_required = await check_migration_required(
-            self._database, self.VERSION.to_string()
-        )
-
-        if is_migration_required and not self._migrate:
-            raise MigrationError("Migration required for ServiceDocumentRegistry.")
-
-        self._tool_services_collection = await self._database.get_or_create_collection(
-            name="tool_services",
-            schema=_ToolServiceDocument,
-            document_loader=self._document_loader,
-        )
-
-        if is_migration_required:
-            await update_metadata_version(self._database, self.VERSION.to_string())
+        async with MigrationHelper(
+            store=self,
+            database=self._database,
+            allow_migration=self._allow_migration,
+        ):
+            self._tool_services_collection = await self._database.get_or_create_collection(
+                name="tool_services",
+                schema=_ToolServiceDocument,
+                document_loader=self._document_loader,
+            )
 
         self._moderation_services = {
             name: await nlp_service.get_moderation_service()

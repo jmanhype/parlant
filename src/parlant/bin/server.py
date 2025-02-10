@@ -368,7 +368,7 @@ async def setup_container(
                 correlator=c[ContextualCorrelator],
                 nlp_services={nlp_service_name: nlp_service_initializer[nlp_service_name]()},
                 logger=c[Logger],
-                migrate=migrate,
+                allow_migration=migrate,
             )
         )
 

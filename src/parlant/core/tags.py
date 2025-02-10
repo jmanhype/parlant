@@ -20,15 +20,14 @@ from typing_extensions import override, TypedDict, Self
 
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, generate_id, UniqueId
-from parlant.core.persistence.common import MigrationError, ObjectId
+from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentCollection,
     DocumentDatabase,
-    check_migration_required,
-    update_metadata_version,
 )
 from parlant.core.common import Version
+from parlant.core.persistence.document_database_helper import MigrationHelper
 
 TagId = NewType("TagId", str)
 
@@ -87,10 +86,10 @@ class _TagDocument(TypedDict, total=False):
 class TagDocumentStore(TagStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = False) -> None:
+    def __init__(self, database: DocumentDatabase, allow_migration: bool = False) -> None:
         self._database = database
         self._collection: DocumentCollection[_TagDocument]
-        self._migrate = migrate
+        self._allow_migration = allow_migration
         self._lock = ReaderWriterLock()
 
     async def _document_loader(self, doc: BaseDocument) -> Optional[_TagDocument]:
@@ -99,21 +98,16 @@ class TagDocumentStore(TagStore):
         return None
 
     async def __aenter__(self) -> Self:
-        is_migration_required = await check_migration_required(
-            self._database, self.VERSION.to_string()
-        )
-
-        if is_migration_required and not self._migrate:
-            raise MigrationError("Migration required for TagDocumentStore.")
-
-        self._collection = await self._database.get_or_create_collection(
-            name="tags",
-            schema=_TagDocument,
-            document_loader=self._document_loader,
-        )
-
-        if is_migration_required:
-            await update_metadata_version(self._database, self.VERSION.to_string())
+        async with MigrationHelper(
+            store=self,
+            database=self._database,
+            allow_migration=self._allow_migration,
+        ):
+            self._collection = await self._database.get_or_create_collection(
+                name="tags",
+                schema=_TagDocument,
+                document_loader=self._document_loader,
+            )
 
         return self
 

@@ -131,15 +131,25 @@ class ChromaDatabase(VectorDatabase):
         if name in self._collections:
             raise ValueError(f'Collection "{name}" already exists.')
 
+        chroma_collection = self._chroma_client.create_collection(
+            name=name, embedding_function=None
+        )
+        unembedded_collection = self._chroma_client.create_collection(
+            name=f"{name}_unembedde", embedding_function=None
+        )
+        version_history = self._chroma_client.create_collection(
+            name=f"{name}_version_history", embedding_function=None
+        )
+
         self._collections[name] = ChromaCollection(
             self._logger,
-            chromadb_collection=self._chroma_client.create_collection(
-                name=name,
-                embedding_function=None,
-            ),
+            chromadb_collection=chroma_collection,
+            unembedded_collection=unembedded_collection,
+            version_history=version_history,
             name=name,
             schema=schema,
             embedder=self._embedder_factory.create_embedder(embedder_type),
+            version=1,
         )
 
         return cast(ChromaCollection[TDocument], self._collections[name])
@@ -156,14 +166,43 @@ class ChromaDatabase(VectorDatabase):
         elif chroma_collection := next(
             (col for col in self._chroma_client.list_collections() if col.name == name), None
         ):
+            unembedded_collection = next(
+                (
+                    col
+                    for col in self._chroma_client.list_collections()
+                    if col.name == f"{name}_unembedded"
+                ),
+                None,
+            )
+            if not unembedded_collection:
+                raise ValueError(
+                    f'Unembedded collection "{name}_unembedded" not found but main collection exists.'
+                )
+
+            version_history = next(
+                (
+                    col
+                    for col in self._chroma_client.list_collections()
+                    if col.name == f"{name}_version_history"
+                ),
+                None,
+            )
+            if not version_history:
+                raise ValueError(
+                    f'Version history collection "{name}_version_history" not found but main collection exists.'
+                )
+
             self._collections[name] = ChromaCollection(
                 self._logger,
                 chromadb_collection=await self._load_documents_to_chroma_collection_with_loader(
                     chroma_collection, embedder_type=embedder_type, document_loader=document_loader
                 ),
+                unembedded_collection=unembedded_collection,
+                version_history=version_history,
                 name=name,
                 schema=BaseDocument,
                 embedder=self._embedder_factory.create_embedder(embedder_type),
+                version=1,
             )
             return cast(ChromaCollection[TDocument], self._collections[name])
 
@@ -182,26 +221,60 @@ class ChromaDatabase(VectorDatabase):
         elif chroma_collection := next(
             (col for col in self._chroma_client.list_collections() if col.name == name), None
         ):
+            unembedded_collection = next(
+                (
+                    col
+                    for col in self._chroma_client.list_collections()
+                    if col.name == f"{name}_unembedde"
+                ),
+                self._chroma_client.create_collection(
+                    name=f"{name}_unembedde", embedding_function=None
+                ),
+            )
+            version_history = next(
+                (
+                    col
+                    for col in self._chroma_client.list_collections()
+                    if col.name == f"{name}_version_history"
+                ),
+                self._chroma_client.create_collection(
+                    name=f"{name}_version_history", embedding_function=None
+                ),
+            )
+
             self._collections[name] = ChromaCollection(
                 self._logger,
                 chromadb_collection=await self._load_documents_to_chroma_collection_with_loader(
                     chroma_collection, embedder_type=embedder_type, document_loader=document_loader
                 ),
+                unembedded_collection=unembedded_collection,
+                version_history=version_history,
                 name=name,
                 schema=BaseDocument,
                 embedder=self._embedder_factory.create_embedder(embedder_type),
+                version=1,
             )
             return cast(ChromaCollection[TDocument], self._collections[name])
 
+        chroma_collection = self._chroma_client.create_collection(
+            name=name, embedding_function=None
+        )
+        unembedded_collection = self._chroma_client.create_collection(
+            name=f"{name}_unembedde", embedding_function=None
+        )
+        version_history = self._chroma_client.create_collection(
+            name=f"{name}_version_history", embedding_function=None
+        )
+
         self._collections[name] = ChromaCollection(
             self._logger,
-            chromadb_collection=self._chroma_client.create_collection(
-                name=name,
-                embedding_function=None,
-            ),
+            chromadb_collection=chroma_collection,
+            unembedded_collection=unembedded_collection,
+            version_history=version_history,
             name=name,
             schema=schema,
             embedder=self._embedder_factory.create_embedder(embedder_type),
+            version=1,
         )
 
         return cast(ChromaCollection[TDocument], self._collections[name])
@@ -213,7 +286,10 @@ class ChromaDatabase(VectorDatabase):
     ) -> None:
         if name not in self._collections:
             raise ValueError(f'Collection "{name}" not found.')
+
         self._chroma_client.delete_collection(name=name)
+        self._chroma_client.delete_collection(name=f"{name}_unembedde")
+        self._chroma_client.delete_collection(name=f"{name}_version_history")
         del self._collections[name]
 
 
@@ -222,16 +298,22 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         self,
         logger: Logger,
         chromadb_collection: chromadb.Collection,
+        unembedded_collection: chromadb.Collection,
+        version_history: chromadb.Collection,
         name: str,
         schema: type[TDocument],
         embedder: Embedder,
+        version: int,
     ) -> None:
         self._logger = logger
         self._name = name
         self._schema = schema
         self._embedder = embedder
+        self._version = version
 
         self._lock = ReaderWriterLock()
+        self._unembedded_collection = unembedded_collection
+        self._version_history = version_history
         self.chroma_collection = chromadb_collection
 
     @override
@@ -270,11 +352,27 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
         embeddings = list((await self._embedder.embed([document["content"]])).vectors)
 
         async with self._lock.writer_lock:
+            self._version += 1
+
+            self._unembedded_collection.add(
+                ids=[document["id"]],
+                documents=[document["content"]],
+                metadatas=[cast(chromadb.Metadata, document)],
+            )
+            self._unembedded_collection.metadata.update({"version": self._version})
+
             self.chroma_collection.add(
                 ids=[document["id"]],
                 documents=[document["content"]],
                 metadatas=[cast(chromadb.Metadata, document)],
                 embeddings=embeddings,
+            )
+            self.chroma_collection.metadata.update({"version": self._version})
+
+            self._version_history.add(
+                ids=[str(self._version)],
+                documents=[],
+                metadatas=[],
             )
 
         return InsertResult(acknowledged=True)
@@ -301,11 +399,27 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
 
                 updated_document = {**doc, **params}
 
+                self._version += 1
+
+                self._unembedded_collection.update(
+                    ids=[str(doc["id"])],
+                    documents=[document],
+                    metadatas=[cast(chromadb.Metadata, updated_document)],
+                )
+                self._unembedded_collection.metadata.update({"version": self._version})
+
                 self.chroma_collection.update(
                     ids=[str(doc["id"])],
                     documents=[document],
                     metadatas=[cast(chromadb.Metadata, updated_document)],
                     embeddings=embeddings,  # type: ignore
+                )
+                self.chroma_collection.metadata.update({"version": self._version})
+
+                self._version_history.add(
+                    ids=[str(self._version)],
+                    documents=[],
+                    metadatas=[],
                 )
 
                 return UpdateResult(
@@ -320,11 +434,26 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
 
                 embeddings = list((await self._embedder.embed([params["content"]])).vectors)
 
+                self._version += 1
+
+                self._unembedded_collection.add(
+                    ids=[params["id"]],
+                    documents=[params["content"]],
+                    metadatas=[cast(chromadb.Metadata, params)],
+                )
+                self._unembedded_collection.metadata.update({"version": self._version})
                 self.chroma_collection.add(
                     ids=[params["id"]],
                     documents=[params["content"]],
                     metadatas=[cast(chromadb.Metadata, params)],
                     embeddings=embeddings,
+                )
+                self.chroma_collection.metadata.update({"version": self._version})
+
+                self._version_history.add(
+                    ids=[str(self._version)],
+                    documents=[],
+                    metadatas=[],
                 )
 
                 return UpdateResult(
@@ -356,7 +485,19 @@ class ChromaCollection(Generic[TDocument], VectorCollection[TDocument]):
                     )
                 deleted_document = docs[0]
 
+                self._version += 1
+
+                self._unembedded_collection.delete(where=cast(chromadb.Where, filters) or None)
+                self._unembedded_collection.metadata.update({"version": self._version})
+
                 self.chroma_collection.delete(where=cast(chromadb.Where, filters) or None)
+                self.chroma_collection.metadata.update({"version": self._version})
+
+                self._version_history.add(
+                    ids=[str(self._version)],
+                    documents=[],
+                    metadatas=[],
+                )
 
                 return DeleteResult(
                     deleted_count=1,

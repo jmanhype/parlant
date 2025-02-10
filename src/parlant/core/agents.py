@@ -21,16 +21,14 @@ from typing_extensions import override, TypedDict, Self
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, UniqueId, Version, generate_id
 from parlant.core.persistence.common import (
-    MigrationError,
     ObjectId,
 )
 from parlant.core.persistence.document_database import (
     BaseDocument,
     DocumentDatabase,
     DocumentCollection,
-    check_migration_required,
-    update_metadata_version,
 )
+from parlant.core.persistence.document_database_helper import MigrationHelper
 
 AgentId = NewType("AgentId", str)
 
@@ -107,10 +105,10 @@ class _AgentDocument(TypedDict, total=False):
 class AgentDocumentStore(AgentStore):
     VERSION = Version.from_string("0.1.0")
 
-    def __init__(self, database: DocumentDatabase, migrate: bool = False):
+    def __init__(self, database: DocumentDatabase, allow_migration: bool = False):
         self._database = database
         self._collection: DocumentCollection[_AgentDocument]
-        self._migrate = migrate
+        self._allow_migration = allow_migration
 
         self._lock = ReaderWriterLock()
 
@@ -121,21 +119,16 @@ class AgentDocumentStore(AgentStore):
         return None
 
     async def __aenter__(self) -> Self:
-        is_migration_required = await check_migration_required(
-            self._database, self.VERSION.to_string()
-        )
-
-        if is_migration_required and not self._migrate:
-            raise MigrationError("Migration required for AgentDocumentStore.")
-
-        self._collection = await self._database.get_or_create_collection(
-            name="agents",
-            schema=_AgentDocument,
-            document_loader=self._document_loader,
-        )
-
-        if is_migration_required:
-            await update_metadata_version(self._database, self.VERSION.to_string())
+        async with MigrationHelper(
+            store=self,
+            database=self._database,
+            allow_migration=self._allow_migration,
+        ):
+            self._collection = await self._database.get_or_create_collection(
+                name="agents",
+                schema=_AgentDocument,
+                document_loader=self._document_loader,
+            )
 
         return self
 
@@ -144,8 +137,8 @@ class AgentDocumentStore(AgentStore):
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[object],
-    ) -> None:
-        pass
+    ) -> bool:
+        return False
 
     def _serialize(self, agent: Agent) -> _AgentDocument:
         return _AgentDocument(
