@@ -1,5 +1,6 @@
 import {BASE_URL} from '@/utils/api';
 import {useState, useEffect, useCallback, ReactElement} from 'react';
+import {toast} from 'sonner';
 
 interface useFetchResponse<T> {
 	data: T | null;
@@ -21,6 +22,7 @@ function objToUrlParams(obj: Record<string, unknown>) {
 }
 
 const ABORT_REQ_CODE = 20;
+const NOT_FOUND_CODE = 404;
 const TIMEOUT_ERROR_MESSAGE = 'Error: Gateway Timeout';
 
 export default function useFetch<T>(url: string, body?: Record<string, unknown>, dependencies: unknown[] = [], retry = false, initiate = true, checkErr = true): useFetchResponse<T> {
@@ -62,13 +64,20 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
 
 		fetch(`${BASE_URL}/${url}${params}`, {signal})
 			.then(async (response) => {
-				if (!response.ok) throw new Error(`Error: ${response.statusText}`);
+				if (!response.ok) {
+					if (response.status === 404) {
+						throw {code: 404, message: response.statusText};
+					}
+					throw new Error(`Error: ${response.statusText}`);
+				}
 				const result = await response.json();
 				setData(result);
 			})
 			.catch((err) => {
 				if (checkErr && err.code !== ABORT_REQ_CODE) setError({message: err.message});
-				else if (err.code !== ABORT_REQ_CODE && retry) fetchData();
+				else if (err.code !== ABORT_REQ_CODE && err.code !== NOT_FOUND_CODE && retry) fetchData();
+
+				if (err.code === NOT_FOUND_CODE) toast.error('resource not found. please try to refresh the page');
 			})
 			.finally(() => checkErr && setLoading(false));
 
