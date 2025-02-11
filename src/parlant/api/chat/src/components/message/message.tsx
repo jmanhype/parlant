@@ -68,7 +68,7 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 				data-testid='message'
 				onClick={() => showLogs(event)}
 				className={twMerge(
-					isClient && 'text-black !rounded-br-none !rounded-tr-[22px]',
+					isClient && 'text-black !rounded-br-none !rounded-tr-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 					isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
 					!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 					isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
@@ -102,8 +102,8 @@ const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
 	}, [ref?.current]);
 
 	return (
-		<div className='w-full p-[10px] rounded-[10px] border'>
-			<Textarea ref={ref} className='resize-none !ring-0 !ring-offset-0' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
+		<div className='w-full p-[10px] rounded-[10px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
+			<Textarea ref={ref} className='resize-none !ring-0 !ring-offset-0 border-none bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
 			<div className='pt-[10px] flex justify-end gap-[10px]'>
 				<Button onClick={() => setIsEditing(false)}>Cancel</Button>
 				<Button disabled={!textValue?.trim()} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
@@ -116,7 +116,7 @@ const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
 
 export default function Message({event, isContinual, showLogs, showLogsForMessage, resendMessageFn}: Props): ReactElement {
 	const [isEditing, setIsEditing] = useState(false);
-	console.log(isEditing);
+
 	return (
 		<div className='group/main flex my-4 mx-0 mb-1 w-full justify-between animate-fade-in scrollbar'>
 			<Spacer />

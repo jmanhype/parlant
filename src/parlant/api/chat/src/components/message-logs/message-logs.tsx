@@ -282,7 +282,7 @@ const MessageLogs = ({
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
-			{!event && <EmptyState title='Feeling curious?' subTitle='Select an agent message for additional actions and information about its generation process.' className='bg-[#f5f6f8]' />}
+			{!event && <EmptyState title='Feeling curious?' subTitle='Select a message for additional actions and information about its process.' className='bg-[#f5f6f8]' />}
 			{event && logs && !logs?.length && <EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." className='bg-[#f5f6f8]' />}
 			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' className='bg-[#ebecf0]' />}
 			{event && !!filteredLogs.length && (
