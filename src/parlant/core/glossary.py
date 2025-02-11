@@ -22,9 +22,10 @@ from typing_extensions import override, Self
 from parlant.core import async_utils
 from parlant.core.async_utils import ReaderWriterLock
 from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
-from parlant.core.persistence.common import MigrationError, ObjectId
+from parlant.core.persistence.common import ObjectId
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.persistence.vector_database import BaseDocument, VectorCollection, VectorDatabase
+from parlant.core.persistence.vector_database_helper import MigrationHelper
 
 
 TermId = NewType("TermId", str)
@@ -112,12 +113,6 @@ class _TermDocument(TypedDict, total=False):
     content: str
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-    content: str
-
-
 class GlossaryVectorStore(GlossaryStore):
     VERSION = Version.from_string("0.1.0")
 
@@ -126,27 +121,15 @@ class GlossaryVectorStore(GlossaryStore):
         vector_db: VectorDatabase,
         embedder_type: type[Embedder],
         embedder_factory: EmbedderFactory,
-        migrate: bool = True,
+        allow_migration: bool = True,
     ):
         self._vector_db = vector_db
         self._collection: VectorCollection[_TermDocument]
-        self._metadata_collection: VectorCollection[_MetadataDocument]
-        self._migrate = migrate
+        self._allow_migration = allow_migration
         self._embedder = embedder_factory.create_embedder(embedder_type)
         self._embedder_type = embedder_type
 
         self._lock = ReaderWriterLock()
-
-    async def _metadata_document_loader(self, doc: BaseDocument) -> Optional[_MetadataDocument]:
-        if doc["version"] == "0.1.0":
-            return cast(_MetadataDocument, doc)
-
-        if not self._migrate:
-            raise MigrationError(
-                f"Version mismatch in 'GlossaryVectorStore': Expected '{self.VERSION.to_string()}', but got '{doc['version']}'."
-            )
-
-        return None
 
     async def _document_loader(self, document: BaseDocument) -> Optional[_TermDocument]:
         if document["version"] == "0.1.0":
@@ -155,34 +138,18 @@ class GlossaryVectorStore(GlossaryStore):
         return None
 
     async def __aenter__(self) -> Self:
-        self._metadata_collection = await self._vector_db.get_or_create_collection(
-            name="metadata",
-            schema=_MetadataDocument,
+        async with MigrationHelper(
+            store=self,
+            database=self._vector_db,
             embedder_type=self._embedder_type,
-            document_loader=self._metadata_document_loader,
-        )
-
-        async with self._lock.reader_lock:
-            existing_meta = await self._metadata_collection.find_one({})
-            if not existing_meta:
-                if not self._migrate:
-                    raise MigrationError("Migration is required to proceed with initialization.")
-
-        self._collection = await self._vector_db.get_or_create_collection(
-            name="glossary",
-            schema=_TermDocument,
-            embedder_type=self._embedder_type,
-            document_loader=self._document_loader,
-        )
-
-        async with self._lock.writer_lock:
-            if not existing_meta:
-                meta_document = _MetadataDocument(
-                    id=ObjectId(generate_id()),
-                    version=GlossaryVectorStore.VERSION.to_string(),
-                    content="1",
-                )
-                await self._metadata_collection.insert_one(meta_document)
+            allow_migration=self._allow_migration,
+        ):
+            self._collection = await self._vector_db.get_or_create_collection(
+                name="glossary",
+                schema=_TermDocument,
+                embedder_type=self._embedder_type,
+                document_loader=self._document_loader,
+            )
 
         return self
 

@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Generic, Optional, Sequence, TypeVar, TypedDict
 
-from parlant.core.common import Version
+from parlant.core.common import JSONSerializable, Version
 from parlant.core.nlp.embedding import Embedder
 from parlant.core.persistence.common import ObjectId, Where
 
@@ -100,6 +100,24 @@ class VectorDatabase(ABC):
         self,
         name: str,
     ) -> None: ...
+
+    @abstractmethod
+    async def upsert_metadata(
+        self,
+        key: str,
+        value: JSONSerializable,
+    ) -> None: ...
+
+    @abstractmethod
+    async def remove_metadata(
+        self,
+        key: str,
+    ) -> None: ...
+
+    @abstractmethod
+    async def read_metadata(
+        self,
+    ) -> dict[str, JSONSerializable]: ...
 
 
 class VectorCollection(ABC, Generic[TDocument]):

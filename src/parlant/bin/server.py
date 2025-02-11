@@ -384,7 +384,6 @@ async def setup_container(
                 ),
                 embedder_type=type(await nlp_service.get_embedder()),
                 embedder_factory=embedder_factory,
-                migrate=migrate,
             )
         )
     except MigrationError as e:
