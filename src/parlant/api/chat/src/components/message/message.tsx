@@ -71,9 +71,9 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 					isClient && 'text-black !rounded-br-none !rounded-tr-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 					isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
 					!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
-					isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
 					isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
 					showLogsForMessage && showLogsForMessage.id === event.id && (isClient ? 'border-[#656565] !bg-white [box-shadow:4.5px_6px_0px_0px_#DBDCE0]' : 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#DBDCE0]'),
+					isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
 					'rounded-[26px] max-w-fit peer w-fit flex items-center relative border-[1.3px] border-muted border-solid'
 				)}>
 				<div className={twMerge('markdown overflow-auto relative max-w-[608px] [word-break:break-word] font-light text-[16px] ps-[32px] pe-[38px]', isOneLiner ? '!pb-[22px] !pt-[18px]' : 'pb-[24px] pt-[20px]')}>
@@ -94,16 +94,21 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 
 const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
 	const ref = useRef<HTMLTextAreaElement>(null);
+	const textArea = useRef<HTMLTextAreaElement>(null);
 	const [textValue, setTextValue] = useState(event?.data?.message || '');
 	const [session] = useAtom(sessionAtom);
 
 	useEffect(() => {
-		ref?.current?.select();
+		textArea?.current?.select();
+	}, [textArea?.current]);
+
+	useEffect(() => {
+		ref?.current?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 	}, [ref?.current]);
 
 	return (
-		<div className='w-full p-[10px] rounded-[10px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
-			<Textarea ref={ref} className='resize-none !ring-0 !ring-offset-0 border-none bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
+		<div ref={ref} className='w-full p-[10px] rounded-[10px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
+			<Textarea ref={textArea} className='resize-none !ring-0 !ring-offset-0 border-none bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
 			<div className='pt-[10px] flex justify-end gap-[10px]'>
 				<Button onClick={() => setIsEditing(false)}>Cancel</Button>
 				<Button disabled={!textValue?.trim()} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
