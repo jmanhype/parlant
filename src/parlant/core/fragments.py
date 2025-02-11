@@ -128,11 +128,6 @@ class _FragmentTagAssociationDocument(TypedDict, total=False):
     tag_id: TagId
 
 
-class _MetadataDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-
-
 class FragmentDocumentStore(FragmentStore):
     VERSION = Version.from_string("0.1.0")
 
