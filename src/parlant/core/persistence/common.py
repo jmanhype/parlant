@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Mapping, NewType, Union, cast, get_type_hints
+from typing import Any, Callable, Mapping, NewType, Protocol, Union, cast, get_type_hints
 from typing_extensions import Literal, TypedDict
+
+from parlant.core.common import Version
 
 
 ObjectId = NewType("ObjectId", str)
@@ -22,6 +24,10 @@ ObjectId = NewType("ObjectId", str)
 class MigrationError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class VersionedStore(Protocol):
+    VERSION: Version
 
 
 # Metadata Query Grammar

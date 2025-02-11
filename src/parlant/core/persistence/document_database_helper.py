@@ -1,17 +1,13 @@
-from typing import Optional, Protocol
+from typing import Optional
 from typing_extensions import TypedDict, Self
 from parlant.core.common import Version, generate_id
-from parlant.core.persistence.common import MigrationError, ObjectId
+from parlant.core.persistence.common import MigrationError, ObjectId, VersionedStore
 from parlant.core.persistence.document_database import DocumentDatabase, identity_loader
 
 
 class _MetadataDocument(TypedDict, total=False):
     id: ObjectId
     version: Version.String
-
-
-class VersionedStore(Protocol):
-    VERSION: Version
 
 
 class MigrationHelper:
