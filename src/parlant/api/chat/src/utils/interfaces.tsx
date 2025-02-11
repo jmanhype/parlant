@@ -23,6 +23,7 @@ export interface EventInterface {
 	kind: 'status' | 'message';
 	correlation_id: string;
 	serverStatus: ServerStatus;
+	sessionId?: string;
 	offset: number;
 	creation_utc: Date;
 	data: {

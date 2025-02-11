@@ -184,7 +184,7 @@ export default function Chat(): ReactElement {
 	};
 
 	const postMessage = async (content: string): Promise<void> => {
-		setPendingMessage((pendingMessage) => ({...pendingMessage, data: {message: content}}));
+		setPendingMessage((pendingMessage) => ({...pendingMessage, sessionId: session?.id, data: {message: content}}));
 		setMessage('');
 		const eventSession = newSession ? (await createSession())?.id : session?.id;
 		const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
@@ -208,7 +208,7 @@ export default function Chat(): ReactElement {
 		return new Date(dateA).toLocaleDateString() === new Date(dateB).toLocaleDateString();
 	};
 
-	const visibleMessages = session?.id !== NEW_SESSION_ID && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
+	const visibleMessages = session?.id !== NEW_SESSION_ID && pendingMessage?.sessionId === session?.id && pendingMessage?.data?.message ? [...messages, pendingMessage] : messages;
 
 	const showLogs = (i: number) => (event: EventInterface) => {
 		event.index = i;
