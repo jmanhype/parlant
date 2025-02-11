@@ -65,8 +65,8 @@ export default function useFetch<T>(url: string, body?: Record<string, unknown>,
 		fetch(`${BASE_URL}/${url}${params}`, {signal})
 			.then(async (response) => {
 				if (!response.ok) {
-					if (response.status === 404) {
-						throw {code: 404, message: response.statusText};
+					if (response.status === NOT_FOUND_CODE) {
+						throw {code: NOT_FOUND_CODE, message: response.statusText};
 					}
 					throw new Error(`Error: ${response.statusText}`);
 				}
