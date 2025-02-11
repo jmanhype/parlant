@@ -18,3 +18,8 @@ from abc import ABC, abstractmethod
 class EstimatingTokenizer(ABC):
     @abstractmethod
     async def estimate_token_count(self, prompt: str) -> int: ...
+
+
+class ZeroEstimatingTokenizer(EstimatingTokenizer):
+    async def estimate_token_count(self, prompt: str) -> int:
+        return 0

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from lagom import Container
 from typing import Any, Sequence
 
-from parlant.core.nlp.tokenization import EstimatingTokenizer
+from parlant.core.nlp.tokenization import EstimatingTokenizer, ZeroEstimatingTokenizer
 
 
 @dataclass(frozen=True)
@@ -57,4 +57,35 @@ class EmbedderFactory:
         self._container = container
 
     def create_embedder(self, embedder_type: type[Embedder]) -> Embedder:
-        return self._container[embedder_type]
+        if embedder_type == NoOpEmbedder:
+            return NoOpEmbedder()
+        else:
+            return self._container[embedder_type]
+
+
+class NoOpEmbedder(Embedder):
+    def __init__(self) -> None:
+        self._tokenizer = ZeroEstimatingTokenizer()
+
+    async def embed(
+        self,
+        texts: list[str],
+        hints: Mapping[str, Any] = {},
+    ) -> EmbeddingResult:
+        return EmbeddingResult(vectors=[[0.0] * self.dimensions for _ in texts])
+
+    @property
+    def id(self) -> str:
+        return "no_op"
+
+    @property
+    def max_tokens(self) -> int:
+        return 8192  # Arbitrary large number for embedding
+
+    @property
+    def tokenizer(self) -> EstimatingTokenizer:
+        return self._tokenizer
+
+    @property
+    def dimensions(self) -> int:
+        return 1536  # Standard embedding dimension
