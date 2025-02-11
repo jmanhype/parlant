@@ -126,7 +126,6 @@ export default function Chat(): ReactElement {
 
 		setMessages((messages) => messages.slice(0, index));
 		setLastOffset(offset);
-
 		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset}`).catch((e) => ({error: e}));
 		if (deleteSession?.error) {
 			toast.error(deleteSession.error.message || deleteSession.error);
@@ -135,7 +134,7 @@ export default function Chat(): ReactElement {
 			return;
 		}
 		postMessage(event.data?.message);
-		setTimeout(() => refetch(), 0);
+		refetch();
 	};
 
 	const regenerateMessage = async (index: number, sessionId: string, offset: number) => {
@@ -145,7 +144,7 @@ export default function Chat(): ReactElement {
 		setMessages((messages) => messages.slice(0, index));
 		setLastOffset(offset);
 		setIsRegenerating(true);
-		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset - 1}`).catch((e) => ({error: e}));
+		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset}`).catch((e) => ({error: e}));
 		if (deleteSession?.error) {
 			toast.error(deleteSession.error.message || deleteSession.error);
 			setMessages(prevAllMessages);
