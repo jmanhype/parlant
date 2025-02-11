@@ -77,6 +77,14 @@ const Header = ({
 	);
 };
 
+const MessageError = ({event}: {event: EventInterface}) => {
+	return (
+		<div className='h-[300px] p-[20px] bg-[#ebecf0] text-[13px] text-[#ef5350]'>
+			<pre className={clsx('p-[10px] max-w-[-webkit-fill-available] pe-[10px] text-wrap break-words bg-white rounded-[8px] h-full overflow-auto')}>{event?.error}</pre>
+		</div>
+	);
+};
+
 const FilterTabs = ({filterTabs, setCurrFilterTabs, setFilterTabs, currFilterTabs, setFilters}: FilterTabsFilterProps) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [inputVal, setInputVal] = useState('');
@@ -272,6 +280,7 @@ const MessageLogs = ({
 				regenerateMessageFn={regenerateMessageFn}
 				className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')}
 			/>
+			{event?.serverStatus === 'error' && <MessageError event={event} />}
 			{!!fragmentEntries.length && <MessageFragments fragments={fragmentEntries} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
 			{shouldRenderTabs && <FilterTabs setFilters={setFilters as any} currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && (

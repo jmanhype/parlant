@@ -5,7 +5,7 @@ import {Button} from '../ui/button';
 import {deleteData, postData} from '@/utils/api';
 import {groupBy} from '@/utils/obj';
 import Message from '../message/message';
-import {EventInterface, SessionInterface} from '@/utils/interfaces';
+import {EventInterface, ServerStatus, SessionInterface} from '@/utils/interfaces';
 import {getDateStr} from '@/utils/date';
 import {Spacer} from '../ui/custom/spacer';
 import {toast} from 'sonner';
@@ -177,10 +177,13 @@ export default function Chat(): ReactElement {
 		if (offset || offset === 0) setLastOffset(offset + 1);
 		const correlationsMap = groupBy(lastMessages || [], (item: EventInterface) => item?.correlation_id.split('::')[0]);
 		const newMessages = lastMessages?.filter((e) => e.kind === 'message') || [];
-		const withStatusMessages = newMessages.map((newMessage, i) => ({
-			...newMessage,
-			serverStatus: correlationsMap?.[newMessage.correlation_id.split('::')[0]]?.at(-1)?.data?.status || (newMessages[i + 1] ? 'ready' : null),
-		}));
+		const withStatusMessages = newMessages.map((newMessage, i) => {
+			const data: EventInterface = {...newMessage};
+			const item = correlationsMap?.[newMessage.correlation_id.split('::')[0]]?.at(-1)?.data;
+			data.serverStatus = (item?.status || (newMessages[i + 1] ? 'ready' : null)) as ServerStatus;
+			if (data.serverStatus === 'error') data.error = item?.data?.exception;
+			return data;
+		});
 		if (newMessages.length && isRegenerating) setIsRegenerating(false);
 
 		if (pendingMessage.serverStatus !== 'pending' && pendingMessage.data.message) setPendingMessage(emptyPendingMessage);

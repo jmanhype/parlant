@@ -24,12 +24,14 @@ export interface EventInterface {
 	correlation_id: string;
 	serverStatus: ServerStatus;
 	sessionId?: string;
+	error?: string;
 	offset: number;
 	creation_utc: Date;
 	data: {
 		status?: ServerStatus;
 		fragments?: string[];
 		message: string;
+		data?: {exception?: string};
 	};
 	index?: number;
 }
