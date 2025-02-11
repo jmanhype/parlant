@@ -50,7 +50,7 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 					ref={ref}
 					tabIndex={0}
 					data-testid='message'
-					onClick={() => !isClient && showLogs(event)}
+					onClick={() => showLogs(event)}
 					className={twMerge(
 						isClient && 'text-black !rounded-br-none !rounded-tr-[22px]',
 						isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',

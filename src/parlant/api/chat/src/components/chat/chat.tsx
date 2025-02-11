@@ -51,6 +51,7 @@ export default function Chat(): ReactElement {
 	const [lastOffset, setLastOffset] = useState(0);
 	const [messages, setMessages] = useState<EventInterface[]>([]);
 	const [showTyping, setShowTyping] = useState(false);
+	const [showThinking, setShowThinking] = useState(false);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [isFirstScroll, setIsFirstScroll] = useState(true);
 	const {openQuestionDialog, closeQuestionDialog} = useQuestionDialog();
@@ -80,9 +81,29 @@ export default function Chat(): ReactElement {
 		setShowLogsForMessage(null);
 	};
 
+	const resendMessageDialog = (index: number) => (sessionId: string) => {
+		const isLastMessage = index === messages.length - 1;
+		const lastUserMessageOffset = messages[index].offset;
+
+		if (isLastMessage) {
+			setShowLogsForMessage(null);
+			return resendMessage(index, sessionId, lastUserMessageOffset);
+		}
+
+		const onApproved = () => {
+			setShowLogsForMessage(null);
+			closeQuestionDialog();
+			resendMessage(index, sessionId, lastUserMessageOffset);
+		};
+
+		const question = 'Resending this message would cause all of the following messages in the session to disappear.';
+		openQuestionDialog('Are you sure?', question, [{text: 'Resend Anyway', onClick: onApproved, isMainAction: true}]);
+	};
+
 	const regenerateMessageDialog = (index: number) => (sessionId: string) => {
 		const isLastMessage = index === messages.length - 1;
 		const lastUserMessageOffset = messages[index - 1].offset;
+
 		if (isLastMessage) {
 			setShowLogsForMessage(null);
 			return regenerateMessage(index, sessionId, lastUserMessageOffset + 1);
@@ -98,6 +119,25 @@ export default function Chat(): ReactElement {
 		openQuestionDialog('Are you sure?', question, [{text: 'Regenerate Anyway', onClick: onApproved, isMainAction: true}]);
 	};
 
+	const resendMessage = async (index: number, sessionId: string, offset: number) => {
+		const event = messages[index];
+		const prevAllMessages = messages;
+		const prevLastOffset = lastOffset;
+
+		setMessages((messages) => messages.slice(0, index));
+		setLastOffset(offset);
+
+		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset}`).catch((e) => ({error: e}));
+		if (deleteSession?.error) {
+			toast.error(deleteSession.error.message || deleteSession.error);
+			setMessages(prevAllMessages);
+			setLastOffset(prevLastOffset);
+			return;
+		}
+		postMessage(event.data?.message);
+		setTimeout(() => refetch(), 0);
+	};
+
 	const regenerateMessage = async (index: number, sessionId: string, offset: number) => {
 		const prevAllMessages = messages;
 		const prevLastOffset = lastOffset;
@@ -105,7 +145,7 @@ export default function Chat(): ReactElement {
 		setMessages((messages) => messages.slice(0, index));
 		setLastOffset(offset);
 		setIsRegenerating(true);
-		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset}`).catch((e) => ({error: e}));
+		const deleteSession = await deleteData(`sessions/${sessionId}/events?min_offset=${offset - 1}`).catch((e) => ({error: e}));
 		if (deleteSession?.error) {
 			toast.error(deleteSession.error.message || deleteSession.error);
 			setMessages(prevAllMessages);
@@ -148,11 +188,13 @@ export default function Chat(): ReactElement {
 		setMessages((messages) => {
 			const last = messages.at(-1);
 			if (last?.source === 'customer' && correlationsMap?.[last?.correlation_id]) last.serverStatus = correlationsMap[last.correlation_id].at(-1)?.data?.status || last.serverStatus;
+			if (withStatusMessages && pendingMessage) setPendingMessage(emptyPendingMessage);
 			return [...messages, ...withStatusMessages] as EventInterface[];
 		});
 
 		const lastEventStatus = lastEvent?.data?.status;
 
+		setShowThinking(lastEventStatus === 'processing');
 		setShowTyping(lastEventStatus === 'typing');
 		if (lastEventStatus === 'error') {
 			if (isRegenerating) {
@@ -190,7 +232,6 @@ export default function Chat(): ReactElement {
 		const useContentFilteringStatus = useContentFiltering ? 'auto' : 'none';
 		postData(`sessions/${eventSession}/events?moderation=${useContentFilteringStatus}`, {kind: 'message', message: content, source: 'customer'})
 			.then(() => {
-				setPendingMessage((pendingMessage) => ({...pendingMessage, serverStatus: 'accepted'}));
 				refetch();
 			})
 			.catch(() => toast.error('Something went wrong'));
@@ -260,12 +301,12 @@ export default function Chat(): ReactElement {
 									</div>
 								</React.Fragment>
 							))}
-							{(isRegenerating || showTyping) && (
+							{(isRegenerating || showTyping || showThinking) && (
 								<div className='animate-fade-in flex mb-1 justify-between mt-[44.33px]'>
 									<Spacer />
 									<div className='flex items-center max-w-[1200px] flex-1'>
 										<img src='parlant-bubble-muted.svg' alt='' height={36} width={36} className='me-[8px]' />
-										<p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>{isRegenerating ? 'Regenerating...' : 'Typing...'}</p>
+										<p className='font-medium text-[#A9AFB7] text-[11px] font-inter'>{isRegenerating ? 'Regenerating...' : showTyping ? 'Typing...' : 'Thinking...'}</p>
 									</div>
 									<Spacer />
 								</div>
@@ -295,7 +336,12 @@ export default function Chat(): ReactElement {
 				</div>
 				<ErrorBoundary component={<div className='flex h-full min-w-[50%] justify-center items-center text-[20px]'>Failed to load logs</div>}>
 					<div className='flex h-full min-w-[50%]'>
-						<MessageLogs event={showLogsForMessage} regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined} closeLogs={() => setShowLogsForMessage(null)} />
+						<MessageLogs
+							event={showLogsForMessage}
+							regenerateMessageFn={showLogsForMessage?.index ? regenerateMessageDialog(showLogsForMessage.index) : undefined}
+							resendMessageFn={showLogsForMessage?.index || showLogsForMessage?.index === 0 ? resendMessageDialog(showLogsForMessage.index) : undefined}
+							closeLogs={() => setShowLogsForMessage(null)}
+						/>
 					</div>
 				</ErrorBoundary>
 			</div>

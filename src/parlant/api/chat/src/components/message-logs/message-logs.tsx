@@ -34,14 +34,29 @@ interface FilterTabsFilterProps {
 	setFilters: React.Dispatch<React.SetStateAction<any>>;
 }
 
-const Header = ({event, regenerateMessageFn, closeLogs, className}: {event: EventInterface | null; regenerateMessageFn?: (messageId: string) => void; closeLogs?: VoidFunction; className?: ClassNameValue}) => {
+const Header = ({
+	event,
+	regenerateMessageFn,
+	resendMessageFn,
+	closeLogs,
+	className,
+}: {
+	event: EventInterface | null;
+	regenerateMessageFn?: (messageId: string) => void;
+	resendMessageFn?: (messageId: string) => void;
+	closeLogs?: VoidFunction;
+	className?: ClassNameValue;
+}) => {
 	const [session] = useAtom(sessionAtom);
 	return (
 		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && '!border-transparent bg-[#f5f6f8]', className)}>
 			{event && (
 				<div className={twMerge('flex items-center justify-between w-full pe-[20px]')}>
 					<div className='flex items-center gap-[12px] mb-[1px]'>
-						<div className='group flex rounded-[5px] ms-[4px] items-center gap-[7px] py-[13px] px-[10px]' role='button' onClick={() => regenerateMessageFn?.(session?.id as string)}>
+						<div
+							className='group flex rounded-[5px] ms-[4px] items-center gap-[7px] py-[13px] px-[10px]'
+							role='button'
+							onClick={() => (event?.source === 'customer' ? resendMessageFn?.(session?.id as string) : regenerateMessageFn?.(session?.id as string))}>
 							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden' />
 							<img src='icons/regenerate-arrow-hover.svg' alt='regenerate' className='hidden group-hover:block' />
 							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}
@@ -173,7 +188,17 @@ const EmptyState = ({title, subTitle, className}: {title: string; subTitle?: str
 	);
 };
 
-const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInterface | null; closeLogs?: VoidFunction; regenerateMessageFn?: (sessionId: string) => void}): ReactNode => {
+const MessageLogs = ({
+	event,
+	closeLogs,
+	regenerateMessageFn,
+	resendMessageFn,
+}: {
+	event?: EventInterface | null;
+	closeLogs?: VoidFunction;
+	regenerateMessageFn?: (sessionId: string) => void;
+	resendMessageFn?: (sessionId: string) => void;
+}): ReactNode => {
 	const [filters, setFilters] = useState({});
 	const [filterTabs, setFilterTabs] = useLocalStorage<Filter[]>('filters', []);
 	const [currFilterTabs, setCurrFilterTabs] = useState<number | null>((filterTabs as Filter[])[0]?.id || null);
@@ -239,7 +264,13 @@ const MessageLogs = ({event, closeLogs, regenerateMessageFn}: {event?: EventInte
 	const fragmentEntries = Object.entries(event?.data?.fragments || {}).map(([id, value]) => ({id, value}));
 	return (
 		<div className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
-			<Header event={event || null} closeLogs={closeLogs} regenerateMessageFn={regenerateMessageFn} className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')} />
+			<Header
+				event={event || null}
+				closeLogs={closeLogs}
+				resendMessageFn={resendMessageFn}
+				regenerateMessageFn={regenerateMessageFn}
+				className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')}
+			/>
 			{!!fragmentEntries.length && <MessageFragments fragments={fragmentEntries} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
 			{shouldRenderTabs && <FilterTabs setFilters={setFilters as any} currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
 			{event && (

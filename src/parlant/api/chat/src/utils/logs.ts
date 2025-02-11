@@ -31,7 +31,6 @@ const setLocalStorageItem = (logsJson: Record<string, string>, recursive?: boole
 
 export const handleChatLogs = (log: Log) => {
 	if (!localStorage) return;
-	if (!log.correlation_id.includes('::')) return;
 	let eventsChanged = false;
 	const logsJson = JSON.parse(localStorage.logs || '{}');
 	if (!logsJson[log.correlation_id]) {

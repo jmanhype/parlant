@@ -52,10 +52,8 @@ export const useWebSocket = (url: string, defaultRunning?: boolean, options?: We
 
 		socket.addEventListener('message', (event) => {
 			const data = JSON.parse(event.data || '{}');
-			if (data?.correlation_id?.includes('::')) {
-				setLastMessage(event.data);
-				lastMessageFn?.(data);
-			}
+			setLastMessage(event.data);
+			lastMessageFn?.(data);
 			options?.onMessage?.(event.data);
 		});
 

@@ -24,7 +24,7 @@ export const useQuestionDialog = () => {
 						{actions.map((action) => {
 							if (action.isMainAction)
 								return (
-									<Button onClick={action.onClick} className='h-[46px] w-[161px] bg-[#213547] hover:bg-black rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>
+									<Button key={action.text} onClick={action.onClick} className='h-[46px] w-[161px] bg-[#213547] hover:bg-black rounded-[6px] py-[10px] px-[29.5px] text-[15px] font-medium'>
 										{action.text}
 									</Button>
 								);
