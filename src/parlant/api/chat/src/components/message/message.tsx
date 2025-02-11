@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {ReactElement, useEffect, useRef, useState} from 'react';
 import {EventInterface} from '@/utils/interfaces';
 import {getTimeStr} from '@/utils/date';
@@ -5,6 +6,11 @@ import styles from './message.module.scss';
 import {Spacer} from '../ui/custom/spacer';
 import {twJoin, twMerge} from 'tailwind-merge';
 import Markdown from '../markdown/markdown';
+import Tooltip from '../ui/custom/tooltip';
+import {Textarea} from '../ui/textarea';
+import {Button} from '../ui/button';
+import {useAtom} from 'jotai';
+import {sessionAtom} from '@/store';
 
 interface Props {
 	event: EventInterface;
@@ -12,7 +18,9 @@ interface Props {
 	isRegenerateHidden?: boolean;
 	showLogsForMessage?: EventInterface | null;
 	regenerateMessageFn?: (sessionId: string) => void;
+	resendMessageFn?: (sessionId: string, text?: string) => void;
 	showLogs: (event: EventInterface) => void;
+	setIsEditing?: any;
 }
 
 const statusIcon = {
@@ -26,12 +34,10 @@ const statusIcon = {
 	cancelled: <img src='icons/green-v.svg' title='canceled' data-testid='cancelled' height={11} width={11} className='ms-[4px]' alt='read' />,
 };
 
-export default function Message({event, isContinual, showLogs, showLogsForMessage}: Props): ReactElement {
+const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsEditing}: Props) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const markdownRef = useRef<HTMLSpanElement>(null);
 	const [rowCount, setRowCount] = useState(1);
-	const isClient = event.source === 'customer' || event.source === 'customer_ui';
-	const serverStatus = event.serverStatus;
 
 	useEffect(() => {
 		if (!markdownRef?.current) return;
@@ -41,38 +47,84 @@ export default function Message({event, isContinual, showLogs, showLogsForMessag
 
 	const isOneLiner = rowCount === 1;
 
+	const isClient = event.source === 'customer' || event.source === 'customer_ui';
+	const serverStatus = event.serverStatus;
 	return (
-		<div className='group/main flex my-4 mx-0 mb-1 w-full justify-between animate-fade-in scrollbar'>
-			<Spacer />
-			<div className={(isClient ? 'justify-end' : 'justify-start') + ' flex-1 flex max-w-[1200px] items-end w-[calc(100%-412px)]  max-[1440px]:w-[calc(100%-160px)] max-[900px]:w-[calc(100%-40px)]'}>
-				{!isClient && <div className='flex items-end me-[14px]'>{!isContinual ? <img src='parlant-bubble-muted.svg' alt='Parlant' height={36} width={36} /> : <div className='h-[36px] w-[36px]' />}</div>}
-				<div
-					ref={ref}
-					tabIndex={0}
-					data-testid='message'
-					onClick={() => showLogs(event)}
-					className={twMerge(
-						isClient && 'text-black !rounded-br-none !rounded-tr-[22px]',
-						isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
-						!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
-						isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
-						isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
-						showLogsForMessage && showLogsForMessage.id === event.id && 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#DBDCE0]',
-						'rounded-[26px] max-w-fit peer w-fit flex items-center relative border-[1.3px] border-muted border-solid'
-					)}>
-					<div className={twMerge('markdown overflow-auto relative max-w-[608px] [word-break:break-word] font-light text-[16px] ps-[32px] pe-[38px]', isOneLiner ? '!pb-[22px] !pt-[18px]' : 'pb-[24px] pt-[20px]')}>
-						<span ref={markdownRef}>
-							<Markdown className={twJoin(!isOneLiner && 'leading-[26px]')}>{event?.data?.message}</Markdown>
-						</span>
-					</div>
-					<div className={twMerge('flex h-full font-normal text-[11px] text-[#AEB4BB] pb-[16px] pe-[20px] font-inter self-end items-end whitespace-nowrap leading-[14px]', isOneLiner ? '!pb-[10px] ps-[12px]' : '')}>
-						<div className={twJoin('flex items-center', isClient && 'w-[46px]')}>
-							<div>{getTimeStr(event.creation_utc)}</div>
-							{isClient && !!serverStatus && <div className='w-6'>{statusIcon[serverStatus]}</div>}
+		<div className={(isClient ? 'justify-end' : 'justify-start') + ' flex-1 flex max-w-[1200px] items-end w-[calc(100%-412px)]  max-[1440px]:w-[calc(100%-160px)] max-[900px]:w-[calc(100%-40px)]'}>
+			{!isClient && <div className='flex items-end me-[14px]'>{!isContinual ? <img src='parlant-bubble-muted.svg' alt='Parlant' height={36} width={36} /> : <div className='h-[36px] w-[36px]' />}</div>}
+			{isClient && (
+				<div className={twMerge('self-stretch items-center px-[16px] flex invisible group-hover/main:visible peer-hover:visible hover:visible')}>
+					<Tooltip value='Edit' side='left'>
+						<div data-testid='edit-button' role='button' onClick={() => setIsEditing(true)} className='group cursor-pointer'>
+							<img src='icons/edit.svg' alt='edit' className='block border border-[#151515] rounded-[10px] group-hover:hidden size-[30px] p-[5px]' />
+							<img src='icons/edit-white.svg' alt='edit' className='hidden bg-[#151515] group-hover:block border border-[#151515] rounded-[10px] size-[30px] p-[5px]' />
 						</div>
+					</Tooltip>
+				</div>
+			)}
+			<div
+				ref={ref}
+				tabIndex={0}
+				data-testid='message'
+				onClick={() => showLogs(event)}
+				className={twMerge(
+					isClient && 'text-black !rounded-br-none !rounded-tr-[22px]',
+					isClient && showLogsForMessage && showLogsForMessage.id !== event.id && 'bg-opacity-[0.33] !border-[0.6px]',
+					!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
+					isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
+					isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
+					showLogsForMessage && showLogsForMessage.id === event.id && (isClient ? 'border-[#656565] !bg-white [box-shadow:4.5px_6px_0px_0px_#DBDCE0]' : 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#DBDCE0]'),
+					'rounded-[26px] max-w-fit peer w-fit flex items-center relative border-[1.3px] border-muted border-solid'
+				)}>
+				<div className={twMerge('markdown overflow-auto relative max-w-[608px] [word-break:break-word] font-light text-[16px] ps-[32px] pe-[38px]', isOneLiner ? '!pb-[22px] !pt-[18px]' : 'pb-[24px] pt-[20px]')}>
+					<span ref={markdownRef}>
+						<Markdown className={twJoin(!isOneLiner && 'leading-[26px]')}>{event?.data?.message}</Markdown>
+					</span>
+				</div>
+				<div className={twMerge('flex h-full font-normal text-[11px] text-[#AEB4BB] pb-[16px] pe-[20px] font-inter self-end items-end whitespace-nowrap leading-[14px]', isOneLiner ? '!pb-[10px] ps-[12px]' : '')}>
+					<div className={twJoin('flex items-center', isClient && 'w-[46px]')}>
+						<div>{getTimeStr(event.creation_utc)}</div>
+						{isClient && !!serverStatus && <div className='w-6'>{statusIcon[serverStatus]}</div>}
 					</div>
 				</div>
 			</div>
+		</div>
+	);
+};
+
+const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
+	const ref = useRef<HTMLTextAreaElement>(null);
+	const [textValue, setTextValue] = useState(event?.data?.message || '');
+	const [session] = useAtom(sessionAtom);
+
+	useEffect(() => {
+		ref?.current?.select();
+	}, [ref?.current]);
+
+	return (
+		<div className='w-full p-[10px] rounded-[10px] border'>
+			<Textarea ref={ref} className='resize-none !ring-0 !ring-offset-0' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
+			<div className='pt-[10px] flex justify-end gap-[10px]'>
+				<Button onClick={() => setIsEditing(false)}>Cancel</Button>
+				<Button disabled={!textValue?.trim()} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
+					Apply
+				</Button>
+			</div>
+		</div>
+	);
+};
+
+export default function Message({event, isContinual, showLogs, showLogsForMessage, resendMessageFn}: Props): ReactElement {
+	const [isEditing, setIsEditing] = useState(false);
+	console.log(isEditing);
+	return (
+		<div className='group/main flex my-4 mx-0 mb-1 w-full justify-between animate-fade-in scrollbar'>
+			<Spacer />
+			{isEditing ? (
+				<MessageEditing resendMessageFn={resendMessageFn} setIsEditing={setIsEditing} event={event} isContinual={isContinual} showLogs={showLogs} showLogsForMessage={showLogsForMessage} />
+			) : (
+				<MessageBubble setIsEditing={setIsEditing} event={event} isContinual={isContinual} showLogs={showLogs} showLogsForMessage={showLogsForMessage} />
+			)}
 			<Spacer />
 		</div>
 	);

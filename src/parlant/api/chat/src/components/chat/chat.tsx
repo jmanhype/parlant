@@ -81,19 +81,19 @@ export default function Chat(): ReactElement {
 		setShowLogsForMessage(null);
 	};
 
-	const resendMessageDialog = (index: number) => (sessionId: string) => {
+	const resendMessageDialog = (index: number) => (sessionId: string, text?: string) => {
 		const isLastMessage = index === messages.length - 1;
 		const lastUserMessageOffset = messages[index].offset;
 
 		if (isLastMessage) {
 			setShowLogsForMessage(null);
-			return resendMessage(index, sessionId, lastUserMessageOffset);
+			return resendMessage(index, sessionId, lastUserMessageOffset, text);
 		}
 
 		const onApproved = () => {
 			setShowLogsForMessage(null);
 			closeQuestionDialog();
-			resendMessage(index, sessionId, lastUserMessageOffset);
+			resendMessage(index, sessionId, lastUserMessageOffset, text);
 		};
 
 		const question = 'Resending this message would cause all of the following messages in the session to disappear.';
@@ -119,7 +119,7 @@ export default function Chat(): ReactElement {
 		openQuestionDialog('Are you sure?', question, [{text: 'Regenerate Anyway', onClick: onApproved, isMainAction: true}]);
 	};
 
-	const resendMessage = async (index: number, sessionId: string, offset: number) => {
+	const resendMessage = async (index: number, sessionId: string, offset: number, text?: string) => {
 		const event = messages[index];
 		const prevAllMessages = messages;
 		const prevLastOffset = lastOffset;
@@ -133,7 +133,7 @@ export default function Chat(): ReactElement {
 			setLastOffset(prevLastOffset);
 			return;
 		}
-		postMessage(event.data?.message);
+		postMessage(text ?? event.data?.message);
 		refetch();
 	};
 
@@ -294,6 +294,7 @@ export default function Chat(): ReactElement {
 											event={event}
 											isContinual={event.source === visibleMessages[i + 1]?.source}
 											regenerateMessageFn={regenerateMessageDialog(i)}
+											resendMessageFn={resendMessageDialog(i)}
 											showLogsForMessage={showLogsForMessage}
 											showLogs={showLogs(i)}
 										/>

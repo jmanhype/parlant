@@ -48,6 +48,8 @@ const Header = ({
 	className?: ClassNameValue;
 }) => {
 	const [session] = useAtom(sessionAtom);
+	const isCustomer = event?.source === 'customer';
+
 	return (
 		<HeaderWrapper className={twMerge('static bg-[#FBFBFB]', !event && '!border-transparent bg-[#f5f6f8]', className)}>
 			{event && (
@@ -57,9 +59,8 @@ const Header = ({
 							className='group flex rounded-[5px] ms-[4px] items-center gap-[7px] py-[13px] px-[10px]'
 							role='button'
 							onClick={() => (event?.source === 'customer' ? resendMessageFn?.(session?.id as string) : regenerateMessageFn?.(session?.id as string))}>
-							<img src='icons/regenerate-arrow.svg' alt='regenerate' className='block group-hover:hidden' />
-							<img src='icons/regenerate-arrow-hover.svg' alt='regenerate' className='hidden group-hover:block' />
-							{/* <p className='font-medium text-[15px]'>Regenerate Message</p> */}
+							<img src={isCustomer ? 'icons/resend.svg' : 'icons/regenerate-arrow.svg'} alt='regenerate' className='block group-hover:hidden' />
+							<img src={isCustomer ? 'icons/resend-hover.svg' : 'icons/regenerate-arrow-hover.svg'} alt='regenerate' className='hidden group-hover:block' />
 						</div>
 						<div className='group flex items-center gap-[3px] text-[14px] font-normal'>
 							<CopyText preText='Message ID:' textToCopy={event.id} text={` ${event.id}`} />
