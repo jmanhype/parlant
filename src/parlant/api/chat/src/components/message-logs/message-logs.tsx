@@ -105,9 +105,11 @@ const MessageLogs = ({
 					applyFn={(types, level, content) => setFilters({types, level, content})}
 				/>
 			)}
-			{!event && <EmptyState title='Feeling curious?' subTitle='Select a message for additional actions and information about its process.' className='bg-[#f5f6f8]' />}
-			{event && logs && !logs?.length && <EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." className='bg-[#f5f6f8]' />}
-			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' className='bg-[#ebecf0]' />}
+			{!event && <EmptyState title='Feeling curious?' subTitle='Select a message for additional actions and information about its process.' wrapperClassName='bg-[#f5f6f8]' />}
+			{event && logs && !logs?.length && (
+				<EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." wrapperClassName='bg-[#f5f6f8]' className={twJoin(event?.serverStatus === 'error' && 'translate-y-[0px]')} />
+			)}
+			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' wrapperClassName='bg-[#ebecf0]' className={twJoin(event?.serverStatus === 'error' && 'translate-y-[0px]')} />}
 			{event && !!filteredLogs.length && (
 				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
 					<div ref={messagesRef} className='rounded-[8px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
