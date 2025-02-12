@@ -6,16 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export const copy = (text: string) => {
+export const copy = (text: string, element?: HTMLElement) => {
 	if (navigator.clipboard && navigator.clipboard.writeText) {
 		navigator.clipboard
 			.writeText(text)
 			.then(() => toast.info(text?.length < 100 ? `Copied text: ${text}` : 'Text copied'))
 			.catch(() => {
-				fallbackCopyText(text);
+				fallbackCopyText(text, element);
 			});
 	} else {
-		fallbackCopyText(text);
+		fallbackCopyText(text, element);
 	}
 };
 
@@ -28,7 +28,7 @@ export const fallbackCopyText = (text: string, element?: HTMLElement) => {
 	try {
 		const successful = document.execCommand('copy');
 		if (successful) {
-			toast.info(`Copied text: ${text}`);
+			toast.info(text?.length < 100 ? `Copied text: ${text}` : 'Text copied');
 		} else {
 			console.error('Fallback: Copy command failed.');
 		}
