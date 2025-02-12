@@ -20,7 +20,7 @@ interface Props {
 	regenerateMessageFn?: (sessionId: string) => void;
 	resendMessageFn?: (sessionId: string, text?: string) => void;
 	showLogs: (event: EventInterface) => void;
-	setIsEditing?: any;
+	setIsEditing?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const statusIcon = {
@@ -55,7 +55,7 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 			{isClient && (
 				<div className={twMerge('self-stretch items-center px-[16px] flex invisible group-hover/main:visible peer-hover:visible hover:visible')}>
 					<Tooltip value='Edit' side='left'>
-						<div data-testid='edit-button' role='button' onClick={() => setIsEditing(true)} className='group cursor-pointer'>
+						<div data-testid='edit-button' role='button' onClick={() => setIsEditing?.(true)} className='group cursor-pointer'>
 							<img src='icons/edit.svg' alt='edit' className='block border border-[#151515] rounded-[10px] group-hover:hidden size-[30px] p-[5px]' />
 							<img src='icons/edit-white.svg' alt='edit' className='hidden bg-[#151515] group-hover:block border border-[#151515] rounded-[10px] size-[30px] p-[5px]' />
 						</div>
@@ -93,7 +93,7 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 };
 
 const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
-	const ref = useRef<HTMLTextAreaElement>(null);
+	const ref = useRef<HTMLDivElement>(null);
 	const textArea = useRef<HTMLTextAreaElement>(null);
 	const [textValue, setTextValue] = useState(event?.data?.message || '');
 	const [session] = useAtom(sessionAtom);
@@ -110,8 +110,10 @@ const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
 		<div ref={ref} className='w-full p-[10px] rounded-[10px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
 			<Textarea ref={textArea} className='resize-none !ring-0 !ring-offset-0 border-none bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
 			<div className='pt-[10px] flex justify-end gap-[10px]'>
-				<Button onClick={() => setIsEditing(false)}>Cancel</Button>
-				<Button disabled={!textValue?.trim()} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
+				<Button variant='outline' onClick={() => setIsEditing?.(false)}>
+					Cancel
+				</Button>
+				<Button disabled={!textValue?.trim() || textValue?.trim() === event?.data?.message} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
 					Apply
 				</Button>
 			</div>

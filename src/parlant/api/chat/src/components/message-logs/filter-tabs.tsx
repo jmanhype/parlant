@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {twJoin, twMerge} from 'tailwind-merge';
 import {Level, Type} from '../log-filters/log-filters';
 import {useState} from 'react';

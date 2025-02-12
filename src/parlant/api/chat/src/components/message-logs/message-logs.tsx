@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 import {EventInterface, Log} from '@/utils/interfaces';
 import React, {ReactNode, useEffect, useRef, useState} from 'react';
