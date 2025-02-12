@@ -125,9 +125,7 @@ fragment_example: ExampleJson = {
     "id": "frag123",
     "creation_utc": "2024-03-24T12:00:00Z",
     "value": "Your account balance is {balance}",
-    "fragment_fields": [
-        {"name": "balance", "description": "Account's balance", "examples": [9000]}
-    ],
+    "fields": [{"name": "balance", "description": "Account's balance", "examples": [9000]}],
     "tags": ["private", "office"],
 }
 
@@ -139,13 +137,13 @@ class FragmentDTO(
     id: FragmentIdField
     creation_utc: FragmentCreationUTCField
     value: FragmentValueField
-    fragment_fields: FragmentFieldSequenceField
+    fields: FragmentFieldSequenceField
     tags: TagIdSequenceField
 
 
 fragment_creation_params_example: ExampleJson = {
     "value": "Your account balance is {balance}",
-    "fragment_fields": [
+    "fields": [
         {
             "name": "balance",
             "description": "Account's balance",
@@ -162,7 +160,7 @@ class FragmentCreationParamsDTO(
     """Parameters for creating a new fragment."""
 
     value: FragmentValueField
-    fragment_fields: FragmentFieldSequenceField
+    fields: FragmentFieldSequenceField
 
 
 FragmentTagUpdateAddField: TypeAlias = Annotated[
@@ -208,7 +206,7 @@ class FragmentTagUpdateParamsDTO(
 
 fragment_update_params_example: ExampleJson = {
     "value": "Your updated balance is {balance}",
-    "fragment_fields": [
+    "fields": [
         {
             "name": "balance",
             "description": "Updated account balance",
@@ -225,7 +223,7 @@ class FragmentUpdateParamsDTO(
     """Parameters for updating an existing fragment."""
 
     value: Optional[FragmentValueField] = None
-    fragment_fields: Optional[FragmentFieldSequenceField] = None
+    fields: Optional[FragmentFieldSequenceField] = None
     tags: Optional[FragmentTagUpdateParamsDTO] = None
 
 
@@ -274,14 +272,14 @@ def create_router(
     ) -> FragmentDTO:
         fragment = await fragment_store.create_fragment(
             value=params.value,
-            fragment_fields=[_dto_to_fragment_field(s) for s in params.fragment_fields],
+            fields=[_dto_to_fragment_field(s) for s in params.fields],
         )
 
         return FragmentDTO(
             id=fragment.id,
             creation_utc=fragment.creation_utc,
             value=fragment.value,
-            fragment_fields=[_fragment_field_to_dto(s) for s in fragment.fragment_fields],
+            fields=[_fragment_field_to_dto(s) for s in fragment.fields],
             tags=fragment.tags,
         )
 
@@ -310,7 +308,7 @@ def create_router(
             id=fragment.id,
             creation_utc=fragment.creation_utc,
             value=fragment.value,
-            fragment_fields=[_fragment_field_to_dto(s) for s in fragment.fragment_fields],
+            fields=[_fragment_field_to_dto(s) for s in fragment.fields],
             tags=fragment.tags,
         )
 
@@ -334,7 +332,7 @@ def create_router(
                 id=f.id,
                 creation_utc=f.creation_utc,
                 value=f.value,
-                fragment_fields=[_fragment_field_to_dto(s) for s in f.fragment_fields],
+                fields=[_fragment_field_to_dto(s) for s in f.fields],
                 tags=f.tags,
             )
             for f in fragments
@@ -369,7 +367,7 @@ def create_router(
         The fragment's ID and creation timestamp cannot be modified.
         Extra metadata and tags can be added or removed independently.
         """
-        if params.fragment_fields and not params.value:
+        if params.fields and not params.value:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Fragment fields cannot be updated without providing a new value.",
@@ -378,10 +376,8 @@ def create_router(
         if params.value:
             update_params: FragmentUpdateParams = {
                 "value": params.value,
-                "fragment_fields": (
-                    [_dto_to_fragment_field(s) for s in params.fragment_fields]
-                    if params.fragment_fields
-                    else []
+                "fields": (
+                    [_dto_to_fragment_field(s) for s in params.fields] if params.fields else []
                 ),
             }
 
@@ -401,7 +397,7 @@ def create_router(
             id=updated_fragment.id,
             creation_utc=updated_fragment.creation_utc,
             value=updated_fragment.value,
-            fragment_fields=[_fragment_field_to_dto(s) for s in updated_fragment.fragment_fields],
+            fields=[_fragment_field_to_dto(s) for s in updated_fragment.fields],
             tags=updated_fragment.tags,
         )
 

@@ -14,7 +14,7 @@ async def test_that_a_fragment_can_be_created(
 ) -> None:
     payload = {
         "value": "Your account balance is {balance}",
-        "fragment_fields": [
+        "fields": [
             {
                 "name": "balance",
                 "description": "Account's balance",
@@ -29,7 +29,7 @@ async def test_that_a_fragment_can_be_created(
     fragment = response.json()
 
     assert fragment["value"] == payload["value"]
-    assert fragment["fragment_fields"] == payload["fragment_fields"]
+    assert fragment["fields"] == payload["fields"]
 
     assert "id" in fragment
     assert "creation_utc" in fragment
@@ -42,11 +42,9 @@ async def test_that_a_fragment_can_be_read(
     fragment_store = container[FragmentStore]
 
     value = "Your account balance is {balance}"
-    fragment_fields = [
-        FragmentField(name="balance", description="Account's balance", examples=["9000"])
-    ]
+    fields = [FragmentField(name="balance", description="Account's balance", examples=["9000"])]
 
-    fragment = await fragment_store.create_fragment(value=value, fragment_fields=fragment_fields)
+    fragment = await fragment_store.create_fragment(value=value, fields=fields)
 
     response = await async_client.get(f"/fragments/{fragment.id}")
     assert response.status_code == status.HTTP_200_OK
@@ -55,11 +53,11 @@ async def test_that_a_fragment_can_be_read(
     assert data["id"] == fragment.id
     assert data["value"] == value
 
-    assert len(data["fragment_fields"]) == 1
-    fragment_field = data["fragment_fields"][0]
-    assert fragment_field["name"] == fragment_fields[0].name
-    assert fragment_field["description"] == fragment_fields[0].description
-    assert fragment_field["examples"] == fragment_fields[0].examples
+    assert len(data["fields"]) == 1
+    fragment_field = data["fields"][0]
+    assert fragment_field["name"] == fields[0].name
+    assert fragment_field["description"] == fields[0].description
+    assert fragment_field["examples"] == fields[0].examples
 
     assert dateutil.parser.parse(data["creation_utc"]) == fragment.creation_utc
 
@@ -71,20 +69,20 @@ async def test_that_all_fragments_can_be_listed(
     fragment_store = container[FragmentStore]
 
     first_value = "Your account balance is {balance}"
-    first_fragment_fields = [
+    first_fields = [
         FragmentField(name="balance", description="Account's balance", examples=["9000"])
     ]
 
     second_value = "It will take {days_number} days to deliver to {address}"
-    second_fragment_fields = [
+    second_fields = [
         FragmentField(
             name="days_number", description="Time required for delivery in days", examples=["8"]
         ),
         FragmentField(name="address", description="Customer's address", examples=["Some Address"]),
     ]
 
-    await fragment_store.create_fragment(value=first_value, fragment_fields=first_fragment_fields)
-    await fragment_store.create_fragment(value=second_value, fragment_fields=second_fragment_fields)
+    await fragment_store.create_fragment(value=first_value, fields=first_fields)
+    await fragment_store.create_fragment(value=second_value, fields=second_fields)
 
     response = await async_client.get("/fragments")
     assert response.status_code == status.HTTP_200_OK
@@ -102,15 +100,13 @@ async def test_that_a_fragment_can_be_updated(
     fragment_store = container[FragmentStore]
 
     value = "Your account balance is {balance}"
-    fragment_fields = [
-        FragmentField(name="balance", description="Account's balance", examples=["9000"])
-    ]
+    fields = [FragmentField(name="balance", description="Account's balance", examples=["9000"])]
 
-    fragment = await fragment_store.create_fragment(value=value, fragment_fields=fragment_fields)
+    fragment = await fragment_store.create_fragment(value=value, fields=fields)
 
     update_payload = {
         "value": "Updated balance: {balance}",
-        "fragment_fields": [
+        "fields": [
             {
                 "name": "balance",
                 "description": "Updated account balance",
@@ -124,7 +120,7 @@ async def test_that_a_fragment_can_be_updated(
 
     updated_fragment = response.json()
     assert updated_fragment["value"] == update_payload["value"]
-    assert updated_fragment["fragment_fields"] == update_payload["fragment_fields"]
+    assert updated_fragment["fields"] == update_payload["fields"]
 
 
 async def test_that_a_fragment_can_be_deleted(
@@ -134,11 +130,9 @@ async def test_that_a_fragment_can_be_deleted(
     fragment_store = container[FragmentStore]
 
     value = "Your account balance is {balance}"
-    fragment_fields = [
-        FragmentField(name="balance", description="Account's balance", examples=["9000"])
-    ]
+    fields = [FragmentField(name="balance", description="Account's balance", examples=["9000"])]
 
-    fragment = await fragment_store.create_fragment(value=value, fragment_fields=fragment_fields)
+    fragment = await fragment_store.create_fragment(value=value, fields=fields)
 
     delete_response = await async_client.delete(f"/fragments/{fragment.id}")
     assert delete_response.status_code == status.HTTP_204_NO_CONTENT
@@ -157,11 +151,9 @@ async def test_that_a_tag_can_be_added_to_a_fragment(
     tag = await tag_store.create_tag(name="VIP")
 
     value = "Your account balance is {balance}"
-    fragment_fields = [
-        FragmentField(name="balance", description="Account's balance", examples=["9000"])
-    ]
+    fields = [FragmentField(name="balance", description="Account's balance", examples=["9000"])]
 
-    fragment = await fragment_store.create_fragment(value=value, fragment_fields=fragment_fields)
+    fragment = await fragment_store.create_fragment(value=value, fields=fields)
 
     response = await async_client.patch(
         f"/fragments/{fragment.id}", json={"tags": {"add": [tag.id]}}
@@ -182,11 +174,9 @@ async def test_that_a_tag_can_be_removed_from_a_fragment(
     tag = await tag_store.create_tag(name="VIP")
 
     value = "Your account balance is {balance}"
-    fragment_fields = [
-        FragmentField(name="balance", description="Account's balance", examples=["9000"])
-    ]
+    fields = [FragmentField(name="balance", description="Account's balance", examples=["9000"])]
 
-    fragment = await fragment_store.create_fragment(value=value, fragment_fields=fragment_fields)
+    fragment = await fragment_store.create_fragment(value=value, fields=fields)
 
     await fragment_store.add_tag(fragment_id=fragment.id, tag_id=tag.id)
     response = await async_client.patch(
@@ -211,7 +201,7 @@ async def test_that_fragments_can_be_filtered_by_tags(
 
     first_fragment = await fragment_store.create_fragment(
         value="Welcome {username}!",
-        fragment_fields=[
+        fields=[
             FragmentField(name="username", description="User's name", examples=["Alice", "Bob"])
         ],
     )
@@ -219,7 +209,7 @@ async def test_that_fragments_can_be_filtered_by_tags(
 
     second_fragment = await fragment_store.create_fragment(
         value="Your balance is {balance}",
-        fragment_fields=[
+        fields=[
             FragmentField(name="balance", description="Account balance", examples=["5000", "10000"])
         ],
     )
@@ -227,9 +217,7 @@ async def test_that_fragments_can_be_filtered_by_tags(
 
     third_fragment = await fragment_store.create_fragment(
         value="Exclusive VIP offer for {username}",
-        fragment_fields=[
-            FragmentField(name="username", description="VIP customer", examples=["Charlie"])
-        ],
+        fields=[FragmentField(name="username", description="VIP customer", examples=["Charlie"])],
     )
     await fragment_store.add_tag(third_fragment.id, tag_vip.id)
 

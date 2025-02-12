@@ -889,14 +889,14 @@ class Actions:
             value = fragment_data["value"]
             assert value
 
-            fragment_fields = [
+            fields = [
                 FragmentField(**fragment_field)
-                for fragment_field in fragment_data.get("fragment_fields", [])
+                for fragment_field in fragment_data.get("fields", [])
             ]
 
             fragment = client.fragments.create(
                 value=value,
-                fragment_fields=fragment_fields,
+                fields=fields,
             )
 
             if tag_ids := fragment_data.get("tags", []):
@@ -2085,9 +2085,9 @@ class Interface:
             {
                 "ID": f.id,
                 "Value": f.value,
-                "FragmentFields": [
+                "Fields": [
                     f"name: {s.name}, description: {s.description}, examples: {s.examples}"
-                    for s in f.fragment_fields
+                    for s in f.fields
                 ]
                 or "",
                 "Tags": f.tags or "",
@@ -3261,7 +3261,7 @@ async def async_main() -> None:
             "fragments": [
                 {
                     "value": "Hello, {username}!",
-                    "fragment_fields": [
+                    "fields": [
                         {
                             "name": "username",
                             "description": "The user's name",
@@ -3272,7 +3272,7 @@ async def async_main() -> None:
                 },
                 {
                     "value": "Your balance is {balance}",
-                    "fragment_fields": [
+                    "fields": [
                         {
                             "name": "balance",
                             "description": "Account balance",

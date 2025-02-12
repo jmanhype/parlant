@@ -64,7 +64,7 @@ class MaterializedFragmentField(DefaultBaseModel):
 class MaterializedFragment(DefaultBaseModel):
     fragment_id: str
     raw_content: str
-    fragment_fields: Optional[dict[str, MaterializedFragmentField]] = {}
+    fields: Optional[dict[str, MaterializedFragmentField]] = {}
     justification: str
 
 
@@ -256,10 +256,10 @@ FRAGMENT BANK:
         for fragment in fragments:
             fragment_dict: dict[str, Any] = {"fragment_id": fragment.id, "value": fragment.value}
 
-            if fragment.fragment_fields:
+            if fragment.fields:
                 fragment_dict["fields"] = {}
 
-                for field in fragment.fragment_fields:
+                for field in fragment.fields:
                     field_description = field.description
 
                     if field.examples:
@@ -602,7 +602,7 @@ Produce a valid JSON object in the following format: ###
             {{
                 "fragment_id": "<chosen fragment_id from bank>{' or <auto> if you suggested this fragment yourself' if allow_suggestions else ''}",
                 "raw_content": "<raw fragment content>",
-                "fragment_fields": {{
+                "fields": {{
                     "<fragment field name from this fragment id>": {{
                         "have_sufficient_data_in_context": <BOOL whether you have enough data in context to fill out this fragment field's value>,
                         "value": "<fragment field value>"
@@ -718,7 +718,7 @@ Produce a valid JSON object in the following format: ###
 
             if not fragment:
                 self._logger.error(
-                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; FragmentFields={materialized_fragment.fragment_fields}"
+                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; Fields={materialized_fragment.fields}"
                 )
                 used_fragments[Fragment.INVALID_ID] = materialized_fragment.raw_content
                 continue
@@ -804,7 +804,7 @@ example_1_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
-                    fragment_fields={
+                    fields={
                         "schedule_markdown": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Train 101 departs at 10:00 AM and arrives at 12:30 PM.\n"
@@ -842,7 +842,7 @@ example_1_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
-                    fragment_fields={
+                    fields={
                         "schedule_markdown": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="""\
@@ -951,7 +951,7 @@ example_2_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Restock {something}",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Requested toppings",
@@ -1044,7 +1044,7 @@ example_3_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm having trouble accessing {something} at the moment",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Our menu",
@@ -1105,7 +1105,7 @@ example_4_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="the confusion",
@@ -1137,7 +1137,7 @@ example_4_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Failing to assist you with your issue",
@@ -1216,7 +1216,7 @@ example_5_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Your balance is {balance}",
-                    fragment_fields={
+                    fields={
                         "balance": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="$1,000",
@@ -1290,7 +1290,7 @@ example_6_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Could you please provide more details on {something}",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="What you would need from customer support?",
@@ -1335,7 +1335,7 @@ example_6_expected = AssembledMessageSchema(
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I cannot help you with {something} as I do not have enough information about it.",
-                    fragment_fields={
+                    fields={
                         "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="This topic",
@@ -1437,7 +1437,7 @@ Here are the flights from {origin} to {destination} {when}:
 | Option | Departure Airport | Departure Time | Arrival Airport   |
 |--------|-------------------|----------------|-------------------|
 {schedule_rows}""",
-                    fragment_fields={
+                    fields={
                         "origin": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="New York",

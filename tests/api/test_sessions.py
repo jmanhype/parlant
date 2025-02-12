@@ -1068,7 +1068,7 @@ async def test_that_fragments_can_be_inspected(
         customer_id=customer.id,
     )
 
-    fragment = await fragment_store.create_fragment(value="Hey lad!)", fragment_fields=[])
+    fragment = await fragment_store.create_fragment(value="Hey lad!)", fields=[])
 
     customer_event = await post_message(
         container=container,
@@ -1118,7 +1118,7 @@ async def test_that_an_event_with_fragments_can_be_generated(
     )
 
     fragment = await fragment_store.create_fragment(
-        value="Greetings from Booga booga hotel!", fragment_fields=[]
+        value="Greetings from Booga booga hotel!", fields=[]
     )
 
     customer_event = await post_message(

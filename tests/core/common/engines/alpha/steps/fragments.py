@@ -33,7 +33,7 @@ def given_a_fragment(
     fragment = context.sync_await(
         fragment_store.create_fragment(
             value=text,
-            fragment_fields=[
+            fields=[
                 FragmentField(
                     name=fragment_field_name,
                     description="",

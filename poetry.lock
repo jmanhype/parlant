@@ -3796,7 +3796,7 @@ xml = ["lxml (>=4.9.2)"]
 
 [[package]]
 name = "parlant-client"
-version = "0.10.5"
+version = "0.10.6"
 description = "Python API client for Parlant (https://parlant.io)"
 optional = false
 python-versions = "^3.10"
@@ -3812,8 +3812,8 @@ pydantic = "^2.9.2"
 [package.source]
 type = "git"
 url = "https://github.com/emcie-co/parlant-client-python.git"
-reference = "v0.10.5"
-resolved_reference = "d5fe340cf0a83f5c316ae61a2f2c00c8dde20b82"
+reference = "v0.10.6"
+resolved_reference = "7fbc41b93a80bd73781ffd90f88a9f1ff534be33"
 
 [[package]]
 name = "parse"
@@ -6629,4 +6629,4 @@ together = ["together", "torch", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "84d26cf0fb4529309d71dfd5c375b143ba8c516787eeba75a1aabfd531727052"
+content-hash = "744394294071193183264f98ec4122ac890790fc6db2bf9924e2aaff97ae17ce"
