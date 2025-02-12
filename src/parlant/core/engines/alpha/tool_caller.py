@@ -22,7 +22,7 @@ from typing import Any, Mapping, NewType, Optional, Sequence
 
 from parlant.core import async_utils
 from parlant.core.shots import Shot, ShotCollection
-from parlant.core.tools import Tool, ToolContext
+from parlant.core.tools import Tool, ToolContext, ToolParameterDescriptor, ToolParameterOptions
 from parlant.core.agents import Agent
 from parlant.core.common import JSONSerializable, generate_id, DefaultBaseModel
 from parlant.core.context_variables import ContextVariable, ContextVariableValue
@@ -46,6 +46,7 @@ class ArgumentEvaluation(DefaultBaseModel):
     evaluate_was_it_already_provided_and_should_it_be_provided_again: str
     evaluate_is_it_potentially_problematic_to_guess_what_the_value_is_if_it_isnt_provided: str
     is_optional: bool
+    has_default: bool = False
     is_missing: bool
     value: Optional[Any]
 
@@ -528,17 +529,51 @@ However, note that you may choose to have multiple entries in 'tool_calls_for_ca
         return prompt
 
     def _add_tool_definitions_section(
-        self, candidate_tool: tuple[ToolId, Tool], reference_tools: Sequence[tuple[ToolId, Tool]]
+        self,
+        candidate_tool: tuple[ToolId, Tool],
+        reference_tools: Sequence[tuple[ToolId, Tool]],
     ) -> str:
+        def _get_param_spec(spec: tuple[ToolParameterDescriptor, ToolParameterOptions]) -> str:
+            descriptor, options = spec
+
+            result: dict[str, Any] = {"type": descriptor["type"]}
+
+            if enum := descriptor.get("enum"):
+                result["enum"] = enum
+
+            if options.description:
+                result["description"] = options.description
+            elif description := descriptor.get("description"):
+                result["description"] = description
+
+            if examples := descriptor.get("examples"):
+                result["examples"] = examples
+
+            match options.source:
+                case "any":
+                    result["source"] = "This argument can be extracted in the best way you think"
+                case "context":
+                    result["source"] = (
+                        "This argument can be extracted only from the context given in this prompt"
+                    )
+                case "customer":
+                    result["source"] = "This argument must be EXPLICITLY PROVIDED by the customer"
+
+            return json.dumps(result)
+
         def _get_tool_spec(t_id: ToolId, t: Tool) -> dict[str, Any]:
             return {
                 "name": t_id.to_string(),
                 "description": t.description,
                 "optional_parameters": {
-                    name: spec for name, spec in t.parameters.items() if name not in t.required
+                    name: _get_param_spec(spec)
+                    for name, spec in t.parameters.items()
+                    if name not in t.required
                 },
                 "required_parameters": {
-                    name: spec for name, spec in t.parameters.items() if name in t.required
+                    name: _get_param_spec(spec)
+                    for name, spec in t.parameters.items()
+                    if name in t.required
                 },
             }
 
