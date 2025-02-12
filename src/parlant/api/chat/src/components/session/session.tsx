@@ -52,6 +52,7 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 	const [, setNewSession] = useAtom(newSessionAtom);
 	const [, setSessions] = useAtom(sessionsAtom);
 	const [dialog] = useAtom(dialogAtom);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	useEffect(() => {
 		if (!isSelected) return;
@@ -83,17 +84,21 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 				setAgent(null);
 				return;
 			}
+			setIsDeleting(true);
+			if (isSelected) {
+				setSession(null);
+				document.title = 'Parlant';
+			}
+
 			return deleteData(`sessions/${session.id}`)
 				.then(() => {
 					setSessions((sessions) => sessions.filter((s) => s.id !== session.id));
-					if (isSelected) {
-						setSession(null);
-						document.title = 'Parlant';
-					}
 					toast.success(`Session "${session.title}" deleted successfully`);
+					setIsDeleting(false);
 				})
 				.catch(() => {
 					toast.error('Something went wrong');
+					setIsDeleting(false);
 				});
 		};
 
@@ -166,13 +171,14 @@ export default function Session({session, isSelected, refetch, editingTitle, set
 			role='button'
 			tabIndex={tabIndex}
 			onKeyDown={spaceClick}
-			onClick={() => !disabled && !editingTitle && setSession(session)}
+			onClick={() => !disabled && !editingTitle && !isDeleting && setSession(session)}
 			key={session.id}
 			className={
 				'bg-white animate-fade-in text-[14px] font-ubuntu-sans justify-between font-medium border-b-[0.6px] border-b-solid border-muted cursor-pointer p-1 flex items-center ps-[8px] min-h-[80px] h-[80px] ml-0 mr-0 ' +
 				(editingTitle === session.id ? styles.editSession + ' !p-[4px_2px] ' : editingTitle ? ' opacity-[33%] ' : ' hover:bg-main ') +
 				(isSelected && editingTitle !== session.id ? '!bg-[#F5F6F8]' : '') +
-				(disabled ? ' pointer-events-none' : '')
+				(disabled ? ' pointer-events-none' : '') +
+				(isDeleting ? 'opacity-[33%]' : '')
 			}>
 			<div className='flex-1 whitespace-nowrap overflow-hidden max-w-[202px] ms-[16px] h-[39px]'>
 				{editingTitle !== session.id && (

@@ -199,8 +199,9 @@ export default function Chat(): ReactElement {
 
 		const lastEventStatus = lastEvent?.data?.status;
 
-		setShowThinking(lastEventStatus === 'processing');
+		setShowThinking(!!messages?.length && lastEventStatus === 'processing');
 		setShowTyping(lastEventStatus === 'typing');
+
 		if (lastEventStatus === 'error') {
 			if (isRegenerating) {
 				setIsRegenerating(false);
