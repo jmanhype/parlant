@@ -35,6 +35,7 @@ from parlant.core.customers import CustomerDocumentStore, CustomerStore
 from parlant.core.engines.alpha import guideline_proposer
 from parlant.core.engines.alpha import tool_caller
 from parlant.core.engines.alpha import fluid_message_generator
+from parlant.core.engines.alpha.hooks import LifecycleHooks
 from parlant.core.engines.alpha.message_assembler import MessageAssembler, AssembledMessageSchema
 from parlant.core.evaluations import (
     EvaluationListener,
@@ -294,6 +295,8 @@ async def container(
         container[FluidMessageGenerator] = Singleton(FluidMessageGenerator)
         container[MessageAssembler] = Singleton(MessageAssembler)
         container[ToolEventGenerator] = Singleton(ToolEventGenerator)
+
+        container[LifecycleHooks] = LifecycleHooks()
 
         container[Engine] = Singleton(AlphaEngine)
 

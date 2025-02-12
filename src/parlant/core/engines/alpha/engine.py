@@ -32,6 +32,7 @@ from parlant.core.context_variables import (
 )
 from parlant.core.customers import Customer, CustomerStore
 from parlant.core.engines.alpha.fluid_message_generator import FluidMessageGenerator
+from parlant.core.engines.alpha.hooks import LifecycleHooks
 from parlant.core.engines.alpha.message_assembler import MessageAssembler
 from parlant.core.engines.alpha.message_event_composer import (
     MessageEventComposer,
@@ -58,7 +59,6 @@ from parlant.core.sessions import (
     Term as StoredTerm,
     ToolEventData,
 )
-from parlant.core.engines.alpha.hooks import lifecycle_hooks
 from parlant.core.engines.alpha.guideline_proposer import (
     GuidelineProposer,
     GuidelinePropositionResult,
@@ -168,6 +168,7 @@ class AlphaEngine(Engine):
         tool_event_generator: ToolEventGenerator,
         fluid_message_generator: FluidMessageGenerator,
         message_assembler: MessageAssembler,
+        lifecycle_hooks: LifecycleHooks,
     ) -> None:
         self._logger = logger
         self._correlator = correlator
@@ -186,6 +187,8 @@ class AlphaEngine(Engine):
         self._tool_event_generator = tool_event_generator
         self._fluid_message_generator = fluid_message_generator
         self._message_assembler = message_assembler
+
+        self._lifecycle_hooks = lifecycle_hooks
 
     @override
     async def process(
@@ -209,7 +212,7 @@ class AlphaEngine(Engine):
 
             self._logger.error(f"Processing error: {formatted_exception}")
 
-            if await lifecycle_hooks.call_on_error(context, event_emitter, exc):
+            if await self._lifecycle_hooks.call_on_error(context, event_emitter, exc):
                 await self._emit_error_event(loaded_context, formatted_exception)
 
             return False
@@ -249,7 +252,7 @@ class AlphaEngine(Engine):
                 f"Error during uttering in session {context.session_id}: {formatted_exception}"
             )
 
-            if await lifecycle_hooks.call_on_error(context, event_emitter, exc):
+            if await self._lifecycle_hooks.call_on_error(context, event_emitter, exc):
                 await self._emit_error_event(loaded_context, formatted_exception)
 
             return False
@@ -274,17 +277,17 @@ class AlphaEngine(Engine):
         context: _LoadedContext,
         event_emitter: EventEmitter,
     ) -> None:
-        if not await lifecycle_hooks.call_on_acknowledging(context.info, event_emitter):
+        if not await self._lifecycle_hooks.call_on_acknowledging(context.info, event_emitter):
             return  # Hook requested to bail out
 
         # Mark that this latest session state has been seen by the agent.
         await self._emit_acknowledgement_event(context)
 
-        if not await lifecycle_hooks.call_on_acknowledged(context.info, event_emitter):
+        if not await self._lifecycle_hooks.call_on_acknowledged(context.info, event_emitter):
             return  # Hook requested to bail out
 
         try:
-            if not await lifecycle_hooks.call_on_preparing(context.info, event_emitter):
+            if not await self._lifecycle_hooks.call_on_preparing(context.info, event_emitter):
                 return  # Hook requested to bail out
 
             preparation_state = await self._initialize_preparation_state(context)
@@ -296,7 +299,7 @@ class AlphaEngine(Engine):
             while not preparation_state.prepared_to_respond:
                 # Need more data before we're ready to respond
 
-                if not await lifecycle_hooks.call_on_preparation_iteration_start(
+                if not await self._lifecycle_hooks.call_on_preparation_iteration_start(
                     context.info, event_emitter, preparation_state.tool_events
                 ):
                     break  # Hook requested to finish preparing
@@ -317,7 +320,7 @@ class AlphaEngine(Engine):
                 # This is particularly important to support human handoff.
                 await self._update_session_mode(context, preparation_state)
 
-                if not await lifecycle_hooks.call_on_preparation_iteration_end(
+                if not await self._lifecycle_hooks.call_on_preparation_iteration_end(
                     context.info,
                     event_emitter,
                     preparation_state.tool_events,
@@ -325,7 +328,7 @@ class AlphaEngine(Engine):
                 ):
                     break
 
-            if not await lifecycle_hooks.call_on_generating_messages(
+            if not await self._lifecycle_hooks.call_on_generating_messages(
                 context.info,
                 event_emitter,
                 preparation_state.tool_events,
@@ -348,7 +351,7 @@ class AlphaEngine(Engine):
                 message_generations=message_generation_inspections,
             )
 
-            await lifecycle_hooks.call_on_generated_messages(
+            await self._lifecycle_hooks.call_on_generated_messages(
                 context.info,
                 event_emitter,
                 preparation_state.all_events,

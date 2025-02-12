@@ -65,7 +65,7 @@ from parlant.client.types import (
     Tag,
     ConsumptionOffsetsUpdateParams,
     Fragment,
-    Slot,
+    FragmentField,
     FragmentTagUpdateParams,
 )
 from websocket import WebSocketConnectionClosedException, create_connection
@@ -889,11 +889,14 @@ class Actions:
             value = fragment_data["value"]
             assert value
 
-            slots = [Slot(**slot) for slot in fragment_data.get("slots", [])]
+            fields = [
+                FragmentField(**fragment_field)
+                for fragment_field in fragment_data.get("fields", [])
+            ]
 
             fragment = client.fragments.create(
                 value=value,
-                slots=slots,
+                fields=fields,
             )
 
             if tag_ids := fragment_data.get("tags", []):
@@ -2082,9 +2085,9 @@ class Interface:
             {
                 "ID": f.id,
                 "Value": f.value,
-                "Slots": [
+                "Fields": [
                     f"name: {s.name}, description: {s.description}, examples: {s.examples}"
-                    for s in f.slots
+                    for s in f.fields
                 ]
                 or "",
                 "Tags": f.tags or "",
@@ -3258,7 +3261,7 @@ async def async_main() -> None:
             "fragments": [
                 {
                     "value": "Hello, {username}!",
-                    "slots": [
+                    "fields": [
                         {
                             "name": "username",
                             "description": "The user's name",
@@ -3269,7 +3272,7 @@ async def async_main() -> None:
                 },
                 {
                     "value": "Your balance is {balance}",
-                    "slots": [
+                    "fields": [
                         {
                             "name": "balance",
                             "description": "Account balance",

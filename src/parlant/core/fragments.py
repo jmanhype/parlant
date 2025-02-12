@@ -29,7 +29,7 @@ FragmentId = NewType("FragmentId", str)
 
 
 @dataclass(frozen=True)
-class Slot:
+class FragmentField:
     name: str
     description: str
     examples: list[str]
@@ -43,13 +43,13 @@ class Fragment:
     id: FragmentId
     creation_utc: datetime
     value: str
-    slots: Sequence[Slot]
+    fields: Sequence[FragmentField]
     tags: Sequence[TagId]
 
 
 class FragmentUpdateParams(TypedDict, total=True):
     value: str
-    slots: Sequence[Slot]
+    fields: Sequence[FragmentField]
 
 
 class FragmentStore(ABC):
@@ -57,7 +57,7 @@ class FragmentStore(ABC):
     async def create_fragment(
         self,
         value: str,
-        slots: Sequence[Slot],
+        fields: Sequence[FragmentField],
         creation_utc: Optional[datetime] = None,
     ) -> Fragment: ...
 
@@ -101,7 +101,7 @@ class FragmentStore(ABC):
     ) -> Fragment: ...
 
 
-class _SlotDocument(TypedDict):
+class _FragmentFieldDocument(TypedDict):
     name: str
     description: str
     examples: list[str]
@@ -112,7 +112,7 @@ class _FragmentDocument(TypedDict, total=False):
     version: Version.String
     creation_utc: str
     value: str
-    slots: Sequence[_SlotDocument]
+    fields: Sequence[_FragmentFieldDocument]
 
 
 class _FragmentTagAssociationDocument(TypedDict, total=False):
@@ -163,9 +163,9 @@ class FragmentDocumentStore(FragmentStore):
             version=self.VERSION.to_string(),
             creation_utc=fragment.creation_utc.isoformat(),
             value=fragment.value,
-            slots=[
+            fields=[
                 {"name": s.name, "description": s.description, "examples": s.examples}
-                for s in fragment.slots
+                for s in fragment.fields
             ],
         )
 
@@ -181,9 +181,9 @@ class FragmentDocumentStore(FragmentStore):
             id=FragmentId(fragment_document["id"]),
             creation_utc=datetime.fromisoformat(fragment_document["creation_utc"]),
             value=fragment_document["value"],
-            slots=[
-                Slot(name=d["name"], description=d["description"], examples=d["examples"])
-                for d in fragment_document["slots"]
+            fields=[
+                FragmentField(name=d["name"], description=d["description"], examples=d["examples"])
+                for d in fragment_document["fields"]
             ],
             tags=tags,
         )
@@ -192,7 +192,7 @@ class FragmentDocumentStore(FragmentStore):
     async def create_fragment(
         self,
         value: str,
-        slots: Sequence[Slot],
+        fields: Sequence[FragmentField],
         creation_utc: Optional[datetime] = None,
     ) -> Fragment:
         async with self._lock.writer_lock:
@@ -201,7 +201,7 @@ class FragmentDocumentStore(FragmentStore):
             fragment = Fragment(
                 id=FragmentId(generate_id()),
                 value=value,
-                slots=slots,
+                fields=fields,
                 creation_utc=creation_utc,
                 tags=[],
             )
@@ -245,9 +245,9 @@ class FragmentDocumentStore(FragmentStore):
                 filters={"id": {"$eq": fragment_id}},
                 params={
                     "value": params["value"],
-                    "slots": [
+                    "fields": [
                         {"name": s.name, "description": s.description, "examples": s.examples}
-                        for s in params["slots"]
+                        for s in params["fields"]
                     ],
                 },
             )

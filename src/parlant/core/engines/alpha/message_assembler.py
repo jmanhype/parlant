@@ -56,7 +56,7 @@ class ContextEvaluation(DefaultBaseModel):
     should_i_tell_the_customer_i_cannot_help_with_some_of_those_needs: bool = False
 
 
-class MaterializedSlot(DefaultBaseModel):
+class MaterializedFragmentField(DefaultBaseModel):
     have_sufficient_data_in_context: bool = False
     value: Optional[str] = None
 
@@ -64,13 +64,13 @@ class MaterializedSlot(DefaultBaseModel):
 class MaterializedFragment(DefaultBaseModel):
     fragment_id: str
     raw_content: str
-    slots: Optional[dict[str, MaterializedSlot]] = {}
-    rationale: str
+    fields: Optional[dict[str, MaterializedFragmentField]] = {}
+    justification: str
 
 
 class Revision(DefaultBaseModel):
     revision_number: int
-    content_fragments: list[MaterializedFragment]
+    selected_content_fragments: list[MaterializedFragment]
     sequenced_rendered_content_fragments: list[str]
     composited_fragment_sequence: str
     instructions_followed: Optional[list[str]] = []
@@ -238,9 +238,9 @@ class MessageAssembler(MessageEventComposer):
     def _get_fragment_bank_text(self, fragments: Sequence[Fragment]) -> str:
         content = """
 In formulating your reply, you must rely on the following bank of fragments.
-Each fragment contains content, which may or may not refer to "slots" using curly braces.
-For example, in the fragment 'I can help you with {something}', there is one slot called 'something'.
-For your references, some fragment may include some examples for how to fill out their slots properly.
+Each fragment contains content, which may or may not refer to "fragment fields" using curly braces.
+For example, in the fragment 'I can help you with {something}', there is one fragment field called 'something'.
+For your references, some fragment may include some examples for how to fill out their fragment fields properly.
 
 Note: If you do not have fragments for fulfilling any instruction, you should at least try to
 explain to the customer that cannot help (even if only because you don't have the necessary fragments).
@@ -256,21 +256,21 @@ FRAGMENT BANK:
         for fragment in fragments:
             fragment_dict: dict[str, Any] = {"fragment_id": fragment.id, "value": fragment.value}
 
-            if fragment.slots:
-                fragment_dict["slots"] = {}
+            if fragment.fields:
+                fragment_dict["fields"] = {}
 
-                for slot in fragment.slots:
-                    slot_description = slot.description
+                for field in fragment.fields:
+                    field_description = field.description
 
-                    if slot.examples:
+                    if field.examples:
                         examples = []
 
-                        for i, example in enumerate(slot.examples, start=1):
+                        for i, example in enumerate(field.examples, start=1):
                             examples.append(f"{i}) {example}")
 
-                        slot_description += f" -- Examples: {'; '.join(examples)}"
+                        field_description += f" -- Examples: {'; '.join(examples)}"
 
-                    fragment_dict["slots"][slot.name] = slot_description
+                    fragment_dict["fields"][field.name] = field_description
 
             rendered_fragments.append(str(fragment_dict))
 
@@ -431,8 +431,8 @@ Also note that the content of each revision is to be made up using FRAGMENTS.
 How to use fragments:
     - {fragment_instruction}
     - When listing fragments from the bank, must be displayed EXACTLY AS-IS FROM THE BANK.
-    - Some fragments have "slots" that you need to fill out by extracting relevant information from the content.
-    - If you don't have sufficient data in the context to fill out a slot, you should explicitly give it a null value.
+    - Some fragments have "fragment fields" that you need to fill out by extracting relevant information from the content.
+    - If you don't have sufficient data in the context to fill out a fragment field, you should explicitly give it a null value.
     - The composited content may contain VERY SPECIFIC EDITS to the final sequencing, such as capitalization fixes and connective punctuation marks between fragments.
 
 The final output must be a JSON document detailing the message development process, including:
@@ -598,21 +598,21 @@ Produce a valid JSON object in the following format: ###
     "revisions": [
     {{
         "revision_number": 1,
-        "content_fragments": [
+        "selected_content_fragments": [
             {{
                 "fragment_id": "<chosen fragment_id from bank>{' or <auto> if you suggested this fragment yourself' if allow_suggestions else ''}",
                 "raw_content": "<raw fragment content>",
-                "slots": {{
-                    "<slot name from this fragment id>": {{
-                        "have_sufficient_data_in_context": <BOOL whether you have enough data in context to fill out this slot's value>,
-                        "value": "<slot value>"
+                "fields": {{
+                    "<fragment field name from this fragment id>": {{
+                        "have_sufficient_data_in_context": <BOOL whether you have enough data in context to fill out this fragment field's value>,
+                        "value": "<fragment field value>"
                     }}
                 }},
-                "rationale": "<brief justification for choosing this fragment here>"
+                "justification": "<brief justification for choosing this fragment here>"
             }},
             ...
         ],
-        "sequenced_rendered_content_fragments": <a raw sequenced list of the chosen fragments with slots replaced by their values, ith capitalization or puncutation fixes as needed. DO NOT ADD ANY WORDS HERE, ONLY PUNCTUATION MARKS ARE ACCEPTABLE AT THIS STAGE.>,
+        "sequenced_rendered_content_fragments": <a raw sequenced list of the chosen fragments with fragment fields replaced by their values, ith capitalization or puncutation fixes as needed. DO NOT ADD ANY WORDS HERE, ONLY PUNCTUATION MARKS ARE ACCEPTABLE AT THIS STAGE.>,
         "composited_fragment_sequence": "<a composited version of the sequenced rendering, with ONLY GRAMMATICAL (NON-SEMANTIC) EDITS to make them blend together correctly>",
         "instructions_followed": <list of guidelines and insights that were followed>,
         "instructions_broken": <list of guidelines and insights that were broken>,
@@ -686,14 +686,14 @@ Produce a valid JSON object in the following format: ###
 
         if (
             composition_mode in ["strict_assembly", "composited_assembly"]
-            and not final_revision.content_fragments
+            and not final_revision.selected_content_fragments
         ):
             self._logger.warning(
                 "[MessageEventComposer][Assembly] No relevant fragments in the bank to generate a sensible response"
             )
             return message_event_response.info, None
 
-        if len(final_revision.content_fragments) != len(
+        if len(final_revision.selected_content_fragments) != len(
             final_revision.sequenced_rendered_content_fragments
         ):
             self._logger.error(
@@ -702,7 +702,7 @@ Produce a valid JSON object in the following format: ###
 
         used_fragments = {}
 
-        for index, materialized_fragment in enumerate(final_revision.content_fragments):
+        for index, materialized_fragment in enumerate(final_revision.selected_content_fragments):
             if materialized_fragment.fragment_id == "<auto>":
                 used_fragments[Fragment.TRANSIENT_ID] = materialized_fragment.raw_content
                 continue
@@ -718,7 +718,7 @@ Produce a valid JSON object in the following format: ###
 
             if not fragment:
                 self._logger.error(
-                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; Slots={materialized_fragment.slots}"
+                    f"[MessageEventComposer][Assembly] Invalid fragment selection. ID={materialized_fragment.fragment_id}; Value={materialized_fragment.raw_content}; Fields={materialized_fragment.fields}"
                 )
                 used_fragments[Fragment.INVALID_ID] = materialized_fragment.raw_content
                 continue
@@ -800,18 +800,18 @@ example_1_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
-                    slots={
-                        "schedule_markdown": MaterializedSlot(
+                    fields={
+                        "schedule_markdown": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Train 101 departs at 10:00 AM and arrives at 12:30 PM.\n"
                             "Train 205 departs at 1:00 PM and arrives at 3:45 PM.",
                         )
                     },
-                    rationale="Render the train schedule",
+                    justification="Render the train schedule",
                 )
             ],
             sequenced_rendered_content_fragments=[
@@ -838,12 +838,12 @@ example_1_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Here's the relevant train schedule:\n{schedule_markdown}",
-                    slots={
-                        "schedule_markdown": MaterializedSlot(
+                    fields={
+                        "schedule_markdown": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="""\
 | Train | Departure | Arrival |
@@ -852,7 +852,7 @@ example_1_expected = AssembledMessageSchema(
 | 205   | 1:00 PM   | 3:45 PM  |""",
                         )
                     },
-                    rationale="Render the train schedule",
+                    justification="Render the train schedule",
                 )
             ],
             sequenced_rendered_content_fragments=[
@@ -927,37 +927,37 @@ example_2_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'd be happy",
-                    rationale="Manners",
+                    justification="Manners",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="to",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="prepare your burger",
-                    rationale="Customer request",
+                    justification="Customer request",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="as soon as we",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Restock {something}",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Requested toppings",
                         )
                     },
-                    rationale="Requested toppings aren't in stock",
+                    justification="Requested toppings aren't in stock",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1030,27 +1030,27 @@ example_3_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm sorry",
-                    rationale="Apologize for not having the required info",
+                    justification="Apologize for not having the required info",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="but",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm having trouble accessing {something} at the moment",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Our menu",
                         )
                     },
-                    rationale="Lacking menu information in context (note that I can still fill out this slot accordingly)",
+                    justification="Lacking menu information in context (note that I can still fill out this fragment field accordingly)",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1101,22 +1101,22 @@ example_4_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="the confusion",
                         )
                     },
-                    rationale="Customer is upset",
+                    justification="Customer is upset",
                 ),
                 MaterializedFragment(
                     fragment_id="<auto>",
                     raw_content="Could you please explain what I'm missing?",
-                    rationale="I can't see what I did wrong",
+                    justification="I can't see what I did wrong",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1133,22 +1133,22 @@ example_4_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I apologize for {something}",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Failing to assist you with your issue",
                         )
                     },
-                    rationale="I've failed to understand and help the customer",
+                    justification="I've failed to understand and help the customer",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="If there's anything else I can do for you, please let me know",
-                    rationale="I don't want to keep repeating myself asking for clarifications",
+                    justification="I don't want to keep repeating myself asking for clarifications",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1212,27 +1212,27 @@ example_5_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Your balance is {balance}",
-                    slots={
-                        "balance": MaterializedSlot(
+                    fields={
+                        "balance": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="$1,000",
                         )
                     },
-                    rationale="Customer requested this information",
+                    justification="Customer requested this information",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="however",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I'm unable to disclose details about the specific services I use.",
-                    rationale="I should not reveal my thought process",
+                    justification="I should not reveal my thought process",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1286,27 +1286,27 @@ example_6_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Could you please provide more details on {something}",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="What you would need from customer support?",
                         )
                     },
-                    rationale="Customer requested this information",
+                    justification="Customer requested this information",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="maybe",
-                    rationale="Linking",
+                    justification="Linking",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I could help you",
-                    rationale="Offer to help",
+                    justification="Offer to help",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1326,27 +1326,27 @@ example_6_expected = AssembledMessageSchema(
         ),
         Revision(
             revision_number=2,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="unfortunately",
-                    rationale="Manners",
+                    justification="Manners",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="I cannot help you with {something} as I do not have enough information about it.",
-                    slots={
-                        "something": MaterializedSlot(
+                    fields={
+                        "something": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="This topic",
                         )
                     },
-                    rationale="I cannot help with this topic",
+                    justification="I cannot help with this topic",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="Is there anything else I can assist you with?",
-                    rationale="Offer to help",
+                    justification="Offer to help",
                 ),
             ],
             sequenced_rendered_content_fragments=[
@@ -1429,7 +1429,7 @@ example_7_expected = AssembledMessageSchema(
     revisions=[
         Revision(
             revision_number=1,
-            content_fragments=[
+            selected_content_fragments=[
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="""\
@@ -1437,20 +1437,20 @@ Here are the flights from {origin} to {destination} {when}:
 | Option | Departure Airport | Departure Time | Arrival Airport   |
 |--------|-------------------|----------------|-------------------|
 {schedule_rows}""",
-                    slots={
-                        "origin": MaterializedSlot(
+                    fields={
+                        "origin": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="New York",
                         ),
-                        "destination": MaterializedSlot(
+                        "destination": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Los Angeles",
                         ),
-                        "when": MaterializedSlot(
+                        "when": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="Tomorrow",
                         ),
-                        "schedule_rows": MaterializedSlot(
+                        "schedule_rows": MaterializedFragmentField(
                             have_sufficient_data_in_context=True,
                             value="""\
 | Option | Departure Airport | Departure Time | Arrival Airport   |
@@ -1459,12 +1459,12 @@ Here are the flights from {origin} to {destination} {when}:
 | 2      | JFK               | 3:30 PM        | Los Angeles (LAX) |""",
                         ),
                     },
-                    rationale="Customer asks to depart from New York to Los Angeles tomorrow",
+                    justification="Customer asks to depart from New York to Los Angeles tomorrow",
                 ),
                 MaterializedFragment(
                     fragment_id="<example-id-for-few-shots--do-not-use-this-in-output>",
                     raw_content="While some of these flights are quite long, please note that we do not offer complementary meals on short flights.",
-                    rationale="Important to keep in mind",
+                    justification="Important to keep in mind",
                 ),
             ],
             sequenced_rendered_content_fragments=[

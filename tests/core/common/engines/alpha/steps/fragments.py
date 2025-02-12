@@ -14,7 +14,7 @@
 
 import re
 from pytest_bdd import given, parsers
-from parlant.core.fragments import FragmentStore, FragmentId, Slot
+from parlant.core.fragments import FragmentStore, FragmentId, FragmentField
 
 from tests.core.common.engines.alpha.utils import step
 from tests.core.common.utils import ContextOfTest
@@ -27,19 +27,19 @@ def given_a_fragment(
 ) -> FragmentId:
     fragment_store = context.container[FragmentStore]
 
-    slot_pattern = r"\{(.*?)\}"
-    slot_names = re.findall(slot_pattern, text)
+    fragment_field_pattern = r"\{(.*?)\}"
+    field_names = re.findall(fragment_field_pattern, text)
 
     fragment = context.sync_await(
         fragment_store.create_fragment(
             value=text,
-            slots=[
-                Slot(
-                    name=slot_name,
+            fields=[
+                FragmentField(
+                    name=fragment_field_name,
                     description="",
                     examples=[],
                 )
-                for slot_name in slot_names
+                for fragment_field_name in field_names
             ],
         )
     )
