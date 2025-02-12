@@ -32,7 +32,7 @@ from parlant.core.engines.alpha.guideline_proposition import (
 )
 from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder, SectionStatus
 from parlant.core.glossary import Term
-from parlant.core.guidelines import Guideline, GuidelineContent
+from parlant.core.guidelines import Guideline, GuidelineId, GuidelineContent
 from parlant.core.sessions import Event, EventId, EventSource
 from parlant.core.emissions import EmittedEvent
 from parlant.core.common import DefaultBaseModel, JSONSerializable
@@ -41,7 +41,7 @@ from parlant.core.shots import Shot, ShotCollection
 
 
 class GuidelinePropositionSchema(DefaultBaseModel):
-    guideline_number: int
+    guideline_id: str
     condition: str
     action: Optional[str] = ""
     condition_application_rationale: str
@@ -69,7 +69,7 @@ class GuidelinePropositionShot(Shot):
 
 @dataclass(frozen=True)
 class ConditionApplicabilityEvaluation:
-    guideline_number: int
+    guideline_id: GuidelineId
     condition: str
     action: str
     score: int
@@ -116,7 +116,7 @@ class GuidelineProposer:
                 total_duration=0.0, batch_count=0, batch_generations=[], batches=[]
             )
 
-        guidelines_dict = {i: g for i, g in enumerate(guidelines, start=1)}
+        guidelines_dict = {g.id: g for i, g in enumerate(guidelines, start=1)}
         t_start = time.time()
         batches = self._create_guideline_batches(
             guidelines_dict,
@@ -152,7 +152,7 @@ class GuidelineProposer:
             for evaluation in batch:
                 guideline_propositions.append(
                     GuidelineProposition(
-                        guideline=guidelines_dict[evaluation.guideline_number],
+                        guideline=guidelines_dict[GuidelineId(evaluation.guideline_id)],
                         score=evaluation.score,
                         guideline_previously_applied=PreviouslyAppliedType(
                             evaluation.guideline_previously_applied
@@ -173,7 +173,7 @@ class GuidelineProposer:
             batches=proposition_batches,
         )
 
-    def _get_optimal_batch_size(self, guidelines: dict[int, Guideline]) -> int:
+    def _get_optimal_batch_size(self, guidelines: dict[GuidelineId, Guideline]) -> int:
         guideline_n = len(guidelines)
 
         if guideline_n <= 10:
@@ -187,12 +187,13 @@ class GuidelineProposer:
 
     def _create_guideline_batches(
         self,
-        guidelines_dict: dict[int, Guideline],
+        guidelines_dict: dict[GuidelineId, Guideline],
         batch_size: int,
-    ) -> Sequence[dict[int, Guideline]]:
+    ) -> Sequence[dict[GuidelineId, Guideline]]:
         batches = []
         guidelines = list(guidelines_dict.items())
         batch_count = math.ceil(len(guidelines_dict) / batch_size)
+
         for batch_number in range(batch_count):
             start_offset = batch_number * batch_size
             end_offset = start_offset + batch_size
@@ -209,7 +210,7 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        guidelines_dict: dict[int, Guideline],
+        guidelines_dict: dict[GuidelineId, Guideline],
     ) -> tuple[GenerationInfo, list[ConditionApplicabilityEvaluation]]:
         prompt = self._format_prompt(
             agent,
@@ -236,6 +237,10 @@ class GuidelineProposer:
             self._logger.warning(
                 "[GuidelineProposer][Completion]\nNo checks generated! This shouldn't happen."
             )
+        else:
+            self._logger.debug(
+                f"[GuidelineProposer][Completion]\n{inference.content.model_dump_json(indent=2)}"
+            )
 
         propositions = []
 
@@ -250,11 +255,13 @@ class GuidelineProposer:
 
                 propositions.append(
                     ConditionApplicabilityEvaluation(
-                        guideline_number=proposition.guideline_number,
+                        guideline_id=GuidelineId(proposition.guideline_id),
                         condition=guidelines_dict[
-                            int(proposition.guideline_number)
+                            GuidelineId(proposition.guideline_id)
                         ].content.condition,
-                        action=guidelines_dict[int(proposition.guideline_number)].content.action,
+                        action=guidelines_dict[
+                            GuidelineId(proposition.guideline_id)
+                        ].content.action,
                         score=proposition.applies_score,
                         condition_application_rationale=proposition.condition_application_rationale,
                         guideline_previously_applied=proposition.guideline_previously_applied or "",
@@ -329,12 +336,12 @@ class GuidelineProposer:
         interaction_history: Sequence[Event],
         staged_events: Sequence[EmittedEvent],
         terms: Sequence[Term],
-        guidelines: dict[int, Guideline],
+        guidelines: dict[GuidelineId, Guideline],
         shots: Sequence[GuidelinePropositionShot],
     ) -> str:
         result_structure = [
             {
-                "guideline_number": i,
+                "guideline_id": g.id,
                 "condition": g.content.condition,
                 "condition_application_rationale": "<Explanation for why the condition is or isn't met>",
                 "condition_applies": "<BOOL>",
@@ -448,7 +455,7 @@ IMPORTANT: Please note there are exactly {len(guidelines)} guidelines in the lis
 
 Expected Output
 ---------------------------
-- Specify the applicability of each predicate by filling in the rationale and applied score in the following list:
+- Specify the applicability of each guideline by filling in the details in the following list as instructed:
 
     ```json
     {{
@@ -518,14 +525,14 @@ example_1_guidelines = [
 example_1_expected = GuidelinePropositionsSchema(
     checks=[
         GuidelinePropositionSchema(
-            guideline_number=1,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer initiates a purchase",
             condition_application_rationale="The purchase-related guideline was initiated earlier, but is currently irrelevant since the customer completed the purchase and the conversation has moved to a new topic.",
             condition_applies=False,
             applies_score=3,
         ),
         GuidelinePropositionSchema(
-            guideline_number=2,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer asks about data security",
             condition_applies=True,
             condition_application_rationale="The customer specifically inquired about data security policies, making this guideline highly relevant to the ongoing discussion.",
@@ -541,7 +548,7 @@ example_1_expected = GuidelinePropositionsSchema(
             applies_score=9,
         ),
         GuidelinePropositionSchema(
-            guideline_number=3,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer asked to subscribe to our pro plan",
             condition_applies=True,
             condition_application_rationale="The customer recently asked to subscribe to the pro plan. The conversation is beginning to drift elsewhere, but still deals with the pro plan",
@@ -594,7 +601,7 @@ example_2_guidelines = [
 example_2_expected = GuidelinePropositionsSchema(
     checks=[
         GuidelinePropositionSchema(
-            guideline_number=3,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer indicates that they are looking for a job.",
             condition_application_rationale="The current discussion is about the type of job the customer is looking for",
             condition_applies=True,
@@ -610,7 +617,7 @@ example_2_expected = GuidelinePropositionsSchema(
             applies_score=3,
         ),
         GuidelinePropositionSchema(
-            guideline_number=4,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer asks about job openings.",
             condition_applies=True,
             condition_application_rationale="the customer asked about job openings, and the discussion still revolves around this request",
@@ -628,7 +635,7 @@ example_2_expected = GuidelinePropositionsSchema(
             applies_score=7,
         ),
         GuidelinePropositionSchema(
-            guideline_number=6,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="discussing job opportunities.",
             condition_applies=True,
             condition_application_rationale="the discussion is about job opportunities that are relevant to the customer, so the condition applies.",
@@ -675,7 +682,7 @@ example_3_guidelines = [
 example_3_expected = GuidelinePropositionsSchema(
     checks=[
         GuidelinePropositionSchema(
-            guideline_number=1,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer asks about the value of a stock.",
             condition_application_rationale="The customer asked what does the S&P500 trade at",
             condition_applies=True,
@@ -691,14 +698,14 @@ example_3_expected = GuidelinePropositionsSchema(
             applies_score=9,
         ),
         GuidelinePropositionSchema(
-            guideline_number=2,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the weather at a certain location is discussed.",
             condition_application_rationale="while weather was discussed earlier, the conversation have moved on to an entirely different topic (stock prices)",
             condition_applies=False,
             applies_score=3,
         ),
         GuidelinePropositionSchema(
-            guideline_number=3,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer asked about the weather.",
             condition_application_rationale="The customer asked about the weather earlier, though the conversation has somewhat moved on to a new topic",
             condition_applies=True,
@@ -734,7 +741,7 @@ example_4_guidelines = [
 example_4_expected = GuidelinePropositionsSchema(
     checks=[
         GuidelinePropositionSchema(
-            guideline_number=3,
+            guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="the customer wants to book an appointment",
             condition_application_rationale="The customer has specifically asked to book an appointment",
             condition_applies=True,
