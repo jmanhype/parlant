@@ -56,8 +56,7 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 				<div className={twMerge('self-stretch items-center px-[16px] flex invisible group-hover/main:visible peer-hover:visible hover:visible')}>
 					<Tooltip value='Edit' side='left'>
 						<div data-testid='edit-button' role='button' onClick={() => setIsEditing?.(true)} className='group cursor-pointer'>
-							<img src='icons/edit.svg' alt='edit' className='block border border-[#151515] rounded-[10px] group-hover:hidden size-[30px] p-[5px]' />
-							<img src='icons/edit-white.svg' alt='edit' className='hidden bg-[#151515] group-hover:block border border-[#151515] rounded-[10px] size-[30px] p-[5px]' />
+							<img src='icons/edit-message.svg' alt='edit' className='block rounded-[10px] group-hover:bg-[#EBECF0] size-[30px] p-[5px]' />
 						</div>
 					</Tooltip>
 				</div>
@@ -73,7 +72,7 @@ const MessageBubble = ({event, isContinual, showLogs, showLogsForMessage, setIsE
 					!isClient && '!rounded-bl-none bg-transparent  rounded-tl-[22px] hover:bg-[#F5F6F8] cursor-pointer',
 					isContinual && '!rounded-br-[26px] !rounded-bl-[26px] !rounded-tl-[26px] !rounded-tr-[26px]',
 					showLogsForMessage && showLogsForMessage.id === event.id && (isClient ? 'border-[#656565] !bg-white [box-shadow:4.5px_6px_0px_0px_#DBDCE0]' : 'border-[#656565] !bg-white [box-shadow:-4.5px_6px_0px_0px_#DBDCE0]'),
-					isClient && serverStatus === 'error' && '!bg-[#FDF2F1]',
+					isClient && serverStatus === 'error' && '!bg-[#FDF2F1] hover:!bg-[#F5EFEF]',
 					'rounded-[26px] max-w-fit peer w-fit flex items-center relative border-[1.3px] border-muted border-solid'
 				)}>
 				<div className={twMerge('markdown overflow-auto relative max-w-[608px] [word-break:break-word] font-light text-[16px] ps-[32px] pe-[38px]', isOneLiner ? '!pb-[22px] !pt-[18px]' : 'pb-[24px] pt-[20px]')}>
@@ -107,10 +106,10 @@ const MessageEditing = ({event, resendMessageFn, setIsEditing}: Props) => {
 	}, [ref?.current]);
 
 	return (
-		<div ref={ref} className='w-full p-[10px] rounded-[10px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
-			<Textarea ref={textArea} className='resize-none !ring-0 !ring-offset-0 border-none bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
+		<div ref={ref} className='w-full p-[10px] rounded-[16px] border origin-bottom' style={{transformOrigin: 'bottom'}}>
+			<Textarea ref={textArea} className='resize-none h-[100px] !ring-0 !ring-offset-0 border-none ps-[22px] bg-[#fbfbfb]' onChange={(e) => setTextValue(e.target.value)} defaultValue={textValue} />
 			<div className='pt-[10px] flex justify-end gap-[10px]'>
-				<Button variant='outline' onClick={() => setIsEditing?.(false)}>
+				<Button variant='ghost' onClick={() => setIsEditing?.(false)}>
 					Cancel
 				</Button>
 				<Button disabled={!textValue?.trim() || textValue?.trim() === event?.data?.message} onClick={() => resendMessageFn?.(session?.id || '', textValue?.trim())}>
