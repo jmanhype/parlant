@@ -348,8 +348,6 @@ async def setup_container(
 
         c[EventEmitterFactory] = Singleton(EventPublisherFactory)
 
-        c[BackgroundTaskService] = await EXIT_STACK.enter_async_context(BACKGROUND_TASK_SERVICE)
-
         nlp_service_initializer: dict[str, Callable[[], NLPService]] = {
             "anthropic": load_anthropic,
             "aws": load_aws,
