@@ -12,6 +12,11 @@ import EmptyState from './empty-state';
 import FilterTabs from './filter-tabs';
 import MessageLogsHeader from './message-logs-header';
 import MessageLog from './message-log';
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from '../ui/resizable';
+import {ImperativePanelHandle} from 'react-resizable-panels';
+import Tooltip from '../ui/custom/tooltip';
+import {Copy} from 'lucide-react';
+import {copy} from '@/lib/utils';
 
 interface DefInterface {
 	level?: Level;
@@ -27,8 +32,15 @@ interface Filter {
 
 const MessageError = ({event}: {event: EventInterface}) => {
 	return (
-		<div className='h-[300px] p-[20px] bg-[#ebecf0] text-[13px] text-[#ef5350] z-10'>
-			<pre className={clsx('p-[10px] max-w-[-webkit-fill-available] pe-[10px] text-wrap break-words bg-white rounded-[8px] h-full overflow-auto')}>{event?.error}</pre>
+		<div className='h-full p-[20px] bg-[#ebecf0] text-[13px] text-[#ef5350] z-10'>
+			<pre className={clsx('p-[10px] max-w-[-webkit-fill-available] pe-[10px] text-wrap break-words bg-white rounded-[8px] h-full overflow-auto  group relative')}>
+				<div className='absolute hidden z-10 group-hover:flex right-[10px] top-[10px] gap-[10px]'>
+					<Tooltip value='Copy' side='top'>
+						<Copy size={18} color='#151515' onClick={() => copy(event?.error || '')} className='cursor-pointer' />
+					</Tooltip>
+				</div>
+				{event?.error}
+			</pre>
 		</div>
 	);
 };
@@ -50,6 +62,11 @@ const MessageLogs = ({
 	const [logs, setLogs] = useState<Log[] | null>(null);
 	const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
 	const messagesRef = useRef<HTMLDivElement | null>(null);
+	const resizableRef = useRef<ImperativePanelHandle | null>(null);
+
+	useEffect(() => {
+		if (event?.id) resizableRef.current?.resize(50);
+	}, [event?.id]);
 
 	useEffect(() => {
 		if (logs) {
@@ -96,31 +113,38 @@ const MessageLogs = ({
 				regenerateMessageFn={regenerateMessageFn}
 				className={twJoin(event && logs && !logs?.length && 'bg-white', Object.keys(filters).length ? 'border-[#DBDCE0]' : '')}
 			/>
-			{isError && <MessageError event={event} />}
-			{!!fragmentEntries.length && <MessageFragments fragments={fragmentEntries} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
-			{shouldRenderTabs && <FilterTabs setFilters={setFilters as any} currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
-			{event && (
-				<LogFilters
-					className={twMerge(!filteredLogs?.length && '', !logs?.length && 'absolute')}
-					filterId={currFilterTabs || undefined}
-					def={structuredClone((filterTabs as Filter[]).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
-					applyFn={(types, level, content) => setFilters({types, level, content})}
-				/>
-			)}
-			{!event && <EmptyState title='Feeling curious?' subTitle='Select a message for additional actions and information about its process.' wrapperClassName='bg-[#f5f6f8]' />}
-			{event && logs && !logs?.length && (
-				<EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." wrapperClassName='bg-[#f5f6f8]' className={twJoin(isError && 'translate-y-[0px]')} />
-			)}
-			{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' wrapperClassName='bg-[#ebecf0]' className={twJoin(isError && 'translate-y-[0px]')} />}
-			{event && !!filteredLogs.length && (
-				<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
-					<div ref={messagesRef} className='rounded-[8px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
-						{filteredLogs.map((log, i) => (
-							<MessageLog key={i} log={log} />
-						))}
-					</div>
-				</div>
-			)}
+			<ResizablePanelGroup direction='vertical' className={twJoin('w-full h-full overflow-auto flex flex-col justify-start pt-0 pe-0 bg-[#FBFBFB]')}>
+				<ResizablePanel ref={resizableRef} minSize={0} maxSize={isError ? 99 : 0} defaultSize={isError ? 50 : 0}>
+					{isError && <MessageError event={event} />}
+				</ResizablePanel>
+				<ResizableHandle withHandle className={twJoin(!isError && 'hidden')} />
+				<ResizablePanel minSize={isError ? 0 : 100} maxSize={isError ? 99 : 100} defaultSize={isError ? 50 : 100} className='flex flex-col'>
+					{!!fragmentEntries.length && <MessageFragments fragments={fragmentEntries} className={twJoin(shouldRenderTabs && 'border-b border-[#dbdce0]')} />}
+					{shouldRenderTabs && <FilterTabs setFilters={setFilters as any} currFilterTabs={currFilterTabs} filterTabs={filterTabs as Filter[]} setFilterTabs={setFilterTabs as any} setCurrFilterTabs={setCurrFilterTabs} />}
+					{event && !!logs?.length && (
+						<LogFilters
+							className={twMerge(!filteredLogs?.length && '', !logs?.length && 'absolute')}
+							filterId={currFilterTabs || undefined}
+							def={structuredClone((filterTabs as Filter[]).find((t: Filter) => currFilterTabs === t.id)?.def || null)}
+							applyFn={(types, level, content) => setFilters({types, level, content})}
+						/>
+					)}
+					{!event && <EmptyState title='Feeling curious?' subTitle='Select a message for additional actions and information about its process.' wrapperClassName='bg-[#f5f6f8]' />}
+					{event && logs && !logs?.length && (
+						<EmptyState title='Whoopsie!' subTitle="The logs for this message weren't found in cache. Try regenerating it to get fresh logs." wrapperClassName='bg-[#f5f6f8]' className={twJoin(isError && 'translate-y-[0px]')} />
+					)}
+					{event && !!logs?.length && !filteredLogs.length && <EmptyState title='No logs for the current filters' wrapperClassName='bg-[#ebecf0]' className={twJoin(isError && 'translate-y-[0px]')} />}
+					{event && !!filteredLogs.length && (
+						<div className='bg-[#EBECF0] p-[14px] pt-0 h-auto overflow-auto flex-1'>
+							<div ref={messagesRef} className='rounded-[8px] border-[10px] border-white h-full overflow-auto bg-white fixed-scroll'>
+								{filteredLogs.map((log, i) => (
+									<MessageLog key={i} log={log} />
+								))}
+							</div>
+						</div>
+					)}
+				</ResizablePanel>
+			</ResizablePanelGroup>
 		</div>
 	);
 };
